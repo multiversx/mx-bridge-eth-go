@@ -33,4 +33,4 @@ jobs:
           fi
       - name: Build
         run: |
-          cd ${GITHUB_WORKSPACE}/cmd/main && go build .
+          cd ${GITHUB_WORKSPACE}/cmd && go build .
