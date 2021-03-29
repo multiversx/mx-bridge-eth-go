@@ -25,8 +25,4 @@ func main() {
 
 	ethToElrBridge.Start(context.Background())
 	defer ethToElrBridge.Stop()
-
-	for {
-		ethToElrBridge.Monitor()
-	}
 }

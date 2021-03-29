@@ -42,14 +42,20 @@ func (b *Bridge) Start(ctx context.Context) {
 
 	go b.ethSafe.GetTransactions(ctx, &lastProcessedEthBlock, b.ethChannel)
 	go b.elrondSafe.GetTransactions(ctx, &lastProcessedElrondBlock, b.elrondChannel)
+
+	b.monitor(ctx)
 }
 
-func (b *Bridge) Monitor() {
-	select {
-	case tx := <-b.ethChannel:
-		b.bridgeToElrond(tx)
-	case tx := <-b.elrondChannel:
-		b.bridgeToEth(tx)
+func (b *Bridge) monitor(ctx context.Context) {
+	for {
+		select {
+		case tx := <-b.ethChannel:
+			b.bridgeToElrond(tx)
+		case tx := <-b.elrondChannel:
+			b.bridgeToEth(tx)
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

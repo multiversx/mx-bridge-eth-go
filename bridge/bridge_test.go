@@ -4,7 +4,9 @@ import (
 	"context"
 	"github.com/ElrondNetwork/elrond-eth-bridge/safe"
 	"math/big"
+	"reflect"
 	"testing"
+	"time"
 )
 
 // implements interface
@@ -41,12 +43,13 @@ func TestWillBridgeToElrond(t *testing.T) {
 		TokenAddress: "erc20 address",
 		Amount:       big.NewInt(42),
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
 
 	go func() { ethChannel <- transaction }()
-	bridge.Start(context.Background())
-	bridge.Monitor()
+	bridge.Start(ctx)
 
-	if elrondSafe.lastBridgedTransaction != transaction {
-		t.Errorf("Expected transaction: %v to be bridged to elrond", transaction)
+	if !reflect.DeepEqual(elrondSafe.lastBridgedTransaction, transaction) {
+		t.Errorf("Expected transaction: %v to be bridged to elrond, but %v was actually bridged", transaction, elrondSafe.lastBridgedTransaction)
 	}
 }

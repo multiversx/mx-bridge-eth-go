@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -94,26 +95,35 @@ func TestGetTransactions(t *testing.T) {
 	t1 := <-channel
 	t2 := <-channel
 
-	wantT1 := safe.DepositTransaction{
+	wantT1 := &safe.DepositTransaction{
 		Hash:         "0x3073d1b5aaa4c26b892cbe534f0a7d185535a5f46028d85425454298abf8d903",
 		From:         "0x5246eb39712BA66357cc5c0d77Bd737e62FbC534",
 		TokenAddress: "0x5abc5e20F56Dc6Ce962C458A3142FC289A757F4E",
 		Amount:       big.NewInt(2),
 	}
 
-	wantT2 := safe.DepositTransaction{
+	wantT2 := &safe.DepositTransaction{
 		Hash:         "0xe0142af981864d535634bf25b997304e231659f5156d52ce4a0a3f632e72138b",
 		From:         "0x5246eb39712BA66357cc5c0d77Bd737e62FbC534",
 		TokenAddress: "0x5abc5e20F56Dc6Ce962C458A3142FC289A757F4E",
 		Amount:       big.NewInt(1),
 	}
 
-	if equal(t1, &wantT1) {
-		t.Errorf("Wanted %v, got %v", wantT1, t1)
+	var transactionTests = []struct {
+		name   string
+		got    *safe.DepositTransaction
+		wanted *safe.DepositTransaction
+	}{
+		{"transaction with 2 tokens", t1, wantT1},
+		{"transaction with 1 token", t2, wantT2},
 	}
 
-	if equal(t2, &wantT2) {
-		t.Errorf("Wanted %v, got %v", wantT2, t2)
+	for _, tt := range transactionTests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !reflect.DeepEqual(t1, wantT1) {
+				t.Errorf("Wanted %v, got %v", tt.wanted, tt.got)
+			}
+		})
 	}
 }
 
@@ -123,11 +133,4 @@ func assertDecoding(t testing.TB, err error) {
 	if err != nil {
 		t.Fatal("Failed to decode block")
 	}
-}
-
-func equal(tx1, tx2 *safe.DepositTransaction) bool {
-	return tx1.Hash == tx2.Hash &&
-		tx1.From == tx2.From &&
-		tx1.TokenAddress == tx2.TokenAddress &&
-		tx1.Amount == tx2.Amount
 }
