@@ -1,13 +1,13 @@
 package eth
 
 import (
+	"context"
 	"github.com/ElrondNetwork/elrond-eth-bridge/safe"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"golang.org/x/net/context"
 	"math/big"
 	"strings"
 	"testing"
@@ -73,7 +73,9 @@ func TestGetTransactions(t *testing.T) {
 	err = chainReader.addBlockFromHex(`f902a8f901f6a0d2827949983edad89f9c2b26d1e7e27e350e7601f152281041c7884953e8fc13a01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347940000000000000000000000000000000000000000a021a3dcc052faaceff9b4cea40cceb375aeda339cd183e125eca8e3623ef1f628a0d027e2ef0e9863d812c1f04522dd30d733eb6e307a439de2d969cab8c64a7727a08c452bfa95b85ff54bb7dbef02878a385a9079659205bf7e1cfeb42653cbcfa3b90100000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000010000000000000000000000000000008010836691b7825e788460615b7780a00000000000000000000000000000000000000000000000000000000000000000880000000000000000f8acf8aa0f8504a817c8008301d858946224dde04296e2528ef5c5705db49bfcbf04372180b84447e7ef240000000000000000000000005abc5e20f56dc6ce962c458a3142fc289a757f4e000000000000000000000000000000000000000000000000000000000000000126a07345f2fe01dd478568628ee9fa85a430175db7f343c5d098af95ef792e6aabf9a06854bb33b49dae83db6efd4ad623c51cc19b13aad9631ee2cc16b8248ade3cd4c0`)
 	assertDecoding(t, err)
 
-	mostRecentBlockNumber := func(ctx context.Context) (uint64, error) { return uint64(len(chainReader.blocks)), nil }
+	mostRecentBlockNumber := func(ctx context.Context) (*big.Int, error) {
+		return big.NewInt(int64(len(chainReader.blocks) - 1)), nil
+	}
 	safeAbi, err := abi.JSON(strings.NewReader(safeAbiDefinition))
 
 	if err != nil {
@@ -86,10 +88,11 @@ func TestGetTransactions(t *testing.T) {
 		safeAbi:               safeAbi,
 		mostRecentBlockNumber: mostRecentBlockNumber,
 	}
-	ch := client.GetTransactions(context.Background(), 0)
+	channel := make(safe.SafeTxChan)
+	go client.GetTransactions(context.Background(), big.NewInt(0), channel)
 
-	t1 := <-ch
-	t2 := <-ch
+	t1 := <-channel
+	t2 := <-channel
 
 	wantT1 := safe.DepositTransaction{
 		Hash:         "0x3073d1b5aaa4c26b892cbe534f0a7d185535a5f46028d85425454298abf8d903",

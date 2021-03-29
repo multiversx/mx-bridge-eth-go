@@ -20,7 +20,7 @@ type Client struct {
 	chainReader           ethereum.ChainReader
 	safeAddress           common.Address
 	safeAbi               abi.ABI
-	mostRecentBlockNumber func(ctx context.Context) (uint64, error)
+	mostRecentBlockNumber func(ctx context.Context) (*big.Int, error)
 }
 
 func NewClient(rawUrl string, safeAddress string) (*Client, error) {
@@ -30,8 +30,11 @@ func NewClient(rawUrl string, safeAddress string) (*Client, error) {
 		return nil, err
 	}
 
-	mostRecentBlockNumber := func(ctx context.Context) (uint64, error) {
-		return chainReader.BlockNumber(ctx)
+	mostRecentBlockNumber := func(ctx context.Context) (*big.Int, error) {
+		number, err := chainReader.BlockNumber(ctx)
+		blockNumber := big.NewInt(int64(number))
+
+		return blockNumber, err
 	}
 	safeAbi, err := abi.JSON(strings.NewReader(safeAbiDefinition))
 
@@ -49,40 +52,39 @@ func NewClient(rawUrl string, safeAddress string) (*Client, error) {
 	return client, nil
 }
 
-func (c Client) GetTransactions(ctx context.Context, blockNumber uint64) safe.SafeTxChan {
-	ch := make(safe.SafeTxChan)
-	currentBlockNumber := blockNumber
-	go func() {
-		defer close(ch)
-		for {
-			mostRecentBlockNumber, err := c.mostRecentBlockNumber(ctx)
-
-			if err != nil {
-				// TODO: log error
-				fmt.Println(err)
-				return
-			}
-
-			if currentBlockNumber == mostRecentBlockNumber {
-				time.Sleep(1 * time.Second)
-				continue
-			} else {
-				err = c.processBlockByNumber(ctx, ch, currentBlockNumber)
-
-				if err != nil {
-					// TODO: log err
-					fmt.Println(err)
-				}
-
-				currentBlockNumber += 1
-			}
-		}
-	}()
-	return ch
+func (c *Client) Bridge(*safe.DepositTransaction) {
+	// TODO: send transaction to safe
 }
 
-func (c *Client) processBlockByNumber(ctx context.Context, ch safe.SafeTxChan, number uint64) error {
-	block, err := c.chainReader.BlockByNumber(ctx, big.NewInt(int64(number)))
+func (c *Client) GetTransactions(ctx context.Context, blockNumber *big.Int, channel safe.SafeTxChan) {
+	currentBlockNumber := blockNumber
+	for {
+		mostRecentBlockNumber, err := c.mostRecentBlockNumber(ctx)
+
+		if err != nil {
+			// TODO: log error
+			fmt.Println(err)
+			return
+		}
+
+		if currentBlockNumber.Cmp(mostRecentBlockNumber) == 1 {
+			time.Sleep(1 * time.Second)
+			continue
+		} else {
+			err = c.processBlockByNumber(ctx, channel, currentBlockNumber)
+
+			if err != nil {
+				// TODO: log err
+				fmt.Println(err)
+			}
+
+			currentBlockNumber = currentBlockNumber.Add(currentBlockNumber, big.NewInt(1))
+		}
+	}
+}
+
+func (c *Client) processBlockByNumber(ctx context.Context, ch safe.SafeTxChan, number *big.Int) error {
+	block, err := c.chainReader.BlockByNumber(ctx, number)
 
 	if err != nil {
 		return err
@@ -103,7 +105,13 @@ func (c *Client) processBlockByNumber(ctx context.Context, ch safe.SafeTxChan, n
 
 func (c *Client) filterTransactions(transactions types.Transactions) (result types.Transactions) {
 	for _, tx := range transactions {
-		if tx.To().String() == c.safeAddress.String() {
+		var toAddress string
+
+		if tx.To() != nil {
+			toAddress = tx.To().String()
+		}
+
+		if toAddress == c.safeAddress.String() {
 			result = append(result, tx)
 		}
 	}

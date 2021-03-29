@@ -1,9 +1,14 @@
 package safe
 
-import "context"
+import (
+	"context"
+	"math/big"
+)
 
 type SafeTxChan chan *DepositTransaction
 
 type Safe interface {
-	GetTransactions(context.Context, uint64) SafeTxChan
+	GetTransactions(context.Context, *big.Int, SafeTxChan)
+
+	Bridge(*DepositTransaction)
 }
