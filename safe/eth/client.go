@@ -23,8 +23,6 @@ type Client struct {
 	mostRecentBlockNumber func(ctx context.Context) (uint64, error)
 }
 
-type safeTxChan chan *safe.DepositTransaction
-
 func NewClient(rawUrl string, safeAddress string) (*Client, error) {
 	chainReader, err := ethclient.Dial(rawUrl)
 
@@ -51,8 +49,8 @@ func NewClient(rawUrl string, safeAddress string) (*Client, error) {
 	return client, nil
 }
 
-func (c Client) GetTransactions(ctx context.Context, blockNumber uint64) chan *safe.DepositTransaction {
-	ch := make(safeTxChan)
+func (c Client) GetTransactions(ctx context.Context, blockNumber uint64) safe.SafeTxChan {
+	ch := make(safe.SafeTxChan)
 	currentBlockNumber := blockNumber
 	go func() {
 		defer close(ch)
@@ -83,7 +81,7 @@ func (c Client) GetTransactions(ctx context.Context, blockNumber uint64) chan *s
 	return ch
 }
 
-func (c *Client) processBlockByNumber(ctx context.Context, ch safeTxChan, number uint64) error {
+func (c *Client) processBlockByNumber(ctx context.Context, ch safe.SafeTxChan, number uint64) error {
 	block, err := c.chainReader.BlockByNumber(ctx, big.NewInt(int64(number)))
 
 	if err != nil {
