@@ -21,3 +21,8 @@
 *.log
 
 mytestnet/**
+
+#contracts/ethereum-sc
+node_modules
+cache
+artifacts
