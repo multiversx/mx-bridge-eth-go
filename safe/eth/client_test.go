@@ -19,11 +19,11 @@ var (
 	_ = safe.Safe(&Client{})
 )
 
-type TestChainReader struct {
+type testChainReader struct {
 	blocks []types.Block
 }
 
-func (c *TestChainReader) addBlockFromHex(hex string) error {
+func (c *testChainReader) addBlockFromHex(hex string) error {
 	blockEnc := common.FromHex(hex)
 	var block types.Block
 	err := rlp.DecodeBytes(blockEnc, &block)
@@ -36,34 +36,34 @@ func (c *TestChainReader) addBlockFromHex(hex string) error {
 	return nil
 }
 
-func (c *TestChainReader) BlockByHash(context.Context, common.Hash) (*types.Block, error) {
+func (c *testChainReader) BlockByHash(context.Context, common.Hash) (*types.Block, error) {
 	return nil, nil
 }
-func (c *TestChainReader) BlockByNumber(_ context.Context, number *big.Int) (*types.Block, error) {
+func (c *testChainReader) BlockByNumber(_ context.Context, number *big.Int) (*types.Block, error) {
 	if number.Int64() >= int64(len(c.blocks)) {
 		return nil, ethereum.NotFound
 	}
 	return &c.blocks[number.Int64()], nil
 }
-func (c *TestChainReader) HeaderByHash(context.Context, common.Hash) (*types.Header, error) {
+func (c *testChainReader) HeaderByHash(context.Context, common.Hash) (*types.Header, error) {
 	return nil, nil
 }
-func (c *TestChainReader) HeaderByNumber(context.Context, *big.Int) (*types.Header, error) {
+func (c *testChainReader) HeaderByNumber(context.Context, *big.Int) (*types.Header, error) {
 	return nil, nil
 }
-func (c *TestChainReader) TransactionCount(context.Context, common.Hash) (uint, error) {
+func (c *testChainReader) TransactionCount(context.Context, common.Hash) (uint, error) {
 	return 0, nil
 }
-func (c *TestChainReader) TransactionInBlock(context.Context, common.Hash, uint) (*types.Transaction, error) {
+func (c *testChainReader) TransactionInBlock(context.Context, common.Hash, uint) (*types.Transaction, error) {
 	return nil, nil
 }
 
-func (c *TestChainReader) SubscribeNewHead(context.Context, chan<- *types.Header) (ethereum.Subscription, error) {
+func (c *testChainReader) SubscribeNewHead(context.Context, chan<- *types.Header) (ethereum.Subscription, error) {
 	return nil, nil
 }
 
 func TestGetTransactions(t *testing.T) {
-	chainReader := &TestChainReader{}
+	chainReader := &testChainReader{}
 	// amount 2
 	err := chainReader.addBlockFromHex(`f902a8f901f6a01bbf9582f7751e9493e5cf64396c04ea6dd0738fbce2cd1aa4c270e4cfd4a149a01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347940000000000000000000000000000000000000000a0ad6377e310e8a0cdc9277c5ad4c7649e244fc0accd5c0e99f26e9813a51781a2a0e9a78698cccbce3e0e2bfd94ae8c0603e4b29e39523ea1059e670ee2d4e8117ba01f05c40ba7a935d1492757fa666ea1eac4924aa4acd1540f523bad3d1e0d5d46b9010000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000001000000000000000000000000000000800f836691b7825e78846060ba4980a00000000000000000000000000000000000000000000000000000000000000000880000000000000000f8acf8aa0e8504a817c8008301d858946224dde04296e2528ef5c5705db49bfcbf04372180b84447e7ef240000000000000000000000005abc5e20f56dc6ce962c458a3142fc289a757f4e000000000000000000000000000000000000000000000000000000000000000226a0d674cc92445a68a121b723c6ce8485799d278f9570872af95634e0735e8f07e7a022fcf034aec13be9c703313855e95aa9112321d71c77cd17428b9da20693cb4fc0`)
 	assertDecoding(t, err)

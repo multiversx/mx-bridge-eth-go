@@ -52,8 +52,9 @@ func NewClient(rawUrl string, safeAddress string) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) Bridge(*safe.DepositTransaction) {
+func (c *Client) Bridge(*safe.DepositTransaction) (string, error) {
 	// TODO: send transaction to safe
+	return "", nil
 }
 
 func (c *Client) GetTransactions(ctx context.Context, blockNumber *big.Int, channel safe.SafeTxChan) {

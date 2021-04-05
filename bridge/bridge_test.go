@@ -21,8 +21,10 @@ type testSafe struct {
 
 func (c *testSafe) GetTransactions(context.Context, *big.Int, safe.SafeTxChan) {}
 
-func (c *testSafe) Bridge(tx *safe.DepositTransaction) {
+func (c *testSafe) Bridge(tx *safe.DepositTransaction) (string, error) {
 	c.lastBridgedTransaction = tx
+
+	return "", nil
 }
 
 func TestWillBridgeToElrond(t *testing.T) {

@@ -17,13 +17,13 @@ type Bridge struct {
 	elrondChannel safe.SafeTxChan
 }
 
-func NewBridge(ethNetworkAddress, ethSafeAddress string) (*Bridge, error) {
+func NewBridge(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSafeAddress, elrondPrivateKeyPath string) (*Bridge, error) {
 	ethSafe, err := eth.NewClient(ethNetworkAddress, ethSafeAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	elrondSafe, err := elrond.NewClient()
+	elrondSafe, err := elrond.NewClient(elrondNetworkAddress, elrondSafeAddress, elrondPrivateKeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +50,20 @@ func (b *Bridge) monitor(ctx context.Context) {
 	for {
 		select {
 		case tx := <-b.ethChannel:
-			b.bridgeToElrond(tx)
+			hash, err := b.bridgeToElrond(tx)
+
+			// TODO: log
+			if err != nil {
+				fmt.Printf("Briging to elrond failed with %v\n", err)
+			} else {
+				fmt.Printf("Bridged to elrond with hash: %q\n", hash)
+			}
 		case tx := <-b.elrondChannel:
-			b.bridgeToEth(tx)
+			_, err := b.bridgeToEth(tx)
+			// TODO: log
+			if err != nil {
+				fmt.Printf("Briging to ethereum failed with %v\n", err)
+			}
 		case <-ctx.Done():
 			return
 		}
@@ -64,14 +75,14 @@ func (b *Bridge) Stop() {
 	close(b.elrondChannel)
 }
 
-func (b *Bridge) bridgeToElrond(tx *safe.DepositTransaction) {
+func (b *Bridge) bridgeToElrond(tx *safe.DepositTransaction) (string, error) {
 	// TODO: log
 	fmt.Printf("Briging %v to elrond\n", tx)
-	b.elrondSafe.Bridge(tx)
+	return b.elrondSafe.Bridge(tx)
 }
 
-func (b *Bridge) bridgeToEth(tx *safe.DepositTransaction) {
+func (b *Bridge) bridgeToEth(tx *safe.DepositTransaction) (string, error) {
 	// TODO: log
 	fmt.Printf("Briging %v to eth\n", tx)
-	b.ethSafe.Bridge(tx)
+	return b.ethSafe.Bridge(tx)
 }

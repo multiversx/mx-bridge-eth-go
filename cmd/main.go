@@ -11,11 +11,15 @@ import (
 var log = logger.GetOrCreate("eth-bridge")
 
 func main() {
+	// TODO: get these from the cli
 	ethNetworkAddress := "http://127.0.0.1:8545"
 	ethSafeAddress := "0x6224Dde04296e2528eF5C5705Db49bfCbF043721"
+	elrondNetworkAddress := "http://localhost:7950"
+	elrondSafeAddress := "erd1qqqqqqqqqqqqqpgqfzydqmdw7m2vazsp6u5p95yxz76t2p9rd8ss0zp9ts"
+	elrondPrivateKeyPath := "../mytestnet/testnet/wallets/users/alice.pem"
 
 	log.Debug("Starting bridge")
-	ethToElrBridge, err := bridge.NewBridge(ethNetworkAddress, ethSafeAddress)
+	ethToElrBridge, err := bridge.NewBridge(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSafeAddress, elrondPrivateKeyPath)
 
 	if err != nil {
 		panic(err)
