@@ -11,8 +11,16 @@ var (
 	_ = safe.Safe(&Client{})
 )
 
+type TransactionError string
+
+func (e TransactionError) Error() string {
+	return string(e)
+}
+
 type testProxy struct {
-	expectedTxHash string
+	transactionHash string
+	lastTransaction *data.Transaction
+	shouldFail      bool
 }
 
 func (p *testProxy) GetNetworkConfig() (*data.NetworkConfig, error) {
@@ -34,54 +42,76 @@ func (p *testProxy) GetNetworkConfig() (*data.NetworkConfig, error) {
 	}, nil
 }
 
-func (p *testProxy) SendTransaction(*data.Transaction) (string, error) {
-	return p.expectedTxHash, nil
+func (p *testProxy) SendTransaction(tx *data.Transaction) (string, error) {
+	p.lastTransaction = tx
+
+	if p.shouldFail {
+		return "", TransactionError("failed")
+	} else {
+		return p.transactionHash, nil
+	}
 }
 
 func TestBridge(t *testing.T) {
-	expectedTxHash := "this is the tx hash"
+	buildTestClient := func(proxy *testProxy) (*Client, *testProxy) {
+		privateKey, err := erdgo.LoadPrivateKeyFromPemFile("grace.pem")
 
-	proxy := &testProxy{
-		expectedTxHash,
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		addressString, err := erdgo.GetAddressFromPrivateKey(privateKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		address := &elrondAddress{addressString: addressString}
+
+		client := &Client{
+			proxy:       proxy,
+			safeAddress: "",
+			privateKey:  privateKey,
+			address:     address,
+			nonce:       0,
+		}
+
+		return client, proxy
 	}
+	t.Run("will return the transaction hash", func(t *testing.T) {
+		expectedTxHash := "expected hash"
+		proxy := &testProxy{expectedTxHash, nil, false}
+		client, _ := buildTestClient(proxy)
 
-	privateKey, err := erdgo.LoadPrivateKeyFromPemFile("grace.pem")
+		hash, _ := client.Bridge(nil)
 
-	if err != nil {
-		t.Fatal(err)
-	}
+		if hash != expectedTxHash {
+			t.Errorf("Expected %q, got %q", expectedTxHash, hash)
+		}
+	})
+	t.Run("will increase nonce on successive runs", func(t *testing.T) {
+		proxy := &testProxy{"", nil, false}
+		client, proxy := buildTestClient(proxy)
 
-	addressString, err := erdgo.GetAddressFromPrivateKey(privateKey)
-	if err != nil {
-		t.Fatal(err)
-	}
+		_, _ = client.Bridge(nil)
+		_, _ = client.Bridge(nil)
 
-	address := &elrondAddress{addressString: addressString}
-	account := buildMockAccount(addressString)
+		expectedNonce := uint64(1)
 
-	client := Client{
-		proxy:       proxy,
-		safeAddress: "",
-		privateKey:  privateKey,
+		if proxy.lastTransaction.Nonce != expectedNonce {
+			t.Errorf("Expected nonce to be %v, but it was %v", expectedNonce, proxy.lastTransaction.Nonce)
+		}
+	})
+	t.Run("will not increment nonce when transactions fails", func(t *testing.T) {
+		proxy := &testProxy{"", nil, true}
+		client, proxy := buildTestClient(proxy)
 
-		account: account,
-		address: address,
-	}
+		_, _ = client.Bridge(nil)
+		_, _ = client.Bridge(nil)
 
-	hash, _ := client.Bridge(nil)
+		expectedNonce := uint64(0)
 
-	if hash != expectedTxHash {
-		t.Errorf("Expected %q, got %q", expectedTxHash, hash)
-	}
-}
-
-func buildMockAccount(address string) *data.Account {
-	return &data.Account{
-		Address:  address,
-		Nonce:    42,
-		Balance:  "42",
-		Code:     "42",
-		CodeHash: nil,
-		RootHash: nil,
-	}
+		if proxy.lastTransaction.Nonce != expectedNonce {
+			t.Errorf("Expected nonce to be %v, but it was %v", expectedNonce, proxy.lastTransaction.Nonce)
+		}
+	})
 }

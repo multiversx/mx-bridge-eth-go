@@ -11,16 +11,15 @@ import (
 
 type elrondProxy interface {
 	GetNetworkConfig() (*data.NetworkConfig, error)
-	SendTransaction(tx *data.Transaction) (string, error)
+	SendTransaction(*data.Transaction) (string, error)
 }
 
 type Client struct {
 	proxy       elrondProxy
 	safeAddress string
 	privateKey  []byte
-
-	address *elrondAddress
-	account *data.Account
+	address     *elrondAddress
+	nonce       uint64
 }
 
 // TODO: remove this when Stringer bug is fixes
@@ -62,18 +61,19 @@ func NewClient(rawUrl, safeAddress, privateKeyPath string) (*Client, error) {
 	}
 
 	address := &elrondAddress{addressString: addressString}
+
 	account, err := proxy.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
+	initialNonce := account.Nonce
 
 	return &Client{
 		proxy:       proxy,
 		safeAddress: safeAddress,
 		privateKey:  privateKey,
-
-		address: address,
-		account: account,
+		address:     address,
+		nonce:       initialNonce,
 	}, nil
 }
 
@@ -82,13 +82,18 @@ func (c *Client) Bridge(*safe.DepositTransaction) (string, error) {
 	networkConfig, _ := c.proxy.GetNetworkConfig()
 
 	tx := c.buildTransaction(networkConfig)
-	err := erdgo.SignTransaction(&tx, c.privateKey)
 
+	err := erdgo.SignTransaction(&tx, c.privateKey)
 	if err != nil {
 		return "", err
 	}
 
-	return c.proxy.SendTransaction(&tx)
+	hash, err := c.proxy.SendTransaction(&tx)
+	if err == nil {
+		c.incrementNonce()
+	}
+
+	return hash, err
 }
 
 func (c *Client) GetTransactions(context.Context, *big.Int, safe.SafeTxChan) {
@@ -96,16 +101,20 @@ func (c *Client) GetTransactions(context.Context, *big.Int, safe.SafeTxChan) {
 }
 
 func (c *Client) buildTransaction(networkConfig *data.NetworkConfig) data.Transaction {
-	return data.Transaction{
+           	return data.Transaction{
 		ChainID: networkConfig.ChainID,
 		Version: networkConfig.MinTransactionVersion,
 		// TODO: /transaction/cost to estimate tx cost
-		GasLimit: networkConfig.MinGasLimit * 2 * 10,
+		GasLimit: networkConfig.MinGasLimit * 4 * 10,
 		GasPrice: networkConfig.MinGasPrice,
-		Nonce:    c.account.Nonce,
+		Nonce:    c.nonce,
 		Data:     []byte("increment"),
 		SndAddr:  c.address.AddressAsBech32String(),
 		RcvAddr:  c.safeAddress,
 		Value:    "0",
 	}
+}
+
+func (c *Client) incrementNonce() {
+	c.nonce++
 }
