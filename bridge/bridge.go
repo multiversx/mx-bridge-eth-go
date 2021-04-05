@@ -37,10 +37,10 @@ func NewBridge(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSa
 }
 
 func (b *Bridge) Start(ctx context.Context) {
-	lastProcessedEthBlock := big.NewInt(27)
+	var lastProcessedEthBlock big.Int
 	var lastProcessedElrondBlock big.Int
 
-	go b.ethSafe.GetTransactions(ctx, lastProcessedEthBlock, b.ethChannel)
+	go b.ethSafe.GetTransactions(ctx, &lastProcessedEthBlock, b.ethChannel)
 	go b.elrondSafe.GetTransactions(ctx, &lastProcessedElrondBlock, b.elrondChannel)
 
 	b.monitor(ctx)
