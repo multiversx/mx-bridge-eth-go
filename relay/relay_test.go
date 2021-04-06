@@ -27,16 +27,23 @@ func (c *testSafe) Bridge(tx *safe.DepositTransaction) (string, error) {
 	return "", nil
 }
 
+type testBlockReader struct{}
+
+func (b *testBlockReader) ReadBlockIndex() (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
 func TestWillBridgeToElrond(t *testing.T) {
 	ethChannel := make(safe.SafeTxChan)
 	defer close(ethChannel)
 	ethSafe := &testSafe{ethChannel, nil}
 	elrondSafe := &testSafe{}
 	bridge := Relay{
-		ethSafe:       ethSafe,
-		elrondSafe:    elrondSafe,
-		ethChannel:    ethChannel,
-		elrondChannel: nil,
+		ethSafe:        ethSafe,
+		ethBlockReader: &testBlockReader{},
+		elrondSafe:     elrondSafe,
+		ethChannel:     ethChannel,
+		elrondChannel:  nil,
 	}
 
 	transaction := &safe.DepositTransaction{

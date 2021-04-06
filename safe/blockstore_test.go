@@ -35,7 +35,7 @@ func TestStoreAndRead(t *testing.T) {
 				err = tt.store.StoreBlockIndex(tt.value)
 				checkError(t, err)
 
-				got, err := tt.store.LoadBlockIndex()
+				got, err := tt.store.ReadBlockIndex()
 				checkError(t, err)
 
 				if !reflect.DeepEqual(got, tt.value) {
@@ -54,7 +54,7 @@ func TestStoreAndRead(t *testing.T) {
 		checkError(t, err)
 
 		expected := big.NewInt(0)
-		got, err := blockstore.LoadBlockIndex()
+		got, err := blockstore.ReadBlockIndex()
 		checkError(t, err)
 
 		if !reflect.DeepEqual(expected, got) {

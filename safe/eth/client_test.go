@@ -62,6 +62,15 @@ func (c *testChainReader) SubscribeNewHead(context.Context, chan<- *types.Header
 	return nil, nil
 }
 
+type testBlockstorer struct {
+	lastBlockIndexStored *big.Int
+}
+
+func (b *testBlockstorer) StoreBlockIndex(index *big.Int) error {
+	b.lastBlockIndexStored = index
+	return nil
+}
+
 func TestGetTransactions(t *testing.T) {
 	chainReader := &testChainReader{}
 	// amount 2
@@ -83,8 +92,10 @@ func TestGetTransactions(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	blockstorer := &testBlockstorer{}
 	client := Client{
 		chainReader:           chainReader,
+		blockstorer:           blockstorer,
 		safeAddress:           common.HexToAddress("0x6224Dde04296e2528eF5C5705Db49bfCbF043721"),
 		safeAbi:               safeAbi,
 		mostRecentBlockNumber: mostRecentBlockNumber,
@@ -124,6 +135,10 @@ func TestGetTransactions(t *testing.T) {
 				t.Errorf("Wanted %v, got %v", tt.wanted, tt.got)
 			}
 		})
+	}
+
+	if !reflect.DeepEqual(blockstorer.lastBlockIndexStored, big.NewInt(3)) {
+		t.Errorf("Expected last stored block index to be %v, but was %v", 3, blockstorer.lastBlockIndexStored)
 	}
 }
 

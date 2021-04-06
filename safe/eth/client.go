@@ -18,12 +18,13 @@ const safeAbiDefinition = `[{"anonymous": false,"inputs": [{"indexed": false,"in
 
 type Client struct {
 	chainReader           ethereum.ChainReader
+	blockstorer           safe.Blockstorer
 	safeAddress           common.Address
 	safeAbi               abi.ABI
 	mostRecentBlockNumber func(ctx context.Context) (*big.Int, error)
 }
 
-func NewClient(rawUrl string, safeAddress string) (*Client, error) {
+func NewClient(rawUrl, safeAddress string, blockstorer safe.Blockstorer) (*Client, error) {
 	chainReader, err := ethclient.Dial(rawUrl)
 
 	if err != nil {
@@ -36,14 +37,15 @@ func NewClient(rawUrl string, safeAddress string) (*Client, error) {
 
 		return blockNumber, err
 	}
-	safeAbi, err := abi.JSON(strings.NewReader(safeAbiDefinition))
 
+	safeAbi, err := abi.JSON(strings.NewReader(safeAbiDefinition))
 	if err != nil {
 		return nil, err
 	}
 
 	client := &Client{
 		chainReader:           chainReader,
+		blockstorer:           blockstorer,
 		safeAddress:           common.HexToAddress(safeAddress),
 		safeAbi:               safeAbi,
 		mostRecentBlockNumber: mostRecentBlockNumber,
@@ -73,13 +75,18 @@ func (c *Client) GetTransactions(ctx context.Context, blockNumber *big.Int, chan
 			continue
 		} else {
 			err = c.processBlockByNumber(ctx, channel, currentBlockNumber)
-
 			if err != nil {
 				// TODO: log err
 				fmt.Println(err)
 			}
 
 			currentBlockNumber = currentBlockNumber.Add(currentBlockNumber, big.NewInt(1))
+
+			err = c.blockstorer.StoreBlockIndex(currentBlockNumber)
+			if err != nil {
+				// TODO: log err
+				fmt.Println(err)
+			}
 		}
 	}
 }

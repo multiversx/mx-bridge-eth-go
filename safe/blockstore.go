@@ -58,7 +58,7 @@ func (b *Blockstore) StoreBlockIndex(index *big.Int) error {
 	return nil
 }
 
-func (b *Blockstore) LoadBlockIndex() (*big.Int, error) {
+func (b *Blockstore) ReadBlockIndex() (*big.Int, error) {
 	if exists, _ := fileExists(b.fullPath); !exists {
 		return big.NewInt(0), nil
 	}

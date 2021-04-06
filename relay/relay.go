@@ -7,18 +7,26 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/safe/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/safe/eth"
 	"math/big"
+	"os"
+	"path/filepath"
 )
 
 type Relay struct {
-	ethSafe    safe.Safe
-	elrondSafe safe.Safe
+	ethSafe        safe.Safe
+	ethBlockReader safe.Blockreader
+	elrondSafe     safe.Safe
 
 	ethChannel    safe.SafeTxChan
 	elrondChannel safe.SafeTxChan
 }
 
 func NewRelay(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSafeAddress, elrondPrivateKeyPath string) (*Relay, error) {
-	ethSafe, err := eth.NewClient(ethNetworkAddress, ethSafeAddress)
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		return nil, err
+	}
+
+	ethSafe, ethBlockstore, err := newEthSafe(ethNetworkAddress, ethSafeAddress, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -29,18 +37,37 @@ func NewRelay(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSaf
 	}
 
 	return &Relay{
-		ethSafe:       ethSafe,
-		elrondSafe:    elrondSafe,
-		ethChannel:    make(safe.SafeTxChan),
-		elrondChannel: make(safe.SafeTxChan),
+		ethSafe:        ethSafe,
+		ethBlockReader: ethBlockstore,
+		elrondSafe:     elrondSafe,
+		ethChannel:     make(safe.SafeTxChan),
+		elrondChannel:  make(safe.SafeTxChan),
 	}, nil
 }
 
+func newEthSafe(ethNetworkAddress, ethSafeAddress, blockStoreDir string) (safe.Safe, safe.Blockreader, error) {
+	blockstore, err := safe.NewBlockstore(blockStoreDir, safe.Eth)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ethSafe, err := eth.NewClient(ethNetworkAddress, ethSafeAddress, blockstore)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return ethSafe, blockstore, nil
+}
+
 func (r *Relay) Start(ctx context.Context) {
-	var lastProcessedEthBlock big.Int
+	lastProcessedEthBlock, err := r.ethBlockReader.ReadBlockIndex()
+	if err != nil {
+		// TODO: log error
+		fmt.Println(err)
+	}
 	var lastProcessedElrondBlock big.Int
 
-	go r.ethSafe.GetTransactions(ctx, &lastProcessedEthBlock, r.ethChannel)
+	go r.ethSafe.GetTransactions(ctx, lastProcessedEthBlock, r.ethChannel)
 	go r.elrondSafe.GetTransactions(ctx, &lastProcessedElrondBlock, r.elrondChannel)
 
 	r.monitor(ctx)
