@@ -1,4 +1,4 @@
-package bridge
+package relay
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"math/big"
 )
 
-type Bridge struct {
+type Relay struct {
 	ethSafe    safe.Safe
 	elrondSafe safe.Safe
 
@@ -17,7 +17,7 @@ type Bridge struct {
 	elrondChannel safe.SafeTxChan
 }
 
-func NewBridge(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSafeAddress, elrondPrivateKeyPath string) (*Bridge, error) {
+func NewRelay(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSafeAddress, elrondPrivateKeyPath string) (*Relay, error) {
 	ethSafe, err := eth.NewClient(ethNetworkAddress, ethSafeAddress)
 	if err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func NewBridge(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSa
 		return nil, err
 	}
 
-	return &Bridge{
+	return &Relay{
 		ethSafe:       ethSafe,
 		elrondSafe:    elrondSafe,
 		ethChannel:    make(safe.SafeTxChan),
@@ -36,21 +36,21 @@ func NewBridge(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSa
 	}, nil
 }
 
-func (b *Bridge) Start(ctx context.Context) {
+func (r *Relay) Start(ctx context.Context) {
 	var lastProcessedEthBlock big.Int
 	var lastProcessedElrondBlock big.Int
 
-	go b.ethSafe.GetTransactions(ctx, &lastProcessedEthBlock, b.ethChannel)
-	go b.elrondSafe.GetTransactions(ctx, &lastProcessedElrondBlock, b.elrondChannel)
+	go r.ethSafe.GetTransactions(ctx, &lastProcessedEthBlock, r.ethChannel)
+	go r.elrondSafe.GetTransactions(ctx, &lastProcessedElrondBlock, r.elrondChannel)
 
-	b.monitor(ctx)
+	r.monitor(ctx)
 }
 
-func (b *Bridge) monitor(ctx context.Context) {
+func (r *Relay) monitor(ctx context.Context) {
 	for {
 		select {
-		case tx := <-b.ethChannel:
-			hash, err := b.bridgeToElrond(tx)
+		case tx := <-r.ethChannel:
+			hash, err := r.bridgeToElrond(tx)
 
 			// TODO: log
 			if err != nil {
@@ -58,8 +58,8 @@ func (b *Bridge) monitor(ctx context.Context) {
 			} else {
 				fmt.Printf("Bridged to elrond with hash: %q\n", hash)
 			}
-		case tx := <-b.elrondChannel:
-			_, err := b.bridgeToEth(tx)
+		case tx := <-r.elrondChannel:
+			_, err := r.bridgeToEth(tx)
 			// TODO: log
 			if err != nil {
 				fmt.Printf("Briging to ethereum failed with %v\n", err)
@@ -70,19 +70,19 @@ func (b *Bridge) monitor(ctx context.Context) {
 	}
 }
 
-func (b *Bridge) Stop() {
-	close(b.ethChannel)
-	close(b.elrondChannel)
+func (r *Relay) Stop() {
+	close(r.ethChannel)
+	close(r.elrondChannel)
 }
 
-func (b *Bridge) bridgeToElrond(tx *safe.DepositTransaction) (string, error) {
+func (r *Relay) bridgeToElrond(tx *safe.DepositTransaction) (string, error) {
 	// TODO: log
 	fmt.Printf("Briging %v to elrond\n", tx)
-	return b.elrondSafe.Bridge(tx)
+	return r.elrondSafe.Bridge(tx)
 }
 
-func (b *Bridge) bridgeToEth(tx *safe.DepositTransaction) (string, error) {
+func (r *Relay) bridgeToEth(tx *safe.DepositTransaction) (string, error) {
 	// TODO: log
 	fmt.Printf("Briging %v to eth\n", tx)
-	return b.ethSafe.Bridge(tx)
+	return r.ethSafe.Bridge(tx)
 }

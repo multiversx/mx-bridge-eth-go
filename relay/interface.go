@@ -1,4 +1,4 @@
-package bridge
+package relay
 
 import "context"
 

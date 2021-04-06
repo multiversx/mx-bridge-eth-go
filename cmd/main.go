@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	_ "github.com/urfave/cli"
 )
 
-var log = logger.GetOrCreate("eth-bridge")
+var log = logger.GetOrCreate("eth-relay")
 
 func main() {
 	// TODO: get these from the cli
@@ -18,15 +18,15 @@ func main() {
 	elrondSafeAddress := "erd1qqqqqqqqqqqqqpgqfzydqmdw7m2vazsp6u5p95yxz76t2p9rd8ss0zp9ts"
 	elrondPrivateKeyPath := "../mytestnet/testnet/wallets/users/alice.pem"
 
-	log.Debug("Starting bridge")
-	ethToElrBridge, err := bridge.NewBridge(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSafeAddress, elrondPrivateKeyPath)
+	log.Debug("Starting relay")
+	ethToElrRelay, err := relay.NewRelay(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSafeAddress, elrondPrivateKeyPath)
 
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Bridge started")
+	fmt.Println("Relay started")
 
-	ethToElrBridge.Start(context.Background())
-	defer ethToElrBridge.Stop()
+	ethToElrRelay.Start(context.Background())
+	defer ethToElrRelay.Stop()
 }

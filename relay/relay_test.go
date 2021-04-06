@@ -1,4 +1,4 @@
-package bridge
+package relay
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 // implements interface
 var (
-	_ = Startable(&Bridge{})
+	_ = Startable(&Relay{})
 )
 
 type testSafe struct {
@@ -32,7 +32,7 @@ func TestWillBridgeToElrond(t *testing.T) {
 	defer close(ethChannel)
 	ethSafe := &testSafe{ethChannel, nil}
 	elrondSafe := &testSafe{}
-	bridge := Bridge{
+	bridge := Relay{
 		ethSafe:       ethSafe,
 		elrondSafe:    elrondSafe,
 		ethChannel:    ethChannel,
