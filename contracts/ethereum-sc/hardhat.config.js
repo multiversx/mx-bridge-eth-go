@@ -1,7 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-solhint");
 
-
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async () => {
@@ -20,10 +19,10 @@ task("accounts", "Prints the list of accounts", async () => {
  */
 module.exports = {
   solidity: "0.8.0",
-  
+  defaultNetwork: "ganache",
   networks: {
-    hardhat: {
-
+    ganache: {
+      url: "http://127.0.0.1:8545"
     },
     rinkeby: {
       url: "https://rinkeby.infura.io/v3/df34d380f59e469c97f1dab44199bca6",
