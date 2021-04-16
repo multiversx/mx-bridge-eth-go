@@ -1,0 +1,8 @@
+[Eth]
+    NetworkAddress    = "http://127.0.0.1:8545"
+    BridgeAddress     = "0x6224Dde04296e2528eF5C5705Db49bfCbF043721"
+
+[Elrond]
+    NetworkAddress    = "http://localhost:7950"
+    BridgeAddress     = "erd1qqqqqqqqqqqqqpgqfzydqmdw7m2vazsp6u5p95yxz76t2p9rd8ss0zp9ts"
+    PrivateKeyPath    = "../mytestnet/testnet/wallets/users/alice.pem"

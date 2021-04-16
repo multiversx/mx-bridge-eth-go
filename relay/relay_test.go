@@ -2,11 +2,8 @@ package relay
 
 import (
 	"context"
-	"github.com/ElrondNetwork/elrond-eth-bridge/safe"
-	"math/big"
-	"reflect"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"testing"
-	"time"
 )
 
 // implements interface
@@ -14,51 +11,35 @@ var (
 	_ = Startable(&Relay{})
 )
 
-type testSafe struct {
-	channel                safe.SafeTxChan
-	lastBridgedTransaction *safe.DepositTransaction
+type testBridge struct{}
+
+func (b *testBridge) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
+	return nil
 }
 
-func (c *testSafe) GetTransactions(context.Context, *big.Int, safe.SafeTxChan) {}
+func (b *testBridge) Propose(*bridge.DepositTransaction) {}
 
-func (c *testSafe) Bridge(tx *safe.DepositTransaction) (string, error) {
-	c.lastBridgedTransaction = tx
+func (b *testBridge) WasProposed(*bridge.DepositTransaction) bool {
+	return false
+}
 
+func (b *testBridge) WasExecuted(*bridge.DepositTransaction) bool {
+	return false
+}
+
+func (b *testBridge) Sign(*bridge.DepositTransaction) {}
+
+func (b *testBridge) Execute(*bridge.DepositTransaction) (string, error) {
 	return "", nil
 }
 
-type testBlockReader struct{}
-
-func (b *testBlockReader) ReadBlockIndex() (*big.Int, error) {
-	return big.NewInt(0), nil
+func (b *testBridge) SignersCount(*bridge.DepositTransaction) uint {
+	return 0
 }
 
 func TestWillBridgeToElrond(t *testing.T) {
-	ethChannel := make(safe.SafeTxChan)
-	defer close(ethChannel)
-	ethSafe := &testSafe{ethChannel, nil}
-	elrondSafe := &testSafe{}
-	bridge := Relay{
-		ethSafe:        ethSafe,
-		ethBlockReader: &testBlockReader{},
-		elrondSafe:     elrondSafe,
-		ethChannel:     ethChannel,
-		elrondChannel:  nil,
-	}
-
-	transaction := &safe.DepositTransaction{
-		Hash:         "hash",
-		From:         "someone",
-		TokenAddress: "erc20 address",
-		Amount:       big.NewInt(42),
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	go func() { ethChannel <- transaction }()
-	bridge.Start(ctx)
-
-	if !reflect.DeepEqual(elrondSafe.lastBridgedTransaction, transaction) {
-		t.Errorf("Expected transaction: %v to be bridged to elrond, but %v was actually bridged", transaction, elrondSafe.lastBridgedTransaction)
+	_ = Relay{
+		elrondBridge: &testBridge{},
+		ethBridge:    &testBridge{},
 	}
 }
