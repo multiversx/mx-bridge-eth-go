@@ -95,13 +95,9 @@ func mainLoop(r *relay.Relay) {
 	log.Info("Relay started")
 	defer r.Stop()
 
-	for {
-		select {
-		case <-sigs:
-			log.Info("terminating at user's signal...")
-			return
-		}
-	}
+	<-sigs
+	log.Info("terminating at user's signal...")
+	return
 }
 
 func loadConfig(filepath string) (*relay.Config, error) {
