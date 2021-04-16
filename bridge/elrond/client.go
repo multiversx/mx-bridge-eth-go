@@ -17,36 +17,9 @@ type Client struct {
 	proxy         elrondProxy
 	bridgeAddress string
 	privateKey    []byte
-	address       *elrondAddress
+	address       string
 	nonce         uint64
 }
-
-// TODO: remove this when Stringer bug is fixes
-type elrondAddress struct {
-	addressString string
-}
-
-func (a *elrondAddress) AddressAsBech32String() string {
-	return a.addressString
-}
-
-func (a *elrondAddress) AddressBytes() []byte {
-	return nil
-}
-
-func (a *elrondAddress) IsValid() bool {
-	return true
-}
-
-func (a *elrondAddress) IsInterfaceNil() bool {
-	return false
-}
-
-func (a *elrondAddress) String() string {
-	return a.addressString
-}
-
-// end here
 
 func NewClient(config bridge.Config) (*Client, error) {
 	proxy := blockchain.NewElrondProxy(config.NetworkAddress)
@@ -61,7 +34,10 @@ func NewClient(config bridge.Config) (*Client, error) {
 		return nil, err
 	}
 
-	address := &elrondAddress{addressString: addressString}
+	address, err := data.NewAddressFromBech32String(addressString)
+	if err != nil {
+		return nil, err
+	}
 
 	account, err := proxy.GetAccount(address)
 	if err != nil {
@@ -73,7 +49,7 @@ func NewClient(config bridge.Config) (*Client, error) {
 		proxy:         proxy,
 		bridgeAddress: config.BridgeAddress,
 		privateKey:    privateKey,
-		address:       address,
+		address:       address.AddressAsBech32String(),
 		nonce:         initialNonce,
 	}, nil
 }
@@ -128,7 +104,7 @@ func (c *Client) buildTransaction() (data.Transaction, error) {
 		GasPrice: networkConfig.MinGasPrice,
 		Nonce:    c.nonce,
 		Data:     []byte("increment"),
-		SndAddr:  c.address.AddressAsBech32String(),
+		SndAddr:  c.address,
 		RcvAddr:  c.bridgeAddress,
 		Value:    "0",
 	}
