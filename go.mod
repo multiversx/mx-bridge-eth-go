@@ -3,6 +3,7 @@ module github.com/ElrondNetwork/elrond-eth-bridge
 go 1.16
 
 require (
+	github.com/ElrondNetwork/elrond-go v1.1.12
 	github.com/ElrondNetwork/elrond-go-logger v1.0.4
 	github.com/ElrondNetwork/elrond-sdk/erdgo v0.0.0-20210402084342-576fdc4bc0fa
 	github.com/btcsuite/btcd v0.21.0-beta // indirect

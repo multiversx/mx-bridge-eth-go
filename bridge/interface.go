@@ -2,13 +2,14 @@ package bridge
 
 import (
 	"context"
-	"math/big"
 )
 
-type SafeTxChan chan *DepositTransaction
-
 type Bridge interface {
-	GetTransactions(context.Context, *big.Int, SafeTxChan)
-
-	Bridge(*DepositTransaction) (string, error)
+	GetPendingDepositTransaction(context.Context) *DepositTransaction
+	Propose(*DepositTransaction)
+	WasProposed(*DepositTransaction) bool
+	WasExecuted(*DepositTransaction) bool
+	Sign(*DepositTransaction)
+	Execute(*DepositTransaction) (string, error)
+	SignersCount(*DepositTransaction) uint
 }

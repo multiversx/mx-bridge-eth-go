@@ -3,10 +3,7 @@ package relay
 import (
 	"context"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"math/big"
-	"reflect"
 	"testing"
-	"time"
 )
 
 // implements interface
@@ -14,44 +11,35 @@ var (
 	_ = Startable(&Relay{})
 )
 
-type testSafe struct {
-	channel                bridge.SafeTxChan
-	lastBridgedTransaction *bridge.DepositTransaction
+type testBridge struct{}
+
+func (b *testBridge) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
+	return nil
 }
 
-func (c *testSafe) GetTransactions(context.Context, *big.Int, bridge.SafeTxChan) {}
+func (b *testBridge) Propose(*bridge.DepositTransaction) {}
 
-func (c *testSafe) Bridge(tx *bridge.DepositTransaction) (string, error) {
-	c.lastBridgedTransaction = tx
+func (b *testBridge) WasProposed(*bridge.DepositTransaction) bool {
+	return false
+}
 
+func (b *testBridge) WasExecuted(*bridge.DepositTransaction) bool {
+	return false
+}
+
+func (b *testBridge) Sign(*bridge.DepositTransaction) {}
+
+func (b *testBridge) Execute(*bridge.DepositTransaction) (string, error) {
 	return "", nil
 }
 
+func (b *testBridge) SignersCount(*bridge.DepositTransaction) uint {
+	return 0
+}
+
 func TestWillBridgeToElrond(t *testing.T) {
-	ethChannel := make(bridge.SafeTxChan)
-	defer close(ethChannel)
-	ethSafe := &testSafe{ethChannel, nil}
-	elrondSafe := &testSafe{}
-	relay := Relay{
-		ethSafe:       ethSafe,
-		elrondSafe:    elrondSafe,
-		ethChannel:    ethChannel,
-		elrondChannel: nil,
-	}
-
-	transaction := &bridge.DepositTransaction{
-		Hash:         "hash",
-		From:         "someone",
-		TokenAddress: "erc20 address",
-		Amount:       big.NewInt(42),
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	go func() { ethChannel <- transaction }()
-	relay.Start(ctx)
-
-	if !reflect.DeepEqual(elrondSafe.lastBridgedTransaction, transaction) {
-		t.Errorf("Expected transaction: %v to be bridged to elrond, but %v was actually bridged", transaction, elrondSafe.lastBridgedTransaction)
+	_ = Relay{
+		elrondBridge: &testBridge{},
+		ethBridge:    &testBridge{},
 	}
 }

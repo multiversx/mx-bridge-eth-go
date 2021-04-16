@@ -52,7 +52,7 @@ func (p *testProxy) SendTransaction(tx *data.Transaction) (string, error) {
 	}
 }
 
-func TestBridge(t *testing.T) {
+func TestExecute(t *testing.T) {
 	buildTestClient := func(proxy *testProxy) (*Client, *testProxy) {
 		privateKey, err := erdgo.LoadPrivateKeyFromPemFile("grace.pem")
 
@@ -68,11 +68,11 @@ func TestBridge(t *testing.T) {
 		address := &elrondAddress{addressString: addressString}
 
 		client := &Client{
-			proxy:       proxy,
-			safeAddress: "",
-			privateKey:  privateKey,
-			address:     address,
-			nonce:       0,
+			proxy:         proxy,
+			bridgeAddress: "",
+			privateKey:    privateKey,
+			address:       address,
+			nonce:         0,
 		}
 
 		return client, proxy
@@ -82,7 +82,7 @@ func TestBridge(t *testing.T) {
 		proxy := &testProxy{expectedTxHash, nil, false}
 		client, _ := buildTestClient(proxy)
 
-		hash, _ := client.Bridge(nil)
+		hash, _ := client.Execute(nil)
 
 		if hash != expectedTxHash {
 			t.Errorf("Expected %q, got %q", expectedTxHash, hash)
@@ -92,8 +92,8 @@ func TestBridge(t *testing.T) {
 		proxy := &testProxy{"", nil, false}
 		client, proxy := buildTestClient(proxy)
 
-		_, _ = client.Bridge(nil)
-		_, _ = client.Bridge(nil)
+		_, _ = client.Execute(nil)
+		_, _ = client.Execute(nil)
 
 		expectedNonce := uint64(1)
 
@@ -105,8 +105,8 @@ func TestBridge(t *testing.T) {
 		proxy := &testProxy{"", nil, true}
 		client, proxy := buildTestClient(proxy)
 
-		_, _ = client.Bridge(nil)
-		_, _ = client.Bridge(nil)
+		_, _ = client.Execute(nil)
+		_, _ = client.Execute(nil)
 
 		expectedNonce := uint64(0)
 

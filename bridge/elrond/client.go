@@ -6,7 +6,6 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk/erdgo"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/blockchain"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/data"
-	"math/big"
 )
 
 type elrondProxy interface {
@@ -15,11 +14,11 @@ type elrondProxy interface {
 }
 
 type Client struct {
-	proxy       elrondProxy
-	safeAddress string
-	privateKey  []byte
-	address     *elrondAddress
-	nonce       uint64
+	proxy         elrondProxy
+	bridgeAddress string
+	privateKey    []byte
+	address       *elrondAddress
+	nonce         uint64
 }
 
 // TODO: remove this when Stringer bug is fixes
@@ -47,10 +46,12 @@ func (a *elrondAddress) String() string {
 	return a.addressString
 }
 
-func NewClient(rawUrl, safeAddress, privateKeyPath string) (*Client, error) {
-	proxy := blockchain.NewElrondProxy(rawUrl)
+// end here
 
-	privateKey, err := erdgo.LoadPrivateKeyFromPemFile(privateKeyPath)
+func NewClient(config bridge.Config) (*Client, error) {
+	proxy := blockchain.NewElrondProxy(config.NetworkAddress)
+
+	privateKey, err := erdgo.LoadPrivateKeyFromPemFile(config.PrivateKeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -69,23 +70,36 @@ func NewClient(rawUrl, safeAddress, privateKeyPath string) (*Client, error) {
 	initialNonce := account.Nonce
 
 	return &Client{
-		proxy:       proxy,
-		safeAddress: safeAddress,
-		privateKey:  privateKey,
-		address:     address,
-		nonce:       initialNonce,
+		proxy:         proxy,
+		bridgeAddress: config.BridgeAddress,
+		privateKey:    privateKey,
+		address:       address,
+		nonce:         initialNonce,
 	}, nil
 }
 
-// Bridge broadcasts a transaction to the network and returns the txhash if successful
-func (c *Client) Bridge(*bridge.DepositTransaction) (string, error) {
-	networkConfig, _ := c.proxy.GetNetworkConfig()
+func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
+	return nil
+}
 
-	tx := c.buildTransaction(networkConfig)
+func (c *Client) Propose(*bridge.DepositTransaction) {
+}
 
-	err := erdgo.SignTransaction(&tx, c.privateKey)
+func (c *Client) WasProposed(*bridge.DepositTransaction) bool {
+	return false
+}
+
+func (c *Client) WasExecuted(*bridge.DepositTransaction) bool {
+	return false
+}
+
+func (c *Client) Sign(*bridge.DepositTransaction) {
+}
+
+func (c *Client) Execute(*bridge.DepositTransaction) (string, error) {
+	tx, err := c.buildTransaction()
 	if err != nil {
-		return "", err
+		return "", nil
 	}
 
 	hash, err := c.proxy.SendTransaction(&tx)
@@ -96,12 +110,17 @@ func (c *Client) Bridge(*bridge.DepositTransaction) (string, error) {
 	return hash, err
 }
 
-func (c *Client) GetTransactions(context.Context, *big.Int, bridge.SafeTxChan) {
-	// TODO: follow the pattern in eth to get blocks -> transactions to the bridge contract
+func (c *Client) SignersCount(*bridge.DepositTransaction) uint {
+	return 0
 }
 
-func (c *Client) buildTransaction(networkConfig *data.NetworkConfig) data.Transaction {
-	return data.Transaction{
+func (c *Client) buildTransaction() (data.Transaction, error) {
+	networkConfig, err := c.proxy.GetNetworkConfig()
+	if err != nil {
+		return data.Transaction{}, err
+	}
+
+	tx := data.Transaction{
 		ChainID: networkConfig.ChainID,
 		Version: networkConfig.MinTransactionVersion,
 		// TODO: /transaction/cost to estimate tx cost
@@ -110,9 +129,16 @@ func (c *Client) buildTransaction(networkConfig *data.NetworkConfig) data.Transa
 		Nonce:    c.nonce,
 		Data:     []byte("increment"),
 		SndAddr:  c.address.AddressAsBech32String(),
-		RcvAddr:  c.safeAddress,
+		RcvAddr:  c.bridgeAddress,
 		Value:    "0",
 	}
+
+	err = erdgo.SignTransaction(&tx, c.privateKey)
+	if err != nil {
+		return data.Transaction{}, err
+	}
+
+	return tx, nil
 }
 
 func (c *Client) incrementNonce() {

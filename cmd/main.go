@@ -2,31 +2,114 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/core"
+	"github.com/urfave/cli"
 	_ "github.com/urfave/cli"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
-var log = logger.GetOrCreate("eth-relay")
+const (
+	filePathPlaceholder = "[path]"
+)
 
-func main() {
-	// TODO: set on a default config file
-	ethNetworkAddress := "http://127.0.0.1:8545"
-	ethSafeAddress := "0x6224Dde04296e2528eF5C5705Db49bfCbF043721"
-	elrondNetworkAddress := "http://localhost:7950"
-	elrondSafeAddress := "erd1qqqqqqqqqqqqqpgqfzydqmdw7m2vazsp6u5p95yxz76t2p9rd8ss0zp9ts"
-	elrondPrivateKeyPath := "../mytestnet/testnet/wallets/users/alice.pem"
-
-	log.Debug("Starting relay")
-	ethToElrRelay, err := relay.NewRelay(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSafeAddress, elrondPrivateKeyPath)
-
-	if err != nil {
-		panic(err)
+var (
+	logLevel = cli.StringFlag{
+		Name: "log-level",
+		Usage: "This flag specifies the logger `level(s)`. It can contain multiple comma-separated value. For example" +
+			", if set to *:INFO the logs for all packages will have the INFO level. However, if set to *:INFO,api:DEBUG" +
+			" the logs for all packages will have the INFO level, excepting the api package which will receive a DEBUG" +
+			" log level.",
+		Value: "*:" + logger.LogDebug.String(),
 	}
 
-	fmt.Println("Relay started")
+	configurationFile = cli.StringFlag{
+		Name: "config",
+		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contain the main " +
+			"configurations such as the marshalizer type",
+		Value: "config.toml",
+	}
+)
 
-	ethToElrRelay.Start(context.Background())
-	defer ethToElrRelay.Stop()
+var log = logger.GetOrCreate("main")
+
+func main() {
+	app := cli.NewApp()
+	app.Name = "Relay CLI app"
+	app.Usage = "This is the entry point for the bridge relay"
+	app.Flags = []cli.Flag{
+		logLevel,
+		configurationFile,
+	}
+	app.Version = "v0.0.1"
+	app.Authors = []cli.Author{
+		{
+			Name:  "The Agile Freaks team",
+			Email: "office@agilefreaks.com",
+		},
+	}
+
+	app.Action = func(c *cli.Context) error {
+		return startRelay(c)
+	}
+
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+}
+
+func startRelay(ctx *cli.Context) error {
+	logLevelFlagValue := ctx.GlobalString(logLevel.Name)
+	err := logger.SetLogLevel(logLevelFlagValue)
+	if err != nil {
+		return err
+	}
+
+	configurationFileName := ctx.GlobalString(configurationFile.Name)
+	config, err := loadConfig(configurationFileName)
+	if err != nil {
+		return err
+	}
+
+	ethToElrRelay, err := relay.NewRelay(config)
+	if err != nil {
+		return err
+	}
+
+	mainLoop(ethToElrRelay)
+
+	return nil
+}
+
+func mainLoop(r *relay.Relay) {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	log.Info("Starting relay")
+	r.Start(context.Background())
+	log.Info("Relay started")
+	defer r.Stop()
+
+	for {
+		select {
+		case <-sigs:
+			log.Info("terminating at user's signal...")
+			return
+		}
+	}
+}
+
+func loadConfig(filepath string) (*relay.Config, error) {
+	cfg := &relay.Config{}
+	err := core.LoadTomlFile(cfg, filepath)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
 }

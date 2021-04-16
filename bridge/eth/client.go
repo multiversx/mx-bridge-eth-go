@@ -2,169 +2,64 @@ package eth
 
 import (
 	"context"
-	"fmt"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"math/big"
 	"strings"
-	"time"
 )
 
 const safeAbiDefinition = `[{"anonymous": false,"inputs": [{"indexed": false,"internalType": "address","name": "tokenAddress","type": "address"},{"indexed": false,"internalType": "address","name": "depositor","type": "address"},{"indexed": false,"internalType": "uint256","name": "amount","type": "uint256"}],"name": "ERC20Deposited","type": "event"},{"inputs": [{"internalType": "address","name": "tokenAddress","type": "address"},{"internalType": "uint256","name": "amount","type": "uint256"}],"name": "deposit","outputs": [],"stateMutability": "nonpayable","type": "function"}]`
 
 type Client struct {
-	chainReader           ethereum.ChainReader
-	safeAddress           common.Address
-	safeAbi               abi.ABI
-	mostRecentBlockNumber func(ctx context.Context) (*big.Int, error)
+	contractCaller ethereum.ContractCaller
+	bridgeAddress  common.Address
+	bridgeAbi      abi.ABI
 }
 
-func NewClient(rawUrl, safeAddress string) (*Client, error) {
-	chainReader, err := ethclient.Dial(rawUrl)
-
+func NewClient(config bridge.Config) (*Client, error) {
+	ethClient, err := ethclient.Dial(config.NetworkAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	mostRecentBlockNumber := func(ctx context.Context) (*big.Int, error) {
-		number, err := chainReader.BlockNumber(ctx)
-		blockNumber := big.NewInt(int64(number))
-
-		return blockNumber, err
-	}
-
-	safeAbi, err := abi.JSON(strings.NewReader(safeAbiDefinition))
+	bridgeAbi, err := abi.JSON(strings.NewReader(safeAbiDefinition))
 	if err != nil {
 		return nil, err
 	}
 
 	client := &Client{
-		chainReader:           chainReader,
-		safeAddress:           common.HexToAddress(safeAddress),
-		safeAbi:               safeAbi,
-		mostRecentBlockNumber: mostRecentBlockNumber,
+		contractCaller: ethClient,
+		bridgeAddress:  common.HexToAddress(config.BridgeAddress),
+		bridgeAbi:      bridgeAbi,
 	}
 
 	return client, nil
 }
 
-func (c *Client) Bridge(*bridge.DepositTransaction) (string, error) {
-	// TODO: send transaction to bridge
-	return "", nil
-}
-
-func (c *Client) GetTransactions(ctx context.Context, blockNumber *big.Int, channel bridge.SafeTxChan) {
-	currentBlockNumber := blockNumber
-	for {
-		mostRecentBlockNumber, err := c.mostRecentBlockNumber(ctx)
-
-		if err != nil {
-			// TODO: log error
-			fmt.Println(err)
-			return
-		}
-
-		if currentBlockNumber.Cmp(mostRecentBlockNumber) == 1 {
-			time.Sleep(1 * time.Second)
-			continue
-		} else {
-			err = c.processBlockByNumber(ctx, channel, currentBlockNumber)
-			if err != nil {
-				// TODO: log err
-				fmt.Println(err)
-			}
-
-			currentBlockNumber = currentBlockNumber.Add(currentBlockNumber, big.NewInt(1))
-
-			if err != nil {
-				// TODO: log err
-				fmt.Println(err)
-			}
-		}
-	}
-}
-
-func (c *Client) processBlockByNumber(ctx context.Context, ch bridge.SafeTxChan, number *big.Int) error {
-	block, err := c.chainReader.BlockByNumber(ctx, number)
-
-	if err != nil {
-		return err
-	}
-
-	for _, tx := range c.filterTransactions(block.Transactions()) {
-		safeTx, err := c.newSafeTransaction(tx)
-
-		if err != nil {
-			return err
-		}
-
-		ch <- safeTx
-	}
-
+func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
 	return nil
 }
 
-func (c *Client) filterTransactions(transactions types.Transactions) (result types.Transactions) {
-	for _, tx := range transactions {
-		var toAddress string
-
-		if tx.To() != nil {
-			toAddress = tx.To().String()
-		}
-
-		if toAddress == c.safeAddress.String() {
-			result = append(result, tx)
-		}
-	}
-	return
+func (c *Client) Propose(*bridge.DepositTransaction) {
 }
 
-func (c *Client) newSafeTransaction(tx *types.Transaction) (*bridge.DepositTransaction, error) {
-	from, err := types.Sender(types.NewEIP2930Signer(tx.ChainId()), tx)
-
-	if err != nil {
-		return nil, err
-	}
-
-	depositInputs, err := c.unpackDepositTx(tx.Data())
-
-	if err != nil {
-		return nil, err
-	}
-
-	blockTransaction := &bridge.DepositTransaction{
-		Hash:         tx.Hash().String(),
-		From:         from.String(),
-		TokenAddress: depositInputs.tokenAddress,
-		Amount:       depositInputs.amount,
-	}
-
-	return blockTransaction, nil
+func (c *Client) WasProposed(*bridge.DepositTransaction) bool {
+	return false
 }
 
-type depositInputs struct {
-	tokenAddress string
-	amount       *big.Int
+func (c *Client) WasExecuted(*bridge.DepositTransaction) bool {
+	return false
 }
 
-const depositMethodName = "deposit"
-const depositTokenAddressName = "tokenAddress"
-const depositAmountName = "amount"
+func (c *Client) Sign(*bridge.DepositTransaction) {
+}
 
-func (c *Client) unpackDepositTx(data []byte) (*depositInputs, error) {
-	v := map[string]interface{}{}
-	err := c.safeAbi.Methods[depositMethodName].Inputs.UnpackIntoMap(v, data[4:])
+func (c *Client) Execute(*bridge.DepositTransaction) (string, error) {
+	return "tx_hash", nil
+}
 
-	if err != nil {
-		return nil, err
-	}
-
-	return &depositInputs{
-		tokenAddress: v[depositTokenAddressName].(common.Address).String(),
-		amount:       v[depositAmountName].(*big.Int),
-	}, nil
+func (c *Client) SignersCount(*bridge.DepositTransaction) uint {
+	return 0
 }
