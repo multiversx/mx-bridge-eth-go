@@ -1,14 +1,14 @@
 package elrond
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/safe"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/data"
 	"testing"
 )
 
 var (
-	_ = safe.Safe(&Client{})
+	_ = bridge.Bridge(&Client{})
 )
 
 type TransactionError string

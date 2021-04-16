@@ -1,4 +1,4 @@
-package safe
+package bridge
 
 import "math/big"
 

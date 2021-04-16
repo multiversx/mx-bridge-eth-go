@@ -1,4 +1,4 @@
-package safe
+package bridge
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 type SafeTxChan chan *DepositTransaction
 
-type Safe interface {
+type Bridge interface {
 	GetTransactions(context.Context, *big.Int, SafeTxChan)
 
 	Bridge(*DepositTransaction) (string, error)

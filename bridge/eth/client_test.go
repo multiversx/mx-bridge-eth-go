@@ -2,7 +2,7 @@ package eth
 
 import (
 	"context"
-	"github.com/ElrondNetwork/elrond-eth-bridge/safe"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -16,7 +16,7 @@ import (
 
 // verify Client implements interface
 var (
-	_ = safe.Safe(&Client{})
+	_ = bridge.Bridge(&Client{})
 )
 
 type testChainReader struct {
@@ -62,21 +62,12 @@ func (c *testChainReader) SubscribeNewHead(context.Context, chan<- *types.Header
 	return nil, nil
 }
 
-type testBlockstorer struct {
-	lastBlockIndexStored *big.Int
-}
-
-func (b *testBlockstorer) StoreBlockIndex(index *big.Int) error {
-	b.lastBlockIndexStored = index
-	return nil
-}
-
 func TestGetTransactions(t *testing.T) {
 	chainReader := &testChainReader{}
 	// amount 2
 	err := chainReader.addBlockFromHex(`f902a8f901f6a01bbf9582f7751e9493e5cf64396c04ea6dd0738fbce2cd1aa4c270e4cfd4a149a01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347940000000000000000000000000000000000000000a0ad6377e310e8a0cdc9277c5ad4c7649e244fc0accd5c0e99f26e9813a51781a2a0e9a78698cccbce3e0e2bfd94ae8c0603e4b29e39523ea1059e670ee2d4e8117ba01f05c40ba7a935d1492757fa666ea1eac4924aa4acd1540f523bad3d1e0d5d46b9010000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000001000000000000000000000000000000800f836691b7825e78846060ba4980a00000000000000000000000000000000000000000000000000000000000000000880000000000000000f8acf8aa0e8504a817c8008301d858946224dde04296e2528ef5c5705db49bfcbf04372180b84447e7ef240000000000000000000000005abc5e20f56dc6ce962c458a3142fc289a757f4e000000000000000000000000000000000000000000000000000000000000000226a0d674cc92445a68a121b723c6ce8485799d278f9570872af95634e0735e8f07e7a022fcf034aec13be9c703313855e95aa9112321d71c77cd17428b9da20693cb4fc0`)
 	assertDecoding(t, err)
-	// no safe calls
+	// no bridge calls
 	err = chainReader.addBlockFromHex(`f9026cf901f6a006f781b6f6c303ac967fe6bc17fd74f23294231313a4ef05a3636c3f916a6569a01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347940000000000000000000000000000000000000000a07fb924431056423d73942818445ff178484efd4336df6a29f4cc11e29c953942a06d3490b8e60bc841029738cf0ae3ee58cbd6e7dd36bc2d1416123b91f780e75ba0056b23fbba480696b65fe5a59b8f2148a1299103c4f57df839233af2cf4ca2d2b90100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008011836691b782520884606160c680a00000000000000000000000000000000000000000000000000000000000000000880000000000000000f870f86e108504a817c8008252089449253d72bcc7b531f1b399983bc30e2ec5ec7ff4884563918244f4000080820a95a0070a260f4b40bf46ee455c60a4487ce55b67c677f602ee6c73dc2816796d1934a064b117fae533b962b90282ac625f0a7d34687e0b5b9ec6282e3bf528e1e36825c0`)
 	assertDecoding(t, err)
 	// amount 1
@@ -92,28 +83,26 @@ func TestGetTransactions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blockstorer := &testBlockstorer{}
 	client := Client{
 		chainReader:           chainReader,
-		blockstorer:           blockstorer,
 		safeAddress:           common.HexToAddress("0x6224Dde04296e2528eF5C5705Db49bfCbF043721"),
 		safeAbi:               safeAbi,
 		mostRecentBlockNumber: mostRecentBlockNumber,
 	}
-	channel := make(safe.SafeTxChan)
+	channel := make(bridge.SafeTxChan)
 	go client.GetTransactions(context.Background(), big.NewInt(0), channel)
 
 	t1 := <-channel
 	t2 := <-channel
 
-	wantT1 := &safe.DepositTransaction{
+	wantT1 := &bridge.DepositTransaction{
 		Hash:         "0x3073d1b5aaa4c26b892cbe534f0a7d185535a5f46028d85425454298abf8d903",
 		From:         "0x5246eb39712BA66357cc5c0d77Bd737e62FbC534",
 		TokenAddress: "0x5abc5e20F56Dc6Ce962C458A3142FC289A757F4E",
 		Amount:       big.NewInt(2),
 	}
 
-	wantT2 := &safe.DepositTransaction{
+	wantT2 := &bridge.DepositTransaction{
 		Hash:         "0xe0142af981864d535634bf25b997304e231659f5156d52ce4a0a3f632e72138b",
 		From:         "0x5246eb39712BA66357cc5c0d77Bd737e62FbC534",
 		TokenAddress: "0x5abc5e20F56Dc6Ce962C458A3142FC289A757F4E",
@@ -122,8 +111,8 @@ func TestGetTransactions(t *testing.T) {
 
 	var transactionTests = []struct {
 		name   string
-		got    *safe.DepositTransaction
-		wanted *safe.DepositTransaction
+		got    *bridge.DepositTransaction
+		wanted *bridge.DepositTransaction
 	}{
 		{"transaction with 2 tokens", t1, wantT1},
 		{"transaction with 1 token", t2, wantT2},
@@ -135,10 +124,6 @@ func TestGetTransactions(t *testing.T) {
 				t.Errorf("Wanted %v, got %v", tt.wanted, tt.got)
 			}
 		})
-	}
-
-	if !reflect.DeepEqual(blockstorer.lastBlockIndexStored, big.NewInt(3)) {
-		t.Errorf("Expected last stored block index to be %v, but was %v", 3, blockstorer.lastBlockIndexStored)
 	}
 }
 

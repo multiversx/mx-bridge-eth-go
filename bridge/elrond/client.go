@@ -2,7 +2,7 @@ package elrond
 
 import (
 	"context"
-	"github.com/ElrondNetwork/elrond-eth-bridge/safe"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/blockchain"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/data"
@@ -78,7 +78,7 @@ func NewClient(rawUrl, safeAddress, privateKeyPath string) (*Client, error) {
 }
 
 // Bridge broadcasts a transaction to the network and returns the txhash if successful
-func (c *Client) Bridge(*safe.DepositTransaction) (string, error) {
+func (c *Client) Bridge(*bridge.DepositTransaction) (string, error) {
 	networkConfig, _ := c.proxy.GetNetworkConfig()
 
 	tx := c.buildTransaction(networkConfig)
@@ -96,12 +96,12 @@ func (c *Client) Bridge(*safe.DepositTransaction) (string, error) {
 	return hash, err
 }
 
-func (c *Client) GetTransactions(context.Context, *big.Int, safe.SafeTxChan) {
-	// TODO: follow the pattern in eth to get blocks -> transactions to the safe contract
+func (c *Client) GetTransactions(context.Context, *big.Int, bridge.SafeTxChan) {
+	// TODO: follow the pattern in eth to get blocks -> transactions to the bridge contract
 }
 
 func (c *Client) buildTransaction(networkConfig *data.NetworkConfig) data.Transaction {
-           	return data.Transaction{
+	return data.Transaction{
 		ChainID: networkConfig.ChainID,
 		Version: networkConfig.MinTransactionVersion,
 		// TODO: /transaction/cost to estimate tx cost

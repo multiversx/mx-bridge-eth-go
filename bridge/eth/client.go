@@ -3,7 +3,7 @@ package eth
 import (
 	"context"
 	"fmt"
-	"github.com/ElrondNetwork/elrond-eth-bridge/safe"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -18,13 +18,12 @@ const safeAbiDefinition = `[{"anonymous": false,"inputs": [{"indexed": false,"in
 
 type Client struct {
 	chainReader           ethereum.ChainReader
-	blockstorer           safe.Blockstorer
 	safeAddress           common.Address
 	safeAbi               abi.ABI
 	mostRecentBlockNumber func(ctx context.Context) (*big.Int, error)
 }
 
-func NewClient(rawUrl, safeAddress string, blockstorer safe.Blockstorer) (*Client, error) {
+func NewClient(rawUrl, safeAddress string) (*Client, error) {
 	chainReader, err := ethclient.Dial(rawUrl)
 
 	if err != nil {
@@ -45,7 +44,6 @@ func NewClient(rawUrl, safeAddress string, blockstorer safe.Blockstorer) (*Clien
 
 	client := &Client{
 		chainReader:           chainReader,
-		blockstorer:           blockstorer,
 		safeAddress:           common.HexToAddress(safeAddress),
 		safeAbi:               safeAbi,
 		mostRecentBlockNumber: mostRecentBlockNumber,
@@ -54,12 +52,12 @@ func NewClient(rawUrl, safeAddress string, blockstorer safe.Blockstorer) (*Clien
 	return client, nil
 }
 
-func (c *Client) Bridge(*safe.DepositTransaction) (string, error) {
-	// TODO: send transaction to safe
+func (c *Client) Bridge(*bridge.DepositTransaction) (string, error) {
+	// TODO: send transaction to bridge
 	return "", nil
 }
 
-func (c *Client) GetTransactions(ctx context.Context, blockNumber *big.Int, channel safe.SafeTxChan) {
+func (c *Client) GetTransactions(ctx context.Context, blockNumber *big.Int, channel bridge.SafeTxChan) {
 	currentBlockNumber := blockNumber
 	for {
 		mostRecentBlockNumber, err := c.mostRecentBlockNumber(ctx)
@@ -82,7 +80,6 @@ func (c *Client) GetTransactions(ctx context.Context, blockNumber *big.Int, chan
 
 			currentBlockNumber = currentBlockNumber.Add(currentBlockNumber, big.NewInt(1))
 
-			err = c.blockstorer.StoreBlockIndex(currentBlockNumber)
 			if err != nil {
 				// TODO: log err
 				fmt.Println(err)
@@ -91,7 +88,7 @@ func (c *Client) GetTransactions(ctx context.Context, blockNumber *big.Int, chan
 	}
 }
 
-func (c *Client) processBlockByNumber(ctx context.Context, ch safe.SafeTxChan, number *big.Int) error {
+func (c *Client) processBlockByNumber(ctx context.Context, ch bridge.SafeTxChan, number *big.Int) error {
 	block, err := c.chainReader.BlockByNumber(ctx, number)
 
 	if err != nil {
@@ -126,7 +123,7 @@ func (c *Client) filterTransactions(transactions types.Transactions) (result typ
 	return
 }
 
-func (c *Client) newSafeTransaction(tx *types.Transaction) (*safe.DepositTransaction, error) {
+func (c *Client) newSafeTransaction(tx *types.Transaction) (*bridge.DepositTransaction, error) {
 	from, err := types.Sender(types.NewEIP2930Signer(tx.ChainId()), tx)
 
 	if err != nil {
@@ -139,7 +136,7 @@ func (c *Client) newSafeTransaction(tx *types.Transaction) (*safe.DepositTransac
 		return nil, err
 	}
 
-	blockTransaction := &safe.DepositTransaction{
+	blockTransaction := &bridge.DepositTransaction{
 		Hash:         tx.Hash().String(),
 		From:         from.String(),
 		TokenAddress: depositInputs.tokenAddress,

@@ -11,7 +11,7 @@ import (
 var log = logger.GetOrCreate("eth-relay")
 
 func main() {
-	// TODO: get these from the cli
+	// TODO: set on a default config file
 	ethNetworkAddress := "http://127.0.0.1:8545"
 	ethSafeAddress := "0x6224Dde04296e2528eF5C5705Db49bfCbF043721"
 	elrondNetworkAddress := "http://localhost:7950"

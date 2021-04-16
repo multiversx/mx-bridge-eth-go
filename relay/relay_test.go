@@ -2,7 +2,7 @@ package relay
 
 import (
 	"context"
-	"github.com/ElrondNetwork/elrond-eth-bridge/safe"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"math/big"
 	"reflect"
 	"testing"
@@ -15,38 +15,31 @@ var (
 )
 
 type testSafe struct {
-	channel                safe.SafeTxChan
-	lastBridgedTransaction *safe.DepositTransaction
+	channel                bridge.SafeTxChan
+	lastBridgedTransaction *bridge.DepositTransaction
 }
 
-func (c *testSafe) GetTransactions(context.Context, *big.Int, safe.SafeTxChan) {}
+func (c *testSafe) GetTransactions(context.Context, *big.Int, bridge.SafeTxChan) {}
 
-func (c *testSafe) Bridge(tx *safe.DepositTransaction) (string, error) {
+func (c *testSafe) Bridge(tx *bridge.DepositTransaction) (string, error) {
 	c.lastBridgedTransaction = tx
 
 	return "", nil
 }
 
-type testBlockReader struct{}
-
-func (b *testBlockReader) ReadBlockIndex() (*big.Int, error) {
-	return big.NewInt(0), nil
-}
-
 func TestWillBridgeToElrond(t *testing.T) {
-	ethChannel := make(safe.SafeTxChan)
+	ethChannel := make(bridge.SafeTxChan)
 	defer close(ethChannel)
 	ethSafe := &testSafe{ethChannel, nil}
 	elrondSafe := &testSafe{}
-	bridge := Relay{
-		ethSafe:        ethSafe,
-		ethBlockReader: &testBlockReader{},
-		elrondSafe:     elrondSafe,
-		ethChannel:     ethChannel,
-		elrondChannel:  nil,
+	relay := Relay{
+		ethSafe:       ethSafe,
+		elrondSafe:    elrondSafe,
+		ethChannel:    ethChannel,
+		elrondChannel: nil,
 	}
 
-	transaction := &safe.DepositTransaction{
+	transaction := &bridge.DepositTransaction{
 		Hash:         "hash",
 		From:         "someone",
 		TokenAddress: "erc20 address",
@@ -56,7 +49,7 @@ func TestWillBridgeToElrond(t *testing.T) {
 	defer cancel()
 
 	go func() { ethChannel <- transaction }()
-	bridge.Start(ctx)
+	relay.Start(ctx)
 
 	if !reflect.DeepEqual(elrondSafe.lastBridgedTransaction, transaction) {
 		t.Errorf("Expected transaction: %v to be bridged to elrond, but %v was actually bridged", transaction, elrondSafe.lastBridgedTransaction)

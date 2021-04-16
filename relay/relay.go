@@ -3,30 +3,22 @@ package relay
 import (
 	"context"
 	"fmt"
-	"github.com/ElrondNetwork/elrond-eth-bridge/safe"
-	"github.com/ElrondNetwork/elrond-eth-bridge/safe/elrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/safe/eth"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"math/big"
-	"os"
-	"path/filepath"
 )
 
 type Relay struct {
-	ethSafe        safe.Safe
-	ethBlockReader safe.Blockreader
-	elrondSafe     safe.Safe
+	ethSafe    bridge.Bridge
+	elrondSafe bridge.Bridge
 
-	ethChannel    safe.SafeTxChan
-	elrondChannel safe.SafeTxChan
+	ethChannel    bridge.SafeTxChan
+	elrondChannel bridge.SafeTxChan
 }
 
 func NewRelay(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSafeAddress, elrondPrivateKeyPath string) (*Relay, error) {
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		return nil, err
-	}
-
-	ethSafe, ethBlockstore, err := newEthSafe(ethNetworkAddress, ethSafeAddress, dir)
+	ethSafe, err := newEthSafe(ethNetworkAddress, ethSafeAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -37,37 +29,27 @@ func NewRelay(ethNetworkAddress, ethSafeAddress, elrondNetworkAddress, elrondSaf
 	}
 
 	return &Relay{
-		ethSafe:        ethSafe,
-		ethBlockReader: ethBlockstore,
-		elrondSafe:     elrondSafe,
-		ethChannel:     make(safe.SafeTxChan),
-		elrondChannel:  make(safe.SafeTxChan),
+		ethSafe:       ethSafe,
+		elrondSafe:    elrondSafe,
+		ethChannel:    make(bridge.SafeTxChan),
+		elrondChannel: make(bridge.SafeTxChan),
 	}, nil
 }
 
-func newEthSafe(ethNetworkAddress, ethSafeAddress, blockStoreDir string) (safe.Safe, safe.Blockreader, error) {
-	blockstore, err := safe.NewBlockstore(blockStoreDir, safe.Eth)
+func newEthSafe(ethNetworkAddress, ethSafeAddress string) (bridge.Bridge, error) {
+	ethSafe, err := eth.NewClient(ethNetworkAddress, ethSafeAddress)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	ethSafe, err := eth.NewClient(ethNetworkAddress, ethSafeAddress, blockstore)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return ethSafe, blockstore, nil
+	return ethSafe, nil
 }
 
 func (r *Relay) Start(ctx context.Context) {
-	lastProcessedEthBlock, err := r.ethBlockReader.ReadBlockIndex()
-	if err != nil {
-		// TODO: log error
-		fmt.Println(err)
-	}
+	var lastProcessedEthBlock big.Int
 	var lastProcessedElrondBlock big.Int
 
-	go r.ethSafe.GetTransactions(ctx, lastProcessedEthBlock, r.ethChannel)
+	go r.ethSafe.GetTransactions(ctx, &lastProcessedEthBlock, r.ethChannel)
 	go r.elrondSafe.GetTransactions(ctx, &lastProcessedElrondBlock, r.elrondChannel)
 
 	r.monitor(ctx)
@@ -102,13 +84,13 @@ func (r *Relay) Stop() {
 	close(r.elrondChannel)
 }
 
-func (r *Relay) bridgeToElrond(tx *safe.DepositTransaction) (string, error) {
+func (r *Relay) bridgeToElrond(tx *bridge.DepositTransaction) (string, error) {
 	// TODO: log
 	fmt.Printf("Briging %v to elrond\n", tx)
 	return r.elrondSafe.Bridge(tx)
 }
 
-func (r *Relay) bridgeToEth(tx *safe.DepositTransaction) (string, error) {
+func (r *Relay) bridgeToEth(tx *bridge.DepositTransaction) (string, error) {
 	// TODO: log
 	fmt.Printf("Briging %v to eth\n", tx)
 	return r.ethSafe.Bridge(tx)
