@@ -3,7 +3,7 @@ package relay
 import "context"
 
 type Startable interface {
-	Start(context.Context)
+	Start(context.Context) error
 
-	Stop()
+	Stop() error
 }

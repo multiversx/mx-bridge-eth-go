@@ -2,6 +2,7 @@ package elrond
 
 import (
 	"context"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/blockchain"
@@ -22,7 +23,7 @@ type Client struct {
 }
 
 func NewClient(config bridge.Config) (*Client, error) {
-	proxy := blockchain.NewElrondProxy(config.NetworkAddress)
+	proxy := blockchain.NewElrondProxy(config.NetworkAddress, nil)
 
 	privateKey, err := erdgo.LoadPrivateKeyFromPemFile(config.PrivateKeyPath)
 	if err != nil {

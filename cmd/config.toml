@@ -6,3 +6,8 @@
     NetworkAddress    = "http://localhost:7950"
     BridgeAddress     = "erd1qqqqqqqqqqqqqpgqfzydqmdw7m2vazsp6u5p95yxz76t2p9rd8ss0zp9ts"
     PrivateKeyPath    = "../mytestnet/testnet/wallets/users/alice.pem"
+
+[P2P]
+    Port              = "10000"
+    Seed              = "seed"
+    InitialPeerList   = []
