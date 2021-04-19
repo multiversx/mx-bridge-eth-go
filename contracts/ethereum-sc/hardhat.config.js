@@ -19,11 +19,7 @@ task("accounts", "Prints the list of accounts", async () => {
  */
 module.exports = {
   solidity: "0.8.0",
-  defaultNetwork: "ganache",
   networks: {
-    ganache: {
-      url: "http://127.0.0.1:8545"
-    },
     rinkeby: {
       url: "https://rinkeby.infura.io/v3/df34d380f59e469c97f1dab44199bca6",
       accounts: {
