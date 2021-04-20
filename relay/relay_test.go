@@ -9,7 +9,6 @@ import (
 
 	"github.com/ElrondNetwork/elrond-go/p2p/mock"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/core"
 	"github.com/ElrondNetwork/elrond-go/p2p"
@@ -139,206 +138,26 @@ func TestJoin(t *testing.T) {
 	assert.True(t, messenger.joinedWasCalled)
 }
 
-func TestReadPendingTransaction(t *testing.T) {
-	t.Run("it will read the next pending transaction", func(t *testing.T) {
-		expected := &bridge.DepositTransaction{Hash: "hash"}
-		ethBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expected}}
+func TestAmILeader(t *testing.T) {
+	t.Run("will return true when time matches current index", func(t *testing.T) {
 		relay := Relay{
-			messenger: &netMessengerStub{},
-			timer:     &timerStub{},
-			log:       log,
-
-			elrondBridge: &bridgeStub{},
-			ethBridge:    ethBridge,
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		assert.Equal(t, expected, relay.pendingTransaction)
-	})
-	t.Run("it will sleep and try again if there is no pending transaction", func(t *testing.T) {
-		expected := &bridge.DepositTransaction{Hash: "hash"}
-		ethBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{nil, expected}}
-		relay := Relay{
-			messenger: &netMessengerStub{},
-			timer:     &timerStub{sleepDuration: 1 * time.Millisecond},
-			log:       log,
-
-			elrondBridge: &bridgeStub{},
-			ethBridge:    ethBridge,
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		assert.Equal(t, expected, relay.pendingTransaction)
-		assert.GreaterOrEqual(t, ethBridge.pendingTransactionCallIndex, 1)
-	})
-}
-
-func TestPropose(t *testing.T) {
-	t.Run("it will propose eth transaction when leader", func(t *testing.T) {
-		expect := &bridge.DepositTransaction{Hash: "hash"}
-		elrondBridge := &bridgeStub{}
-		relay := Relay{
-			peers:     Peers{"first"},
-			messenger: &netMessengerStub{peerID: "first"},
+			peers:     Peers{"self"},
+			messenger: &netMessengerStub{peerID: "self"},
 			timer:     &timerStub{timeNowUnix: 0},
-			log:       log,
-
-			elrondBridge: elrondBridge,
-			ethBridge:    &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		assert.Equal(t, expect, elrondBridge.lastProposedTransaction)
+		assert.True(t, relay.AmITheLeader())
 	})
-	t.Run("it will wait for proposal if not leader", func(t *testing.T) {
-		expect := &bridge.DepositTransaction{Hash: "hash"}
-		elrondBridge := &bridgeStub{}
+	t.Run("will return false when time does not match", func(t *testing.T) {
 		relay := Relay{
-			peers:     Peers{"first", "second"},
-			messenger: &netMessengerStub{peerID: "first"},
+			peers:     Peers{"self", "other"},
+			messenger: &netMessengerStub{peerID: "self"},
 			timer:     &timerStub{timeNowUnix: int64(Timeout.Seconds()) + 1},
-			log:       log,
-
-			elrondBridge: elrondBridge,
-			ethBridge:    &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		assert.Equal(t, expect, elrondBridge.lastWasProposedTransaction)
-	})
-	t.Run("it will sign proposed transaction if not leader", func(t *testing.T) {
-		expect := &bridge.DepositTransaction{Hash: "hash"}
-		elrondBridge := &bridgeStub{wasProposed: true}
-		relay := Relay{
-			peers:     Peers{"first", "second"},
-			messenger: &netMessengerStub{peerID: "first"},
-			timer:     &timerStub{timeNowUnix: int64(Timeout.Seconds()) + 1},
-			log:       log,
-
-			elrondBridge: elrondBridge,
-			ethBridge:    &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		assert.Equal(t, expect, elrondBridge.lastSignedTransaction)
-	})
-	t.Run("it will try to propose again if timeout", func(t *testing.T) {
-		expect := &bridge.DepositTransaction{Hash: "hash"}
-		elrondBridge := &bridgeStub{wasProposed: false}
-		timer := &timerStub{timeNowUnix: int64(Timeout.Seconds()) + 1, afterDuration: 5 * time.Millisecond}
-		relay := Relay{
-			peers:     Peers{"first", "second"},
-			messenger: &netMessengerStub{peerID: "first"},
-			timer:     timer,
-			log:       log,
-
-			elrondBridge: elrondBridge,
-			ethBridge:    &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
-		}
-
-		go func() {
-			time.Sleep(3 * time.Millisecond)
-			timer.timeNowUnix = 0
-		}()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		assert.Equal(t, expect, elrondBridge.lastProposedTransaction)
+		assert.False(t, relay.AmITheLeader())
 	})
 }
-
-func TestWaitForSignatures(t *testing.T) {
-	t.Run("it will execute when number of signatures is > 67%", func(t *testing.T) {
-		expect := &bridge.DepositTransaction{Hash: "hash"}
-		elrondBridge := &bridgeStub{signersCount: 3}
-		relay := Relay{
-			peers:     Peers{"first", "other", "second", "third"},
-			messenger: &netMessengerStub{peerID: "first"},
-			timer:     &timerStub{timeNowUnix: 0},
-			log:       log,
-
-			elrondBridge: elrondBridge,
-			ethBridge:    &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		assert.Equal(t, expect, elrondBridge.lastExecutedTransaction)
-	})
-	t.Run("it will sleep and try to wait for signatures again", func(t *testing.T) {
-		expect := &bridge.DepositTransaction{Hash: "hash"}
-		elrondBridge := &bridgeStub{signersCount: 0}
-		relay := Relay{
-			peers:     Peers{"first", "other", "second", "third"},
-			messenger: &netMessengerStub{peerID: "first"},
-			timer:     &timerStub{timeNowUnix: 0, afterDuration: 3 * time.Millisecond},
-			log:       log,
-
-			elrondBridge: elrondBridge,
-			ethBridge:    &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
-		}
-
-		go func() {
-			time.Sleep(2 * time.Millisecond)
-			elrondBridge.signersCount = 3
-		}()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		assert.Equal(t, expect, elrondBridge.lastExecutedTransaction)
-	})
-}
-
-func TestExecute(t *testing.T) {
-	t.Run("it will wait for execution when not leader", func(t *testing.T) {
-		expect := &bridge.DepositTransaction{Hash: "hash"}
-		elrondBridge := &bridgeStub{signersCount: 3, wasExecuted: false, wasProposed: true}
-		timer := &timerStub{timeNowUnix: int64(Timeout.Seconds()) + 1, afterDuration: 3 * time.Millisecond}
-		relay := Relay{
-			peers:     Peers{"first", "other", "second", "third"},
-			messenger: &netMessengerStub{peerID: "first"},
-			timer:     timer,
-			log:       log,
-
-			elrondBridge: elrondBridge,
-			ethBridge:    &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
-		}
-
-		go func() {
-			time.Sleep(2 * time.Millisecond)
-			timer.timeNowUnix = 0
-		}()
-
-		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		assert.Equal(t, expect, elrondBridge.lastExecutedTransaction)
-	})
-}
-
-func TestWaitForExecute(t *testing.T) {}
 
 func buildPrivateMessage(peerID core.PeerID, peers Peers) p2p.MessageP2P {
 	var data bytes.Buffer
@@ -430,62 +249,9 @@ func (p *netMessengerStub) Close() error {
 	return nil
 }
 
-type bridgeStub struct {
-	pendingTransactionCallIndex int
-	pendingTransactions         []*bridge.DepositTransaction
-	wasProposed                 bool
-	lastProposedTransaction     *bridge.DepositTransaction
-	lastWasProposedTransaction  *bridge.DepositTransaction
-	lastSignedTransaction       *bridge.DepositTransaction
-	signersCount                uint
-	lastExecutedTransaction     *bridge.DepositTransaction
-	wasExecuted                 bool
-}
-
-func (b *bridgeStub) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
-	defer func() { b.pendingTransactionCallIndex++ }()
-
-	if b.pendingTransactionCallIndex >= len(b.pendingTransactions) {
-		return nil
-	} else {
-		return b.pendingTransactions[b.pendingTransactionCallIndex]
-	}
-}
-
-func (b *bridgeStub) Propose(_ context.Context, tx *bridge.DepositTransaction) {
-	b.lastProposedTransaction = tx
-}
-
-func (b *bridgeStub) WasProposed(_ context.Context, tx *bridge.DepositTransaction) bool {
-	b.lastWasProposedTransaction = tx
-	return b.wasProposed
-}
-
-func (b *bridgeStub) WasExecuted(context.Context, *bridge.DepositTransaction) bool {
-	return b.wasExecuted
-}
-
-func (b *bridgeStub) Sign(_ context.Context, tx *bridge.DepositTransaction) {
-	b.lastSignedTransaction = tx
-}
-
-func (b *bridgeStub) Execute(_ context.Context, tx *bridge.DepositTransaction) (string, error) {
-	b.lastExecutedTransaction = tx
-	return "", nil
-}
-
-func (b *bridgeStub) SignersCount(context.Context, *bridge.DepositTransaction) uint {
-	return b.signersCount
-}
-
 type timerStub struct {
-	sleepDuration time.Duration
 	afterDuration time.Duration
 	timeNowUnix   int64
-}
-
-func (s *timerStub) sleep(time.Duration) {
-	time.Sleep(s.sleepDuration)
 }
 
 func (s *timerStub) after(time.Duration) <-chan time.Time {

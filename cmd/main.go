@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/core"
 	"github.com/urfave/cli"
 	_ "github.com/urfave/cli"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 const (
@@ -79,7 +80,7 @@ func startRelay(ctx *cli.Context) error {
 		return err
 	}
 
-	ethToElrRelay, err := relay.NewRelay(config, log)
+	ethToElrRelay, err := relay.NewRelay(config, "EthToErlRelay")
 	if err != nil {
 		return err
 	}

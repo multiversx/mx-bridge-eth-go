@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
-	"math"
 	"math/rand"
 	"sync"
 	"time"
@@ -27,26 +26,12 @@ const (
 
 	PrivateTopicName = "private/1"
 
-	Timeout             = 30 * time.Second
-	MinSignaturePercent = 67
-)
-
-type State int
-
-const (
-	Join                  State = 0
-	GetPendingTransaction State = 1
-	Propose               State = 2
-	WaitForSignatures     State = 3
-	Execute               State = 4
-	WaitForProposal       State = 5
-	WaitForExecute        State = 6
+	Timeout = 30 * time.Second
 )
 
 type Peers []core.PeerID
 
 type Timer interface {
-	sleep(d time.Duration)
 	after(d time.Duration) <-chan time.Time
 	nowUnix() int64
 }
@@ -87,12 +72,9 @@ type Relay struct {
 
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
-
-	initialState       State
-	pendingTransaction *bridge.DepositTransaction
 }
 
-func NewRelay(config *Config, log logger.Logger) (*Relay, error) {
+func NewRelay(config *Config, name string) (*Relay, error) {
 	ethBridge, err := eth.NewClient(config.Eth)
 	if err != nil {
 		return nil, err
@@ -112,7 +94,7 @@ func NewRelay(config *Config, log logger.Logger) (*Relay, error) {
 		peers:     make(Peers, 0),
 		messenger: messenger,
 		timer:     &defaultTimer{},
-		log:       log,
+		log:       logger.GetOrCreate(name),
 
 		ethBridge:    ethBridge,
 		elrondBridge: elrondBridge,
@@ -120,139 +102,49 @@ func NewRelay(config *Config, log logger.Logger) (*Relay, error) {
 }
 
 func (r *Relay) Start(ctx context.Context) error {
-	if err := r.init(); err != nil {
+	if err := r.init(ctx); err != nil {
 		return nil
 	}
+	r.join(ctx)
 
-	ch := make(chan State, 1)
-	ch <- r.initialState
+	monitorEth := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, "EthToElrond")
+	go monitorEth.Start(ctx)
+	monitorElrond := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, "ElrondToEth")
+	go monitorElrond.Start(ctx)
 
-	for {
-		select {
-		case state := <-ch:
-			switch state {
-			case Join:
-				go r.join(ch)
-			case GetPendingTransaction:
-				go r.getPendingTransaction(ctx, ch)
-			case Propose:
-				go r.propose(ctx, ch)
-			case WaitForProposal:
-				go r.waitForProposal(ctx, ch)
-			case WaitForSignatures:
-				go r.waitForSignatures(ctx, ch)
-			case Execute:
-				go r.execute(ctx, ch)
-			case WaitForExecute:
-				go r.waitForExecute(ctx, ch)
-			}
-		case <-ctx.Done():
-			return r.Stop()
-		}
+	<-ctx.Done()
+	if err := r.Stop(); err != nil {
+		return err
 	}
+
+	return nil
 }
 
 func (r *Relay) Stop() error {
 	return r.messenger.Close()
 }
 
-// State
+// TopologyProvider
 
-func (r *Relay) join(ch chan State) {
-	rand.Seed(time.Now().UnixNano())
-	v := rand.Intn(5)
-	r.timer.sleep(time.Duration(v) * time.Second)
-	r.messenger.Broadcast(ActionsTopicName, []byte(JoinedAction))
-	ch <- GetPendingTransaction
+func (r *Relay) PeerCount() int {
+	return len(r.peers)
 }
 
-func (r *Relay) getPendingTransaction(ctx context.Context, ch chan State) {
-	r.pendingTransaction = r.ethBridge.GetPendingDepositTransaction(ctx)
-
-	if r.pendingTransaction == nil {
-		r.timer.sleep(Timeout / 10)
-		ch <- GetPendingTransaction
+func (r *Relay) AmITheLeader() bool {
+	if len(r.peers) == 0 {
+		return false
 	} else {
-		ch <- Propose
-	}
-}
+		numberOfPeers := int64(len(r.peers))
+		index := (r.timer.nowUnix() / int64(Timeout.Seconds())) % numberOfPeers
 
-func (r *Relay) propose(ctx context.Context, ch chan State) {
-	if r.amITheLeader() {
-		r.elrondBridge.Propose(ctx, r.pendingTransaction)
-		ch <- WaitForSignatures
-	} else {
-		ch <- WaitForProposal
-	}
-}
-
-func (r *Relay) waitForProposal(ctx context.Context, ch chan State) {
-	select {
-	case <-r.timer.after(Timeout):
-		if r.elrondBridge.WasProposed(ctx, r.pendingTransaction) {
-			r.elrondBridge.Sign(ctx, r.pendingTransaction)
-			ch <- WaitForSignatures
-		} else {
-			ch <- Propose
-		}
-	case <-ctx.Done():
-		if err := r.Stop(); err != nil {
-			r.log.Error(err.Error())
-		}
-	}
-}
-
-func (r *Relay) waitForSignatures(ctx context.Context, ch chan State) {
-	select {
-	case <-r.timer.after(Timeout):
-		count := r.elrondBridge.SignersCount(ctx, r.pendingTransaction)
-		minCountRequired := math.Ceil(float64(len(r.peers)) * MinSignaturePercent / 100)
-
-		if count >= uint(minCountRequired) && count > 0 {
-			ch <- Execute
-		} else {
-			ch <- WaitForSignatures
-		}
-	case <-ctx.Done():
-		if err := r.Stop(); err != nil {
-			r.log.Error(err.Error())
-		}
-	}
-}
-
-func (r *Relay) execute(ctx context.Context, ch chan State) {
-	if r.amITheLeader() {
-		hash, err := r.elrondBridge.Execute(ctx, r.pendingTransaction)
-
-		if err != nil {
-			r.log.Error(err.Error())
-		}
-
-		r.log.Info(fmt.Sprintf("Bridge transaction executed with hash %q", hash))
-	}
-
-	ch <- WaitForExecute
-}
-
-func (r *Relay) waitForExecute(ctx context.Context, ch chan State) {
-	select {
-	case <-r.timer.after(Timeout):
-		if r.elrondBridge.WasExecuted(ctx, r.pendingTransaction) {
-			ch <- GetPendingTransaction
-		} else {
-			ch <- Execute
-		}
-	case <-ctx.Done():
-		if err := r.Stop(); err != nil {
-			r.log.Error(err.Error())
-		}
+		return r.peers[index] == r.messenger.ID()
 	}
 }
 
 // MessageProcessor
 
 func (r *Relay) ProcessReceivedMessage(message p2p.MessageP2P, _ core.PeerID) error {
-	r.log.Info(fmt.Sprintf("Got message on topic %q\n", message.Topic()))
+	r.log.Info(fmt.Sprintf("Got message on topic %q", message.Topic()))
 
 	switch message.Topic() {
 	case ActionsTopicName:
@@ -342,19 +234,34 @@ func (r *Relay) addPeer(peerID core.PeerID) {
 
 // Helpers
 
-func (r *Relay) init() error {
+func (r *Relay) init(ctx context.Context) error {
 	if err := r.messenger.Bootstrap(); err != nil {
 		return err
 	}
 
-	r.timer.sleep(10 * time.Second)
-	r.log.Info(fmt.Sprint(r.messenger.Addresses()))
+	select {
+	case <-r.timer.after(10 * time.Second):
+		r.log.Info(fmt.Sprint(r.messenger.Addresses()))
 
-	if err := r.registerTopicProcessors(); err != nil {
+		if err := r.registerTopicProcessors(); err != nil {
+			return nil
+		}
+	case <-ctx.Done():
 		return nil
 	}
 
 	return nil
+}
+
+func (r *Relay) join(ctx context.Context) {
+	rand.Seed(time.Now().UnixNano())
+	v := rand.Intn(5)
+
+	select {
+	case <-r.timer.after(time.Duration(v) * time.Second):
+		r.messenger.Broadcast(ActionsTopicName, []byte(JoinedAction))
+	case <-ctx.Done():
+	}
 }
 
 func (r *Relay) registerTopicProcessors() error {
@@ -373,17 +280,6 @@ func (r *Relay) registerTopicProcessors() error {
 	}
 
 	return nil
-}
-
-func (r *Relay) amITheLeader() bool {
-	if len(r.peers) == 0 {
-		return false
-	} else {
-		numberOfPeers := int64(len(r.peers))
-		index := (r.timer.nowUnix() / int64(Timeout.Seconds())) % numberOfPeers
-
-		return r.peers[index] == r.messenger.ID()
-	}
 }
 
 func buildNetMessenger(cfg ConfigP2P) (NetMessenger, error) {
