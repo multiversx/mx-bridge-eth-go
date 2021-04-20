@@ -59,21 +59,21 @@ func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTr
 	return nil
 }
 
-func (c *Client) Propose(*bridge.DepositTransaction) {
+func (c *Client) Propose(context.Context, *bridge.DepositTransaction) {
 }
 
-func (c *Client) WasProposed(*bridge.DepositTransaction) bool {
+func (c *Client) WasProposed(context.Context, *bridge.DepositTransaction) bool {
 	return false
 }
 
-func (c *Client) WasExecuted(*bridge.DepositTransaction) bool {
+func (c *Client) WasExecuted(context.Context, *bridge.DepositTransaction) bool {
 	return false
 }
 
-func (c *Client) Sign(*bridge.DepositTransaction) {
+func (c *Client) Sign(context.Context, *bridge.DepositTransaction) {
 }
 
-func (c *Client) Execute(*bridge.DepositTransaction) (string, error) {
+func (c *Client) Execute(context.Context, *bridge.DepositTransaction) (string, error) {
 	tx, err := c.buildTransaction()
 	if err != nil {
 		return "", nil
@@ -87,7 +87,7 @@ func (c *Client) Execute(*bridge.DepositTransaction) (string, error) {
 	return hash, err
 }
 
-func (c *Client) SignersCount(*bridge.DepositTransaction) uint {
+func (c *Client) SignersCount(context.Context, *bridge.DepositTransaction) uint {
 	return 0
 }
 

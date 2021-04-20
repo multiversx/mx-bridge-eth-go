@@ -32,13 +32,13 @@ const (
 type State int
 
 const (
-	Join              State = 0
-	ReadBlock         State = 1
-	Propose           State = 2
-	WaitForSignatures State = 3
-	Execute           State = 4
-	WaitForProposal   State = 5
-	WaitForExecute    State = 6
+	Join                  State = 0
+	GetPendingTransaction State = 1
+	Propose               State = 2
+	WaitForSignatures     State = 3
+	Execute               State = 4
+	WaitForProposal       State = 5
+	WaitForExecute        State = 6
 )
 
 type Peers []core.PeerID
@@ -81,7 +81,8 @@ type Relay struct {
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
 
-	initialState State
+	initialState       State
+	pendingTransaction *bridge.DepositTransaction
 }
 
 func NewRelay(config *Config, log logger.Logger) (*Relay, error) {
@@ -125,6 +126,10 @@ func (r *Relay) Start(ctx context.Context) error {
 			switch state {
 			case Join:
 				go r.join(ch)
+			case GetPendingTransaction:
+				go r.getPendingTransaction(ctx, ch)
+			case Propose:
+				go r.propose(ctx, ch)
 			}
 		case <-ctx.Done():
 			return r.Stop()
@@ -143,7 +148,24 @@ func (r *Relay) join(ch chan State) {
 	v := rand.Intn(5)
 	r.timer.sleep(time.Duration(v) * time.Second)
 	r.messenger.Broadcast(ActionsTopicName, []byte(JoinedAction))
-	ch <- ReadBlock
+	ch <- GetPendingTransaction
+}
+
+func (r *Relay) getPendingTransaction(ctx context.Context, ch chan State) {
+	r.pendingTransaction = r.ethBridge.GetPendingDepositTransaction(ctx)
+
+	if r.pendingTransaction == nil {
+		r.timer.sleep(Timeout / 10)
+		ch <- GetPendingTransaction
+	} else {
+		ch <- Propose
+	}
+}
+
+func (r *Relay) propose(ctx context.Context, ch chan State) {
+	if r.amITheLeader() {
+		r.elrondBridge.Propose(ctx, r.pendingTransaction)
+	}
 }
 
 // MessageProcessor
@@ -247,14 +269,14 @@ func (r *Relay) init() error {
 	r.timer.sleep(10 * time.Second)
 	r.log.Info(fmt.Sprint(r.messenger.Addresses()))
 
-	if err := r.registerTopiProcessors(); err != nil {
+	if err := r.registerTopicProcessors(); err != nil {
 		return nil
 	}
 
 	return nil
 }
 
-func (r *Relay) registerTopiProcessors() error {
+func (r *Relay) registerTopicProcessors() error {
 	topics := []string{ActionsTopicName, PrivateTopicName}
 	for _, topic := range topics {
 		if !r.messenger.HasTopic(topic) {
@@ -270,6 +292,17 @@ func (r *Relay) registerTopiProcessors() error {
 	}
 
 	return nil
+}
+
+func (r *Relay) amITheLeader() bool {
+	if len(r.peers) == 0 {
+		return false
+	} else {
+		numberOfPeers := int64(len(r.peers))
+		index := (r.timer.nowUnix() / int64(Timeout.Seconds())) % numberOfPeers
+
+		return r.peers[index] == r.messenger.ID()
+	}
 }
 
 func buildNetMessenger(cfg ConfigP2P) (NetMessenger, error) {

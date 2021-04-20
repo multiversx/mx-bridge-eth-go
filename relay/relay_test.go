@@ -139,6 +139,68 @@ func TestJoin(t *testing.T) {
 	assert.True(t, messenger.joinedWasCalled)
 }
 
+func TestReadPendingTransaction(t *testing.T) {
+	t.Run("it will read the next pending transaction", func(t *testing.T) {
+		expected := &bridge.DepositTransaction{Hash: "hash"}
+		ethBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expected}}
+		relay := Relay{
+			messenger: &netMessengerStub{},
+			timer:     &timerStub{},
+			log:       log,
+
+			elrondBridge: &bridgeStub{},
+			ethBridge:    ethBridge,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+		defer cancel()
+		_ = relay.Start(ctx)
+
+		assert.Equal(t, expected, relay.pendingTransaction)
+	})
+	t.Run("it will sleep and try again if there is no pending transaction", func(t *testing.T) {
+		expected := &bridge.DepositTransaction{Hash: "hash"}
+		ethBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{nil, expected}}
+		relay := Relay{
+			messenger: &netMessengerStub{},
+			timer:     &timerStub{sleepDuration: 1 * time.Millisecond},
+			log:       log,
+
+			elrondBridge: &bridgeStub{},
+			ethBridge:    ethBridge,
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
+		defer cancel()
+		_ = relay.Start(ctx)
+
+		assert.Equal(t, expected, relay.pendingTransaction)
+		assert.GreaterOrEqual(t, ethBridge.pendingTransactionCallIndex, 1)
+	})
+}
+
+func TestPropose(t *testing.T) {
+	t.Run("it will propose eth transaction when leader", func(t *testing.T) {
+		expect := &bridge.DepositTransaction{Hash: "hash"}
+		elrondBridge := &bridgeStub{}
+		relay := Relay{
+			peers:     Peers{"first"},
+			messenger: &netMessengerStub{peerID: "first"},
+			timer:     &timerStub{timeNowUnix: 0},
+			log:       log,
+
+			elrondBridge: elrondBridge,
+			ethBridge:    &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
+		defer cancel()
+		_ = relay.Start(ctx)
+
+		assert.Equal(t, expect, elrondBridge.lastProposedTransaction)
+	})
+}
+
 func buildPrivateMessage(peerID core.PeerID, peers Peers) p2p.MessageP2P {
 	var data bytes.Buffer
 	enc := gob.NewEncoder(&data)
@@ -229,35 +291,52 @@ func (p *netMessengerStub) Close() error {
 	return nil
 }
 
-type bridgeStub struct{}
+type bridgeStub struct {
+	pendingTransactionCallIndex int
+	pendingTransactions         []*bridge.DepositTransaction
+	lastProposedTransaction     *bridge.DepositTransaction
+}
 
 func (b *bridgeStub) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
-	return nil
+	defer func() { b.pendingTransactionCallIndex++ }()
+
+	if b.pendingTransactionCallIndex >= len(b.pendingTransactions) {
+		return nil
+	} else {
+		return b.pendingTransactions[b.pendingTransactionCallIndex]
+	}
 }
 
-func (b *bridgeStub) Propose(*bridge.DepositTransaction) {}
+func (b *bridgeStub) Propose(_ context.Context, tx *bridge.DepositTransaction) {
+	b.lastProposedTransaction = tx
+}
 
-func (b *bridgeStub) WasProposed(*bridge.DepositTransaction) bool {
+func (b *bridgeStub) WasProposed(context.Context, *bridge.DepositTransaction) bool {
 	return false
 }
 
-func (b *bridgeStub) WasExecuted(*bridge.DepositTransaction) bool {
+func (b *bridgeStub) WasExecuted(context.Context, *bridge.DepositTransaction) bool {
 	return false
 }
 
-func (b *bridgeStub) Sign(*bridge.DepositTransaction) {}
+func (b *bridgeStub) Sign(context.Context, *bridge.DepositTransaction) {}
 
-func (b *bridgeStub) Execute(*bridge.DepositTransaction) (string, error) {
+func (b *bridgeStub) Execute(context.Context, *bridge.DepositTransaction) (string, error) {
 	return "", nil
 }
 
-func (b *bridgeStub) SignersCount(*bridge.DepositTransaction) uint {
+func (b *bridgeStub) SignersCount(context.Context, *bridge.DepositTransaction) uint {
 	return 0
 }
 
-type timerStub struct{}
+type timerStub struct {
+	sleepDuration time.Duration
+	timeNowUnix   int64
+}
 
-func (s *timerStub) sleep(time.Duration) {}
+func (s *timerStub) sleep(time.Duration) {
+	time.Sleep(s.sleepDuration)
+}
 
 func (s *timerStub) nowUnix() int64 {
 	return 0

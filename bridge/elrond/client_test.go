@@ -1,10 +1,11 @@
 package elrond
 
 import (
+	"testing"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/data"
-	"testing"
 )
 
 var (
@@ -60,12 +61,10 @@ func TestExecute(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		addressString, err := erdgo.GetAddressFromPrivateKey(privateKey)
+		address, err := erdgo.GetAddressFromPrivateKey(privateKey)
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		address := &elrondAddress{addressString: addressString}
 
 		client := &Client{
 			proxy:         proxy,
@@ -82,7 +81,7 @@ func TestExecute(t *testing.T) {
 		proxy := &testProxy{expectedTxHash, nil, false}
 		client, _ := buildTestClient(proxy)
 
-		hash, _ := client.Execute(nil)
+		hash, _ := client.Execute(nil, nil)
 
 		if hash != expectedTxHash {
 			t.Errorf("Expected %q, got %q", expectedTxHash, hash)
@@ -92,8 +91,8 @@ func TestExecute(t *testing.T) {
 		proxy := &testProxy{"", nil, false}
 		client, proxy := buildTestClient(proxy)
 
-		_, _ = client.Execute(nil)
-		_, _ = client.Execute(nil)
+		_, _ = client.Execute(nil, nil)
+		_, _ = client.Execute(nil, nil)
 
 		expectedNonce := uint64(1)
 
@@ -105,8 +104,8 @@ func TestExecute(t *testing.T) {
 		proxy := &testProxy{"", nil, true}
 		client, proxy := buildTestClient(proxy)
 
-		_, _ = client.Execute(nil)
-		_, _ = client.Execute(nil)
+		_, _ = client.Execute(nil, nil)
+		_, _ = client.Execute(nil, nil)
 
 		expectedNonce := uint64(0)
 
