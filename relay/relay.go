@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
+	"math"
 	"math/rand"
 	"sync"
 	"time"
@@ -26,7 +27,8 @@ const (
 
 	PrivateTopicName = "private/1"
 
-	Timeout = 30 * time.Second
+	Timeout             = 30 * time.Second
+	MinSignaturePercent = 67
 )
 
 type State int
@@ -45,6 +47,7 @@ type Peers []core.PeerID
 
 type Timer interface {
 	sleep(d time.Duration)
+	after(d time.Duration) <-chan time.Time
 	nowUnix() int64
 }
 
@@ -52,6 +55,10 @@ type defaultTimer struct{}
 
 func (s *defaultTimer) sleep(d time.Duration) {
 	time.Sleep(d)
+}
+
+func (s *defaultTimer) after(d time.Duration) <-chan time.Time {
+	return time.After(d)
 }
 
 func (s *defaultTimer) nowUnix() int64 {
@@ -130,6 +137,14 @@ func (r *Relay) Start(ctx context.Context) error {
 				go r.getPendingTransaction(ctx, ch)
 			case Propose:
 				go r.propose(ctx, ch)
+			case WaitForProposal:
+				go r.waitForProposal(ctx, ch)
+			case WaitForSignatures:
+				go r.waitForSignatures(ctx, ch)
+			case Execute:
+				go r.execute(ctx, ch)
+			case WaitForExecute:
+				go r.waitForExecute(ctx, ch)
 			}
 		case <-ctx.Done():
 			return r.Stop()
@@ -165,6 +180,72 @@ func (r *Relay) getPendingTransaction(ctx context.Context, ch chan State) {
 func (r *Relay) propose(ctx context.Context, ch chan State) {
 	if r.amITheLeader() {
 		r.elrondBridge.Propose(ctx, r.pendingTransaction)
+		ch <- WaitForSignatures
+	} else {
+		ch <- WaitForProposal
+	}
+}
+
+func (r *Relay) waitForProposal(ctx context.Context, ch chan State) {
+	select {
+	case <-r.timer.after(Timeout):
+		if r.elrondBridge.WasProposed(ctx, r.pendingTransaction) {
+			r.elrondBridge.Sign(ctx, r.pendingTransaction)
+			ch <- WaitForSignatures
+		} else {
+			ch <- Propose
+		}
+	case <-ctx.Done():
+		if err := r.Stop(); err != nil {
+			r.log.Error(err.Error())
+		}
+	}
+}
+
+func (r *Relay) waitForSignatures(ctx context.Context, ch chan State) {
+	select {
+	case <-r.timer.after(Timeout):
+		count := r.elrondBridge.SignersCount(ctx, r.pendingTransaction)
+		minCountRequired := math.Ceil(float64(len(r.peers)) * MinSignaturePercent / 100)
+
+		if count >= uint(minCountRequired) && count > 0 {
+			ch <- Execute
+		} else {
+			ch <- WaitForSignatures
+		}
+	case <-ctx.Done():
+		if err := r.Stop(); err != nil {
+			r.log.Error(err.Error())
+		}
+	}
+}
+
+func (r *Relay) execute(ctx context.Context, ch chan State) {
+	if r.amITheLeader() {
+		hash, err := r.elrondBridge.Execute(ctx, r.pendingTransaction)
+
+		if err != nil {
+			r.log.Error(err.Error())
+		}
+
+		r.log.Info(fmt.Sprintf("Bridge transaction executed with hash %q", hash))
+	}
+
+	ch <- WaitForExecute
+}
+
+func (r *Relay) waitForExecute(ctx context.Context, ch chan State) {
+	select {
+	case <-r.timer.after(Timeout):
+		if r.elrondBridge.WasExecuted(ctx, r.pendingTransaction) {
+			ch <- GetPendingTransaction
+		} else {
+			ch <- Execute
+		}
+	case <-ctx.Done():
+		if err := r.Stop(); err != nil {
+			r.log.Error(err.Error())
+		}
 	}
 }
 
