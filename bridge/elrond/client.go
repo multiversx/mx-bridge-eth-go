@@ -56,24 +56,41 @@ func NewClient(config bridge.Config) (*Client, error) {
 }
 
 func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
+	// getNextPendingTransaction
+	// if none -> error
 	return nil
 }
 
 func (c *Client) Propose(context.Context, *bridge.DepositTransaction) {
+	// proposeEsdtSafeSetCurrentTransactionStatus(success | failure)
+	// proposeMultiTransferEsdtTransferEsdtToken -> aActionId
+	// pub enum TransactionStatus {
+	//    None,
+	//    Pending,
+	//    InProgress,
+	//    Executed,
+	//    Rejected,
+	//}
 }
 
 func (c *Client) WasProposed(context.Context, *bridge.DepositTransaction) bool {
+	// wasTransferActionProposed(nonce)
+	// getActionIdForEthTxHash(nonce) -- remove
 	return false
 }
 
 func (c *Client) WasExecuted(context.Context, *bridge.DepositTransaction) bool {
+	// wasActionExecuted(actionId)
 	return false
 }
 
 func (c *Client) Sign(context.Context, *bridge.DepositTransaction) {
+	// sign(actionId)
 }
 
 func (c *Client) Execute(context.Context, *bridge.DepositTransaction) (string, error) {
+	// performAction(actionId)
+
 	tx, err := c.buildTransaction()
 	if err != nil {
 		return "", nil
@@ -88,6 +105,7 @@ func (c *Client) Execute(context.Context, *bridge.DepositTransaction) (string, e
 }
 
 func (c *Client) SignersCount(context.Context, *bridge.DepositTransaction) uint {
+	// getActionSignerCount(actionId)
 	return 0
 }
 
