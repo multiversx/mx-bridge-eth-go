@@ -83,7 +83,7 @@ describe("Bridge", async function () {
         amount: 100,
         depositor: adminWallet.address,
         recipient: ethers.utils.toUtf8Bytes('some address'),
-        status: 0
+        status: 1
       };
 
       await mockERC20Safe.mock.getNextPendingDeposit.returns(expectedDeposit);

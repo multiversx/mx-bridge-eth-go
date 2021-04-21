@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-enum DepositStatus {Pending, InProgress, Executed, Rejected}
+enum DepositStatus {None, Pending, InProgress, Executed, Rejected}
 
 struct Deposit {
     address tokenAddress;

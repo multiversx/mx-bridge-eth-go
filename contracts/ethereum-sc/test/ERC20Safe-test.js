@@ -56,17 +56,42 @@ describe("ERC20Safe", async function () {
         expect(deposit.tokenAddress).to.equal(token.address);
         expect(deposit.amount).to.equal(amount);
         expect(deposit.depositor).to.equal(adminWallet.address);
-        expect(deposit.status).to.equal(0/*pending*/);
+        expect(deposit.status).to.equal(1/*pending*/);
         expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("some address");
       });
     });
 
 
     describe("when token is not whitelisted", async function () {
-      it('reverts', async function() {
+      it('reverts', async function () {
         await expect(safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address")))
-        .to.be.revertedWith('Unsupported token');
+          .to.be.revertedWith('Unsupported token');
       })
     });
   });
+
+  describe('getNextPendingDeposit', async function () {
+    const amount = 100;
+
+    beforeEach(async function () {
+      await safe.whitelistToken(token.address);
+      await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
+    });
+
+    it('returns the deposit', async function () {
+      deposit = await safe.getNextPendingDeposit();
+
+      expect(deposit.tokenAddress).to.equal(token.address);
+      expect(deposit.amount).to.equal(amount);
+      expect(deposit.depositor).to.equal(adminWallet.address);
+      expect(deposit.status).to.equal(1/*pending*/);
+      expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("some address");
+    });
+
+    describe('when there are no pending deposits', async function() {
+      beforeEach(async function() {
+
+      });
+    });
+  })
 });
