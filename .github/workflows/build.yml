@@ -2,8 +2,8 @@ name: Build
 
 on:
   pull_request:
-    branches: [development]
-    types: [opened, ready_for_review]
+    branches: [ development ]
+    types: [ opened, ready_for_review ]
   push:
   workflow_dispatch:
 
@@ -11,7 +11,7 @@ jobs:
   build:
     strategy:
       matrix:
-        runs-on: [ubuntu-latest]
+        runs-on: [ ubuntu-latest ]
     runs-on: ${{ matrix.runs-on }}
     name: Build
     steps:

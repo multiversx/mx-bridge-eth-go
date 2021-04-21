@@ -2,9 +2,13 @@ package bridge
 
 import "math/big"
 
+type ActionId uint
+type Nonce uint
+
 type DepositTransaction struct {
-	Hash         string
+	To           string
 	From         string
 	TokenAddress string
 	Amount       *big.Int
+	DepositNonce Nonce
 }

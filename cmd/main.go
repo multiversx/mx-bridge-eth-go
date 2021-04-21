@@ -2,17 +2,21 @@ package main
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/core"
 	"github.com/urfave/cli"
 	_ "github.com/urfave/cli"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 const (
+	exitCodeErr       = 1
+	exitCodeInterrupt = 2
+
 	filePathPlaceholder = "[path]"
 )
 
@@ -30,7 +34,7 @@ var (
 		Name: "config",
 		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contain the main " +
 			"configurations such as the marshalizer type",
-		Value: "config.toml",
+		Value: "./config.toml",
 	}
 )
 
@@ -76,7 +80,7 @@ func startRelay(ctx *cli.Context) error {
 		return err
 	}
 
-	ethToElrRelay, err := relay.NewRelay(config)
+	ethToElrRelay, err := relay.NewRelay(config, "EthToErlRelay")
 	if err != nil {
 		return err
 	}
@@ -91,13 +95,28 @@ func mainLoop(r *relay.Relay) {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	log.Info("Starting relay")
-	r.Start(context.Background())
-	log.Info("Relay started")
-	defer r.Stop()
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
 
-	<-sigs
-	log.Info("terminating at user's signal...")
-	return
+	defer func() {
+		signal.Stop(sigs)
+		cancel()
+	}()
+
+	go func() {
+		select {
+		case <-sigs:
+			cancel()
+		case <-ctx.Done():
+		}
+		<-sigs
+		os.Exit(exitCodeInterrupt)
+	}()
+
+	if err := r.Start(ctx); err != nil {
+		log.Error(err.Error())
+		os.Exit(exitCodeErr)
+	}
 }
 
 func loadConfig(filepath string) (*relay.Config, error) {

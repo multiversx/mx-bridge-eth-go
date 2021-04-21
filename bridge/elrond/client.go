@@ -2,6 +2,7 @@ package elrond
 
 import (
 	"context"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/blockchain"
@@ -17,39 +18,12 @@ type Client struct {
 	proxy         elrondProxy
 	bridgeAddress string
 	privateKey    []byte
-	address       *elrondAddress
+	address       string
 	nonce         uint64
 }
 
-// TODO: remove this when Stringer bug is fixes
-type elrondAddress struct {
-	addressString string
-}
-
-func (a *elrondAddress) AddressAsBech32String() string {
-	return a.addressString
-}
-
-func (a *elrondAddress) AddressBytes() []byte {
-	return nil
-}
-
-func (a *elrondAddress) IsValid() bool {
-	return true
-}
-
-func (a *elrondAddress) IsInterfaceNil() bool {
-	return false
-}
-
-func (a *elrondAddress) String() string {
-	return a.addressString
-}
-
-// end here
-
 func NewClient(config bridge.Config) (*Client, error) {
-	proxy := blockchain.NewElrondProxy(config.NetworkAddress)
+	proxy := blockchain.NewElrondProxy(config.NetworkAddress, nil)
 
 	privateKey, err := erdgo.LoadPrivateKeyFromPemFile(config.PrivateKeyPath)
 	if err != nil {
@@ -61,7 +35,10 @@ func NewClient(config bridge.Config) (*Client, error) {
 		return nil, err
 	}
 
-	address := &elrondAddress{addressString: addressString}
+	address, err := data.NewAddressFromBech32String(addressString)
+	if err != nil {
+		return nil, err
+	}
 
 	account, err := proxy.GetAccount(address)
 	if err != nil {
@@ -73,30 +50,70 @@ func NewClient(config bridge.Config) (*Client, error) {
 		proxy:         proxy,
 		bridgeAddress: config.BridgeAddress,
 		privateKey:    privateKey,
-		address:       address,
+		address:       address.AddressAsBech32String(),
 		nonce:         initialNonce,
 	}, nil
 }
 
 func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
+	// getNextPendingTransaction
+	// if none -> error
 	return nil
 }
 
-func (c *Client) Propose(*bridge.DepositTransaction) {
+func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
+	// proposeEsdtSafeSetCurrentTransactionStatus(success | failure) -> actionId
 }
 
-func (c *Client) WasProposed(*bridge.DepositTransaction) bool {
+func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
+	// proposeEsdtSafeSetCurrentTransactionStatus(success | failure) -> actionId
+}
+
+func (c *Client) ProposeTransfer(context.Context, *bridge.DepositTransaction) {
+	// proposeMultiTransferEsdtTransferEsdtToken(depositTx) -> ActionId
+	// pub enum TransactionStatus {
+	//    None,
+	//    Pending,
+	//    InProgress,
+	//    Executed,
+	//    Rejected,
+	//}
+}
+
+func (c *Client) WasProposedTransfer(context.Context, bridge.Nonce) bool {
+	// wasTransferActionProposed(nonce)
+	// getActionIdForEthTxHash(nonce) -> actionId
 	return false
 }
 
-func (c *Client) WasExecuted(*bridge.DepositTransaction) bool {
+func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) bridge.ActionId {
+	return bridge.ActionId(0)
+}
+
+func (c *Client) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
 	return false
 }
 
-func (c *Client) Sign(*bridge.DepositTransaction) {
+func (c *Client) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool {
+	return false
 }
 
-func (c *Client) Execute(*bridge.DepositTransaction) (string, error) {
+func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
+	return bridge.ActionId(0)
+}
+
+func (c *Client) WasExecuted(context.Context, bridge.ActionId) bool {
+	// wasActionExecuted(actionId)
+	return false
+}
+
+func (c *Client) Sign(context.Context, bridge.ActionId) {
+	// sign(actionId)
+}
+
+func (c *Client) Execute(context.Context, bridge.ActionId) (string, error) {
+	// performAction(actionId)
+
 	tx, err := c.buildTransaction()
 	if err != nil {
 		return "", nil
@@ -110,7 +127,8 @@ func (c *Client) Execute(*bridge.DepositTransaction) (string, error) {
 	return hash, err
 }
 
-func (c *Client) SignersCount(*bridge.DepositTransaction) uint {
+func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
+	// getActionSignerCount(actionId)
 	return 0
 }
 
@@ -128,7 +146,7 @@ func (c *Client) buildTransaction() (data.Transaction, error) {
 		GasPrice: networkConfig.MinGasPrice,
 		Nonce:    c.nonce,
 		Data:     []byte("increment"),
-		SndAddr:  c.address.AddressAsBech32String(),
+		SndAddr:  c.address,
 		RcvAddr:  c.bridgeAddress,
 		Value:    "0",
 	}

@@ -3,7 +3,11 @@ package relay
 import "context"
 
 type Startable interface {
-	Start(context.Context)
+	Start(context.Context) error
+	Stop() error
+}
 
-	Stop()
+type TopologyProvider interface {
+	PeerCount() int
+	AmITheLeader() bool
 }
