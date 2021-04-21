@@ -40,27 +40,51 @@ func NewClient(config bridge.Config) (*Client, error) {
 }
 
 func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
+	// GetPendingDepositTransaction empty block -> status: 0
+	// None: 0, Pending: 1
 	return nil
 }
 
-func (c *Client) Propose(context.Context, *bridge.DepositTransaction) {
+func (c *Client) ProposeTransfer(context.Context, *bridge.DepositTransaction) {
 }
 
-func (c *Client) WasProposed(context.Context, *bridge.DepositTransaction) bool {
+func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
+}
+
+func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
+}
+
+func (c *Client) WasProposedTransfer(context.Context, bridge.Nonce) bool {
 	return false
 }
 
-func (c *Client) WasExecuted(context.Context, *bridge.DepositTransaction) bool {
+func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) bridge.ActionId {
+	return bridge.ActionId(0)
+}
+
+func (c *Client) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
 	return false
 }
 
-func (c *Client) Sign(context.Context, *bridge.DepositTransaction) {
+func (c *Client) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool {
+	return false
 }
 
-func (c *Client) Execute(context.Context, *bridge.DepositTransaction) (string, error) {
+func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
+	return bridge.ActionId(0)
+}
+
+func (c *Client) WasExecuted(context.Context, bridge.ActionId) bool {
+	return false
+}
+
+func (c *Client) Sign(context.Context, bridge.ActionId) {
+}
+
+func (c *Client) Execute(context.Context, bridge.ActionId) (string, error) {
 	return "tx_hash", nil
 }
 
-func (c *Client) SignersCount(context.Context, *bridge.DepositTransaction) uint {
+func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
 	return 0
 }

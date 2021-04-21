@@ -61,9 +61,16 @@ func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTr
 	return nil
 }
 
-func (c *Client) Propose(context.Context, *bridge.DepositTransaction) {
-	// proposeEsdtSafeSetCurrentTransactionStatus(success | failure)
-	// proposeMultiTransferEsdtTransferEsdtToken -> aActionId
+func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
+	// proposeEsdtSafeSetCurrentTransactionStatus(success | failure) -> actionId
+}
+
+func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
+	// proposeEsdtSafeSetCurrentTransactionStatus(success | failure) -> actionId
+}
+
+func (c *Client) ProposeTransfer(context.Context, *bridge.DepositTransaction) {
+	// proposeMultiTransferEsdtTransferEsdtToken(depositTx) -> ActionId
 	// pub enum TransactionStatus {
 	//    None,
 	//    Pending,
@@ -73,22 +80,38 @@ func (c *Client) Propose(context.Context, *bridge.DepositTransaction) {
 	//}
 }
 
-func (c *Client) WasProposed(context.Context, *bridge.DepositTransaction) bool {
+func (c *Client) WasProposedTransfer(context.Context, bridge.Nonce) bool {
 	// wasTransferActionProposed(nonce)
-	// getActionIdForEthTxHash(nonce) -- remove
+	// getActionIdForEthTxHash(nonce) -> actionId
 	return false
 }
 
-func (c *Client) WasExecuted(context.Context, *bridge.DepositTransaction) bool {
+func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) bridge.ActionId {
+	return bridge.ActionId(0)
+}
+
+func (c *Client) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
+	return false
+}
+
+func (c *Client) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool {
+	return false
+}
+
+func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
+	return bridge.ActionId(0)
+}
+
+func (c *Client) WasExecuted(context.Context, bridge.ActionId) bool {
 	// wasActionExecuted(actionId)
 	return false
 }
 
-func (c *Client) Sign(context.Context, *bridge.DepositTransaction) {
+func (c *Client) Sign(context.Context, bridge.ActionId) {
 	// sign(actionId)
 }
 
-func (c *Client) Execute(context.Context, *bridge.DepositTransaction) (string, error) {
+func (c *Client) Execute(context.Context, bridge.ActionId) (string, error) {
 	// performAction(actionId)
 
 	tx, err := c.buildTransaction()
@@ -104,7 +127,7 @@ func (c *Client) Execute(context.Context, *bridge.DepositTransaction) (string, e
 	return hash, err
 }
 
-func (c *Client) SignersCount(context.Context, *bridge.DepositTransaction) uint {
+func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
 	// getActionSignerCount(actionId)
 	return 0
 }

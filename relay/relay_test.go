@@ -23,7 +23,7 @@ var (
 var log = logger.GetOrCreate("main")
 
 func TestInit(t *testing.T) {
-	setLoggerLevel()
+	setTestLogLevel()
 
 	messenger := &netMessengerStub{}
 	relay := Relay{
@@ -47,7 +47,7 @@ func TestInit(t *testing.T) {
 }
 
 func TestPrivateTopicProcessor(t *testing.T) {
-	setLoggerLevel()
+	setTestLogLevel()
 
 	messenger := &netMessengerStub{}
 	relay := Relay{
@@ -72,7 +72,7 @@ func TestPrivateTopicProcessor(t *testing.T) {
 }
 
 func TestActionsTopicProcessor(t *testing.T) {
-	setLoggerLevel()
+	setTestLogLevel()
 
 	t.Run("on joined action when there are more peers then self will broadcast to private", func(t *testing.T) {
 		messenger := &netMessengerStub{}
@@ -127,7 +127,7 @@ func TestActionsTopicProcessor(t *testing.T) {
 }
 
 func TestJoin(t *testing.T) {
-	setLoggerLevel()
+	setTestLogLevel()
 
 	messenger := &netMessengerStub{}
 	relay := Relay{
@@ -147,7 +147,7 @@ func TestJoin(t *testing.T) {
 }
 
 func TestAmILeader(t *testing.T) {
-	setLoggerLevel()
+	setTestLogLevel()
 
 	t.Run("will return true when time matches current index", func(t *testing.T) {
 		relay := Relay{

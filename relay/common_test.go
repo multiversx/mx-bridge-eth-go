@@ -6,8 +6,8 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-func setLoggerLevel() {
-	_ = logger.SetLogLevel("*:" + logger.LogError.String())
+func setTestLogLevel() {
+	_ = logger.SetLogLevel("*:" + logger.LogNone.String())
 }
 
 type timerStub struct {

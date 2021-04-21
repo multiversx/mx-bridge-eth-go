@@ -82,7 +82,7 @@ func TestExecute(t *testing.T) {
 		proxy := &testProxy{expectedTxHash, nil, false}
 		client, _ := buildTestClient(proxy)
 
-		hash, _ := client.Execute(context.TODO(), nil)
+		hash, _ := client.Execute(context.TODO(), 42)
 
 		if hash != expectedTxHash {
 			t.Errorf("Expected %q, got %q", expectedTxHash, hash)
@@ -92,8 +92,8 @@ func TestExecute(t *testing.T) {
 		proxy := &testProxy{"", nil, false}
 		client, proxy := buildTestClient(proxy)
 
-		_, _ = client.Execute(context.TODO(), nil)
-		_, _ = client.Execute(context.TODO(), nil)
+		_, _ = client.Execute(context.TODO(), 42)
+		_, _ = client.Execute(context.TODO(), 42)
 
 		expectedNonce := uint64(1)
 
@@ -105,8 +105,8 @@ func TestExecute(t *testing.T) {
 		proxy := &testProxy{"", nil, true}
 		client, proxy := buildTestClient(proxy)
 
-		_, _ = client.Execute(context.TODO(), nil)
-		_, _ = client.Execute(context.TODO(), nil)
+		_, _ = client.Execute(context.TODO(), 42)
+		_, _ = client.Execute(context.TODO(), 42)
 
 		expectedNonce := uint64(0)
 
