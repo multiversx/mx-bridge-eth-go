@@ -11,6 +11,7 @@ import (
 )
 
 func TestReadPendingTransaction(t *testing.T) {
+	setLoggerLevel()
 	t.Run("it will read the next pending transaction", func(t *testing.T) {
 		expected := &bridge.DepositTransaction{To: "address", DepositNonce: big.NewInt(0)}
 		sourceBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expected}}
@@ -37,6 +38,7 @@ func TestReadPendingTransaction(t *testing.T) {
 }
 
 func TestPropose(t *testing.T) {
+	setLoggerLevel()
 	t.Run("it will propose transaction when leader", func(t *testing.T) {
 		expect := &bridge.DepositTransaction{To: "address", DepositNonce: big.NewInt(0)}
 		destinationBridge := &bridgeStub{}
@@ -115,6 +117,7 @@ func TestPropose(t *testing.T) {
 }
 
 func TestWaitForSignatures(t *testing.T) {
+	setLoggerLevel()
 	t.Run("it will execute when number of signatures is > 67%", func(t *testing.T) {
 		expect := &bridge.DepositTransaction{To: "address", DepositNonce: big.NewInt(0)}
 		destinationBridge := &bridgeStub{signersCount: 3}

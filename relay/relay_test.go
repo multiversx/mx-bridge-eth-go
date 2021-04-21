@@ -23,6 +23,8 @@ var (
 var log = logger.GetOrCreate("main")
 
 func TestInit(t *testing.T) {
+	setLoggerLevel()
+
 	messenger := &netMessengerStub{}
 	relay := Relay{
 		messenger: messenger,
@@ -45,6 +47,8 @@ func TestInit(t *testing.T) {
 }
 
 func TestPrivateTopicProcessor(t *testing.T) {
+	setLoggerLevel()
+
 	messenger := &netMessengerStub{}
 	relay := Relay{
 		messenger: messenger,
@@ -68,6 +72,8 @@ func TestPrivateTopicProcessor(t *testing.T) {
 }
 
 func TestActionsTopicProcessor(t *testing.T) {
+	setLoggerLevel()
+
 	t.Run("on joined action when there are more peers then self will broadcast to private", func(t *testing.T) {
 		messenger := &netMessengerStub{}
 		relay := Relay{
@@ -121,6 +127,8 @@ func TestActionsTopicProcessor(t *testing.T) {
 }
 
 func TestJoin(t *testing.T) {
+	setLoggerLevel()
+
 	messenger := &netMessengerStub{}
 	relay := Relay{
 		messenger: messenger,
@@ -139,6 +147,8 @@ func TestJoin(t *testing.T) {
 }
 
 func TestAmILeader(t *testing.T) {
+	setLoggerLevel()
+
 	t.Run("will return true when time matches current index", func(t *testing.T) {
 		relay := Relay{
 			peers:     Peers{"self"},
@@ -247,17 +257,4 @@ func (p *netMessengerStub) SendToConnectedPeer(topic string, buff []byte, peerID
 
 func (p *netMessengerStub) Close() error {
 	return nil
-}
-
-type timerStub struct {
-	afterDuration time.Duration
-	timeNowUnix   int64
-}
-
-func (s *timerStub) after(time.Duration) <-chan time.Time {
-	return time.After(s.afterDuration)
-}
-
-func (s *timerStub) nowUnix() int64 {
-	return s.timeNowUnix
 }
