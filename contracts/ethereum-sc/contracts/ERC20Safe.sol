@@ -24,7 +24,6 @@ contract ERC20Safe is AccessControl {
     }
 
     /**
-
       @notice It assumes that tokenAddress is a corect address for an ERC20 token. No checks whatsoever for this (yet)
       @param tokenAddress Address of the contract for the ERC20 token that will be deposited
       @param amount number of tokens that need to be deposited
@@ -35,10 +34,11 @@ contract ERC20Safe is AccessControl {
         address tokenAddress,
         uint256 amount,
         bytes calldata recipientAddress
-    ) public {
+    ) public returns (uint) {
         require(_whitelistedTokens[tokenAddress], "Unsupported token");
-        uint64 depositIndex = ++depositsCount;
+        uint64 depositIndex = depositsCount++;
         _deposits[depositIndex] = Deposit(
+            depositIndex,
             tokenAddress,
             amount,
             msg.sender,
@@ -48,6 +48,8 @@ contract ERC20Safe is AccessControl {
 
         // lockTokens(tokenAddress, amount, msg.sender);
         emit ERC20Deposited(depositIndex);
+
+        return depositsCount;
     }
 
     function lockTokens(
@@ -76,8 +78,8 @@ contract ERC20Safe is AccessControl {
         return _deposits[depositIndex];
     }
 
-    function getNextPendingDeposit() public view returns (Deposit memory) {
-        return _deposits[depositsCount];
+    function getNextPendingDeposit() external view returns (Deposit memory) {
+        return _deposits[0];
     }
 
     // function _safeTransfer(IERC20 token, address to, uint256 value) private {

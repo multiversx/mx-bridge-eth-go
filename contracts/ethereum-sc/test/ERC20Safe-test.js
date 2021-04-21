@@ -39,7 +39,7 @@ describe("ERC20Safe", async function() {
         // await token.mock.transferFrom.returns({});
         await expect(safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address")))
           .to.emit(safe, "ERC20Deposited")
-          .withArgs(1);
+          .withArgs(0);
       });
 
       it('increments depositsCount', async () => {
@@ -51,14 +51,20 @@ describe("ERC20Safe", async function() {
       it('creates a deposit', async function() {
         await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
 
-        deposit = await safe.getDeposit(1);
+        deposit = await safe.getDeposit(0);
 
+        expect(deposit.nonce).to.equal(0);
         expect(deposit.tokenAddress).to.equal(token.address);
         expect(deposit.amount).to.equal(amount);
         expect(deposit.depositor).to.equal(adminWallet.address);
         expect(deposit.status).to.equal(1/*pending*/);
         expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("some address");
       });
+
+      it('returns the deposit index', async function() {
+        const newDepositIndex = await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"))
+        expect(newDepositIndex).to.equal(0);
+      })
     });
 
 
@@ -85,6 +91,7 @@ describe("ERC20Safe", async function() {
       it('returns the deposit', async function() {
         deposit = await safe.getNextPendingDeposit();
   
+        expect(deposit.nonce).to.equal(0);
         expect(deposit.tokenAddress).to.equal(token.address);
         expect(deposit.amount).to.equal(amount);
         expect(deposit.depositor).to.equal(adminWallet.address);
@@ -97,6 +104,7 @@ describe("ERC20Safe", async function() {
       it('returns an empty deposit', async function() {
         deposit = await safe.getNextPendingDeposit();
 
+        expect(deposit.nonce).to.equal(0);
         expect(deposit.tokenAddress).to.equal(ethers.constants.AddressZero);
         expect(deposit.amount).to.equal(0);
         expect(deposit.depositor).to.equal(ethers.constants.AddressZero);
@@ -104,5 +112,18 @@ describe("ERC20Safe", async function() {
         expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("");
       })
     });
-  })
+  });
+
+  // describe('finishPendingDeposit', async function() {
+  //   beforeEach(async function() {
+  //     await safe.whitelistToken(token.address);
+  //     await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
+  //   });
+
+  //   it('sets the status for the deposit to Executed', async function() {
+  //     await safe.finishCurrentPendingDeposit();
+
+  //     deposit = await safe.getDeposit(0);
+  //   })
+  // });
 });

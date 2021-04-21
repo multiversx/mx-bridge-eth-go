@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 enum DepositStatus {None, Pending, InProgress, Executed, Rejected}
 
 struct Deposit {
+    uint256 nonce;
     address tokenAddress;
     uint256 amount;
     address depositor;
