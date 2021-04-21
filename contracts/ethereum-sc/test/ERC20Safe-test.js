@@ -8,7 +8,7 @@ const ERC20Safe = require('../artifacts/contracts/ERC20Safe.sol/ERC20Safe.json')
 const Bridge = require('../artifacts/contracts/Bridge.sol/Bridge.json');
 
 describe("ERC20Safe", async function() {
-  const [adminWallet, otherWallet] = provider.getWallets();
+  const [adminWallet, bridgeWallet, otherWallet] = provider.getWallets();
 
   beforeEach(async function() {
     token = await deployMockContract(adminWallet, IERC20.abi);
@@ -41,9 +41,9 @@ describe("ERC20Safe", async function() {
 
   describe('setBridgeAddress', async function() {
     it('updates updates the address', async function() {
-      await safe.setBridgeAddress(bridge.address);
+      await safe.setBridgeAddress(bridgeWallet.address);
 
-      expect(await safe._bridgeAddress.call()).to.equal(bridge.address);
+      expect(await safe._bridgeAddress.call()).to.equal(bridgeWallet.address);
     })
 
     describe('called by non admin', async function() {
@@ -52,7 +52,7 @@ describe("ERC20Safe", async function() {
       });
 
       it('reverts', async function() {
-        await(expect(nonAdminSafe.setBridgeAddress(bridge.address))).to.be.revertedWith("Access Control: sender is not Admin");
+        await(expect(nonAdminSafe.setBridgeAddress(bridgeWallet.address))).to.be.revertedWith("Access Control: sender is not Admin");
       })
     }) 
   })
@@ -139,16 +139,50 @@ describe("ERC20Safe", async function() {
     });
   });
 
-  // describe('finishPendingDeposit', async function() {
-  //   beforeEach(async function() {
-  //     await safe.whitelistToken(token.address);
-  //     await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
-  //   });
+  describe('finishCurrentPendingDeposit', async function() {
+    const amount = 100;
+    beforeEach(async function() {
+      await safe.whitelistToken(token.address);
+      await safe.setBridgeAddress(bridgeWallet.address);
+      await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
+      safeFromBridge = safe.connect(bridgeWallet);
+    });
 
-  //   it('sets the status for the deposit to Executed', async function() {
-  //     await safe.finishCurrentPendingDeposit();
+    it('sets the status for the deposit to Executed', async function() {
+      await safeFromBridge.finishCurrentPendingDeposit();
 
-  //     deposit = await safe.getDeposit(0);
-  //   })
-  // });
+      deposit = await safe.getDeposit(0);
+
+      expect(deposit.status).to.equal(3);
+    });
+
+    describe('when there are other pending deposits', async function() {
+      beforeEach(async function() {
+        await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
+      })
+
+      it('moves to the next one', async function() {
+        await safeFromBridge.finishCurrentPendingDeposit();
+        deposit = await safe.getNextPendingDeposit();
+
+        expect(deposit.nonce).to.equal(1);
+        expect(deposit.status).to.equal(1);
+      })
+    })
+
+    it('returns empty deposit if there are no other pending deposits', async function() {
+      await safeFromBridge.finishCurrentPendingDeposit();
+      deposit = await safe.getNextPendingDeposit();
+
+      expect(deposit.nonce).to.equal(0);
+      expect(deposit.status).to.equal(0);
+    })
+
+    describe('called by other than bridge', async function() {
+      it('reverts', async function() {
+        safeFromNonBridge = safe.connect(otherWallet);
+        await(expect(safeFromNonBridge.finishCurrentPendingDeposit()).to.be.revertedWith("Access Control: sender is not Bridge"));
+      })
+    }) 
+  });
 });

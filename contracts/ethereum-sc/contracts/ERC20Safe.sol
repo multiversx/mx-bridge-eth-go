@@ -12,11 +12,20 @@ import "hardhat/console.sol";
     mapping(uint64 => Deposit) public _deposits;
     mapping(address => bool) public _whitelistedTokens;
     address public _bridgeAddress;
+    uint64 _currentPendingDeposit;
 
     modifier onlyAdmin() {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
             "Access Control: sender is not Admin"
+        );
+        _;
+    }
+
+    modifier onlyBridge() {
+        require(
+            msg.sender == _bridgeAddress,
+            "Access Control: sender is not Bridge"
         );
         _;
     }
@@ -91,7 +100,11 @@ import "hardhat/console.sol";
     }
 
     function getNextPendingDeposit() external view returns (Deposit memory) {
-        return _deposits[0];
+        return _deposits[_currentPendingDeposit];
+    }
+
+    function finishCurrentPendingDeposit() external onlyBridge {
+        _deposits[_currentPendingDeposit++].status = DepositStatus.Executed;
     }
 
     // function _safeTransfer(IERC20 token, address to, uint256 value) private {
