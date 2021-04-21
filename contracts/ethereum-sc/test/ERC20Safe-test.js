@@ -5,12 +5,14 @@ const { deployMockContract, provider, deployContract } = waffle;
 
 const IERC20 = require('../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json');
 const ERC20Safe = require('../artifacts/contracts/ERC20Safe.sol/ERC20Safe.json');
+const Bridge = require('../artifacts/contracts/Bridge.sol/Bridge.json');
 
 describe("ERC20Safe", async function() {
   const [adminWallet, otherWallet] = provider.getWallets();
 
   beforeEach(async function() {
     token = await deployMockContract(adminWallet, IERC20.abi);
+    bridge = await deployMockContract(adminWallet, Bridge.abi);
     safe = await deployContract(adminWallet, ERC20Safe);
   });
 
@@ -25,7 +27,35 @@ describe("ERC20Safe", async function() {
 
       expect(await safe._whitelistedTokens(token.address)).to.be.true;
     })
+
+    describe('called by non admin', async function() {
+      beforeEach(async function() {
+        nonAdminSafe = safe.connect(otherWallet);
+      });
+
+      it('reverts', async function() {
+        await(expect(nonAdminSafe.whitelistToken(token.address))).to.be.revertedWith("Access Control: sender is not Admin");
+      })
+    }) 
   });
+
+  describe('setBridgeAddress', async function() {
+    it('updates updates the address', async function() {
+      await safe.setBridgeAddress(bridge.address);
+
+      expect(await safe._bridgeAddress.call()).to.equal(bridge.address);
+    })
+
+    describe('called by non admin', async function() {
+      beforeEach(async function() {
+        nonAdminSafe = safe.connect(otherWallet);
+      });
+
+      it('reverts', async function() {
+        await(expect(nonAdminSafe.setBridgeAddress(bridge.address))).to.be.revertedWith("Access Control: sender is not Admin");
+      })
+    }) 
+  })
 
   describe('deposit', async function() {
     let amount = 100;
@@ -60,11 +90,6 @@ describe("ERC20Safe", async function() {
         expect(deposit.status).to.equal(1/*pending*/);
         expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("some address");
       });
-
-      it('returns the deposit index', async function() {
-        const newDepositIndex = await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"))
-        expect(newDepositIndex).to.equal(0);
-      })
     });
 
 

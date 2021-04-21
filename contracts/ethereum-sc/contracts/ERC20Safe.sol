@@ -6,11 +6,20 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./SharedStructs.sol";
 import "hardhat/console.sol";
 
-contract ERC20Safe is AccessControl {
+    contract ERC20Safe is AccessControl {
     // STATE
     uint64 public depositsCount;
     mapping(uint64 => Deposit) public _deposits;
     mapping(address => bool) public _whitelistedTokens;
+    address public _bridgeAddress;
+
+    modifier onlyAdmin() {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            "Access Control: sender is not Admin"
+        );
+        _;
+    }
 
     // EVENTS
     event ERC20Deposited(uint64 depositIndex);
@@ -19,11 +28,16 @@ contract ERC20Safe is AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function whitelistToken(address token) public {
+    function whitelistToken(address token) public onlyAdmin {
         _whitelistedTokens[token] = true;
     }
 
+    function setBridgeAddress(address bridgeAddress) public onlyAdmin { 
+        _bridgeAddress = bridgeAddress;
+    }
+
     /**
+
       @notice It assumes that tokenAddress is a corect address for an ERC20 token. No checks whatsoever for this (yet)
       @param tokenAddress Address of the contract for the ERC20 token that will be deposited
       @param amount number of tokens that need to be deposited
@@ -34,7 +48,7 @@ contract ERC20Safe is AccessControl {
         address tokenAddress,
         uint256 amount,
         bytes calldata recipientAddress
-    ) public returns (uint) {
+    ) public {
         require(_whitelistedTokens[tokenAddress], "Unsupported token");
         uint64 depositIndex = depositsCount++;
         _deposits[depositIndex] = Deposit(
@@ -48,8 +62,6 @@ contract ERC20Safe is AccessControl {
 
         // lockTokens(tokenAddress, amount, msg.sender);
         emit ERC20Deposited(depositIndex);
-
-        return depositsCount;
     }
 
     function lockTokens(
