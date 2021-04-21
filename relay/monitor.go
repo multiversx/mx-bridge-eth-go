@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -84,11 +85,12 @@ func (m *Monitor) Start(ctx context.Context) {
 // State
 
 func (m *Monitor) getPendingTransaction(ctx context.Context, ch chan State) {
+	m.log.Info("Getting pending transaction")
 	m.pendingTransaction = m.sourceBridge.GetPendingDepositTransaction(ctx)
 
 	if m.pendingTransaction == nil {
 		select {
-		case <-m.timer.after(Timeout / 10):
+		case <-m.timer.after((Timeout / 10) * time.Second):
 			ch <- GetPendingTransaction
 		case <-ctx.Done():
 			ch <- Stop
@@ -100,6 +102,7 @@ func (m *Monitor) getPendingTransaction(ctx context.Context, ch chan State) {
 
 func (m *Monitor) propose(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
+		m.log.Info(fmt.Sprintf("Proposing deposit transaction with nonce %d", m.pendingTransaction.DepositNonce))
 		m.destinationBridge.Propose(ctx, m.pendingTransaction)
 		ch <- WaitForSignatures
 	} else {
@@ -108,9 +111,11 @@ func (m *Monitor) propose(ctx context.Context, ch chan State) {
 }
 
 func (m *Monitor) waitForProposal(ctx context.Context, ch chan State) {
+	m.log.Info(fmt.Sprintf("Waiting for proposal on transaction with nonce %d", m.pendingTransaction.DepositNonce))
 	select {
 	case <-m.timer.after(Timeout):
 		if m.destinationBridge.WasProposed(ctx, m.pendingTransaction) {
+			m.log.Info(fmt.Sprintf("Signing transaction with nonce %d", m.pendingTransaction.DepositNonce))
 			m.destinationBridge.Sign(ctx, m.pendingTransaction)
 			ch <- WaitForSignatures
 		} else {
@@ -122,12 +127,14 @@ func (m *Monitor) waitForProposal(ctx context.Context, ch chan State) {
 }
 
 func (m *Monitor) waitForSignatures(ctx context.Context, ch chan State) {
+	m.log.Info(fmt.Sprintf("Waiting for signatures on transaction with nonce %d", m.pendingTransaction.DepositNonce))
 	select {
 	case <-m.timer.after(Timeout):
 		count := m.destinationBridge.SignersCount(ctx, m.pendingTransaction)
 		peerCount := m.topologyProvider.PeerCount()
 		minCountRequired := math.Ceil(float64(peerCount) * MinSignaturePercent / 100)
 
+		m.log.Info(fmt.Sprintf("Got %d signatures for transaction with nonce %d", count, m.pendingTransaction.DepositNonce))
 		if count >= uint(minCountRequired) && count > 0 {
 			ch <- Execute
 		} else {
@@ -140,6 +147,7 @@ func (m *Monitor) waitForSignatures(ctx context.Context, ch chan State) {
 
 func (m *Monitor) execute(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
+		m.log.Info(fmt.Sprintf("Executing transaction with nonce %d", m.pendingTransaction.DepositNonce))
 		hash, err := m.destinationBridge.Execute(ctx, m.pendingTransaction)
 
 		if err != nil {
@@ -153,9 +161,11 @@ func (m *Monitor) execute(ctx context.Context, ch chan State) {
 }
 
 func (m *Monitor) waitForExecute(ctx context.Context, ch chan State) {
+	m.log.Info(fmt.Sprintf("Waiting for execution for transaction with nonce %d", m.pendingTransaction.DepositNonce))
 	select {
 	case <-m.timer.after(Timeout):
 		if m.destinationBridge.WasExecuted(ctx, m.pendingTransaction) {
+			m.log.Info(fmt.Sprintf("Transaction with nonce %d was executed", m.pendingTransaction.DepositNonce))
 			ch <- GetPendingTransaction
 		} else {
 			ch <- Execute

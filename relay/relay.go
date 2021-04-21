@@ -109,7 +109,7 @@ func (r *Relay) Start(ctx context.Context) error {
 
 	monitorEth := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, "EthToElrond")
 	go monitorEth.Start(ctx)
-	monitorElrond := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, "ElrondToEth")
+	monitorElrond := NewMonitor(r.elrondBridge, r.ethBridge, r.timer, r, "ElrondToEth")
 	go monitorElrond.Start(ctx)
 
 	<-ctx.Done()
