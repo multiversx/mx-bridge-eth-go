@@ -149,7 +149,7 @@ describe("ERC20Safe", async function() {
     });
 
     it('sets the status for the deposit to Executed', async function() {
-      await safeFromBridge.finishCurrentPendingDeposit();
+      await safeFromBridge.finishCurrentPendingDeposit(3);
 
       deposit = await safe.getDeposit(0);
 
@@ -162,7 +162,7 @@ describe("ERC20Safe", async function() {
       })
 
       it('moves to the next one', async function() {
-        await safeFromBridge.finishCurrentPendingDeposit();
+        await safeFromBridge.finishCurrentPendingDeposit(3);
         deposit = await safe.getNextPendingDeposit();
 
         expect(deposit.nonce).to.equal(1);
@@ -171,7 +171,7 @@ describe("ERC20Safe", async function() {
     })
 
     it('returns empty deposit if there are no other pending deposits', async function() {
-      await safeFromBridge.finishCurrentPendingDeposit();
+      await safeFromBridge.finishCurrentPendingDeposit(3);
       deposit = await safe.getNextPendingDeposit();
 
       expect(deposit.nonce).to.equal(0);
@@ -181,7 +181,7 @@ describe("ERC20Safe", async function() {
     describe('called by other than bridge', async function() {
       it('reverts', async function() {
         safeFromNonBridge = safe.connect(otherWallet);
-        await(expect(safeFromNonBridge.finishCurrentPendingDeposit()).to.be.revertedWith("Access Control: sender is not Bridge"));
+        await(expect(safeFromNonBridge.finishCurrentPendingDeposit(3)).to.be.revertedWith("Access Control: sender is not Bridge"));
       })
     }) 
   });

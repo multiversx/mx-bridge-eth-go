@@ -103,8 +103,8 @@ import "hardhat/console.sol";
         return _deposits[_currentPendingDeposit];
     }
 
-    function finishCurrentPendingDeposit() external onlyBridge {
-        _deposits[_currentPendingDeposit++].status = DepositStatus.Executed;
+    function finishCurrentPendingDeposit(DepositStatus status) external onlyBridge {
+        _deposits[_currentPendingDeposit++].status = status;
     }
 
     // function _safeTransfer(IERC20 token, address to, uint256 value) private {
