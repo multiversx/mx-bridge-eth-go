@@ -38,10 +38,6 @@ type Timer interface {
 
 type defaultTimer struct{}
 
-func (s *defaultTimer) sleep(d time.Duration) {
-	time.Sleep(d)
-}
-
 func (s *defaultTimer) after(d time.Duration) <-chan time.Time {
 	return time.After(d)
 }
