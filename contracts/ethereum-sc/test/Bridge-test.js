@@ -1,8 +1,10 @@
-const { waffle } = require("hardhat");
+const { waffle, ethers } = require("hardhat");
 const { expect } = require("chai");
 const { provider, deployContract } = waffle;
-const { contract } = require("ethers");
+
 const BridgeContract = require('../artifacts/contracts/Bridge.sol/Bridge.json');
+const ERC20SafeContract = require('../artifacts/contracts/ERC20Safe.sol/ERC20Safe.json');
+const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
 describe("Bridge", async function () {
   const [adminWallet, otherWallet, relayer1, relayer2, relayer3, relayer4] = provider.getWallets();
@@ -10,7 +12,8 @@ describe("Bridge", async function () {
   const quorum = 3;
 
   beforeEach(async function () {
-    bridge = await deployContract(adminWallet, BridgeContract, [boardMembers.map(m => m.address), quorum]);
+    mockERC20Safe = await deployMockContract(adminWallet, ERC20SafeContract.abi);
+    bridge = await deployContract(adminWallet, BridgeContract, [boardMembers.map(m => m.address), quorum, mockERC20Safe.address]);
   });
 
   it('Sets creator as admin', async function () {
@@ -71,5 +74,29 @@ describe("Bridge", async function () {
       nonAdminBridge = bridge.connect(otherWallet);
       await expect(nonAdminBridge.setQuorum(newQuorum)).to.be.revertedWith("Access Control: sender is not Admin");
     });
+  });
+
+  describe('getNextPendingTransaction', async function() {
+    beforeEach(async function() {
+      expectedDeposit = {
+        tokenAddress: mockERC20Safe.address,
+        amount: 100,
+        depositor: adminWallet.address,
+        recipient: ethers.utils.toUtf8Bytes('some address'),
+        status: 0
+      };
+
+      await mockERC20Safe.mock.getNextPendingDeposit.returns(expectedDeposit);
+    });
+
+    it('returns the deposit', async function() {
+      transaction = await bridge.getNextPendingTransaction();
+
+      expect(transaction['amount']).to.equal(expectedDeposit.amount);
+      expect(transaction['tokenAddress']).to.equal(expectedDeposit.tokenAddress);
+      expect(transaction['depositor']).to.equal(expectedDeposit.depositor);
+      expect(ethers.utils.toUtf8String(transaction['recipient'])).to.equal(ethers.utils.toUtf8String(expectedDeposit.recipient));
+      expect(transaction['status']).to.equal(expectedDeposit.status);
+    })
   });
 });

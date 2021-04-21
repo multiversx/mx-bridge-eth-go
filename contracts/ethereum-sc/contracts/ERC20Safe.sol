@@ -3,18 +3,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "./SharedStructs.sol";
 
 contract ERC20Safe is AccessControl {
-    enum DepositStatus {Pending, InProgress, Executed, Rejected}
-
-    struct Deposit {
-        address tokenAddress;
-        uint256 amount;
-        address depositor;
-        bytes recipient;
-        DepositStatus status;
-    }
-
     // STATE
     uint64 public depositsCount;
     mapping(uint64 => Deposit) public _deposits;
@@ -82,6 +73,10 @@ contract ERC20Safe is AccessControl {
         returns (Deposit memory)
     {
         return _deposits[depositIndex];
+    }
+
+    function getNextPendingDeposit() public view returns (Deposit memory) {
+        return _deposits[depositsCount];
     }
 
     // function _safeTransfer(IERC20 token, address to, uint256 value) private {
