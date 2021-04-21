@@ -4,6 +4,8 @@ const { provider, deployContract } = waffle;
 
 const BridgeContract = require('../artifacts/contracts/Bridge.sol/Bridge.json');
 const ERC20SafeContract = require('../artifacts/contracts/ERC20Safe.sol/ERC20Safe.json');
+const IERC20 = require('../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json');
+
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
 describe("Bridge", async function () {
@@ -13,6 +15,7 @@ describe("Bridge", async function () {
 
   beforeEach(async function () {
     mockERC20Safe = await deployMockContract(adminWallet, ERC20SafeContract.abi);
+    mockERC20 = await deployMockContract(adminWallet, IERC20.abi);
     bridge = await deployContract(adminWallet, BridgeContract, [boardMembers.map(m => m.address), quorum, mockERC20Safe.address]);
   });
 
@@ -79,6 +82,7 @@ describe("Bridge", async function () {
   describe('getNextPendingTransaction', async function() {
     beforeEach(async function() {
       expectedDeposit = {
+        nonce: 1,
         tokenAddress: mockERC20Safe.address,
         amount: 100,
         depositor: adminWallet.address,
@@ -92,11 +96,29 @@ describe("Bridge", async function () {
     it('returns the deposit', async function() {
       transaction = await bridge.getNextPendingTransaction();
 
+
       expect(transaction['amount']).to.equal(expectedDeposit.amount);
+      expect(transaction['nonce']).to.equal(expectedDeposit.nonce);
       expect(transaction['tokenAddress']).to.equal(expectedDeposit.tokenAddress);
       expect(transaction['depositor']).to.equal(expectedDeposit.depositor);
       expect(ethers.utils.toUtf8String(transaction['recipient'])).to.equal(ethers.utils.toUtf8String(expectedDeposit.recipient));
       expect(transaction['status']).to.equal(expectedDeposit.status);
     })
   });
+
+  describe('finishCurrentPendingTransaction', async function() {
+    beforeEach(async function() {
+      await mockERC20Safe.mock.finishCurrentPendingDeposit.withArgs(3).returns();
+    });
+
+    describe('when quorum achieved', async function() {
+      it('sets updates the deposit', async function() {
+        // signedData = 'Relayer vouch for this';
+      
+        // signature1 = await adminWallet.signMessage(signedData);
+        // signature1 = 0x4eb97092a84c650d6b359777f7fd23bcc38def2c9a3c5882b54a20241ca827ec22ff58abf56f4efbfe258c09f5aacd377e685fa0bd13a460c3cf0ca51b7203b01b;
+        await bridge.finishCurrentPendingTransaction(3);
+      })
+    });
+  })
 });

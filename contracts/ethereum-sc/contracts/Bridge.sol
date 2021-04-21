@@ -56,6 +56,36 @@ contract Bridge is AccessControl {
         return safe.getNextPendingDeposit();
     }
 
+    function finishCurrentPendingTransaction(DepositStatus status) external {
+        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
+        safe.finishCurrentPendingDeposit(status);
+
+         
+        // string memory signedDepositData = string(abi.encodePacked("BridgeDeposit:", deposit.tokenAddress));
+        // console.log(signedDepositData);
+        // safe.finishCurrentPendingDeposit(status);
+        
+        // console.logBytes(signatures);
+        // ecrecover(keccak256('Relayer vouch for this'), v, r, s)
+
+        // require(sig.length == 65);
+
+        // bytes32 r;
+        // bytes32 s;
+        // uint8 v;
+
+        // assembly {
+        //     // first 32 bytes, after the length prefix
+        //     r := mload(add(sig, 32))
+        //     // second 32 bytes
+        //     s := mload(add(sig, 64))
+        //     // final byte (first byte of the next 32 bytes)
+        //     v := byte(0, mload(add(sig, 96)))
+        // }
+
+        // return (v, r, s);
+    }
+
     //get next pending transaction
 
     //execute transaction
