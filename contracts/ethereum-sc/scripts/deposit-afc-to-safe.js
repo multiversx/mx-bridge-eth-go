@@ -4,19 +4,38 @@
 // When running the script with `hardhat run <script>` you'll find the Hardhat
 // Runtime Environment's members available in the global scope.
 const hre = require("hardhat");
+const fs = require('fs');
 
 async function main() {
-  const tokenContractFactory = await ethers.getContractFactory("AFCoin");
+  // load file
+  filename = 'setup.config.json';
+  config = JSON.parse(fs.readFileSync(filename, 'utf8'));
+  console.log('Current contract addresses');
+  console.log(config);
+
+  // load configuration
+  const tokenAddress = config["erc20Token"];
+  const safeAddress = config["erc20Safe"];
+  const bridgeAddress = config["bridge"];
+
+  [adminWallet, relayer1, relayer2, relayer3, relayer4, relayer5, depositor] = await hre.ethers.getSigners();
+  
+  // load deployed contracts
+  const tokenContractFactory = await hre.ethers.getContractFactory("AFCoin");
   const safeContractFactory = await hre.ethers.getContractFactory("ERC20Safe");
-  const tokenAddress = '0x3358F984e9B3CBBe976eEFE9B6fb92a214162932';
-  const safeAddress = '0x3Aa338c8d5E6cefE95831cD0322b558677abA0f1';
+  const bridgeContractFactory = await hre.ethers.getContractFactory("Bridge");
+  const token = await tokenContractFactory.attach(tokenAddress).connect(depositor);
+  const safe = await safeContractFactory.attach(safeAddress).connect(depositor);
+  const bridge = await bridgeContractFactory.attach(bridgeAddress);
+  
+  // transactions
+  await token.approve(safe.address, 1);
+  await safe.deposit(token.address, 1, hre.ethers.utils.toUtf8Bytes("some address"));
+  console.log("Balance for depositor", (await token.balanceOf(depositor.address)).toString());
+  console.log("Balance in safe", (await token.balanceOf(safe.address)).toString());
 
-  const safe = await ethers.getContractAt('ERC20Safe', safeAddress);
-
-  await safe.depositERC20(tokenAddress, 1);
-
-  const token = await ethers.getContractAt('AFCoin', tokenAddress);
-  console.log(await token.balanceOf(safeAddress));
+  pendingTransaction = await bridge.getNextPendingTransaction();
+  console.log(pendingTransaction);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

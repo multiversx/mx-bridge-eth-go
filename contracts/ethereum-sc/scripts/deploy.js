@@ -51,6 +51,16 @@ async function main() {
 
   // Finish setup of ERC20 Safe with the Bridge so onlyBridge modifiers can be successful
   await safeContract.setBridgeAddress(bridgeContract.address);
+
+  // Write config file
+  fs = require('fs');
+  filename = 'setup.config.json';
+  data = {
+    erc20Token: AFCContract.address,
+    erc20Safe: safeContract.address,
+    bridge: bridgeContract.address
+  };
+  fs.writeFileSync(filename, JSON.stringify(data));
 }
 
 // We recommend this pattern to be able to use async/await everywhere

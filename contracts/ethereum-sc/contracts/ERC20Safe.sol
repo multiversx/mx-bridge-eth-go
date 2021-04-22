@@ -69,7 +69,7 @@ import "hardhat/console.sol";
             DepositStatus.Pending
         );
 
-        // lockTokens(tokenAddress, amount, msg.sender);
+        lockTokens(tokenAddress, amount, msg.sender);
         emit ERC20Deposited(depositIndex);
     }
 
@@ -79,7 +79,7 @@ import "hardhat/console.sol";
         address owner
     ) internal {
         IERC20 erc20 = IERC20(tokenAddress);
-        _safeTransferFrom(erc20, owner, address(this), amount);
+        erc20.transferFrom(owner, address(this), amount);
     }
 
     /**
@@ -105,34 +105,5 @@ import "hardhat/console.sol";
 
     function finishCurrentPendingDeposit(DepositStatus status) external onlyBridge {
         _deposits[_currentPendingDeposit++].status = status;
-    }
-
-    // function _safeTransfer(IERC20 token, address to, uint256 value) private {
-    //     _safeCall(token, abi.encodeWithSelector(token.transfer.selector, to, value));
-    // }
-
-    function _safeTransferFrom(
-        IERC20 token,
-        address from,
-        address to,
-        uint256 value
-    ) private {
-        _safeCall(
-            token,
-            abi.encodeWithSelector(token.transferFrom.selector, from, to, value)
-        );
-    }
-
-    function _safeCall(IERC20 token, bytes memory data) private {
-        (bool success, bytes memory returndata) =
-            address(token).delegatecall(data);
-        require(success, "ERC20: call failed");
-
-        if (returndata.length > 0) {
-            require(
-                abi.decode(returndata, (bool)),
-                "ERC20: operation did not succeed"
-            );
-        }
     }
 }
