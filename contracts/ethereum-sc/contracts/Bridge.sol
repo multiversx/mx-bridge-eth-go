@@ -56,39 +56,31 @@ contract Bridge is AccessControl {
         return safe.getNextPendingDeposit();
     }
 
-    function finishCurrentPendingTransaction(DepositStatus status) external {
+    function finishCurrentPendingTransaction(DepositStatus status, bytes[] memory signatures) public {
+        bytes memory signature = signatures[0];
+        require(signature.length == 65);
+
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
-        safe.finishCurrentPendingDeposit(status);
-
-         
-        // string memory signedDepositData = string(abi.encodePacked("BridgeDeposit:", deposit.tokenAddress));
-        // console.log(signedDepositData);
-        // safe.finishCurrentPendingDeposit(status);
         
-        // console.logBytes(signatures);
-        // ecrecover(keccak256('Relayer vouch for this'), v, r, s)
+        // Deposit memory deposit = safe.getNextPendingDeposit();
+        
+        bytes memory signedDepositData = abi.encodePacked("\x19Ethereum Signed Message:\n", "11Deposit:0:3");
+ 
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
 
-        // require(sig.length == 65);
+        assembly {
+            // first 32 bytes, after the length prefix
+            r := mload(add(signature, 32))
+            // second 32 bytes
+            s := mload(add(signature, 64))
+            // final byte (first byte of the next 32 bytes)
+            v := byte(0, mload(add(signature, 96)))
+        }
 
-        // bytes32 r;
-        // bytes32 s;
-        // uint8 v;
-
-        // assembly {
-        //     // first 32 bytes, after the length prefix
-        //     r := mload(add(sig, 32))
-        //     // second 32 bytes
-        //     s := mload(add(sig, 64))
-        //     // final byte (first byte of the next 32 bytes)
-        //     v := byte(0, mload(add(sig, 96)))
-        // }
-
-        // return (v, r, s);
+        address publicKey = ecrecover(keccak256(signedDepositData), v, r, s);
+        
+        safe.finishCurrentPendingDeposit(status);
     }
-
-    //get next pending transaction
-
-    //execute transaction
-
-    //finalize pending transaction (success/fail)
 }

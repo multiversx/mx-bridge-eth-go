@@ -112,12 +112,25 @@ describe("Bridge", async function () {
     });
 
     describe('when quorum achieved', async function() {
+      beforeEach(async function() {
+        expectedDeposit = {
+          nonce: 1,
+          tokenAddress: mockERC20Safe.address,
+          amount: 100,
+          depositor: adminWallet.address,
+          recipient: ethers.utils.toUtf8Bytes('some address'),
+          status: 1
+        };
+  
+        await mockERC20Safe.mock.getNextPendingDeposit.returns(expectedDeposit);
+      });
+
       it('sets updates the deposit', async function() {
-        // signedData = 'Relayer vouch for this';
-      
-        // signature1 = await adminWallet.signMessage(signedData);
-        // signature1 = 0x4eb97092a84c650d6b359777f7fd23bcc38def2c9a3c5882b54a20241ca827ec22ff58abf56f4efbfe258c09f5aacd377e685fa0bd13a460c3cf0ca51b7203b01b;
-        await bridge.finishCurrentPendingTransaction(3);
+        signedData = 'Deposit:0:3';
+
+        signature1 = await adminWallet.signMessage(signedData);
+        
+        await bridge.finishCurrentPendingTransaction(3, [signature1]);
       })
     });
   })
