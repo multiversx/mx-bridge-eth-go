@@ -57,30 +57,37 @@ contract Bridge is AccessControl {
     }
 
     function finishCurrentPendingTransaction(DepositStatus status, bytes[] memory signatures) public {
-        bytes memory signature = signatures[0];
-        require(signature.length == 65);
-
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
-        
         // Deposit memory deposit = safe.getNextPendingDeposit();
+        bytes memory signedDepositData = abi.encodePacked("\x19Ethereum Signed Message:\n", "9Deposit:3");
         
-        bytes memory signedDepositData = abi.encodePacked("\x19Ethereum Signed Message:\n", "11Deposit:0:3");
- 
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
+        uint8 signersCount;
 
-        assembly {
-            // first 32 bytes, after the length prefix
-            r := mload(add(signature, 32))
-            // second 32 bytes
-            s := mload(add(signature, 64))
-            // final byte (first byte of the next 32 bytes)
-            v := byte(0, mload(add(signature, 96)))
+        for(uint i=0; i<signatures.length; i++) {
+            bytes memory signature = signatures[i];
+            require(signature.length == 65);
+
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+
+            assembly {
+                // first 32 bytes, after the length prefix
+                r := mload(add(signature, 32))
+                // second 32 bytes
+                s := mload(add(signature, 64))
+                // final byte (first byte of the next 32 bytes)
+                v := byte(0, mload(add(signature, 96)))
+            }
+
+            address publicKey = ecrecover(keccak256(signedDepositData), v, r, s);
+            require(hasRole(RELAYER_ROLE, publicKey), 'Not a recognized relayer');
+            
+            signersCount++;
         }
-
-        address publicKey = ecrecover(keccak256(signedDepositData), v, r, s);
         
+        require(signersCount>=_quorum, 'Quorum was not met');
+
         safe.finishCurrentPendingDeposit(status);
     }
 }

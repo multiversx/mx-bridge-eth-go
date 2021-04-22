@@ -126,11 +126,14 @@ describe("Bridge", async function () {
       });
 
       it('sets updates the deposit', async function() {
-        signedData = 'Deposit:0:3';
+        signedData = 'Deposit:3';
 
         signature1 = await adminWallet.signMessage(signedData);
+        signature2 = await relayer1.signMessage(signedData);
+        signature3 = await relayer2.signMessage(signedData);
+        signature4 = await relayer3.signMessage(signedData);
         
-        await bridge.finishCurrentPendingTransaction(3, [signature1]);
+        await bridge.finishCurrentPendingTransaction(3, [signature1, signature2, signature3, signature4]);
       })
     });
   })
