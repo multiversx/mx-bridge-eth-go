@@ -45,7 +45,9 @@ async function main() {
 
   // Deploy Bridge with ERC20 Safe address
   const Bridge = await hre.ethers.getContractFactory("Bridge");
-  const bridgeContract = await Bridge.deploy([adminWallet.address, relayer1.address, relayer2.address, relayer3.address, relayer4.address, relayer5.address], 4, safeContract.address);
+  const relayers = [adminWallet.address, relayer1.address, relayer2.address, relayer3.address, relayer4.address, relayer5.address];
+  const quorum = 4;
+  const bridgeContract = await Bridge.deploy(relayers, quorum, safeContract.address);
   await bridgeContract.deployed();
   console.log("Bridge deployed to:", bridgeContract.address);
 

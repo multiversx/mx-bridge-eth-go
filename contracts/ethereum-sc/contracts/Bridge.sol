@@ -56,10 +56,11 @@ contract Bridge is AccessControl {
         return safe.getNextPendingDeposit();
     }
 
-    function finishCurrentPendingTransaction(DepositStatus status, bytes[] memory signatures) public {
+    // signData = "\x19Ethereum Signed Message:\n9Deposit:1:3"
+    function finishCurrentPendingTransaction(string calldata signData, bytes[] memory signatures) public {
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
         // Deposit memory deposit = safe.getNextPendingDeposit();
-        bytes memory signedDepositData = abi.encodePacked("\x19Ethereum Signed Message:\n", "9Deposit:3");
+        bytes memory signedDepositData = abi.encodePacked("\x19Ethereum Signed Message:\n9Deposit:1:3"); 
         
         uint8 signersCount;
 
