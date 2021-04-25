@@ -15,3 +15,10 @@ Make sure the url that Ganache listes to is the same with the one that's configu
 
 4. Make a Deposit
 `npx hardhat run scripts/deposit-afc-to-safe.js --network ganache`
+
+# Develop
+
+Use watcher for easy TDD.
+
+`npx hardhat watch test` to watch any files on test files and have that test file run.
+Combine this with `it.only('test')` to very quickly run the modified test.

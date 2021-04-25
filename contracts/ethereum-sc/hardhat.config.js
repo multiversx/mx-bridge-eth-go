@@ -1,5 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-solhint");
+require("hardhat-watcher");
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -28,6 +29,21 @@ module.exports = {
       accounts: {
         mnemonic: "test test test test test test test test test test test junk"
       }
+    }
+  },
+  watcher: {
+    test: {
+      tasks: [{ command: 'test', params: { testFiles: ['{path}'] } }],
+      files: ['./test/**/*'],
+      verbose: true
+    },
+    compilation: {
+      tasks: ["compile"],
+      files: ["./contracts"],
+      verbose: true,
+    },
+    ci: {
+      tasks: ["clean", { command: "compile", params: { quiet: true } }, { command: "test", params: { noCompile: true, testFiles: ["testfile.ts"] } } ],
     }
   }
 };
