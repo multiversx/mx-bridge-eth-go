@@ -6,7 +6,7 @@ import (
 
 type Bridge interface {
 	GetPendingDepositTransaction(context.Context) *DepositTransaction
-	ProposeTransfer(context.Context, *DepositTransaction)
+	ProposeTransfer(context.Context, *DepositTransaction) (string, error)
 	ProposeSetStatusSuccessOnPendingTransfer(context.Context)
 	ProposeSetStatusFailedOnPendingTransfer(context.Context)
 	WasProposedTransfer(context.Context, Nonce) bool
@@ -15,7 +15,7 @@ type Bridge interface {
 	WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool
 	GetActionIdForSetStatusOnPendingTransfer(context.Context) ActionId
 	WasExecuted(context.Context, ActionId) bool
-	Sign(context.Context, ActionId)
+	Sign(context.Context, ActionId) (string, error)
 	Execute(context.Context, ActionId) (string, error)
 	SignersCount(context.Context, ActionId) uint
 }

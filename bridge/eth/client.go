@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-const safeAbiDefinition = `[{"anonymous": false,"inputs": [{"indexed": false,"internalType": "address","name": "tokenAddress","type": "address"},{"indexed": false,"internalType": "address","name": "depositor","type": "address"},{"indexed": false,"internalType": "uint256","name": "amount","type": "uint256"}],"name": "ERC20Deposited","type": "event"},{"inputs": [{"internalType": "address","name": "tokenAddress","type": "address"},{"internalType": "uint256","name": "amount","type": "uint256"}],"name": "deposit","outputs": [],"stateMutability": "nonpayable","type": "function"}]`
+const safeAbiDefinition = `[{"inputs": [{"internalType": "address[]","name": "board","type": "address[]"},{"internalType": "uint256","name": "intialQuorum","type": "uint256"},{"internalType": "address","name": "erc20Safe","type": "address"}],"stateMutability": "nonpayable","type": "constructor"},{"anonymous": false,"inputs": [{"indexed": false,"internalType": "address","name": "newRelayer","type": "address"}],"name": "RelayerAdded","type": "event"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "bytes32","name": "role","type": "bytes32"},{"indexed": true,"internalType": "bytes32","name": "previousAdminRole","type": "bytes32"},{"indexed": true,"internalType": "bytes32","name": "newAdminRole","type": "bytes32"}],"name": "RoleAdminChanged","type": "event"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "bytes32","name": "role","type": "bytes32"},{"indexed": true,"internalType": "address","name": "account","type": "address"},{"indexed": true,"internalType": "address","name": "sender","type": "address"}],"name": "RoleGranted","type": "event"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "bytes32","name": "role","type": "bytes32"},{"indexed": true,"internalType": "address","name": "account","type": "address"},{"indexed": true,"internalType": "address","name": "sender","type": "address"}],"name": "RoleRevoked","type": "event"},{"inputs": [],"name": "DEFAULT_ADMIN_ROLE","outputs": [{"internalType": "bytes32","name": "","type": "bytes32"}],"stateMutability": "view","type": "function"},{"inputs": [],"name": "RELAYER_ROLE","outputs": [{"internalType": "bytes32","name": "","type": "bytes32"}],"stateMutability": "view","type": "function"},{"inputs": [],"name": "_quorum","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "address","name": "newRelayerAddress","type": "address"}],"name": "addRelayer","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "enum DepositStatus","name": "status","type": "uint8"}],"name": "finishCurrentPendingTransaction","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [],"name": "getNextPendingTransaction","outputs": [{"components": [{"internalType": "uint256","name": "nonce","type": "uint256"},{"internalType": "address","name": "tokenAddress","type": "address"},{"internalType": "uint256","name": "amount","type": "uint256"},{"internalType": "address","name": "depositor","type": "address"},{"internalType": "bytes","name": "recipient","type": "bytes"},{"internalType": "enum DepositStatus","name": "status","type": "uint8"}],"internalType": "struct Deposit","name": "","type": "tuple"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "bytes32","name": "role","type": "bytes32"}],"name": "getRoleAdmin","outputs": [{"internalType": "bytes32","name": "","type": "bytes32"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "bytes32","name": "role","type": "bytes32"},{"internalType": "address","name": "account","type": "address"}],"name": "grantRole","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "bytes32","name": "role","type": "bytes32"},{"internalType": "address","name": "account","type": "address"}],"name": "hasRole","outputs": [{"internalType": "bool","name": "","type": "bool"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "bytes32","name": "role","type": "bytes32"},{"internalType": "address","name": "account","type": "address"}],"name": "renounceRole","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "bytes32","name": "role","type": "bytes32"},{"internalType": "address","name": "account","type": "address"}],"name": "revokeRole","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "uint256","name": "newQorum","type": "uint256"}],"name": "setQuorum","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "bytes4","name": "interfaceId","type": "bytes4"}],"name": "supportsInterface","outputs": [{"internalType": "bool","name": "","type": "bool"}],"stateMutability": "view","type": "function"}]`
 
 type Client struct {
 	contractCaller ethereum.ContractCaller
@@ -40,12 +40,13 @@ func NewClient(config bridge.Config) (*Client, error) {
 }
 
 func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
-	// GetPendingDepositTransaction empty block -> status: 0
+	// getNextPendingTransaction empty block -> status: 0
 	// None: 0, Pending: 1
 	return nil
 }
 
-func (c *Client) ProposeTransfer(context.Context, *bridge.DepositTransaction) {
+func (c *Client) ProposeTransfer(context.Context, *bridge.DepositTransaction) (string, error) {
+	return "", nil
 }
 
 func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
@@ -78,10 +79,12 @@ func (c *Client) WasExecuted(context.Context, bridge.ActionId) bool {
 	return false
 }
 
-func (c *Client) Sign(context.Context, bridge.ActionId) {
+func (c *Client) Sign(context.Context, bridge.ActionId) (string, error) {
+	return "", nil
 }
 
 func (c *Client) Execute(context.Context, bridge.ActionId) (string, error) {
+	// finishCurrentPendingTransaction([])
 	return "tx_hash", nil
 }
 

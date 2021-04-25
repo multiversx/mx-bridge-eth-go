@@ -342,9 +342,11 @@ func (b *bridgeStub) GetPendingDepositTransaction(context.Context) *bridge.Depos
 	}
 }
 
-func (b *bridgeStub) ProposeTransfer(_ context.Context, tx *bridge.DepositTransaction) {
+func (b *bridgeStub) ProposeTransfer(_ context.Context, tx *bridge.DepositTransaction) (string, error) {
 	b.wasProposedTransfer = true
 	b.lastProposedTransaction = tx
+
+	return "propose_tx_hash", nil
 }
 
 func (b *bridgeStub) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
@@ -378,8 +380,9 @@ func (b *bridgeStub) WasExecuted(context.Context, bridge.ActionId) bool {
 	return b.wasExecuted
 }
 
-func (b *bridgeStub) Sign(_ context.Context, actionId bridge.ActionId) {
+func (b *bridgeStub) Sign(_ context.Context, actionId bridge.ActionId) (string, error) {
 	b.lastSignedActionId = actionId
+	return "sign_tx_hash", nil
 }
 
 func (b *bridgeStub) Execute(_ context.Context, actionId bridge.ActionId) (string, error) {

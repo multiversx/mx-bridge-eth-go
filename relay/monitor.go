@@ -110,8 +110,13 @@ func (m *Monitor) getPendingTransaction(ctx context.Context, ch chan State) {
 
 func (m *Monitor) proposeTransfer(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
-		m.log.Info(fmt.Sprintf("Proposing deposit transaction with nonce %d", m.pendingTransaction.DepositNonce))
-		m.destinationBridge.ProposeTransfer(ctx, m.pendingTransaction)
+		m.log.Info(fmt.Sprintf("Proposing deposit transaction for nonce %d", m.pendingTransaction.DepositNonce))
+		hash, err := m.destinationBridge.ProposeTransfer(ctx, m.pendingTransaction)
+		if err != nil {
+			m.log.Error(err.Error())
+		} else {
+			m.log.Info(fmt.Sprintf("Proposed with hash %q", hash))
+		}
 	}
 	ch <- WaitForTransferProposal
 }
@@ -123,7 +128,12 @@ func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
 		if m.destinationBridge.WasProposedTransfer(ctx, m.pendingTransaction.DepositNonce) {
 			m.log.Info(fmt.Sprintf("Signing transaction with nonce %d", m.pendingTransaction.DepositNonce))
 			m.actionId = m.destinationBridge.GetActionIdForProposeTransfer(ctx, m.pendingTransaction.DepositNonce)
-			m.destinationBridge.Sign(ctx, m.actionId)
+			hash, err := m.destinationBridge.Sign(ctx, m.actionId)
+			if err != nil {
+				m.log.Error(err.Error())
+			} else {
+				m.log.Info(fmt.Sprintf("Singed with hash %q", hash))
+			}
 			m.executingBridge = m.destinationBridge
 			ch <- WaitForSignatures
 		} else {
@@ -204,7 +214,11 @@ func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan State) {
 		if m.sourceBridge.WasProposedSetStatusSuccessOnPendingTransfer(ctx) {
 			m.log.Info(fmt.Sprintf("Signing set status for transaction with nonce %d", m.pendingTransaction.DepositNonce))
 			m.actionId = m.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx)
-			m.sourceBridge.Sign(ctx, m.actionId)
+			hash, err := m.sourceBridge.Sign(ctx, m.actionId)
+			if err != nil {
+				m.log.Error(err.Error())
+			}
+			m.log.Info(fmt.Sprintf("Singed set status for transaction with nonce %d with hash %q", m.pendingTransaction.DepositNonce, hash))
 			m.executingBridge = m.sourceBridge
 			ch <- WaitForSignatures
 		} else {
