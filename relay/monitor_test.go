@@ -5,16 +5,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestReadPendingTransaction(t *testing.T) {
-	setTestLogLevel()
+	testHelpers.SetTestLogLevel()
 	t.Run("it will read the next pending transaction", func(t *testing.T) {
 		expected := &bridge.DepositTransaction{To: "address", DepositNonce: 0}
 		sourceBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expected}}
-		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &timerStub{}, &topologyProviderStub{}, "testMonitor")
+		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &testHelpers.TimerStub{}, &topologyProviderStub{}, "testMonitor")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 		defer cancel()
@@ -25,7 +27,7 @@ func TestReadPendingTransaction(t *testing.T) {
 	t.Run("it will sleep and try again if there is no pending transaction", func(t *testing.T) {
 		expected := &bridge.DepositTransaction{To: "address", DepositNonce: 0}
 		sourceBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{nil, expected}}
-		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &timerStub{}, &topologyProviderStub{}, "testMonitor")
+		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &testHelpers.TimerStub{}, &topologyProviderStub{}, "testMonitor")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
 		defer cancel()
@@ -37,14 +39,14 @@ func TestReadPendingTransaction(t *testing.T) {
 }
 
 func TestProposeTransaction(t *testing.T) {
-	setTestLogLevel()
+	testHelpers.SetTestLogLevel()
 	t.Run("it will proposeTransfer transaction when leader", func(t *testing.T) {
 		expect := &bridge.DepositTransaction{To: "address", DepositNonce: 0}
 		destinationBridge := &bridgeStub{}
 		monitor := NewMonitor(
 			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
 			destinationBridge,
-			&timerStub{},
+			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 1, amITheLeader: true},
 			"testMonitor",
 		)
@@ -61,7 +63,7 @@ func TestProposeTransaction(t *testing.T) {
 		monitor := NewMonitor(
 			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: expect}}},
 			destinationBridge,
-			&timerStub{},
+			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 2, amITheLeader: false},
 			"testMonitor",
 		)
@@ -78,7 +80,7 @@ func TestProposeTransaction(t *testing.T) {
 		monitor := NewMonitor(
 			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}}},
 			destinationBridge,
-			&timerStub{},
+			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 2, amITheLeader: false},
 			"testMonitor",
 		)
@@ -92,7 +94,7 @@ func TestProposeTransaction(t *testing.T) {
 	t.Run("it will try to proposeTransfer again if timeout", func(t *testing.T) {
 		expect := &bridge.DepositTransaction{To: "address", DepositNonce: 0}
 		destinationBridge := &bridgeStub{wasProposedTransfer: false}
-		timer := &timerStub{afterDuration: 3 * time.Millisecond}
+		timer := &testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond}
 		provider := &topologyProviderStub{peerCount: 2, amITheLeader: false}
 		monitor := NewMonitor(
 			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
@@ -116,14 +118,14 @@ func TestProposeTransaction(t *testing.T) {
 }
 
 func TestWaitForSignatures(t *testing.T) {
-	setTestLogLevel()
+	testHelpers.SetTestLogLevel()
 	t.Run("it will execute transfer when leader and number of signatures is > 67%", func(t *testing.T) {
 		expect := bridge.ActionId(42)
 		destinationBridge := &bridgeStub{signersCount: 3, proposeTransferActionId: expect}
 		monitor := NewMonitor(
 			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}}},
 			destinationBridge,
-			&timerStub{},
+			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 4, amITheLeader: true},
 			"testMonitor",
 		)
@@ -140,7 +142,7 @@ func TestWaitForSignatures(t *testing.T) {
 		monitor := NewMonitor(
 			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}}},
 			destinationBridge,
-			&timerStub{afterDuration: 3 * time.Millisecond},
+			&testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond},
 			&topologyProviderStub{peerCount: 4, amITheLeader: true},
 			"testMonitor",
 		)
@@ -159,11 +161,11 @@ func TestWaitForSignatures(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
-	setTestLogLevel()
+	testHelpers.SetTestLogLevel()
 	t.Run("it will wait for execution when not leader", func(t *testing.T) {
 		expect := bridge.ActionId(42)
 		destinationBridge := &bridgeStub{signersCount: 3, wasExecuted: false, wasProposedTransfer: true, proposeTransferActionId: expect}
-		timer := &timerStub{afterDuration: 3 * time.Millisecond}
+		timer := &testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: false}
 		monitor := NewMonitor(
 			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}}},
@@ -187,7 +189,7 @@ func TestExecute(t *testing.T) {
 }
 
 func TestProposeSetStatus(t *testing.T) {
-	setTestLogLevel()
+	testHelpers.SetTestLogLevel()
 	t.Run("it will propose to set status when leader", func(t *testing.T) {
 		destinationBridge := &bridgeStub{
 			signersCount:            3,
@@ -200,7 +202,7 @@ func TestProposeSetStatus(t *testing.T) {
 		monitor := NewMonitor(
 			sourceBridge,
 			destinationBridge,
-			&timerStub{},
+			&testHelpers.TimerStub{},
 			provider,
 			"testMonitor",
 		)
@@ -228,7 +230,7 @@ func TestProposeSetStatus(t *testing.T) {
 		monitor := NewMonitor(
 			sourceBridge,
 			destinationBridge,
-			&timerStub{},
+			&testHelpers.TimerStub{},
 			provider,
 			"testMonitor",
 		)
@@ -257,7 +259,7 @@ func TestProposeSetStatus(t *testing.T) {
 		monitor := NewMonitor(
 			sourceBridge,
 			destinationBridge,
-			&timerStub{},
+			&testHelpers.TimerStub{},
 			provider,
 			"testMonitor",
 		)
@@ -268,7 +270,7 @@ func TestProposeSetStatus(t *testing.T) {
 
 		assert.Equal(t, expect, sourceBridge.lastExecutedActionId)
 	})
-	t.Run("it will execute set status when leader after waiting", func(t *testing.T) {
+	t.Run("it will execute set status when leader After waiting", func(t *testing.T) {
 		expect := bridge.ActionId(42)
 		destinationBridge := &bridgeStub{
 			signersCount:            3,
@@ -286,7 +288,7 @@ func TestProposeSetStatus(t *testing.T) {
 		monitor := NewMonitor(
 			sourceBridge,
 			destinationBridge,
-			&timerStub{afterDuration: 3 * time.Millisecond},
+			&testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond},
 			provider,
 			"testMonitor",
 		)

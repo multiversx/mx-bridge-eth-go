@@ -98,7 +98,7 @@ func (m *Monitor) getPendingTransaction(ctx context.Context, ch chan State) {
 
 	if m.pendingTransaction == nil {
 		select {
-		case <-m.timer.after((Timeout / 10) * time.Second):
+		case <-m.timer.After((Timeout / 10) * time.Second):
 			ch <- GetPendingTransaction
 		case <-ctx.Done():
 			ch <- Stop
@@ -124,7 +124,7 @@ func (m *Monitor) proposeTransfer(ctx context.Context, ch chan State) {
 func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
 	m.log.Info(fmt.Sprintf("Waiting for proposal on transaction with nonce %d", m.pendingTransaction.DepositNonce))
 	select {
-	case <-m.timer.after(Timeout):
+	case <-m.timer.After(Timeout):
 		if m.destinationBridge.WasProposedTransfer(ctx, m.pendingTransaction.DepositNonce) {
 			m.log.Info(fmt.Sprintf("Signing transaction with nonce %d", m.pendingTransaction.DepositNonce))
 			m.actionId = m.destinationBridge.GetActionIdForProposeTransfer(ctx, m.pendingTransaction.DepositNonce)
@@ -147,7 +147,7 @@ func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
 func (m *Monitor) waitForSignatures(ctx context.Context, ch chan State) {
 	m.log.Info(fmt.Sprintf("Waiting for signatures for actionId %d", m.actionId))
 	select {
-	case <-m.timer.after(Timeout):
+	case <-m.timer.After(Timeout):
 		count := m.executingBridge.SignersCount(ctx, m.actionId)
 		peerCount := m.topologyProvider.PeerCount()
 		minCountRequired := math.Ceil(float64(peerCount) * MinSignaturePercent / 100)
@@ -181,7 +181,7 @@ func (m *Monitor) execute(ctx context.Context, ch chan State) {
 func (m *Monitor) waitForExecute(ctx context.Context, ch chan State) {
 	m.log.Info(fmt.Sprintf("Waiting for execution for actionID %d", m.actionId))
 	select {
-	case <-m.timer.after(Timeout):
+	case <-m.timer.After(Timeout):
 		if m.executingBridge.WasExecuted(ctx, m.actionId) {
 			m.log.Info(fmt.Sprintf("ActionId %d was executed", m.actionId))
 
@@ -210,7 +210,7 @@ func (m *Monitor) proposeSetStatus(ctx context.Context, ch chan State) {
 func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan State) {
 	m.log.Info(fmt.Sprintf("Waiting for set status proposal on transaction with nonce %d", m.pendingTransaction.DepositNonce))
 	select {
-	case <-m.timer.after(Timeout):
+	case <-m.timer.After(Timeout):
 		if m.sourceBridge.WasProposedSetStatusSuccessOnPendingTransfer(ctx) {
 			m.log.Info(fmt.Sprintf("Signing set status for transaction with nonce %d", m.pendingTransaction.DepositNonce))
 			m.actionId = m.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx)

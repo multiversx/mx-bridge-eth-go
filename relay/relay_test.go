@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 	"github.com/ElrondNetwork/elrond-go/p2p/mock"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -23,12 +24,12 @@ var (
 var log = logger.GetOrCreate("main")
 
 func TestInit(t *testing.T) {
-	setTestLogLevel()
+	testHelpers.SetTestLogLevel()
 
 	messenger := &netMessengerStub{}
 	relay := Relay{
 		messenger: messenger,
-		timer:     &timerStub{},
+		timer:     &testHelpers.TimerStub{},
 		log:       log,
 
 		elrondBridge: &bridgeStub{},
@@ -47,12 +48,12 @@ func TestInit(t *testing.T) {
 }
 
 func TestPrivateTopicProcessor(t *testing.T) {
-	setTestLogLevel()
+	testHelpers.SetTestLogLevel()
 
 	messenger := &netMessengerStub{}
 	relay := Relay{
 		messenger: messenger,
-		timer:     &timerStub{},
+		timer:     &testHelpers.TimerStub{},
 		log:       log,
 
 		elrondBridge: &bridgeStub{},
@@ -72,13 +73,13 @@ func TestPrivateTopicProcessor(t *testing.T) {
 }
 
 func TestActionsTopicProcessor(t *testing.T) {
-	setTestLogLevel()
+	testHelpers.SetTestLogLevel()
 
 	t.Run("on joined action when there are more peers then self will broadcast to private", func(t *testing.T) {
 		messenger := &netMessengerStub{}
 		relay := Relay{
 			messenger: messenger,
-			timer:     &timerStub{},
+			timer:     &testHelpers.TimerStub{},
 			log:       log,
 
 			elrondBridge: &bridgeStub{},
@@ -108,7 +109,7 @@ func TestActionsTopicProcessor(t *testing.T) {
 		messenger := &netMessengerStub{peerID: "self"}
 		relay := Relay{
 			messenger: messenger,
-			timer:     &timerStub{},
+			timer:     &testHelpers.TimerStub{},
 			log:       log,
 
 			elrondBridge: &bridgeStub{},
@@ -127,12 +128,12 @@ func TestActionsTopicProcessor(t *testing.T) {
 }
 
 func TestJoin(t *testing.T) {
-	setTestLogLevel()
+	testHelpers.SetTestLogLevel()
 
 	messenger := &netMessengerStub{}
 	relay := Relay{
 		messenger: messenger,
-		timer:     &timerStub{},
+		timer:     &testHelpers.TimerStub{},
 		log:       log,
 
 		elrondBridge: &bridgeStub{},
@@ -147,13 +148,13 @@ func TestJoin(t *testing.T) {
 }
 
 func TestAmILeader(t *testing.T) {
-	setTestLogLevel()
+	testHelpers.SetTestLogLevel()
 
 	t.Run("will return true when time matches current index", func(t *testing.T) {
 		relay := Relay{
 			peers:     Peers{"self"},
 			messenger: &netMessengerStub{peerID: "self"},
-			timer:     &timerStub{timeNowUnix: 0},
+			timer:     &testHelpers.TimerStub{TimeNowUnix: 0},
 		}
 
 		assert.True(t, relay.AmITheLeader())
@@ -162,7 +163,7 @@ func TestAmILeader(t *testing.T) {
 		relay := Relay{
 			peers:     Peers{"self", "other"},
 			messenger: &netMessengerStub{peerID: "self"},
-			timer:     &timerStub{timeNowUnix: int64(Timeout.Seconds()) + 1},
+			timer:     &testHelpers.TimerStub{TimeNowUnix: int64(Timeout.Seconds()) + 1},
 		}
 
 		assert.False(t, relay.AmITheLeader())

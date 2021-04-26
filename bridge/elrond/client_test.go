@@ -182,7 +182,7 @@ func buildTestClient(proxy *testProxy) (*Client, error) {
 	}
 
 	client := &Client{
-		log:           logger.GetOrCreate("test"),
+		log:           logger.GetOrCreate("testHelpers"),
 		proxy:         proxy,
 		bridgeAddress: "",
 		privateKey:    privateKey,
@@ -207,7 +207,7 @@ type testProxy struct {
 
 func (p *testProxy) GetNetworkConfig() (*data.NetworkConfig, error) {
 	return &data.NetworkConfig{
-		ChainID:                  "test-chain",
+		ChainID:                  "testHelpers-chain",
 		Denomination:             0,
 		GasPerDataByte:           0,
 		LatestTagSoftwareVersion: "",

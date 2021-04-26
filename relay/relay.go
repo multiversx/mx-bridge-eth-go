@@ -32,17 +32,17 @@ const (
 type Peers []core.PeerID
 
 type Timer interface {
-	after(d time.Duration) <-chan time.Time
-	nowUnix() int64
+	After(d time.Duration) <-chan time.Time
+	NowUnix() int64
 }
 
 type defaultTimer struct{}
 
-func (s *defaultTimer) after(d time.Duration) <-chan time.Time {
+func (s *defaultTimer) After(d time.Duration) <-chan time.Time {
 	return time.After(d)
 }
 
-func (s *defaultTimer) nowUnix() int64 {
+func (s *defaultTimer) NowUnix() int64 {
 	return time.Now().Unix()
 }
 
@@ -131,7 +131,7 @@ func (r *Relay) AmITheLeader() bool {
 		return false
 	} else {
 		numberOfPeers := int64(len(r.peers))
-		index := (r.timer.nowUnix() / int64(Timeout.Seconds())) % numberOfPeers
+		index := (r.timer.NowUnix() / int64(Timeout.Seconds())) % numberOfPeers
 
 		return r.peers[index] == r.messenger.ID()
 	}
@@ -236,7 +236,7 @@ func (r *Relay) init(ctx context.Context) error {
 	}
 
 	select {
-	case <-r.timer.after(10 * time.Second):
+	case <-r.timer.After(10 * time.Second):
 		r.log.Info(fmt.Sprint(r.messenger.Addresses()))
 
 		if err := r.registerTopicProcessors(); err != nil {
@@ -254,7 +254,7 @@ func (r *Relay) join(ctx context.Context) {
 	v := rand.Intn(5)
 
 	select {
-	case <-r.timer.after(time.Duration(v) * time.Second):
+	case <-r.timer.After(time.Duration(v) * time.Second):
 		r.messenger.Broadcast(ActionsTopicName, []byte(JoinedAction))
 	case <-ctx.Done():
 	}
