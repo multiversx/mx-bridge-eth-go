@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -72,8 +74,8 @@ func TestGetPendingDepositTransaction(t *testing.T) {
 	for _, tt := range useCases {
 		t.Run(tt.name, func(t *testing.T) {
 			client := Client{
-				contract: &contractStub{deposit: tt.receivedDeposit},
-				log:      logger.GetOrCreate("testEthClient"),
+				bridgeContract: &bridgeContractStub{deposit: tt.receivedDeposit},
+				log:            logger.GetOrCreate("testEthClient"),
 			}
 
 			got := client.GetPendingDepositTransaction(context.TODO())
@@ -86,14 +88,14 @@ func TestGetPendingDepositTransaction(t *testing.T) {
 func TestProposeSetStatusSuccessOnPendingTransfer(t *testing.T) {
 	broadcaster := &broadcasterStub{}
 	client := Client{
-		contract:    &contractStub{},
-		privateKey:  privateKey(t),
-		broadcaster: broadcaster,
-		log:         logger.GetOrCreate("testEthClient"),
+		bridgeContract: &bridgeContractStub{},
+		privateKey:     privateKey(t),
+		broadcaster:    broadcaster,
+		log:            logger.GetOrCreate("testEthClient"),
 	}
 
 	client.ProposeSetStatusSuccessOnPendingTransfer(context.TODO())
-	expectedSignature := "0x5de3f8db48b3e0b903e36b92854f97e1ce3f095e28343b59149150a81a7cdec95073ae0c52848734d2aedf511517cf18042300ec7e855aa3857a2842202a8fe400"
+	expectedSignature, _ := hexutil.Decode("0x5de3f8db48b3e0b903e36b92854f97e1ce3f095e28343b59149150a81a7cdec95073ae0c52848734d2aedf511517cf18042300ec7e855aa3857a2842202a8fe400")
 	expectedData := "\u0019Ethereum Signed Message:\n27CurrentPendingTransaction:3"
 
 	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
@@ -103,18 +105,31 @@ func TestProposeSetStatusSuccessOnPendingTransfer(t *testing.T) {
 func TestProposeSetStatusFailedOnPendingTransfer(t *testing.T) {
 	broadcaster := &broadcasterStub{}
 	client := Client{
-		contract:    &contractStub{},
-		privateKey:  privateKey(t),
-		broadcaster: broadcaster,
-		log:         logger.GetOrCreate("testEthClient"),
+		bridgeContract: &bridgeContractStub{},
+		privateKey:     privateKey(t),
+		broadcaster:    broadcaster,
+		log:            logger.GetOrCreate("testEthClient"),
 	}
 
 	client.ProposeSetStatusFailedOnPendingTransfer(context.TODO())
-	expectedSignature := "0x8b4a6ddb7362e158dc86e5e3bab9b325d2b7b897c4d51268c13551b501e77c852b14f0ff5be22eac8b82bc88b7f846afe52959027f1129d953c7982b165d0eaa00"
+	expectedSignature, _ := hexutil.Decode("0x8b4a6ddb7362e158dc86e5e3bab9b325d2b7b897c4d51268c13551b501e77c852b14f0ff5be22eac8b82bc88b7f846afe52959027f1129d953c7982b165d0eaa00")
 	expectedData := "\u0019Ethereum Signed Message:\n27CurrentPendingTransaction:4"
 
 	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
 	assert.Equal(t, expectedData, broadcaster.lastSignData)
+}
+
+func TestSignersCount(t *testing.T) {
+	broadcaster := &broadcasterStub{lastBroadcastSignature: []byte("signature")}
+	client := Client{
+		bridgeContract: &bridgeContractStub{},
+		broadcaster:    broadcaster,
+		log:            logger.GetOrCreate("testEthClient"),
+	}
+
+	got := client.SignersCount(context.TODO(), bridge.ActionId(0))
+
+	assert.Equal(t, uint(1), got)
 }
 
 func privateKey(t *testing.T) *ecdsa.PrivateKey {
@@ -129,30 +144,30 @@ func privateKey(t *testing.T) *ecdsa.PrivateKey {
 	return privateKey
 }
 
-type contractStub struct {
+type bridgeContractStub struct {
 	deposit Deposit
 }
 
-func (c *contractStub) GetNextPendingTransaction(*bind.CallOpts) (Deposit, error) {
+func (c *bridgeContractStub) GetNextPendingTransaction(*bind.CallOpts) (Deposit, error) {
 	return c.deposit, nil
 }
 
-func (c *contractStub) FinishCurrentPendingTransaction(_ *bind.TransactOpts, _ string, _ [][]byte) (*types.Transaction, error) {
+func (c *bridgeContractStub) FinishCurrentPendingTransaction(_ *bind.TransactOpts, _ string, _ [][]byte) (*types.Transaction, error) {
 	return nil, nil
 }
 
 type broadcasterStub struct {
 	lastSignData           string
-	lastBroadcastSignature string
+	lastBroadcastSignature []byte
 }
 
-func (b *broadcasterStub) SendSignature(signData, signature string) {
+func (b *broadcasterStub) SendSignature(signData string, signature []byte) {
 	b.lastSignData = signData
 	b.lastBroadcastSignature = signature
 }
 
 func (b *broadcasterStub) Signatures() [][]byte {
-	return [][]byte{[]byte(b.lastBroadcastSignature)}
+	return [][]byte{b.lastBroadcastSignature}
 }
 
 func (b *broadcasterStub) SignData() string {

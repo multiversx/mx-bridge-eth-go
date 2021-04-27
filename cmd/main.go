@@ -64,8 +64,7 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) error {
-		//return startRelay(c)
-		return playgroundEth(c)
+		return startRelay(c)
 	}
 
 	err := app.Run(os.Args)
@@ -155,16 +154,16 @@ func playgroundEth(ctx *cli.Context) error {
 
 type broadcasterStub struct {
 	lastSignData           string
-	lastBroadcastSignature string
+	lastBroadcastSignature []byte
 }
 
-func (b *broadcasterStub) SendSignature(signData, signature string) {
+func (b *broadcasterStub) SendSignature(signData string, signature []byte) {
 	b.lastSignData = signData
 	b.lastBroadcastSignature = signature
 }
 
 func (b *broadcasterStub) Signatures() [][]byte {
-	return [][]byte{[]byte(b.lastBroadcastSignature)}
+	return [][]byte{b.lastBroadcastSignature}
 }
 
 func (b *broadcasterStub) SignData() string {

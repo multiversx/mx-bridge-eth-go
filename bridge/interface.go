@@ -4,6 +4,12 @@ import (
 	"context"
 )
 
+type Broadcaster interface {
+	Signatures() [][]byte
+	SignData() string
+	SendSignature(signData string, signature []byte)
+}
+
 type Bridge interface {
 	GetPendingDepositTransaction(context.Context) *DepositTransaction
 	ProposeTransfer(context.Context, *DepositTransaction) (string, error)

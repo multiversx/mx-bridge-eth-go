@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -26,37 +24,32 @@ import (
 const (
 	SignDatName   = "CurrentPendingTransaction"
 	MessagePrefix = "\u0019Ethereum Signed Message:\n%d%s"
+	GasLimit      = uint64(300000)
 )
 
-type EthContract interface {
+type BridgeContract interface {
 	GetNextPendingTransaction(opts *bind.CallOpts) (Deposit, error)
 	FinishCurrentPendingTransaction(opts *bind.TransactOpts, signData string, signatures [][]byte) (*types.Transaction, error)
 }
 
-type EthClient interface {
+type BlockchainClient interface {
 	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	ChainID(ctx context.Context) (*big.Int, error)
 }
 
-type Broadcaster interface {
-	Signatures() [][]byte
-	SignData() string
-	SendSignature(signData string, signature string)
-}
-
 type Client struct {
-	contract  EthContract
-	ethClient EthClient
+	bridgeContract   BridgeContract
+	blockchainClient BlockchainClient
 
 	privateKey  *ecdsa.PrivateKey
 	publicKey   *ecdsa.PublicKey
-	broadcaster Broadcaster
+	broadcaster bridge.Broadcaster
 
 	log logger.Logger
 }
 
-func NewClient(config bridge.Config, broadcaster Broadcaster) (*Client, error) {
+func NewClient(config bridge.Config, broadcaster bridge.Broadcaster) (*Client, error) {
 	log := logger.GetOrCreate("EthClient")
 
 	ethClient, err := ethclient.Dial(config.NetworkAddress)
@@ -81,8 +74,8 @@ func NewClient(config bridge.Config, broadcaster Broadcaster) (*Client, error) {
 	}
 
 	client := &Client{
-		contract:  instance,
-		ethClient: ethClient,
+		bridgeContract:   instance,
+		blockchainClient: ethClient,
 
 		privateKey:  privateKey,
 		publicKey:   publicKeyECDSA,
@@ -95,7 +88,7 @@ func NewClient(config bridge.Config, broadcaster Broadcaster) (*Client, error) {
 }
 
 func (c *Client) GetPendingDepositTransaction(ctx context.Context) *bridge.DepositTransaction {
-	deposit, err := c.contract.GetNextPendingTransaction(&bind.CallOpts{Context: ctx})
+	deposit, err := c.bridgeContract.GetNextPendingTransaction(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		c.log.Error(err.Error())
 		return nil
@@ -128,7 +121,7 @@ func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
 		return
 	}
 
-	c.broadcaster.SendSignature(msg, hexutil.Encode(signature))
+	c.broadcaster.SendSignature(msg, signature)
 }
 
 func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
@@ -140,11 +133,11 @@ func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
 		return
 	}
 
-	c.broadcaster.SendSignature(msg, hexutil.Encode(signature))
+	c.broadcaster.SendSignature(msg, signature)
 }
 
 func (c *Client) WasProposedTransfer(context.Context, bridge.Nonce) bool {
-	return false
+	return true
 }
 
 func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) bridge.ActionId {
@@ -152,11 +145,11 @@ func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) br
 }
 
 func (c *Client) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
-	return false
+	return true
 }
 
 func (c *Client) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool {
-	return false
+	return true
 }
 
 func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
@@ -174,17 +167,17 @@ func (c *Client) Sign(context.Context, bridge.ActionId) (string, error) {
 func (c *Client) Execute(ctx context.Context, _ bridge.ActionId) (string, error) {
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
 
-	nonce, err := c.ethClient.PendingNonceAt(ctx, fromAddress)
+	nonce, err := c.blockchainClient.PendingNonceAt(ctx, fromAddress)
 	if err != nil {
 		return "", err
 	}
 
-	gasPrice, err := c.ethClient.SuggestGasPrice(ctx)
+	gasPrice, err := c.blockchainClient.SuggestGasPrice(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	chainId, err := c.ethClient.ChainID(ctx)
+	chainId, err := c.blockchainClient.ChainID(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -196,12 +189,10 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId) (string, error)
 
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = uint64(300000)
+	auth.GasLimit = GasLimit
 	auth.GasPrice = gasPrice
 
-	c.log.Info(fmt.Sprintf("%v", auth))
-
-	transaction, err := c.contract.FinishCurrentPendingTransaction(auth, c.broadcaster.SignData(), c.broadcaster.Signatures())
+	transaction, err := c.bridgeContract.FinishCurrentPendingTransaction(auth, c.broadcaster.SignData(), c.broadcaster.Signatures())
 	if err != nil {
 		return "", err
 	}
@@ -210,13 +201,13 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId) (string, error)
 }
 
 func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
-	return 0
+	return uint(len(c.broadcaster.Signatures()))
 }
 
 func (c *Client) signHash(msg string) ([]byte, error) {
-	hash := crypto.Keccak256([]byte(msg))
+	hash := crypto.Keccak256Hash([]byte(msg))
 
-	signature, err := crypto.Sign(hash, c.privateKey)
+	signature, err := crypto.Sign(hash.Bytes(), c.privateKey)
 	if err != nil {
 		return nil, err
 	}
