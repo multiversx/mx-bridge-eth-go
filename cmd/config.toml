@@ -1,6 +1,7 @@
 [Eth]
     NetworkAddress    = "http://127.0.0.1:8545"
     BridgeAddress     = "0x48Fd3D532254255c921b69286daA5e1938645baA"
+    PrivateKey        = "60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d7192efab"
 
 [Elrond]
     NetworkAddress    = "http://localhost:7950"

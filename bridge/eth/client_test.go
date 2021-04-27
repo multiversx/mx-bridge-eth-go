@@ -2,8 +2,13 @@ package eth
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/crypto"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 
@@ -21,6 +26,8 @@ import (
 var (
 	_ = bridge.Bridge(&Client{})
 )
+
+const TestPrivateKey = "60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d7192efab"
 
 func TestGetPendingDepositTransaction(t *testing.T) {
 	testHelpers.SetTestLogLevel()
@@ -65,7 +72,7 @@ func TestGetPendingDepositTransaction(t *testing.T) {
 	for _, tt := range useCases {
 		t.Run(tt.name, func(t *testing.T) {
 			client := Client{
-				contract: &bridgeContract{deposit: tt.receivedDeposit},
+				contract: &contractStub{deposit: tt.receivedDeposit},
 				log:      logger.GetOrCreate("testEthClient"),
 			}
 
@@ -76,10 +83,78 @@ func TestGetPendingDepositTransaction(t *testing.T) {
 	}
 }
 
-type bridgeContract struct {
+func TestProposeSetStatusSuccessOnPendingTransfer(t *testing.T) {
+	broadcaster := &broadcasterStub{}
+	client := Client{
+		contract:    &contractStub{},
+		privateKey:  privateKey(t),
+		broadcaster: broadcaster,
+		log:         logger.GetOrCreate("testEthClient"),
+	}
+
+	client.ProposeSetStatusSuccessOnPendingTransfer(context.TODO())
+	expectedSignature := "0x5de3f8db48b3e0b903e36b92854f97e1ce3f095e28343b59149150a81a7cdec95073ae0c52848734d2aedf511517cf18042300ec7e855aa3857a2842202a8fe400"
+	expectedData := "\u0019Ethereum Signed Message:\n27CurrentPendingTransaction:3"
+
+	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+	assert.Equal(t, expectedData, broadcaster.lastSignData)
+}
+
+func TestProposeSetStatusFailedOnPendingTransfer(t *testing.T) {
+	broadcaster := &broadcasterStub{}
+	client := Client{
+		contract:    &contractStub{},
+		privateKey:  privateKey(t),
+		broadcaster: broadcaster,
+		log:         logger.GetOrCreate("testEthClient"),
+	}
+
+	client.ProposeSetStatusFailedOnPendingTransfer(context.TODO())
+	expectedSignature := "0x8b4a6ddb7362e158dc86e5e3bab9b325d2b7b897c4d51268c13551b501e77c852b14f0ff5be22eac8b82bc88b7f846afe52959027f1129d953c7982b165d0eaa00"
+	expectedData := "\u0019Ethereum Signed Message:\n27CurrentPendingTransaction:4"
+
+	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+	assert.Equal(t, expectedData, broadcaster.lastSignData)
+}
+
+func privateKey(t *testing.T) *ecdsa.PrivateKey {
+	t.Helper()
+
+	privateKey, err := crypto.HexToECDSA(TestPrivateKey)
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+
+	return privateKey
+}
+
+type contractStub struct {
 	deposit Deposit
 }
 
-func (c *bridgeContract) GetNextPendingTransaction(*bind.CallOpts) (Deposit, error) {
+func (c *contractStub) GetNextPendingTransaction(*bind.CallOpts) (Deposit, error) {
 	return c.deposit, nil
+}
+
+func (c *contractStub) FinishCurrentPendingTransaction(_ *bind.TransactOpts, _ string, _ [][]byte) (*types.Transaction, error) {
+	return nil, nil
+}
+
+type broadcasterStub struct {
+	lastSignData           string
+	lastBroadcastSignature string
+}
+
+func (b *broadcasterStub) SendSignature(signData, signature string) {
+	b.lastSignData = signData
+	b.lastBroadcastSignature = signature
+}
+
+func (b *broadcasterStub) Signatures() [][]byte {
+	return [][]byte{[]byte(b.lastBroadcastSignature)}
+}
+
+func (b *broadcasterStub) SignData() string {
+	return b.lastSignData
 }

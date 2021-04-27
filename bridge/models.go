@@ -2,6 +2,11 @@ package bridge
 
 import "math/big"
 
+const (
+	Executed = 3
+	Rejected = 4
+)
+
 type ActionId uint
 
 // TODO: refactor to big *big.Int

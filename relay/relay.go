@@ -71,7 +71,7 @@ type Relay struct {
 }
 
 func NewRelay(config *Config, name string) (*Relay, error) {
-	ethBridge, err := eth.NewClient(config.Eth)
+	ethBridge, err := eth.NewClient(config.Eth, nil)
 	if err != nil {
 		return nil, err
 	}

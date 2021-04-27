@@ -2,9 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -57,7 +64,8 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) error {
-		return startRelay(c)
+		//return startRelay(c)
+		return playgroundEth(c)
 	}
 
 	err := app.Run(os.Args)
@@ -65,6 +73,102 @@ func main() {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
+}
+
+func playgroundElrond(ctx *cli.Context) error {
+	log.Info("Playground")
+
+	configurationFileName := ctx.GlobalString(configurationFile.Name)
+	config, err := loadConfig(configurationFileName)
+	if err != nil {
+		return err
+	}
+
+	client, err := elrond.NewClient(config.Elrond)
+	if err != nil {
+		return err
+	}
+
+	// carol: erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8
+
+	//result := client.WasProposedTransfer(context.TODO(), bridge.Nonce(1))
+	//log.Info(fmt.Sprint(result))
+	//
+	//log.Info(fmt.Sprintf("ActionId: %d", client.GetActionIdForProposeTransfer(context.TODO(), bridge.Nonce(1))))
+	//
+	//hash, err := client.Sign(context.TODO(), bridge.ActionId(2))
+	//if err != nil {
+	//	log.Error(err.Error())
+	//}
+	//log.Info(fmt.Sprintf("Sign hash %q", hash))
+	//
+	//hash, err = client.Execute(context.TODO(), bridge.ActionId(2))
+	//if err != nil {
+	//	log.Error(err.Error())
+	//}
+	//log.Info(fmt.Sprintf("Perform hash %q", hash))
+
+	log.Info(fmt.Sprintf("%v", client.WasExecuted(context.TODO(), bridge.ActionId(2))))
+
+	// deploy
+	// deployCC
+	// stake
+	// proposeMultiTransferEsdtSetLocalMintRole
+	// issueToken
+
+	//client, err := eth.NewClient(config.Eth)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//client.GetPendingDepositTransaction(context.Background())
+
+	return nil
+}
+
+func playgroundEth(ctx *cli.Context) error {
+	log.Info("Playground Eth")
+
+	configurationFileName := ctx.GlobalString(configurationFile.Name)
+	config, err := loadConfig(configurationFileName)
+	if err != nil {
+		return err
+	}
+
+	client, err := eth.NewClient(config.Eth, &broadcasterStub{})
+	if err != nil {
+		return err
+	}
+
+	tx := client.GetPendingDepositTransaction(context.Background())
+	log.Info(fmt.Sprintf("%v", tx))
+
+	client.ProposeSetStatusSuccessOnPendingTransfer(context.Background())
+	hash, err := client.Execute(context.Background(), bridge.ActionId(0))
+	if err != nil {
+		return err
+	}
+	log.Info(fmt.Sprintf("Executed with hash %q", hash))
+
+	return nil
+}
+
+type broadcasterStub struct {
+	lastSignData           string
+	lastBroadcastSignature string
+}
+
+func (b *broadcasterStub) SendSignature(signData, signature string) {
+	b.lastSignData = signData
+	b.lastBroadcastSignature = signature
+}
+
+func (b *broadcasterStub) Signatures() [][]byte {
+	return [][]byte{[]byte(b.lastBroadcastSignature)}
+}
+
+func (b *broadcasterStub) SignData() string {
+	return b.lastSignData
 }
 
 func startRelay(ctx *cli.Context) error {

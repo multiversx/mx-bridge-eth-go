@@ -15,11 +15,6 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/data"
 )
 
-const (
-	Executed = 3
-	Rejected = 4
-)
-
 type QueryResponseErr struct {
 	code    string
 	message string
@@ -51,7 +46,7 @@ func NewClient(config bridge.Config) (*Client, error) {
 
 	proxy := blockchain.NewElrondProxy(config.NetworkAddress, nil)
 
-	privateKey, err := erdgo.LoadPrivateKeyFromPemFile(config.PrivateKeyPath)
+	privateKey, err := erdgo.LoadPrivateKeyFromPemFile(config.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +87,7 @@ func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTr
 func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
 	builder := newBuilder().
 		Func("proposeEsdtSafeSetCurrentTransactionStatus").
-		Int(Executed)
+		Int(bridge.Executed)
 
 	_, _ = c.sendTransaction(builder)
 }
@@ -100,7 +95,7 @@ func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
 func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
 	builder := newBuilder().
 		Func("proposeEsdtSafeSetCurrentTransactionStatus").
-		Int(Executed)
+		Int(bridge.Rejected)
 
 	_, _ = c.sendTransaction(builder)
 }
