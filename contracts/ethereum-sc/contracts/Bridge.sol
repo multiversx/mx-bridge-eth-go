@@ -56,12 +56,9 @@ contract Bridge is AccessControl {
         return safe.getNextPendingDeposit();
     }
 
-    // signData = "\x19Ethereum Signed Message:\n9Deposit:1:3"
     function finishCurrentPendingTransaction(string calldata signData, bytes[] memory signatures) public {
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
         // Deposit memory deposit = safe.getNextPendingDeposit();
-        bytes memory signedDepositData = abi.encodePacked("\x19Ethereum Signed Message:\n9Deposit:1:3"); 
-        
         uint8 signersCount;
 
         for(uint i=0; i<signatures.length; i++) {
@@ -80,8 +77,11 @@ contract Bridge is AccessControl {
                 // final byte (first byte of the next 32 bytes)
                 v := byte(0, mload(add(signature, 96)))
             }
-
-            address publicKey = ecrecover(keccak256(signedDepositData), v, r, s);
+            
+            bytes32 hashedDepositData = keccak256(abi.encodePacked(signData));
+            console.logBytes32(hashedDepositData);
+            address publicKey = ecrecover(hashedDepositData, v, r, s);
+            
             require(hasRole(RELAYER_ROLE, publicKey), 'Not a recognized relayer');
             
             signersCount++;
@@ -89,6 +89,6 @@ contract Bridge is AccessControl {
         
         require(signersCount>=_quorum, 'Quorum was not met');
 
-        safe.finishCurrentPendingDeposit(status);
+        safe.finishCurrentPendingDeposit(DepositStatus.Executed);
     }
 }
