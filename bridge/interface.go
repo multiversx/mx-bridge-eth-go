@@ -20,7 +20,7 @@ type Bridge interface {
 	WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool
 	WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool
 	GetActionIdForSetStatusOnPendingTransfer(context.Context) ActionId
-	WasExecuted(context.Context, ActionId) bool
+	WasExecuted(context.Context, ActionId, Nonce) bool
 	Sign(context.Context, ActionId) (string, error)
 	Execute(context.Context, ActionId) (string, error)
 	SignersCount(context.Context, ActionId) uint

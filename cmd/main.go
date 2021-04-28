@@ -90,30 +90,49 @@ func playgroundElrond(ctx *cli.Context) error {
 
 	// carol: erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8
 
-	//result := client.WasProposedTransfer(context.TODO(), bridge.Nonce(1))
+	log.Info(fmt.Sprintf("Signers count %d", client.SignersCount(context.TODO(), bridge.ActionId(7))))
+
+	//nonce := bridge.Nonce(45)
+	//transfer, err := client.ProposeTransfer(context.TODO(), &bridge.DepositTransaction{
+	//	To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+	//	From:         "0x132A150926691F08a693721503a38affeD18d524",
+	//	TokenAddress: "574554482d393761323662",
+	//	Amount:       big.NewInt(3),
+	//	DepositNonce: nonce,
+	//})
+	//if err != nil {
+	//	return err
+	//}
+	//log.Info(transfer)
+	//
+	//result := client.WasProposedTransfer(context.TODO(), nonce)
 	//log.Info(fmt.Sprint(result))
 	//
-	//log.Info(fmt.Sprintf("ActionId: %d", client.GetActionIdForProposeTransfer(context.TODO(), bridge.Nonce(1))))
+	//time.Sleep(10 * time.Second)
+	//actionId := client.GetActionIdForProposeTransfer(context.TODO(), nonce)
+	//log.Info(fmt.Sprintf("ActionId: %d", actionId))
 	//
-	//hash, err := client.Sign(context.TODO(), bridge.ActionId(2))
+	//hash, err := client.Sign(context.TODO(), actionId)
 	//if err != nil {
-	//	log.Error(err.Error())
+	//	return err
 	//}
 	//log.Info(fmt.Sprintf("Sign hash %q", hash))
 	//
-	//hash, err = client.Execute(context.TODO(), bridge.ActionId(2))
+	//time.Sleep(10 * time.Second)
+	//hash, err = client.Execute(context.TODO(), actionId)
 	//if err != nil {
-	//	log.Error(err.Error())
+	//	return err
 	//}
 	//log.Info(fmt.Sprintf("Perform hash %q", hash))
-
-	log.Info(fmt.Sprintf("%v", client.WasExecuted(context.TODO(), bridge.ActionId(2))))
+	//
+	//time.Sleep(10 * time.Second)
+	//log.Info(fmt.Sprintf("%v", client.WasExecuted(context.TODO(), actionId)))
 
 	// deploy
 	// deployCC
 	// stake
-	// proposeMultiTransferEsdtSetLocalMintRole
-	// issueToken
+	// MultiTransferEsdt_WrappedEthIssue
+	// MultiTransferEsdt_TransferEsdt
 
 	//client, err := eth.NewClient(config.Eth)
 	//if err != nil {

@@ -132,6 +132,19 @@ func TestSignersCount(t *testing.T) {
 	assert.Equal(t, uint(1), got)
 }
 
+func TestWasExecuted(t *testing.T) {
+	contract := &bridgeContractStub{wasExecuted: true}
+	client := Client{
+		bridgeContract: contract,
+		broadcaster:    &broadcasterStub{},
+		log:            logger.GetOrCreate("testEthClient"),
+	}
+
+	got := client.WasExecuted(context.TODO(), bridge.ActionId(0), bridge.Nonce(42))
+
+	assert.Equal(t, true, got)
+}
+
 func privateKey(t *testing.T) *ecdsa.PrivateKey {
 	t.Helper()
 
@@ -145,7 +158,8 @@ func privateKey(t *testing.T) *ecdsa.PrivateKey {
 }
 
 type bridgeContractStub struct {
-	deposit Deposit
+	deposit     Deposit
+	wasExecuted bool
 }
 
 func (c *bridgeContractStub) GetNextPendingTransaction(*bind.CallOpts) (Deposit, error) {
@@ -154,6 +168,10 @@ func (c *bridgeContractStub) GetNextPendingTransaction(*bind.CallOpts) (Deposit,
 
 func (c *bridgeContractStub) FinishCurrentPendingTransaction(_ *bind.TransactOpts, _ string, _ [][]byte) (*types.Transaction, error) {
 	return nil, nil
+}
+
+func (c *bridgeContractStub) WasTransactionExecuted(*bind.CallOpts, uint64) (bool, error) {
+	return c.wasExecuted, nil
 }
 
 type broadcasterStub struct {

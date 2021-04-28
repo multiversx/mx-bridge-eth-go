@@ -11,18 +11,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestReadPendingTransaction(t *testing.T) {
+func TestGetPendingTransaction(t *testing.T) {
 	testHelpers.SetTestLogLevel()
-	t.Run("it will read the next pending transaction", func(t *testing.T) {
+	t.Run("it will clean and get the next pending transaction", func(t *testing.T) {
 		expected := &bridge.DepositTransaction{To: "address", DepositNonce: 0}
 		sourceBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expected}}
-		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &testHelpers.TimerStub{}, &topologyProviderStub{}, "testMonitor")
+		provider := &topologyProviderStub{}
+		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &testHelpers.TimerStub{}, provider, "testMonitor")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 		defer cancel()
 		monitor.Start(ctx)
 
 		assert.Equal(t, expected, monitor.pendingTransaction)
+		assert.True(t, provider.cleaned)
 	})
 	t.Run("it will sleep and try again if there is no pending transaction", func(t *testing.T) {
 		expected := &bridge.DepositTransaction{To: "address", DepositNonce: 0}
@@ -309,6 +311,7 @@ func TestProposeSetStatus(t *testing.T) {
 type topologyProviderStub struct {
 	amITheLeader bool
 	peerCount    int
+	cleaned      bool
 }
 
 func (s *topologyProviderStub) AmITheLeader() bool {
@@ -317,6 +320,10 @@ func (s *topologyProviderStub) AmITheLeader() bool {
 
 func (s *topologyProviderStub) PeerCount() int {
 	return s.peerCount
+}
+
+func (s *topologyProviderStub) Clean() {
+	s.cleaned = true
 }
 
 type bridgeStub struct {
@@ -378,7 +385,7 @@ func (b *bridgeStub) GetActionIdForSetStatusOnPendingTransfer(context.Context) b
 	return b.proposeSetStatusActionId
 }
 
-func (b *bridgeStub) WasExecuted(context.Context, bridge.ActionId) bool {
+func (b *bridgeStub) WasExecuted(context.Context, bridge.ActionId, bridge.Nonce) bool {
 	return b.wasExecuted
 }
 

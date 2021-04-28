@@ -23,6 +23,7 @@ contract Bridge is AccessControl {
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
             "Access Control: sender is not Admin"
         );
+        _;
     }
 
     constructor(
@@ -120,6 +121,7 @@ contract Bridge is AccessControl {
                 hasRole(RELAYER_ROLE, publicKey),
                 "Not a recognized relayer"
             );
+
             
             signersCount++;
         }

@@ -30,6 +30,7 @@ const (
 type BridgeContract interface {
 	GetNextPendingTransaction(opts *bind.CallOpts) (Deposit, error)
 	FinishCurrentPendingTransaction(opts *bind.TransactOpts, signData string, signatures [][]byte) (*types.Transaction, error)
+	WasTransactionExecuted(opts *bind.CallOpts, nonceId uint64) (bool, error)
 }
 
 type BlockchainClient interface {
@@ -156,8 +157,14 @@ func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridg
 	return bridge.ActionId(0)
 }
 
-func (c *Client) WasExecuted(context.Context, bridge.ActionId) bool {
-	return false
+func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, nonce bridge.Nonce) bool {
+	wasExecuted, err := c.bridgeContract.WasTransactionExecuted(&bind.CallOpts{Context: ctx}, uint64(nonce))
+	if err != nil {
+		c.log.Error(err.Error())
+		return false
+	}
+
+	return wasExecuted
 }
 
 func (c *Client) Sign(context.Context, bridge.ActionId) (string, error) {

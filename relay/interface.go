@@ -10,4 +10,5 @@ type Startable interface {
 type TopologyProvider interface {
 	PeerCount() int
 	AmITheLeader() bool
+	Clean()
 }

@@ -52,6 +52,29 @@ func TestInit(t *testing.T) {
 	assert.Contains(t, messenger.registeredMessageProcessors, SignTopicName)
 }
 
+func TestClean(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
+	t.Run("it will clean signatures", func(t *testing.T) {
+		relay := Relay{
+			signatures: Signatures{"peer": []byte("some signature")},
+		}
+
+		relay.Clean()
+
+		assert.Empty(t, relay.signatures)
+	})
+	t.Run("it will clean lastSignData", func(t *testing.T) {
+		relay := Relay{
+			lastSignData: "some sign data",
+		}
+
+		relay.Clean()
+
+		assert.Empty(t, relay.lastSignData)
+	})
+}
+
 func TestPrivateTopicProcessor(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 

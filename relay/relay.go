@@ -74,31 +74,37 @@ type Relay struct {
 }
 
 func NewRelay(config *Config, name string) (*Relay, error) {
-	ethBridge, err := eth.NewClient(config.Eth, nil)
+	relay := &Relay{}
+
+	config.Eth.TokenMap = make(bridge.TokenMap)
+	for key, value := range config.TokenMap {
+		config.Eth.TokenMap[value] = key
+	}
+	ethBridge, err := eth.NewClient(config.Eth, relay)
 	if err != nil {
 		return nil, err
 	}
+	relay.ethBridge = ethBridge
 
+	config.Elrond.TokenMap = config.TokenMap
 	elrondBridge, err := elrond.NewClient(config.Elrond)
 	if err != nil {
 		return nil, err
 	}
+	relay.elrondBridge = elrondBridge
 
 	messenger, err := buildNetMessenger(config.P2P)
 	if err != nil {
 		return nil, err
 	}
+	relay.messenger = messenger
 
-	return &Relay{
-		peers:      make(Peers, 0),
-		messenger:  messenger,
-		timer:      &defaultTimer{},
-		log:        logger.GetOrCreate(name),
-		signatures: make(map[core.PeerID][]byte),
+	relay.peers = make(Peers, 0)
+	relay.timer = &defaultTimer{}
+	relay.log = logger.GetOrCreate(name)
+	relay.signatures = make(map[core.PeerID][]byte)
 
-		ethBridge:    ethBridge,
-		elrondBridge: elrondBridge,
-	}, nil
+	return relay, nil
 }
 
 func (r *Relay) Start(ctx context.Context) error {
@@ -139,6 +145,11 @@ func (r *Relay) AmITheLeader() bool {
 
 		return r.peers[index] == r.messenger.ID()
 	}
+}
+
+func (r *Relay) Clean() {
+	r.signatures = make(Signatures)
+	r.lastSignData = ""
 }
 
 // MessageProcessor

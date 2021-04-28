@@ -3,16 +3,21 @@ package elrond
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
-	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/core/pubkeyConverter"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/blockchain"
 	"github.com/ElrondNetwork/elrond-sdk/erdgo/data"
+)
+
+const (
+	ExecutionCost = 1000000000
 )
 
 type QueryResponseErr struct {
@@ -38,6 +43,7 @@ type Client struct {
 	privateKey    []byte
 	address       string
 	nonce         uint64
+	tokenMap      bridge.TokenMap
 	log           logger.Logger
 }
 
@@ -74,6 +80,7 @@ func NewClient(config bridge.Config) (*Client, error) {
 		privateKey:    privateKey,
 		address:       address.AddressAsBech32String(),
 		nonce:         initialNonce,
+		tokenMap:      config.TokenMap,
 		log:           log,
 	}, nil
 }
@@ -89,7 +96,7 @@ func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
 		Func("proposeEsdtSafeSetCurrentTransactionStatus").
 		Int(bridge.Executed)
 
-	_, _ = c.sendTransaction(builder)
+	_, _ = c.sendTransaction(builder, 0)
 }
 
 func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
@@ -97,23 +104,18 @@ func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
 		Func("proposeEsdtSafeSetCurrentTransactionStatus").
 		Int(bridge.Rejected)
 
-	_, _ = c.sendTransaction(builder)
+	_, _ = c.sendTransaction(builder, 0)
 }
 
 func (c *Client) ProposeTransfer(_ context.Context, tx *bridge.DepositTransaction) (string, error) {
-	// proposeMultiTransferEsdtTransferEsdtToken(depositTx) -> ActionId
-	// pub enum TransactionStatus {
-	//    None,
-	//    Pending,
-	//    InProgress,
-	//    Executed,
-	//    Rejected,
-	//}
 	builder := newBuilder().
 		Func("proposeMultiTransferEsdtTransferEsdtToken").
-		Nonce(tx.DepositNonce)
+		Nonce(tx.DepositNonce).
+		Address(tx.To).
+		HexString(c.tokenMap[tx.TokenAddress]).
+		BigInt(tx.Amount)
 
-	return c.sendTransaction(builder)
+	return c.sendTransaction(builder, 0)
 }
 
 func (c *Client) WasProposedTransfer(_ context.Context, nonce bridge.Nonce) bool {
@@ -170,7 +172,7 @@ func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridg
 	return bridge.ActionId(response)
 }
 
-func (c *Client) WasExecuted(_ context.Context, actionId bridge.ActionId) bool {
+func (c *Client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ bridge.Nonce) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("wasActionExecuted").
 		ActionId(actionId).
@@ -184,7 +186,7 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 		Func("sign").
 		ActionId(actionId)
 
-	return c.sendTransaction(builder)
+	return c.sendTransaction(builder, 0)
 }
 
 func (c *Client) Execute(_ context.Context, actionId bridge.ActionId) (string, error) {
@@ -192,12 +194,17 @@ func (c *Client) Execute(_ context.Context, actionId bridge.ActionId) (string, e
 		Func("performAction").
 		ActionId(actionId)
 
-	return c.sendTransaction(builder)
+	return c.sendTransaction(builder, ExecutionCost)
 }
 
-func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
-	// getActionSignerCount(actionId)
-	return 0
+func (c *Client) SignersCount(_ context.Context, actionId bridge.ActionId) uint {
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("getActionSignerCount").
+		ActionId(actionId).
+		Build()
+
+	count, _ := c.executeUintQuery(valueRequest)
+	return uint(count)
 }
 
 // Helpers
@@ -253,7 +260,9 @@ func (c *Client) executeUintQuery(valueRequest *data.VmValueRequest) (uint64, er
 	return result, nil
 }
 
-func (c *Client) signTransaction(builder *txDataBuilder) (*data.Transaction, error) {
+func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Transaction, error) {
+	c.log.Debug(builder.ToString())
+
 	networkConfig, err := c.proxy.GetNetworkConfig()
 	if err != nil {
 		return nil, err
@@ -271,18 +280,18 @@ func (c *Client) signTransaction(builder *txDataBuilder) (*data.Transaction, err
 		Value:    "0",
 	}
 
-	cost, err := c.proxy.RequestTransactionCost(tx)
-	if err != nil {
-		return nil, err
+	if cost == 0 {
+		reqCost, err := c.proxy.RequestTransactionCost(tx)
+		if err != nil {
+			return nil, err
+		}
+		if reqCost.RetMessage != "" {
+			return nil, errors.New(reqCost.RetMessage)
+		}
+		cost = reqCost.TxCost
 	}
-	c.log.Info(fmt.Sprintf("Min gaslimit: %d", tx.GasLimit))
-	if cost.TxCost > 0 {
-		tx.GasLimit = cost.TxCost
-	} else {
-		tx.GasLimit = 200000000
-	}
-	c.log.Info(fmt.Sprintf("Response message %q", cost.RetMessage))
-	c.log.Info(fmt.Sprintf("Calculated gaslimit: %d", tx.GasLimit))
+
+	tx.GasLimit = cost
 
 	err = erdgo.SignTransaction(tx, c.privateKey)
 	if err != nil {
@@ -296,8 +305,8 @@ func (c *Client) incrementNonce() {
 	c.nonce++
 }
 
-func (c *Client) sendTransaction(builder *txDataBuilder) (string, error) {
-	tx, err := c.signTransaction(builder)
+func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, error) {
+	tx, err := c.signTransaction(builder, cost)
 	if err != nil {
 		return "", err
 	}
@@ -308,20 +317,6 @@ func (c *Client) sendTransaction(builder *txDataBuilder) (string, error) {
 	}
 
 	return hash, err
-}
-
-func (c *Client) printTransactionResults(hash string) {
-	time.Sleep(10 * time.Second)
-	info, err := c.proxy.GetTransactionInfoWithResults(hash)
-	if err != nil {
-		c.log.Error(err.Error())
-		return
-	}
-
-	scResults := info.Data.Transaction.ScResults
-	for i := 0; i < len(scResults); i++ {
-		c.log.Info(scResults[i].ReturnMessage)
-	}
 }
 
 // Builders
@@ -400,6 +395,26 @@ func (builder *txDataBuilder) Nonce(nonce bridge.Nonce) *txDataBuilder {
 
 func (builder *txDataBuilder) Int(value int) *txDataBuilder {
 	builder.elements = append(builder.elements, intToHex(value))
+
+	return builder
+}
+
+func (builder *txDataBuilder) BigInt(value *big.Int) *txDataBuilder {
+	builder.elements = append(builder.elements, hex.EncodeToString(value.Bytes()))
+
+	return builder
+}
+
+func (builder *txDataBuilder) Address(value string) *txDataBuilder {
+	pkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
+	buff, _ := pkConv.Decode(value)
+	builder.elements = append(builder.elements, hex.EncodeToString(buff))
+
+	return builder
+}
+
+func (builder *txDataBuilder) HexString(value string) *txDataBuilder {
+	builder.elements = append(builder.elements, value)
 
 	return builder
 }

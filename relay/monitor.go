@@ -98,12 +98,13 @@ func (m *Monitor) getPendingTransaction(ctx context.Context, ch chan State) {
 
 	if m.pendingTransaction == nil {
 		select {
-		case <-m.timer.After((Timeout / 10) * time.Second):
+		case <-m.timer.After(5 * time.Second):
 			ch <- GetPendingTransaction
 		case <-ctx.Done():
 			ch <- Stop
 		}
 	} else {
+		m.topologyProvider.Clean()
 		ch <- ProposeTransfer
 	}
 }
@@ -182,7 +183,7 @@ func (m *Monitor) waitForExecute(ctx context.Context, ch chan State) {
 	m.log.Info(fmt.Sprintf("Waiting for execution for actionID %d", m.actionId))
 	select {
 	case <-m.timer.After(Timeout):
-		if m.executingBridge.WasExecuted(ctx, m.actionId) {
+		if m.executingBridge.WasExecuted(ctx, m.actionId, m.pendingTransaction.DepositNonce) {
 			m.log.Info(fmt.Sprintf("ActionId %d was executed", m.actionId))
 
 			switch m.executingBridge {

@@ -2,7 +2,10 @@ package elrond
 
 import (
 	"context"
+	"math/big"
 	"testing"
+
+	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 
@@ -26,24 +29,30 @@ func (e TransactionError) Error() string {
 }
 
 func TestProposeTransfer(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
 	t.Run("it will set proper function and params", func(t *testing.T) {
 		proxy := &testProxy{transactionCost: 1024}
 		client, _ := buildTestClient(proxy)
 
 		tx := &bridge.DepositTransaction{
-			To:           "",
-			From:         "",
-			TokenAddress: "",
-			Amount:       nil,
+			To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+			From:         "0x132A150926691F08a693721503a38affeD18d524",
+			TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+			Amount:       big.NewInt(42),
 			DepositNonce: bridge.Nonce(1),
 		}
-		_, _ = client.ProposeTransfer(context.TODO(), tx)
 
-		assert.Equal(t, []byte("proposeMultiTransferEsdtTransferEsdtToken@01"), proxy.lastTransaction.Data)
+		_, _ = client.ProposeTransfer(context.TODO(), tx)
+		expected := "proposeMultiTransferEsdtTransferEsdtToken@01@b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba@574554482d393761323662@2a"
+
+		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
 	})
 }
 
 func TestExecute(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
 	t.Run("will return the transaction hash", func(t *testing.T) {
 		expectedTxHash := "expected hash"
 		proxy := &testProxy{transactionCost: 1024, transactionHash: expectedTxHash}
@@ -78,6 +87,8 @@ func TestExecute(t *testing.T) {
 }
 
 func TestWasProposedTransfer(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
 	t.Run("will return true when response is 1", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 		client, _ := buildTestClient(proxy)
@@ -102,6 +113,8 @@ func TestWasProposedTransfer(t *testing.T) {
 }
 
 func TestWasProposedSetStatusSuccessOnPendingTransfer(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 	client, _ := buildTestClient(proxy)
 
@@ -109,7 +122,20 @@ func TestWasProposedSetStatusSuccessOnPendingTransfer(t *testing.T) {
 	assert.True(t, got)
 }
 
+func TestSignersCount(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
+	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
+	client, _ := buildTestClient(proxy)
+
+	got := client.SignersCount(context.TODO(), bridge.ActionId(0))
+
+	assert.Equal(t, uint(42), got)
+}
+
 func TestWasProposedSetStatusFailedOnPendingTransfer(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
 	t.Run("will return true when response is 1", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 		client, _ := buildTestClient(proxy)
@@ -127,14 +153,19 @@ func TestWasProposedSetStatusFailedOnPendingTransfer(t *testing.T) {
 }
 
 func TestGetActionIdForEthTxNonce(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	client, _ := buildTestClient(proxy)
 
 	got := client.GetActionIdForProposeTransfer(context.TODO(), bridge.Nonce(41))
-	assert.Equal(t, got, bridge.ActionId(42))
+
+	assert.Equal(t, bridge.ActionId(42), got)
 }
 
 func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(43)}}}
 	client, _ := buildTestClient(proxy)
 
@@ -143,14 +174,18 @@ func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
 }
 
 func TestWasExecuted(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 	client, _ := buildTestClient(proxy)
 
-	got := client.WasExecuted(context.TODO(), bridge.ActionId(42))
+	got := client.WasExecuted(context.TODO(), bridge.ActionId(42), bridge.Nonce(0))
 	assert.True(t, got)
 }
 
 func TestSign(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
 	t.Run("it will set proper transaction cost", func(t *testing.T) {
 		expect := uint64(1024)
 		proxy := &testProxy{transactionCost: expect}
@@ -187,6 +222,7 @@ func buildTestClient(proxy *testProxy) (*Client, error) {
 		bridgeAddress: "",
 		privateKey:    privateKey,
 		address:       address,
+		tokenMap:      bridge.TokenMap{"0x3a41ed2dD119E44B802c87E84840F7C85206f4f1": "574554482d393761323662"},
 		nonce:         0,
 	}
 

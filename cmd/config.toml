@@ -1,14 +1,18 @@
 [Eth]
-    NetworkAddress    = "http://127.0.0.1:8545"
-    BridgeAddress     = "0x044DF20D9Dcc04A2Adb2d59BA9c26d370024e344"
-    PrivateKey        = "60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d7192efab"
+NetworkAddress = "http://127.0.0.1:8545"
+BridgeAddress = "0xc7cD179F7F0cE77c5B0B430509503047c7aE8E75"
+PrivateKey = "60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d7192efab"
 
 [Elrond]
-    NetworkAddress    = "http://localhost:7950"
-    BridgeAddress     = "erd1qqqqqqqqqqqqqpgqfzydqmdw7m2vazsp6u5p95yxz76t2p9rd8ss0zp9ts"
-    PrivateKeyPath    = "../mytestnet/testnet/wallets/users/bob.pem"
+NetworkAddress = "http://localhost:7950"
+BridgeAddress = "erd1qqqqqqqqqqqqqpgqfzydqmdw7m2vazsp6u5p95yxz76t2p9rd8ss0zp9ts"
+PrivateKey = "../mytestnet/testnet/wallets/users/bob.pem"
 
 [P2P]
-    Port              = "10000"
-    Seed              = "seed"
-    InitialPeerList   = []
+Port = "10000"
+Seed = "seed"
+InitialPeerList = []
+
+[TokenMap]
+# AFCoin -> WETH
+"0xB882D11672C4f69cA0c5660fE53D28CC096fa7D8" = "574554482d666438616437"
