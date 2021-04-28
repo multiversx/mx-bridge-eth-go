@@ -8,7 +8,11 @@ import "./ERC20Safe.sol";
 
 contract Bridge is AccessControl {
     event RelayerAdded(address newRelayer);
+    event FinishedTransaction(uint256 depositNonce, DepositStatus status);
 
+
+    string constant action = 'CurrentPendingTransaction';
+    string constant prefix = "\x19Ethereum Signed Message:\n32";
     // Role used to execute deposits
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
     uint256 public _quorum;
@@ -55,6 +59,13 @@ contract Bridge is AccessControl {
         _quorum = newQorum;
     }
 
+    function wasTransactionExecuted(uint64 nonceId) external view returns(bool) {
+        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
+        Deposit memory deposit = safe.getDeposit(nonceId);
+
+        return deposit.status == DepositStatus.Executed || deposit.status == DepositStatus.Rejected;
+    }
+
     function getNextPendingTransaction()
         external
         view
@@ -65,13 +76,30 @@ contract Bridge is AccessControl {
     }
 
     function finishCurrentPendingTransaction(
-        string calldata signData,
+        uint256 depositNonce,
+        DepositStatus newDepositStatus,
         bytes[] memory signatures
     ) public {
-        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
-        // Deposit memory deposit = safe.getNextPendingDeposit();
-        uint8 signersCount;
+        require(
+            newDepositStatus == DepositStatus.Executed || newDepositStatus == DepositStatus.Rejected, 
+            'Non-final state. Can only be Executed or Rejected');
+        require(
+            signatures.length >= _quorum, 
+            'Not enough signatures to achieve quorum');
 
+        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
+        Deposit memory deposit = safe.getNextPendingDeposit();
+        require(
+            deposit.nonce == depositNonce, 
+            'Invalid deposit nonce');
+
+        uint8 signersCount;
+        
+        bytes32 hashedSignedData = keccak256(abi.encodePacked(depositNonce, newDepositStatus, action));
+        
+        bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
+        bytes32 hashedDepositData = keccak256(prefixedSignData);
+        
         for (uint256 i = 0; i < signatures.length; i++) {
             bytes memory signature = signatures[i];
             require(signature.length == 65, 'Malformed signature');
@@ -96,7 +124,6 @@ contract Bridge is AccessControl {
                 v += 27;
             }
 
-            bytes32 hashedDepositData = keccak256(abi.encodePacked(signData));
             address publicKey = ecrecover(hashedDepositData, v, r, s);
             require(
                 hasRole(RELAYER_ROLE, publicKey),
@@ -108,6 +135,7 @@ contract Bridge is AccessControl {
 
         require(signersCount >= _quorum, "Quorum was not met");
 
-        safe.finishCurrentPendingDeposit(DepositStatus.Executed);
+        safe.finishCurrentPendingDeposit(newDepositStatus);
+        emit FinishedTransaction(depositNonce, newDepositStatus);
     }
 }

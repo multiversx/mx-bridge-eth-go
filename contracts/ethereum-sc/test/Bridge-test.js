@@ -108,46 +108,78 @@ describe("Bridge", async function () {
 
   describe('finishCurrentPendingTransaction', async function () {
     beforeEach(async function () {
+      depositNonce = 1;
+      expectedDeposit = {
+        nonce: depositNonce,
+        tokenAddress: mockERC20Safe.address,
+        amount: 100,
+        depositor: adminWallet.address,
+        recipient: ethers.utils.toUtf8Bytes('some address'),
+        status: 1
+      };
+
+      await mockERC20Safe.mock.getNextPendingDeposit.returns(expectedDeposit);
       await mockERC20Safe.mock.finishCurrentPendingDeposit.withArgs(3).returns();
     });
 
+    function getDataToSign() {
+      signMessageDefinition = ['uint256', 'uint8', 'string'];
+      signMessageData = [1, 3, 'CurrentPendingTransaction'];
+
+      bytesToSign = ethers.utils.solidityPack(signMessageDefinition, signMessageData);
+      signData = ethers.utils.keccak256(bytesToSign);
+      return ethers.utils.arrayify(signData);
+    }
+
+    async function getSignaturesForQuorum() {
+      dataToSign = getDataToSign();
+      signature1 = await adminWallet.signMessage(dataToSign);
+      signature2 = await relayer1.signMessage(dataToSign);
+      signature3 = await relayer2.signMessage(dataToSign);
+      signature4 = await relayer3.signMessage(dataToSign);
+      return [signature1, signature2, signature3, signature4];
+    }
+
+    describe('for a different deposit than the current one', async function () {
+      it('reverts', async function () {
+        signatures = await getSignaturesForQuorum()
+        await (expect(bridge.finishCurrentPendingTransaction(2, 3, signatures))).to.be.revertedWith("Invalid deposit nonce");
+      })
+    });
+
+    describe('for a non final state', async function () {
+      it('reverts', async function () {
+        await (expect(bridge.finishCurrentPendingTransaction(2, 2, []))).to.be.revertedWith("Non-final state. Can only be Executed or Rejected");
+      })
+    })
+
+    describe('for a lower number of signatures than are required to achieve quorum', async function () {
+      it('reverts', async function () {
+        dataToSign = getDataToSign();
+        signature1 = await adminWallet.signMessage(dataToSign);
+
+        await (expect(bridge.finishCurrentPendingTransaction(1, 3, [signature1]))).to.be.revertedWith("Not enough signatures to achieve quorum");
+      })
+    })
+
     describe('when quorum achieved', async function () {
       beforeEach(async function () {
-        expectedDeposit = {
-          nonce: 1,
-          tokenAddress: mockERC20Safe.address,
-          amount: 100,
-          depositor: adminWallet.address,
-          recipient: ethers.utils.toUtf8Bytes('some address'),
-          status: 1
-        };
-
-        await mockERC20Safe.mock.getNextPendingDeposit.returns(expectedDeposit);
-      });
-
-      it('sets updates the deposit', async function () {
-        const signedMessage = 'CurrentPendingTransaction:1:3';
-        const signedData = '\x19Ethereum Signed Message:\n' + signedMessage.length + signedMessage;
-        signature1 = await adminWallet.signMessage(signedMessage);
-        signature2 = await relayer1.signMessage(signedMessage);
-        signature3 = await relayer2.signMessage(signedMessage);
-        signature4 = await relayer3.signMessage(signedMessage);
-        signatures = [signature1, signature2, signature3, signature4];
-
-        await bridge.finishCurrentPendingTransaction(signedData, signatures);
+        signatures = await getSignaturesForQuorum();
+        expectedStatus = 3;
       })
 
-      it.only('accepts geth signatures', async function () {
-        const signedMessage = 'CurrentPendingTransaction:1:3';
-        const signedData = '\x19Ethereum Signed Message:\n' + signedMessage.length + signedMessage;
-        signature1 = await adminWallet.signMessage(signedMessage);
-        signature2 = await relayer1.signMessage(signedMessage);
-        signature3 = await relayer2.signMessage(signedMessage);
-        signature4 = await relayer3.signMessage(signedMessage);
-        signatures = [signature1, signature2, signature3, signature4];
+      it('updates the deposit', async function () {
+        await expect(bridge.finishCurrentPendingTransaction(1, 3, signatures))
+          .to.emit(bridge, 'FinishedTransaction')
+          .withArgs(expectedDeposit.nonce, expectedStatus);
+      })
+
+      it('accepts geth signatures', async function () {
         gethSignatures = signatures.map(s => s.slice(0, s.length - 2) + (s.slice(-2) == '1b' ? '00' : '01'));
 
-        await bridge.finishCurrentPendingTransaction(signedData, gethSignatures);
+        await expect(bridge.finishCurrentPendingTransaction(1, 3, gethSignatures))
+          .to.emit(bridge, 'FinishedTransaction')
+          .withArgs(expectedDeposit.nonce, expectedStatus);
       })
     });
   })
