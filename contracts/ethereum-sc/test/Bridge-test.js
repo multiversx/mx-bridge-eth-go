@@ -79,8 +79,8 @@ describe("Bridge", async function () {
     });
   });
 
-  describe('getNextPendingTransaction', async function() {
-    beforeEach(async function() {
+  describe('getNextPendingTransaction', async function () {
+    beforeEach(async function () {
       expectedDeposit = {
         nonce: 1,
         tokenAddress: mockERC20Safe.address,
@@ -93,7 +93,7 @@ describe("Bridge", async function () {
       await mockERC20Safe.mock.getNextPendingDeposit.returns(expectedDeposit);
     });
 
-    it('returns the deposit', async function() {
+    it('returns the deposit', async function () {
       transaction = await bridge.getNextPendingTransaction();
 
 
@@ -106,13 +106,13 @@ describe("Bridge", async function () {
     })
   });
 
-  describe('finishCurrentPendingTransaction', async function() {
-    beforeEach(async function() {
+  describe('finishCurrentPendingTransaction', async function () {
+    beforeEach(async function () {
       await mockERC20Safe.mock.finishCurrentPendingDeposit.withArgs(3).returns();
     });
 
-    describe('when quorum achieved', async function() {
-      beforeEach(async function() {
+    describe('when quorum achieved', async function () {
+      beforeEach(async function () {
         expectedDeposit = {
           nonce: 1,
           tokenAddress: mockERC20Safe.address,
@@ -121,19 +121,20 @@ describe("Bridge", async function () {
           recipient: ethers.utils.toUtf8Bytes('some address'),
           status: 1
         };
-  
+
         await mockERC20Safe.mock.getNextPendingDeposit.returns(expectedDeposit);
       });
 
-      it('sets updates the deposit', async function() {
-        signedData = '\x19Ethereum Signed Message:\n27CurrentPendingTransaction:4';
+      it.only('sets updates the deposit', async function () {
+        signedData = 'CurrentPendingTransaction:3';
 
         signature1 = await adminWallet.signMessage(signedData);
         signature2 = await relayer1.signMessage(signedData);
         signature3 = await relayer2.signMessage(signedData);
         signature4 = await relayer3.signMessage(signedData);
-        
-        await bridge.finishCurrentPendingTransaction(signedData, [signature1, signature2, signature3, signature4]);
+        signatures = [signature1, signature2, signature3, signature4];
+
+        await bridge.finishCurrentPendingTransaction("\x19Ethereum Signed Message:\n27CurrentPendingTransaction:3", []);
       })
     });
   })
