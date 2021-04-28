@@ -125,16 +125,29 @@ describe("Bridge", async function () {
         await mockERC20Safe.mock.getNextPendingDeposit.returns(expectedDeposit);
       });
 
-      it.only('sets updates the deposit', async function () {
-        signedData = 'CurrentPendingTransaction:3';
-
-        signature1 = await adminWallet.signMessage(signedData);
-        signature2 = await relayer1.signMessage(signedData);
-        signature3 = await relayer2.signMessage(signedData);
-        signature4 = await relayer3.signMessage(signedData);
+      it('sets updates the deposit', async function () {
+        const signedMessage = 'CurrentPendingTransaction:1:3';
+        const signedData = '\x19Ethereum Signed Message:\n' + signedMessage.length + signedMessage;
+        signature1 = await adminWallet.signMessage(signedMessage);
+        signature2 = await relayer1.signMessage(signedMessage);
+        signature3 = await relayer2.signMessage(signedMessage);
+        signature4 = await relayer3.signMessage(signedMessage);
         signatures = [signature1, signature2, signature3, signature4];
 
-        await bridge.finishCurrentPendingTransaction("\x19Ethereum Signed Message:\n27CurrentPendingTransaction:3", []);
+        await bridge.finishCurrentPendingTransaction(signedData, signatures);
+      })
+
+      it.only('accepts geth signatures', async function () {
+        const signedMessage = 'CurrentPendingTransaction:1:3';
+        const signedData = '\x19Ethereum Signed Message:\n' + signedMessage.length + signedMessage;
+        signature1 = await adminWallet.signMessage(signedMessage);
+        signature2 = await relayer1.signMessage(signedMessage);
+        signature3 = await relayer2.signMessage(signedMessage);
+        signature4 = await relayer3.signMessage(signedMessage);
+        signatures = [signature1, signature2, signature3, signature4];
+        gethSignatures = signatures.map(s => s.slice(0, s.length - 2) + (s.slice(-2) == '1b' ? '00' : '01'));
+
+        await bridge.finishCurrentPendingTransaction(signedData, gethSignatures);
       })
     });
   })

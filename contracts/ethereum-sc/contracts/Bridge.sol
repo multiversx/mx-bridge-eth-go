@@ -74,7 +74,7 @@ contract Bridge is AccessControl {
 
         for (uint256 i = 0; i < signatures.length; i++) {
             bytes memory signature = signatures[i];
-            require(signature.length == 65);
+            require(signature.length == 65, 'Malformed signature');
 
             bytes32 r;
             bytes32 s;
@@ -89,9 +89,15 @@ contract Bridge is AccessControl {
                 v := byte(0, mload(add(signature, 96)))
             }
 
+            // adjust recoverid (v) for geth cannonical values of 0 or 1 
+            // as per Ethereum's yellow paper: Appendinx F (Signing Transactions)
+            if (v == 0 || v == 1)
+            {
+                v += 27;
+            }
+
             bytes32 hashedDepositData = keccak256(abi.encodePacked(signData));
             address publicKey = ecrecover(hashedDepositData, v, r, s);
-            
             require(
                 hasRole(RELAYER_ROLE, publicKey),
                 "Not a recognized relayer"
