@@ -6,12 +6,14 @@ const { deployMockContract, provider, deployContract } = waffle;
 const IERC20 = require('../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json');
 const ERC20Safe = require('../artifacts/contracts/ERC20Safe.sol/ERC20Safe.json');
 const Bridge = require('../artifacts/contracts/Bridge.sol/Bridge.json');
+const { ethers } = require("ethers");
 
 describe("ERC20Safe", async function () {
   const [adminWallet, bridgeWallet, otherWallet] = provider.getWallets();
 
   beforeEach(async function () {
-    token = await deployMockContract(adminWallet, IERC20.abi);
+    mockToken = await deployMockContract(adminWallet, IERC20.abi);
+    await mockToken.mock.transferFrom.returns(0);
     bridge = await deployMockContract(adminWallet, Bridge.abi);
     safe = await deployContract(adminWallet, ERC20Safe);
   });
@@ -23,9 +25,9 @@ describe("ERC20Safe", async function () {
 
   describe('whitelistToken', async function () {
     it('adds the token to the whitelistedTokens list', async function () {
-      await safe.whitelistToken(token.address);
+      await safe.whitelistToken(mockToken.address);
 
-      expect(await safe._whitelistedTokens(token.address)).to.be.true;
+      expect(await safe._whitelistedTokens(mockToken.address)).to.be.true;
     })
 
     describe('called by non admin', async function () {
@@ -34,7 +36,7 @@ describe("ERC20Safe", async function () {
       });
 
       it('reverts', async function () {
-        await (expect(nonAdminSafe.whitelistToken(token.address))).to.be.revertedWith("Access Control: sender is not Admin");
+        await (expect(nonAdminSafe.whitelistToken(mockToken.address))).to.be.revertedWith("Access Control: sender is not Admin");
       })
     })
   });
@@ -62,29 +64,28 @@ describe("ERC20Safe", async function () {
 
     describe("when token is whitelisted", async function () {
       beforeEach(async function () {
-        await safe.whitelistToken(token.address);
+        await safe.whitelistToken(mockToken.address);
       })
 
       it("emits Deposited event", async () => {
-        // await token.mock.transferFrom.returns({});
-        await expect(safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address")))
+        await expect(safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address")))
           .to.emit(safe, "ERC20Deposited")
           .withArgs(0);
       });
 
       it('increments depositsCount', async () => {
-        await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
+        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address"));
 
         expect(await safe.depositsCount.call()).to.equal(1);
       });
 
       it('creates a deposit', async function () {
-        await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
+        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address"));
 
         deposit = await safe.getDeposit(0);
 
         expect(deposit.nonce).to.equal(0);
-        expect(deposit.tokenAddress).to.equal(token.address);
+        expect(deposit.tokenAddress).to.equal(mockToken.address);
         expect(deposit.amount).to.equal(amount);
         expect(deposit.depositor).to.equal(adminWallet.address);
         expect(deposit.status).to.equal(1/*pending*/);
@@ -95,7 +96,7 @@ describe("ERC20Safe", async function () {
 
     describe("when token is not whitelisted", async function () {
       it('reverts', async function () {
-        await expect(safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address")))
+        await expect(safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address")))
           .to.be.revertedWith('Unsupported token');
       })
     });
@@ -103,21 +104,21 @@ describe("ERC20Safe", async function () {
 
   describe('getNextPendingDeposit', async function () {
     beforeEach(async function () {
-      await safe.whitelistToken(token.address);
+      await safe.whitelistToken(mockToken.address);
     });
 
     describe('when there is a pending deposit', async function () {
       const amount = 100;
 
       beforeEach(async function () {
-        await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
+        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address"));
       });
 
       it('returns the deposit', async function () {
         deposit = await safe.getNextPendingDeposit();
 
         expect(deposit.nonce).to.equal(0);
-        expect(deposit.tokenAddress).to.equal(token.address);
+        expect(deposit.tokenAddress).to.equal(mockToken.address);
         expect(deposit.amount).to.equal(amount);
         expect(deposit.depositor).to.equal(adminWallet.address);
         expect(deposit.status).to.equal(1/*pending*/);
@@ -142,9 +143,9 @@ describe("ERC20Safe", async function () {
   describe('finishCurrentPendingDeposit', async function () {
     const amount = 100;
     beforeEach(async function () {
-      await safe.whitelistToken(token.address);
+      await safe.whitelistToken(mockToken.address);
       await safe.setBridgeAddress(bridgeWallet.address);
-      await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
+      await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address"));
       safeFromBridge = safe.connect(bridgeWallet);
     });
 
@@ -158,7 +159,7 @@ describe("ERC20Safe", async function () {
 
     describe('when there are other pending deposits', async function () {
       beforeEach(async function () {
-        await safe.deposit(token.address, amount, ethers.utils.toUtf8Bytes("some address"));
+        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address"));
       })
 
       it('moves to the next one', async function () {
