@@ -9,7 +9,7 @@ import "hardhat/console.sol";
     contract ERC20Safe is AccessControl {
     // STATE
     uint64 public depositsCount;
-    mapping(uint64 => Deposit) public _deposits;
+    mapping(uint256 => Deposit) public _deposits;
     mapping(address => bool) public _whitelistedTokens;
     address public _bridgeAddress;
     uint64 _currentPendingDeposit;
@@ -91,7 +91,7 @@ import "hardhat/console.sol";
         - depositor Address of the account that deposited the tokens
         - recipient Address where tokens will be minted on Elrond Network
     */
-    function getDeposit(uint64 depositIndex)
+    function getDeposit(uint256 depositIndex)
         external
         view
         returns (Deposit memory)

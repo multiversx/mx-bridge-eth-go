@@ -205,4 +205,45 @@ describe("Bridge", async function () {
       })
     });
   })
+
+  describe('wasTransactionExecuted', async function () {
+    depositNonce = 1;
+
+    async function setupMockDeposit(depositNonce, depositState) {
+      deposit = {
+        nonce: depositNonce,
+        tokenAddress: mockERC20Safe.address,
+        amount: 100,
+        depositor: adminWallet.address,
+        recipient: ethers.utils.toUtf8Bytes('some address'),
+        status: depositState
+      };
+
+      mockedDeposit = await mockERC20Safe.mock.getDeposit.withArgs(depositNonce).returns(deposit);
+    }
+
+    describe('when deposit is in final state', async function () {
+      finalStates = [3, 4];
+
+      finalStates.forEach(async function (state) {
+        it('is true for state ' + state, async function () {
+          await setupMockDeposit(depositNonce, state);
+
+          expect(await bridge.wasTransactionExecuted(depositNonce)).to.be.true;
+        })
+      });
+    })
+
+    describe('when deposit is in non-final state', async function () {
+      nonFinalStates = [0, 1, 2];
+
+      nonFinalStates.forEach(async function (state) {
+        it('is false for state ' + state, async function () {
+          await setupMockDeposit(depositNonce, state);
+
+          expect(await bridge.wasTransactionExecuted(depositNonce)).to.be.false;
+        })
+      });
+    })
+  })
 });

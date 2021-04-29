@@ -59,13 +59,6 @@ contract Bridge is AccessControl {
         _quorum = newQorum;
     }
 
-    function wasTransactionExecuted(uint64 nonceId) external view returns(bool) {
-        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
-        Deposit memory deposit = safe.getDeposit(nonceId);
-
-        return deposit.status == DepositStatus.Executed || deposit.status == DepositStatus.Rejected;
-    }
-
     function getNextPendingTransaction()
         external
         view
@@ -137,5 +130,11 @@ contract Bridge is AccessControl {
 
         safe.finishCurrentPendingDeposit(newDepositStatus);
         emit FinishedTransaction(depositNonce, newDepositStatus);
+    }
+
+    function wasTransactionExecuted(uint256 nonceId) external view returns(bool) {
+        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
+        Deposit memory deposit = safe.getDeposit(nonceId);
+        return deposit.status == DepositStatus.Executed || deposit.status == DepositStatus.Rejected;
     }
 }
