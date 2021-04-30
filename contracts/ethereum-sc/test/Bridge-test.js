@@ -127,7 +127,7 @@ describe("Bridge", async function () {
       signMessageDefinition = ['uint256', 'uint8', 'string'];
       signMessageData = [depositNonce, newDepositStatus, 'CurrentPendingTransaction'];
 
-      bytesToSign = ethers.utils.solidityPack(signMessageDefinition, signMessageData);
+      bytesToSign = ethers.utils.defaultAbiCoder.encode(signMessageDefinition, signMessageData);
       signData = ethers.utils.keccak256(bytesToSign);
       return ethers.utils.arrayify(signData);
     }
