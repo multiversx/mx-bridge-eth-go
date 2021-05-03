@@ -14,6 +14,8 @@
 .*
 !/.gitignore
 !/.github
+!/.solhint.json
+!/.prettierrc
 
 /vendor
 /esdata
@@ -21,3 +23,8 @@
 *.log
 
 mytestnet/**
+
+#contracts/ethereum-sc
+node_modules
+cache
+artifacts
