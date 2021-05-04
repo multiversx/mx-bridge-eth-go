@@ -8,8 +8,16 @@ const (
 )
 
 type TokenMap map[string]string
-type ActionId uint
-type Nonce uint
+type ActionId *big.Int
+type Nonce *big.Int
+
+func NewNonce(value int64) Nonce {
+	return big.NewInt(value)
+}
+
+func NewActionId(value int64) ActionId {
+	return big.NewInt(value)
+}
 
 type DepositTransaction struct {
 	To           string

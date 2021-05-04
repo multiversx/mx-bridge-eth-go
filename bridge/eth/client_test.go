@@ -54,7 +54,7 @@ func TestGetPendingDepositTransaction(t *testing.T) {
 				From:         "0x132A150926691F08a693721503a38affeD18d524",
 				TokenAddress: "0x093c0B280ba430A9Cc9C3649FF34FCBf6347bC50",
 				Amount:       big.NewInt(42),
-				DepositNonce: 1,
+				DepositNonce: big.NewInt(1),
 			},
 		},
 		{
@@ -127,7 +127,7 @@ func TestSignersCount(t *testing.T) {
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
-	got := client.SignersCount(context.TODO(), bridge.ActionId(0))
+	got := client.SignersCount(context.TODO(), bridge.NewActionId(0))
 
 	assert.Equal(t, uint(1), got)
 }
@@ -140,9 +140,26 @@ func TestWasExecuted(t *testing.T) {
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
-	got := client.WasExecuted(context.TODO(), bridge.ActionId(0), bridge.Nonce(42))
+	got := client.WasExecuted(context.TODO(), bridge.NewActionId(0), bridge.NewNonce(42))
 
 	assert.Equal(t, true, got)
+}
+
+func TestExecute(t *testing.T) {
+	expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
+	contract := &bridgeContractStub{executedTransaction: types.NewTx(&types.AccessListTx{})}
+	client := Client{
+		bridgeContract:   contract,
+		privateKey:       privateKey(t),
+		publicKey:        publicKey(t),
+		broadcaster:      &broadcasterStub{},
+		blockchainClient: &blockchainClientStub{},
+		log:              logger.GetOrCreate("testEthClient"),
+	}
+
+	got, _ := client.Execute(context.TODO(), bridge.NewActionId(0), bridge.NewNonce(42))
+
+	assert.Equal(t, expected, got)
 }
 
 func privateKey(t *testing.T) *ecdsa.PrivateKey {
@@ -157,20 +174,33 @@ func privateKey(t *testing.T) *ecdsa.PrivateKey {
 	return privateKey
 }
 
+func publicKey(t *testing.T) *ecdsa.PublicKey {
+	t.Helper()
+
+	publicKey := privateKey(t).Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		t.Fatal("error casting public key to ECDSA")
+	}
+
+	return publicKeyECDSA
+}
+
 type bridgeContractStub struct {
-	deposit     Deposit
-	wasExecuted bool
+	deposit             Deposit
+	wasExecuted         bool
+	executedTransaction *types.Transaction
 }
 
 func (c *bridgeContractStub) GetNextPendingTransaction(*bind.CallOpts) (Deposit, error) {
 	return c.deposit, nil
 }
 
-func (c *bridgeContractStub) FinishCurrentPendingTransaction(_ *bind.TransactOpts, _ string, _ [][]byte) (*types.Transaction, error) {
-	return nil, nil
+func (c *bridgeContractStub) FinishCurrentPendingTransaction(*bind.TransactOpts, *big.Int, uint8, [][]byte) (*types.Transaction, error) {
+	return c.executedTransaction, nil
 }
 
-func (c *bridgeContractStub) WasTransactionExecuted(*bind.CallOpts, uint64) (bool, error) {
+func (c *bridgeContractStub) WasTransactionExecuted(*bind.CallOpts, *big.Int) (bool, error) {
 	return c.wasExecuted, nil
 }
 
@@ -179,8 +209,7 @@ type broadcasterStub struct {
 	lastBroadcastSignature []byte
 }
 
-func (b *broadcasterStub) SendSignature(signData string, signature []byte) {
-	b.lastSignData = signData
+func (b *broadcasterStub) SendSignature(signature []byte) {
 	b.lastBroadcastSignature = signature
 }
 
@@ -188,6 +217,16 @@ func (b *broadcasterStub) Signatures() [][]byte {
 	return [][]byte{b.lastBroadcastSignature}
 }
 
-func (b *broadcasterStub) SignData() string {
-	return b.lastSignData
+type blockchainClientStub struct{}
+
+func (b *blockchainClientStub) PendingNonceAt(context.Context, common.Address) (uint64, error) {
+	return 0, nil
+}
+
+func (b *blockchainClientStub) SuggestGasPrice(context.Context) (*big.Int, error) {
+	return nil, nil
+}
+
+func (b *blockchainClientStub) ChainID(context.Context) (*big.Int, error) {
+	return big.NewInt(42), nil
 }

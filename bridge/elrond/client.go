@@ -94,7 +94,7 @@ func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTr
 func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
 	builder := newBuilder().
 		Func("proposeEsdtSafeSetCurrentTransactionStatus").
-		Int(bridge.Executed)
+		Int(big.NewInt(bridge.Executed))
 
 	_, _ = c.sendTransaction(builder, 0)
 }
@@ -102,7 +102,7 @@ func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
 func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
 	builder := newBuilder().
 		Func("proposeEsdtSafeSetCurrentTransactionStatus").
-		Int(bridge.Rejected)
+		Int(big.NewInt(bridge.Rejected))
 
 	_, _ = c.sendTransaction(builder, 0)
 }
@@ -136,10 +136,10 @@ func (c *Client) GetActionIdForProposeTransfer(_ context.Context, nonce bridge.N
 	response, err := c.executeUintQuery(valueRequest)
 	if err != nil {
 		c.log.Error(err.Error())
-		return bridge.ActionId(0)
+		return bridge.NewActionId(0)
 	}
 
-	return bridge.ActionId(response)
+	return bridge.NewActionId(int64(response))
 }
 
 func (c *Client) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
@@ -166,10 +166,10 @@ func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridg
 	response, err := c.executeUintQuery(valueRequest)
 	if err != nil {
 		c.log.Error(err.Error())
-		return bridge.ActionId(0)
+		return bridge.NewActionId(0)
 	}
 
-	return bridge.ActionId(response)
+	return bridge.NewActionId(int64(response))
 }
 
 func (c *Client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ bridge.Nonce) bool {
@@ -189,7 +189,7 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 	return c.sendTransaction(builder, 0)
 }
 
-func (c *Client) Execute(_ context.Context, actionId bridge.ActionId) (string, error) {
+func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.Nonce) (string, error) {
 	builder := newBuilder().
 		Func("performAction").
 		ActionId(actionId)
@@ -352,14 +352,14 @@ func (builder *valueRequestBuilder) Func(functionName string) *valueRequestBuild
 }
 
 func (builder *valueRequestBuilder) Nonce(nonce bridge.Nonce) *valueRequestBuilder {
-	return builder.Int(int(nonce))
+	return builder.Int(nonce)
 }
 
 func (builder *valueRequestBuilder) ActionId(actionId bridge.ActionId) *valueRequestBuilder {
-	return builder.Int(int(actionId))
+	return builder.Int(actionId)
 }
 
-func (builder *valueRequestBuilder) Int(value int) *valueRequestBuilder {
+func (builder *valueRequestBuilder) Int(value *big.Int) *valueRequestBuilder {
 	builder.args = append(builder.args, intToHex(value))
 
 	return builder
@@ -386,14 +386,14 @@ func (builder *txDataBuilder) Func(function string) *txDataBuilder {
 }
 
 func (builder *txDataBuilder) ActionId(value bridge.ActionId) *txDataBuilder {
-	return builder.Int(int(value))
+	return builder.Int(value)
 }
 
 func (builder *txDataBuilder) Nonce(nonce bridge.Nonce) *txDataBuilder {
-	return builder.Int(int(nonce))
+	return builder.Int(nonce)
 }
 
-func (builder *txDataBuilder) Int(value int) *txDataBuilder {
+func (builder *txDataBuilder) Int(value *big.Int) *txDataBuilder {
 	builder.elements = append(builder.elements, intToHex(value))
 
 	return builder
@@ -432,6 +432,6 @@ func (builder *txDataBuilder) ToBytes() []byte {
 	return []byte(builder.ToString())
 }
 
-func intToHex(value int) string {
-	return hex.EncodeToString(big.NewInt(int64(value)).Bytes())
+func intToHex(value *big.Int) string {
+	return hex.EncodeToString(value.Bytes())
 }

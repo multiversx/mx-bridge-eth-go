@@ -37,7 +37,7 @@ type Deposit struct {
 }
 
 // ContractABI is the input ABI used to generate the binding from.
-const ContractABI = "[{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"board\",\"type\":\"address[]\"},{\"internalType\":\"uint256\",\"name\":\"intialQuorum\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"erc20Safe\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"newRelayer\",\"type\":\"address\"}],\"name\":\"RelayerAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"DEFAULT_ADMIN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"RELAYER_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"_quorum\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newRelayerAddress\",\"type\":\"address\"}],\"name\":\"addRelayer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"signData\",\"type\":\"string\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures\",\"type\":\"bytes[]\"}],\"name\":\"finishCurrentPendingTransaction\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getNextPendingTransaction\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"depositor\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"recipient\",\"type\":\"bytes\"},{\"internalType\":\"enumDepositStatus\",\"name\":\"status\",\"type\":\"uint8\"}],\"internalType\":\"structDeposit\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"newQorum\",\"type\":\"uint256\"}],\"name\":\"setQuorum\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"nonceId\",\"type\":\"uint64\"}],\"name\":\"wasTransactionExecuted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
+const ContractABI = "[{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"board\",\"type\":\"address[]\"},{\"internalType\":\"uint256\",\"name\":\"intialQuorum\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"erc20Safe\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"depositNonce\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"enumDepositStatus\",\"name\":\"status\",\"type\":\"uint8\"}],\"name\":\"FinishedTransaction\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"newRelayer\",\"type\":\"address\"}],\"name\":\"RelayerAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"DEFAULT_ADMIN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"RELAYER_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"_quorum\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newRelayerAddress\",\"type\":\"address\"}],\"name\":\"addRelayer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"depositNonce\",\"type\":\"uint256\"},{\"internalType\":\"enumDepositStatus\",\"name\":\"newDepositStatus\",\"type\":\"uint8\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures\",\"type\":\"bytes[]\"}],\"name\":\"finishCurrentPendingTransaction\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getNextPendingTransaction\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"depositor\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"recipient\",\"type\":\"bytes\"},{\"internalType\":\"enumDepositStatus\",\"name\":\"status\",\"type\":\"uint8\"}],\"internalType\":\"structDeposit\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"newQorum\",\"type\":\"uint256\"}],\"name\":\"setQuorum\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"nonceId\",\"type\":\"uint256\"}],\"name\":\"wasTransactionExecuted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
 
 // Contract is an auto generated Go binding around an Ethereum contract.
 type Contract struct {
@@ -398,10 +398,10 @@ func (_Contract *ContractCallerSession) SupportsInterface(interfaceId [4]byte) (
 	return _Contract.Contract.SupportsInterface(&_Contract.CallOpts, interfaceId)
 }
 
-// WasTransactionExecuted is a free data retrieval call binding the contract method 0xad7ce0d7.
+// WasTransactionExecuted is a free data retrieval call binding the contract method 0x34660bd0.
 //
-// Solidity: function wasTransactionExecuted(uint64 nonceId) view returns(bool)
-func (_Contract *ContractCaller) WasTransactionExecuted(opts *bind.CallOpts, nonceId uint64) (bool, error) {
+// Solidity: function wasTransactionExecuted(uint256 nonceId) view returns(bool)
+func (_Contract *ContractCaller) WasTransactionExecuted(opts *bind.CallOpts, nonceId *big.Int) (bool, error) {
 	var out []interface{}
 	err := _Contract.contract.Call(opts, &out, "wasTransactionExecuted", nonceId)
 
@@ -415,17 +415,17 @@ func (_Contract *ContractCaller) WasTransactionExecuted(opts *bind.CallOpts, non
 
 }
 
-// WasTransactionExecuted is a free data retrieval call binding the contract method 0xad7ce0d7.
+// WasTransactionExecuted is a free data retrieval call binding the contract method 0x34660bd0.
 //
-// Solidity: function wasTransactionExecuted(uint64 nonceId) view returns(bool)
-func (_Contract *ContractSession) WasTransactionExecuted(nonceId uint64) (bool, error) {
+// Solidity: function wasTransactionExecuted(uint256 nonceId) view returns(bool)
+func (_Contract *ContractSession) WasTransactionExecuted(nonceId *big.Int) (bool, error) {
 	return _Contract.Contract.WasTransactionExecuted(&_Contract.CallOpts, nonceId)
 }
 
-// WasTransactionExecuted is a free data retrieval call binding the contract method 0xad7ce0d7.
+// WasTransactionExecuted is a free data retrieval call binding the contract method 0x34660bd0.
 //
-// Solidity: function wasTransactionExecuted(uint64 nonceId) view returns(bool)
-func (_Contract *ContractCallerSession) WasTransactionExecuted(nonceId uint64) (bool, error) {
+// Solidity: function wasTransactionExecuted(uint256 nonceId) view returns(bool)
+func (_Contract *ContractCallerSession) WasTransactionExecuted(nonceId *big.Int) (bool, error) {
 	return _Contract.Contract.WasTransactionExecuted(&_Contract.CallOpts, nonceId)
 }
 
@@ -450,25 +450,25 @@ func (_Contract *ContractTransactorSession) AddRelayer(newRelayerAddress common.
 	return _Contract.Contract.AddRelayer(&_Contract.TransactOpts, newRelayerAddress)
 }
 
-// FinishCurrentPendingTransaction is a paid mutator transaction binding the contract method 0xbe923c6a.
+// FinishCurrentPendingTransaction is a paid mutator transaction binding the contract method 0x18cab496.
 //
-// Solidity: function finishCurrentPendingTransaction(string signData, bytes[] signatures) returns()
-func (_Contract *ContractTransactor) FinishCurrentPendingTransaction(opts *bind.TransactOpts, signData string, signatures [][]byte) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "finishCurrentPendingTransaction", signData, signatures)
+// Solidity: function finishCurrentPendingTransaction(uint256 depositNonce, uint8 newDepositStatus, bytes[] signatures) returns()
+func (_Contract *ContractTransactor) FinishCurrentPendingTransaction(opts *bind.TransactOpts, depositNonce *big.Int, newDepositStatus uint8, signatures [][]byte) (*types.Transaction, error) {
+	return _Contract.contract.Transact(opts, "finishCurrentPendingTransaction", depositNonce, newDepositStatus, signatures)
 }
 
-// FinishCurrentPendingTransaction is a paid mutator transaction binding the contract method 0xbe923c6a.
+// FinishCurrentPendingTransaction is a paid mutator transaction binding the contract method 0x18cab496.
 //
-// Solidity: function finishCurrentPendingTransaction(string signData, bytes[] signatures) returns()
-func (_Contract *ContractSession) FinishCurrentPendingTransaction(signData string, signatures [][]byte) (*types.Transaction, error) {
-	return _Contract.Contract.FinishCurrentPendingTransaction(&_Contract.TransactOpts, signData, signatures)
+// Solidity: function finishCurrentPendingTransaction(uint256 depositNonce, uint8 newDepositStatus, bytes[] signatures) returns()
+func (_Contract *ContractSession) FinishCurrentPendingTransaction(depositNonce *big.Int, newDepositStatus uint8, signatures [][]byte) (*types.Transaction, error) {
+	return _Contract.Contract.FinishCurrentPendingTransaction(&_Contract.TransactOpts, depositNonce, newDepositStatus, signatures)
 }
 
-// FinishCurrentPendingTransaction is a paid mutator transaction binding the contract method 0xbe923c6a.
+// FinishCurrentPendingTransaction is a paid mutator transaction binding the contract method 0x18cab496.
 //
-// Solidity: function finishCurrentPendingTransaction(string signData, bytes[] signatures) returns()
-func (_Contract *ContractTransactorSession) FinishCurrentPendingTransaction(signData string, signatures [][]byte) (*types.Transaction, error) {
-	return _Contract.Contract.FinishCurrentPendingTransaction(&_Contract.TransactOpts, signData, signatures)
+// Solidity: function finishCurrentPendingTransaction(uint256 depositNonce, uint8 newDepositStatus, bytes[] signatures) returns()
+func (_Contract *ContractTransactorSession) FinishCurrentPendingTransaction(depositNonce *big.Int, newDepositStatus uint8, signatures [][]byte) (*types.Transaction, error) {
+	return _Contract.Contract.FinishCurrentPendingTransaction(&_Contract.TransactOpts, depositNonce, newDepositStatus, signatures)
 }
 
 // GrantRole is a paid mutator transaction binding the contract method 0x2f2ff15d.
@@ -553,6 +553,141 @@ func (_Contract *ContractSession) SetQuorum(newQorum *big.Int) (*types.Transacti
 // Solidity: function setQuorum(uint256 newQorum) returns()
 func (_Contract *ContractTransactorSession) SetQuorum(newQorum *big.Int) (*types.Transaction, error) {
 	return _Contract.Contract.SetQuorum(&_Contract.TransactOpts, newQorum)
+}
+
+// ContractFinishedTransactionIterator is returned from FilterFinishedTransaction and is used to iterate over the raw logs and unpacked data for FinishedTransaction events raised by the Contract contract.
+type ContractFinishedTransactionIterator struct {
+	Event *ContractFinishedTransaction // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *ContractFinishedTransactionIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(ContractFinishedTransaction)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(ContractFinishedTransaction)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *ContractFinishedTransactionIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *ContractFinishedTransactionIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// ContractFinishedTransaction represents a FinishedTransaction event raised by the Contract contract.
+type ContractFinishedTransaction struct {
+	DepositNonce *big.Int
+	Status       uint8
+	Raw          types.Log // Blockchain specific contextual infos
+}
+
+// FilterFinishedTransaction is a free log retrieval operation binding the contract event 0x0ec2f79a8de849dcb71952aa9ebc8bba72d1f4eb3ad3267c29658c725407ce6b.
+//
+// Solidity: event FinishedTransaction(uint256 depositNonce, uint8 status)
+func (_Contract *ContractFilterer) FilterFinishedTransaction(opts *bind.FilterOpts) (*ContractFinishedTransactionIterator, error) {
+
+	logs, sub, err := _Contract.contract.FilterLogs(opts, "FinishedTransaction")
+	if err != nil {
+		return nil, err
+	}
+	return &ContractFinishedTransactionIterator{contract: _Contract.contract, event: "FinishedTransaction", logs: logs, sub: sub}, nil
+}
+
+// WatchFinishedTransaction is a free log subscription operation binding the contract event 0x0ec2f79a8de849dcb71952aa9ebc8bba72d1f4eb3ad3267c29658c725407ce6b.
+//
+// Solidity: event FinishedTransaction(uint256 depositNonce, uint8 status)
+func (_Contract *ContractFilterer) WatchFinishedTransaction(opts *bind.WatchOpts, sink chan<- *ContractFinishedTransaction) (event.Subscription, error) {
+
+	logs, sub, err := _Contract.contract.WatchLogs(opts, "FinishedTransaction")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(ContractFinishedTransaction)
+				if err := _Contract.contract.UnpackLog(event, "FinishedTransaction", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseFinishedTransaction is a log parse operation binding the contract event 0x0ec2f79a8de849dcb71952aa9ebc8bba72d1f4eb3ad3267c29658c725407ce6b.
+//
+// Solidity: event FinishedTransaction(uint256 depositNonce, uint8 status)
+func (_Contract *ContractFilterer) ParseFinishedTransaction(log types.Log) (*ContractFinishedTransaction, error) {
+	event := new(ContractFinishedTransaction)
+	if err := _Contract.contract.UnpackLog(event, "FinishedTransaction", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
 }
 
 // ContractRelayerAddedIterator is returned from FilterRelayerAdded and is used to iterate over the raw logs and unpacked data for RelayerAdded events raised by the Contract contract.

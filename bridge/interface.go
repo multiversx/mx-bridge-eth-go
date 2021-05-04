@@ -6,8 +6,7 @@ import (
 
 type Broadcaster interface {
 	Signatures() [][]byte
-	SignData() string
-	SendSignature(signData string, signature []byte)
+	SendSignature(signature []byte)
 }
 
 type Bridge interface {
@@ -22,6 +21,6 @@ type Bridge interface {
 	GetActionIdForSetStatusOnPendingTransfer(context.Context) ActionId
 	WasExecuted(context.Context, ActionId, Nonce) bool
 	Sign(context.Context, ActionId) (string, error)
-	Execute(context.Context, ActionId) (string, error)
+	Execute(context.Context, ActionId, Nonce) (string, error)
 	SignersCount(context.Context, ActionId) uint
 }

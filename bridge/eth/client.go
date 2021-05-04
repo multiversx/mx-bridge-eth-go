@@ -29,8 +29,8 @@ const (
 
 type BridgeContract interface {
 	GetNextPendingTransaction(opts *bind.CallOpts) (Deposit, error)
-	FinishCurrentPendingTransaction(opts *bind.TransactOpts, signData string, signatures [][]byte) (*types.Transaction, error)
-	WasTransactionExecuted(opts *bind.CallOpts, nonceId uint64) (bool, error)
+	FinishCurrentPendingTransaction(opts *bind.TransactOpts, depositNonce *big.Int, newDepositStatus uint8, signatures [][]byte) (*types.Transaction, error)
+	WasTransactionExecuted(opts *bind.CallOpts, nonceId *big.Int) (bool, error)
 }
 
 type BlockchainClient interface {
@@ -46,6 +46,8 @@ type Client struct {
 	privateKey  *ecdsa.PrivateKey
 	publicKey   *ecdsa.PublicKey
 	broadcaster bridge.Broadcaster
+
+	lastProposedStatus uint8
 
 	log logger.Logger
 }
@@ -102,7 +104,7 @@ func (c *Client) GetPendingDepositTransaction(ctx context.Context) *bridge.Depos
 			From:         deposit.Depositor.String(),
 			TokenAddress: deposit.TokenAddress.String(),
 			Amount:       deposit.Amount,
-			DepositNonce: bridge.Nonce(deposit.Nonce.Uint64()),
+			DepositNonce: deposit.Nonce,
 		}
 	}
 
@@ -114,7 +116,8 @@ func (c *Client) ProposeTransfer(context.Context, *bridge.DepositTransaction) (s
 }
 
 func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
-	data := fmt.Sprintf("%s:%d", SignDatName, bridge.Executed)
+	c.lastProposedStatus = bridge.Executed
+	data := fmt.Sprintf("%s:%d", SignDatName, c.lastProposedStatus)
 	msg := fmt.Sprintf(MessagePrefix, len(data), data)
 	signature, err := c.signHash(msg)
 	if err != nil {
@@ -122,11 +125,12 @@ func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
 		return
 	}
 
-	c.broadcaster.SendSignature(msg, signature)
+	c.broadcaster.SendSignature(signature)
 }
 
 func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
-	data := fmt.Sprintf("%s:%d", SignDatName, bridge.Rejected)
+	c.lastProposedStatus = bridge.Rejected
+	data := fmt.Sprintf("%s:%d", SignDatName, c.lastProposedStatus)
 	msg := fmt.Sprintf(MessagePrefix, len(data), data)
 	signature, err := c.signHash(msg)
 	if err != nil {
@@ -134,7 +138,7 @@ func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
 		return
 	}
 
-	c.broadcaster.SendSignature(msg, signature)
+	c.broadcaster.SendSignature(signature)
 }
 
 func (c *Client) WasProposedTransfer(context.Context, bridge.Nonce) bool {
@@ -142,7 +146,7 @@ func (c *Client) WasProposedTransfer(context.Context, bridge.Nonce) bool {
 }
 
 func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) bridge.ActionId {
-	return bridge.ActionId(0)
+	return bridge.NewActionId(0)
 }
 
 func (c *Client) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
@@ -154,11 +158,11 @@ func (c *Client) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bo
 }
 
 func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
-	return bridge.ActionId(0)
+	return bridge.NewActionId(0)
 }
 
 func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, nonce bridge.Nonce) bool {
-	wasExecuted, err := c.bridgeContract.WasTransactionExecuted(&bind.CallOpts{Context: ctx}, uint64(nonce))
+	wasExecuted, err := c.bridgeContract.WasTransactionExecuted(&bind.CallOpts{Context: ctx}, nonce)
 	if err != nil {
 		c.log.Error(err.Error())
 		return false
@@ -171,10 +175,10 @@ func (c *Client) Sign(context.Context, bridge.ActionId) (string, error) {
 	return "", nil
 }
 
-func (c *Client) Execute(ctx context.Context, _ bridge.ActionId) (string, error) {
+func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, nonce bridge.Nonce) (string, error) {
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
 
-	nonce, err := c.blockchainClient.PendingNonceAt(ctx, fromAddress)
+	blockNonce, err := c.blockchainClient.PendingNonceAt(ctx, fromAddress)
 	if err != nil {
 		return "", err
 	}
@@ -194,12 +198,12 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId) (string, error)
 		return "", err
 	}
 
-	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Nonce = big.NewInt(int64(blockNonce))
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = GasLimit
 	auth.GasPrice = gasPrice
 
-	transaction, err := c.bridgeContract.FinishCurrentPendingTransaction(auth, c.broadcaster.SignData(), c.broadcaster.Signatures())
+	transaction, err := c.bridgeContract.FinishCurrentPendingTransaction(auth, nonce, c.lastProposedStatus, c.broadcaster.Signatures())
 	if err != nil {
 		return "", err
 	}

@@ -40,7 +40,7 @@ func TestProposeTransfer(t *testing.T) {
 			From:         "0x132A150926691F08a693721503a38affeD18d524",
 			TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 			Amount:       big.NewInt(42),
-			DepositNonce: bridge.Nonce(1),
+			DepositNonce: bridge.NewNonce(1),
 		}
 
 		_, _ = client.ProposeTransfer(context.TODO(), tx)
@@ -58,7 +58,7 @@ func TestExecute(t *testing.T) {
 		proxy := &testProxy{transactionCost: 1024, transactionHash: expectedTxHash}
 		client, _ := buildTestClient(proxy)
 
-		hash, _ := client.Execute(context.TODO(), 42)
+		hash, _ := client.Execute(context.TODO(), bridge.NewActionId(42), bridge.NewNonce(0))
 
 		assert.Equal(t, expectedTxHash, hash)
 	})
@@ -66,8 +66,8 @@ func TestExecute(t *testing.T) {
 		proxy := &testProxy{}
 		client, _ := buildTestClient(proxy)
 
-		_, _ = client.Execute(context.TODO(), 42)
-		_, _ = client.Execute(context.TODO(), 42)
+		_, _ = client.Execute(context.TODO(), bridge.NewActionId(42), bridge.NewNonce(0))
+		_, _ = client.Execute(context.TODO(), bridge.NewActionId(42), bridge.NewNonce(0))
 
 		expectedNonce := uint64(1)
 
@@ -77,8 +77,8 @@ func TestExecute(t *testing.T) {
 		proxy := &testProxy{shouldFail: true}
 		client, _ := buildTestClient(proxy)
 
-		_, _ = client.Execute(context.TODO(), 42)
-		_, _ = client.Execute(context.TODO(), 42)
+		_, _ = client.Execute(context.TODO(), bridge.NewActionId(42), bridge.NewNonce(0))
+		_, _ = client.Execute(context.TODO(), bridge.NewActionId(42), bridge.NewNonce(0))
 
 		expectedNonce := uint64(0)
 
@@ -93,21 +93,21 @@ func TestWasProposedTransfer(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 		client, _ := buildTestClient(proxy)
 
-		got := client.WasProposedTransfer(context.TODO(), bridge.Nonce(0))
+		got := client.WasProposedTransfer(context.TODO(), bridge.NewNonce(0))
 		assert.True(t, got)
 	})
 	t.Run("will return false when response is 9", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(0)}}}
 		client, _ := buildTestClient(proxy)
 
-		got := client.WasProposedTransfer(context.TODO(), bridge.Nonce(0))
+		got := client.WasProposedTransfer(context.TODO(), bridge.NewNonce(0))
 		assert.False(t, got)
 	})
 	t.Run("will return false when response code is not ok", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "not ok", queryResponseData: nil}
 		client, _ := buildTestClient(proxy)
 
-		got := client.WasProposedTransfer(context.TODO(), bridge.Nonce(0))
+		got := client.WasProposedTransfer(context.TODO(), bridge.NewNonce(0))
 		assert.False(t, got)
 	})
 }
@@ -128,7 +128,7 @@ func TestSignersCount(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	client, _ := buildTestClient(proxy)
 
-	got := client.SignersCount(context.TODO(), bridge.ActionId(0))
+	got := client.SignersCount(context.TODO(), bridge.NewActionId(0))
 
 	assert.Equal(t, uint(42), got)
 }
@@ -158,9 +158,9 @@ func TestGetActionIdForEthTxNonce(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	client, _ := buildTestClient(proxy)
 
-	got := client.GetActionIdForProposeTransfer(context.TODO(), bridge.Nonce(41))
+	got := client.GetActionIdForProposeTransfer(context.TODO(), bridge.NewNonce(41))
 
-	assert.Equal(t, bridge.ActionId(42), got)
+	assert.Equal(t, bridge.NewActionId(42), got)
 }
 
 func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
@@ -170,7 +170,7 @@ func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
 	client, _ := buildTestClient(proxy)
 
 	got := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO())
-	assert.Equal(t, got, bridge.ActionId(43))
+	assert.Equal(t, got, bridge.NewActionId(43))
 }
 
 func TestWasExecuted(t *testing.T) {
@@ -179,7 +179,7 @@ func TestWasExecuted(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 	client, _ := buildTestClient(proxy)
 
-	got := client.WasExecuted(context.TODO(), bridge.ActionId(42), bridge.Nonce(0))
+	got := client.WasExecuted(context.TODO(), bridge.NewActionId(42), bridge.NewNonce(0))
 	assert.True(t, got)
 }
 
@@ -191,7 +191,7 @@ func TestSign(t *testing.T) {
 		proxy := &testProxy{transactionCost: expect}
 		client, _ := buildTestClient(proxy)
 
-		_, _ = client.Sign(context.TODO(), bridge.ActionId(42))
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(42))
 
 		assert.Equal(t, expect, proxy.lastTransaction.GasLimit)
 	})
@@ -199,7 +199,7 @@ func TestSign(t *testing.T) {
 		proxy := &testProxy{transactionCost: 1024}
 		client, _ := buildTestClient(proxy)
 
-		_, _ = client.Sign(context.TODO(), bridge.ActionId(42))
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(42))
 
 		assert.Equal(t, []byte("sign@2a"), proxy.lastTransaction.Data)
 	})
