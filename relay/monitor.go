@@ -98,32 +98,49 @@ func (m *Monitor) getPendingTransaction(ctx context.Context, ch chan State) {
 
 	if m.pendingTransaction == nil {
 		select {
-		case <-m.timer.after((Timeout / 10) * time.Second):
+		case <-m.timer.After(5 * time.Second):
 			ch <- GetPendingTransaction
 		case <-ctx.Done():
 			ch <- Stop
 		}
 	} else {
+		m.topologyProvider.Clean()
 		ch <- ProposeTransfer
 	}
 }
 
 func (m *Monitor) proposeTransfer(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
-		m.log.Info(fmt.Sprintf("Proposing deposit transaction with nonce %d", m.pendingTransaction.DepositNonce))
-		m.destinationBridge.ProposeTransfer(ctx, m.pendingTransaction)
+		m.log.Info(fmt.Sprintf("Proposing deposit transaction for nonce %v", m.pendingTransaction.DepositNonce))
+		hash, err := m.destinationBridge.ProposeTransfer(ctx, m.pendingTransaction)
+		if err != nil {
+			m.log.Error(err.Error())
+			m.pendingTransaction.Status = bridge.Rejected
+			m.pendingTransaction.Error = err
+			m.executingBridge = m.sourceBridge
+			ch <- ProposeSetStatus
+		} else {
+			m.log.Info(fmt.Sprintf("Proposed with hash %q", hash))
+			ch <- WaitForTransferProposal
+		}
+	} else {
+		ch <- WaitForTransferProposal
 	}
-	ch <- WaitForTransferProposal
 }
 
 func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
-	m.log.Info(fmt.Sprintf("Waiting for proposal on transaction with nonce %d", m.pendingTransaction.DepositNonce))
+	m.log.Info(fmt.Sprintf("Waiting for proposal on transaction with nonce %v", m.pendingTransaction.DepositNonce))
 	select {
-	case <-m.timer.after(Timeout):
+	case <-m.timer.After(Timeout):
 		if m.destinationBridge.WasProposedTransfer(ctx, m.pendingTransaction.DepositNonce) {
-			m.log.Info(fmt.Sprintf("Signing transaction with nonce %d", m.pendingTransaction.DepositNonce))
+			m.log.Info(fmt.Sprintf("Signing transaction with nonce %v", m.pendingTransaction.DepositNonce))
 			m.actionId = m.destinationBridge.GetActionIdForProposeTransfer(ctx, m.pendingTransaction.DepositNonce)
-			m.destinationBridge.Sign(ctx, m.actionId)
+			hash, err := m.destinationBridge.Sign(ctx, m.actionId)
+			if err != nil {
+				m.log.Error(err.Error())
+			} else {
+				m.log.Info(fmt.Sprintf("Singed with hash %q", hash))
+			}
 			m.executingBridge = m.destinationBridge
 			ch <- WaitForSignatures
 		} else {
@@ -135,14 +152,14 @@ func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
 }
 
 func (m *Monitor) waitForSignatures(ctx context.Context, ch chan State) {
-	m.log.Info(fmt.Sprintf("Waiting for signatures for actionId %d", m.actionId))
+	m.log.Info(fmt.Sprintf("Waiting for signatures for actionId %v", m.actionId))
 	select {
-	case <-m.timer.after(Timeout):
+	case <-m.timer.After(Timeout):
 		count := m.executingBridge.SignersCount(ctx, m.actionId)
 		peerCount := m.topologyProvider.PeerCount()
 		minCountRequired := math.Ceil(float64(peerCount) * MinSignaturePercent / 100)
 
-		m.log.Info(fmt.Sprintf("Got %d signatures for actionId %d", count, m.actionId))
+		m.log.Info(fmt.Sprintf("Got %d signatures for actionId %v", count, m.actionId))
 		if count >= uint(minCountRequired) && count > 0 {
 			ch <- Execute
 		} else {
@@ -155,25 +172,26 @@ func (m *Monitor) waitForSignatures(ctx context.Context, ch chan State) {
 
 func (m *Monitor) execute(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
-		m.log.Info(fmt.Sprintf("Executing actionId %d", m.actionId))
-		hash, err := m.executingBridge.Execute(ctx, m.actionId)
+		m.log.Info(fmt.Sprintf("Executing actionId %v", m.actionId))
+		hash, err := m.executingBridge.Execute(ctx, m.actionId, m.pendingTransaction.DepositNonce)
 
 		if err != nil {
 			m.log.Error(err.Error())
 		}
 
-		m.log.Info(fmt.Sprintf("ActionId %d was executed with hash %q", m.actionId, hash))
+		m.log.Info(fmt.Sprintf("ActionId %v was executed with hash %q", m.actionId, hash))
 	}
 
 	ch <- WaitForExecute
 }
 
 func (m *Monitor) waitForExecute(ctx context.Context, ch chan State) {
-	m.log.Info(fmt.Sprintf("Waiting for execution for actionID %d", m.actionId))
+	m.log.Info(fmt.Sprintf("Waiting for execution for actionID %v", m.actionId))
 	select {
-	case <-m.timer.after(Timeout):
-		if m.executingBridge.WasExecuted(ctx, m.actionId) {
-			m.log.Info(fmt.Sprintf("ActionId %d was executed", m.actionId))
+	case <-m.timer.After(Timeout):
+		if m.executingBridge.WasExecuted(ctx, m.actionId, m.pendingTransaction.DepositNonce) {
+			m.log.Info(fmt.Sprintf("ActionId %v was executed", m.actionId))
+			m.pendingTransaction.Status = bridge.Executed
 
 			switch m.executingBridge {
 			case m.destinationBridge:
@@ -191,20 +209,24 @@ func (m *Monitor) waitForExecute(ctx context.Context, ch chan State) {
 
 func (m *Monitor) proposeSetStatus(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
-		m.log.Info(fmt.Sprintf("Proposing set status on transaction with nonce %d", m.pendingTransaction.DepositNonce))
-		m.sourceBridge.ProposeSetStatusSuccessOnPendingTransfer(ctx)
+		m.log.Info(fmt.Sprintf("Proposing set status on transaction with nonce %v", m.pendingTransaction.DepositNonce))
+		m.sourceBridge.ProposeSetStatus(ctx, m.pendingTransaction.Status, m.pendingTransaction.DepositNonce)
 	}
 	ch <- WaitForSetStatusProposal
 }
 
 func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan State) {
-	m.log.Info(fmt.Sprintf("Waiting for set status proposal on transaction with nonce %d", m.pendingTransaction.DepositNonce))
+	m.log.Info(fmt.Sprintf("Waiting for set status proposal on transaction with nonce %v", m.pendingTransaction.DepositNonce))
 	select {
-	case <-m.timer.after(Timeout):
+	case <-m.timer.After(Timeout):
 		if m.sourceBridge.WasProposedSetStatusSuccessOnPendingTransfer(ctx) {
-			m.log.Info(fmt.Sprintf("Signing set status for transaction with nonce %d", m.pendingTransaction.DepositNonce))
+			m.log.Info(fmt.Sprintf("Signing set status for transaction with nonce %v", m.pendingTransaction.DepositNonce))
 			m.actionId = m.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx)
-			m.sourceBridge.Sign(ctx, m.actionId)
+			hash, err := m.sourceBridge.Sign(ctx, m.actionId)
+			if err != nil {
+				m.log.Error(err.Error())
+			}
+			m.log.Info(fmt.Sprintf("Singed set status for transaction with nonce %v with hash %q", m.pendingTransaction.DepositNonce, hash))
 			m.executingBridge = m.sourceBridge
 			ch <- WaitForSignatures
 		} else {

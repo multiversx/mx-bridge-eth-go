@@ -67,6 +67,116 @@ func main() {
 	}
 }
 
+//func playgroundElrond(ctx *cli.Context) error {
+//	log.Info("Playground")
+//
+//	configurationFileName := ctx.GlobalString(configurationFile.Name)
+//	config, err := loadConfig(configurationFileName)
+//	if err != nil {
+//		return err
+//	}
+//
+//	client, err := elrond.NewClient(config.Elrond)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// carol: erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8
+//
+//	log.Info(fmt.Sprintf("Signers count %d", client.SignersCount(context.TODO(), bridge.ActionId(7))))
+//
+//	//nonce := bridge.Nonce(45)
+//	//transfer, err := client.ProposeTransfer(context.TODO(), &bridge.DepositTransaction{
+//	//	To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+//	//	From:         "0x132A150926691F08a693721503a38affeD18d524",
+//	//	TokenAddress: "574554482d393761323662",
+//	//	Amount:       big.NewInt(3),
+//	//	DepositNonce: nonce,
+//	//})
+//	//if err != nil {
+//	//	return err
+//	//}
+//	//log.Info(transfer)
+//	//
+//	//result := client.WasProposedTransfer(context.TODO(), nonce)
+//	//log.Info(fmt.Sprint(result))
+//	//
+//	//time.Sleep(10 * time.Second)
+//	//actionId := client.GetActionIdForProposeTransfer(context.TODO(), nonce)
+//	//log.Info(fmt.Sprintf("ActionId: %d", actionId))
+//	//
+//	//hash, err := client.Sign(context.TODO(), actionId)
+//	//if err != nil {
+//	//	return err
+//	//}
+//	//log.Info(fmt.Sprintf("Sign hash %q", hash))
+//	//
+//	//time.Sleep(10 * time.Second)
+//	//hash, err = client.Execute(context.TODO(), actionId)
+//	//if err != nil {
+//	//	return err
+//	//}
+//	//log.Info(fmt.Sprintf("Perform hash %q", hash))
+//	//
+//	//time.Sleep(10 * time.Second)
+//	//log.Info(fmt.Sprintf("%v", client.WasExecuted(context.TODO(), actionId)))
+//
+//	// deploy
+//	// deployCC
+//	// stake
+//	// MultiTransferEsdt_WrappedEthIssue
+//	// MultiTransferEsdt_TransferEsdt
+//
+//	//client, err := eth.NewClient(config.Eth)
+//	//if err != nil {
+//	//	return err
+//	//}
+//	//
+//	//client.GetPendingDepositTransaction(context.Background())
+//
+//	return nil
+//}
+//
+//func playgroundEth(ctx *cli.Context) error {
+//	log.Info("Playground Eth")
+//
+//	configurationFileName := ctx.GlobalString(configurationFile.Name)
+//	config, err := loadConfig(configurationFileName)
+//	if err != nil {
+//		return err
+//	}
+//
+//	client, err := eth.NewClient(config.Eth, &broadcasterStub{})
+//	if err != nil {
+//		return err
+//	}
+//
+//	tx := client.GetPendingDepositTransaction(context.Background())
+//	log.Info(fmt.Sprintf("%+v", tx))
+//	log.Info(fmt.Sprintf("Nonce %v", tx.DepositNonce))
+//
+//	client.ProposeSetStatus(context.Background(), tx.DepositNonce)
+//	hash, err := client.Execute(context.Background(), bridge.NewActionId(0), tx.DepositNonce)
+//	if err != nil {
+//		return err
+//	}
+//	log.Info(fmt.Sprintf("Executed with hash %q", hash))
+//
+//	return nil
+//}
+//
+//type broadcasterStub struct {
+//	lastBroadcastSignature []byte
+//}
+//
+//func (b *broadcasterStub) SendSignature(signature []byte) {
+//	b.lastBroadcastSignature = signature
+//}
+//
+//func (b *broadcasterStub) Signatures() [][]byte {
+//	return [][]byte{b.lastBroadcastSignature}
+//}
+
 func startRelay(ctx *cli.Context) error {
 	logLevelFlagValue := ctx.GlobalString(logLevel.Name)
 	err := logger.SetLogLevel(logLevelFlagValue)

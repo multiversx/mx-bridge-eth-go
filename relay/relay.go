@@ -21,28 +21,29 @@ import (
 )
 
 const (
-	ActionsTopicName = "actions/1"
-	JoinedAction     = "joined"
-
+	JoinTopicName    = "join/1"
 	PrivateTopicName = "private/1"
+	SignTopicName    = "sign/1"
 
 	Timeout = 30 * time.Second
 )
 
 type Peers []core.PeerID
 
+type Signatures map[core.PeerID][]byte
+
 type Timer interface {
-	after(d time.Duration) <-chan time.Time
-	nowUnix() int64
+	After(d time.Duration) <-chan time.Time
+	NowUnix() int64
 }
 
 type defaultTimer struct{}
 
-func (s *defaultTimer) after(d time.Duration) <-chan time.Time {
+func (s *defaultTimer) After(d time.Duration) <-chan time.Time {
 	return time.After(d)
 }
 
-func (s *defaultTimer) nowUnix() int64 {
+func (s *defaultTimer) NowUnix() int64 {
 	return time.Now().Unix()
 }
 
@@ -61,40 +62,48 @@ type NetMessenger interface {
 type Relay struct {
 	mu sync.Mutex
 
-	peers     Peers
-	messenger NetMessenger
-	timer     Timer
-	log       logger.Logger
+	peers      Peers
+	messenger  NetMessenger
+	timer      Timer
+	log        logger.Logger
+	signatures Signatures
 
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
 }
 
 func NewRelay(config *Config, name string) (*Relay, error) {
-	ethBridge, err := eth.NewClient(config.Eth)
+	relay := &Relay{}
+
+	config.Eth.TokenMap = make(bridge.TokenMap)
+	for key, value := range config.TokenMap {
+		config.Eth.TokenMap[value] = key
+	}
+	ethBridge, err := eth.NewClient(config.Eth, relay)
 	if err != nil {
 		return nil, err
 	}
+	relay.ethBridge = ethBridge
 
+	config.Elrond.TokenMap = config.TokenMap
 	elrondBridge, err := elrond.NewClient(config.Elrond)
 	if err != nil {
 		return nil, err
 	}
+	relay.elrondBridge = elrondBridge
 
 	messenger, err := buildNetMessenger(config.P2P)
 	if err != nil {
 		return nil, err
 	}
+	relay.messenger = messenger
 
-	return &Relay{
-		peers:     make(Peers, 0),
-		messenger: messenger,
-		timer:     &defaultTimer{},
-		log:       logger.GetOrCreate(name),
+	relay.peers = make(Peers, 0)
+	relay.timer = &defaultTimer{}
+	relay.log = logger.GetOrCreate(name)
+	relay.signatures = make(map[core.PeerID][]byte)
 
-		ethBridge:    ethBridge,
-		elrondBridge: elrondBridge,
-	}, nil
+	return relay, nil
 }
 
 func (r *Relay) Start(ctx context.Context) error {
@@ -131,10 +140,14 @@ func (r *Relay) AmITheLeader() bool {
 		return false
 	} else {
 		numberOfPeers := int64(len(r.peers))
-		index := (r.timer.nowUnix() / int64(Timeout.Seconds())) % numberOfPeers
+		index := (r.timer.NowUnix() / int64(Timeout.Seconds())) % numberOfPeers
 
 		return r.peers[index] == r.messenger.ID()
 	}
+}
+
+func (r *Relay) Clean() {
+	r.signatures = make(Signatures)
 }
 
 // MessageProcessor
@@ -143,15 +156,13 @@ func (r *Relay) ProcessReceivedMessage(message p2p.MessageP2P, _ core.PeerID) er
 	r.log.Info(fmt.Sprintf("Got message on topic %q", message.Topic()))
 
 	switch message.Topic() {
-	case ActionsTopicName:
-		r.log.Info(fmt.Sprintf("Action: %q\n", string(message.Data())))
-		switch string(message.Data()) {
-		case JoinedAction:
-			r.addPeer(message.Peer())
-			if err := r.broadcastTopology(message.Peer()); err != nil {
-				r.log.Error(err.Error())
-			}
+	case JoinTopicName:
+		r.addPeer(message.Peer())
+		if err := r.broadcastTopology(message.Peer()); err != nil {
+			r.log.Error(err.Error())
 		}
+	case SignTopicName:
+		r.addSignatureForPeer(message.Peer(), message.Data())
 	case PrivateTopicName:
 		if err := r.setTopology(message.Data()); err != nil {
 			r.log.Error(err.Error())
@@ -228,6 +239,21 @@ func (r *Relay) addPeer(peerID core.PeerID) {
 	}
 }
 
+// Broadcaster
+
+func (r *Relay) Signatures() [][]byte {
+	result := make([][]byte, 0)
+
+	for _, signature := range r.signatures {
+		result = append(result, signature)
+	}
+	return result
+}
+
+func (r *Relay) SendSignature(signature []byte) {
+	r.messenger.Broadcast(SignTopicName, signature)
+}
+
 // Helpers
 
 func (r *Relay) init(ctx context.Context) error {
@@ -236,7 +262,7 @@ func (r *Relay) init(ctx context.Context) error {
 	}
 
 	select {
-	case <-r.timer.after(10 * time.Second):
+	case <-r.timer.After(10 * time.Second):
 		r.log.Info(fmt.Sprint(r.messenger.Addresses()))
 
 		if err := r.registerTopicProcessors(); err != nil {
@@ -254,14 +280,18 @@ func (r *Relay) join(ctx context.Context) {
 	v := rand.Intn(5)
 
 	select {
-	case <-r.timer.after(time.Duration(v) * time.Second):
-		r.messenger.Broadcast(ActionsTopicName, []byte(JoinedAction))
+	case <-r.timer.After(time.Duration(v) * time.Second):
+		r.messenger.Broadcast(JoinTopicName, []byte(JoinTopicName))
 	case <-ctx.Done():
 	}
 }
 
+func (r *Relay) addSignatureForPeer(peerID core.PeerID, signature []byte) {
+	r.signatures[peerID] = signature
+}
+
 func (r *Relay) registerTopicProcessors() error {
-	topics := []string{ActionsTopicName, PrivateTopicName}
+	topics := []string{JoinTopicName, PrivateTopicName, SignTopicName}
 	for _, topic := range topics {
 		if !r.messenger.HasTopic(topic) {
 			if err := r.messenger.CreateTopic(topic, true); err != nil {

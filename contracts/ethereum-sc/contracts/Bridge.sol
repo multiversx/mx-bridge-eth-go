@@ -121,6 +121,7 @@ contract Bridge is AccessControl {
                 hasRole(RELAYER_ROLE, publicKey),
                 "Not a recognized relayer"
             );
+
             
             signersCount++;
         }
