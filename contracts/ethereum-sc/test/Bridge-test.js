@@ -9,9 +9,9 @@ const IERC20 = require('../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 
 describe("Bridge", async function () {
-  const [adminWallet, otherWallet, relayer1, relayer2, relayer3, relayer4] = provider.getWallets();
-  const boardMembers = [adminWallet, relayer1, relayer2, relayer3];
-  const quorum = 3;
+  const [adminWallet, relayer1, relayer2, relayer3, relayer4, relayer5, relayer6, relayer7, relayer8, otherWallet] = provider.getWallets();
+  const boardMembers = [adminWallet, relayer1, relayer2, relayer3, relayer5, relayer6, relayer7, relayer8];
+  const quorum = 7;
 
   beforeEach(async function () {
     mockERC20Safe = await deployMockContract(adminWallet, ERC20SafeContract.abi);
@@ -138,7 +138,11 @@ describe("Bridge", async function () {
       signature2 = await relayer1.signMessage(dataToSign);
       signature3 = await relayer2.signMessage(dataToSign);
       signature4 = await relayer3.signMessage(dataToSign);
-      return [signature1, signature2, signature3, signature4];
+      signature5 = await relayer5.signMessage(dataToSign);
+      signature6 = await relayer6.signMessage(dataToSign);
+      signature7 = await relayer7.signMessage(dataToSign);
+
+      return [signature1, signature2, signature3, signature4, signature5, signature6, signature7];
     }
 
     beforeEach(async function () {
