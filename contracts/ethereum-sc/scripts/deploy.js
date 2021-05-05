@@ -14,14 +14,10 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  [adminWallet, relayer1, relayer2, relayer3, relayer4, relayer5, depositor] = await hre.ethers.getSigners();
+  [adminWallet, relayer1, depositor] = await hre.ethers.getSigners();
 
   console.log('Admin Public Address:', adminWallet.address);
   console.log('Relayer 1 Public Address:', relayer1.address);
-  console.log('Relayer 2 Public Address:', relayer2.address);
-  console.log('Relayer 3 Public Address:', relayer3.address);
-  console.log('Relayer 4 Public Address:', relayer4.address);
-  console.log('Relayer 5 Public Address:', relayer5.address);
   console.log('Depositor Public Address:', depositor.address);
 
   // Deploy ERC20 tokens
@@ -45,8 +41,8 @@ async function main() {
 
   // Deploy Bridge with ERC20 Safe address
   const Bridge = await hre.ethers.getContractFactory("Bridge");
-  const relayers = [adminWallet.address, relayer1.address, relayer2.address, relayer3.address, relayer4.address, relayer5.address];
-  const quorum = 4;
+  const relayers = [adminWallet.address, relayer1.address];
+  const quorum = 1;
   const bridgeContract = await Bridge.deploy(relayers, quorum, safeContract.address);
   await bridgeContract.deployed();
   console.log("Bridge deployed to:", bridgeContract.address);

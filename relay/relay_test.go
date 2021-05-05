@@ -64,15 +64,6 @@ func TestClean(t *testing.T) {
 
 		assert.Empty(t, relay.signatures)
 	})
-	t.Run("it will clean lastSignData", func(t *testing.T) {
-		relay := Relay{
-			lastSignData: "some sign data",
-		}
-
-		relay.Clean()
-
-		assert.Empty(t, relay.lastSignData)
-	})
 }
 
 func TestPrivateTopicProcessor(t *testing.T) {
@@ -191,7 +182,7 @@ func TestSendSignature(t *testing.T) {
 	_, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 	defer cancel()
 	expectedData := []byte("signature")
-	relay.SendSignature("data", expectedData)
+	relay.SendSignature(expectedData)
 
 	assert.Equal(t, SignTopicName, messenger.lastSendTopicName)
 	assert.Equal(t, expectedData, messenger.lastSendData)

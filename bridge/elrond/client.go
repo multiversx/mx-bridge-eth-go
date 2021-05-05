@@ -91,18 +91,18 @@ func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTr
 	return nil
 }
 
-func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
+func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context, bridge.Nonce) {
 	builder := newBuilder().
 		Func("proposeEsdtSafeSetCurrentTransactionStatus").
-		Int(big.NewInt(bridge.Executed))
+		Int(big.NewInt(int64(bridge.Executed)))
 
 	_, _ = c.sendTransaction(builder, 0)
 }
 
-func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
+func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context, bridge.Nonce) {
 	builder := newBuilder().
 		Func("proposeEsdtSafeSetCurrentTransactionStatus").
-		Int(big.NewInt(bridge.Rejected))
+		Int(big.NewInt(int64(bridge.Rejected)))
 
 	_, _ = c.sendTransaction(builder, 0)
 }

@@ -1,7 +1,7 @@
 [Eth]
 NetworkAddress = "http://127.0.0.1:8545"
-BridgeAddress = "0xc7cD179F7F0cE77c5B0B430509503047c7aE8E75"
-PrivateKey = "60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d7192efab"
+BridgeAddress = "0x721a1cf6560B80058EB47f94E477e998A5CB1216"
+PrivateKey = "25b96cce574b43c1bb62b461826ed6bf60d16c3951c88b7b83947ea3ec03d82f"
 
 [Elrond]
 NetworkAddress = "https://testnet-gateway.elrond.com"
@@ -15,4 +15,4 @@ InitialPeerList = []
 
 [TokenMap]
 # AFCoin -> WETH
-"0xB882D11672C4f69cA0c5660fE53D28CC096fa7D8" = "574554482d343334643266"
+"0x90d2bd2d7d7EE1b46FE4193cB18B02Cb67d7A130" = "574554482d343334643266"

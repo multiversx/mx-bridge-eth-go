@@ -152,10 +152,11 @@ func main() {
 //	}
 //
 //	tx := client.GetPendingDepositTransaction(context.Background())
-//	log.Info(fmt.Sprintf("%v", tx))
+//	log.Info(fmt.Sprintf("%+v", tx))
+//	log.Info(fmt.Sprintf("Nonce %v", tx.DepositNonce))
 //
-//	client.ProposeSetStatusSuccessOnPendingTransfer(context.Background())
-//	hash, err := client.Execute(context.Background(), bridge.ActionId(0))
+//	client.ProposeSetStatusSuccessOnPendingTransfer(context.Background(), tx.DepositNonce)
+//	hash, err := client.Execute(context.Background(), bridge.NewActionId(0), tx.DepositNonce)
 //	if err != nil {
 //		return err
 //	}
@@ -165,21 +166,15 @@ func main() {
 //}
 //
 //type broadcasterStub struct {
-//	lastSignData           string
 //	lastBroadcastSignature []byte
 //}
 //
-//func (b *broadcasterStub) SendSignature(signData string, signature []byte) {
-//	b.lastSignData = signData
+//func (b *broadcasterStub) SendSignature(signature []byte) {
 //	b.lastBroadcastSignature = signature
 //}
 //
 //func (b *broadcasterStub) Signatures() [][]byte {
 //	return [][]byte{b.lastBroadcastSignature}
-//}
-//
-//func (b *broadcasterStub) SignData() string {
-//	return b.lastSignData
 //}
 
 func startRelay(ctx *cli.Context) error {

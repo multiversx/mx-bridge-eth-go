@@ -62,12 +62,11 @@ type NetMessenger interface {
 type Relay struct {
 	mu sync.Mutex
 
-	peers        Peers
-	messenger    NetMessenger
-	timer        Timer
-	log          logger.Logger
-	lastSignData string
-	signatures   Signatures
+	peers      Peers
+	messenger  NetMessenger
+	timer      Timer
+	log        logger.Logger
+	signatures Signatures
 
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
@@ -149,7 +148,6 @@ func (r *Relay) AmITheLeader() bool {
 
 func (r *Relay) Clean() {
 	r.signatures = make(Signatures)
-	r.lastSignData = ""
 }
 
 // MessageProcessor
@@ -252,12 +250,7 @@ func (r *Relay) Signatures() [][]byte {
 	return result
 }
 
-func (r *Relay) SignData() string {
-	return r.lastSignData
-}
-
-func (r *Relay) SendSignature(signData string, signature []byte) {
-	r.lastSignData = signData
+func (r *Relay) SendSignature(signature []byte) {
 	r.messenger.Broadcast(SignTopicName, signature)
 }
 

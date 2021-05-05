@@ -94,12 +94,11 @@ func TestProposeSetStatusSuccessOnPendingTransfer(t *testing.T) {
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
-	client.ProposeSetStatusSuccessOnPendingTransfer(context.TODO())
-	expectedSignature, _ := hexutil.Decode("0x5de3f8db48b3e0b903e36b92854f97e1ce3f095e28343b59149150a81a7cdec95073ae0c52848734d2aedf511517cf18042300ec7e855aa3857a2842202a8fe400")
-	expectedData := "\u0019Ethereum Signed Message:\n27CurrentPendingTransaction:3"
+	client.ProposeSetStatusSuccessOnPendingTransfer(context.TODO(), bridge.NewNonce(1))
+	expectedSignature, _ := hexutil.Decode("0x04f1148226b2902a5eac4631109996c2bc0af7a59b88483b3e67719ae1f1399320fc13b0a639cab0243dc5c5930f629244b5098cf1f6e1fdef102974a5ca0a8200")
 
 	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
-	assert.Equal(t, expectedData, broadcaster.lastSignData)
+	assert.Equal(t, bridge.Executed, client.lastProposedStatus)
 }
 
 func TestProposeSetStatusFailedOnPendingTransfer(t *testing.T) {
@@ -111,12 +110,11 @@ func TestProposeSetStatusFailedOnPendingTransfer(t *testing.T) {
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
-	client.ProposeSetStatusFailedOnPendingTransfer(context.TODO())
-	expectedSignature, _ := hexutil.Decode("0x8b4a6ddb7362e158dc86e5e3bab9b325d2b7b897c4d51268c13551b501e77c852b14f0ff5be22eac8b82bc88b7f846afe52959027f1129d953c7982b165d0eaa00")
-	expectedData := "\u0019Ethereum Signed Message:\n27CurrentPendingTransaction:4"
+	client.ProposeSetStatusFailedOnPendingTransfer(context.TODO(), bridge.NewNonce(1))
+	expectedSignature, _ := hexutil.Decode("0xf700e2f7a17879770f4a91cd044dd4c052d2cf04608fe6809ea6940b13795b76040301e51a7d8612afef89b0d15652b1a4a7351e7ba5123c8cc907b3be9eaaac01")
 
 	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
-	assert.Equal(t, expectedData, broadcaster.lastSignData)
+	assert.Equal(t, bridge.Rejected, client.lastProposedStatus)
 }
 
 func TestSignersCount(t *testing.T) {
@@ -205,7 +203,6 @@ func (c *bridgeContractStub) WasTransactionExecuted(*bind.CallOpts, *big.Int) (b
 }
 
 type broadcasterStub struct {
-	lastSignData           string
 	lastBroadcastSignature []byte
 }
 

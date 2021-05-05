@@ -19,7 +19,7 @@ async function main() {
   const bridgeAddress = config["bridge"];
 
   [adminWallet, relayer1, relayer2, relayer3, relayer4, relayer5, depositor] = await hre.ethers.getSigners();
-  
+
   // load deployed contracts
   const tokenContractFactory = await hre.ethers.getContractFactory("AFCoin");
   const safeContractFactory = await hre.ethers.getContractFactory("ERC20Safe");
@@ -27,10 +27,10 @@ async function main() {
   const token = await tokenContractFactory.attach(tokenAddress).connect(depositor);
   const safe = await safeContractFactory.attach(safeAddress).connect(depositor);
   const bridge = await bridgeContractFactory.attach(bridgeAddress);
-  
+
   // transactions
   await token.approve(safe.address, 1);
-  await safe.deposit(token.address, 1, hre.ethers.utils.toUtf8Bytes("some address"));
+  await safe.deposit(token.address, 1, hre.ethers.utils.toUtf8Bytes("erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8"));
   console.log("Balance for depositor", (await token.balanceOf(depositor.address)).toString());
   console.log("Balance in safe", (await token.balanceOf(safe.address)).toString());
 

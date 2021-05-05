@@ -3,8 +3,8 @@ package bridge
 import "math/big"
 
 const (
-	Executed = 3
-	Rejected = 4
+	Executed = uint8(3)
+	Rejected = uint8(4)
 )
 
 type TokenMap map[string]string

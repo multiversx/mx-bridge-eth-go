@@ -4,9 +4,10 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
-	"fmt"
 	"math/big"
 	"reflect"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -23,7 +24,7 @@ import (
 
 const (
 	SignDatName   = "CurrentPendingTransaction"
-	MessagePrefix = "\u0019Ethereum Signed Message:\n%d%s"
+	MessagePrefix = "\u0019Ethereum Signed Message:\n32"
 	GasLimit      = uint64(300000)
 )
 
@@ -115,30 +116,14 @@ func (c *Client) ProposeTransfer(context.Context, *bridge.DepositTransaction) (s
 	return "", nil
 }
 
-func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(context.Context) {
+func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(_ context.Context, nonce bridge.Nonce) {
 	c.lastProposedStatus = bridge.Executed
-	data := fmt.Sprintf("%s:%d", SignDatName, c.lastProposedStatus)
-	msg := fmt.Sprintf(MessagePrefix, len(data), data)
-	signature, err := c.signHash(msg)
-	if err != nil {
-		c.log.Error(err.Error())
-		return
-	}
-
-	c.broadcaster.SendSignature(signature)
+	c.broadcastSignature(c.lastProposedStatus, nonce)
 }
 
-func (c *Client) ProposeSetStatusFailedOnPendingTransfer(context.Context) {
+func (c *Client) ProposeSetStatusFailedOnPendingTransfer(_ context.Context, nonce bridge.Nonce) {
 	c.lastProposedStatus = bridge.Rejected
-	data := fmt.Sprintf("%s:%d", SignDatName, c.lastProposedStatus)
-	msg := fmt.Sprintf(MessagePrefix, len(data), data)
-	signature, err := c.signHash(msg)
-	if err != nil {
-		c.log.Error(err.Error())
-		return
-	}
-
-	c.broadcaster.SendSignature(signature)
+	c.broadcastSignature(c.lastProposedStatus, nonce)
 }
 
 func (c *Client) WasProposedTransfer(context.Context, bridge.Nonce) bool {
@@ -202,6 +187,7 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, nonce bridge.No
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = GasLimit
 	auth.GasPrice = gasPrice
+	auth.Context = ctx
 
 	transaction, err := c.bridgeContract.FinishCurrentPendingTransaction(auth, nonce, c.lastProposedStatus, c.broadcaster.Signatures())
 	if err != nil {
@@ -215,13 +201,58 @@ func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
 	return uint(len(c.broadcaster.Signatures()))
 }
 
-func (c *Client) signHash(msg string) ([]byte, error) {
-	hash := crypto.Keccak256Hash([]byte(msg))
-
-	signature, err := crypto.Sign(hash.Bytes(), c.privateKey)
+func (c *Client) signHash(hash common.Hash) ([]byte, error) {
+	valueToSign := crypto.Keccak256Hash(append([]byte(MessagePrefix), hash.Bytes()...))
+	signature, err := crypto.Sign(valueToSign.Bytes(), c.privateKey)
 	if err != nil {
 		return nil, err
 	}
 
 	return signature, nil
+}
+
+func (c *Client) broadcastSignature(status uint8, nonce bridge.Nonce) {
+	arguments, err := executeArgs()
+	if err != nil {
+		c.log.Error(err.Error())
+		return
+	}
+
+	pack, err := arguments.Pack(new(big.Int).Set(nonce), status, SignDatName)
+	if err != nil {
+		c.log.Error(err.Error())
+		return
+	}
+
+	hash := crypto.Keccak256Hash(pack)
+	signature, err := c.signHash(hash)
+	if err != nil {
+		c.log.Error(err.Error())
+		return
+	}
+
+	c.broadcaster.SendSignature(signature)
+}
+
+func executeArgs() (abi.Arguments, error) {
+	uint256Type, err := abi.NewType("uint256", "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	uint8Type, err := abi.NewType("uint8", "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	stringType, err := abi.NewType("string", "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return abi.Arguments{
+		abi.Argument{Name: "depositNonce", Type: uint256Type},
+		abi.Argument{Name: "newDepositStatus", Type: uint8Type},
+		abi.Argument{Name: "CurrentPendingTransaction", Type: stringType},
+	}, nil
 }
