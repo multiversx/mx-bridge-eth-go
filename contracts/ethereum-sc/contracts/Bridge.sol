@@ -88,8 +88,7 @@ contract Bridge is AccessControl {
 
         uint8 signersCount;
         
-        bytes32 hashedSignedData = keccak256(abi.encodePacked(depositNonce, newDepositStatus, action));
-        
+        bytes32 hashedSignedData = keccak256(abi.encode(depositNonce, newDepositStatus, action));
         bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
         bytes32 hashedDepositData = keccak256(prefixedSignData);
         
