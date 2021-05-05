@@ -12,8 +12,7 @@ type Broadcaster interface {
 type Bridge interface {
 	GetPendingDepositTransaction(context.Context) *DepositTransaction
 	ProposeTransfer(context.Context, *DepositTransaction) (string, error)
-	ProposeSetStatusSuccessOnPendingTransfer(context.Context, Nonce)
-	ProposeSetStatusFailedOnPendingTransfer(context.Context, Nonce)
+	ProposeSetStatus(context.Context, uint8, Nonce)
 	WasProposedTransfer(context.Context, Nonce) bool
 	GetActionIdForProposeTransfer(context.Context, Nonce) ActionId
 	WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool

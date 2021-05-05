@@ -155,7 +155,7 @@ func main() {
 //	log.Info(fmt.Sprintf("%+v", tx))
 //	log.Info(fmt.Sprintf("Nonce %v", tx.DepositNonce))
 //
-//	client.ProposeSetStatusSuccessOnPendingTransfer(context.Background(), tx.DepositNonce)
+//	client.ProposeSetStatus(context.Background(), tx.DepositNonce)
 //	hash, err := client.Execute(context.Background(), bridge.NewActionId(0), tx.DepositNonce)
 //	if err != nil {
 //		return err

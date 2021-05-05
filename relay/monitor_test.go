@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -58,6 +59,27 @@ func TestProposeTransaction(t *testing.T) {
 		monitor.Start(ctx)
 
 		assert.Equal(t, expect, destinationBridge.lastProposedTransaction)
+	})
+	t.Run("it will proposeStatus Rejected when proposeTransfer fails", func(t *testing.T) {
+		depositTransaction := &bridge.DepositTransaction{To: "address", DepositNonce: bridge.NewNonce(0)}
+		sourceBridge := &bridgeStub{
+			pendingTransactions: []*bridge.DepositTransaction{depositTransaction},
+		}
+		monitor := NewMonitor(
+			sourceBridge,
+			&bridgeStub{
+				proposeTransferError: errors.New("some error"),
+			},
+			&testHelpers.TimerStub{},
+			&topologyProviderStub{peerCount: 1, amITheLeader: true},
+			"testMonitor",
+		)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
+		defer cancel()
+		monitor.Start(ctx)
+
+		assert.Equal(t, bridge.Rejected, sourceBridge.proposedStatus)
 	})
 	t.Run("it will wait for proposal if not leader", func(t *testing.T) {
 		expect := bridge.NewNonce(0)
@@ -213,7 +235,7 @@ func TestProposeSetStatus(t *testing.T) {
 		defer cancel()
 		monitor.Start(ctx)
 
-		assert.True(t, sourceBridge.wasProposedSetStatusSuccessOnPendingTransfer)
+		assert.Equal(t, bridge.Executed, sourceBridge.proposedStatus)
 	})
 	t.Run("it will sign proposed set status when not leader", func(t *testing.T) {
 		expect := bridge.NewActionId(42)
@@ -225,9 +247,9 @@ func TestProposeSetStatus(t *testing.T) {
 		}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: false}
 		sourceBridge := &bridgeStub{
-			pendingTransactions:                          []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
-			wasProposedSetStatusSuccessOnPendingTransfer: true,
-			proposeSetStatusActionId:                     expect,
+			pendingTransactions:      []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+			proposedStatus:           bridge.Executed,
+			proposeSetStatusActionId: expect,
 		}
 		monitor := NewMonitor(
 			sourceBridge,
@@ -253,10 +275,10 @@ func TestProposeSetStatus(t *testing.T) {
 		}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: true}
 		sourceBridge := &bridgeStub{
-			signersCount:        3,
-			pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
-			wasProposedSetStatusSuccessOnPendingTransfer: true,
-			proposeSetStatusActionId:                     expect,
+			signersCount:             3,
+			pendingTransactions:      []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+			proposedStatus:           bridge.Executed,
+			proposeSetStatusActionId: expect,
 		}
 		monitor := NewMonitor(
 			sourceBridge,
@@ -282,10 +304,10 @@ func TestProposeSetStatus(t *testing.T) {
 		}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: false}
 		sourceBridge := &bridgeStub{
-			signersCount:        3,
-			pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
-			wasProposedSetStatusSuccessOnPendingTransfer: false,
-			proposeSetStatusActionId:                     expect,
+			signersCount:             3,
+			pendingTransactions:      []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+			proposedStatus:           0,
+			proposeSetStatusActionId: expect,
 		}
 		monitor := NewMonitor(
 			sourceBridge,
@@ -327,18 +349,19 @@ func (s *topologyProviderStub) Clean() {
 }
 
 type bridgeStub struct {
-	pendingTransactionCallIndex                  int
-	pendingTransactions                          []*bridge.DepositTransaction
-	wasProposedTransfer                          bool
-	lastProposedTransaction                      *bridge.DepositTransaction
-	lastWasProposedTransferNonce                 bridge.Nonce
-	lastSignedActionId                           bridge.ActionId
-	signersCount                                 uint
-	lastExecutedActionId                         bridge.ActionId
-	wasExecuted                                  bool
-	proposeTransferActionId                      bridge.ActionId
-	wasProposedSetStatusSuccessOnPendingTransfer bool
-	proposeSetStatusActionId                     bridge.ActionId
+	pendingTransactionCallIndex  int
+	pendingTransactions          []*bridge.DepositTransaction
+	wasProposedTransfer          bool
+	lastProposedTransaction      *bridge.DepositTransaction
+	lastWasProposedTransferNonce bridge.Nonce
+	lastSignedActionId           bridge.ActionId
+	signersCount                 uint
+	lastExecutedActionId         bridge.ActionId
+	wasExecuted                  bool
+	proposeTransferActionId      bridge.ActionId
+	proposeTransferError         error
+	proposedStatus               uint8
+	proposeSetStatusActionId     bridge.ActionId
 }
 
 func (b *bridgeStub) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
@@ -355,14 +378,12 @@ func (b *bridgeStub) ProposeTransfer(_ context.Context, tx *bridge.DepositTransa
 	b.wasProposedTransfer = true
 	b.lastProposedTransaction = tx
 
-	return "propose_tx_hash", nil
+	return "propose_tx_hash", b.proposeTransferError
 }
 
-func (b *bridgeStub) ProposeSetStatusSuccessOnPendingTransfer(context.Context, bridge.Nonce) {
-	b.wasProposedSetStatusSuccessOnPendingTransfer = true
+func (b *bridgeStub) ProposeSetStatus(_ context.Context, status uint8, _ bridge.Nonce) {
+	b.proposedStatus = status
 }
-
-func (b *bridgeStub) ProposeSetStatusFailedOnPendingTransfer(context.Context, bridge.Nonce) {}
 
 func (b *bridgeStub) WasProposedTransfer(_ context.Context, nonce bridge.Nonce) bool {
 	b.lastWasProposedTransferNonce = nonce
@@ -374,7 +395,7 @@ func (b *bridgeStub) GetActionIdForProposeTransfer(context.Context, bridge.Nonce
 }
 
 func (b *bridgeStub) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
-	return b.wasProposedSetStatusSuccessOnPendingTransfer
+	return b.proposedStatus == bridge.Executed
 }
 
 func (b *bridgeStub) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool {

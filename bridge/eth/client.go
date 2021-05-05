@@ -116,13 +116,8 @@ func (c *Client) ProposeTransfer(context.Context, *bridge.DepositTransaction) (s
 	return "", nil
 }
 
-func (c *Client) ProposeSetStatusSuccessOnPendingTransfer(_ context.Context, nonce bridge.Nonce) {
-	c.lastProposedStatus = bridge.Executed
-	c.broadcastSignature(c.lastProposedStatus, nonce)
-}
-
-func (c *Client) ProposeSetStatusFailedOnPendingTransfer(_ context.Context, nonce bridge.Nonce) {
-	c.lastProposedStatus = bridge.Rejected
+func (c *Client) ProposeSetStatus(_ context.Context, status uint8, nonce bridge.Nonce) {
+	c.lastProposedStatus = status
 	c.broadcastSignature(c.lastProposedStatus, nonce)
 }
 

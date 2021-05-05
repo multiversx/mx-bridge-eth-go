@@ -115,11 +115,17 @@ func (m *Monitor) proposeTransfer(ctx context.Context, ch chan State) {
 		hash, err := m.destinationBridge.ProposeTransfer(ctx, m.pendingTransaction)
 		if err != nil {
 			m.log.Error(err.Error())
+			m.pendingTransaction.Status = bridge.Rejected
+			m.pendingTransaction.Error = err
+			m.executingBridge = m.sourceBridge
+			ch <- ProposeSetStatus
 		} else {
 			m.log.Info(fmt.Sprintf("Proposed with hash %q", hash))
+			ch <- WaitForTransferProposal
 		}
+	} else {
+		ch <- WaitForTransferProposal
 	}
-	ch <- WaitForTransferProposal
 }
 
 func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
@@ -185,6 +191,7 @@ func (m *Monitor) waitForExecute(ctx context.Context, ch chan State) {
 	case <-m.timer.After(Timeout):
 		if m.executingBridge.WasExecuted(ctx, m.actionId, m.pendingTransaction.DepositNonce) {
 			m.log.Info(fmt.Sprintf("ActionId %v was executed", m.actionId))
+			m.pendingTransaction.Status = bridge.Executed
 
 			switch m.executingBridge {
 			case m.destinationBridge:
@@ -203,7 +210,7 @@ func (m *Monitor) waitForExecute(ctx context.Context, ch chan State) {
 func (m *Monitor) proposeSetStatus(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
 		m.log.Info(fmt.Sprintf("Proposing set status on transaction with nonce %v", m.pendingTransaction.DepositNonce))
-		m.sourceBridge.ProposeSetStatusSuccessOnPendingTransfer(ctx, m.pendingTransaction.DepositNonce)
+		m.sourceBridge.ProposeSetStatus(ctx, m.pendingTransaction.Status, m.pendingTransaction.DepositNonce)
 	}
 	ch <- WaitForSetStatusProposal
 }

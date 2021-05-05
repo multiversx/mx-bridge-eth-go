@@ -25,4 +25,6 @@ type DepositTransaction struct {
 	TokenAddress string
 	Amount       *big.Int
 	DepositNonce Nonce
+	Status       uint8
+	Error        error
 }

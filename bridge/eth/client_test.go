@@ -3,6 +3,7 @@ package eth
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -85,36 +86,32 @@ func TestGetPendingDepositTransaction(t *testing.T) {
 	}
 }
 
-func TestProposeSetStatusSuccessOnPendingTransfer(t *testing.T) {
-	broadcaster := &broadcasterStub{}
-	client := Client{
-		bridgeContract: &bridgeContractStub{},
-		privateKey:     privateKey(t),
-		broadcaster:    broadcaster,
-		log:            logger.GetOrCreate("testEthClient"),
+func TestProposeSetStatus(t *testing.T) {
+	cases := []struct {
+		status       uint8
+		signatureHex string
+	}{
+		{bridge.Executed, "0x04f1148226b2902a5eac4631109996c2bc0af7a59b88483b3e67719ae1f1399320fc13b0a639cab0243dc5c5930f629244b5098cf1f6e1fdef102974a5ca0a8200"},
+		{bridge.Rejected, "0xf700e2f7a17879770f4a91cd044dd4c052d2cf04608fe6809ea6940b13795b76040301e51a7d8612afef89b0d15652b1a4a7351e7ba5123c8cc907b3be9eaaac01"},
 	}
 
-	client.ProposeSetStatusSuccessOnPendingTransfer(context.TODO(), bridge.NewNonce(1))
-	expectedSignature, _ := hexutil.Decode("0x04f1148226b2902a5eac4631109996c2bc0af7a59b88483b3e67719ae1f1399320fc13b0a639cab0243dc5c5930f629244b5098cf1f6e1fdef102974a5ca0a8200")
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("status %v should return the proper signature", c.status), func(t *testing.T) {
+			broadcaster := &broadcasterStub{}
+			client := Client{
+				bridgeContract: &bridgeContractStub{},
+				privateKey:     privateKey(t),
+				broadcaster:    broadcaster,
+				log:            logger.GetOrCreate("testEthClient"),
+			}
 
-	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
-	assert.Equal(t, bridge.Executed, client.lastProposedStatus)
-}
+			client.ProposeSetStatus(context.TODO(), c.status, bridge.NewNonce(1))
+			expectedSignature, _ := hexutil.Decode(c.signatureHex)
 
-func TestProposeSetStatusFailedOnPendingTransfer(t *testing.T) {
-	broadcaster := &broadcasterStub{}
-	client := Client{
-		bridgeContract: &bridgeContractStub{},
-		privateKey:     privateKey(t),
-		broadcaster:    broadcaster,
-		log:            logger.GetOrCreate("testEthClient"),
+			assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+			assert.Equal(t, c.status, client.lastProposedStatus)
+		})
 	}
-
-	client.ProposeSetStatusFailedOnPendingTransfer(context.TODO(), bridge.NewNonce(1))
-	expectedSignature, _ := hexutil.Decode("0xf700e2f7a17879770f4a91cd044dd4c052d2cf04608fe6809ea6940b13795b76040301e51a7d8612afef89b0d15652b1a4a7351e7ba5123c8cc907b3be9eaaac01")
-
-	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
-	assert.Equal(t, bridge.Rejected, client.lastProposedStatus)
 }
 
 func TestSignersCount(t *testing.T) {
