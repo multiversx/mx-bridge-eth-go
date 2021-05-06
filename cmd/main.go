@@ -68,22 +68,22 @@ func main() {
 }
 
 //func playgroundElrond(ctx *cli.Context) error {
-//	log.Info("Playground")
+//	//log.Info("Playground")
+//	//
+//	//configurationFileName := ctx.GlobalString(configurationFile.Name)
+//	//config, err := loadConfig(configurationFileName)
+//	//if err != nil {
+//	//	return err
+//	//}
+//	//
+//	//client, err := elrond.NewClient(config.Elrond)
+//	//if err != nil {
+//	//	return err
+//	//}
 //
-//	configurationFileName := ctx.GlobalString(configurationFile.Name)
-//	config, err := loadConfig(configurationFileName)
-//	if err != nil {
-//		return err
-//	}
-//
-//	client, err := elrond.NewClient(config.Elrond)
-//	if err != nil {
-//		return err
-//	}
-//
-//	// carol: erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8
-//
-//	log.Info(fmt.Sprintf("Signers count %d", client.SignersCount(context.TODO(), bridge.ActionId(7))))
+//	//log.Info(fmt.Sprintf("ERC20 address is %s", client.getERC20Address("574554482d386538333666")))
+//	//log.Info(fmt.Sprintf("TokenId is %s", client.getTokenId("90d2bd2d7d7EE1b46FE4193cB18B02Cb67d7A130")))
+//	//log.Info(fmt.Sprintf("Signers count %d", client.SignersCount(context.TODO(), bridge.ActionId(7))))
 //
 //	//nonce := bridge.Nonce(45)
 //	//transfer, err := client.ProposeTransfer(context.TODO(), &bridge.DepositTransaction{
@@ -136,6 +136,7 @@ func main() {
 //
 //	return nil
 //}
+
 //
 //func playgroundEth(ctx *cli.Context) error {
 //	log.Info("Playground Eth")

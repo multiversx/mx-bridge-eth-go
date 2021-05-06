@@ -75,17 +75,12 @@ type Relay struct {
 func NewRelay(config *Config, name string) (*Relay, error) {
 	relay := &Relay{}
 
-	config.Eth.TokenMap = make(bridge.TokenMap)
-	for key, value := range config.TokenMap {
-		config.Eth.TokenMap[value] = key
-	}
 	ethBridge, err := eth.NewClient(config.Eth, relay)
 	if err != nil {
 		return nil, err
 	}
 	relay.ethBridge = ethBridge
 
-	config.Elrond.TokenMap = config.TokenMap
 	elrondBridge, err := elrond.NewClient(config.Elrond)
 	if err != nil {
 		return nil, err
