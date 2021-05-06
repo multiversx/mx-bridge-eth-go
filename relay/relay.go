@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-go/ntp"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
@@ -35,16 +37,34 @@ type Signatures map[core.PeerID][]byte
 type Timer interface {
 	After(d time.Duration) <-chan time.Time
 	NowUnix() int64
+	Start()
+	Close() error
 }
 
-type defaultTimer struct{}
+type defaultTimer struct {
+	ntpSyncTimer ntp.SyncTimer
+}
+
+func NewDefaultTimer() *defaultTimer {
+	return &defaultTimer{
+		ntpSyncTimer: ntp.NewSyncTime(config.NTPConfig{SyncPeriodSeconds: 3600}, nil),
+	}
+}
 
 func (s *defaultTimer) After(d time.Duration) <-chan time.Time {
 	return time.After(d)
 }
 
 func (s *defaultTimer) NowUnix() int64 {
-	return time.Now().Unix()
+	return s.ntpSyncTimer.CurrentTime().Unix()
+}
+
+func (s *defaultTimer) Start() {
+	s.ntpSyncTimer.StartSyncingTime()
+}
+
+func (s *defaultTimer) Close() error {
+	return s.ntpSyncTimer.Close()
 }
 
 type NetMessenger interface {
@@ -94,7 +114,7 @@ func NewRelay(config *Config, name string) (*Relay, error) {
 	relay.messenger = messenger
 
 	relay.peers = make(Peers, 0)
-	relay.timer = &defaultTimer{}
+	relay.timer = NewDefaultTimer()
 	relay.log = logger.GetOrCreate(name)
 	relay.signatures = make(map[core.PeerID][]byte)
 
@@ -106,6 +126,8 @@ func (r *Relay) Start(ctx context.Context) error {
 		return nil
 	}
 	r.join(ctx)
+
+	r.timer.Start()
 
 	monitorEth := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, "EthToElrond")
 	go monitorEth.Start(ctx)
@@ -121,6 +143,9 @@ func (r *Relay) Start(ctx context.Context) error {
 }
 
 func (r *Relay) Stop() error {
+	if err := r.timer.Close(); err != nil {
+		r.log.Error(err.Error())
+	}
 	return r.messenger.Close()
 }
 
