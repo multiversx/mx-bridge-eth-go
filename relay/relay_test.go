@@ -30,9 +30,10 @@ func TestInit(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	messenger := &netMessengerStub{}
+	timer := testHelpers.TimerStub{}
 	relay := Relay{
 		messenger: messenger,
-		timer:     &testHelpers.TimerStub{},
+		timer:     &timer,
 		log:       log,
 
 		elrondBridge: &bridgeStub{},
@@ -50,6 +51,7 @@ func TestInit(t *testing.T) {
 	assert.Contains(t, messenger.registeredMessageProcessors, PrivateTopicName)
 	assert.Contains(t, messenger.registeredMessageProcessors, JoinTopicName)
 	assert.Contains(t, messenger.registeredMessageProcessors, SignTopicName)
+	assert.True(t, timer.WasStarted)
 }
 
 func TestClean(t *testing.T) {

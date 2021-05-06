@@ -322,20 +322,6 @@ func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 	return hash, err
 }
 
-func (c *Client) getERC20Address(tokenId string) string {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("getErc20AddressForTokenId").
-		HexString(tokenId).
-		Build()
-
-	paddedErc20Address, err := c.executeStringQuery(valueRequest)
-	if err != nil {
-		c.log.Error(err.Error())
-	}
-
-	return fmt.Sprintf("0x%s", paddedErc20Address[:40])
-}
-
 func (c *Client) getTokenId(address string) string {
 	paddedAddress := fmt.Sprintf("%s000000000000000000000000", address)
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).

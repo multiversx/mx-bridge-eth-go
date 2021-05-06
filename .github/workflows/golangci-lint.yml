@@ -1,11 +1,12 @@
 name: golangci-lint
+
 on:
   push:
     branches:
       - main
   pull_request:
-    branches: [ development ]
-    types: [ opened, ready_for_review ]
+    branches: [ main ]
+
 jobs:
   golangci:
     name: golangci linter

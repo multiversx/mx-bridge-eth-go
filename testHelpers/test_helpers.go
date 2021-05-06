@@ -13,6 +13,7 @@ func SetTestLogLevel() {
 type TimerStub struct {
 	AfterDuration time.Duration
 	TimeNowUnix   int64
+	WasStarted    bool
 }
 
 func (s *TimerStub) After(time.Duration) <-chan time.Time {
@@ -21,4 +22,12 @@ func (s *TimerStub) After(time.Duration) <-chan time.Time {
 
 func (s *TimerStub) NowUnix() int64 {
 	return s.TimeNowUnix
+}
+
+func (s *TimerStub) Start() {
+	s.WasStarted = true
+}
+
+func (s *TimerStub) Close() error {
+	return nil
 }
