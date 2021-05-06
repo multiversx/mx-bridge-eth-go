@@ -2,6 +2,7 @@ package elrond
 
 import (
 	"context"
+	"encoding/hex"
 	"math/big"
 	"testing"
 
@@ -32,7 +33,12 @@ func TestProposeTransfer(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	t.Run("it will set proper function and params", func(t *testing.T) {
-		proxy := &testProxy{transactionCost: 1024}
+		tokenId, _ := hex.DecodeString("574554482d393761323662")
+		proxy := &testProxy{
+			transactionCost:   1024,
+			queryResponseCode: "ok",
+			queryResponseData: [][]byte{[]byte(tokenId)},
+		}
 		client, _ := buildTestClient(proxy)
 
 		tx := &bridge.DepositTransaction{
@@ -222,8 +228,8 @@ func buildTestClient(proxy *testProxy) (*Client, error) {
 		bridgeAddress: "",
 		privateKey:    privateKey,
 		address:       address,
-		tokenMap:      bridge.TokenMap{"0x3a41ed2dD119E44B802c87E84840F7C85206f4f1": "574554482d393761323662"},
-		nonce:         0,
+		//tokenMap:      bridge.TokenMap{"0x3a41ed2dD119E44B802c87E84840F7C85206f4f1": "574554482d393761323662"},
+		nonce: 0,
 	}
 
 	return client, nil

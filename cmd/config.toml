@@ -5,14 +5,10 @@ PrivateKey = "25b96cce574b43c1bb62b461826ed6bf60d16c3951c88b7b83947ea3ec03d82f"
 
 [Elrond]
 NetworkAddress = "https://testnet-gateway.elrond.com"
-BridgeAddress = "erd1qqqqqqqqqqqqqpgqsf2y6tx85dxcwu2ajndy4nets0l3rf5md8ss8uzys8"
-PrivateKey = "../mytestnet/testnet/wallets/users/bob.pem"
+BridgeAddress = "erd1qqqqqqqqqqqqqpgq9m7lw2wv2sjqau3dg3vv4vtpx7gssjfnyu0s8qmjwf"
+PrivateKey = "/home/calin/Projects/elrond/testnet-wallets/ion.pem"
 
 [P2P]
 Port = "10000"
 Seed = "seed"
 InitialPeerList = []
-
-[TokenMap]
-# AFCoin -> WETH
-"0x90d2bd2d7d7EE1b46FE4193cB18B02Cb67d7A130" = "574554482d343334643266"

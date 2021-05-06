@@ -43,7 +43,6 @@ type Client struct {
 	privateKey    []byte
 	address       string
 	nonce         uint64
-	tokenMap      bridge.TokenMap
 	log           logger.Logger
 }
 
@@ -80,7 +79,6 @@ func NewClient(config bridge.Config) (*Client, error) {
 		privateKey:    privateKey,
 		address:       address.AddressAsBech32String(),
 		nonce:         initialNonce,
-		tokenMap:      config.TokenMap,
 		log:           log,
 	}, nil
 }
@@ -104,7 +102,7 @@ func (c *Client) ProposeTransfer(_ context.Context, tx *bridge.DepositTransactio
 		Func("proposeMultiTransferEsdtTransferEsdtToken").
 		Nonce(tx.DepositNonce).
 		Address(tx.To).
-		HexString(c.tokenMap[tx.TokenAddress]).
+		HexString(c.getTokenId(tx.TokenAddress[2:])).
 		BigInt(tx.Amount)
 
 	return c.sendTransaction(builder, 0)
@@ -252,6 +250,19 @@ func (c *Client) executeUintQuery(valueRequest *data.VmValueRequest) (uint64, er
 	return result, nil
 }
 
+func (c *Client) executeStringQuery(valueRequest *data.VmValueRequest) (string, error) {
+	responseData, err := c.executeQuery(valueRequest)
+	if err != nil {
+		return "", err
+	}
+
+	if len(responseData[0]) == 0 {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", responseData[0]), nil
+}
+
 func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Transaction, error) {
 	c.log.Debug(builder.ToString())
 
@@ -311,6 +322,35 @@ func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 	return hash, err
 }
 
+func (c *Client) getERC20Address(tokenId string) string {
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("getErc20AddressForTokenId").
+		HexString(tokenId).
+		Build()
+
+	paddedErc20Address, err := c.executeStringQuery(valueRequest)
+	if err != nil {
+		c.log.Error(err.Error())
+	}
+
+	return fmt.Sprintf("0x%s", paddedErc20Address[:40])
+}
+
+func (c *Client) getTokenId(address string) string {
+	paddedAddress := fmt.Sprintf("%s000000000000000000000000", address)
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("getTokenIdForErc20Address").
+		HexString(paddedAddress).
+		Build()
+
+	tokenId, err := c.executeStringQuery(valueRequest)
+	if err != nil {
+		c.log.Error(err.Error())
+	}
+
+	return tokenId
+}
+
 // Builders
 
 type valueRequestBuilder struct {
@@ -353,6 +393,12 @@ func (builder *valueRequestBuilder) ActionId(actionId bridge.ActionId) *valueReq
 
 func (builder *valueRequestBuilder) Int(value *big.Int) *valueRequestBuilder {
 	builder.args = append(builder.args, intToHex(value))
+
+	return builder
+}
+
+func (builder *valueRequestBuilder) HexString(value string) *valueRequestBuilder {
+	builder.args = append(builder.args, value)
 
 	return builder
 }

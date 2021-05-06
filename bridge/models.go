@@ -7,7 +7,6 @@ const (
 	Rejected = uint8(4)
 )
 
-type TokenMap map[string]string
 type ActionId *big.Int
 type Nonce *big.Int
 
