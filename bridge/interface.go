@@ -15,8 +15,7 @@ type Bridge interface {
 	ProposeSetStatus(context.Context, uint8, Nonce)
 	WasProposedTransfer(context.Context, Nonce) bool
 	GetActionIdForProposeTransfer(context.Context, Nonce) ActionId
-	WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool
-	WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool
+	WasProposedSetStatusOnPendingTransfer(context.Context, uint8) bool
 	GetActionIdForSetStatusOnPendingTransfer(context.Context) ActionId
 	WasExecuted(context.Context, ActionId, Nonce) bool
 	Sign(context.Context, ActionId) (string, error)

@@ -5,7 +5,7 @@ PrivateKey = "25b96cce574b43c1bb62b461826ed6bf60d16c3951c88b7b83947ea3ec03d82f"
 
 [Elrond]
 NetworkAddress = "https://testnet-gateway.elrond.com"
-BridgeAddress = "erd1qqqqqqqqqqqqqpgq9m7lw2wv2sjqau3dg3vv4vtpx7gssjfnyu0s8qmjwf"
+BridgeAddress = "erd1qqqqqqqqqqqqqpgqxjgzyrmf4jl2qw6fhyd6ykejynu9e9g4yu0s68w43u"
 PrivateKey = "/home/calin/Projects/elrond/testnet-wallets/ion.pem"
 
 [P2P]

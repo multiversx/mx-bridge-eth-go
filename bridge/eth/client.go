@@ -129,11 +129,7 @@ func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) br
 	return bridge.NewActionId(0)
 }
 
-func (c *Client) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
-	return true
-}
-
-func (c *Client) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool {
+func (c *Client) WasProposedSetStatusOnPendingTransfer(context.Context, uint8) bool {
 	return true
 }
 

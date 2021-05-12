@@ -219,7 +219,7 @@ func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan State) {
 	m.log.Info(fmt.Sprintf("Waiting for set status proposal on transaction with nonce %v", m.pendingTransaction.DepositNonce))
 	select {
 	case <-m.timer.After(Timeout):
-		if m.sourceBridge.WasProposedSetStatusSuccessOnPendingTransfer(ctx) {
+		if m.sourceBridge.WasProposedSetStatusOnPendingTransfer(ctx, bridge.Executed) {
 			m.log.Info(fmt.Sprintf("Signing set status for transaction with nonce %v", m.pendingTransaction.DepositNonce))
 			m.actionId = m.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx)
 			hash, err := m.sourceBridge.Sign(ctx, m.actionId)

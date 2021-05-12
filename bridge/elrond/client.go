@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	ExecutionCost = 1000000000
+	ExecutionCost = 1399999999
 )
 
 type QueryResponseErr struct {
@@ -85,8 +85,39 @@ func NewClient(config bridge.Config) (*Client, error) {
 
 func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
 	// getNextPendingTransaction
-	// if none -> error
-	return nil
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("getCurrentTx").
+		Build()
+
+	responseData, err := c.executeQuery(valueRequest)
+	if err != nil {
+		c.log.Error(err.Error())
+	}
+
+	c.log.Info(fmt.Sprintf("Length: %v", len(responseData)))
+
+	c.log.Info(fmt.Sprintf("Block nonce %x", responseData[0]))
+	c.log.Info(fmt.Sprintf("Nonce %x", responseData[1]))
+	c.log.Info(fmt.Sprintf("From %x", responseData[2]))
+	c.log.Info(fmt.Sprintf("To %x", responseData[3]))
+	c.log.Info(fmt.Sprintf("Token Identifier %x", responseData[4]))
+	c.log.Info(fmt.Sprintf("Amount %x", responseData[5]))
+
+	to := fmt.Sprintf("0x%s", hex.EncodeToString(responseData[3][:20]))
+
+	addrPkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
+	from := addrPkConv.Encode(responseData[2])
+	tokenAddress := fmt.Sprintf("0x%s", hex.EncodeToString(responseData[4]))
+	amount, err := strconv.ParseInt(hex.EncodeToString(responseData[5]), 16, 64)
+	depositNonce, err := strconv.ParseInt(hex.EncodeToString(responseData[1]), 16, 64)
+
+	return &bridge.DepositTransaction{
+		To:           to,
+		From:         from,
+		TokenAddress: tokenAddress,
+		Amount:       big.NewInt(amount),
+		DepositNonce: bridge.NewNonce(depositNonce),
+	}
 }
 
 func (c *Client) ProposeSetStatus(_ context.Context, status uint8, _ bridge.Nonce) {
@@ -132,17 +163,10 @@ func (c *Client) GetActionIdForProposeTransfer(_ context.Context, nonce bridge.N
 	return bridge.NewActionId(int64(response))
 }
 
-func (c *Client) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
+func (c *Client) WasProposedSetStatusOnPendingTransfer(_ context.Context, status uint8) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("wasSetCurrentTransactionStatusActionProposed").
-		Build()
-
-	return c.executeBoolQuery(valueRequest)
-}
-
-func (c *Client) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("wasSetCurrentTransactionStatusActionProposed").
+		Int(big.NewInt(int64(status))).
 		Build()
 
 	return c.executeBoolQuery(valueRequest)
@@ -242,7 +266,7 @@ func (c *Client) executeUintQuery(valueRequest *data.VmValueRequest) (uint64, er
 		return 0, err
 	}
 
-	result, err := strconv.ParseUint(fmt.Sprintf("%d", responseData[0][0]), 10, 0)
+	result, err := strconv.ParseUint(hex.EncodeToString(responseData[0]), 16, 64)
 	if err != nil {
 		return 0, err
 	}
@@ -304,6 +328,7 @@ func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 	return tx, nil
 }
 
+// TODO: most likely the client should not do this
 func (c *Client) incrementNonce() {
 	c.nonce++
 }
@@ -458,4 +483,11 @@ func (builder *txDataBuilder) ToBytes() []byte {
 
 func intToHex(value *big.Int) string {
 	return hex.EncodeToString(value.Bytes())
+}
+
+type depositTransactionBuilder struct {
+}
+
+func DepositTransactionBuilder() *depositTransactionBuilder {
+	return &depositTransactionBuilder{}
 }
