@@ -1,6 +1,8 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-solhint");
 require("hardhat-watcher");
+require("hardhat-gas-reporter");
+
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -27,7 +29,7 @@ module.exports = {
     rinkeby: {
       url: "https://rinkeby.infura.io/v3/df34d380f59e469c97f1dab44199bca6",
       accounts: {
-        mnemonic: "test test test test test test test test test test test junk"
+        mnemonic: "industry layer bird test junk shadow visa lottery human spatial pact balcony"
       }
     }
   },
@@ -45,6 +47,11 @@ module.exports = {
     ci: {
       tasks: ["clean", { command: "compile", params: { quiet: true } }, { command: "test", params: { noCompile: true, testFiles: ["testfile.ts"] } }],
     }
+  },
+  gasReporter: {
+    currency: 'USD',
+    gasPrice: 57,
+    coinmarketcap: '26043cba-19e3-4a70-8575-916adb54fa12'
   }
 };
 
