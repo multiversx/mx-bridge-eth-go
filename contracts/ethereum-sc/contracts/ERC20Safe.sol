@@ -59,6 +59,7 @@ import "hardhat/console.sol";
         bytes calldata recipientAddress
     ) public {
         require(_whitelistedTokens[tokenAddress], "Unsupported token");
+        
         uint64 depositIndex = depositsCount++;
         _deposits[depositIndex] = Deposit(
             depositIndex,
@@ -71,6 +72,11 @@ import "hardhat/console.sol";
 
         lockTokens(tokenAddress, amount, msg.sender);
         emit ERC20Deposited(depositIndex);
+    }
+
+    function transfer(address tokenAddress, uint256 amount, address recipientAddress) external onlyBridge {
+        IERC20 erc20 = IERC20(tokenAddress);
+        erc20.transfer(recipientAddress, amount);
     }
 
     function lockTokens(
