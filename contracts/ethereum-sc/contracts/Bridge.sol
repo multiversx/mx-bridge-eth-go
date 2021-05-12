@@ -12,6 +12,7 @@ contract Bridge is AccessControl {
 
 
     string constant action = 'CurrentPendingTransaction';
+    string constant executeTransferAction = 'ExecuteTransfer';
     string constant prefix = "\x19Ethereum Signed Message:\n32";
     // Role used to execute deposits
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
@@ -130,6 +131,56 @@ contract Bridge is AccessControl {
 
         safe.finishCurrentPendingDeposit(newDepositStatus);
         emit FinishedTransaction(depositNonce, newDepositStatus);
+    }
+
+    function executeTransfer(address token, address recipient, uint256 amount, bytes[] memory signatures) public {
+        require(
+            signatures.length >= _quorum, 
+            'Not enough signatures to achieve quorum');
+
+            uint8 signersCount;
+        
+        bytes32 hashedSignedData = keccak256(abi.encode(recipient, token, amount, executeTransferAction));
+        bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
+        bytes32 hashedDepositData = keccak256(prefixedSignData);
+        
+        for (uint256 i = 0; i < signatures.length; i++) {
+            bytes memory signature = signatures[i];
+            require(signature.length == 65, 'Malformed signature');
+
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+
+            assembly {
+                // first 32 bytes, after the length prefix
+                r := mload(add(signature, 32))
+                // second 32 bytes
+                s := mload(add(signature, 64))
+                // final byte (first byte of the next 32 bytes)
+                v := byte(0, mload(add(signature, 96)))
+            }
+
+            // adjust recoverid (v) for geth cannonical values of 0 or 1 
+            // as per Ethereum's yellow paper: Appendinx F (Signing Transactions)
+            if (v == 0 || v == 1)
+            {
+                v += 27;
+            }
+
+            address publicKey = ecrecover(hashedDepositData, v, r, s);
+            require(
+                hasRole(RELAYER_ROLE, publicKey),
+                "Not a recognized relayer"
+            );
+            
+            signersCount++;
+        }
+
+        require(signersCount >= _quorum, "Quorum was not met");
+
+        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
+        safe.transfer(token, amount, recipient);
     }
 
     function wasTransactionExecuted(uint256 nonceId) external view returns(bool) {

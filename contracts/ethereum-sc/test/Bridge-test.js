@@ -5,8 +5,10 @@ const { provider, deployContract } = waffle;
 const BridgeContract = require('../artifacts/contracts/Bridge.sol/Bridge.json');
 const ERC20SafeContract = require('../artifacts/contracts/ERC20Safe.sol/ERC20Safe.json');
 const IERC20 = require('../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json');
+const AFC = require('../artifacts/contracts/AFCoin.sol/AFCoin.json');
 
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
+const { toUtf8String } = require("@ethersproject/strings");
 
 describe("Bridge", async function () {
   const [adminWallet, relayer1, relayer2, relayer3, relayer4, relayer5, relayer6, relayer7, relayer8, otherWallet] = provider.getWallets();
@@ -86,7 +88,7 @@ describe("Bridge", async function () {
         tokenAddress: mockERC20Safe.address,
         amount: 100,
         depositor: adminWallet.address,
-        recipient: ethers.utils.toUtf8Bytes('some address'),
+        recipient: ethers.utils.toUtf8Bytes('erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq'),
         status: 1
       };
 
@@ -114,7 +116,7 @@ describe("Bridge", async function () {
         tokenAddress: mockERC20Safe.address,
         amount: 100,
         depositor: adminWallet.address,
-        recipient: ethers.utils.toUtf8Bytes('some address'),
+        recipient: ethers.utils.toUtf8Bytes('erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq'),
         status: 1
       };
 
@@ -219,7 +221,7 @@ describe("Bridge", async function () {
         tokenAddress: mockERC20Safe.address,
         amount: 100,
         depositor: adminWallet.address,
-        recipient: ethers.utils.toUtf8Bytes('some address'),
+        recipient: ethers.utils.toUtf8Bytes('erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq'),
         status: depositState
       };
 
@@ -248,6 +250,58 @@ describe("Bridge", async function () {
           expect(await bridge.wasTransactionExecuted(depositNonce)).to.be.false;
         })
       });
+    })
+  })
+
+  describe('executeTransfer', async function () {
+    beforeEach(async function () {
+      afc = await deployContract(adminWallet, AFC, [1000]);
+      erc20Safe = await deployContract(adminWallet, ERC20SafeContract);
+      bridge = await deployContract(adminWallet, BridgeContract, [boardMembers.map(m => m.address), quorum, erc20Safe.address]);
+      await erc20Safe.setBridgeAddress(bridge.address);
+
+      await afc.approve(erc20Safe.address, 200);
+      await erc20Safe.whitelistToken(afc.address);
+      await erc20Safe.deposit(afc.address, 200, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+    });
+
+    function getExecuteTransferData(tokenAddress, recipientAddress, amount) {
+      signMessageDefinition = ['address', 'address', 'uint256', 'string'];
+      signMessageData = [recipientAddress, tokenAddress, amount, 'ExecuteTransfer'];
+
+      bytesToSign = ethers.utils.defaultAbiCoder.encode(signMessageDefinition, signMessageData);
+      signData = ethers.utils.keccak256(bytesToSign);
+      return ethers.utils.arrayify(signData);
+    }
+
+    async function getSignaturesForExecuteTransfer(tokenAddress, recipientAddress, amount) {
+      dataToSign = getExecuteTransferData(tokenAddress, recipientAddress, amount);
+      signature1 = await adminWallet.signMessage(dataToSign);
+      signature2 = await relayer1.signMessage(dataToSign);
+      signature3 = await relayer2.signMessage(dataToSign);
+      signature4 = await relayer3.signMessage(dataToSign);
+      signature5 = await relayer5.signMessage(dataToSign);
+      signature6 = await relayer6.signMessage(dataToSign);
+      signature7 = await relayer7.signMessage(dataToSign);
+
+      return [signature1, signature2, signature3, signature4, signature5, signature6, signature7];
+    }
+
+    it('transfers tokens', async function () {
+      signatures = await getSignaturesForExecuteTransfer(afc.address, otherWallet.address, 200);
+      amount = 200;
+
+      await expect(() => bridge.executeTransfer(afc.address, otherWallet.address, amount, signatures))
+        .to.changeTokenBalance(afc, otherWallet, 200);
+    })
+
+    describe('not enough signatures for quorum', async function () {
+      it.only('reverts', async function () {
+        signatures = (await getSignaturesForExecuteTransfer(afc.address, otherWallet.address, 200)).slice(0, -2);
+        amount = 200;
+
+        await expect(bridge.executeTransfer(afc.address, otherWallet.address, amount, signatures)).to.be.revertedWith("Not enough signatures to achieve quorum");
+      })
     })
   })
 });
