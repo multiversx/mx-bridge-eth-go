@@ -266,8 +266,9 @@ describe("Bridge", async function () {
     });
 
     function getExecuteTransferData(tokenAddress, recipientAddress, amount) {
-      signMessageDefinition = ['address', 'address', 'uint256', 'string'];
-      signMessageData = [recipientAddress, tokenAddress, amount, 'ExecuteTransfer'];
+      let depositNonce = 42;
+      signMessageDefinition = ['address', 'address', 'uint256', 'uint256', 'string'];
+      signMessageData = [recipientAddress, tokenAddress, amount, depositNonce, 'ExecuteTransfer'];
 
       bytesToSign = ethers.utils.defaultAbiCoder.encode(signMessageDefinition, signMessageData);
       signData = ethers.utils.keccak256(bytesToSign);
@@ -288,19 +289,33 @@ describe("Bridge", async function () {
     }
 
     it('transfers tokens', async function () {
-      signatures = await getSignaturesForExecuteTransfer(afc.address, otherWallet.address, 200);
       amount = 200;
+      depositNonce = 42;
+      signatures = await getSignaturesForExecuteTransfer(afc.address, otherWallet.address, amount);
 
-      await expect(() => bridge.executeTransfer(afc.address, otherWallet.address, amount, signatures))
-        .to.changeTokenBalance(afc, otherWallet, 200);
+      await expect(() => bridge.executeTransfer(afc.address, otherWallet.address, amount, depositNonce, signatures))
+        .to.changeTokenBalance(afc, otherWallet, amount);
+    })
+
+    it('sets the wasTransferExecuted to true', async function () {
+      amount = 200;
+      depositNonce = 42;
+      signatures = await getSignaturesForExecuteTransfer(afc.address, otherWallet.address, amount);
+      await bridge.executeTransfer(afc.address, otherWallet.address, amount, depositNonce, signatures);
+      expect(await bridge.wasTransferExecuted(depositNonce)).to.be.true;
     })
 
     describe('not enough signatures for quorum', async function () {
-      it.only('reverts', async function () {
-        signatures = (await getSignaturesForExecuteTransfer(afc.address, otherWallet.address, 200)).slice(0, -2);
+      it('reverts', async function () {
         amount = 200;
+        depositNonce = 42;
+        signatures = (await getSignaturesForExecuteTransfer(afc.address, otherWallet.address, 200)).slice(0, -2);
 
-        await expect(bridge.executeTransfer(afc.address, otherWallet.address, amount, signatures)).to.be.revertedWith("Not enough signatures to achieve quorum");
+        await expect(bridge.executeTransfer(afc.address, otherWallet.address, amount, depositNonce, signatures)).to.be.revertedWith("Not enough signatures to achieve quorum");
+      })
+
+      it('does not set wasTransferExecuted', async function () {
+        expect(await bridge.wasTransferExecuted(depositNonce)).to.be.false;
       })
     })
   })

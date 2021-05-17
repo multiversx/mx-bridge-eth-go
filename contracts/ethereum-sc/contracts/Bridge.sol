@@ -10,14 +10,15 @@ contract Bridge is AccessControl {
     event RelayerAdded(address newRelayer);
     event FinishedTransaction(uint256 depositNonce, DepositStatus status);
 
-
     string constant action = 'CurrentPendingTransaction';
     string constant executeTransferAction = 'ExecuteTransfer';
     string constant prefix = "\x19Ethereum Signed Message:\n32";
+
     // Role used to execute deposits
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
     uint256 public _quorum;
     address private _erc20SafeAddress;
+    mapping(uint256 => bool) public _executedTransfers;
 
     modifier onlyAdmin() {
         require(
@@ -133,14 +134,14 @@ contract Bridge is AccessControl {
         emit FinishedTransaction(depositNonce, newDepositStatus);
     }
 
-    function executeTransfer(address token, address recipient, uint256 amount, bytes[] memory signatures) public {
+    function executeTransfer(address token, address recipient, uint256 amount, uint256 depositNonce, bytes[] memory signatures) public {
         require(
             signatures.length >= _quorum, 
             'Not enough signatures to achieve quorum');
 
             uint8 signersCount;
         
-        bytes32 hashedSignedData = keccak256(abi.encode(recipient, token, amount, executeTransferAction));
+        bytes32 hashedSignedData = keccak256(abi.encode(recipient, token, amount, depositNonce, executeTransferAction));
         bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
         bytes32 hashedDepositData = keccak256(prefixedSignData);
         
@@ -179,6 +180,8 @@ contract Bridge is AccessControl {
 
         require(signersCount >= _quorum, "Quorum was not met");
 
+        _executedTransfers[depositNonce] = true;
+
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
         safe.transfer(token, amount, recipient);
     }
@@ -187,5 +190,9 @@ contract Bridge is AccessControl {
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
         Deposit memory deposit = safe.getDeposit(nonceId);
         return deposit.status == DepositStatus.Executed || deposit.status == DepositStatus.Rejected;
+    }
+
+    function wasTransferExecuted(uint256 depositNonce) external view returns(bool) {
+        return _executedTransfers[depositNonce];
     }
 }
