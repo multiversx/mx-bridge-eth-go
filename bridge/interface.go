@@ -9,6 +9,11 @@ type Broadcaster interface {
 	SendSignature(signature []byte)
 }
 
+type Mapper interface {
+	GetTokenId(string) string
+	GetErc20Address(string) string
+}
+
 type Bridge interface {
 	GetPendingDepositTransaction(context.Context) *DepositTransaction
 	ProposeTransfer(context.Context, *DepositTransaction) (string, error)

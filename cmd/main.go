@@ -6,9 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
-
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 
@@ -95,26 +92,26 @@ func playgroundElrond(ctx *cli.Context) error {
 	tx := client.GetPendingDepositTransaction(context.TODO())
 	log.Info(fmt.Sprintf("%+v", tx))
 
-	client.ProposeSetStatus(context.TODO(), bridge.Executed, tx.DepositNonce)
-	time.Sleep(30 * time.Second)
-
-	actionId := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO())
-	log.Info(fmt.Sprintf("%v", actionId))
-
-	wasProposed := client.WasProposedSetStatusOnPendingTransfer(context.TODO(), bridge.Executed)
-	log.Info(fmt.Sprintf("was proposed: %v", wasProposed))
-	hash, err := client.Sign(context.TODO(), actionId)
-	if err != nil {
-		log.Error(err.Error())
-	}
-	log.Info(fmt.Sprintf("Sign %s", hash))
-	time.Sleep(30 * time.Second)
-
-	hash, err = client.Execute(context.TODO(), actionId, tx.DepositNonce)
-	if err != nil {
-		log.Error(err.Error())
-	}
-	log.Info(fmt.Sprintf("Execute %s", hash))
+	//client.ProposeSetStatus(context.TODO(), bridge.Executed, tx.DepositNonce)
+	//time.Sleep(30 * time.Second)
+	//
+	//actionId := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO())
+	//log.Info(fmt.Sprintf("%v", actionId))
+	//
+	//wasProposed := client.WasProposedSetStatusOnPendingTransfer(context.TODO(), bridge.Executed)
+	//log.Info(fmt.Sprintf("was proposed: %v", wasProposed))
+	//hash, err := client.Sign(context.TODO(), actionId)
+	//if err != nil {
+	//	log.Error(err.Error())
+	//}
+	//log.Info(fmt.Sprintf("Sign %s", hash))
+	//time.Sleep(30 * time.Second)
+	//
+	//hash, err = client.Execute(context.TODO(), actionId, tx.DepositNonce)
+	//if err != nil {
+	//	log.Error(err.Error())
+	//}
+	//log.Info(fmt.Sprintf("Execute %s", hash))
 
 	//nonce := bridge.Nonce(45)
 	//transfer, err := client.ProposeTransfer(context.TODO(), &bridge.DepositTransaction{

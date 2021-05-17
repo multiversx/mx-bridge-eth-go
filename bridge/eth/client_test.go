@@ -114,6 +114,30 @@ func TestProposeSetStatus(t *testing.T) {
 	}
 }
 
+func TestProposeTransfer(t *testing.T) {
+	broadcaster := &broadcasterStub{}
+	client := Client{
+		bridgeContract: &bridgeContractStub{},
+		privateKey:     privateKey(t),
+		broadcaster:    broadcaster,
+		mapper:         &mapperStub{},
+		log:            logger.GetOrCreate("testEthClient"),
+	}
+
+	tx := &bridge.DepositTransaction{
+		To:           "cf95254084ab772696643f0e05ac4711ed674ac1",
+		From:         "04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3",
+		TokenAddress: "574554482d323936313238",
+		Amount:       big.NewInt(1),
+		DepositNonce: bridge.NewNonce(2),
+	}
+	_, _ = client.ProposeTransfer(context.TODO(), tx)
+	expectedSignature, _ := hexutil.Decode("0x94ab570d96c659ebabcb8e00657c04b9159a157f873bd23ece55bb7a958f88c859fbb99f6157d81cf2759c46774bc80a24a64f05b01cd796648ec8bb0f3ced6701")
+
+	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+	assert.Equal(t, tx, client.lastTransferTransaction)
+}
+
 func TestSignersCount(t *testing.T) {
 	broadcaster := &broadcasterStub{lastBroadcastSignature: []byte("signature")}
 	client := Client{
@@ -128,33 +152,68 @@ func TestSignersCount(t *testing.T) {
 }
 
 func TestWasExecuted(t *testing.T) {
-	contract := &bridgeContractStub{wasExecuted: true}
-	client := Client{
-		bridgeContract: contract,
-		broadcaster:    &broadcasterStub{},
-		log:            logger.GetOrCreate("testEthClient"),
-	}
+	t.Run("when there is not last transaction", func(t *testing.T) {
+		contract := &bridgeContractStub{wasExecuted: true}
+		client := Client{
+			bridgeContract: contract,
+			broadcaster:    &broadcasterStub{},
+			log:            logger.GetOrCreate("testEthClient"),
+		}
 
-	got := client.WasExecuted(context.TODO(), bridge.NewActionId(0), bridge.NewNonce(42))
+		got := client.WasExecuted(context.TODO(), bridge.NewActionId(0), bridge.NewNonce(42))
 
-	assert.Equal(t, true, got)
+		assert.Equal(t, true, got)
+	})
+	t.Run("when there is a last transaction", func(t *testing.T) {
+		contract := &bridgeContractStub{wasTransferExecuted: true}
+		client := Client{
+			bridgeContract:          contract,
+			lastTransferTransaction: &bridge.DepositTransaction{},
+			broadcaster:             &broadcasterStub{},
+			log:                     logger.GetOrCreate("testEthClient"),
+		}
+
+		got := client.WasExecuted(context.TODO(), bridge.NewActionId(0), bridge.NewNonce(42))
+
+		assert.Equal(t, true, got)
+	})
 }
 
 func TestExecute(t *testing.T) {
-	expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
-	contract := &bridgeContractStub{executedTransaction: types.NewTx(&types.AccessListTx{})}
-	client := Client{
-		bridgeContract:   contract,
-		privateKey:       privateKey(t),
-		publicKey:        publicKey(t),
-		broadcaster:      &broadcasterStub{},
-		blockchainClient: &blockchainClientStub{},
-		log:              logger.GetOrCreate("testEthClient"),
-	}
+	t.Run("when there is no last transfer", func(t *testing.T) {
+		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
+		contract := &bridgeContractStub{executedTransaction: types.NewTx(&types.AccessListTx{})}
+		client := Client{
+			bridgeContract:   contract,
+			privateKey:       privateKey(t),
+			publicKey:        publicKey(t),
+			broadcaster:      &broadcasterStub{},
+			blockchainClient: &blockchainClientStub{},
+			log:              logger.GetOrCreate("testEthClient"),
+		}
 
-	got, _ := client.Execute(context.TODO(), bridge.NewActionId(0), bridge.NewNonce(42))
+		got, _ := client.Execute(context.TODO(), bridge.NewActionId(0), bridge.NewNonce(42))
 
-	assert.Equal(t, expected, got)
+		assert.Equal(t, expected, got)
+	})
+	t.Run("when there is last transfer", func(t *testing.T) {
+		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
+		contract := &bridgeContractStub{transferTransaction: types.NewTx(&types.AccessListTx{})}
+		client := Client{
+			bridgeContract:          contract,
+			privateKey:              privateKey(t),
+			publicKey:               publicKey(t),
+			broadcaster:             &broadcasterStub{},
+			mapper:                  &mapperStub{},
+			blockchainClient:        &blockchainClientStub{},
+			lastTransferTransaction: &bridge.DepositTransaction{},
+			log:                     logger.GetOrCreate("testEthClient"),
+		}
+
+		got, _ := client.Execute(context.TODO(), bridge.NewActionId(0), bridge.NewNonce(42))
+
+		assert.Equal(t, expected, got)
+	})
 }
 
 func privateKey(t *testing.T) *ecdsa.PrivateKey {
@@ -184,7 +243,9 @@ func publicKey(t *testing.T) *ecdsa.PublicKey {
 type bridgeContractStub struct {
 	deposit             Deposit
 	wasExecuted         bool
+	wasTransferExecuted bool
 	executedTransaction *types.Transaction
+	transferTransaction *types.Transaction
 }
 
 func (c *bridgeContractStub) GetNextPendingTransaction(*bind.CallOpts) (Deposit, error) {
@@ -195,8 +256,16 @@ func (c *bridgeContractStub) FinishCurrentPendingTransaction(*bind.TransactOpts,
 	return c.executedTransaction, nil
 }
 
+func (c *bridgeContractStub) ExecuteTransfer(*bind.TransactOpts, common.Address, common.Address, *big.Int, *big.Int, [][]byte) (*types.Transaction, error) {
+	return c.transferTransaction, nil
+}
+
 func (c *bridgeContractStub) WasTransactionExecuted(*bind.CallOpts, *big.Int) (bool, error) {
 	return c.wasExecuted, nil
+}
+
+func (c *bridgeContractStub) WasTransferExecuted(*bind.CallOpts, *big.Int) (bool, error) {
+	return c.wasTransferExecuted, nil
 }
 
 type broadcasterStub struct {
@@ -223,4 +292,14 @@ func (b *blockchainClientStub) SuggestGasPrice(context.Context) (*big.Int, error
 
 func (b *blockchainClientStub) ChainID(context.Context) (*big.Int, error) {
 	return big.NewInt(42), nil
+}
+
+type mapperStub struct{}
+
+func (m *mapperStub) GetTokenId(string) string {
+	return "tokenId"
+}
+
+func (m *mapperStub) GetErc20Address(string) string {
+	return "0x30C7c97471FB5C5238c946E549c608D27f37AAb8"
 }

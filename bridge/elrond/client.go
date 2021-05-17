@@ -133,7 +133,7 @@ func (c *Client) ProposeTransfer(_ context.Context, tx *bridge.DepositTransactio
 		Func("proposeMultiTransferEsdtTransferEsdtToken").
 		Nonce(tx.DepositNonce).
 		Address(tx.To).
-		HexString(c.getTokenId(tx.TokenAddress[2:])).
+		HexString(c.GetTokenId(tx.TokenAddress[2:])).
 		BigInt(tx.Amount)
 
 	return c.sendTransaction(builder, 0)
@@ -219,6 +219,37 @@ func (c *Client) SignersCount(_ context.Context, actionId bridge.ActionId) uint 
 
 	count, _ := c.executeUintQuery(valueRequest)
 	return uint(count)
+}
+
+// Mapper
+
+func (c *Client) GetTokenId(address string) string {
+	paddedAddress := fmt.Sprintf("%s000000000000000000000000", address)
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("getTokenIdForErc20Address").
+		HexString(paddedAddress).
+		Build()
+
+	tokenId, err := c.executeStringQuery(valueRequest)
+	if err != nil {
+		c.log.Error(err.Error())
+	}
+
+	return tokenId
+}
+
+func (c *Client) GetErc20Address(tokenId string) string {
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("getErc20AddressForTokenId").
+		HexString(tokenId).
+		Build()
+
+	address, err := c.executeStringQuery(valueRequest)
+	if err != nil {
+		c.log.Error(err.Error())
+	}
+
+	return address
 }
 
 // Helpers
@@ -345,21 +376,6 @@ func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 	}
 
 	return hash, err
-}
-
-func (c *Client) getTokenId(address string) string {
-	paddedAddress := fmt.Sprintf("%s000000000000000000000000", address)
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("getTokenIdForErc20Address").
-		HexString(paddedAddress).
-		Build()
-
-	tokenId, err := c.executeStringQuery(valueRequest)
-	if err != nil {
-		c.log.Error(err.Error())
-	}
-
-	return tokenId
 }
 
 // Builders
