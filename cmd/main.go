@@ -96,25 +96,25 @@ func playgroundElrond(ctx *cli.Context) error {
 	log.Info(fmt.Sprintf("%+v", tx))
 
 	client.ProposeSetStatus(context.TODO(), bridge.Executed, tx.DepositNonce)
-	time.Sleep(10)
+	time.Sleep(30 * time.Second)
 
 	actionId := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO())
 	log.Info(fmt.Sprintf("%v", actionId))
 
 	wasProposed := client.WasProposedSetStatusOnPendingTransfer(context.TODO(), bridge.Executed)
 	log.Info(fmt.Sprintf("was proposed: %v", wasProposed))
-	//hash, err := client.Sign(context.TODO(), actionId)
-	//if err != nil {
-	//	log.Error(err.Error())
-	//}
-	//log.Info(fmt.Sprintf("Sign %s", hash))
-	//time.Sleep(30 * time.Second)
+	hash, err := client.Sign(context.TODO(), actionId)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	log.Info(fmt.Sprintf("Sign %s", hash))
+	time.Sleep(30 * time.Second)
 
-	//hash, err := client.Execute(context.TODO(), actionId, tx.DepositNonce)
-	//if err != nil {
-	//	log.Error(err.Error())
-	//}
-	//log.Info(fmt.Sprintf("Execute %s", hash))
+	hash, err = client.Execute(context.TODO(), actionId, tx.DepositNonce)
+	if err != nil {
+		log.Error(err.Error())
+	}
+	log.Info(fmt.Sprintf("Execute %s", hash))
 
 	//nonce := bridge.Nonce(45)
 	//transfer, err := client.ProposeTransfer(context.TODO(), &bridge.DepositTransaction{

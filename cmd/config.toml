@@ -1,11 +1,11 @@
 [Eth]
 NetworkAddress = "http://127.0.0.1:8545"
-BridgeAddress = "0x721a1cf6560B80058EB47f94E477e998A5CB1216"
+BridgeAddress = "0x30001fb31d6cd736c5Cba7F7d5EA63f30845eDcB"
 PrivateKey = "25b96cce574b43c1bb62b461826ed6bf60d16c3951c88b7b83947ea3ec03d82f"
 
 [Elrond]
 NetworkAddress = "https://testnet-gateway.elrond.com"
-BridgeAddress = "erd1qqqqqqqqqqqqqpgqxjgzyrmf4jl2qw6fhyd6ykejynu9e9g4yu0s68w43u"
+BridgeAddress = "erd1qqqqqqqqqqqqqpgqg5xncpm6kp46zs3kuu6h7xr858cntxh8yu0sc5556f"
 PrivateKey = "/home/calin/Projects/elrond/testnet-wallets/ion.pem"
 
 [P2P]
