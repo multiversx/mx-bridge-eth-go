@@ -32,38 +32,86 @@ func (e TransactionError) Error() string {
 func TestGetPendingDepositTransaction(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
-	blockNonce, _ := hex.DecodeString("0564a7")
-	nonce, _ := hex.DecodeString("01")
-	from, _ := hex.DecodeString("04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3")
-	to, _ := hex.DecodeString("cf95254084ab772696643f0e05ac4711ed674ac1000000000000000000000000")
-	tokenIdentifier, _ := hex.DecodeString("574554482d386538333666")
-	amount, _ := hex.DecodeString("01")
-	responseData := [][]byte{
-		blockNonce,
-		nonce,
-		from,
-		to,
-		tokenIdentifier,
-		amount,
-	}
+	t.Run("when there is a current transaction", func(t *testing.T) {
+		blockNonce, _ := hex.DecodeString("0564a7")
+		nonce, _ := hex.DecodeString("01")
+		from, _ := hex.DecodeString("04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3")
+		to, _ := hex.DecodeString("cf95254084ab772696643f0e05ac4711ed674ac1000000000000000000000000")
+		tokenIdentifier, _ := hex.DecodeString("574554482d386538333666")
+		amount, _ := hex.DecodeString("01")
+		responseData := [][]byte{
+			blockNonce,
+			nonce,
+			from,
+			to,
+			tokenIdentifier,
+			amount,
+		}
 
-	proxy := &testProxy{
-		transactionCost:   1024,
-		queryResponseCode: "ok",
-		queryResponseData: responseData,
-	}
-	client, _ := buildTestClient(proxy)
+		proxy := &testProxy{
+			transactionCost:   1024,
+			queryResponseCode: "ok",
+			queryResponseData: responseData,
+		}
+		client, _ := buildTestClient(proxy)
 
-	actual := client.GetPendingDepositTransaction(context.TODO())
-	expected := &bridge.DepositTransaction{
-		To:           "0xcf95254084ab772696643f0e05ac4711ed674ac1",
-		From:         "erd1qj4x6cpfknsnd5zgfr6mtzxzj5gc2envepces2v57lh3v4pg973sqtm427",
-		TokenAddress: "0x574554482d386538333666",
-		Amount:       big.NewInt(1),
-		DepositNonce: bridge.NewNonce(1),
-	}
+		actual := client.GetPendingDepositTransaction(context.TODO())
+		expected := &bridge.DepositTransaction{
+			To:           "0xcf95254084ab772696643f0e05ac4711ed674ac1",
+			From:         "erd1qj4x6cpfknsnd5zgfr6mtzxzj5gc2envepces2v57lh3v4pg973sqtm427",
+			TokenAddress: "0x574554482d386538333666",
+			Amount:       big.NewInt(1),
+			DepositNonce: bridge.NewNonce(1),
+		}
 
-	assert.Equal(t, expected, actual)
+		assert.Equal(t, expected, actual)
+	})
+	t.Run("when there is no current transaction it will call get pending", func(t *testing.T) {
+		blockNonce, _ := hex.DecodeString("0564a7")
+		nonce, _ := hex.DecodeString("01")
+		from, _ := hex.DecodeString("04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3")
+		to, _ := hex.DecodeString("cf95254084ab772696643f0e05ac4711ed674ac1000000000000000000000000")
+		tokenIdentifier, _ := hex.DecodeString("574554482d386538333666")
+		amount, _ := hex.DecodeString("01")
+		responseData := [][]byte{
+			blockNonce,
+			nonce,
+			from,
+			to,
+			tokenIdentifier,
+			amount,
+		}
+
+		proxy := &testProxy{
+			transactionCost:                   1024,
+			queryResponseCode:                 "ok",
+			afterTransactionQueryResponseData: responseData,
+		}
+
+		client, _ := buildTestClient(proxy)
+		actual := client.GetPendingDepositTransaction(context.TODO())
+		expected := &bridge.DepositTransaction{
+			To:           "0xcf95254084ab772696643f0e05ac4711ed674ac1",
+			From:         "erd1qj4x6cpfknsnd5zgfr6mtzxzj5gc2envepces2v57lh3v4pg973sqtm427",
+			TokenAddress: "0x574554482d386538333666",
+			Amount:       big.NewInt(1),
+			DepositNonce: bridge.NewNonce(1),
+		}
+
+		assert.Equal(t, expected, actual)
+	})
+	t.Run("where there is no pending transaction it will return nil", func(t *testing.T) {
+		proxy := &testProxy{
+			transactionCost:   1024,
+			queryResponseCode: "ok",
+			shouldFail:        true,
+		}
+
+		client, _ := buildTestClient(proxy)
+		actual := client.GetPendingDepositTransaction(context.TODO())
+
+		assert.Nil(t, actual)
+	})
 }
 
 func TestProposeTransfer(t *testing.T) {
@@ -266,8 +314,9 @@ type testProxy struct {
 	lastTransaction *data.Transaction
 	shouldFail      bool
 
-	queryResponseData [][]byte
-	queryResponseCode string
+	queryResponseData                 [][]byte
+	afterTransactionQueryResponseData [][]byte
+	queryResponseCode                 string
 
 	transactionCost      uint64
 	transactionCostError error
@@ -294,6 +343,7 @@ func (p *testProxy) GetNetworkConfig() (*data.NetworkConfig, error) {
 
 func (p *testProxy) SendTransaction(tx *data.Transaction) (string, error) {
 	p.lastTransaction = tx
+	p.queryResponseData = p.afterTransactionQueryResponseData
 
 	if p.shouldFail {
 		return "", TransactionError("failed")

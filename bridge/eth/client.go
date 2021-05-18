@@ -118,7 +118,7 @@ func (c *Client) GetPendingDepositTransaction(ctx context.Context) *bridge.Depos
 
 func (c *Client) ProposeTransfer(_ context.Context, tx *bridge.DepositTransaction) (string, error) {
 	c.lastTransferTransaction = tx
-	c.broadcastSignatureForTransfer(tx.To, c.mapper.GetErc20Address(tx.TokenAddress), tx.Amount, tx.DepositNonce)
+	c.broadcastSignatureForTransfer(tx.To, c.getErc20AddressFromTokenId(tx.TokenAddress), tx.Amount, tx.DepositNonce)
 	return "", nil
 }
 
@@ -144,7 +144,7 @@ func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridg
 }
 
 func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, nonce bridge.Nonce) bool {
-	var wasExecuted = false
+	var wasExecuted bool
 	var err error = nil
 
 	if c.lastTransferTransaction == nil {
@@ -155,6 +155,10 @@ func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, nonce bridg
 	if err != nil {
 		c.log.Error(err.Error())
 		return false
+	}
+
+	if wasExecuted {
+		c.cleanState()
 	}
 
 	return wasExecuted
@@ -200,7 +204,7 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, nonce bridge.No
 		transaction, err = c.bridgeContract.FinishCurrentPendingTransaction(auth, nonce, c.lastProposedStatus, signatures)
 	} else {
 		tx := c.lastTransferTransaction
-		tokenAddress := common.HexToAddress(c.mapper.GetErc20Address(tx.TokenAddress))
+		tokenAddress := common.HexToAddress(c.getErc20AddressFromTokenId(tx.TokenAddress))
 		toAddress := common.HexToAddress(tx.To)
 		transaction, err = c.bridgeContract.ExecuteTransfer(auth, tokenAddress, toAddress, tx.Amount, tx.DepositNonce, signatures)
 	}
@@ -214,6 +218,8 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, nonce bridge.No
 func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
 	return uint(len(c.broadcaster.Signatures()))
 }
+
+// utils
 
 func (c *Client) signHash(hash common.Hash) ([]byte, error) {
 	valueToSign := crypto.Keccak256Hash(append([]byte(MessagePrefix), hash.Bytes()...))
@@ -270,6 +276,17 @@ func (c *Client) broadcastSignatureForFinishCurrentPendingTransaction(status uin
 
 	c.broadcaster.SendSignature(signature)
 }
+
+func (c *Client) getErc20AddressFromTokenId(tokenId string) string {
+	return c.mapper.GetErc20Address(tokenId[2:])[:40]
+}
+
+func (c *Client) cleanState() {
+	c.lastProposedStatus = 0
+	c.lastTransferTransaction = nil
+}
+
+// helpers
 
 func transferArgs() (abi.Arguments, error) {
 	addressType, err := abi.NewType("address", "", nil)

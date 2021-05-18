@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	ExecutionCost = 1399999999
+	ExecutionCost = 1000000000
 )
 
 type QueryResponseErr struct {
@@ -84,24 +84,29 @@ func NewClient(config bridge.Config) (*Client, error) {
 }
 
 func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
-	// getNextPendingTransaction
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("getCurrentTx").
-		Build()
-
-	responseData, err := c.executeQuery(valueRequest)
+	responseData, err := c.getCurrentTx()
 	if err != nil {
 		c.log.Error(err.Error())
+		return nil
 	}
 
-	c.log.Info(fmt.Sprintf("Length: %v", len(responseData)))
+	if len(responseData) == 0 {
+		_, err = c.getNextPendingTransaction()
+		if err != nil {
+			c.log.Info(err.Error())
+			return nil
+		}
+	}
 
-	c.log.Info(fmt.Sprintf("Block nonce %x", responseData[0]))
-	c.log.Info(fmt.Sprintf("Nonce %x", responseData[1]))
-	c.log.Info(fmt.Sprintf("From %x", responseData[2]))
-	c.log.Info(fmt.Sprintf("To %x", responseData[3]))
-	c.log.Info(fmt.Sprintf("Token Identifier %x", responseData[4]))
-	c.log.Info(fmt.Sprintf("Amount %x", responseData[5]))
+	responseData, err = c.getCurrentTx()
+	if err != nil {
+		c.log.Error(err.Error())
+		return nil
+	}
+
+	if len(responseData) == 0 {
+		return nil
+	}
 
 	to := fmt.Sprintf("0x%s", hex.EncodeToString(responseData[3][:20]))
 
@@ -109,7 +114,15 @@ func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTr
 	from := addrPkConv.Encode(responseData[2])
 	tokenAddress := fmt.Sprintf("0x%s", hex.EncodeToString(responseData[4]))
 	amount, err := strconv.ParseInt(hex.EncodeToString(responseData[5]), 16, 64)
+	if err != nil {
+		c.log.Error(err.Error())
+		return nil
+	}
 	depositNonce, err := strconv.ParseInt(hex.EncodeToString(responseData[1]), 16, 64)
+	if err != nil {
+		c.log.Error(err.Error())
+		return nil
+	}
 
 	return &bridge.DepositTransaction{
 		To:           to,
@@ -319,8 +332,6 @@ func (c *Client) executeStringQuery(valueRequest *data.VmValueRequest) (string, 
 }
 
 func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Transaction, error) {
-	c.log.Debug(builder.ToString())
-
 	networkConfig, err := c.proxy.GetNetworkConfig()
 	if err != nil {
 		return nil, err
@@ -376,6 +387,21 @@ func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 	}
 
 	return hash, err
+}
+
+func (c *Client) getCurrentTx() ([][]byte, error) {
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("getCurrentTx").
+		Build()
+
+	return c.executeQuery(valueRequest)
+}
+
+func (c *Client) getNextPendingTransaction() (string, error) {
+	builder := newBuilder().
+		Func("getNextPendingTransaction")
+
+	return c.sendTransaction(builder, ExecutionCost)
 }
 
 // Builders
@@ -499,11 +525,4 @@ func (builder *txDataBuilder) ToBytes() []byte {
 
 func intToHex(value *big.Int) string {
 	return hex.EncodeToString(value.Bytes())
-}
-
-type depositTransactionBuilder struct {
-}
-
-func DepositTransactionBuilder() *depositTransactionBuilder {
-	return &depositTransactionBuilder{}
 }
