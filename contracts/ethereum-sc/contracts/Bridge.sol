@@ -9,6 +9,7 @@ import "./ERC20Safe.sol";
 contract Bridge is AccessControl {
     event RelayerAdded(address newRelayer);
     event FinishedTransaction(uint256 depositNonce, DepositStatus status);
+    event QuorumChanged(uint256 _quorum);
 
     string constant action = 'CurrentPendingTransaction';
     string constant executeTransferAction = 'ExecuteTransfer';
@@ -57,8 +58,9 @@ contract Bridge is AccessControl {
         emit RelayerAdded(newRelayerAddress);
     }
 
-    function setQuorum(uint256 newQorum) external onlyAdmin {
-        _quorum = newQorum;
+    function setQuorum(uint256 newQuorum) external onlyAdmin {
+        _quorum = newQuorum;
+        emit QuorumChanged(newQuorum);
     }
 
     function getNextPendingTransaction()

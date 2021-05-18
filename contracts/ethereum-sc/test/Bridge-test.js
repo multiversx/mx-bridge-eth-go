@@ -75,6 +75,12 @@ describe("Bridge", async function () {
       expect(await bridge._quorum.call()).to.equal(newQuorum);
     });
 
+    it('emits event', async function () {
+      await expect(bridge.setQuorum(newQuorum))
+        .to.emit(bridge, 'QuorumChanged')
+        .withArgs(newQuorum);
+    })
+
     it('reverts when not called by admin', async function () {
       nonAdminBridge = bridge.connect(otherWallet);
       await expect(nonAdminBridge.setQuorum(newQuorum)).to.be.revertedWith("Access Control: sender is not Admin");
