@@ -48,6 +48,12 @@ describe("ERC20Safe", async function () {
       expect(await safe._bridgeAddress.call()).to.equal(bridgeWallet.address);
     })
 
+    it('emits event', async function () {
+      await expect(safe.setBridgeAddress(bridgeWallet.address))
+        .to.emit(safe, 'BridgeAddressChanged')
+        .withArgs(bridgeWallet.address);
+    })
+
     describe('called by non admin', async function () {
       beforeEach(async function () {
         nonAdminSafe = safe.connect(otherWallet);
@@ -68,19 +74,19 @@ describe("ERC20Safe", async function () {
       })
 
       it("emits Deposited event", async () => {
-        await expect(safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address")))
+        await expect(safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq")))
           .to.emit(safe, "ERC20Deposited")
           .withArgs(0);
       });
 
       it('increments depositsCount', async () => {
-        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address"));
+        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
 
         expect(await safe.depositsCount.call()).to.equal(1);
       });
 
       it('creates a deposit', async function () {
-        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address"));
+        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
 
         deposit = await safe.getDeposit(0);
 
@@ -89,14 +95,14 @@ describe("ERC20Safe", async function () {
         expect(deposit.amount).to.equal(amount);
         expect(deposit.depositor).to.equal(adminWallet.address);
         expect(deposit.status).to.equal(1/*pending*/);
-        expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("some address");
+        expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq");
       });
     });
 
 
     describe("when token is not whitelisted", async function () {
       it('reverts', async function () {
-        await expect(safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address")))
+        await expect(safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq")))
           .to.be.revertedWith('Unsupported token');
       })
     });
@@ -111,7 +117,7 @@ describe("ERC20Safe", async function () {
       const amount = 100;
 
       beforeEach(async function () {
-        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address"));
+        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
       });
 
       it('returns the deposit', async function () {
@@ -122,7 +128,7 @@ describe("ERC20Safe", async function () {
         expect(deposit.amount).to.equal(amount);
         expect(deposit.depositor).to.equal(adminWallet.address);
         expect(deposit.status).to.equal(1/*pending*/);
-        expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("some address");
+        expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq");
       });
     });
 
@@ -145,7 +151,7 @@ describe("ERC20Safe", async function () {
     beforeEach(async function () {
       await safe.whitelistToken(mockToken.address);
       await safe.setBridgeAddress(bridgeWallet.address);
-      await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address"));
+      await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
       safeFromBridge = safe.connect(bridgeWallet);
     });
 
@@ -159,7 +165,7 @@ describe("ERC20Safe", async function () {
 
     describe('when there are other pending deposits', async function () {
       beforeEach(async function () {
-        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("some address"));
+        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
       })
 
       it('moves to the next one', async function () {

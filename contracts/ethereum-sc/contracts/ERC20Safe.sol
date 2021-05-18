@@ -8,6 +8,8 @@ import "./SharedStructs.sol";
 import "hardhat/console.sol";
 
 contract ERC20Safe is AccessControl {
+    event BridgeAddressChanged(address newAddress);
+
     using SafeERC20 for IERC20;
     // STATE
     uint64 public depositsCount;
@@ -45,6 +47,7 @@ contract ERC20Safe is AccessControl {
 
     function setBridgeAddress(address bridgeAddress) public onlyAdmin { 
         _bridgeAddress = bridgeAddress;
+        emit BridgeAddressChanged(bridgeAddress);
     }
 
     /**
