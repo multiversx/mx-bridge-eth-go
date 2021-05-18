@@ -40,7 +40,7 @@ contract Bridge is AccessControl {
         //   - add/remove tokens that can be bridged
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
-        for (uint256 i; i < board.length; i++) {
+        for (uint256 i = 0; i < board.length; i++) {
             grantRole(RELAYER_ROLE, board[i]);
         }
 
