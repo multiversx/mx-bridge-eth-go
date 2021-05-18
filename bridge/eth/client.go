@@ -157,9 +157,7 @@ func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, nonce bridg
 		return false
 	}
 
-	if wasExecuted {
-		c.cleanState()
-	}
+	c.cleanState(wasExecuted)
 
 	return wasExecuted
 }
@@ -281,9 +279,12 @@ func (c *Client) getErc20AddressFromTokenId(tokenId string) string {
 	return c.mapper.GetErc20Address(tokenId[2:])[:40]
 }
 
-func (c *Client) cleanState() {
-	c.lastProposedStatus = 0
-	c.lastTransferTransaction = nil
+func (c *Client) cleanState(wasExecuted bool) {
+	if wasExecuted && c.lastTransferTransaction != nil {
+		c.lastTransferTransaction = nil
+	} else if wasExecuted {
+		c.lastProposedStatus = 0
+	}
 }
 
 // helpers

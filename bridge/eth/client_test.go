@@ -177,7 +177,7 @@ func TestWasExecuted(t *testing.T) {
 
 		assert.Equal(t, true, got)
 	})
-	t.Run("when is true it will clean the state", func(t *testing.T) {
+	t.Run("when is true and there is last transaction it will clean the state", func(t *testing.T) {
 		client := Client{
 			bridgeContract:          &bridgeContractStub{wasExecuted: true, wasTransferExecuted: true},
 			log:                     logger.GetOrCreate("testEthClient"),
@@ -188,18 +188,30 @@ func TestWasExecuted(t *testing.T) {
 		_ = client.WasExecuted(context.TODO(), nil, nil)
 
 		assert.Nil(t, client.lastTransferTransaction)
-		assert.Equal(t, client.lastProposedStatus, uint8(0))
+		assert.Equal(t, client.lastProposedStatus, bridge.Executed)
 	})
-	t.Run("when is false it will not clean the state", func(t *testing.T) {
+	t.Run("when is true and there is a last status it will clean the state", func(t *testing.T) {
 		client := Client{
-			bridgeContract:     &bridgeContractStub{wasExecuted: false},
+			bridgeContract:     &bridgeContractStub{wasExecuted: true},
 			log:                logger.GetOrCreate("testEthClient"),
 			lastProposedStatus: bridge.Executed,
 		}
 
 		_ = client.WasExecuted(context.TODO(), nil, nil)
 
-		assert.Equal(t, client.lastProposedStatus, bridge.Executed)
+		assert.Equal(t, client.lastProposedStatus, uint8(0))
+	})
+	t.Run("when is false and there is a last transaction it will not clean the state", func(t *testing.T) {
+		client := Client{
+			bridgeContract:          &bridgeContractStub{wasExecuted: true},
+			log:                     logger.GetOrCreate("testEthClient"),
+			lastProposedStatus:      bridge.Executed,
+			lastTransferTransaction: &bridge.DepositTransaction{},
+		}
+
+		_ = client.WasExecuted(context.TODO(), nil, nil)
+
+		assert.NotNil(t, client.lastTransferTransaction)
 	})
 }
 
