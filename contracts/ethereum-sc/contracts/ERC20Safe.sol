@@ -2,11 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./SharedStructs.sol";
 import "hardhat/console.sol";
 
-    contract ERC20Safe is AccessControl {
+contract ERC20Safe is AccessControl {
+    using SafeERC20 for IERC20;
     // STATE
     uint64 public depositsCount;
     mapping(uint256 => Deposit) public _deposits;
@@ -76,7 +78,7 @@ import "hardhat/console.sol";
 
     function transfer(address tokenAddress, uint256 amount, address recipientAddress) external onlyBridge {
         IERC20 erc20 = IERC20(tokenAddress);
-        erc20.transfer(recipientAddress, amount);
+        erc20.safeTransfer(recipientAddress, amount);
     }
 
     function lockTokens(
@@ -85,7 +87,7 @@ import "hardhat/console.sol";
         address owner
     ) internal {
         IERC20 erc20 = IERC20(tokenAddress);
-        erc20.transferFrom(owner, address(this), amount);
+        erc20.safeTransferFrom(owner, address(this), amount);
     }
 
     /**
