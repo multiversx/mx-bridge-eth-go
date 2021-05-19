@@ -84,9 +84,53 @@ func NewClient(config bridge.Config) (*Client, error) {
 }
 
 func (c *Client) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
-	// getNextPendingTransaction
-	// if none -> error
-	return nil
+	responseData, err := c.getCurrentTx()
+	if err != nil {
+		c.log.Error(err.Error())
+		return nil
+	}
+
+	if len(responseData) == 0 {
+		_, err = c.getNextPendingTransaction()
+		if err != nil {
+			c.log.Info(err.Error())
+			return nil
+		}
+	}
+
+	responseData, err = c.getCurrentTx()
+	if err != nil {
+		c.log.Error(err.Error())
+		return nil
+	}
+
+	if len(responseData) == 0 {
+		return nil
+	}
+
+	to := fmt.Sprintf("0x%s", hex.EncodeToString(responseData[3][:20]))
+
+	addrPkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
+	from := addrPkConv.Encode(responseData[2])
+	tokenAddress := fmt.Sprintf("0x%s", hex.EncodeToString(responseData[4]))
+	amount, err := strconv.ParseInt(hex.EncodeToString(responseData[5]), 16, 64)
+	if err != nil {
+		c.log.Error(err.Error())
+		return nil
+	}
+	depositNonce, err := strconv.ParseInt(hex.EncodeToString(responseData[1]), 16, 64)
+	if err != nil {
+		c.log.Error(err.Error())
+		return nil
+	}
+
+	return &bridge.DepositTransaction{
+		To:           to,
+		From:         from,
+		TokenAddress: tokenAddress,
+		Amount:       big.NewInt(amount),
+		DepositNonce: bridge.NewNonce(depositNonce),
+	}
 }
 
 func (c *Client) ProposeSetStatus(_ context.Context, status uint8, _ bridge.Nonce) {
@@ -102,7 +146,7 @@ func (c *Client) ProposeTransfer(_ context.Context, tx *bridge.DepositTransactio
 		Func("proposeMultiTransferEsdtTransferEsdtToken").
 		Nonce(tx.DepositNonce).
 		Address(tx.To).
-		HexString(c.getTokenId(tx.TokenAddress[2:])).
+		HexString(c.GetTokenId(tx.TokenAddress[2:])).
 		BigInt(tx.Amount)
 
 	return c.sendTransaction(builder, 0)
@@ -132,17 +176,10 @@ func (c *Client) GetActionIdForProposeTransfer(_ context.Context, nonce bridge.N
 	return bridge.NewActionId(int64(response))
 }
 
-func (c *Client) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
+func (c *Client) WasProposedSetStatusOnPendingTransfer(_ context.Context, status uint8) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("wasSetCurrentTransactionStatusActionProposed").
-		Build()
-
-	return c.executeBoolQuery(valueRequest)
-}
-
-func (c *Client) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("wasSetCurrentTransactionStatusActionProposed").
+		Int(big.NewInt(int64(status))).
 		Build()
 
 	return c.executeBoolQuery(valueRequest)
@@ -197,6 +234,37 @@ func (c *Client) SignersCount(_ context.Context, actionId bridge.ActionId) uint 
 	return uint(count)
 }
 
+// Mapper
+
+func (c *Client) GetTokenId(address string) string {
+	paddedAddress := fmt.Sprintf("%s000000000000000000000000", address)
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("getTokenIdForErc20Address").
+		HexString(paddedAddress).
+		Build()
+
+	tokenId, err := c.executeStringQuery(valueRequest)
+	if err != nil {
+		c.log.Error(err.Error())
+	}
+
+	return tokenId
+}
+
+func (c *Client) GetErc20Address(tokenId string) string {
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("getErc20AddressForTokenId").
+		HexString(tokenId).
+		Build()
+
+	address, err := c.executeStringQuery(valueRequest)
+	if err != nil {
+		c.log.Error(err.Error())
+	}
+
+	return address
+}
+
 // Helpers
 
 func (c *Client) executeQuery(valueRequest *data.VmValueRequest) ([][]byte, error) {
@@ -242,7 +310,7 @@ func (c *Client) executeUintQuery(valueRequest *data.VmValueRequest) (uint64, er
 		return 0, err
 	}
 
-	result, err := strconv.ParseUint(fmt.Sprintf("%d", responseData[0][0]), 10, 0)
+	result, err := strconv.ParseUint(hex.EncodeToString(responseData[0]), 16, 64)
 	if err != nil {
 		return 0, err
 	}
@@ -264,8 +332,6 @@ func (c *Client) executeStringQuery(valueRequest *data.VmValueRequest) (string, 
 }
 
 func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Transaction, error) {
-	c.log.Debug(builder.ToString())
-
 	networkConfig, err := c.proxy.GetNetworkConfig()
 	if err != nil {
 		return nil, err
@@ -304,6 +370,7 @@ func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 	return tx, nil
 }
 
+// TODO: most likely the client should not do this
 func (c *Client) incrementNonce() {
 	c.nonce++
 }
@@ -322,19 +389,19 @@ func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 	return hash, err
 }
 
-func (c *Client) getTokenId(address string) string {
-	paddedAddress := fmt.Sprintf("%s000000000000000000000000", address)
+func (c *Client) getCurrentTx() ([][]byte, error) {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("getTokenIdForErc20Address").
-		HexString(paddedAddress).
+		Func("getCurrentTx").
 		Build()
 
-	tokenId, err := c.executeStringQuery(valueRequest)
-	if err != nil {
-		c.log.Error(err.Error())
-	}
+	return c.executeQuery(valueRequest)
+}
 
-	return tokenId
+func (c *Client) getNextPendingTransaction() (string, error) {
+	builder := newBuilder().
+		Func("getNextPendingTransaction")
+
+	return c.sendTransaction(builder, ExecutionCost)
 }
 
 // Builders

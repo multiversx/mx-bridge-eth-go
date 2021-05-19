@@ -9,11 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+
 	"github.com/ElrondNetwork/elrond-go/ntp"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/core"
@@ -95,17 +96,17 @@ type Relay struct {
 func NewRelay(config *Config, name string) (*Relay, error) {
 	relay := &Relay{}
 
-	ethBridge, err := eth.NewClient(config.Eth, relay)
-	if err != nil {
-		return nil, err
-	}
-	relay.ethBridge = ethBridge
-
 	elrondBridge, err := elrond.NewClient(config.Elrond)
 	if err != nil {
 		return nil, err
 	}
 	relay.elrondBridge = elrondBridge
+
+	ethBridge, err := eth.NewClient(config.Eth, relay, elrondBridge)
+	if err != nil {
+		return nil, err
+	}
+	relay.ethBridge = ethBridge
 
 	messenger, err := buildNetMessenger(config.P2P)
 	if err != nil {

@@ -23,7 +23,6 @@ import (
 )
 
 const (
-	SignDatName   = "CurrentPendingTransaction"
 	MessagePrefix = "\u0019Ethereum Signed Message:\n32"
 	GasLimit      = uint64(300000)
 )
@@ -31,7 +30,9 @@ const (
 type BridgeContract interface {
 	GetNextPendingTransaction(opts *bind.CallOpts) (Deposit, error)
 	FinishCurrentPendingTransaction(opts *bind.TransactOpts, depositNonce *big.Int, newDepositStatus uint8, signatures [][]byte) (*types.Transaction, error)
+	ExecuteTransfer(opts *bind.TransactOpts, token common.Address, recipient common.Address, amount *big.Int, depositNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	WasTransactionExecuted(opts *bind.CallOpts, nonceId *big.Int) (bool, error)
+	WasTransferExecuted(opts *bind.CallOpts, nonceId *big.Int) (bool, error)
 }
 
 type BlockchainClient interface {
@@ -47,13 +48,15 @@ type Client struct {
 	privateKey  *ecdsa.PrivateKey
 	publicKey   *ecdsa.PublicKey
 	broadcaster bridge.Broadcaster
+	mapper      bridge.Mapper
 
-	lastProposedStatus uint8
+	lastProposedStatus      uint8
+	lastTransferTransaction *bridge.DepositTransaction
 
 	log logger.Logger
 }
 
-func NewClient(config bridge.Config, broadcaster bridge.Broadcaster) (*Client, error) {
+func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper bridge.Mapper) (*Client, error) {
 	log := logger.GetOrCreate("EthClient")
 
 	ethClient, err := ethclient.Dial(config.NetworkAddress)
@@ -84,6 +87,7 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster) (*Client, e
 		privateKey:  privateKey,
 		publicKey:   publicKeyECDSA,
 		broadcaster: broadcaster,
+		mapper:      mapper,
 
 		log: log,
 	}
@@ -112,13 +116,15 @@ func (c *Client) GetPendingDepositTransaction(ctx context.Context) *bridge.Depos
 	return result
 }
 
-func (c *Client) ProposeTransfer(context.Context, *bridge.DepositTransaction) (string, error) {
+func (c *Client) ProposeTransfer(_ context.Context, tx *bridge.DepositTransaction) (string, error) {
+	c.lastTransferTransaction = tx
+	c.broadcastSignatureForTransfer(tx.To, c.getErc20AddressFromTokenId(tx.TokenAddress), tx.Amount, tx.DepositNonce)
 	return "", nil
 }
 
 func (c *Client) ProposeSetStatus(_ context.Context, status uint8, nonce bridge.Nonce) {
 	c.lastProposedStatus = status
-	c.broadcastSignature(c.lastProposedStatus, nonce)
+	c.broadcastSignatureForFinishCurrentPendingTransaction(c.lastProposedStatus, nonce)
 }
 
 func (c *Client) WasProposedTransfer(context.Context, bridge.Nonce) bool {
@@ -129,11 +135,7 @@ func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) br
 	return bridge.NewActionId(0)
 }
 
-func (c *Client) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
-	return true
-}
-
-func (c *Client) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool {
+func (c *Client) WasProposedSetStatusOnPendingTransfer(context.Context, uint8) bool {
 	return true
 }
 
@@ -142,11 +144,20 @@ func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridg
 }
 
 func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, nonce bridge.Nonce) bool {
-	wasExecuted, err := c.bridgeContract.WasTransactionExecuted(&bind.CallOpts{Context: ctx}, nonce)
+	var wasExecuted bool
+	var err error = nil
+
+	if c.lastTransferTransaction == nil {
+		wasExecuted, err = c.bridgeContract.WasTransactionExecuted(&bind.CallOpts{Context: ctx}, nonce)
+	} else {
+		wasExecuted, err = c.bridgeContract.WasTransferExecuted(&bind.CallOpts{Context: ctx}, c.lastTransferTransaction.DepositNonce)
+	}
 	if err != nil {
 		c.log.Error(err.Error())
 		return false
 	}
+
+	c.cleanState(wasExecuted)
 
 	return wasExecuted
 }
@@ -184,7 +195,17 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, nonce bridge.No
 	auth.GasPrice = gasPrice
 	auth.Context = ctx
 
-	transaction, err := c.bridgeContract.FinishCurrentPendingTransaction(auth, nonce, c.lastProposedStatus, c.broadcaster.Signatures())
+	var transaction *types.Transaction
+
+	signatures := c.broadcaster.Signatures()
+	if c.lastTransferTransaction == nil {
+		transaction, err = c.bridgeContract.FinishCurrentPendingTransaction(auth, nonce, c.lastProposedStatus, signatures)
+	} else {
+		tx := c.lastTransferTransaction
+		tokenAddress := common.HexToAddress(c.getErc20AddressFromTokenId(tx.TokenAddress))
+		toAddress := common.HexToAddress(tx.To)
+		transaction, err = c.bridgeContract.ExecuteTransfer(auth, tokenAddress, toAddress, tx.Amount, tx.DepositNonce, signatures)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -196,6 +217,8 @@ func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
 	return uint(len(c.broadcaster.Signatures()))
 }
 
+// utils
+
 func (c *Client) signHash(hash common.Hash) ([]byte, error) {
 	valueToSign := crypto.Keccak256Hash(append([]byte(MessagePrefix), hash.Bytes()...))
 	signature, err := crypto.Sign(valueToSign.Bytes(), c.privateKey)
@@ -206,14 +229,14 @@ func (c *Client) signHash(hash common.Hash) ([]byte, error) {
 	return signature, nil
 }
 
-func (c *Client) broadcastSignature(status uint8, nonce bridge.Nonce) {
-	arguments, err := executeArgs()
+func (c *Client) broadcastSignatureForTransfer(to, tokenAddress string, amount *big.Int, depositNonce *big.Int) {
+	arguments, err := transferArgs()
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	pack, err := arguments.Pack(new(big.Int).Set(nonce), status, SignDatName)
+	pack, err := arguments.Pack(common.HexToAddress(to), common.HexToAddress(tokenAddress), amount, depositNonce, "ExecuteTransfer")
 	if err != nil {
 		c.log.Error(err.Error())
 		return
@@ -229,7 +252,70 @@ func (c *Client) broadcastSignature(status uint8, nonce bridge.Nonce) {
 	c.broadcaster.SendSignature(signature)
 }
 
-func executeArgs() (abi.Arguments, error) {
+func (c *Client) broadcastSignatureForFinishCurrentPendingTransaction(status uint8, nonce bridge.Nonce) {
+	arguments, err := finishCurrentPendingTransactionArgs()
+	if err != nil {
+		c.log.Error(err.Error())
+		return
+	}
+
+	pack, err := arguments.Pack(new(big.Int).Set(nonce), status, "CurrentPendingTransaction")
+	if err != nil {
+		c.log.Error(err.Error())
+		return
+	}
+
+	hash := crypto.Keccak256Hash(pack)
+	signature, err := c.signHash(hash)
+	if err != nil {
+		c.log.Error(err.Error())
+		return
+	}
+
+	c.broadcaster.SendSignature(signature)
+}
+
+func (c *Client) getErc20AddressFromTokenId(tokenId string) string {
+	return c.mapper.GetErc20Address(tokenId[2:])[:40]
+}
+
+func (c *Client) cleanState(wasExecuted bool) {
+	if wasExecuted && c.lastTransferTransaction != nil {
+		c.lastTransferTransaction = nil
+	} else if wasExecuted {
+		c.lastProposedStatus = 0
+	}
+}
+
+// helpers
+
+func transferArgs() (abi.Arguments, error) {
+	addressType, err := abi.NewType("address", "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	uint256Type, err := abi.NewType("uint256", "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	stringType, err := abi.NewType("string", "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return abi.Arguments{
+		abi.Argument{Name: "recipientAddress", Type: addressType},
+		abi.Argument{Name: "tokenAddress", Type: addressType},
+		abi.Argument{Name: "blockNonce", Type: uint256Type},
+		abi.Argument{Name: "amount", Type: uint256Type},
+		abi.Argument{Name: "executeTransfer", Type: stringType},
+	}, nil
+
+}
+
+func finishCurrentPendingTransactionArgs() (abi.Arguments, error) {
 	uint256Type, err := abi.NewType("uint256", "", nil)
 	if err != nil {
 		return nil, err
@@ -248,6 +334,6 @@ func executeArgs() (abi.Arguments, error) {
 	return abi.Arguments{
 		abi.Argument{Name: "depositNonce", Type: uint256Type},
 		abi.Argument{Name: "newDepositStatus", Type: uint8Type},
-		abi.Argument{Name: "CurrentPendingTransaction", Type: stringType},
+		abi.Argument{Name: "currentPendingTransaction", Type: stringType},
 	}, nil
 }

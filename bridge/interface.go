@@ -9,14 +9,18 @@ type Broadcaster interface {
 	SendSignature(signature []byte)
 }
 
+type Mapper interface {
+	GetTokenId(string) string
+	GetErc20Address(string) string
+}
+
 type Bridge interface {
 	GetPendingDepositTransaction(context.Context) *DepositTransaction
 	ProposeTransfer(context.Context, *DepositTransaction) (string, error)
 	ProposeSetStatus(context.Context, uint8, Nonce)
 	WasProposedTransfer(context.Context, Nonce) bool
 	GetActionIdForProposeTransfer(context.Context, Nonce) ActionId
-	WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool
-	WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool
+	WasProposedSetStatusOnPendingTransfer(context.Context, uint8) bool
 	GetActionIdForSetStatusOnPendingTransfer(context.Context) ActionId
 	WasExecuted(context.Context, ActionId, Nonce) bool
 	Sign(context.Context, ActionId) (string, error)

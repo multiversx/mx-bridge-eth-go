@@ -394,12 +394,8 @@ func (b *bridgeStub) GetActionIdForProposeTransfer(context.Context, bridge.Nonce
 	return b.proposeTransferActionId
 }
 
-func (b *bridgeStub) WasProposedSetStatusSuccessOnPendingTransfer(context.Context) bool {
-	return b.proposedStatus == bridge.Executed
-}
-
-func (b *bridgeStub) WasProposedSetStatusFailedOnPendingTransfer(context.Context) bool {
-	return false
+func (b *bridgeStub) WasProposedSetStatusOnPendingTransfer(context.Context, uint8) bool {
+	return true
 }
 
 func (b *bridgeStub) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
