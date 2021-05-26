@@ -312,13 +312,13 @@ func TestProposeSetStatus(t *testing.T) {
 		monitor := NewMonitor(
 			sourceBridge,
 			destinationBridge,
-			&testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond},
+			&testHelpers.TimerStub{AfterDuration: 4 * time.Millisecond},
 			provider,
 			"testMonitor",
 		)
 
 		go func() {
-			time.Sleep(14 * time.Millisecond)
+			time.Sleep(17 * time.Millisecond)
 			provider.amITheLeader = true
 		}()
 

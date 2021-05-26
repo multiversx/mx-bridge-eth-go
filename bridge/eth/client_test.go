@@ -132,7 +132,7 @@ func TestProposeTransfer(t *testing.T) {
 		DepositNonce: bridge.NewNonce(2),
 	}
 	_, _ = client.ProposeTransfer(context.TODO(), tx)
-	expectedSignature, _ := hexutil.Decode("0x2081d5ca609d68fcbd537a93a19e2b240d829bd8bbc7107bd3eae3c157bde11a39d8c5779e54fff84e247eed3f9065f8418de30d0b605c818b403a7adfdad36000")
+	expectedSignature, _ := hexutil.Decode("0x94ab570d96c659ebabcb8e00657c04b9159a157f873bd23ece55bb7a958f88c859fbb99f6157d81cf2759c46774bc80a24a64f05b01cd796648ec8bb0f3ced6701")
 
 	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
 	assert.Equal(t, tx, client.lastTransferTransaction)
@@ -337,5 +337,5 @@ func (m *mapperStub) GetTokenId(string) string {
 }
 
 func (m *mapperStub) GetErc20Address(string) string {
-	return "0x30C7c97471FB5C5238c946E549c608D27f37AAb8000000000000000000000000"
+	return "0x30C7c97471FB5C5238c946E549c608D27f37AAb8"
 }
