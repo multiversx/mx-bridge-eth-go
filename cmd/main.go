@@ -159,10 +159,9 @@ func main() {
 //log.Info(fmt.Sprintf("%v", client.WasExecuted(context.TODO(), actionId)))
 
 // deploy
+// issue tokens (snippets)
 // deployCC
-// stake
-// MultiTransferEsdt_WrappedEthIssue
-// MultiTransferEsdt_TransferEsdt
+// setLocalRoles
 
 //client, err := eth.NewClient(config.Eth)
 //if err != nil {

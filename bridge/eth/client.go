@@ -276,7 +276,7 @@ func (c *Client) broadcastSignatureForFinishCurrentPendingTransaction(status uin
 }
 
 func (c *Client) getErc20AddressFromTokenId(tokenId string) string {
-	return c.mapper.GetErc20Address(tokenId[2:])[:40]
+	return c.mapper.GetErc20Address(tokenId[2:])
 }
 
 func (c *Client) cleanState(wasExecuted bool) {

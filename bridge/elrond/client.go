@@ -237,10 +237,9 @@ func (c *Client) SignersCount(_ context.Context, actionId bridge.ActionId) uint 
 // Mapper
 
 func (c *Client) GetTokenId(address string) string {
-	paddedAddress := fmt.Sprintf("%s000000000000000000000000", address)
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("getTokenIdForErc20Address").
-		HexString(paddedAddress).
+		HexString(address).
 		Build()
 
 	tokenId, err := c.executeStringQuery(valueRequest)
