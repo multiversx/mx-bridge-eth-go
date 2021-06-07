@@ -7,18 +7,27 @@ const ERC20SafeContract = require('../artifacts/contracts/ERC20Safe.sol/ERC20Saf
 const IERC20 = require('../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json');
 const AFC = require('../artifacts/contracts/AFCoin.sol/AFCoin.json');
 
-const { deployMockContract } = require("@ethereum-waffle/mock-contract");
-const { toUtf8String } = require("@ethersproject/strings");
-
 describe("Bridge", async function () {
   const [adminWallet, relayer1, relayer2, relayer3, relayer4, relayer5, relayer6, relayer7, relayer8, otherWallet] = provider.getWallets();
   const boardMembers = [adminWallet, relayer1, relayer2, relayer3, relayer5, relayer6, relayer7, relayer8];
   const quorum = 7;
+  const batchSize = 10;
+
+  async function setupContracts() {
+    erc20Safe = await deployContract(adminWallet, ERC20SafeContract);
+    bridge = await deployContract(adminWallet, BridgeContract, [boardMembers.map(m => m.address), quorum, erc20Safe.address]);
+    await erc20Safe.setBridgeAddress(bridge.address);
+    await setupErc20Token()
+  }
+
+  async function setupErc20Token() {
+    afc = await deployContract(adminWallet, AFC, [1000]);
+    await afc.approve(erc20Safe.address, 200);
+    await erc20Safe.whitelistToken(afc.address);
+  }
 
   beforeEach(async function () {
-    mockERC20Safe = await deployMockContract(adminWallet, ERC20SafeContract.abi);
-    mockERC20 = await deployMockContract(adminWallet, IERC20.abi);
-    bridge = await deployContract(adminWallet, BridgeContract, [boardMembers.map(m => m.address), quorum, mockERC20Safe.address]);
+    await setupContracts();
   });
 
   it('Sets creator as admin', async function () {
@@ -87,16 +96,6 @@ describe("Bridge", async function () {
     });
   });
 
-  async function setupContracts() {
-    afc = await deployContract(adminWallet, AFC, [1000]);
-    erc20Safe = await deployContract(adminWallet, ERC20SafeContract);
-    bridge = await deployContract(adminWallet, BridgeContract, [boardMembers.map(m => m.address), quorum, erc20Safe.address]);
-    await erc20Safe.setBridgeAddress(bridge.address);
-    await afc.approve(erc20Safe.address, 200);
-    await erc20Safe.whitelistToken(afc.address);
-    batchSize = 10;
-  }
-
   async function setupFullBatch() {
     for (i = 0; i < batchSize; i++) {
       await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
@@ -113,9 +112,6 @@ describe("Bridge", async function () {
   }
 
   describe('getNextPendingBatch', async function () {
-    beforeEach(async function () {
-      await setupContracts();
-    });
 
     describe('when batch is ready', async function () {
       describe('by being full', async function () {
@@ -186,7 +182,6 @@ describe("Bridge", async function () {
       return [signature1, signature2, signature3, signature4, signature5, signature6, signature7];
     }
     beforeEach(async function () {
-      await setupContracts();
       await setupFullBatch();
     });
 
