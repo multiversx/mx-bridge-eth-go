@@ -11,3 +11,9 @@ struct Deposit {
     bytes recipient;
     DepositStatus status;
 }
+
+struct Batch {
+    uint256 nonce;
+    uint startBlockNumber;
+    Deposit[] deposits;
+}

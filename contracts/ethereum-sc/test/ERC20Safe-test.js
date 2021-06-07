@@ -1,21 +1,23 @@
 
 const { expect } = require("chai");
 const { waffle } = require("hardhat");
-const { deployMockContract, provider, deployContract } = waffle;
+const { provider, deployContract } = waffle;
 
-const IERC20 = require('../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json');
+const AFC = require('../artifacts/contracts/AFCoin.sol/AFCoin.json');
 const ERC20Safe = require('../artifacts/contracts/ERC20Safe.sol/ERC20Safe.json');
 const Bridge = require('../artifacts/contracts/Bridge.sol/Bridge.json');
 const { ethers } = require("ethers");
 
 describe("ERC20Safe", async function () {
   const [adminWallet, bridgeWallet, otherWallet] = provider.getWallets();
+  const boardMembers = [adminWallet];
 
   beforeEach(async function () {
-    mockToken = await deployMockContract(adminWallet, IERC20.abi);
-    await mockToken.mock.transferFrom.returns(0);
-    bridge = await deployMockContract(adminWallet, Bridge.abi);
+    afc = await deployContract(adminWallet, AFC, [1000]);
     safe = await deployContract(adminWallet, ERC20Safe);
+    bridge = await deployContract(adminWallet, Bridge, [boardMembers.map(m => m.address), 1, safe.address]);
+    await afc.approve(safe.address, 1000);
+    await safe.setBridgeAddress(bridge.address);
   });
 
   it('sets creator as admin', async function () {
@@ -25,9 +27,9 @@ describe("ERC20Safe", async function () {
 
   describe('whitelistToken', async function () {
     it('adds the token to the whitelistedTokens list', async function () {
-      await safe.whitelistToken(mockToken.address);
+      await safe.whitelistToken(afc.address);
 
-      expect(await safe._whitelistedTokens(mockToken.address)).to.be.true;
+      expect(await safe._whitelistedTokens(afc.address)).to.be.true;
     })
 
     describe('called by non admin', async function () {
@@ -36,7 +38,7 @@ describe("ERC20Safe", async function () {
       });
 
       it('reverts', async function () {
-        await (expect(nonAdminSafe.whitelistToken(mockToken.address))).to.be.revertedWith("Access Control: sender is not Admin");
+        await (expect(nonAdminSafe.whitelistToken(afc.address))).to.be.revertedWith("Access Control: sender is not Admin");
       })
     })
   });
@@ -70,126 +72,28 @@ describe("ERC20Safe", async function () {
 
     describe("when token is whitelisted", async function () {
       beforeEach(async function () {
-        await safe.whitelistToken(mockToken.address);
+        await safe.whitelistToken(afc.address);
       })
 
       it("emits Deposited event", async () => {
-        await expect(safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq")))
+        await expect(safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq")))
           .to.emit(safe, "ERC20Deposited")
-          .withArgs(0);
+          .withArgs(1);
       });
 
       it('increments depositsCount', async () => {
-        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+        await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
 
         expect(await safe.depositsCount.call()).to.equal(1);
-      });
-
-      it('creates a deposit', async function () {
-        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
-
-        deposit = await safe.getDeposit(0);
-
-        expect(deposit.nonce).to.equal(0);
-        expect(deposit.tokenAddress).to.equal(mockToken.address);
-        expect(deposit.amount).to.equal(amount);
-        expect(deposit.depositor).to.equal(adminWallet.address);
-        expect(deposit.status).to.equal(1/*pending*/);
-        expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq");
       });
     });
 
 
     describe("when token is not whitelisted", async function () {
       it('reverts', async function () {
-        await expect(safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq")))
+        await expect(safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq")))
           .to.be.revertedWith('Unsupported token');
       })
     });
-  });
-
-  describe('getNextPendingDeposit', async function () {
-    beforeEach(async function () {
-      await safe.whitelistToken(mockToken.address);
-    });
-
-    describe('when there is a pending deposit', async function () {
-      const amount = 100;
-
-      beforeEach(async function () {
-        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
-      });
-
-      it('returns the deposit', async function () {
-        deposit = await safe.getNextPendingDeposit();
-
-        expect(deposit.nonce).to.equal(0);
-        expect(deposit.tokenAddress).to.equal(mockToken.address);
-        expect(deposit.amount).to.equal(amount);
-        expect(deposit.depositor).to.equal(adminWallet.address);
-        expect(deposit.status).to.equal(1/*pending*/);
-        expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq");
-      });
-    });
-
-    describe('when there are no pending deposits', async function () {
-      it('returns an empty deposit', async function () {
-        deposit = await safe.getNextPendingDeposit();
-
-        expect(deposit.nonce).to.equal(0);
-        expect(deposit.tokenAddress).to.equal(ethers.constants.AddressZero);
-        expect(deposit.amount).to.equal(0);
-        expect(deposit.depositor).to.equal(ethers.constants.AddressZero);
-        expect(deposit.status).to.equal(0/*None*/);
-        expect(ethers.utils.toUtf8String(deposit.recipient)).to.equal("");
-      })
-    });
-  });
-
-  describe('finishCurrentPendingDeposit', async function () {
-    const amount = 100;
-    beforeEach(async function () {
-      await safe.whitelistToken(mockToken.address);
-      await safe.setBridgeAddress(bridgeWallet.address);
-      await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
-      safeFromBridge = safe.connect(bridgeWallet);
-    });
-
-    it('sets the status for the deposit to Executed', async function () {
-      await safeFromBridge.finishCurrentPendingDeposit(3);
-
-      deposit = await safe.getDeposit(0);
-
-      expect(deposit.status).to.equal(3);
-    });
-
-    describe('when there are other pending deposits', async function () {
-      beforeEach(async function () {
-        await safe.deposit(mockToken.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
-      })
-
-      it('moves to the next one', async function () {
-        await safeFromBridge.finishCurrentPendingDeposit(3);
-        deposit = await safe.getNextPendingDeposit();
-
-        expect(deposit.nonce).to.equal(1);
-        expect(deposit.status).to.equal(1);
-      })
-    })
-
-    it('returns empty deposit if there are no other pending deposits', async function () {
-      await safeFromBridge.finishCurrentPendingDeposit(3);
-      deposit = await safe.getNextPendingDeposit();
-
-      expect(deposit.nonce).to.equal(0);
-      expect(deposit.status).to.equal(0);
-    })
-
-    describe('called by other than bridge', async function () {
-      it('reverts', async function () {
-        safeFromNonBridge = safe.connect(otherWallet);
-        await (expect(safeFromNonBridge.finishCurrentPendingDeposit(3)).to.be.revertedWith("Access Control: sender is not Bridge"));
-      })
-    })
   });
 });
