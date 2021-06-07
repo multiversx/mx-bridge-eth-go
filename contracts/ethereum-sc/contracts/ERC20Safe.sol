@@ -21,8 +21,9 @@ There can only be one pending Batch.
  */
 contract ERC20Safe is AccessControl {
     event BridgeAddressChanged(address newAddress);
-    event BatchBlockCountLimitChanged(uint8 newbatchBlockCountLimit);
+    event BatchBlockCountLimitChanged(uint8 newBatchBlockCountLimit);
     event UpdatedDepositStatus(uint256 depositNonce, DepositStatus newDepositStatus);
+    event BatchSizeChanged(uint8 newBatchSize);
 
     using SafeERC20 for IERC20;
     // STATE
@@ -74,6 +75,11 @@ contract ERC20Safe is AccessControl {
         batchBlockCountLimit = newBatchBlockCountLimit;
         emit BatchBlockCountLimitChanged(batchBlockCountLimit);
     }
+
+    function setBatchSize(uint8 newBatchSize) external onlyAdmin {
+        batchSize = newBatchSize;
+        emit BatchSizeChanged(batchSize);
+    } 
 
     /**
       @notice It assumes that tokenAddress is a corect address for an ERC20 token. No checks whatsoever for this (yet)
