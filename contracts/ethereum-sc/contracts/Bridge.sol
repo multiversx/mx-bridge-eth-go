@@ -6,12 +6,27 @@ import "hardhat/console.sol";
 import "./SharedStructs.sol";
 import "./ERC20Safe.sol";
 
+/**
+@title Bridge
+@author Elrond & AgileFreaks
+@notice Contract to be used by the bridge relayers, 
+to get information and execute batches of transactions 
+to be bridged.
+@notice Implements access control. 
+The deployer is also the admin of the contract.
+In order to use it:
+- relayers need to first be whitelisted
+- the ERC20 safe contract must be deployed
+- the safe must be setup to work in conjunction with the bridge (whitelisting)
+@dev This contract mimics a multisign contract by sending the signatures from all 
+relayers with the execute call, in order to save gas.
+ */
 contract Bridge is AccessControl {
     event RelayerAdded(address newRelayer);
     event FinishedTransaction(uint256 depositNonce, DepositStatus status);
     event QuorumChanged(uint256 _quorum);
 
-    string constant action = 'CurrentPendingTransaction';
+    string constant action = 'CurrentPendingBatch';
     string constant executeTransferAction = 'ExecuteTransfer';
     string constant prefix = "\x19Ethereum Signed Message:\n32";
 
@@ -49,6 +64,10 @@ contract Bridge is AccessControl {
         _erc20SafeAddress = erc20Safe;
     }
 
+    /**
+        @notice Adds (whitelists) a relayer. This does not have any effect on the quorum variable.
+        @param newRelayerAddress Wallet address for the new relayer that's added
+    */
     function addRelayer(address newRelayerAddress) external {
         require(
             !hasRole(RELAYER_ROLE, newRelayerAddress),
@@ -58,46 +77,70 @@ contract Bridge is AccessControl {
         emit RelayerAdded(newRelayerAddress);
     }
 
+    /**
+        @notice Modifies the quorum that is needed to validate executions
+        @param newQuorum Number of valid signatures required for executions. 
+    */
     function setQuorum(uint256 newQuorum) external onlyAdmin {
         _quorum = newQuorum;
         emit QuorumChanged(newQuorum);
     }
 
-    function getNextPendingTransaction()
+    /**
+        @notice Gets information about the current batch of deposits
+        @return Batch which consists of:
+        - batch nonce
+        - startBlockNumber
+        - deposits List of the deposits included in this batch
+        @dev Even if there are deposits in the Safe, the current batch might still return as empty. This is because it might not be final (not full, and not enough blocks elapsed)
+    */
+    function getNextPendingBatch()
         external
         view
-        returns (Deposit memory)
+        returns (Batch memory)
     {
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
-        return safe.getNextPendingDeposit();
+        return safe.getNextPendingBatch();
     }
 
-    function finishCurrentPendingTransaction(
-        uint256 depositNonce,
-        DepositStatus newDepositStatus,
-        bytes[] memory signatures
+    /**
+        @notice Marks all transactions from the batch with their execution status (Rejected or Executed)
+        @param batchNonce Nonce for the batch. Should be equal to the nonce of the current batch.
+        @param newDepositStatuses Array containing new statuses for all the transactions in the batch. Can only be Rejected or Executed statuses. Number of statuses must be equal to the number of transactions in the batch.
+        @param signatures Signatures from all the relayers for the execution. This mimics a delegated multisig contract. For the execution to take place, there must be enough valid signatures to achieve quorum.
+    */
+    function finishCurrentPendingBatch(
+        uint256 batchNonce,
+        DepositStatus[] calldata newDepositStatuses,
+        bytes[] calldata signatures
     ) public {
+        for(uint8 i=0; i<newDepositStatuses.length; i++)
+        {
+            require(
+                newDepositStatuses[i] == DepositStatus.Executed || newDepositStatuses[i] == DepositStatus.Rejected, 
+                'Non-final state. Can only be Executed or Rejected');
+        }
+        
         require(
-            newDepositStatus == DepositStatus.Executed || newDepositStatus == DepositStatus.Rejected, 
-            'Non-final state. Can only be Executed or Rejected');
-        require(
-            signatures.length >= _quorum, 
-            'Not enough signatures to achieve quorum');
+                signatures.length >= _quorum, 
+                'Not enough signatures to achieve quorum');
 
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
-        Deposit memory deposit = safe.getNextPendingDeposit();
+        Batch memory batch = safe.getNextPendingBatch();
         require(
-            deposit.nonce == depositNonce, 
-            'Invalid deposit nonce');
+                batch.nonce == batchNonce, 
+                'Invalid batch nonce');
+        require(
+            batch.deposits.length == newDepositStatuses.length, 
+            "Number of deposit statuses must match the number of deposits in the batch");
 
-        uint8 signersCount;
-        
-        bytes32 hashedSignedData = keccak256(abi.encode(depositNonce, newDepositStatus, action));
+        bytes32 hashedSignedData = keccak256(abi.encode(batchNonce, newDepositStatuses, action));
         bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
         bytes32 hashedDepositData = keccak256(prefixedSignData);
-        
-        for (uint256 i = 0; i < signatures.length; i++) {
-            bytes memory signature = signatures[i];
+        uint8 signersCount;
+
+        for (uint256 signatureIndex = 0; signatureIndex < signatures.length; signatureIndex++) {
+            bytes memory signature = signatures[signatureIndex];
             require(signature.length == 65, 'Malformed signature');
 
             bytes32 r;
@@ -131,17 +174,21 @@ contract Bridge is AccessControl {
         }
 
         require(signersCount >= _quorum, "Quorum was not met");
-
-        safe.finishCurrentPendingDeposit(newDepositStatus);
-        emit FinishedTransaction(depositNonce, newDepositStatus);
+        safe.finishCurrentPendingBatch(newDepositStatuses);
     }
 
-    function executeTransfer(address token, address recipient, uint256 amount, uint256 depositNonce, bytes[] memory signatures) public {
+    function executeTransfer(
+        address token, 
+        address recipient, 
+        uint256 amount, 
+        uint256 depositNonce, 
+        bytes[] memory signatures) 
+    public {
         require(
             signatures.length >= _quorum, 
             'Not enough signatures to achieve quorum');
 
-            uint8 signersCount;
+        uint8 signersCount;
         
         bytes32 hashedSignedData = keccak256(abi.encode(recipient, token, amount, depositNonce, executeTransferAction));
         bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
@@ -188,10 +235,23 @@ contract Bridge is AccessControl {
         safe.transfer(token, amount, recipient);
     }
 
-    function wasTransactionExecuted(uint256 nonceId) external view returns(bool) {
+    /**
+        @notice Verifies if all the deposits within a batch are finalized (Executed or Rejected)
+        @param batchNonce Nonce for the batch.
+        @return status for the batch. true - executed, false - pending (not executed yet)
+    */
+    function wasBatchExecuted(uint256 batchNonce) external view returns(bool) 
+    {
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
-        Deposit memory deposit = safe.getDeposit(nonceId);
-        return deposit.status == DepositStatus.Executed || deposit.status == DepositStatus.Rejected;
+        Batch memory batch = safe.getBatch(batchNonce);
+        for(uint8 i=0; i<batch.deposits.length; i++)
+        {
+            if(batch.deposits[i].status != DepositStatus.Executed && batch.deposits[i].status != DepositStatus.Rejected)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     function wasTransferExecuted(uint256 depositNonce) external view returns(bool) {
