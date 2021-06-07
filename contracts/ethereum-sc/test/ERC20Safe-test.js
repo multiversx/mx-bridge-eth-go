@@ -67,6 +67,62 @@ describe("ERC20Safe", async function () {
     })
   })
 
+  describe('setBatchSize', async function() {
+    beforeEach(async function() {
+      newBatchSize = 3;
+    })
+
+    it('updates the batch size', async function() {
+      await safe.setBatchSize(newBatchSize);
+
+      expect(await safe.batchSize.call()).to.equal(newBatchSize);
+    })  
+
+    it('emits event', async function () {
+      await expect(safe.setBatchSize(newBatchSize))
+        .to.emit(safe, 'BatchSizeChanged')
+        .withArgs(newBatchSize);
+    })
+
+    describe('called by non admin', async function () {
+      beforeEach(async function () {
+        nonAdminSafe = safe.connect(otherWallet);
+      });
+
+      it('reverts', async function () {
+        await (expect(nonAdminSafe.setBatchSize(newBatchSize))).to.be.revertedWith("Access Control: sender is not Admin");
+      })
+    })
+  })
+
+  describe('setBatchBlockCountLimit', async function() {
+    beforeEach(async function() {
+      newBatchBlockCountLimit = 3;
+    })
+
+    it('updates the batch block limit', async function() {
+      await safe.setBatchBlockCountLimit(newBatchBlockCountLimit);
+
+      expect(await safe.batchBlockCountLimit.call()).to.equal(newBatchBlockCountLimit);
+    })  
+
+    it('emits event', async function () {
+      await expect(safe.setBatchBlockCountLimit(newBatchBlockCountLimit))
+        .to.emit(safe, 'BatchBlockCountLimitChanged')
+        .withArgs(newBatchBlockCountLimit);
+    })
+
+    describe('called by non admin', async function () {
+      beforeEach(async function () {
+        nonAdminSafe = safe.connect(otherWallet);
+      });
+
+      it('reverts', async function () {
+        await (expect(nonAdminSafe.setBatchBlockCountLimit(newBatchBlockCountLimit))).to.be.revertedWith("Access Control: sender is not Admin");
+      })
+    })
+  })
+
   describe('deposit', async function () {
     let amount = 100;
 
