@@ -27,7 +27,7 @@ contract Bridge is AccessControl {
     event QuorumChanged(uint256 _quorum);
 
     string constant action = 'CurrentPendingBatch';
-    string constant executeTransferAction = 'ExecuteTransfer';
+    string constant executeTransferAction = 'ExecuteBatchedTransfer';
     string constant prefix = "\x19Ethereum Signed Message:\n32";
 
     // Role used to execute deposits
@@ -35,6 +35,7 @@ contract Bridge is AccessControl {
     uint256 public _quorum;
     address private _erc20SafeAddress;
     mapping(uint256 => bool) public _executedTransfers;
+    mapping(uint256 => bool) public _executedBatches;
 
     modifier onlyAdmin() {
         require(
@@ -178,11 +179,11 @@ contract Bridge is AccessControl {
     }
 
     function executeTransfer(
-        address token, 
-        address recipient, 
-        uint256 amount, 
-        uint256 depositNonce, 
-        bytes[] memory signatures) 
+        address[] calldata tokens, 
+        address[] calldata recipients, 
+        uint256[] calldata amounts, 
+        uint256 batchNonce, 
+        bytes[] calldata signatures) 
     public {
         require(
             signatures.length >= _quorum, 
@@ -190,9 +191,11 @@ contract Bridge is AccessControl {
 
         uint8 signersCount;
         
-        bytes32 hashedSignedData = keccak256(abi.encode(recipient, token, amount, depositNonce, executeTransferAction));
-        bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
-        bytes32 hashedDepositData = keccak256(prefixedSignData);
+        bytes32 hashedDepositData = keccak256(
+            abi.encodePacked(
+                prefix, keccak256(
+                    abi.encode(
+                        recipients, tokens, amounts, batchNonce, executeTransferAction))));
         
         for (uint256 i = 0; i < signatures.length; i++) {
             bytes memory signature = signatures[i];
@@ -229,10 +232,14 @@ contract Bridge is AccessControl {
 
         require(signersCount >= _quorum, "Quorum was not met");
 
-        _executedTransfers[depositNonce] = true;
+        _executedBatches[batchNonce] = true;
 
-        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
-        safe.transfer(token, amount, recipient);
+        for (uint8 j=0; j<tokens.length; j++)
+        {
+            console.log(j);
+            ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
+            safe.transfer(tokens[j], amounts[j], recipients[j]);
+        }
     }
 
     /**
@@ -240,10 +247,11 @@ contract Bridge is AccessControl {
         @param batchNonce Nonce for the batch.
         @return status for the batch. true - executed, false - pending (not executed yet)
     */
-    function wasBatchExecuted(uint256 batchNonce) external view returns(bool) 
+    function wasBatchFinished(uint256 batchNonce) external view returns(bool) 
     {
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
         Batch memory batch = safe.getBatch(batchNonce);
+        
         for(uint8 i=0; i<batch.deposits.length; i++)
         {
             if(batch.deposits[i].status != DepositStatus.Executed && batch.deposits[i].status != DepositStatus.Rejected)
@@ -254,7 +262,8 @@ contract Bridge is AccessControl {
         return true;
     }
 
-    function wasTransferExecuted(uint256 depositNonce) external view returns(bool) {
-        return _executedTransfers[depositNonce];
+    function wasBatchExecuted(uint256 batchNonce) external view returns(bool) 
+    {
+        return _executedBatches[batchNonce];
     }
 }
