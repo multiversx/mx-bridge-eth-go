@@ -22,8 +22,23 @@ describe("Bridge", async function () {
 
   async function setupErc20Token() {
     afc = await deployContract(adminWallet, AFC, [1000]);
-    await afc.approve(erc20Safe.address, 200);
+    await afc.approve(erc20Safe.address, 1000);
     await erc20Safe.whitelistToken(afc.address);
+  }
+
+  async function setupFullBatch() {
+    for (i = 0; i < batchSize; i++) {
+      await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+    }
+  }
+
+  async function setupReadyBatch() {
+    blockCountLimit = 3;
+    await erc20Safe.setBatchBlockCountLimit(blockCountLimit);
+    await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+    for (i = 0; i < blockCountLimit + 1; i++) {
+      await network.provider.send("evm_mine")
+    }
   }
 
   beforeEach(async function () {
@@ -95,21 +110,6 @@ describe("Bridge", async function () {
       await expect(nonAdminBridge.setQuorum(newQuorum)).to.be.revertedWith("Access Control: sender is not Admin");
     });
   });
-
-  async function setupFullBatch() {
-    for (i = 0; i < batchSize; i++) {
-      await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
-    }
-  }
-
-  async function setupReadyBatch() {
-    blockCountLimit = 3;
-    await erc20Safe.setBatchBlockCountLimit(blockCountLimit);
-    await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
-    for (i = 0; i < blockCountLimit + 1; i++) {
-      await network.provider.send("evm_mine")
-    }
-  }
 
   describe('getNextPendingBatch', async function () {
 
@@ -291,6 +291,19 @@ describe("Bridge", async function () {
           .to.be.revertedWith("Not enough signatures to achieve quorum");
       })
     })
+
+    describe('called by a non relayer', async function () {
+      beforeEach(async function () {
+        newDepositStatuses = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3];
+        batch = await bridge.getNextPendingBatch();
+        signatures = await getBatchSignaturesForQuorum(batch, newDepositStatuses)
+      })
+
+      it('reverts', async function () {
+        nonAdminBridge = bridge.connect(otherWallet);
+        await expect(nonAdminBridge.finishCurrentPendingBatch(batch.nonce, newDepositStatuses, signatures)).to.be.revertedWith("Access Control: sender is not Relayer");
+      })
+    })
   })
 
   describe('executeTransfer', async function () {
@@ -340,6 +353,25 @@ describe("Bridge", async function () {
 
       it('does not set wasBatchExecuted', async function () {
         expect(await bridge.wasBatchExecuted(batchNonce)).to.be.false;
+      })
+    })
+
+    describe('trying to replay the batch', async function () {
+      beforeEach(async function () {
+        // add more funds in order to not fail because of insufficient balance
+        await erc20Safe.deposit(afc.address, 200, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+
+        await bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures)
+      })
+
+      it.only('reverts', async function () {
+        await expect(bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures)).to.be.revertedWith("Batch already executed");
+      })
+    })
+    describe('called by a non relayer', async function () {
+      it('reverts', async function () {
+        nonAdminBridge = bridge.connect(otherWallet);
+        await expect(nonAdminBridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures)).to.be.revertedWith("Access Control: sender is not Relayer");
       })
     })
   })
