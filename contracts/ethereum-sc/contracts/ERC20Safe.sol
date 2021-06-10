@@ -57,7 +57,7 @@ contract ERC20Safe is AccessControl {
     }
 
     // EVENTS
-    event ERC20Deposited(uint256 depositIndex);
+    event ERC20Deposited(uint256 depositNonce);
 
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -111,11 +111,11 @@ contract ERC20Safe is AccessControl {
             batch = _batches[batchesCount - 1];
         }
 
-        uint256 depositIndex = depositsCount+1;
-        batch.deposits.push(Deposit(depositIndex, tokenAddress, amount, msg.sender, recipientAddress, DepositStatus.Pending));
+        uint256 depositNonce = depositsCount+1;
+        batch.deposits.push(Deposit(depositNonce, tokenAddress, amount, msg.sender, recipientAddress, DepositStatus.Pending));
         depositsCount++;
 
-        emit ERC20Deposited(depositIndex);
+        emit ERC20Deposited(depositNonce);
         lockTokens(tokenAddress, amount, msg.sender);
     }
 
