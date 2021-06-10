@@ -32,6 +32,12 @@ describe("ERC20Safe", async function () {
       expect(await safe._whitelistedTokens(afc.address)).to.be.true;
     })
 
+    it('emits event', async function () {
+      await expect(safe.whitelistToken(afc.address))
+        .to.emit(safe, 'TokenWhitelisted')
+        .withArgs(afc.address);
+    })
+
     describe('called by non admin', async function () {
       beforeEach(async function () {
         nonAdminSafe = safe.connect(otherWallet);
@@ -67,16 +73,16 @@ describe("ERC20Safe", async function () {
     })
   })
 
-  describe('setBatchSize', async function() {
-    beforeEach(async function() {
+  describe('setBatchSize', async function () {
+    beforeEach(async function () {
       newBatchSize = 3;
     })
 
-    it('updates the batch size', async function() {
+    it('updates the batch size', async function () {
       await safe.setBatchSize(newBatchSize);
 
       expect(await safe.batchSize.call()).to.equal(newBatchSize);
-    })  
+    })
 
     it('emits event', async function () {
       await expect(safe.setBatchSize(newBatchSize))
@@ -95,16 +101,16 @@ describe("ERC20Safe", async function () {
     })
   })
 
-  describe('setBatchBlockCountLimit', async function() {
-    beforeEach(async function() {
+  describe('setBatchBlockCountLimit', async function () {
+    beforeEach(async function () {
       newBatchBlockCountLimit = 3;
     })
 
-    it('updates the batch block limit', async function() {
+    it('updates the batch block limit', async function () {
       await safe.setBatchBlockCountLimit(newBatchBlockCountLimit);
 
       expect(await safe.batchBlockCountLimit.call()).to.equal(newBatchBlockCountLimit);
-    })  
+    })
 
     it('emits event', async function () {
       await expect(safe.setBatchBlockCountLimit(newBatchBlockCountLimit))

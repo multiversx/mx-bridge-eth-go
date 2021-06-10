@@ -364,7 +364,7 @@ describe("Bridge", async function () {
         await bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures)
       })
 
-      it.only('reverts', async function () {
+      it('reverts', async function () {
         await expect(bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures)).to.be.revertedWith("Batch already executed");
       })
     })
