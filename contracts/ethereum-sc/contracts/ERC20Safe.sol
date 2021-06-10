@@ -24,6 +24,7 @@ contract ERC20Safe is AccessControl {
     event BatchBlockCountLimitChanged(uint8 newBatchBlockCountLimit);
     event UpdatedDepositStatus(uint256 depositNonce, DepositStatus newDepositStatus);
     event BatchSizeChanged(uint8 newBatchSize);
+    event TokenWhitelisted(address tokenAddress);
 
     using SafeERC20 for IERC20;
     // STATE
@@ -64,6 +65,7 @@ contract ERC20Safe is AccessControl {
 
     function whitelistToken(address token) external onlyAdmin {
         _whitelistedTokens[token] = true;
+        emit TokenWhitelisted(token);
     }
 
     function setBridgeAddress(address bridgeAddress) external onlyAdmin { 
