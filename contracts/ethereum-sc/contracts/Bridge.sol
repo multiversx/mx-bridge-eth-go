@@ -45,6 +45,14 @@ contract Bridge is AccessControl {
         _;
     }
 
+    modifier onlyRelayer() {
+        require(
+            hasRole(RELAYER_ROLE, msg.sender),
+            "Access Control: sender is not Relayer"
+        );
+        _;
+    }
+
     constructor(
         address[] memory board,
         uint256 intialQuorum,
@@ -114,7 +122,7 @@ contract Bridge is AccessControl {
         uint256 batchNonce,
         DepositStatus[] calldata newDepositStatuses,
         bytes[] calldata signatures
-    ) public {
+    ) public onlyRelayer {
         for(uint8 i=0; i<newDepositStatuses.length; i++)
         {
             require(
@@ -184,11 +192,12 @@ contract Bridge is AccessControl {
         uint256[] calldata amounts, 
         uint256 batchNonce, 
         bytes[] calldata signatures) 
-    public {
+    public onlyRelayer {
         require(
             signatures.length >= _quorum, 
             'Not enough signatures to achieve quorum');
-
+        require(_executedBatches[batchNonce] == false, "Batch already executed");
+            _executedBatches[batchNonce] = true;
         uint8 signersCount;
         
         bytes32 hashedDepositData = keccak256(
@@ -232,11 +241,8 @@ contract Bridge is AccessControl {
 
         require(signersCount >= _quorum, "Quorum was not met");
 
-        _executedBatches[batchNonce] = true;
-
         for (uint8 j=0; j<tokens.length; j++)
         {
-            console.log(j);
             ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
             safe.transfer(tokens[j], amounts[j], recipients[j]);
         }
