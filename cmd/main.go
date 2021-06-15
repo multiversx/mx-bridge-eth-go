@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -57,7 +60,8 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) error {
-		return startRelay(c)
+		//return startRelay(c)
+		return playgroundEth(c)
 	}
 
 	err := app.Run(os.Args)
@@ -192,46 +196,46 @@ func main() {
 //return nil
 //}
 
-//
-//func playgroundEth(ctx *cli.Context) error {
-//	log.Info("Playground Eth")
-//
-//	configurationFileName := ctx.GlobalString(configurationFile.Name)
-//	config, err := loadConfig(configurationFileName)
-//	if err != nil {
-//		return err
-//	}
-//
-//	client, err := eth.NewClient(config.Eth, &broadcasterStub{})
-//	if err != nil {
-//		return err
-//	}
-//
-//	tx := client.GetPendingDepositTransaction(context.Background())
-//	log.Info(fmt.Sprintf("%+v", tx))
-//	log.Info(fmt.Sprintf("Nonce %v", tx.DepositNonce))
-//
-//	client.ProposeSetStatus(context.Background(), tx.DepositNonce)
-//	hash, err := client.Execute(context.Background(), bridge.NewActionId(0), tx.DepositNonce)
-//	if err != nil {
-//		return err
-//	}
-//	log.Info(fmt.Sprintf("Executed with hash %q", hash))
-//
-//	return nil
-//}
+func playgroundEth(ctx *cli.Context) error {
+	log.Info("Playground Eth")
 
-//type broadcasterStub struct {
-//	lastBroadcastSignature []byte
-//}
-//
-//func (b *broadcasterStub) SendSignature(signature []byte) {
-//	b.lastBroadcastSignature = signature
-//}
-//
-//func (b *broadcasterStub) Signatures() [][]byte {
-//	return [][]byte{b.lastBroadcastSignature}
-//}
+	configurationFileName := ctx.GlobalString(configurationFile.Name)
+	config, err := loadConfig(configurationFileName)
+	if err != nil {
+		return err
+	}
+
+	client, err := eth.NewClient(config.Eth, &broadcasterStub{}, nil)
+	if err != nil {
+		return err
+	}
+
+	batch := client.GetPending(context.Background())
+	log.Info(fmt.Sprintf("%+v", batch))
+	log.Info(fmt.Sprintf("Nonce %v", batch.Id))
+	log.Info(fmt.Sprintf("Transactions %+v", batch.Transactions))
+
+	//client.ProposeSetStatus(context.Background(), batch.DepositNonce)
+	//hash, err := client.Execute(context.Background(), bridge.NewActionId(0), batch.DepositNonce)
+	//if err != nil {
+	//	return err
+	//}
+	//log.Info(fmt.Sprintf("Executed with hash %q", hash))
+
+	return nil
+}
+
+type broadcasterStub struct {
+	lastBroadcastSignature []byte
+}
+
+func (b *broadcasterStub) SendSignature(signature []byte) {
+	b.lastBroadcastSignature = signature
+}
+
+func (b *broadcasterStub) Signatures() [][]byte {
+	return [][]byte{b.lastBroadcastSignature}
+}
 
 func startRelay(ctx *cli.Context) error {
 	logLevelFlagValue := ctx.GlobalString(logLevel.Name)

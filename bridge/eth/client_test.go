@@ -135,7 +135,7 @@ func TestProposeTransfer(t *testing.T) {
 	expectedSignature, _ := hexutil.Decode("0x94ab570d96c659ebabcb8e00657c04b9159a157f873bd23ece55bb7a958f88c859fbb99f6157d81cf2759c46774bc80a24a64f05b01cd796648ec8bb0f3ced6701")
 
 	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
-	assert.Equal(t, tx, client.lastTransferTransaction)
+	assert.Equal(t, tx, client.lastTransferBatch)
 }
 
 func TestSignersCount(t *testing.T) {
@@ -167,10 +167,10 @@ func TestWasExecuted(t *testing.T) {
 	t.Run("when there is a last transaction", func(t *testing.T) {
 		contract := &bridgeContractStub{wasTransferExecuted: true}
 		client := Client{
-			bridgeContract:          contract,
-			lastTransferTransaction: &bridge.DepositTransaction{},
-			broadcaster:             &broadcasterStub{},
-			log:                     logger.GetOrCreate("testEthClient"),
+			bridgeContract:    contract,
+			lastTransferBatch: &bridge.DepositTransaction{},
+			broadcaster:       &broadcasterStub{},
+			log:               logger.GetOrCreate("testEthClient"),
 		}
 
 		got := client.WasExecuted(context.TODO(), bridge.NewActionId(0), bridge.NewNonce(42))
@@ -179,15 +179,15 @@ func TestWasExecuted(t *testing.T) {
 	})
 	t.Run("when is true and there is last transaction it will clean the state", func(t *testing.T) {
 		client := Client{
-			bridgeContract:          &bridgeContractStub{wasExecuted: true, wasTransferExecuted: true},
-			log:                     logger.GetOrCreate("testEthClient"),
-			lastTransferTransaction: &bridge.DepositTransaction{},
-			lastProposedStatus:      bridge.Executed,
+			bridgeContract:     &bridgeContractStub{wasExecuted: true, wasTransferExecuted: true},
+			log:                logger.GetOrCreate("testEthClient"),
+			lastTransferBatch:  &bridge.DepositTransaction{},
+			lastProposedStatus: bridge.Executed,
 		}
 
 		_ = client.WasExecuted(context.TODO(), nil, nil)
 
-		assert.Nil(t, client.lastTransferTransaction)
+		assert.Nil(t, client.lastTransferBatch)
 		assert.Equal(t, client.lastProposedStatus, bridge.Executed)
 	})
 	t.Run("when is true and there is a last status it will clean the state", func(t *testing.T) {
@@ -203,15 +203,15 @@ func TestWasExecuted(t *testing.T) {
 	})
 	t.Run("when is false and there is a last transaction it will not clean the state", func(t *testing.T) {
 		client := Client{
-			bridgeContract:          &bridgeContractStub{wasExecuted: true},
-			log:                     logger.GetOrCreate("testEthClient"),
-			lastProposedStatus:      bridge.Executed,
-			lastTransferTransaction: &bridge.DepositTransaction{},
+			bridgeContract:     &bridgeContractStub{wasExecuted: true},
+			log:                logger.GetOrCreate("testEthClient"),
+			lastProposedStatus: bridge.Executed,
+			lastTransferBatch:  &bridge.DepositTransaction{},
 		}
 
 		_ = client.WasExecuted(context.TODO(), nil, nil)
 
-		assert.NotNil(t, client.lastTransferTransaction)
+		assert.NotNil(t, client.lastTransferBatch)
 	})
 }
 
@@ -236,14 +236,14 @@ func TestExecute(t *testing.T) {
 		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
 		contract := &bridgeContractStub{transferTransaction: types.NewTx(&types.AccessListTx{})}
 		client := Client{
-			bridgeContract:          contract,
-			privateKey:              privateKey(t),
-			publicKey:               publicKey(t),
-			broadcaster:             &broadcasterStub{},
-			mapper:                  &mapperStub{},
-			blockchainClient:        &blockchainClientStub{},
-			lastTransferTransaction: &bridge.DepositTransaction{TokenAddress: "0x574554482d323936313238"},
-			log:                     logger.GetOrCreate("testEthClient"),
+			bridgeContract:    contract,
+			privateKey:        privateKey(t),
+			publicKey:         publicKey(t),
+			broadcaster:       &broadcasterStub{},
+			mapper:            &mapperStub{},
+			blockchainClient:  &blockchainClientStub{},
+			lastTransferBatch: &bridge.DepositTransaction{TokenAddress: "0x574554482d323936313238"},
+			log:               logger.GetOrCreate("testEthClient"),
 		}
 
 		got, _ := client.Execute(context.TODO(), bridge.NewActionId(0), bridge.NewNonce(42))
