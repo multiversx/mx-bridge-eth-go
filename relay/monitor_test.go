@@ -24,7 +24,7 @@ func TestGetPendingTransaction(t *testing.T) {
 		defer cancel()
 		monitor.Start(ctx)
 
-		assert.Equal(t, expected, monitor.pendingTransaction)
+		assert.Equal(t, expected, monitor.pendingBatch)
 		assert.True(t, provider.cleaned)
 	})
 	t.Run("it will sleep and try again if there is no pending transaction", func(t *testing.T) {
@@ -36,7 +36,7 @@ func TestGetPendingTransaction(t *testing.T) {
 		defer cancel()
 		monitor.Start(ctx)
 
-		assert.Equal(t, expected, monitor.pendingTransaction)
+		assert.Equal(t, expected, monitor.pendingBatch)
 		assert.GreaterOrEqual(t, sourceBridge.pendingTransactionCallIndex, 1)
 	})
 }

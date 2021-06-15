@@ -122,20 +122,24 @@ func (c *Client) ProposeTransfer(_ context.Context, tx *bridge.DepositTransactio
 	return "", nil
 }
 
-func (c *Client) ProposeSetStatus(_ context.Context, status uint8, nonce bridge.Nonce) {
-	c.lastProposedStatus = status
-	c.broadcastSignatureForFinishCurrentPendingTransaction(c.lastProposedStatus, nonce)
+func (c *Client) ProposeTransferBatch(_ context.Context, _ *bridge.Batch) (string, error) {
+	return "", nil
 }
 
-func (c *Client) WasProposedTransfer(context.Context, bridge.Nonce) bool {
+func (c *Client) ProposeSetStatus(_ context.Context, _ *bridge.Batch) {
+	// TODO: revisit this
+	c.broadcastSignatureForFinishCurrentPendingTransaction(c.lastProposedStatus, nil)
+}
+
+func (c *Client) WasProposedTransfer(context.Context, bridge.BatchId) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) bridge.ActionId {
+func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.BatchId) bridge.ActionId {
 	return bridge.NewActionId(0)
 }
 
-func (c *Client) WasProposedSetStatusOnPendingTransfer(context.Context, uint8) bool {
+func (c *Client) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 	return true
 }
 
@@ -166,7 +170,7 @@ func (c *Client) Sign(context.Context, bridge.ActionId) (string, error) {
 	return "", nil
 }
 
-func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, nonce bridge.Nonce) (string, error) {
+func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batchId bridge.BatchId) (string, error) {
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
 
 	blockNonce, err := c.blockchainClient.PendingNonceAt(ctx, fromAddress)
@@ -199,7 +203,7 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, nonce bridge.No
 
 	signatures := c.broadcaster.Signatures()
 	if c.lastTransferTransaction == nil {
-		transaction, err = c.bridgeContract.FinishCurrentPendingTransaction(auth, nonce, c.lastProposedStatus, signatures)
+		transaction, err = c.bridgeContract.FinishCurrentPendingTransaction(auth, batchId, c.lastProposedStatus, signatures)
 	} else {
 		tx := c.lastTransferTransaction
 		tokenAddress := common.HexToAddress(c.getErc20AddressFromTokenId(tx.TokenAddress))

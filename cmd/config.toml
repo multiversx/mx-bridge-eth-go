@@ -5,8 +5,8 @@ PrivateKey = "25b96cce574b43c1bb62b461826ed6bf60d16c3951c88b7b83947ea3ec03d82f"
 
 [Elrond]
 NetworkAddress = "https://testnet-gateway.elrond.com"
-BridgeAddress = "erd1qqqqqqqqqqqqqpgq5s00w93x7yn3upxmx52y5x428x7r0tutyu0sj7gta6"
-PrivateKey = "/home/calin/Projects/elrond/testnet-wallets/ion.pem"
+BridgeAddress = "erd1qqqqqqqqqqqqqpgquxv6eew4nzmcy0sr4r939p6wzcm0zkc8d8ssjspkj7"
+PrivateKey = "/home/calin/Projects/elrond/elrond-eth-bridge/mytestnet/mycounter/wallets/users/bob.pem"
 
 [P2P]
 Port = "10000"

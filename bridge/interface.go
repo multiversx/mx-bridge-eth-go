@@ -15,15 +15,15 @@ type Mapper interface {
 }
 
 type Bridge interface {
-	GetPendingDepositTransaction(context.Context) *DepositTransaction
-	ProposeTransfer(context.Context, *DepositTransaction) (string, error)
-	ProposeSetStatus(context.Context, uint8, Nonce)
-	WasProposedTransfer(context.Context, Nonce) bool
-	GetActionIdForProposeTransfer(context.Context, Nonce) ActionId
-	WasProposedSetStatusOnPendingTransfer(context.Context, uint8) bool
+	GetPending(context.Context) *Batch
+	ProposeSetStatus(context.Context, *Batch)
+	ProposeTransfer(context.Context, *Batch) (string, error)
+	WasProposedTransfer(context.Context, BatchId) bool
+	GetActionIdForProposeTransfer(context.Context, BatchId) ActionId
+	WasProposedSetStatus(context.Context, *Batch) bool
 	GetActionIdForSetStatusOnPendingTransfer(context.Context) ActionId
-	WasExecuted(context.Context, ActionId, Nonce) bool
+	WasExecuted(context.Context, ActionId, BatchId) bool
 	Sign(context.Context, ActionId) (string, error)
-	Execute(context.Context, ActionId, Nonce) (string, error)
+	Execute(context.Context, ActionId, BatchId) (string, error)
 	SignersCount(context.Context, ActionId) uint
 }
