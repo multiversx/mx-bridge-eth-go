@@ -40,3 +40,10 @@ type Batch struct {
 	Id           BatchId
 	Transactions []*DepositTransaction
 }
+
+func (batch *Batch) SetStatusOnAllTransactions(status uint8, err error) {
+	for _, tx := range batch.Transactions {
+		tx.Status = status
+		tx.Error = err
+	}
+}
