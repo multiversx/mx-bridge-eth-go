@@ -158,9 +158,6 @@ contract Bridge is AccessControl {
         require(
                 batch.nonce == batchNonceETHElrond, 
                 'Invalid batch nonce');
-        require(
-            batch.deposits.length == newDepositStatuses.length, 
-            "Number of deposit statuses must match the number of deposits in the batch");
 
         bytes32 hashedSignedData = keccak256(abi.encode(batchNonceETHElrond, newDepositStatuses, action));
         bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
