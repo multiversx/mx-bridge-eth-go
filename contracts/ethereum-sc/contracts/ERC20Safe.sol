@@ -20,25 +20,25 @@ they will be batched either by time (batchBlockCountLimit) or size (batchSize).
 There can only be one pending Batch. 
  */
 contract ERC20Safe is AccessControl {
-    event BridgeAddressChanged(address newAddress);
-    event BatchBlockCountLimitChanged(uint256 newBatchBlockCountLimit);
-    event UpdatedDepositStatus(uint256 depositNonce, DepositStatus newDepositStatus);
-    event BatchSizeChanged(uint256 newBatchSize);
-    event TokenWhitelisted(address tokenAddress);
-
     using SafeERC20 for IERC20;
-    // STATE
+    
     uint256 public depositsCount;
     uint256 public batchesCount;
     // Approx 10 minutes = 54 blocks * 11 sec/block = 594 sec
     uint256 public batchBlockCountLimit = 54;
     // Maximum number of transactions within a batch
     uint256 public batchSize = 10;
-    mapping(uint256 => Batch) public _batches;
-    
-    mapping(address => bool) public _whitelistedTokens;
-    address public _bridgeAddress;
-    uint256 _currentPendingBatch;
+    mapping(uint256 => Batch) public batches;
+    mapping(address => bool) public whitelistedTokens;
+    address public bridgeAddress;
+    uint256 private currentPendingBatch;
+
+    event BridgeAddressChanged(address newAddress);
+    event BatchBlockCountLimitChanged(uint256 newBatchBlockCountLimit);
+    event UpdatedDepositStatus(uint256 depositNonce, DepositStatus newDepositStatus);
+    event BatchSizeChanged(uint256 newBatchSize);
+    event TokenWhitelisted(address tokenAddress);
+    event ERC20Deposited(uint256 depositNonce);
 
     modifier onlyAdmin() {
         require(
@@ -50,26 +50,23 @@ contract ERC20Safe is AccessControl {
 
     modifier onlyBridge() {
         require(
-            msg.sender == _bridgeAddress,
+            msg.sender == bridgeAddress,
             "Access Control: sender is not Bridge"
         );
         _;
-    }
-
-    // EVENTS
-    event ERC20Deposited(uint256 depositNonce);
+    }    
 
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     function whitelistToken(address token) external onlyAdmin {
-        _whitelistedTokens[token] = true;
+        whitelistedTokens[token] = true;
         emit TokenWhitelisted(token);
     }
 
-    function setBridgeAddress(address bridgeAddress) external onlyAdmin { 
-        _bridgeAddress = bridgeAddress;
+    function setBridgeAddress(address _bridgeAddress) external onlyAdmin { 
+        bridgeAddress = _bridgeAddress;
         emit BridgeAddressChanged(bridgeAddress);
     }
 
@@ -95,20 +92,20 @@ contract ERC20Safe is AccessControl {
         uint256 amount,
         bytes calldata recipientAddress
     ) public {
-        require(_whitelistedTokens[tokenAddress], "Unsupported token");
+        require(whitelistedTokens[tokenAddress], "Unsupported token");
         uint256 currentBlockNumber = block.number;
 
         Batch storage batch;
-        if (batchesCount == 0 || _batches[batchesCount-1].startBlockNumber + batchBlockCountLimit < currentBlockNumber || _batches[batchesCount-1].deposits.length >= batchSize)
+        if (batchesCount == 0 || batches[batchesCount-1].startBlockNumber + batchBlockCountLimit < currentBlockNumber || batches[batchesCount-1].deposits.length >= batchSize)
         {
-            batch = _batches[batchesCount];
+            batch = batches[batchesCount];
             batch.nonce = batchesCount + 1;
             batch.startBlockNumber = currentBlockNumber;
             batchesCount++;
         }
         else
         {
-            batch = _batches[batchesCount - 1];
+            batch = batches[batchesCount - 1];
         }
 
         uint256 depositNonce = depositsCount+1;
@@ -122,7 +119,7 @@ contract ERC20Safe is AccessControl {
     }
 
     function transfer(address tokenAddress, uint256 amount, address recipientAddress) external onlyBridge {
-        require(_whitelistedTokens[tokenAddress] == true, "Unsupported token");
+        require(whitelistedTokens[tokenAddress] == true, "Unsupported token");
         IERC20 erc20 = IERC20(tokenAddress);
         erc20.safeTransfer(recipientAddress, amount);
     }
@@ -140,7 +137,7 @@ contract ERC20Safe is AccessControl {
     view
     returns (Batch memory)
     {
-        return _batches[batchNonce-1];
+        return batches[batchNonce-1];
     }
 
     /**
@@ -153,7 +150,7 @@ contract ERC20Safe is AccessControl {
         It only returns final batches - batches that are full (batchSize) or the block limit time has passed.
     */
     function getNextPendingBatch() public view returns (Batch memory) {
-        Batch memory batch = _batches[_currentPendingBatch];
+        Batch memory batch = batches[currentPendingBatch];
 
         if((batch.startBlockNumber + batchBlockCountLimit) < block.number || batch.deposits.length >= batchSize)
         {
@@ -171,7 +168,7 @@ contract ERC20Safe is AccessControl {
         Allows the next batch to be processed
     */
     function finishCurrentPendingBatch(DepositStatus[] calldata statuses) public onlyBridge {
-        Batch storage batch = _batches[_currentPendingBatch++];
+        Batch storage batch = batches[currentPendingBatch++];
 
         for(uint256 i=0; i<batch.deposits.length; i++) 
         {
