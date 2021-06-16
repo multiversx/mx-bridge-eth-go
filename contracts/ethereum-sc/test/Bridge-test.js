@@ -375,4 +375,10 @@ describe("Bridge", async function () {
       })
     })
   })
+
+  describe('wasBatchFinished', async function () {
+    it('is false for non-existent batch', async function () {
+      expect(await bridge.wasBatchFinished(42)).to.be.false;
+    })
+  })
 });
