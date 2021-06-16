@@ -123,7 +123,7 @@ contract Bridge is AccessControl {
         DepositStatus[] calldata newDepositStatuses,
         bytes[] calldata signatures
     ) public onlyRelayer {
-        for(uint8 i=0; i<newDepositStatuses.length; i++)
+        for(uint256 i=0; i<newDepositStatuses.length; i++)
         {
             require(
                 newDepositStatuses[i] == DepositStatus.Executed || newDepositStatuses[i] == DepositStatus.Rejected, 
@@ -146,7 +146,7 @@ contract Bridge is AccessControl {
         bytes32 hashedSignedData = keccak256(abi.encode(batchNonce, newDepositStatuses, action));
         bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
         bytes32 hashedDepositData = keccak256(prefixedSignData);
-        uint8 signersCount;
+        uint256 signersCount;
 
         for (uint256 signatureIndex = 0; signatureIndex < signatures.length; signatureIndex++) {
             bytes memory signature = signatures[signatureIndex];
@@ -198,7 +198,7 @@ contract Bridge is AccessControl {
             'Not enough signatures to achieve quorum');
         require(_executedBatches[batchNonce] == false, "Batch already executed");
             _executedBatches[batchNonce] = true;
-        uint8 signersCount;
+        uint256 signersCount;
         
         bytes32 hashedDepositData = keccak256(
             abi.encodePacked(
@@ -241,7 +241,7 @@ contract Bridge is AccessControl {
 
         require(signersCount >= _quorum, "Quorum was not met");
 
-        for (uint8 j=0; j<tokens.length; j++)
+        for (uint256 j=0; j<tokens.length; j++)
         {
             ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
             safe.transfer(tokens[j], amounts[j], recipients[j]);
@@ -258,7 +258,7 @@ contract Bridge is AccessControl {
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
         Batch memory batch = safe.getBatch(batchNonce);
         
-        for(uint8 i=0; i<batch.deposits.length; i++)
+        for(uint256 i=0; i<batch.deposits.length; i++)
         {
             if(batch.deposits[i].status != DepositStatus.Executed && batch.deposits[i].status != DepositStatus.Rejected)
             {
