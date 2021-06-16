@@ -33,7 +33,7 @@ contract Bridge is AccessControl {
     // Role used to execute deposits
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
     uint256 public _quorum;
-    address private _erc20SafeAddress;
+    address private immutable _erc20SafeAddress;
     mapping(uint256 => bool) public _executedTransfers;
     mapping(uint256 => bool) public _executedBatches;
 
@@ -270,7 +270,7 @@ contract Bridge is AccessControl {
                 return false;
             }
         }
-        
+
         return true;
     }
 
