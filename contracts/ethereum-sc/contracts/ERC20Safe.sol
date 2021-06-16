@@ -159,8 +159,7 @@ contract ERC20Safe is AccessControl {
         {
             return batch;
         }
-        
-        return _batches[batchesCount];
+        return Batch(0, 0, new Deposit[](0));
     }
 
     /**
