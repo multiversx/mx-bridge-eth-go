@@ -28,6 +28,7 @@ contract ERC20Safe is AccessControl {
     uint256 public batchBlockCountLimit = 54;
     // Maximum number of transactions within a batch
     uint256 public batchSize = 10;
+    uint256 private constant maxBatchSize = 20;
     mapping(uint256 => Batch) public batches;
     mapping(address => bool) public whitelistedTokens;
     address public bridgeAddress;
@@ -76,6 +77,7 @@ contract ERC20Safe is AccessControl {
     }
 
     function setBatchSize(uint256 newBatchSize) external onlyAdmin {
+        require(newBatchSize <= maxBatchSize, "Batch size too high");
         batchSize = newBatchSize;
         emit BatchSizeChanged(batchSize);
     } 

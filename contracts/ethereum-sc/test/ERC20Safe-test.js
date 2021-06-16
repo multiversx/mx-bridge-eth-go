@@ -99,6 +99,13 @@ describe("ERC20Safe", async function () {
         await (expect(nonAdminSafe.setBatchSize(newBatchSize))).to.be.revertedWith("Access Control: sender is not Admin");
       })
     })
+
+    describe('called with a value above the maximum', async function () {
+      it('reverts', async function () {
+        await expect(safe.setBatchSize(21))
+          .to.be.revertedWith("Batch size too high");
+      })
+    })
   })
 
   describe('setBatchBlockCountLimit', async function () {
