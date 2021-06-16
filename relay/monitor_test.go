@@ -7,16 +7,19 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestGetPendingTransaction(t *testing.T) {
+func TestGetPending(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 	t.Run("it will clean and get the next pending transaction", func(t *testing.T) {
-		expected := &bridge.DepositTransaction{To: "address", DepositNonce: bridge.NewNonce(0)}
-		sourceBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expected}}
+		expected := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
+		sourceBridge := &bridgeStub{pendingBatches: []*bridge.Batch{expected}}
 		provider := &topologyProviderStub{}
 		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &testHelpers.TimerStub{}, provider, "testMonitor")
 
@@ -28,8 +31,11 @@ func TestGetPendingTransaction(t *testing.T) {
 		assert.True(t, provider.cleaned)
 	})
 	t.Run("it will sleep and try again if there is no pending transaction", func(t *testing.T) {
-		expected := &bridge.DepositTransaction{To: "address", DepositNonce: bridge.NewNonce(0)}
-		sourceBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{nil, expected}}
+		expected := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
+		sourceBridge := &bridgeStub{pendingBatches: []*bridge.Batch{nil, expected}}
 		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &testHelpers.TimerStub{}, &topologyProviderStub{}, "testMonitor")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
@@ -37,17 +43,20 @@ func TestGetPendingTransaction(t *testing.T) {
 		monitor.Start(ctx)
 
 		assert.Equal(t, expected, monitor.pendingBatch)
-		assert.GreaterOrEqual(t, sourceBridge.pendingTransactionCallIndex, 1)
+		assert.GreaterOrEqual(t, sourceBridge.pendingBatchCallIndex, 1)
 	})
 }
 
 func TestProposeTransaction(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 	t.Run("it will proposeTransfer transaction when leader", func(t *testing.T) {
-		expect := &bridge.DepositTransaction{To: "address", DepositNonce: bridge.NewNonce(0)}
+		expected := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		destinationBridge := &bridgeStub{}
 		monitor := NewMonitor(
-			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
+			&bridgeStub{pendingBatches: []*bridge.Batch{expected}},
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 1, amITheLeader: true},
@@ -58,12 +67,15 @@ func TestProposeTransaction(t *testing.T) {
 		defer cancel()
 		monitor.Start(ctx)
 
-		assert.Equal(t, expect, destinationBridge.lastProposedTransaction)
+		assert.Equal(t, expected, destinationBridge.lastProposedBatch)
 	})
 	t.Run("it will proposeStatus Rejected when proposeTransfer fails", func(t *testing.T) {
-		depositTransaction := &bridge.DepositTransaction{To: "address", DepositNonce: bridge.NewNonce(0)}
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		sourceBridge := &bridgeStub{
-			pendingTransactions: []*bridge.DepositTransaction{depositTransaction},
+			pendingBatches: []*bridge.Batch{batch},
 		}
 		monitor := NewMonitor(
 			sourceBridge,
@@ -79,13 +91,17 @@ func TestProposeTransaction(t *testing.T) {
 		defer cancel()
 		monitor.Start(ctx)
 
-		assert.Equal(t, bridge.Rejected, sourceBridge.proposedStatus)
+		assert.Equal(t, bridge.Rejected, sourceBridge.proposedStatusBatch.Transactions[0].Status)
 	})
 	t.Run("it will wait for proposal if not leader", func(t *testing.T) {
-		expect := bridge.NewNonce(0)
+		expect := bridge.NewBatchId(0)
+		batch := &bridge.Batch{
+			Id:           expect,
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		destinationBridge := &bridgeStub{}
 		monitor := NewMonitor(
-			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: expect}}},
+			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 2, amITheLeader: false},
@@ -96,13 +112,17 @@ func TestProposeTransaction(t *testing.T) {
 		defer cancel()
 		monitor.Start(ctx)
 
-		assert.Equal(t, expect, destinationBridge.lastWasProposedTransferNonce)
+		assert.Equal(t, expect, destinationBridge.lastWasProposedTransferBatchId)
 	})
 	t.Run("it will sign proposed transaction if not leader", func(t *testing.T) {
 		expect := bridge.NewActionId(42)
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		destinationBridge := &bridgeStub{wasProposedTransfer: true, proposeTransferActionId: expect}
 		monitor := NewMonitor(
-			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}}},
+			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 2, amITheLeader: false},
@@ -116,12 +136,15 @@ func TestProposeTransaction(t *testing.T) {
 		assert.Equal(t, expect, destinationBridge.lastSignedActionId)
 	})
 	t.Run("it will try to proposeTransfer again if timeout", func(t *testing.T) {
-		expect := &bridge.DepositTransaction{To: "address", DepositNonce: bridge.NewNonce(0)}
+		expect := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		destinationBridge := &bridgeStub{wasProposedTransfer: false}
 		timer := &testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond}
 		provider := &topologyProviderStub{peerCount: 2, amITheLeader: false}
 		monitor := NewMonitor(
-			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{expect}},
+			&bridgeStub{pendingBatches: []*bridge.Batch{expect}},
 			destinationBridge,
 			timer,
 			provider,
@@ -137,7 +160,7 @@ func TestProposeTransaction(t *testing.T) {
 		defer cancel()
 		monitor.Start(ctx)
 
-		assert.Equal(t, expect, destinationBridge.lastProposedTransaction)
+		assert.Equal(t, expect, destinationBridge.lastProposedBatch)
 	})
 }
 
@@ -145,9 +168,13 @@ func TestWaitForSignatures(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 	t.Run("it will execute transfer when leader and number of signatures is > 67%", func(t *testing.T) {
 		expect := bridge.NewActionId(42)
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		destinationBridge := &bridgeStub{signersCount: 3, proposeTransferActionId: expect}
 		monitor := NewMonitor(
-			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}}},
+			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 4, amITheLeader: true},
@@ -162,9 +189,13 @@ func TestWaitForSignatures(t *testing.T) {
 	})
 	t.Run("it will sleep and try to wait for signatures again when the number of signatures is < 67%", func(t *testing.T) {
 		expect := bridge.NewActionId(42)
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		destinationBridge := &bridgeStub{signersCount: 0, proposeTransferActionId: expect}
 		monitor := NewMonitor(
-			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}}},
+			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
 			destinationBridge,
 			&testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond},
 			&topologyProviderStub{peerCount: 4, amITheLeader: true},
@@ -188,11 +219,15 @@ func TestExecute(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 	t.Run("it will wait for execution when not leader", func(t *testing.T) {
 		expect := bridge.NewActionId(42)
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		destinationBridge := &bridgeStub{signersCount: 3, wasExecuted: false, wasProposedTransfer: true, proposeTransferActionId: expect}
 		timer := &testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: false}
 		monitor := NewMonitor(
-			&bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}}},
+			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
 			destinationBridge,
 			timer,
 			provider,
@@ -222,7 +257,11 @@ func TestProposeSetStatus(t *testing.T) {
 			proposeTransferActionId: bridge.NewActionId(41),
 		}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: true}
-		sourceBridge := &bridgeStub{pendingTransactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}}}
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
+		sourceBridge := &bridgeStub{pendingBatches: []*bridge.Batch{batch}}
 		monitor := NewMonitor(
 			sourceBridge,
 			destinationBridge,
@@ -235,7 +274,7 @@ func TestProposeSetStatus(t *testing.T) {
 		defer cancel()
 		monitor.Start(ctx)
 
-		assert.Equal(t, bridge.Executed, sourceBridge.proposedStatus)
+		assert.Equal(t, bridge.Executed, sourceBridge.proposedStatusBatch.Transactions[0].Status)
 	})
 	t.Run("it will sign proposed set status when not leader", func(t *testing.T) {
 		expect := bridge.NewActionId(42)
@@ -245,10 +284,14 @@ func TestProposeSetStatus(t *testing.T) {
 			wasProposedTransfer:     true,
 			proposeTransferActionId: bridge.NewActionId(41),
 		}
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: false}
 		sourceBridge := &bridgeStub{
-			pendingTransactions:      []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
-			proposedStatus:           bridge.Executed,
+			pendingBatches:           []*bridge.Batch{batch},
+			proposedStatusBatch:      batch,
 			proposeSetStatusActionId: expect,
 		}
 		monitor := NewMonitor(
@@ -274,10 +317,14 @@ func TestProposeSetStatus(t *testing.T) {
 			proposeTransferActionId: bridge.NewActionId(41),
 		}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: true}
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		sourceBridge := &bridgeStub{
 			signersCount:             3,
-			pendingTransactions:      []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
-			proposedStatus:           bridge.Executed,
+			pendingBatches:           []*bridge.Batch{batch},
+			proposedStatusBatch:      batch,
 			proposeSetStatusActionId: expect,
 		}
 		monitor := NewMonitor(
@@ -303,10 +350,14 @@ func TestProposeSetStatus(t *testing.T) {
 			proposeTransferActionId: bridge.NewActionId(41),
 		}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: false}
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
 		sourceBridge := &bridgeStub{
 			signersCount:             3,
-			pendingTransactions:      []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
-			proposedStatus:           0,
+			pendingBatches:           []*bridge.Batch{batch},
+			proposedStatusBatch:      batch,
 			proposeSetStatusActionId: expect,
 		}
 		monitor := NewMonitor(
@@ -349,52 +400,52 @@ func (s *topologyProviderStub) Clean() {
 }
 
 type bridgeStub struct {
-	pendingTransactionCallIndex  int
-	pendingTransactions          []*bridge.DepositTransaction
-	wasProposedTransfer          bool
-	lastProposedTransaction      *bridge.DepositTransaction
-	lastWasProposedTransferNonce bridge.Nonce
-	lastSignedActionId           bridge.ActionId
-	signersCount                 uint
-	lastExecutedActionId         bridge.ActionId
-	wasExecuted                  bool
-	proposeTransferActionId      bridge.ActionId
-	proposeTransferError         error
-	proposedStatus               uint8
-	proposeSetStatusActionId     bridge.ActionId
+	pendingBatchCallIndex          int
+	pendingBatches                 []*bridge.Batch
+	wasProposedTransfer            bool
+	lastProposedBatch              *bridge.Batch
+	lastWasProposedTransferBatchId bridge.BatchId
+	lastSignedActionId             bridge.ActionId
+	signersCount                   uint
+	lastExecutedActionId           bridge.ActionId
+	wasExecuted                    bool
+	proposeTransferActionId        bridge.ActionId
+	proposeTransferError           error
+	proposedStatusBatch            *bridge.Batch
+	proposeSetStatusActionId       bridge.ActionId
 }
 
-func (b *bridgeStub) GetPendingDepositTransaction(context.Context) *bridge.DepositTransaction {
-	defer func() { b.pendingTransactionCallIndex++ }()
+func (b *bridgeStub) GetPending(context.Context) *bridge.Batch {
+	defer func() { b.pendingBatchCallIndex++ }()
 
-	if b.pendingTransactionCallIndex >= len(b.pendingTransactions) {
+	if b.pendingBatchCallIndex >= len(b.pendingBatches) {
 		return nil
 	} else {
-		return b.pendingTransactions[b.pendingTransactionCallIndex]
+		return b.pendingBatches[b.pendingBatchCallIndex]
 	}
 }
 
-func (b *bridgeStub) ProposeTransfer(_ context.Context, tx *bridge.DepositTransaction) (string, error) {
+func (b *bridgeStub) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
+	b.proposedStatusBatch = batch
+}
+
+func (b *bridgeStub) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	b.wasProposedTransfer = true
-	b.lastProposedTransaction = tx
+	b.lastProposedBatch = batch
 
 	return "propose_tx_hash", b.proposeTransferError
 }
 
-func (b *bridgeStub) ProposeSetStatus(_ context.Context, status uint8, _ bridge.Nonce) {
-	b.proposedStatus = status
-}
-
-func (b *bridgeStub) WasProposedTransfer(_ context.Context, nonce bridge.Nonce) bool {
-	b.lastWasProposedTransferNonce = nonce
+func (b *bridgeStub) WasProposedTransfer(_ context.Context, batchId bridge.BatchId) bool {
+	b.lastWasProposedTransferBatchId = batchId
 	return b.wasProposedTransfer
 }
 
-func (b *bridgeStub) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) bridge.ActionId {
+func (b *bridgeStub) GetActionIdForProposeTransfer(context.Context, bridge.BatchId) bridge.ActionId {
 	return b.proposeTransferActionId
 }
 
-func (b *bridgeStub) WasProposedSetStatusOnPendingTransfer(context.Context, uint8) bool {
+func (b *bridgeStub) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 	return true
 }
 
@@ -402,7 +453,7 @@ func (b *bridgeStub) GetActionIdForSetStatusOnPendingTransfer(context.Context) b
 	return b.proposeSetStatusActionId
 }
 
-func (b *bridgeStub) WasExecuted(context.Context, bridge.ActionId, bridge.Nonce) bool {
+func (b *bridgeStub) WasExecuted(context.Context, bridge.ActionId, bridge.BatchId) bool {
 	return b.wasExecuted
 }
 
@@ -411,7 +462,7 @@ func (b *bridgeStub) Sign(_ context.Context, actionId bridge.ActionId) (string, 
 	return "sign_tx_hash", nil
 }
 
-func (b *bridgeStub) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.Nonce) (string, error) {
+func (b *bridgeStub) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) (string, error) {
 	b.lastExecutedActionId = actionId
 	return "execution hash", nil
 }
