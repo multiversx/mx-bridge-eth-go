@@ -116,21 +116,14 @@ contract ERC20Safe is AccessControl {
         depositsCount++;
 
         emit ERC20Deposited(depositNonce);
-        lockTokens(tokenAddress, amount, msg.sender);
+
+        IERC20 erc20 = IERC20(tokenAddress);
+        erc20.safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function transfer(address tokenAddress, uint256 amount, address recipientAddress) external onlyBridge {
         IERC20 erc20 = IERC20(tokenAddress);
         erc20.safeTransfer(recipientAddress, amount);
-    }
-
-    function lockTokens(
-        address tokenAddress,
-        uint256 amount,
-        address owner
-    ) internal {
-        IERC20 erc20 = IERC20(tokenAddress);
-        erc20.safeTransferFrom(owner, address(this), amount);
     }
 
     /**
