@@ -21,9 +21,9 @@ There can only be one pending Batch.
  */
 contract ERC20Safe is AccessControl {
     event BridgeAddressChanged(address newAddress);
-    event BatchBlockCountLimitChanged(uint8 newBatchBlockCountLimit);
+    event BatchBlockCountLimitChanged(uint256 newBatchBlockCountLimit);
     event UpdatedDepositStatus(uint256 depositNonce, DepositStatus newDepositStatus);
-    event BatchSizeChanged(uint8 newBatchSize);
+    event BatchSizeChanged(uint256 newBatchSize);
     event TokenWhitelisted(address tokenAddress);
 
     using SafeERC20 for IERC20;
@@ -31,9 +31,9 @@ contract ERC20Safe is AccessControl {
     uint256 public depositsCount;
     uint256 public batchesCount;
     // Approx 10 minutes = 54 blocks * 11 sec/block = 594 sec
-    uint8 public batchBlockCountLimit = 54;
+    uint256 public batchBlockCountLimit = 54;
     // Maximum number of transactions within a batch
-    uint8 public batchSize = 10;
+    uint256 public batchSize = 10;
     mapping(uint256 => Batch) public _batches;
     
     mapping(address => bool) public _whitelistedTokens;
@@ -73,12 +73,12 @@ contract ERC20Safe is AccessControl {
         emit BridgeAddressChanged(bridgeAddress);
     }
 
-    function setBatchBlockCountLimit(uint8 newBatchBlockCountLimit) external onlyAdmin {
+    function setBatchBlockCountLimit(uint256 newBatchBlockCountLimit) external onlyAdmin {
         batchBlockCountLimit = newBatchBlockCountLimit;
         emit BatchBlockCountLimitChanged(batchBlockCountLimit);
     }
 
-    function setBatchSize(uint8 newBatchSize) external onlyAdmin {
+    function setBatchSize(uint256 newBatchSize) external onlyAdmin {
         batchSize = newBatchSize;
         emit BatchSizeChanged(batchSize);
     } 
@@ -180,7 +180,7 @@ contract ERC20Safe is AccessControl {
     function finishCurrentPendingBatch(DepositStatus[] calldata statuses) public onlyBridge {
         Batch storage batch = _batches[_currentPendingBatch++];
 
-        for(uint8 i=0; i<batch.deposits.length; i++) 
+        for(uint256 i=0; i<batch.deposits.length; i++) 
         {
             batch.deposits[i].status = statuses[i];
             emit UpdatedDepositStatus(batch.deposits[i].nonce, batch.deposits[i].status);
