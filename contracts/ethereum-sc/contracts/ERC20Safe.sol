@@ -170,7 +170,8 @@ contract ERC20Safe is AccessControl {
     function finishCurrentPendingBatch(DepositStatus[] calldata statuses) public onlyBridge {
         Batch storage batch = batches[currentPendingBatch++];
 
-        for(uint256 i=0; i<batch.deposits.length; i++) 
+        uint256 batchDepositsCount = batch.deposits.length;
+        for(uint256 i=0; i<batchDepositsCount; i++) 
         {
             batch.deposits[i].status = statuses[i];
             emit UpdatedDepositStatus(batch.deposits[i].nonce, batch.deposits[i].status);
