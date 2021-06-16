@@ -21,8 +21,7 @@ describe("ERC20Safe", async function () {
   });
 
   it('sets creator as admin', async function () {
-    ADMIN_ROLE = await safe.DEFAULT_ADMIN_ROLE();
-    expect(await safe.hasRole(ADMIN_ROLE, adminWallet.address)).to.be.true;
+    expect(await safe.adminAddress.call()).to.equal(adminWallet.address);
   });
 
   describe('whitelistToken', async function () {
