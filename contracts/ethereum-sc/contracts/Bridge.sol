@@ -23,6 +23,7 @@ relayers with the execute call, in order to save gas.
  */
 contract Bridge is AccessControl {
     event RelayerAdded(address newRelayer);
+    event RelayerRemoved(address removedRelayer);
     event FinishedTransaction(uint256 depositNonce, DepositStatus status);
     event QuorumChanged(uint256 _quorum);
 
@@ -84,6 +85,19 @@ contract Bridge is AccessControl {
         );
         grantRole(RELAYER_ROLE, newRelayerAddress);
         emit RelayerAdded(newRelayerAddress);
+    }
+
+    /**
+        @notice Removes a relayer. This does not have any effect on the quorum variable.
+        @param relayerAddress Wallet address for the new relayer that will be removed
+    */
+    function removeRelayer(address relayerAddress) external {
+        require(
+            hasRole(RELAYER_ROLE, relayerAddress),
+            "Provided address is not a relayer"
+        );
+        revokeRole(RELAYER_ROLE, relayerAddress);
+        emit RelayerRemoved(relayerAddress);
     }
 
     /**
