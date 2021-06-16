@@ -63,6 +63,10 @@ describe("Bridge", async function () {
   });
 
   describe("addRelayer", async function () {
+    it('reverts when called with an empty address', async function () {
+      await expect(bridge.addRelayer(ethers.constants.AddressZero)).to.be.revertedWith('');
+    })
+
     it('reverts when not called by admin', async function () {
       nonAdminBridge = bridge.connect(otherWallet);
       await expect(nonAdminBridge.addRelayer(relayer4.address)).to.be.revertedWith("AccessControl: sender must be an admin to grant");

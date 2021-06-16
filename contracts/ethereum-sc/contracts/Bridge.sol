@@ -80,6 +80,10 @@ contract Bridge is AccessControl {
     */
     function addRelayer(address newRelayerAddress) external {
         require(
+            newRelayerAddress != address(0), 
+            "newRelayerAddress cannot be 0x0"
+        );
+        require(
             !hasRole(RELAYER_ROLE, newRelayerAddress),
             "newRelayerAddress is already a relayer"
         );
