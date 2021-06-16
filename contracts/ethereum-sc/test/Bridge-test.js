@@ -51,7 +51,7 @@ describe("Bridge", async function () {
   });
 
   it('Sets the quorum', async function () {
-    expect(await bridge._quorum.call()).to.equal(quorum);
+    expect(await bridge.quorum.call()).to.equal(quorum);
   });
 
   it('Sets the board members with relayer rights', async function () {
@@ -136,7 +136,7 @@ describe("Bridge", async function () {
     it('sets the quorum with the new value', async function () {
       await bridge.setQuorum(newQuorum);
 
-      expect(await bridge._quorum.call()).to.equal(newQuorum);
+      expect(await bridge.quorum.call()).to.equal(newQuorum);
     });
 
     it('emits event', async function () {

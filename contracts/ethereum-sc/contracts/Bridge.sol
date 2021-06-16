@@ -25,19 +25,17 @@ contract Bridge is AccessControl {
     event RelayerAdded(address newRelayer);
     event RelayerRemoved(address removedRelayer);
     event FinishedTransaction(uint256 depositNonce, DepositStatus status);
-    event QuorumChanged(uint256 _quorum);
+    event QuorumChanged(uint256 quorum);
 
-    string constant action = 'CurrentPendingBatch';
-    string constant executeTransferAction = 'ExecuteBatchedTransfer';
-    string constant prefix = "\x19Ethereum Signed Message:\n32";
-
-    // Role used to execute deposits
+    string private constant action = 'CurrentPendingBatch';
+    string private constant executeTransferAction = 'ExecuteBatchedTransfer';
+    string private constant prefix = "\x19Ethereum Signed Message:\n32";
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
-    uint256 public _quorum;
-    uint256 private _minimumQuorum = 3;
-    address private immutable _erc20SafeAddress;
-    mapping(uint256 => bool) public _executedTransfers;
-    mapping(uint256 => bool) public _executedBatches;
+    
+    uint256 public quorum;
+    uint256 private minimumQuorum = 3;
+    address private immutable erc20SafeAddress;
+    mapping(uint256 => bool) public executedBatches;
 
     modifier onlyAdmin() {
         require(
@@ -71,9 +69,9 @@ contract Bridge is AccessControl {
             grantRole(RELAYER_ROLE, board[i]);
         }
 
-        require(intialQuorum >= _minimumQuorum, "Quorum is too low.");
-        _quorum = intialQuorum;
-        _erc20SafeAddress = erc20Safe;
+        require(intialQuorum >= minimumQuorum, "Quorum is too low.");
+        quorum = intialQuorum;
+        erc20SafeAddress = erc20Safe;
     }
 
     /**
@@ -111,8 +109,8 @@ contract Bridge is AccessControl {
         @param newQuorum Number of valid signatures required for executions. 
     */
     function setQuorum(uint256 newQuorum) external onlyAdmin {
-        require(newQuorum >= _minimumQuorum, "Quorum is too low.");
-        _quorum = newQuorum;
+        require(newQuorum >= minimumQuorum, "Quorum is too low.");
+        quorum = newQuorum;
         emit QuorumChanged(newQuorum);
     }
 
@@ -129,7 +127,7 @@ contract Bridge is AccessControl {
         view
         returns (Batch memory)
     {
-        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
+        ERC20Safe safe = ERC20Safe(erc20SafeAddress);
         return safe.getNextPendingBatch();
     }
 
@@ -152,10 +150,10 @@ contract Bridge is AccessControl {
         }
         
         require(
-                signatures.length >= _quorum, 
+                signatures.length >= quorum, 
                 'Not enough signatures to achieve quorum');
 
-        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
+        ERC20Safe safe = ERC20Safe(erc20SafeAddress);
         Batch memory batch = safe.getNextPendingBatch();
         require(
                 batch.nonce == batchNonce, 
@@ -203,7 +201,7 @@ contract Bridge is AccessControl {
             signersCount++;
         }
 
-        require(signersCount >= _quorum, "Quorum was not met");
+        require(signersCount >= quorum, "Quorum was not met");
         safe.finishCurrentPendingBatch(newDepositStatuses);
     }
 
@@ -215,10 +213,10 @@ contract Bridge is AccessControl {
         bytes[] calldata signatures) 
     public onlyRelayer {
         require(
-            signatures.length >= _quorum, 
+            signatures.length >= quorum, 
             'Not enough signatures to achieve quorum');
-        require(_executedBatches[batchNonce] == false, "Batch already executed");
-            _executedBatches[batchNonce] = true;
+        require(executedBatches[batchNonce] == false, "Batch already executed");
+            executedBatches[batchNonce] = true;
         uint256 signersCount;
         
         bytes32 hashedDepositData = keccak256(
@@ -260,11 +258,11 @@ contract Bridge is AccessControl {
             signersCount++;
         }
 
-        require(signersCount >= _quorum, "Quorum was not met");
+        require(signersCount >= quorum, "Quorum was not met");
 
         for (uint256 j=0; j<tokens.length; j++)
         {
-            ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
+            ERC20Safe safe = ERC20Safe(erc20SafeAddress);
             safe.transfer(tokens[j], amounts[j], recipients[j]);
         }
     }
@@ -276,7 +274,7 @@ contract Bridge is AccessControl {
     */
     function wasBatchFinished(uint256 batchNonce) external view returns(bool) 
     {
-        ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
+        ERC20Safe safe = ERC20Safe(erc20SafeAddress);
         Batch memory batch = safe.getBatch(batchNonce);
         
         if(batch.deposits.length == 0)
@@ -297,6 +295,6 @@ contract Bridge is AccessControl {
 
     function wasBatchExecuted(uint256 batchNonce) external view returns(bool) 
     {
-        return _executedBatches[batchNonce];
+        return executedBatches[batchNonce];
     }
 }

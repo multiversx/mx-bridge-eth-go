@@ -29,7 +29,7 @@ describe("ERC20Safe", async function () {
     it('adds the token to the whitelistedTokens list', async function () {
       await safe.whitelistToken(afc.address);
 
-      expect(await safe._whitelistedTokens(afc.address)).to.be.true;
+      expect(await safe.whitelistedTokens(afc.address)).to.be.true;
     })
 
     it('emits event', async function () {
@@ -53,7 +53,7 @@ describe("ERC20Safe", async function () {
     it('updates updates the address', async function () {
       await safe.setBridgeAddress(bridgeWallet.address);
 
-      expect(await safe._bridgeAddress.call()).to.equal(bridgeWallet.address);
+      expect(await safe.bridgeAddress.call()).to.equal(bridgeWallet.address);
     })
 
     it('emits event', async function () {
