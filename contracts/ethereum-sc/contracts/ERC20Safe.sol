@@ -170,7 +170,9 @@ contract ERC20Safe {
     */
     function finishCurrentPendingBatch(DepositStatus[] calldata statuses) public onlyBridge {
         Batch storage batch = batches[currentPendingBatch++];
-
+        require(
+            batch.deposits.length == statuses.length, 
+            "Number of deposit statuses must match the number of deposits in the batch");
         uint256 batchDepositsCount = batch.deposits.length;
         for(uint256 i=0; i<batchDepositsCount; i++) 
         {
