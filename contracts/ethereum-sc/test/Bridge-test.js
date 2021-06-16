@@ -62,6 +62,14 @@ describe("Bridge", async function () {
     })
   });
 
+  describe('when initialized with a quorum that is lower than the minimum', async function () {
+    it('reverts', async function () {
+      invalidQuorumValue = 1;
+      await expect(deployContract(adminWallet, BridgeContract, [boardMembers.map(m => m.address), invalidQuorumValue, erc20Safe.address]))
+        .to.be.revertedWith("Quorum is too low.");
+    })
+  })
+
   describe("addRelayer", async function () {
     it('reverts when called with an empty address', async function () {
       await expect(bridge.addRelayer(ethers.constants.AddressZero)).to.be.revertedWith('');
@@ -123,7 +131,7 @@ describe("Bridge", async function () {
   })
 
   describe('setQuorum', async function () {
-    const newQuorum = 2;
+    const newQuorum = 8;
 
     it('sets the quorum with the new value', async function () {
       await bridge.setQuorum(newQuorum);
@@ -141,6 +149,12 @@ describe("Bridge", async function () {
       nonAdminBridge = bridge.connect(otherWallet);
       await expect(nonAdminBridge.setQuorum(newQuorum)).to.be.revertedWith("Access Control: sender is not Admin");
     });
+
+    describe('when quorum is lower than the minimum', async function () {
+      it('reverts', async function () {
+        await expect(bridge.setQuorum(2)).to.be.revertedWith('Quorum is too low.');
+      })
+    })
   });
 
   describe('getNextPendingBatch', async function () {

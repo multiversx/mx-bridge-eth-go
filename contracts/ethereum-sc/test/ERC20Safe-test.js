@@ -15,7 +15,7 @@ describe("ERC20Safe", async function () {
   beforeEach(async function () {
     afc = await deployContract(adminWallet, AFC, [1000]);
     safe = await deployContract(adminWallet, ERC20Safe);
-    bridge = await deployContract(adminWallet, Bridge, [boardMembers.map(m => m.address), 1, safe.address]);
+    bridge = await deployContract(adminWallet, Bridge, [boardMembers.map(m => m.address), 3, safe.address]);
     await afc.approve(safe.address, 1000);
     await safe.setBridgeAddress(bridge.address);
   });
