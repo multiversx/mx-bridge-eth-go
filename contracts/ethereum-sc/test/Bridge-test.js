@@ -90,6 +90,34 @@ describe("Bridge", async function () {
     });
   });
 
+  describe('removeRelayer', async function () {
+    beforeEach(async function () {
+      RELAYER_ROLE = await bridge.RELAYER_ROLE();
+      await bridge.addRelayer(relayer4.address);
+    })
+
+    it('removes the relayer', async function () {
+      await bridge.removeRelayer(relayer4.address);
+
+      expect(await bridge.hasRole(RELAYER_ROLE, relayer4.address)).to.be.false
+    })
+
+    it('emits an event', async function () {
+      await expect(bridge.removeRelayer(relayer4.address))
+        .to.emit(bridge, "RelayerRemoved")
+        .withArgs(relayer4.address);
+    })
+
+    it('reverts when not called by admin', async function () {
+      nonAdminBridge = bridge.connect(otherWallet);
+      await expect(nonAdminBridge.removeRelayer(relayer4.address)).to.be.revertedWith("AccessControl: sender must be an admin to revoke");
+    });
+
+    it('reverts if address is not already a relayer', async function () {
+      await expect(bridge.removeRelayer(otherWallet.address)).to.be.revertedWith('Provided address is not a relayer');
+    });
+  })
+
   describe('setQuorum', async function () {
     const newQuorum = 2;
 
