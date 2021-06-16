@@ -146,7 +146,7 @@ contract ERC20Safe is AccessControl {
     view
     returns (Batch memory)
     {
-        return _batches[batchNonce];
+        return _batches[batchNonce-1];
     }
 
     /**

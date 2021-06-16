@@ -258,6 +258,11 @@ contract Bridge is AccessControl {
         ERC20Safe safe = ERC20Safe(_erc20SafeAddress);
         Batch memory batch = safe.getBatch(batchNonce);
         
+        if(batch.deposits.length == 0)
+        {
+            return false;
+        }
+
         for(uint256 i=0; i<batch.deposits.length; i++)
         {
             if(batch.deposits[i].status != DepositStatus.Executed && batch.deposits[i].status != DepositStatus.Rejected)
@@ -265,6 +270,7 @@ contract Bridge is AccessControl {
                 return false;
             }
         }
+        
         return true;
     }
 
