@@ -34,6 +34,7 @@ contract Bridge is AccessControl {
     // Role used to execute deposits
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
     uint256 public _quorum;
+    uint256 private _minimumQuorum = 3;
     address private immutable _erc20SafeAddress;
     mapping(uint256 => bool) public _executedTransfers;
     mapping(uint256 => bool) public _executedBatches;
@@ -70,6 +71,7 @@ contract Bridge is AccessControl {
             grantRole(RELAYER_ROLE, board[i]);
         }
 
+        require(intialQuorum >= _minimumQuorum, "Quorum is too low.");
         _quorum = intialQuorum;
         _erc20SafeAddress = erc20Safe;
     }
@@ -109,6 +111,7 @@ contract Bridge is AccessControl {
         @param newQuorum Number of valid signatures required for executions. 
     */
     function setQuorum(uint256 newQuorum) external onlyAdmin {
+        require(newQuorum >= _minimumQuorum, "Quorum is too low.");
         _quorum = newQuorum;
         emit QuorumChanged(newQuorum);
     }
