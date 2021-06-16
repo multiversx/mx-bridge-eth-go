@@ -11,15 +11,14 @@ import "hardhat/console.sol";
 @title ERC20 Safe for bridging tokens
 @author Elrond & AgileFreaks
 @notice Contract to be used by the users to make deposits that will be bridged
-@notice Implements access control. 
-The deployer is also the admin of the contract.
+@notice The deployer is also the admin of the contract.
 In order to use it:
 - The Bridge.sol must be deployed and must be whitelisted for the Safe contract.
 @dev The deposits are requested by the Bridge, and in order to save gas spent by the relayers
 they will be batched either by time (batchBlockCountLimit) or size (batchSize).
 There can only be one pending Batch. 
  */
-contract ERC20Safe is AccessControl {
+contract ERC20Safe {
     using SafeERC20 for IERC20;
     
     uint256 public depositsCount;
@@ -31,9 +30,10 @@ contract ERC20Safe is AccessControl {
     uint256 private constant maxBatchSize = 20;
     mapping(uint256 => Batch) public batches;
     mapping(address => bool) public whitelistedTokens;
+    address public adminAddress;
     address public bridgeAddress;
     uint256 private currentPendingBatch;
-
+    
     event BridgeAddressChanged(address newAddress);
     event BatchBlockCountLimitChanged(uint256 newBatchBlockCountLimit);
     event UpdatedDepositStatus(uint256 depositNonce, DepositStatus newDepositStatus);
@@ -43,9 +43,8 @@ contract ERC20Safe is AccessControl {
 
     modifier onlyAdmin() {
         require(
-            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "Access Control: sender is not Admin"
-        );
+            msg.sender == adminAddress, 
+            "Access Control: sender is not Admin");
         _;
     }
 
@@ -58,7 +57,7 @@ contract ERC20Safe is AccessControl {
     }    
 
     constructor() {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        adminAddress = msg.sender;
     }
 
     function whitelistToken(address token) external onlyAdmin {
