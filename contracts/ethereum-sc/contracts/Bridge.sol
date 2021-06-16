@@ -131,13 +131,14 @@ contract Bridge is AccessControl {
     }
 
     /**
-        @notice Marks all transactions from the batch with their execution status (Rejected or Executed)
-        @param batchNonce Nonce for the batch. Should be equal to the nonce of the current batch.
+        @notice Marks all transactions from the batch with their execution status (Rejected or Executed).
+        @dev This is for the Ethereum to Elrond flow
+        @param batchNonceETHElrond Nonce for the batch. Should be equal to the nonce of the current batch. This identifies a batch created on the Ethereum chain toat bridges tokens from Ethereum to Elrond
         @param newDepositStatuses Array containing new statuses for all the transactions in the batch. Can only be Rejected or Executed statuses. Number of statuses must be equal to the number of transactions in the batch.
         @param signatures Signatures from all the relayers for the execution. This mimics a delegated multisig contract. For the execution to take place, there must be enough valid signatures to achieve quorum.
     */
     function finishCurrentPendingBatch(
-        uint256 batchNonce,
+        uint256 batchNonceETHElrond,
         DepositStatus[] calldata newDepositStatuses,
         bytes[] calldata signatures
     ) public onlyRelayer {
@@ -155,13 +156,13 @@ contract Bridge is AccessControl {
         ERC20Safe safe = ERC20Safe(erc20SafeAddress);
         Batch memory batch = safe.getNextPendingBatch();
         require(
-                batch.nonce == batchNonce, 
+                batch.nonce == batchNonceETHElrond, 
                 'Invalid batch nonce');
         require(
             batch.deposits.length == newDepositStatuses.length, 
             "Number of deposit statuses must match the number of deposits in the batch");
 
-        bytes32 hashedSignedData = keccak256(abi.encode(batchNonce, newDepositStatuses, action));
+        bytes32 hashedSignedData = keccak256(abi.encode(batchNonceETHElrond, newDepositStatuses, action));
         bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
         bytes32 hashedDepositData = keccak256(prefixedSignData);
         uint256 signersCount;
@@ -204,25 +205,35 @@ contract Bridge is AccessControl {
         safe.finishCurrentPendingBatch(newDepositStatuses);
     }
 
+    /**
+        @notice Executes transfers that were signed by the relayers. 
+        @dev This is for the Elrond to Ethereum flow
+        @dev Arrays here try to mimmick the structure of a batch. A batch represents the values from the same index in all the arrays.
+        @param tokens Array containing all the token addresses that the batch interacts with. Can even contain duplicates.
+        @param recipients Array containing all the destinations from the batch. Can be duplicates.
+        @param amounts Array containing all the amounts that will be transfered. 
+        @param batchNonceElrondETH Nonce for the batch. This identifies a batch created on the Elrond chain that bridges tokens from Elrond to Ethereum
+        @param signatures Signatures from all the relayers for the execution. This mimics a delegated multisig contract. For the execution to take place, there must be enough valid signatures to achieve quorum.
+    */
     function executeTransfer(
         address[] calldata tokens, 
         address[] calldata recipients, 
         uint256[] calldata amounts, 
-        uint256 batchNonce, 
+        uint256 batchNonceElrondETH, 
         bytes[] calldata signatures) 
     public onlyRelayer {
         require(
             signatures.length >= quorum, 
             'Not enough signatures to achieve quorum');
-        require(executedBatches[batchNonce] == false, "Batch already executed");
-            executedBatches[batchNonce] = true;
+        require(executedBatches[batchNonceElrondETH] == false, "Batch already executed");
+            executedBatches[batchNonceElrondETH] = true;
         uint256 signersCount;
         
         bytes32 hashedDepositData = keccak256(
             abi.encodePacked(
                 prefix, keccak256(
                     abi.encode(
-                        recipients, tokens, amounts, batchNonce, executeTransferAction))));
+                        recipients, tokens, amounts, batchNonceElrondETH, executeTransferAction))));
         
         for (uint256 i = 0; i < signatures.length; i++) {
             bytes memory signature = signatures[i];
