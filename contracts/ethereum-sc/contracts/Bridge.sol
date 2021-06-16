@@ -24,7 +24,6 @@ relayers with the execute call, in order to save gas.
 contract Bridge is AccessControl {
     event RelayerAdded(address newRelayer);
     event RelayerRemoved(address removedRelayer);
-    event FinishedTransaction(uint256 depositNonce, DepositStatus status);
     event QuorumChanged(uint256 quorum);
 
     string private constant action = 'CurrentPendingBatch';
