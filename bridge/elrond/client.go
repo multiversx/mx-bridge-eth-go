@@ -413,27 +413,12 @@ func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 	return hash, err
 }
 
-func (c *Client) getCurrentTx() ([][]byte, error) {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("getCurrentTx").
-		Build()
-
-	return c.executeQuery(valueRequest)
-}
-
 func (c *Client) getCurrentBatch() ([][]byte, error) {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("getCurrentTxBatch").
 		Build()
 
 	return c.executeQuery(valueRequest)
-}
-
-func (c *Client) getNextPendingTransaction() (string, error) {
-	builder := newBuilder().
-		Func("getNextPendingTransaction")
-
-	return c.sendTransaction(builder, ExecutionCost)
 }
 
 func (c *Client) getNextPendingBatch() (string, error) {
