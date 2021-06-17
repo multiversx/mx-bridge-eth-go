@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
 	"math/big"
-	"reflect"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
@@ -28,11 +28,11 @@ const (
 )
 
 type BridgeContract interface {
-	GetNextPendingTransaction(opts *bind.CallOpts) (Deposit, error)
-	FinishCurrentPendingTransaction(opts *bind.TransactOpts, depositNonce *big.Int, newDepositStatus uint8, signatures [][]byte) (*types.Transaction, error)
-	ExecuteTransfer(opts *bind.TransactOpts, token common.Address, recipient common.Address, amount *big.Int, depositNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
-	WasTransactionExecuted(opts *bind.CallOpts, nonceId *big.Int) (bool, error)
-	WasTransferExecuted(opts *bind.CallOpts, nonceId *big.Int) (bool, error)
+	GetNextPendingBatch(opts *bind.CallOpts) (Batch, error)
+	FinishCurrentPendingBatch(opts *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error)
+	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
+	WasBatchExecuted(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
+	WasBatchFinished(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 }
 
 type BlockchainClient interface {
@@ -50,8 +50,8 @@ type Client struct {
 	broadcaster bridge.Broadcaster
 	mapper      bridge.Mapper
 
-	lastProposedStatus      uint8
-	lastTransferTransaction *bridge.DepositTransaction
+	lastProposedStatuses []uint8
+	lastTransferBatch    *bridge.Batch
 
 	log logger.Logger
 }
@@ -64,7 +64,7 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 		return nil, err
 	}
 
-	instance, err := NewContract(common.HexToAddress(config.BridgeAddress), ethClient)
+	instance, err := NewBridge(common.HexToAddress(config.BridgeAddress), ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -95,47 +95,58 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 	return client, nil
 }
 
-func (c *Client) GetPendingDepositTransaction(ctx context.Context) *bridge.DepositTransaction {
-	deposit, err := c.bridgeContract.GetNextPendingTransaction(&bind.CallOpts{Context: ctx})
+func (c *Client) GetPending(ctx context.Context) *bridge.Batch {
+	batch, err := c.bridgeContract.GetNextPendingBatch(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		c.log.Error(err.Error())
 		return nil
 	}
 
-	var result *bridge.DepositTransaction
-	if !reflect.DeepEqual(deposit.Depositor, common.Address{}) {
-		result = &bridge.DepositTransaction{
-			To:           string(deposit.Recipient),
-			From:         deposit.Depositor.String(),
-			TokenAddress: deposit.TokenAddress.String(),
-			Amount:       deposit.Amount,
-			DepositNonce: deposit.Nonce,
+	var result *bridge.Batch
+	if batch.Nonce.Cmp(big.NewInt(0)) != 0 {
+		var transactions []*bridge.DepositTransaction
+		for _, deposit := range batch.Deposits {
+			tx := &bridge.DepositTransaction{
+				To:           string(deposit.Recipient),
+				From:         deposit.Depositor.String(),
+				TokenAddress: deposit.TokenAddress.String(),
+				Amount:       deposit.Amount,
+				DepositNonce: deposit.Nonce,
+			}
+			transactions = append(transactions, tx)
+		}
+
+		result = &bridge.Batch{
+			Id:           batch.Nonce,
+			Transactions: transactions,
 		}
 	}
 
 	return result
 }
 
-func (c *Client) ProposeTransfer(_ context.Context, tx *bridge.DepositTransaction) (string, error) {
-	c.lastTransferTransaction = tx
-	c.broadcastSignatureForTransfer(tx.To, c.getErc20AddressFromTokenId(tx.TokenAddress), tx.Amount, tx.DepositNonce)
+func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
+	for _, tx := range batch.Transactions {
+		c.lastProposedStatuses = append(c.lastProposedStatuses, tx.Status)
+	}
+	c.broadcastSignatureForFinishCurrentPendingTransaction(batch.Id, c.lastProposedStatuses)
+}
+
+func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
+	c.lastTransferBatch = batch
+	c.broadcastSignatureForTransfer(batch)
 	return "", nil
 }
 
-func (c *Client) ProposeSetStatus(_ context.Context, status uint8, nonce bridge.Nonce) {
-	c.lastProposedStatus = status
-	c.broadcastSignatureForFinishCurrentPendingTransaction(c.lastProposedStatus, nonce)
-}
-
-func (c *Client) WasProposedTransfer(context.Context, bridge.Nonce) bool {
+func (c *Client) WasProposedTransfer(context.Context, bridge.BatchId) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.Nonce) bridge.ActionId {
+func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.BatchId) bridge.ActionId {
 	return bridge.NewActionId(0)
 }
 
-func (c *Client) WasProposedSetStatusOnPendingTransfer(context.Context, uint8) bool {
+func (c *Client) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 	return true
 }
 
@@ -143,14 +154,14 @@ func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridg
 	return bridge.NewActionId(0)
 }
 
-func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, nonce bridge.Nonce) bool {
+func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, batchId bridge.BatchId) bool {
 	var wasExecuted bool
 	var err error = nil
 
-	if c.lastTransferTransaction == nil {
-		wasExecuted, err = c.bridgeContract.WasTransactionExecuted(&bind.CallOpts{Context: ctx}, nonce)
+	if c.lastTransferBatch == nil {
+		wasExecuted, err = c.bridgeContract.WasBatchExecuted(&bind.CallOpts{Context: ctx}, batchId)
 	} else {
-		wasExecuted, err = c.bridgeContract.WasTransferExecuted(&bind.CallOpts{Context: ctx}, c.lastTransferTransaction.DepositNonce)
+		wasExecuted, err = c.bridgeContract.WasBatchFinished(&bind.CallOpts{Context: ctx}, c.lastTransferBatch.Id)
 	}
 	if err != nil {
 		c.log.Error(err.Error())
@@ -166,7 +177,7 @@ func (c *Client) Sign(context.Context, bridge.ActionId) (string, error) {
 	return "", nil
 }
 
-func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, nonce bridge.Nonce) (string, error) {
+func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batchId bridge.BatchId) (string, error) {
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
 
 	blockNonce, err := c.blockchainClient.PendingNonceAt(ctx, fromAddress)
@@ -198,13 +209,16 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, nonce bridge.No
 	var transaction *types.Transaction
 
 	signatures := c.broadcaster.Signatures()
-	if c.lastTransferTransaction == nil {
-		transaction, err = c.bridgeContract.FinishCurrentPendingTransaction(auth, nonce, c.lastProposedStatus, signatures)
+	c.log.Info(fmt.Sprintf("Signature count %d", len(signatures)))
+	c.log.Info(fmt.Sprintf("Signature %x", signatures[0]))
+	if c.lastTransferBatch == nil {
+		transaction, err = c.bridgeContract.FinishCurrentPendingBatch(auth, batchId, c.lastProposedStatuses, signatures)
 	} else {
-		tx := c.lastTransferTransaction
-		tokenAddress := common.HexToAddress(c.getErc20AddressFromTokenId(tx.TokenAddress))
-		toAddress := common.HexToAddress(tx.To)
-		transaction, err = c.bridgeContract.ExecuteTransfer(auth, tokenAddress, toAddress, tx.Amount, tx.DepositNonce, signatures)
+		batch := c.lastTransferBatch
+		tokens := c.tokenAddresses(batch.Transactions)
+		recipients := recipientsAddresses(batch.Transactions)
+		amounts := amounts(batch.Transactions)
+		transaction, err = c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amounts, batchId, signatures)
 	}
 	if err != nil {
 		return "", err
@@ -229,14 +243,14 @@ func (c *Client) signHash(hash common.Hash) ([]byte, error) {
 	return signature, nil
 }
 
-func (c *Client) broadcastSignatureForTransfer(to, tokenAddress string, amount *big.Int, depositNonce *big.Int) {
+func (c *Client) broadcastSignatureForTransfer(batch *bridge.Batch) {
 	arguments, err := transferArgs()
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	pack, err := arguments.Pack(common.HexToAddress(to), common.HexToAddress(tokenAddress), amount, depositNonce, "ExecuteTransfer")
+	pack, err := arguments.Pack(recipientsAddresses(batch.Transactions), c.tokenAddresses(batch.Transactions), amounts(batch.Transactions), new(big.Int).Set(batch.Id), "ExecuteBatchedTransfer")
 	if err != nil {
 		c.log.Error(err.Error())
 		return
@@ -252,20 +266,53 @@ func (c *Client) broadcastSignatureForTransfer(to, tokenAddress string, amount *
 	c.broadcaster.SendSignature(signature)
 }
 
-func (c *Client) broadcastSignatureForFinishCurrentPendingTransaction(status uint8, nonce bridge.Nonce) {
+func recipientsAddresses(transactions []*bridge.DepositTransaction) []common.Address {
+	var result []common.Address
+
+	for _, tx := range transactions {
+		result = append(result, common.HexToAddress(tx.To))
+	}
+
+	return result
+}
+
+func (c *Client) tokenAddresses(transactions []*bridge.DepositTransaction) []common.Address {
+	var result []common.Address
+
+	for _, tx := range transactions {
+		tokenAddress := c.getErc20AddressFromTokenId(tx.TokenAddress)
+		result = append(result, common.HexToAddress(tokenAddress))
+	}
+
+	return result
+}
+
+func amounts(transactions []*bridge.DepositTransaction) []*big.Int {
+	var result []*big.Int
+
+	for _, tx := range transactions {
+		result = append(result, tx.Amount)
+	}
+
+	return result
+}
+
+func (c *Client) broadcastSignatureForFinishCurrentPendingTransaction(batchId bridge.BatchId, statuses []uint8) {
 	arguments, err := finishCurrentPendingTransactionArgs()
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	pack, err := arguments.Pack(new(big.Int).Set(nonce), status, "CurrentPendingTransaction")
+	c.log.Info(fmt.Sprintf("Signing batchId %v with statuses: %v", batchId, statuses))
+	pack, err := arguments.Pack(new(big.Int).Set(batchId), statuses, "CurrentPendingBatch")
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
 	hash := crypto.Keccak256Hash(pack)
+	c.log.Info(fmt.Sprintf("Hash to sign %v", hash))
 	signature, err := c.signHash(hash)
 	if err != nil {
 		c.log.Error(err.Error())
@@ -280,17 +327,22 @@ func (c *Client) getErc20AddressFromTokenId(tokenId string) string {
 }
 
 func (c *Client) cleanState(wasExecuted bool) {
-	if wasExecuted && c.lastTransferTransaction != nil {
-		c.lastTransferTransaction = nil
-	} else if wasExecuted {
-		c.lastProposedStatus = 0
+	if wasExecuted && c.lastTransferBatch != nil {
+		c.lastTransferBatch = nil
+	} else {
+		c.lastProposedStatuses = []uint8{}
 	}
 }
 
 // helpers
 
 func transferArgs() (abi.Arguments, error) {
-	addressType, err := abi.NewType("address", "", nil)
+	addressesType, err := abi.NewType("address[]", "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	uint256ArrayType, err := abi.NewType("uint256[]", "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -306,10 +358,10 @@ func transferArgs() (abi.Arguments, error) {
 	}
 
 	return abi.Arguments{
-		abi.Argument{Name: "recipientAddress", Type: addressType},
-		abi.Argument{Name: "tokenAddress", Type: addressType},
-		abi.Argument{Name: "blockNonce", Type: uint256Type},
-		abi.Argument{Name: "amount", Type: uint256Type},
+		abi.Argument{Name: "tokens", Type: addressesType},
+		abi.Argument{Name: "recipients", Type: addressesType},
+		abi.Argument{Name: "amounts", Type: uint256ArrayType},
+		abi.Argument{Name: "nonce", Type: uint256Type},
 		abi.Argument{Name: "executeTransfer", Type: stringType},
 	}, nil
 
@@ -321,7 +373,7 @@ func finishCurrentPendingTransactionArgs() (abi.Arguments, error) {
 		return nil, err
 	}
 
-	uint8Type, err := abi.NewType("uint8", "", nil)
+	uint8Type, err := abi.NewType("uint8[]", "", nil)
 	if err != nil {
 		return nil, err
 	}

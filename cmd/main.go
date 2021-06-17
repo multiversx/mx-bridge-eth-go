@@ -68,25 +68,26 @@ func main() {
 }
 
 //func playgroundElrond(ctx *cli.Context) error {
-//	log.Info("Playground")
+//log.Info("Playground")
 //
-//	configurationFileName := ctx.GlobalString(configurationFile.Name)
-//	config, err := loadConfig(configurationFileName)
-//	if err != nil {
-//		return err
-//	}
+//configurationFileName := ctx.GlobalString(configurationFile.Name)
+//config, err := loadConfig(configurationFileName)
+//if err != nil {
+//	return err
+//}
 //
-//	client, err := elrond.NewClient(config.Elrond)
-//	if err != nil {
-//		return err
-//	}
+//client, err := elrond.NewClient(config.Elrond)
+//if err != nil {
+//	return err
+//}
 
 //log.Info(fmt.Sprintf("ERC20 address is %s", client.getERC20Address("574554482d386538333666")))
 //log.Info(fmt.Sprintf("TokenId is %s", client.getTokenId("90d2bd2d7d7EE1b46FE4193cB18B02Cb67d7A130")))
 //log.Info(fmt.Sprintf("Signers count %d", client.SignersCount(context.TODO(), bridge.ActionId(7))))
 
-//tx := client.GetPendingDepositTransaction(context.TODO())
-//log.Info(fmt.Sprintf("%+v", tx))
+//batch := client.GetPending(context.TODO())
+//log.Info(fmt.Sprintf("%+v", batch))
+//log.Info(fmt.Sprintf("%+v", batch.Transactions[0]))
 
 //ethClient, err := eth.NewClient(config.Eth, &broadcasterStub{}, client)
 //if err != nil {
@@ -101,46 +102,63 @@ func main() {
 //}
 //log.Info(fmt.Sprintf("Executed with hash %s", hash))
 //
-//client.ProposeSetStatus(context.TODO(), bridge.Executed, tx.DepositNonce)
+
+//for _, tx := range batch.Transactions {
+//	tx.Status = bridge.Executed
+//}
+//client.ProposeSetStatus(context.TODO(), batch)
 //time.Sleep(30 * time.Second)
 //
 //actionId := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO())
 //log.Info(fmt.Sprintf("%v", actionId))
 //
-//wasProposed := client.WasProposedSetStatusOnPendingTransfer(context.TODO(), bridge.Executed)
+//wasProposed := client.WasProposedSetStatus(context.TODO(), batch)
 //log.Info(fmt.Sprintf("was proposed: %v", wasProposed))
-//hash, err = client.Sign(context.TODO(), actionId)
+
+//hash, err := client.Sign(context.TODO(), actionId)
 //if err != nil {
 //	log.Error(err.Error())
 //}
 //log.Info(fmt.Sprintf("Sign %s", hash))
 //time.Sleep(30 * time.Second)
 //
-//hash, err = client.Execute(context.TODO(), actionId, tx.DepositNonce)
+//hash, err = client.Execute(context.TODO(), actionId, batch.Id)
 //if err != nil {
 //	log.Error(err.Error())
 //}
 //log.Info(fmt.Sprintf("Execute %s", hash))
 
-//nonce := bridge.Nonce(45)
-//transfer, err := client.ProposeTransfer(context.TODO(), &bridge.DepositTransaction{
+//batchId := bridge.NewBatchId(49)
+//tx1 := &bridge.DepositTransaction{
 //	To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
 //	From:         "0x132A150926691F08a693721503a38affeD18d524",
-//	TokenAddress: "574554482d393761323662",
+//	TokenAddress: "0x38117b25bbDD732794191E5B9A98E905ff11cadC",
+//	Amount:       big.NewInt(2),
+//}
+//tx2 := &bridge.DepositTransaction{
+//	To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+//	From:         "0x132A150926691F08a693721503a38affeD18d524",
+//	TokenAddress: "0x38117b25bbDD732794191E5B9A98E905ff11cadC",
 //	Amount:       big.NewInt(3),
-//	DepositNonce: nonce,
-//})
+//}
+//batch := &bridge.Batch{
+//	Id:           batchId,
+//	Transactions: []*bridge.DepositTransaction{tx1, tx2},
+//}
+//
+//transfer, err := client.ProposeTransferBatch(context.TODO(), batch)
 //if err != nil {
-//	return err
+//	log.Error(err.Error())
 //}
 //log.Info(transfer)
 //
-//result := client.WasProposedTransfer(context.TODO(), nonce)
+//time.Sleep(30 * time.Second)
+//result := client.WasProposedTransfer(context.TODO(), batchId)
 //log.Info(fmt.Sprint(result))
 //
-//time.Sleep(10 * time.Second)
-//actionId := client.GetActionIdForProposeTransfer(context.TODO(), nonce)
-//log.Info(fmt.Sprintf("ActionId: %d", actionId))
+//time.Sleep(30 * time.Second)
+//actionId := client.GetActionIdForProposeTransfer(context.TODO(), batchId)
+//log.Info(fmt.Sprintf("ActionId: %v", actionId))
 //
 //hash, err := client.Sign(context.TODO(), actionId)
 //if err != nil {
@@ -148,20 +166,21 @@ func main() {
 //}
 //log.Info(fmt.Sprintf("Sign hash %q", hash))
 //
-//time.Sleep(10 * time.Second)
-//hash, err = client.Execute(context.TODO(), actionId)
+//time.Sleep(30 * time.Second)
+//hash, err = client.Execute(context.TODO(), actionId, nil)
 //if err != nil {
 //	return err
 //}
 //log.Info(fmt.Sprintf("Perform hash %q", hash))
 //
-//time.Sleep(10 * time.Second)
-//log.Info(fmt.Sprintf("%v", client.WasExecuted(context.TODO(), actionId)))
+//time.Sleep(30 * time.Second)
+//log.Info(fmt.Sprintf("%v", client.WasExecuted(context.TODO(), actionId, nil)))
 
 // deploy
 // issue tokens (snippets)
 // deployCC
 // setLocalRoles
+// issue token -> esdtSafeAddTokenToWhitelist
 
 //client, err := eth.NewClient(config.Eth)
 //if err != nil {
@@ -169,11 +188,10 @@ func main() {
 //}
 //
 //client.GetPendingDepositTransaction(context.Background())
-//
-//	return nil
+
+//return nil
 //}
 
-//
 //func playgroundEth(ctx *cli.Context) error {
 //	log.Info("Playground Eth")
 //
@@ -183,17 +201,46 @@ func main() {
 //		return err
 //	}
 //
-//	client, err := eth.NewClient(config.Eth, &broadcasterStub{})
+//	elrdClient, err := elrond.NewClient(config.Elrond)
 //	if err != nil {
 //		return err
 //	}
 //
-//	tx := client.GetPendingDepositTransaction(context.Background())
-//	log.Info(fmt.Sprintf("%+v", tx))
-//	log.Info(fmt.Sprintf("Nonce %v", tx.DepositNonce))
+//	client, err := eth.NewClient(config.Eth, &broadcasterStub{}, elrdClient)
+//	if err != nil {
+//		return err
+//	}
 //
-//	client.ProposeSetStatus(context.Background(), tx.DepositNonce)
-//	hash, err := client.Execute(context.Background(), bridge.NewActionId(0), tx.DepositNonce)
+//	batchId := bridge.NewBatchId(3)
+//	tx1 := &bridge.DepositTransaction{
+//		To:           "0x264EeFfE37AA569BEc16A951c51bA25a98e07Dab",
+//		From:         "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+//		TokenAddress: "0x5745474c442d666639323737",
+//		Amount:       big.NewInt(2),
+//	}
+//	tx2 := &bridge.DepositTransaction{
+//		To:           "0x264EeFfE37AA569BEc16A951c51bA25a98e07Dab",
+//		From:         "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+//		TokenAddress: "0x5745474c442d666639323737",
+//		Amount:       big.NewInt(3),
+//	}
+//	batch := &bridge.Batch{
+//		Id:           batchId,
+//		Transactions: []*bridge.DepositTransaction{tx1, tx2},
+//	}
+//
+//	_, _ = client.ProposeTransfer(context.Background(), batch)
+
+//batch := client.GetPending(context.Background())
+//log.Info(fmt.Sprintf("%+v", batch))
+//log.Info(fmt.Sprintf("Nonce %v", batch.Id))
+//log.Info(fmt.Sprintf("Transactions %+v", batch.Transactions))
+//
+//batch.SetStatusOnAllTransactions(bridge.Executed, nil)
+//
+//client.ProposeSetStatus(context.Background(), batch)
+
+//	hash, err := client.Execute(context.Background(), bridge.NewActionId(0), batch.Id)
 //	if err != nil {
 //		return err
 //	}

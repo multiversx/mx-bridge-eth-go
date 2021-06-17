@@ -30,12 +30,12 @@ async function main() {
 
   // transactions
   await token.approve(safe.address, 3);
-  await safe.deposit(token.address, 3, hre.ethers.utils.toUtf8Bytes("erd1qj4x6cpfknsnd5zgfr6mtzxzj5gc2envepces2v57lh3v4pg973sqtm427")); // Ion
+  await safe.deposit(token.address, 3, hre.ethers.utils.toUtf8Bytes("erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8")); // Ion
   console.log("Balance for depositor", (await token.balanceOf(depositor.address)).toString());
   console.log("Balance in safe", (await token.balanceOf(safe.address)).toString());
 
-  pendingTransaction = await bridge.getNextPendingTransaction();
-  console.log(pendingTransaction);
+  pendingBatch = await bridge.getNextPendingBatch();
+  console.log(pendingBatch);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
