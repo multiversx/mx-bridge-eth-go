@@ -1,6 +1,6 @@
 [Eth]
 NetworkAddress = "http://127.0.0.1:8545"
-BridgeAddress = "0xc6BDb1E9606887da404a722487a47A7D15D238f0"
+BridgeAddress = "0x2cC4e1343B6276BbB53D93081De1E08F3B1Fc244"
 PrivateKey = "25b96cce574b43c1bb62b461826ed6bf60d16c3951c88b7b83947ea3ec03d82f"
 
 [Elrond]

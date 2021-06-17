@@ -111,7 +111,7 @@ func (m *Monitor) getPending(ctx context.Context, ch chan State) {
 
 func (m *Monitor) proposeTransfer(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
-		m.log.Info(fmt.Sprintf("Proposing deposit transaction for nonce %v", m.pendingBatch.Id))
+		m.log.Info(fmt.Sprintf("Proposing deposit transaction for batchId %v", m.pendingBatch.Id))
 		hash, err := m.destinationBridge.ProposeTransfer(ctx, m.pendingBatch)
 		if err != nil {
 			m.log.Error(err.Error())
