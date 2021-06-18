@@ -1,4 +1,4 @@
-const { waffle, ethers } = require("hardhat");
+const { waffle, ethers, network } = require("hardhat");
 const { expect } = require("chai");
 const { provider, deployContract } = waffle;
 
@@ -33,12 +33,12 @@ describe("Bridge", async function () {
   }
 
   async function setupReadyBatch() {
-    blockCountLimit = 3;
-    await erc20Safe.setBatchBlockCountLimit(blockCountLimit);
     await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
-    for (i = 0; i < blockCountLimit + 1; i++) {
-      await network.provider.send("evm_mine")
-    }
+
+    // 10 minutes and one second into the future
+    timeElapsedSinceBatchCreation = (10 * 60) + 1;
+    await network.provider.send('evm_increaseTime', [timeElapsedSinceBatchCreation]);
+    await network.provider.send("evm_mine")
   }
 
   beforeEach(async function () {
@@ -194,13 +194,31 @@ describe("Bridge", async function () {
     });
 
     describe('when batch is not ready', async function () {
-      beforeEach(async function () {
-        await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
-      });
+      describe('because it is not full', async function () {
+        beforeEach(async function () {
+          await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+        });
 
-      it('returns an empty batch', async function () {
-        batch = await bridge.getNextPendingBatch();
-        expect(batch.nonce).to.equal(0);
+        it('returns an empty batch', async function () {
+          batch = await bridge.getNextPendingBatch();
+          expect(batch.nonce).to.equal(0);
+        })
+      })
+
+      describe('because not enough time has passed since the batch was created', async function () {
+        beforeEach(async function () {
+          await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+
+          // 10 minutes into the future
+          timeElapsedSinceBatchCreation = (10 * 60);
+          await network.provider.send('evm_increaseTime', [timeElapsedSinceBatchCreation]);
+          await network.provider.send("evm_mine")
+        });
+
+        it('returns an empty batch', async function () {
+          batch = await bridge.getNextPendingBatch();
+          expect(batch.nonce).to.equal(0);
+        })
       })
     })
   });

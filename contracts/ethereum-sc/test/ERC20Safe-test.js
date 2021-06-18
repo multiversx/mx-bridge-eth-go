@@ -98,30 +98,24 @@ describe("ERC20Safe", async function () {
         await (expect(nonAdminSafe.setBatchSize(newBatchSize))).to.be.revertedWith("Access Control: sender is not Admin");
       })
     })
-
-    describe('called with a value above the maximum', async function () {
-      it('reverts', async function () {
-        await expect(safe.setBatchSize(21))
-          .to.be.revertedWith("Batch size too high");
-      })
-    })
   })
 
-  describe('setBatchBlockCountLimit', async function () {
+  describe('setBatchTimeLimit', async function () {
     beforeEach(async function () {
-      newBatchBlockCountLimit = 3;
+      // 20 minutes
+      newBatchTimeLimit = 20 * 60;
     })
 
     it('updates the batch block limit', async function () {
-      await safe.setBatchBlockCountLimit(newBatchBlockCountLimit);
+      await safe.setBatchTimeLimit(newBatchTimeLimit);
 
-      expect(await safe.batchBlockCountLimit.call()).to.equal(newBatchBlockCountLimit);
+      expect(await safe.batchTimeLimit.call()).to.equal(newBatchTimeLimit);
     })
 
     it('emits event', async function () {
-      await expect(safe.setBatchBlockCountLimit(newBatchBlockCountLimit))
-        .to.emit(safe, 'BatchBlockCountLimitChanged')
-        .withArgs(newBatchBlockCountLimit);
+      await expect(safe.setBatchTimeLimit(newBatchTimeLimit))
+        .to.emit(safe, 'BatchTimeLimitChanged')
+        .withArgs(newBatchTimeLimit);
     })
 
     describe('called by non admin', async function () {
@@ -130,7 +124,7 @@ describe("ERC20Safe", async function () {
       });
 
       it('reverts', async function () {
-        await (expect(nonAdminSafe.setBatchBlockCountLimit(newBatchBlockCountLimit))).to.be.revertedWith("Access Control: sender is not Admin");
+        await (expect(nonAdminSafe.setBatchTimeLimit(newBatchTimeLimit))).to.be.revertedWith("Access Control: sender is not Admin");
       })
     })
   })
