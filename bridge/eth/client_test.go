@@ -162,8 +162,8 @@ func TestSignersCount(t *testing.T) {
 }
 
 func TestWasExecuted(t *testing.T) {
-	t.Run("when there is not last transaction", func(t *testing.T) {
-		contract := &bridgeContractStub{wasExecuted: true}
+	t.Run("when there is not last batch", func(t *testing.T) {
+		contract := &bridgeContractStub{wasBatchFinished: true}
 		client := Client{
 			bridgeContract: contract,
 			broadcaster:    &broadcasterStub{},
@@ -174,8 +174,8 @@ func TestWasExecuted(t *testing.T) {
 
 		assert.Equal(t, true, got)
 	})
-	t.Run("when there is a last transaction", func(t *testing.T) {
-		contract := &bridgeContractStub{wasTransferExecuted: true}
+	t.Run("when there is a last batch", func(t *testing.T) {
+		contract := &bridgeContractStub{wasExecuted: true}
 		client := Client{
 			bridgeContract:    contract,
 			lastTransferBatch: &bridge.Batch{},
@@ -187,9 +187,9 @@ func TestWasExecuted(t *testing.T) {
 
 		assert.Equal(t, true, got)
 	})
-	t.Run("when is true and there is last transaction it will clean the state", func(t *testing.T) {
+	t.Run("when is true and there is last batch it will clean the state", func(t *testing.T) {
 		client := Client{
-			bridgeContract:       &bridgeContractStub{wasExecuted: true, wasTransferExecuted: true},
+			bridgeContract:       &bridgeContractStub{wasExecuted: true, wasBatchFinished: true},
 			log:                  logger.GetOrCreate("testEthClient"),
 			lastTransferBatch:    &bridge.Batch{},
 			lastProposedStatuses: []uint8{bridge.Executed},
@@ -211,9 +211,9 @@ func TestWasExecuted(t *testing.T) {
 
 		assert.Empty(t, client.lastProposedStatuses)
 	})
-	t.Run("when is false and there is a last transaction it will not clean the state", func(t *testing.T) {
+	t.Run("when is false and there is a last batch it will not clean the state", func(t *testing.T) {
 		client := Client{
-			bridgeContract:       &bridgeContractStub{wasExecuted: true},
+			bridgeContract:       &bridgeContractStub{wasExecuted: false},
 			log:                  logger.GetOrCreate("testEthClient"),
 			lastProposedStatuses: []uint8{bridge.Executed},
 			lastTransferBatch:    &bridge.Batch{},
@@ -294,7 +294,7 @@ func publicKey(t *testing.T) *ecdsa.PublicKey {
 type bridgeContractStub struct {
 	batch               Batch
 	wasExecuted         bool
-	wasTransferExecuted bool
+	wasBatchFinished    bool
 	executedTransaction *types.Transaction
 	transferTransaction *types.Transaction
 }
@@ -316,7 +316,7 @@ func (c *bridgeContractStub) WasBatchExecuted(*bind.CallOpts, *big.Int) (bool, e
 }
 
 func (c *bridgeContractStub) WasBatchFinished(*bind.CallOpts, *big.Int) (bool, error) {
-	return c.wasTransferExecuted, nil
+	return c.wasBatchFinished, nil
 }
 
 type broadcasterStub struct {
