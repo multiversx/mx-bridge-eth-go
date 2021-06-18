@@ -38,6 +38,7 @@ contract ERC20Safe {
     event UpdatedDepositStatus(uint256 depositNonce, DepositStatus newDepositStatus);
     event BatchSizeChanged(uint256 newBatchSize);
     event TokenWhitelisted(address tokenAddress);
+    event TokenRemovedFromWhitelist(address tokenAddress);
     event ERC20Deposited(uint256 depositNonce);
 
     modifier onlyAdmin() {
@@ -62,6 +63,11 @@ contract ERC20Safe {
     function whitelistToken(address token) external onlyAdmin {
         whitelistedTokens[token] = true;
         emit TokenWhitelisted(token);
+    }
+
+    function removeTokenFromWhitelist(address token) external onlyAdmin {
+        whitelistedTokens[token] = false;
+        emit TokenRemovedFromWhitelist(token);
     }
 
     function setBridgeAddress(address _bridgeAddress) external onlyAdmin { 
