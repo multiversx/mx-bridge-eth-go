@@ -48,6 +48,33 @@ describe("ERC20Safe", async function () {
     })
   });
 
+  describe('removeTokenFromWhitelist', async function () {
+    beforeEach(async function () {
+      await safe.whitelistToken(afc.address);
+    })
+    it('removes the token to the whitelistedTokens list', async function () {
+      await safe.removeTokenFromWhitelist(afc.address);
+
+      expect(await safe.whitelistedTokens(afc.address)).to.be.false;
+    })
+
+    it('emits event', async function () {
+      await expect(safe.removeTokenFromWhitelist(afc.address))
+        .to.emit(safe, 'TokenRemovedFromWhitelist')
+        .withArgs(afc.address);
+    })
+
+    describe('called by non admin', async function () {
+      beforeEach(async function () {
+        nonAdminSafe = safe.connect(otherWallet);
+      });
+
+      it('reverts', async function () {
+        await (expect(nonAdminSafe.removeTokenFromWhitelist(afc.address))).to.be.revertedWith("Access Control: sender is not Admin");
+      })
+    })
+  });
+
   describe('setBridgeAddress', async function () {
     it('updates updates the address', async function () {
       await safe.setBridgeAddress(bridgeWallet.address);
