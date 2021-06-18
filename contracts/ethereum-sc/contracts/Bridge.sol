@@ -117,7 +117,7 @@ contract Bridge is AccessControl {
         @notice Gets information about the current batch of deposits
         @return Batch which consists of:
         - batch nonce
-        - startBlockNumber
+        - timestamp
         - deposits List of the deposits included in this batch
         @dev Even if there are deposits in the Safe, the current batch might still return as empty. This is because it might not be final (not full, and not enough blocks elapsed)
     */

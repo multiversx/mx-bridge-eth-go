@@ -15,7 +15,7 @@ import "hardhat/console.sol";
 In order to use it:
 - The Bridge.sol must be deployed and must be whitelisted for the Safe contract.
 @dev The deposits are requested by the Bridge, and in order to save gas spent by the relayers
-they will be batched either by time (batchBlockCountLimit) or size (batchSize).
+they will be batched either by time (batchTimeLimit) or size (batchSize).
 There can only be one pending Batch. 
  */
 contract ERC20Safe {
@@ -23,8 +23,7 @@ contract ERC20Safe {
     
     uint256 public depositsCount;
     uint256 public batchesCount;
-    // Approx 10 minutes = 54 blocks * 11 sec/block = 594 sec
-    uint256 public batchBlockCountLimit = 54;
+    uint256 public batchTimeLimit = 10 minutes;
     // Maximum number of transactions within a batch
     uint256 public batchSize = 10;
     uint256 private constant maxBatchSize = 20;
@@ -35,7 +34,7 @@ contract ERC20Safe {
     uint256 private currentPendingBatch;
     
     event BridgeAddressChanged(address newAddress);
-    event BatchBlockCountLimitChanged(uint256 newBatchBlockCountLimit);
+    event BatchTimeLimitChanged(uint256 newTimeLimitInSeconds);
     event UpdatedDepositStatus(uint256 depositNonce, DepositStatus newDepositStatus);
     event BatchSizeChanged(uint256 newBatchSize);
     event TokenWhitelisted(address tokenAddress);
@@ -70,9 +69,9 @@ contract ERC20Safe {
         emit BridgeAddressChanged(bridgeAddress);
     }
 
-    function setBatchBlockCountLimit(uint256 newBatchBlockCountLimit) external onlyAdmin {
-        batchBlockCountLimit = newBatchBlockCountLimit;
-        emit BatchBlockCountLimitChanged(batchBlockCountLimit);
+    function setBatchTimeLimit(uint256 newBatchTimeLimit) external onlyAdmin {
+        batchTimeLimit = newBatchTimeLimit;
+        emit BatchTimeLimitChanged(batchTimeLimit);
     }
 
     function setBatchSize(uint256 newBatchSize) external onlyAdmin {
@@ -94,14 +93,14 @@ contract ERC20Safe {
         bytes calldata recipientAddress
     ) public {
         require(whitelistedTokens[tokenAddress], "Unsupported token");
-        uint256 currentBlockNumber = block.number;
+        uint256 currentTimestamp = block.timestamp;
 
         Batch storage batch;
-        if (batchesCount == 0 || batches[batchesCount-1].startBlockNumber + batchBlockCountLimit < currentBlockNumber || batches[batchesCount-1].deposits.length >= batchSize)
+        if (batchesCount == 0 || batches[batchesCount-1].timestamp + batchTimeLimit < currentTimestamp || batches[batchesCount-1].deposits.length >= batchSize)
         {
             batch = batches[batchesCount];
             batch.nonce = batchesCount + 1;
-            batch.startBlockNumber = currentBlockNumber;
+            batch.timestamp = currentTimestamp;
             batchesCount++;
         }
         else
@@ -130,7 +129,7 @@ contract ERC20Safe {
         @param batchNonce Identifier for the batch
         @return Batch which consists of:
         - batch nonce
-        - startBlockNumber
+        - timestamp
         - deposits List of the deposits included in this batch
     */
     function getBatch(uint256 batchNonce) 
@@ -145,15 +144,15 @@ contract ERC20Safe {
         @notice Gets a batch - if it is final
         @return Batch which consists of:
         - batch nonce
-        - startBlockNumber
+        - timestamp
         - deposits List of the deposits included in this batch
         @dev This function is to be called by the bridge (which is called by the relayers)
-        It only returns final batches - batches that are full (batchSize) or the block limit time has passed.
+        It only returns final batches - batches that are full (batchSize) or the block time limit time has passed.
     */
     function getNextPendingBatch() public view returns (Batch memory) {
         Batch memory batch = batches[currentPendingBatch];
 
-        if((batch.startBlockNumber + batchBlockCountLimit) < block.number || batch.deposits.length >= batchSize)
+        if((batch.timestamp + batchTimeLimit) < block.timestamp || batch.deposits.length >= batchSize)
         {
             return batch;
         }
