@@ -24,7 +24,7 @@ import (
 
 const (
 	MessagePrefix = "\u0019Ethereum Signed Message:\n32"
-	GasLimit      = uint64(300000)
+	GasLimit      = uint64(400000)
 )
 
 type BridgeContract interface {
@@ -96,6 +96,7 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 }
 
 func (c *Client) GetPending(ctx context.Context) *bridge.Batch {
+	c.log.Info("ETH: Getting pending batch")
 	batch, err := c.bridgeContract.GetNextPendingBatch(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		c.log.Error(err.Error())
@@ -130,11 +131,14 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 		c.lastProposedStatuses = append(c.lastProposedStatuses, tx.Status)
 	}
 	c.broadcastSignatureForFinishCurrentPendingTransaction(batch.Id, c.lastProposedStatuses)
+	c.log.Info(fmt.Sprintf("ETH: Broadcast status signatures for for batchId %v", batch.Id))
 }
 
 func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	c.lastTransferBatch = batch
 	c.broadcastSignatureForTransfer(batch)
+	c.log.Info(fmt.Sprintf("ETH: Broadcast transfer signatures for for batchId %v", batch.Id))
+
 	return "", nil
 }
 
@@ -159,9 +163,9 @@ func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, batchId bri
 	var err error = nil
 
 	if c.lastTransferBatch == nil {
-		wasExecuted, err = c.bridgeContract.WasBatchExecuted(&bind.CallOpts{Context: ctx}, batchId)
+		wasExecuted, err = c.bridgeContract.WasBatchFinished(&bind.CallOpts{Context: ctx}, batchId)
 	} else {
-		wasExecuted, err = c.bridgeContract.WasBatchFinished(&bind.CallOpts{Context: ctx}, c.lastTransferBatch.Id)
+		wasExecuted, err = c.bridgeContract.WasBatchExecuted(&bind.CallOpts{Context: ctx}, c.lastTransferBatch.Id)
 	}
 	if err != nil {
 		c.log.Error(err.Error())
@@ -169,6 +173,12 @@ func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, batchId bri
 	}
 
 	c.cleanState(wasExecuted)
+
+	if wasExecuted {
+		c.log.Info(fmt.Sprintf("ETH: BatchID %v was executed", batchId))
+	} else {
+		c.log.Info(fmt.Sprintf("ETH: BatchID %v was not executed", batchId))
+	}
 
 	return wasExecuted
 }
@@ -209,8 +219,6 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batchId bridge.
 	var transaction *types.Transaction
 
 	signatures := c.broadcaster.Signatures()
-	c.log.Info(fmt.Sprintf("Signature count %d", len(signatures)))
-	c.log.Info(fmt.Sprintf("Signature %x", signatures[0]))
 	if c.lastTransferBatch == nil {
 		transaction, err = c.bridgeContract.FinishCurrentPendingBatch(auth, batchId, c.lastProposedStatuses, signatures)
 	} else {
@@ -220,11 +228,15 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batchId bridge.
 		amounts := amounts(batch.Transactions)
 		transaction, err = c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amounts, batchId, signatures)
 	}
+
 	if err != nil {
 		return "", err
 	}
 
-	return transaction.Hash().String(), err
+	hash := transaction.Hash().String()
+	c.log.Info(fmt.Sprintf("ETH: Executed batchId %v with hash %s", batchId, hash))
+
+	return hash, err
 }
 
 func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
@@ -304,7 +316,6 @@ func (c *Client) broadcastSignatureForFinishCurrentPendingTransaction(batchId br
 		return
 	}
 
-	c.log.Info(fmt.Sprintf("Signing batchId %v with statuses: %v", batchId, statuses))
 	pack, err := arguments.Pack(new(big.Int).Set(batchId), statuses, "CurrentPendingBatch")
 	if err != nil {
 		c.log.Error(err.Error())
@@ -312,7 +323,6 @@ func (c *Client) broadcastSignatureForFinishCurrentPendingTransaction(batchId br
 	}
 
 	hash := crypto.Keccak256Hash(pack)
-	c.log.Info(fmt.Sprintf("Hash to sign %v", hash))
 	signature, err := c.signHash(hash)
 	if err != nil {
 		c.log.Error(err.Error())

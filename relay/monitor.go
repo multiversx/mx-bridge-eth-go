@@ -93,7 +93,6 @@ func (m *Monitor) Start(ctx context.Context) {
 // State
 
 func (m *Monitor) getPending(ctx context.Context, ch chan State) {
-	m.log.Info("Getting pending batch")
 	m.pendingBatch = m.sourceBridge.GetPending(ctx)
 
 	if m.pendingBatch == nil {
@@ -111,15 +110,13 @@ func (m *Monitor) getPending(ctx context.Context, ch chan State) {
 
 func (m *Monitor) proposeTransfer(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
-		m.log.Info(fmt.Sprintf("Proposing deposit transaction for batchId %v", m.pendingBatch.Id))
-		hash, err := m.destinationBridge.ProposeTransfer(ctx, m.pendingBatch)
+		_, err := m.destinationBridge.ProposeTransfer(ctx, m.pendingBatch)
 		if err != nil {
 			m.log.Error(err.Error())
 			m.pendingBatch.SetStatusOnAllTransactions(bridge.Rejected, err)
 			m.executingBridge = m.sourceBridge
 			ch <- ProposeSetStatus
 		} else {
-			m.log.Info(fmt.Sprintf("Proposed with hash %q", hash))
 			ch <- WaitForTransferProposal
 		}
 	} else {
@@ -132,13 +129,10 @@ func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
 	select {
 	case <-m.timer.After(Timeout):
 		if m.destinationBridge.WasProposedTransfer(ctx, m.pendingBatch.Id) {
-			m.log.Info(fmt.Sprintf("Signing batch with nonce %v", m.pendingBatch.Id))
 			m.actionId = m.destinationBridge.GetActionIdForProposeTransfer(ctx, m.pendingBatch.Id)
-			hash, err := m.destinationBridge.Sign(ctx, m.actionId)
+			_, err := m.destinationBridge.Sign(ctx, m.actionId)
 			if err != nil {
 				m.log.Error(err.Error())
-			} else {
-				m.log.Info(fmt.Sprintf("Singed with hash %q", hash))
 			}
 			m.executingBridge = m.destinationBridge
 			ch <- WaitForSignatures
@@ -151,14 +145,14 @@ func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
 }
 
 func (m *Monitor) waitForSignatures(ctx context.Context, ch chan State) {
-	m.log.Info(fmt.Sprintf("Waiting for signatures for actionId %v", m.actionId))
+	m.log.Info("Waiting for signatures")
 	select {
 	case <-m.timer.After(Timeout):
 		count := m.executingBridge.SignersCount(ctx, m.actionId)
 		peerCount := m.topologyProvider.PeerCount()
 		minCountRequired := math.Ceil(float64(peerCount) * MinSignaturePercent / 100)
 
-		m.log.Info(fmt.Sprintf("Got %d signatures for actionId %v", count, m.actionId))
+		m.log.Info(fmt.Sprintf("Got %d signatures", count))
 		if count >= uint(minCountRequired) && count > 0 {
 			ch <- Execute
 		} else {
@@ -171,25 +165,21 @@ func (m *Monitor) waitForSignatures(ctx context.Context, ch chan State) {
 
 func (m *Monitor) execute(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
-		m.log.Info(fmt.Sprintf("Executing actionId %v", m.actionId))
-		hash, err := m.executingBridge.Execute(ctx, m.actionId, m.pendingBatch.Id)
+		_, err := m.executingBridge.Execute(ctx, m.actionId, m.pendingBatch.Id)
 
 		if err != nil {
 			m.log.Error(err.Error())
 		}
-
-		m.log.Info(fmt.Sprintf("ActionId %v was executed with hash %q", m.actionId, hash))
 	}
 
 	ch <- WaitForExecute
 }
 
 func (m *Monitor) waitForExecute(ctx context.Context, ch chan State) {
-	m.log.Info(fmt.Sprintf("Waiting for execution for actionID %v", m.actionId))
+	m.log.Info("Waiting for execution")
 	select {
 	case <-m.timer.After(Timeout):
 		if m.executingBridge.WasExecuted(ctx, m.actionId, m.pendingBatch.Id) {
-			m.log.Info(fmt.Sprintf("ActionId %v was executed", m.actionId))
 			m.pendingBatch.SetStatusOnAllTransactions(bridge.Executed, nil)
 
 			switch m.executingBridge {
@@ -208,7 +198,6 @@ func (m *Monitor) waitForExecute(ctx context.Context, ch chan State) {
 
 func (m *Monitor) proposeSetStatus(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
-		m.log.Info(fmt.Sprintf("Proposing set status on batch with nonce %v", m.pendingBatch.Id))
 		m.sourceBridge.ProposeSetStatus(ctx, m.pendingBatch)
 	}
 	ch <- WaitForSetStatusProposal
@@ -219,13 +208,12 @@ func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan State) {
 	select {
 	case <-m.timer.After(Timeout):
 		if m.sourceBridge.WasProposedSetStatus(ctx, m.pendingBatch) {
-			m.log.Info(fmt.Sprintf("Signing set status for transaction with nonce %v", m.pendingBatch.Id))
+			m.log.Info(fmt.Sprintf("Signing set status for batch with id %v", m.pendingBatch.Id))
 			m.actionId = m.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx)
-			hash, err := m.sourceBridge.Sign(ctx, m.actionId)
+			_, err := m.sourceBridge.Sign(ctx, m.actionId)
 			if err != nil {
 				m.log.Error(err.Error())
 			}
-			m.log.Info(fmt.Sprintf("Singed set status for batch with id %v with hash %q", m.pendingBatch.Id, hash))
 			m.executingBridge = m.sourceBridge
 			ch <- WaitForSignatures
 		} else {

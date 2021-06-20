@@ -28,7 +28,7 @@ const (
 	PrivateTopicName = "private/1"
 	SignTopicName    = "sign/1"
 
-	Timeout = 30 * time.Second
+	Timeout = 40 * time.Second
 )
 
 type Peers []core.PeerID
