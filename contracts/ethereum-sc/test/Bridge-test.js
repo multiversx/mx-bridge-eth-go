@@ -72,7 +72,7 @@ describe("Bridge", async function () {
 
   describe("addRelayer", async function () {
     it('reverts when called with an empty address', async function () {
-      await expect(bridge.addRelayer(ethers.constants.AddressZero)).to.be.revertedWith('');
+      await expect(bridge.addRelayer(ethers.constants.AddressZero)).to.be.revertedWith('newRelayerAddress cannot be 0x0');
     })
 
     it('reverts when not called by admin', async function () {
