@@ -295,10 +295,10 @@ contract Bridge is AccessControl {
         @param batchNonce Nonce for the batch.
         @return status for the batch. true - executed, false - pending (not executed yet)
     */
-    function wasBatchFinished(uint256 batchNonce) external view returns(bool) 
+    function wasBatchFinished(uint256 batchNonceETHElrond) external view returns(bool) 
     {
         ERC20Safe safe = ERC20Safe(erc20SafeAddress);
-        Batch memory batch = safe.getBatch(batchNonce);
+        Batch memory batch = safe.getBatch(batchNonceETHElrond);
         
         if(batch.deposits.length == 0)
         {
@@ -316,8 +316,8 @@ contract Bridge is AccessControl {
         return true;
     }
 
-    function wasBatchExecuted(uint256 batchNonce) external view returns(bool) 
+    function wasBatchExecuted(uint256 batchNonceElrondETH) external view returns(bool) 
     {
-        return executedBatches[batchNonce];
+        return executedBatches[batchNonceElrondETH];
     }
 }
