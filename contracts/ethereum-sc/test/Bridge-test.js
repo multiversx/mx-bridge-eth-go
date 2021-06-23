@@ -320,6 +320,22 @@ describe("Bridge", async function () {
           expect(await bridge.wasBatchFinished(batch.nonce)).to.be.true;
         })
       })
+
+      describe('but all signatures are from the same relayer', async function () {
+        beforeEach(async function () {
+          newDepositStatuses = [3, 3, 3, 3, 3, 3, 4, 4, 4, 4];
+          batch = await bridge.getNextPendingBatch();
+
+          dataToSign = await getBatchDataToSign(batch, newDepositStatuses);
+          signature1 = await adminWallet.signMessage(dataToSign);
+          signatures = [signature1, signature1, signature1, signature1, signature1, signature1, signature1];
+        })
+
+        it('reverts', async function () {
+          await expect(bridge.finishCurrentPendingBatch(batch.nonce, newDepositStatuses, signatures))
+            .to.be.revertedWith("Multiple signatures from the same relayer");
+        })
+      })
     })
 
     describe('with incorrect number of statuses', async function () {

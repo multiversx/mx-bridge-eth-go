@@ -164,6 +164,7 @@ contract Bridge is AccessControl {
         bytes32 hashedDepositData = keccak256(prefixedSignData);
         uint256 signersCount;
 
+        address[] memory validSigners = new address[](signatures.length);
         for (uint256 signatureIndex = 0; signatureIndex < signatures.length; signatureIndex++) {
             bytes memory signature = signatures[signatureIndex];
             require(signature.length == 65, 'Malformed signature');
@@ -194,7 +195,22 @@ contract Bridge is AccessControl {
                 "Not a recognized relayer"
             );
 
-            
+            // Determine if we have multiple signatures from the same relayer
+            uint si;
+            for (si = 0; si < validSigners.length; si++) {
+                if (validSigners[si] == address(0)) {
+                    // We reached the end of the loop.
+                    // This preserves the value of `si` which is used below
+                    // as the first open position.
+                    break;
+                }
+                
+                require(publicKey != validSigners[si], "Multiple signatures from the same relayer");
+            }
+            // We save this signer in the first open position.
+            validSigners[si] = publicKey;
+            // END: Determine if we have multiple signatures from the same relayer
+
             signersCount++;
         }
 
