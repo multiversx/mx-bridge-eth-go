@@ -52,6 +52,7 @@ describe("ERC20Safe", async function () {
     beforeEach(async function () {
       await safe.whitelistToken(afc.address);
     })
+
     it('removes the token to the whitelistedTokens list', async function () {
       await safe.removeTokenFromWhitelist(afc.address);
 
