@@ -125,7 +125,6 @@ contract ERC20Safe {
     }
 
     function transfer(address tokenAddress, uint256 amount, address recipientAddress) external onlyBridge {
-        require(whitelistedTokens[tokenAddress] == true, "Unsupported token");
         IERC20 erc20 = IERC20(tokenAddress);
         erc20.safeTransfer(recipientAddress, amount);
     }

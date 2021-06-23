@@ -448,25 +448,10 @@ describe("Bridge", async function () {
         await expect(bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures)).to.be.revertedWith("Batch already executed");
       })
     })
-
     describe('called by a non relayer', async function () {
       it('reverts', async function () {
         nonAdminBridge = bridge.connect(otherWallet);
         await expect(nonAdminBridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures)).to.be.revertedWith("Access Control: sender is not Relayer");
-      })
-    })
-
-    describe('called for a non whitelisted token', async function () {
-      beforeEach(async function () {
-        nonWhitelistedToken = await deployContract(adminWallet, AFC, [1000]);
-
-        signatures = await getSignaturesForExecuteTransfer([nonWhitelistedToken.address], [otherWallet.address], [amount], batchNonce);
-      })
-
-      it('reverts', async function () {
-        await expect(
-          bridge.executeTransfer([nonWhitelistedToken.address], [otherWallet.address], [amount], batchNonce, signatures))
-          .to.be.revertedWith('Unsupported token')
       })
     })
   })
