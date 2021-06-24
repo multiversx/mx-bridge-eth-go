@@ -248,6 +248,7 @@ contract Bridge is AccessControl {
                     abi.encode(
                         recipients, tokens, amounts, batchNonceElrondETH, executeTransferAction))));
         
+        address[] memory validSigners = new address[](signatures.length);
         for (uint256 i = 0; i < signatures.length; i++) {
             bytes memory signature = signatures[i];
             require(signature.length == 65, 'Malformed signature');
@@ -278,6 +279,22 @@ contract Bridge is AccessControl {
                 "Not a recognized relayer"
             );
             
+            // Determine if we have multiple signatures from the same relayer
+            uint si;
+            for (si = 0; si < validSigners.length; si++) {
+                if (validSigners[si] == address(0)) {
+                    // We reached the end of the loop.
+                    // This preserves the value of `si` which is used below
+                    // as the first open position.
+                    break;
+                }
+                
+                require(publicKey != validSigners[si], "Multiple signatures from the same relayer");
+            }
+            // We save this signer in the first open position.
+            validSigners[si] = publicKey;
+            // END: Determine if we have multiple signatures from the same relayer
+
             signersCount++;
         }
 
@@ -292,7 +309,7 @@ contract Bridge is AccessControl {
 
     /**
         @notice Verifies if all the deposits within a batch are finalized (Executed or Rejected)
-        @param batchNonce Nonce for the batch.
+        @param batchNonceETHElrond Nonce for the batch.
         @return status for the batch. true - executed, false - pending (not executed yet)
     */
     function wasBatchFinished(uint256 batchNonceETHElrond) external view returns(bool) 

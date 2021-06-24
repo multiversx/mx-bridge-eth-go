@@ -416,14 +416,29 @@ describe("Bridge", async function () {
       return [signature1, signature2, signature3, signature4, signature5, signature6, signature7];
     }
 
-    it('transfers tokens', async function () {
-      await expect(() => bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures))
-        .to.changeTokenBalance(afc, otherWallet, amount);
-    })
+    describe("when quorum achieved", async function () {
+      it('transfers tokens', async function () {
+        await expect(() => bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures))
+          .to.changeTokenBalance(afc, otherWallet, amount);
+      })
 
-    it('sets the wasBatchExecuted to true', async function () {
-      await bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures);
-      expect(await bridge.wasBatchExecuted(batchNonce)).to.be.true;
+      it('sets the wasBatchExecuted to true', async function () {
+        await bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures);
+        expect(await bridge.wasBatchExecuted(batchNonce)).to.be.true;
+      })
+
+      describe('but all signatures are from the same relayer', async function () {
+        beforeEach(async function () {
+          dataToSign = await getExecuteTransferData([afc.address], [otherWallet.address], [amount], batchNonce);
+          signature1 = await adminWallet.signMessage(dataToSign);
+          signatures = [signature1, signature1, signature1, signature1, signature1, signature1, signature1];
+        })
+
+        it('reverts', async function () {
+          await expect(bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures))
+            .to.be.revertedWith("Multiple signatures from the same relayer");
+        })
+      })
     })
 
     describe('not enough signatures for quorum', async function () {
@@ -448,6 +463,7 @@ describe("Bridge", async function () {
         await expect(bridge.executeTransfer([afc.address], [otherWallet.address], [amount], batchNonce, signatures)).to.be.revertedWith("Batch already executed");
       })
     })
+
     describe('called by a non relayer', async function () {
       it('reverts', async function () {
         nonAdminBridge = bridge.connect(otherWallet);
