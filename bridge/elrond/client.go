@@ -88,14 +88,14 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 	c.log.Info("Elrond: Getting pending batch")
 	responseData, err := c.getCurrentBatch()
 	if err != nil {
-		c.log.Error(err.Error())
+		c.log.Error(fmt.Sprintf("Error quering current batch: %q", err.Error()))
 		return nil
 	}
 
 	if len(responseData) == 0 {
 		_, err := c.getNextPendingBatch()
 		if err != nil {
-			c.log.Error(err.Error())
+			c.log.Error(fmt.Sprintf("Error retriving next pending batch %q", err.Error()))
 			return nil
 		}
 	}
@@ -151,7 +151,8 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	builder := newBuilder().
 		Func("proposeEsdtSafeSetCurrentTransactionBatchStatus").
-		Address(c.address)
+		Address(c.address).
+		BatchId(batch.Id)
 
 	for _, tx := range batch.Transactions {
 		builder = builder.Int(big.NewInt(int64(tx.Status)))
@@ -167,7 +168,7 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	builder := newBuilder().
 		Func("proposeMultiTransferEsdtBatch").
-		Int(batch.Id)
+		BatchId(batch.Id)
 
 	for _, tx := range batch.Transactions {
 		builder = builder.
@@ -196,7 +197,7 @@ func (c *Client) WasProposedTransfer(_ context.Context, batchId bridge.BatchId) 
 
 func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batchId bridge.BatchId) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("getActionIdForBatchId").
+		Func("getActionIdForTransferBatch").
 		BatchId(batchId).
 		Build()
 
@@ -215,7 +216,7 @@ func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batchId bridge
 
 func (c *Client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("wasSetCurrentTransactionBatchStatusActionProposed")
+		Func("wasSetCurrentTransactionBatchStatu3sActionProposed")
 
 	for _, tx := range batch.Transactions {
 		valueRequest.Int(big.NewInt(int64(tx.Status)))
@@ -226,7 +227,7 @@ func (c *Client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bo
 
 func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("getActionIdForSetCurrentTransactionBatchStatus").
+		Func("actionIdForSetCurrentTransactionBatchStatus").
 		Build()
 
 	response, err := c.executeUintQuery(valueRequest)
@@ -534,6 +535,10 @@ func (builder *txDataBuilder) Func(function string) *txDataBuilder {
 }
 
 func (builder *txDataBuilder) ActionId(value bridge.ActionId) *txDataBuilder {
+	return builder.Int(value)
+}
+
+func (builder *txDataBuilder) BatchId(value bridge.BatchId) *txDataBuilder {
 	return builder.Int(value)
 }
 
