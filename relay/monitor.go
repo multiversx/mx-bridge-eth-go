@@ -128,8 +128,8 @@ func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
 	m.log.Info(fmt.Sprintf("Waiting for proposal on batch with nonce %v", m.pendingBatch.Id))
 	select {
 	case <-m.timer.After(Timeout):
-		if m.destinationBridge.WasProposedTransfer(ctx, m.pendingBatch.Id) {
-			m.actionId = m.destinationBridge.GetActionIdForProposeTransfer(ctx, m.pendingBatch.Id)
+		if m.destinationBridge.WasProposedTransfer(ctx, m.pendingBatch) {
+			m.actionId = m.destinationBridge.GetActionIdForProposeTransfer(ctx, m.pendingBatch)
 			_, err := m.destinationBridge.Sign(ctx, m.actionId)
 			if err != nil {
 				m.log.Error(err.Error())

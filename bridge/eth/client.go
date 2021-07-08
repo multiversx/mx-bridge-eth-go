@@ -142,11 +142,11 @@ func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 	return "", nil
 }
 
-func (c *Client) WasProposedTransfer(context.Context, bridge.BatchId) bool {
+func (c *Client) WasProposedTransfer(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForProposeTransfer(context.Context, bridge.BatchId) bridge.ActionId {
+func (c *Client) GetActionIdForProposeTransfer(context.Context, *bridge.Batch) bridge.ActionId {
 	return bridge.NewActionId(0)
 }
 

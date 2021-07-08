@@ -1,12 +1,12 @@
 [Eth]
 NetworkAddress = "http://127.0.0.1:8545"
-BridgeAddress = "0x2cC4e1343B6276BbB53D93081De1E08F3B1Fc244"
-PrivateKey = "25b96cce574b43c1bb62b461826ed6bf60d16c3951c88b7b83947ea3ec03d82f"
+BridgeAddress = "0x0e5E8a942107fa47294Cd660B04d69049b937f9a"
+PrivateKey = "07aa73c6be0cc8200fcfae610dd629ba776495a4a9fc3ea54b0b070c9aa78416"
 
 [Elrond]
-NetworkAddress = "https://testnet-gateway.elrond.com"
-BridgeAddress = "erd1qqqqqqqqqqqqqpgquxv6eew4nzmcy0sr4r939p6wzcm0zkc8d8ssjspkj7"
-PrivateKey = "/home/calin/Projects/elrond/elrond-eth-bridge/mytestnet/mycounter/wallets/users/bob.pem"
+NetworkAddress = "https://devnet-gateway.elrond.com"
+BridgeAddress = "erd1qqqqqqqqqqqqqpgqc57eslxxgcadajm5mrw4jxy4m7qsavrq6j7qpsrpjx"
+PrivateKey = "/home/calin/Projects/elrond/devnet-wallets/ion.pem"
 
 [P2P]
 Port = "10000"

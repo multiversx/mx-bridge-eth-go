@@ -18,8 +18,8 @@ type Bridge interface {
 	GetPending(context.Context) *Batch
 	ProposeSetStatus(context.Context, *Batch)
 	ProposeTransfer(context.Context, *Batch) (string, error)
-	WasProposedTransfer(context.Context, BatchId) bool
-	GetActionIdForProposeTransfer(context.Context, BatchId) ActionId
+	WasProposedTransfer(context.Context, *Batch) bool
+	GetActionIdForProposeTransfer(context.Context, *Batch) ActionId
 	WasProposedSetStatus(context.Context, *Batch) bool
 	GetActionIdForSetStatusOnPendingTransfer(context.Context) ActionId
 	WasExecuted(context.Context, ActionId, BatchId) bool

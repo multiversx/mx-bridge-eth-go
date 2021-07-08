@@ -92,7 +92,7 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 		return nil
 	}
 
-	if len(responseData) == 0 {
+	if emptyResponse(responseData) {
 		_, err := c.getNextPendingBatch()
 		if err != nil {
 			c.log.Error(fmt.Sprintf("Error retriving next pending batch %q", err.Error()))
@@ -106,7 +106,7 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 		return nil
 	}
 
-	if len(responseData) == 0 {
+	if emptyResponse(responseData) {
 		return nil
 	}
 
@@ -151,7 +151,6 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	builder := newBuilder().
 		Func("proposeEsdtSafeSetCurrentTransactionBatchStatus").
-		Address(c.address).
 		BatchId(batch.Id)
 
 	for _, tx := range batch.Transactions {
@@ -186,22 +185,34 @@ func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 	return hash, err
 }
 
-func (c *Client) WasProposedTransfer(_ context.Context, batchId bridge.BatchId) bool {
+func (c *Client) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("wasTransferActionProposed").
-		BatchId(batchId).
-		Build()
+		BatchId(batch.Id)
 
-	return c.executeBoolQuery(valueRequest)
+	for _, tx := range batch.Transactions {
+		valueRequest = valueRequest.
+			Address(tx.To).
+			HexString(c.GetTokenId(tx.TokenAddress[2:])).
+			BigInt(tx.Amount)
+	}
+
+	return c.executeBoolQuery(valueRequest.Build())
 }
 
-func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batchId bridge.BatchId) bridge.ActionId {
+func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("getActionIdForTransferBatch").
-		BatchId(batchId).
-		Build()
+		BatchId(batch.Id)
 
-	response, err := c.executeUintQuery(valueRequest)
+	for _, tx := range batch.Transactions {
+		valueRequest = valueRequest.
+			Address(tx.To).
+			HexString(c.GetTokenId(tx.TokenAddress[2:])).
+			BigInt(tx.Amount)
+	}
+
+	response, err := c.executeUintQuery(valueRequest.Build())
 	if err != nil {
 		c.log.Error(err.Error())
 		return bridge.NewActionId(0)
@@ -209,17 +220,17 @@ func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batchId bridge
 
 	actionId := bridge.NewActionId(int64(response))
 
-	c.log.Info(fmt.Sprintf("Elrond: got actionId %v for batchId %v", actionId, batchId))
+	c.log.Info(fmt.Sprintf("Elrond: got actionId %v for batchId %v", actionId, batch.Id))
 
 	return actionId
 }
 
 func (c *Client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("wasSetCurrentTransactionBatchStatu3sActionProposed")
+		Func("wasSetCurrentTransactionBatchStatusActionProposed")
 
 	for _, tx := range batch.Transactions {
-		valueRequest.Int(big.NewInt(int64(tx.Status)))
+		valueRequest.BigInt(big.NewInt(int64(tx.Status)))
 	}
 
 	return c.executeBoolQuery(valueRequest.Build())
@@ -458,6 +469,10 @@ func (c *Client) getNextPendingBatch() (string, error) {
 	return c.sendTransaction(builder, ExecutionCost)
 }
 
+func emptyResponse(response [][]byte) bool {
+	return len(response) == 0 || (len(response) == 1 && len(response[0]) == 0)
+}
+
 // Builders
 
 type valueRequestBuilder struct {
@@ -491,18 +506,18 @@ func (builder *valueRequestBuilder) Func(functionName string) *valueRequestBuild
 }
 
 func (builder *valueRequestBuilder) Nonce(nonce bridge.Nonce) *valueRequestBuilder {
-	return builder.Int(nonce)
+	return builder.BigInt(nonce)
 }
 
 func (builder *valueRequestBuilder) BatchId(batchId bridge.BatchId) *valueRequestBuilder {
-	return builder.Int(batchId)
+	return builder.BigInt(batchId)
 }
 
 func (builder *valueRequestBuilder) ActionId(actionId bridge.ActionId) *valueRequestBuilder {
-	return builder.Int(actionId)
+	return builder.BigInt(actionId)
 }
 
-func (builder *valueRequestBuilder) Int(value *big.Int) *valueRequestBuilder {
+func (builder *valueRequestBuilder) BigInt(value *big.Int) *valueRequestBuilder {
 	builder.args = append(builder.args, intToHex(value))
 
 	return builder
@@ -510,6 +525,14 @@ func (builder *valueRequestBuilder) Int(value *big.Int) *valueRequestBuilder {
 
 func (builder *valueRequestBuilder) HexString(value string) *valueRequestBuilder {
 	builder.args = append(builder.args, value)
+
+	return builder
+}
+
+func (builder *valueRequestBuilder) Address(value string) *valueRequestBuilder {
+	pkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
+	buff, _ := pkConv.Decode(value)
+	builder.args = append(builder.args, hex.EncodeToString(buff))
 
 	return builder
 }
