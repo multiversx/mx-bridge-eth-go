@@ -188,31 +188,21 @@ func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 func (c *Client) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("wasTransferActionProposed").
-		BatchId(batch.Id)
+		BatchId(batch.Id).
+		WithTx(batch, c.GetTokenId).
+		Build()
 
-	for _, tx := range batch.Transactions {
-		valueRequest = valueRequest.
-			Address(tx.To).
-			HexString(c.GetTokenId(tx.TokenAddress[2:])).
-			BigInt(tx.Amount)
-	}
-
-	return c.executeBoolQuery(valueRequest.Build())
+	return c.executeBoolQuery(valueRequest)
 }
 
 func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("getActionIdForTransferBatch").
-		BatchId(batch.Id)
+		BatchId(batch.Id).
+		WithTx(batch, c.GetTokenId).
+		Build()
 
-	for _, tx := range batch.Transactions {
-		valueRequest = valueRequest.
-			Address(tx.To).
-			HexString(c.GetTokenId(tx.TokenAddress[2:])).
-			BigInt(tx.Amount)
-	}
-
-	response, err := c.executeUintQuery(valueRequest.Build())
+	response, err := c.executeUintQuery(valueRequest)
 	if err != nil {
 		c.log.Error(err.Error())
 		return bridge.NewActionId(0)
@@ -533,6 +523,17 @@ func (builder *valueRequestBuilder) Address(value string) *valueRequestBuilder {
 	pkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
 	buff, _ := pkConv.Decode(value)
 	builder.args = append(builder.args, hex.EncodeToString(buff))
+
+	return builder
+}
+
+func (builder *valueRequestBuilder) WithTx(batch *bridge.Batch, mapper func(string) string) *valueRequestBuilder {
+	for _, tx := range batch.Transactions {
+		builder = builder.
+			Address(tx.To).
+			HexString(mapper(tx.TokenAddress[2:])).
+			BigInt(tx.Amount)
+	}
 
 	return builder
 }
