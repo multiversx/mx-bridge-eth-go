@@ -21,5 +21,6 @@ struct Deposit {
 struct Batch {
     uint256 nonce;
     uint timestamp;
+    uint lastUpdated;
     Deposit[] deposits;
 }
