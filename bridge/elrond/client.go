@@ -112,7 +112,7 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 
 	addrPkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
 	var transactions []*bridge.DepositTransaction
-	for i := 0; i < len(responseData); i += 6 {
+	for i := 1; i < len(responseData); i += 6 {
 		amount, err := strconv.ParseInt(hex.EncodeToString(responseData[i+5]), 16, 64)
 		if err != nil {
 			c.log.Error(err.Error())
@@ -142,8 +142,14 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 		transactions = append(transactions, tx)
 	}
 
+	batchId, err := strconv.ParseInt(hex.EncodeToString(responseData[0]), 16, 64)
+	if err != nil {
+		c.log.Error(err.Error())
+		return nil
+	}
+
 	return &bridge.Batch{
-		Id:           bridge.NewBatchId(0),
+		Id:           bridge.NewBatchId(batchId),
 		Transactions: transactions,
 	}
 }
@@ -157,7 +163,7 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 		builder = builder.Int(big.NewInt(int64(tx.Status)))
 	}
 
-	hash, err := c.sendTransaction(builder, 0)
+	hash, err := c.sendTransaction(builder, ExecutionCost)
 	if err != nil {
 		c.log.Error(err.Error())
 	}

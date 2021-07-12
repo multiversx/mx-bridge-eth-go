@@ -33,6 +33,7 @@ func TestGetPending(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	t.Run("when there is a current transaction", func(t *testing.T) {
+		batchId, _ := hex.DecodeString("01")
 		blockNonce1, _ := hex.DecodeString("025d43")
 		nonce1, _ := hex.DecodeString("01")
 		from1, _ := hex.DecodeString("b4b6b2377f786d9dd3745695bb839434f94acb47a027a66f0069b8b8389551a5")
@@ -46,6 +47,7 @@ func TestGetPending(t *testing.T) {
 		tokenIdentifier2, _ := hex.DecodeString("574554482d656366316331")
 		amount2, _ := hex.DecodeString("02")
 		responseData := [][]byte{
+			batchId,
 			blockNonce1,
 			nonce1,
 			from1,
@@ -89,13 +91,14 @@ func TestGetPending(t *testing.T) {
 			Error:        nil,
 		}
 		expected := &bridge.Batch{
-			Id:           bridge.NewBatchId(0),
+			Id:           bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{tx1, tx2},
 		}
 
 		assert.Equal(t, expected, actual)
 	})
 	t.Run("when there is no current transaction it will call get pending", func(t *testing.T) {
+		batchId, _ := hex.DecodeString("01")
 		blockNonce, _ := hex.DecodeString("0564a7")
 		nonce, _ := hex.DecodeString("01")
 		from, _ := hex.DecodeString("04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3")
@@ -103,6 +106,7 @@ func TestGetPending(t *testing.T) {
 		tokenIdentifier, _ := hex.DecodeString("574554482d386538333666")
 		amount, _ := hex.DecodeString("01")
 		responseData := [][]byte{
+			batchId,
 			blockNonce,
 			nonce,
 			from,
@@ -121,7 +125,7 @@ func TestGetPending(t *testing.T) {
 		client, _ := buildTestClient(proxy)
 		actual := client.GetPending(context.TODO())
 		expected := &bridge.Batch{
-			Id: bridge.NewBatchId(0),
+			Id: bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{
 				{
 					To:           "0xcf95254084ab772696643f0e05ac4711ed674ac1",
