@@ -32,6 +32,14 @@ describe("Bridge", async function () {
     }
   }
 
+  async function settleCurrentBatch() {
+    // leave enough time to consider the batch settled (probability for a reorg is minimal)
+    // 1 minute and one second into the future
+    settleTime = (1 * 60) + 1;
+    await network.provider.send('evm_increaseTime', [settleTime]);
+    await network.provider.send("evm_mine")
+  }
+
   async function setupReadyBatch() {
     await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
 
@@ -163,6 +171,7 @@ describe("Bridge", async function () {
       describe('by being full', async function () {
         beforeEach(async function () {
           await setupFullBatch();
+          await settleCurrentBatch();
         });
 
         it('returns the batch', async function () {
@@ -220,6 +229,17 @@ describe("Bridge", async function () {
           expect(batch.nonce).to.equal(0);
         })
       })
+
+      describe('because not enough time has passed since the last transaction in batch', async function () {
+        beforeEach(async function () {
+          await setupFullBatch();
+        })
+
+        it('returns an empty batch', async function () {
+          batch = await bridge.getNextPendingBatch();
+          expect(batch.nonce).to.equal(0);
+        })
+      })
     })
   });
 
@@ -245,8 +265,10 @@ describe("Bridge", async function () {
 
       return [signature1, signature2, signature3, signature4, signature5, signature6, signature7];
     }
+
     beforeEach(async function () {
       await setupFullBatch();
+      await settleCurrentBatch();
     });
 
     describe('when quorum achieved', async function () {

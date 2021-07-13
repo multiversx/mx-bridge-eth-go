@@ -176,7 +176,7 @@ describe("ERC20Safe", async function () {
         expect(await safe.depositsCount.call()).to.equal(1);
       });
 
-      it.only('updates the lastUpdated timestamp on the batch', async function () {
+      it('updates the lastUpdated timestamp on the batch', async function () {
         // Deposit first transaction
         await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
         batchNonce = await await safe.batchesCount.call();
