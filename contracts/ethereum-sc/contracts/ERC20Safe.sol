@@ -62,6 +62,12 @@ contract ERC20Safe {
         adminAddress = msg.sender;
     }
 
+    /**
+      @notice Whitelist a token. Only whitelisted tokens can be bridged through the bridge. 
+      @param tokenAddress Address of the contract for the ERC20 token that will be used by the bridge
+      @param minimumAmount Number that specifies the minimum number of tokens that the user has to deposit (this is to prevent transactions that are too small)
+      @notice emits {TokenWhitelisted} event
+   */
     function whitelistToken(address token, uint256 minimumAmount) external onlyAdmin {
         whitelistedTokens[token] = true;
         tokenLimits[token] = minimumAmount;
