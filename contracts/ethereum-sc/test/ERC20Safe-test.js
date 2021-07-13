@@ -25,15 +25,21 @@ describe("ERC20Safe", async function () {
 
   describe('whitelistToken', async function () {
     it('adds the token to the whitelistedTokens list', async function () {
-      await safe.whitelistToken(afc.address);
+      await safe.whitelistToken(afc.address, 1);
 
       expect(await safe.whitelistedTokens(afc.address)).to.be.true;
     })
 
+    it('adds the limit for the token', async function () {
+      await safe.whitelistToken(afc.address, 1);
+
+      expect(await safe.tokenLimits(afc.address)).to.eq(1);
+    })
+
     it('emits event', async function () {
-      await expect(safe.whitelistToken(afc.address))
+      await expect(safe.whitelistToken(afc.address, 1))
         .to.emit(safe, 'TokenWhitelisted')
-        .withArgs(afc.address);
+        .withArgs(afc.address, 1);
     })
 
     describe('called by non admin', async function () {
@@ -42,14 +48,14 @@ describe("ERC20Safe", async function () {
       });
 
       it('reverts', async function () {
-        await (expect(nonAdminSafe.whitelistToken(afc.address))).to.be.revertedWith("Access Control: sender is not Admin");
+        await (expect(nonAdminSafe.whitelistToken(afc.address, 1))).to.be.revertedWith("Access Control: sender is not Admin");
       })
     })
   });
 
   describe('removeTokenFromWhitelist', async function () {
     beforeEach(async function () {
-      await safe.whitelistToken(afc.address);
+      await safe.whitelistToken(afc.address, 1);
     })
 
     it('removes the token to the whitelistedTokens list', async function () {
@@ -161,7 +167,7 @@ describe("ERC20Safe", async function () {
 
     describe("when token is whitelisted", async function () {
       beforeEach(async function () {
-        await safe.whitelistToken(afc.address);
+        await safe.whitelistToken(afc.address, 1);
       })
 
       it("emits Deposited event", async () => {

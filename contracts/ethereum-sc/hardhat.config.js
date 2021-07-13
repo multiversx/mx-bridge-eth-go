@@ -26,7 +26,7 @@ task("add-to-whitelist", "Whitelists a new address in the bridge. Requires setup
     const safeAddress = config["erc20Safe"];
     const safeContractFactory = await ethers.getContractFactory("ERC20Safe");
     const safe = await safeContractFactory.attach(safeAddress).connect(adminWallet);
-    await safe.whitelistToken(tokenAddress);
+    await safe.whitelistToken(tokenAddress, 0);
     console.log("Token whitelisted: ", tokenAddress);
   })
 

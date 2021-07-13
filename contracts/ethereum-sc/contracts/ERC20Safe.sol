@@ -30,6 +30,7 @@ contract ERC20Safe {
     uint256 private constant maxBatchSize = 20;
     mapping(uint256 => Batch) public batches;
     mapping(address => bool) public whitelistedTokens;
+    mapping(address => uint256) public tokenLimits;
     address public adminAddress;
     address public bridgeAddress;
     uint256 private currentPendingBatch;
@@ -38,7 +39,7 @@ contract ERC20Safe {
     event BatchTimeLimitChanged(uint256 newTimeLimitInSeconds);
     event UpdatedDepositStatus(uint256 depositNonce, DepositStatus newDepositStatus);
     event BatchSizeChanged(uint256 newBatchSize);
-    event TokenWhitelisted(address tokenAddress);
+    event TokenWhitelisted(address tokenAddress, uint256 minimumAmount);
     event TokenRemovedFromWhitelist(address tokenAddress);
     event ERC20Deposited(uint256 depositNonce);
 
@@ -61,9 +62,11 @@ contract ERC20Safe {
         adminAddress = msg.sender;
     }
 
-    function whitelistToken(address token) external onlyAdmin {
+    function whitelistToken(address token, uint256 minimumAmount) external onlyAdmin {
         whitelistedTokens[token] = true;
-        emit TokenWhitelisted(token);
+        tokenLimits[token] = minimumAmount;
+        
+        emit TokenWhitelisted(token, minimumAmount);
     }
 
     function removeTokenFromWhitelist(address token) external onlyAdmin {
