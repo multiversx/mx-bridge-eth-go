@@ -34,8 +34,8 @@ describe("Bridge", async function () {
 
   async function settleCurrentBatch() {
     // leave enough time to consider the batch settled (probability for a reorg is minimal)
-    // 1 minute and one second into the future
-    settleTime = (1 * 60) + 1;
+    // 10 minutes and one second into the future
+    settleTime = (10 * 60) + 1;
     await network.provider.send('evm_increaseTime', [settleTime]);
     await network.provider.send("evm_mine")
   }
