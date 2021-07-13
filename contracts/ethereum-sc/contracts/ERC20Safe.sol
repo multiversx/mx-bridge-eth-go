@@ -103,6 +103,7 @@ contract ERC20Safe {
         bytes calldata recipientAddress
     ) public {
         require(whitelistedTokens[tokenAddress], "Unsupported token");
+        require(amount >= tokenLimits[tokenAddress], "Tried to deposit an amount below the specified limit");
         uint256 currentTimestamp = block.timestamp;
 
         Batch storage batch;

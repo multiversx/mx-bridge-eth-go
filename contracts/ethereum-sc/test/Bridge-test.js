@@ -23,7 +23,7 @@ describe("Bridge", async function () {
   async function setupErc20Token() {
     afc = await deployContract(adminWallet, AFC, [1000]);
     await afc.approve(erc20Safe.address, 1000);
-    await erc20Safe.whitelistToken(afc.address);
+    await erc20Safe.whitelistToken(afc.address, 0);
   }
 
   async function setupFullBatch() {
