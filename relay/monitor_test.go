@@ -436,12 +436,12 @@ func (b *bridgeStub) ProposeTransfer(_ context.Context, batch *bridge.Batch) (st
 	return "propose_tx_hash", b.proposeTransferError
 }
 
-func (b *bridgeStub) WasProposedTransfer(_ context.Context, batchId bridge.BatchId) bool {
-	b.lastWasProposedTransferBatchId = batchId
+func (b *bridgeStub) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
+	b.lastWasProposedTransferBatchId = batch.Id
 	return b.wasProposedTransfer
 }
 
-func (b *bridgeStub) GetActionIdForProposeTransfer(context.Context, bridge.BatchId) bridge.ActionId {
+func (b *bridgeStub) GetActionIdForProposeTransfer(context.Context, *bridge.Batch) bridge.ActionId {
 	return b.proposeTransferActionId
 }
 
@@ -449,7 +449,7 @@ func (b *bridgeStub) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (b *bridgeStub) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
+func (b *bridgeStub) GetActionIdForSetStatusOnPendingTransfer(context.Context, *bridge.Batch) bridge.ActionId {
 	return b.proposeSetStatusActionId
 }
 

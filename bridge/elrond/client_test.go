@@ -33,6 +33,7 @@ func TestGetPending(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	t.Run("when there is a current transaction", func(t *testing.T) {
+		batchId, _ := hex.DecodeString("01")
 		blockNonce1, _ := hex.DecodeString("025d43")
 		nonce1, _ := hex.DecodeString("01")
 		from1, _ := hex.DecodeString("b4b6b2377f786d9dd3745695bb839434f94acb47a027a66f0069b8b8389551a5")
@@ -46,6 +47,7 @@ func TestGetPending(t *testing.T) {
 		tokenIdentifier2, _ := hex.DecodeString("574554482d656366316331")
 		amount2, _ := hex.DecodeString("02")
 		responseData := [][]byte{
+			batchId,
 			blockNonce1,
 			nonce1,
 			from1,
@@ -89,13 +91,14 @@ func TestGetPending(t *testing.T) {
 			Error:        nil,
 		}
 		expected := &bridge.Batch{
-			Id:           bridge.NewBatchId(0),
+			Id:           bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{tx1, tx2},
 		}
 
 		assert.Equal(t, expected, actual)
 	})
 	t.Run("when there is no current transaction it will call get pending", func(t *testing.T) {
+		batchId, _ := hex.DecodeString("01")
 		blockNonce, _ := hex.DecodeString("0564a7")
 		nonce, _ := hex.DecodeString("01")
 		from, _ := hex.DecodeString("04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3")
@@ -103,6 +106,7 @@ func TestGetPending(t *testing.T) {
 		tokenIdentifier, _ := hex.DecodeString("574554482d386538333666")
 		amount, _ := hex.DecodeString("01")
 		responseData := [][]byte{
+			batchId,
 			blockNonce,
 			nonce,
 			from,
@@ -114,13 +118,14 @@ func TestGetPending(t *testing.T) {
 		proxy := &testProxy{
 			transactionCost:                   1024,
 			queryResponseCode:                 "ok",
+			queryResponseData:                 [][]byte{{}},
 			afterTransactionQueryResponseData: responseData,
 		}
 
 		client, _ := buildTestClient(proxy)
 		actual := client.GetPending(context.TODO())
 		expected := &bridge.Batch{
-			Id: bridge.NewBatchId(0),
+			Id: bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{
 				{
 					To:           "0xcf95254084ab772696643f0e05ac4711ed674ac1",
@@ -202,21 +207,90 @@ func TestWasProposedTransfer(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 		client, _ := buildTestClient(proxy)
 
-		got := client.WasProposedTransfer(context.TODO(), bridge.NewBatchId(0))
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(12),
+			Transactions: []*bridge.DepositTransaction{
+				{
+					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+					From:         "0x132A150926691F08a693721503a38affeD18d524",
+					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+					Amount:       big.NewInt(42),
+					DepositNonce: bridge.NewNonce(1),
+					Status:       bridge.Executed,
+				},
+			},
+		}
+
+		got := client.WasProposedTransfer(context.TODO(), batch)
 		assert.True(t, got)
 	})
 	t.Run("will return false when response is 9", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(0)}}}
 		client, _ := buildTestClient(proxy)
 
-		got := client.WasProposedTransfer(context.TODO(), bridge.NewBatchId(0))
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(41),
+			Transactions: []*bridge.DepositTransaction{
+				{
+					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+					From:         "0x132A150926691F08a693721503a38affeD18d524",
+					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+					Amount:       big.NewInt(42),
+					DepositNonce: bridge.NewNonce(1),
+				},
+			},
+		}
+
+		got := client.WasProposedTransfer(context.TODO(), batch)
 		assert.False(t, got)
+	})
+	t.Run("will send tx's as arguments", func(t *testing.T) {
+		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
+		client, _ := buildTestClient(proxy)
+
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(41),
+			Transactions: []*bridge.DepositTransaction{
+				{
+					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+					From:         "0x132A150926691F08a693721503a38affeD18d524",
+					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+					Amount:       big.NewInt(42),
+					DepositNonce: bridge.NewNonce(1),
+				},
+			},
+		}
+
+		_ = client.WasProposedTransfer(context.TODO(), batch)
+
+		assert.Equal(t, 4, len(proxy.lastQueryArgs))
+		// batchID
+		assert.Equal(t, "29", proxy.lastQueryArgs[0])
+		// tx to address
+		assert.Equal(t, "b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba", proxy.lastQueryArgs[1])
+		// tokenId
+		assert.Equal(t, "01", proxy.lastQueryArgs[2])
+		// amount
+		assert.Equal(t, "2a", proxy.lastQueryArgs[3])
 	})
 	t.Run("will return false when response code is not ok", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "not ok", queryResponseData: nil}
 		client, _ := buildTestClient(proxy)
 
-		got := client.WasProposedTransfer(context.TODO(), bridge.NewBatchId(0))
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(41),
+			Transactions: []*bridge.DepositTransaction{
+				{
+					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+					From:         "0x132A150926691F08a693721503a38affeD18d524",
+					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+					Amount:       big.NewInt(42),
+					DepositNonce: bridge.NewNonce(1),
+				},
+			},
+		}
+
+		got := client.WasProposedTransfer(context.TODO(), batch)
 		assert.False(t, got)
 	})
 }
@@ -240,12 +314,18 @@ func TestWasProposedSetStatus(t *testing.T) {
 		client, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
-			Id:           bridge.NewBatchId(0),
-			Transactions: []*bridge.DepositTransaction{},
+			Id: bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{
+				{
+					Status: bridge.Rejected,
+				},
+			},
 		}
 		got := client.WasProposedSetStatus(context.TODO(), batch)
 
 		assert.True(t, got)
+		assert.Equal(t, "01", proxy.lastQueryArgs[0])
+		assert.Equal(t, "04", proxy.lastQueryArgs[1])
 	})
 	t.Run("will return false when response is empty", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{}}}
@@ -267,9 +347,31 @@ func TestGetActionIdForProposeTransfer(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	client, _ := buildTestClient(proxy)
 
-	got := client.GetActionIdForProposeTransfer(context.TODO(), bridge.NewBatchId(41))
+	batch := &bridge.Batch{
+		Id: bridge.NewBatchId(41),
+		Transactions: []*bridge.DepositTransaction{
+			{
+				To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+				From:         "0x132A150926691F08a693721503a38affeD18d524",
+				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+				Amount:       big.NewInt(42),
+				DepositNonce: bridge.NewNonce(1),
+			},
+		},
+	}
+
+	got := client.GetActionIdForProposeTransfer(context.TODO(), batch)
 
 	assert.Equal(t, bridge.NewActionId(42), got)
+	assert.Equal(t, 4, len(proxy.lastQueryArgs))
+	// batchID
+	assert.Equal(t, "29", proxy.lastQueryArgs[0])
+	// tx to address
+	assert.Equal(t, "b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba", proxy.lastQueryArgs[1])
+	// tokenId
+	assert.Equal(t, "2a", proxy.lastQueryArgs[2])
+	// amount
+	assert.Equal(t, "2a", proxy.lastQueryArgs[3])
 }
 
 func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
@@ -278,8 +380,24 @@ func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(43)}}}
 	client, _ := buildTestClient(proxy)
 
-	got := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO())
+	batch := &bridge.Batch{
+		Id: bridge.NewBatchId(12),
+		Transactions: []*bridge.DepositTransaction{
+			{
+				To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+				From:         "0x132A150926691F08a693721503a38affeD18d524",
+				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+				Amount:       big.NewInt(42),
+				DepositNonce: bridge.NewNonce(1),
+				Status:       bridge.Executed,
+			},
+		},
+	}
+
+	got := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
 	assert.Equal(t, got, bridge.NewActionId(43))
+	assert.Equal(t, "0c", proxy.lastQueryArgs[0])
+	assert.Equal(t, "03", proxy.lastQueryArgs[1])
 }
 
 func TestWasExecuted(t *testing.T) {
@@ -296,7 +414,7 @@ func TestSign(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	t.Run("it will set proper transaction cost", func(t *testing.T) {
-		expect := uint64(1024)
+		expect := uint64(1000000000)
 		proxy := &testProxy{transactionCost: expect}
 		client, _ := buildTestClient(proxy)
 
@@ -345,6 +463,7 @@ type testProxy struct {
 	queryResponseData                 [][]byte
 	afterTransactionQueryResponseData [][]byte
 	queryResponseCode                 string
+	lastQueryArgs                     []string
 
 	transactionCost      uint64
 	transactionCostError error
@@ -391,6 +510,7 @@ func (p *testProxy) RequestTransactionCost(*data.Transaction) (*data.TxCostRespo
 	}, p.transactionCostError
 }
 
-func (p *testProxy) ExecuteVMQuery(*data.VmValueRequest) (*data.VmValuesResponseData, error) {
+func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+	p.lastQueryArgs = valueRequest.Args
 	return &data.VmValuesResponseData{Data: &vm.VMOutputApi{ReturnCode: p.queryResponseCode, ReturnData: p.queryResponseData}}, nil
 }
