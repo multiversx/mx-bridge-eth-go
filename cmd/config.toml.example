@@ -1,14 +1,14 @@
 [Eth]
-NetworkAddress = "http://127.0.0.1:8545"
-BridgeAddress = "0x0e5E8a942107fa47294Cd660B04d69049b937f9a"
-PrivateKey = "07aa73c6be0cc8200fcfae610dd629ba776495a4a9fc3ea54b0b070c9aa78416"
+NetworkAddress = <a network address, Eg: http://127.0.0.1:8545 for ganache>
+BridgeAddress = <the eth address for the bridge contract>
+PrivateKey = <the private key of the relayer eth wallet>
 
 [Elrond]
-NetworkAddress = "https://devnet-gateway.elrond.com"
-BridgeAddress = "erd1qqqqqqqqqqqqqpgqc57eslxxgcadajm5mrw4jxy4m7qsavrq6j7qpsrpjx"
-PrivateKey = "/home/calin/Projects/elrond/devnet-wallets/ion.pem"
+NetworkAddress = <the network address, Eg: https://devnet-gateway.elrond.com>
+BridgeAddress = <the elrond address for the bridge contract>
+PrivateKey = <the path to the pem file containing the relayer elrond wallet>
 
 [P2P]
 Port = "10000"
 Seed = "seed"
-InitialPeerList = []
+InitialPeerList = [<the initial seed hosted by elrond>]
