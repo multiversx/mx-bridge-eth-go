@@ -209,7 +209,7 @@ func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan State) {
 	case <-m.timer.After(Timeout):
 		if m.sourceBridge.WasProposedSetStatus(ctx, m.pendingBatch) {
 			m.log.Info(fmt.Sprintf("Signing set status for batch with id %v", m.pendingBatch.Id))
-			m.actionId = m.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx)
+			m.actionId = m.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx, m.pendingBatch)
 			_, err := m.sourceBridge.Sign(ctx, m.actionId)
 			if err != nil {
 				m.log.Error(err.Error())

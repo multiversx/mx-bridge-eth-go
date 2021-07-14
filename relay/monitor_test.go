@@ -449,7 +449,7 @@ func (b *bridgeStub) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (b *bridgeStub) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
+func (b *bridgeStub) GetActionIdForSetStatusOnPendingTransfer(context.Context, *bridge.Batch) bridge.ActionId {
 	return b.proposeSetStatusActionId
 }
 

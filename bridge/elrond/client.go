@@ -182,10 +182,12 @@ func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 			BigInt(tx.Amount)
 	}
 
-	hash, err := c.sendTransaction(builder, 0)
+	hash, err := c.sendTransaction(builder, ExecutionCost)
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Proposed transfer for batch %v with hash %s", batch.Id, hash))
+	} else {
+		c.log.Error(fmt.Sprintf("Elrond: Propose transfer errored with: %q", err.Error()))
 	}
 
 	return hash, err
@@ -223,21 +225,26 @@ func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.
 
 func (c *Client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("wasSetCurrentTransactionBatchStatusActionProposed")
+		Func("wasSetCurrentTransactionBatchStatusActionProposed").
+		BatchId(batch.Id)
 
 	for _, tx := range batch.Transactions {
-		valueRequest.BigInt(big.NewInt(int64(tx.Status)))
+		valueRequest = valueRequest.BigInt(big.NewInt(int64(tx.Status)))
 	}
 
 	return c.executeBoolQuery(valueRequest.Build())
 }
 
-func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
+func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("actionIdForSetCurrentTransactionBatchStatus").
-		Build()
+		Func("getActionIdForSetCurrentTransactionBatchStatus").
+		BatchId(batch.Id)
 
-	response, err := c.executeUintQuery(valueRequest)
+	for _, tx := range batch.Transactions {
+		valueRequest = valueRequest.BigInt(big.NewInt(int64(tx.Status)))
+	}
+
+	response, err := c.executeUintQuery(valueRequest.Build())
 	if err != nil {
 		c.log.Error(err.Error())
 		return bridge.NewActionId(0)
@@ -266,10 +273,12 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 		Func("sign").
 		ActionId(actionId)
 
-	hash, err := c.sendTransaction(builder, 0)
+	hash, err := c.sendTransaction(builder, ExecutionCost)
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Singed with hash %q", hash))
+	} else {
+		c.log.Error(fmt.Sprintf("Elrond: Sign failed with %q;", err.Error()))
 	}
 
 	return hash, err
@@ -284,6 +293,8 @@ func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.B
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Executed actionId %v with hash %s", actionId, hash))
+	} else {
+		c.log.Error(fmt.Sprintf("Elrond: Executed failed with %q;", err.Error()))
 	}
 
 	return hash, err

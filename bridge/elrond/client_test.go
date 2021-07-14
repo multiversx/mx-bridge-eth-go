@@ -208,7 +208,7 @@ func TestWasProposedTransfer(t *testing.T) {
 		client, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(41),
+			Id: bridge.NewBatchId(12),
 			Transactions: []*bridge.DepositTransaction{
 				{
 					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
@@ -216,6 +216,7 @@ func TestWasProposedTransfer(t *testing.T) {
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
 					DepositNonce: bridge.NewNonce(1),
+					Status:       bridge.Executed,
 				},
 			},
 		}
@@ -313,12 +314,18 @@ func TestWasProposedSetStatus(t *testing.T) {
 		client, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
-			Id:           bridge.NewBatchId(0),
-			Transactions: []*bridge.DepositTransaction{},
+			Id: bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{
+				{
+					Status: bridge.Rejected,
+				},
+			},
 		}
 		got := client.WasProposedSetStatus(context.TODO(), batch)
 
 		assert.True(t, got)
+		assert.Equal(t, "01", proxy.lastQueryArgs[0])
+		assert.Equal(t, "04", proxy.lastQueryArgs[1])
 	})
 	t.Run("will return false when response is empty", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{}}}
@@ -373,8 +380,24 @@ func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(43)}}}
 	client, _ := buildTestClient(proxy)
 
-	got := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO())
+	batch := &bridge.Batch{
+		Id: bridge.NewBatchId(12),
+		Transactions: []*bridge.DepositTransaction{
+			{
+				To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+				From:         "0x132A150926691F08a693721503a38affeD18d524",
+				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+				Amount:       big.NewInt(42),
+				DepositNonce: bridge.NewNonce(1),
+				Status:       bridge.Executed,
+			},
+		},
+	}
+
+	got := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
 	assert.Equal(t, got, bridge.NewActionId(43))
+	assert.Equal(t, "0c", proxy.lastQueryArgs[0])
+	assert.Equal(t, "03", proxy.lastQueryArgs[1])
 }
 
 func TestWasExecuted(t *testing.T) {
@@ -391,7 +414,7 @@ func TestSign(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	t.Run("it will set proper transaction cost", func(t *testing.T) {
-		expect := uint64(1024)
+		expect := uint64(1000000000)
 		proxy := &testProxy{transactionCost: expect}
 		client, _ := buildTestClient(proxy)
 

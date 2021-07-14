@@ -154,7 +154,7 @@ func (c *Client) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
+func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context, *bridge.Batch) bridge.ActionId {
 	return bridge.NewActionId(0)
 }
 

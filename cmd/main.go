@@ -58,6 +58,7 @@ func main() {
 
 	app.Action = func(c *cli.Context) error {
 		return startRelay(c)
+		//return playgroundElrond(c)
 	}
 
 	err := app.Run(os.Args)
@@ -85,17 +86,18 @@ func main() {
 //	log.Info(fmt.Sprintf("TokenId is %s", client.GetTokenId("6DF7EFEA5d25B76AEb6A53537390c634faeD9AeD")))
 //log.Info(fmt.Sprintf("Signers count %d", client.SignersCount(context.TODO(), bridge.ActionId(7))))
 
+//ethClient, err := eth.NewClient(config.Eth, &broadcasterStub{}, client)
+//if err != nil {
+//	return err
+//}
+//
+//batch := ethClient.GetPending(context.Background())
 //batch := client.GetPending(context.TODO())
 //log.Info(fmt.Sprintf("%+v", batch))
 //log.Info(fmt.Sprintf("%+v", batch.Transactions[0]))
 
 //_ = client.GetActionIdForProposeTransfer(context.TODO(), bridge.NewBatchId(4))
 
-//ethClient, err := eth.NewClient(config.Eth, &broadcasterStub{}, client)
-//if err != nil {
-//	return err
-//}
-//
 //_, _ = ethClient.ProposeTransfer(context.Background(), tx)
 //
 //hash, err := ethClient.Execute(context.Background(), bridge.NewActionId(0), bridge.NewNonce(0))
@@ -106,12 +108,12 @@ func main() {
 //
 
 //for _, tx := range batch.Transactions {
-//	tx.Status = bridge.Rejected
+//	tx.Status = bridge.Executed
 //}
 //client.ProposeSetStatus(context.TODO(), batch)
 //time.Sleep(30 * time.Second)
-//
-//actionId := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO())
+
+//actionId := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
 //log.Info(fmt.Sprintf("%v", actionId))
 //
 //wasProposed := client.WasProposedSetStatus(context.TODO(), batch)
@@ -147,13 +149,13 @@ func main() {
 //	Id:           batchId,
 //	Transactions: []*bridge.DepositTransaction{tx1, tx2},
 //}
-//
+
 //transfer, err := client.ProposeTransfer(context.TODO(), batch)
 //if err != nil {
 //	log.Error(err.Error())
 //}
 //log.Info(transfer)
-//
+
 //time.Sleep(30 * time.Second)
 //result := client.WasProposedTransfer(context.TODO(), batch)
 //log.Info(fmt.Sprint(result))
@@ -251,17 +253,17 @@ func main() {
 //	return nil
 //}
 
-//type broadcasterStub struct {
-//	lastBroadcastSignature []byte
-//}
-//
-//func (b *broadcasterStub) SendSignature(signature []byte) {
-//	b.lastBroadcastSignature = signature
-//}
-//
-//func (b *broadcasterStub) Signatures() [][]byte {
-//	return [][]byte{b.lastBroadcastSignature}
-//}
+type broadcasterStub struct {
+	lastBroadcastSignature []byte
+}
+
+func (b *broadcasterStub) SendSignature(signature []byte) {
+	b.lastBroadcastSignature = signature
+}
+
+func (b *broadcasterStub) Signatures() [][]byte {
+	return [][]byte{b.lastBroadcastSignature}
+}
 
 func startRelay(ctx *cli.Context) error {
 	logLevelFlagValue := ctx.GlobalString(logLevel.Name)
