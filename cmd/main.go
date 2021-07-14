@@ -253,17 +253,17 @@ func main() {
 //	return nil
 //}
 
-type broadcasterStub struct {
-	lastBroadcastSignature []byte
-}
-
-func (b *broadcasterStub) SendSignature(signature []byte) {
-	b.lastBroadcastSignature = signature
-}
-
-func (b *broadcasterStub) Signatures() [][]byte {
-	return [][]byte{b.lastBroadcastSignature}
-}
+//type broadcasterStub struct {
+//	lastBroadcastSignature []byte
+//}
+//
+//func (b *broadcasterStub) SendSignature(signature []byte) {
+//	b.lastBroadcastSignature = signature
+//}
+//
+//func (b *broadcasterStub) Signatures() [][]byte {
+//	return [][]byte{b.lastBroadcastSignature}
+//}
 
 func startRelay(ctx *cli.Context) error {
 	logLevelFlagValue := ctx.GlobalString(logLevel.Name)

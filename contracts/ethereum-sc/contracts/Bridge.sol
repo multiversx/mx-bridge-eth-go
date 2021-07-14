@@ -26,13 +26,13 @@ contract Bridge is AccessControl {
     event RelayerRemoved(address removedRelayer);
     event QuorumChanged(uint256 quorum);
 
-    string private constant action = 'CurrentPendingBatch';
-    string private constant executeTransferAction = 'ExecuteBatchedTransfer';
+    string private constant action = "CurrentPendingBatch";
+    string private constant executeTransferAction = "ExecuteBatchedTransfer";
     string private constant prefix = "\x19Ethereum Signed Message:\n32";
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
-    
+
     uint256 public quorum;
-    uint256 private minimumQuorum = 3;
+    uint256 private minimumQuorum = 1;
     address private immutable erc20SafeAddress;
     mapping(uint256 => bool) public executedBatches;
 
@@ -79,7 +79,7 @@ contract Bridge is AccessControl {
     */
     function addRelayer(address newRelayerAddress) external {
         require(
-            newRelayerAddress != address(0), 
+            newRelayerAddress != address(0),
             "newRelayerAddress cannot be 0x0"
         );
         require(
@@ -121,11 +121,7 @@ contract Bridge is AccessControl {
         - deposits List of the deposits included in this batch
         @dev Even if there are deposits in the Safe, the current batch might still return as empty. This is because it might not be final (not full, and not enough blocks elapsed)
     */
-    function getNextPendingBatch()
-        external
-        view
-        returns (Batch memory)
-    {
+    function getNextPendingBatch() external view returns (Batch memory) {
         ERC20Safe safe = ERC20Safe(erc20SafeAddress);
         return safe.getNextPendingBatch();
     }
@@ -142,32 +138,41 @@ contract Bridge is AccessControl {
         DepositStatus[] calldata newDepositStatuses,
         bytes[] calldata signatures
     ) public onlyRelayer {
-        for(uint256 i=0; i<newDepositStatuses.length; i++)
-        {
+        for (uint256 i = 0; i < newDepositStatuses.length; i++) {
             require(
-                newDepositStatuses[i] == DepositStatus.Executed || newDepositStatuses[i] == DepositStatus.Rejected, 
-                'Non-final state. Can only be Executed or Rejected');
+                newDepositStatuses[i] == DepositStatus.Executed ||
+                    newDepositStatuses[i] == DepositStatus.Rejected,
+                "Non-final state. Can only be Executed or Rejected"
+            );
         }
-        
+
         require(
-                signatures.length >= quorum, 
-                'Not enough signatures to achieve quorum');
+            signatures.length >= quorum,
+            "Not enough signatures to achieve quorum"
+        );
 
         ERC20Safe safe = ERC20Safe(erc20SafeAddress);
         Batch memory batch = safe.getNextPendingBatch();
-        require(
-                batch.nonce == batchNonceETHElrond, 
-                'Invalid batch nonce');
+        require(batch.nonce == batchNonceETHElrond, "Invalid batch nonce");
 
-        bytes32 hashedSignedData = keccak256(abi.encode(batchNonceETHElrond, newDepositStatuses, action));
-        bytes memory prefixedSignData = abi.encodePacked(prefix, hashedSignedData);
+        bytes32 hashedSignedData = keccak256(
+            abi.encode(batchNonceETHElrond, newDepositStatuses, action)
+        );
+        bytes memory prefixedSignData = abi.encodePacked(
+            prefix,
+            hashedSignedData
+        );
         bytes32 hashedDepositData = keccak256(prefixedSignData);
         uint256 signersCount;
 
         address[] memory validSigners = new address[](signatures.length);
-        for (uint256 signatureIndex = 0; signatureIndex < signatures.length; signatureIndex++) {
+        for (
+            uint256 signatureIndex = 0;
+            signatureIndex < signatures.length;
+            signatureIndex++
+        ) {
             bytes memory signature = signatures[signatureIndex];
-            require(signature.length == 65, 'Malformed signature');
+            require(signature.length == 65, "Malformed signature");
 
             bytes32 r;
             bytes32 s;
@@ -182,10 +187,9 @@ contract Bridge is AccessControl {
                 v := byte(0, mload(add(signature, 96)))
             }
 
-            // adjust recoverid (v) for geth cannonical values of 0 or 1 
+            // adjust recoverid (v) for geth cannonical values of 0 or 1
             // as per Ethereum's yellow paper: Appendinx F (Signing Transactions)
-            if (v == 0 || v == 1)
-            {
+            if (v == 0 || v == 1) {
                 v += 27;
             }
 
@@ -196,7 +200,7 @@ contract Bridge is AccessControl {
             );
 
             // Determine if we have multiple signatures from the same relayer
-            uint si;
+            uint256 si;
             for (si = 0; si < validSigners.length; si++) {
                 if (validSigners[si] == address(0)) {
                     // We reached the end of the loop.
@@ -204,8 +208,11 @@ contract Bridge is AccessControl {
                     // as the first open position.
                     break;
                 }
-                
-                require(publicKey != validSigners[si], "Multiple signatures from the same relayer");
+
+                require(
+                    publicKey != validSigners[si],
+                    "Multiple signatures from the same relayer"
+                );
             }
             // We save this signer in the first open position.
             validSigners[si] = publicKey;
@@ -229,29 +236,42 @@ contract Bridge is AccessControl {
         @param signatures Signatures from all the relayers for the execution. This mimics a delegated multisig contract. For the execution to take place, there must be enough valid signatures to achieve quorum.
     */
     function executeTransfer(
-        address[] calldata tokens, 
-        address[] calldata recipients, 
-        uint256[] calldata amounts, 
-        uint256 batchNonceElrondETH, 
-        bytes[] calldata signatures) 
-    public onlyRelayer {
+        address[] calldata tokens,
+        address[] calldata recipients,
+        uint256[] calldata amounts,
+        uint256 batchNonceElrondETH,
+        bytes[] calldata signatures
+    ) public onlyRelayer {
         require(
-            signatures.length >= quorum, 
-            'Not enough signatures to achieve quorum');
-        require(executedBatches[batchNonceElrondETH] == false, "Batch already executed");
-            executedBatches[batchNonceElrondETH] = true;
+            signatures.length >= quorum,
+            "Not enough signatures to achieve quorum"
+        );
+        require(
+            executedBatches[batchNonceElrondETH] == false,
+            "Batch already executed"
+        );
+        executedBatches[batchNonceElrondETH] = true;
         uint256 signersCount;
-        
+
         bytes32 hashedDepositData = keccak256(
             abi.encodePacked(
-                prefix, keccak256(
+                prefix,
+                keccak256(
                     abi.encode(
-                        recipients, tokens, amounts, batchNonceElrondETH, executeTransferAction))));
-        
+                        recipients,
+                        tokens,
+                        amounts,
+                        batchNonceElrondETH,
+                        executeTransferAction
+                    )
+                )
+            )
+        );
+
         address[] memory validSigners = new address[](signatures.length);
         for (uint256 i = 0; i < signatures.length; i++) {
             bytes memory signature = signatures[i];
-            require(signature.length == 65, 'Malformed signature');
+            require(signature.length == 65, "Malformed signature");
 
             bytes32 r;
             bytes32 s;
@@ -266,10 +286,9 @@ contract Bridge is AccessControl {
                 v := byte(0, mload(add(signature, 96)))
             }
 
-            // adjust recoverid (v) for geth cannonical values of 0 or 1 
+            // adjust recoverid (v) for geth cannonical values of 0 or 1
             // as per Ethereum's yellow paper: Appendinx F (Signing Transactions)
-            if (v == 0 || v == 1)
-            {
+            if (v == 0 || v == 1) {
                 v += 27;
             }
 
@@ -278,9 +297,9 @@ contract Bridge is AccessControl {
                 hasRole(RELAYER_ROLE, publicKey),
                 "Not a recognized relayer"
             );
-            
+
             // Determine if we have multiple signatures from the same relayer
-            uint si;
+            uint256 si;
             for (si = 0; si < validSigners.length; si++) {
                 if (validSigners[si] == address(0)) {
                     // We reached the end of the loop.
@@ -288,8 +307,11 @@ contract Bridge is AccessControl {
                     // as the first open position.
                     break;
                 }
-                
-                require(publicKey != validSigners[si], "Multiple signatures from the same relayer");
+
+                require(
+                    publicKey != validSigners[si],
+                    "Multiple signatures from the same relayer"
+                );
             }
             // We save this signer in the first open position.
             validSigners[si] = publicKey;
@@ -300,8 +322,7 @@ contract Bridge is AccessControl {
 
         require(signersCount >= quorum, "Quorum was not met");
 
-        for (uint256 j=0; j<tokens.length; j++)
-        {
+        for (uint256 j = 0; j < tokens.length; j++) {
             ERC20Safe safe = ERC20Safe(erc20SafeAddress);
             safe.transfer(tokens[j], amounts[j], recipients[j]);
         }
@@ -312,20 +333,23 @@ contract Bridge is AccessControl {
         @param batchNonceETHElrond Nonce for the batch.
         @return status for the batch. true - executed, false - pending (not executed yet)
     */
-    function wasBatchFinished(uint256 batchNonceETHElrond) external view returns(bool) 
+    function wasBatchFinished(uint256 batchNonceETHElrond)
+        external
+        view
+        returns (bool)
     {
         ERC20Safe safe = ERC20Safe(erc20SafeAddress);
         Batch memory batch = safe.getBatch(batchNonceETHElrond);
-        
-        if(batch.deposits.length == 0)
-        {
+
+        if (batch.deposits.length == 0) {
             return false;
         }
 
-        for(uint256 i=0; i<batch.deposits.length; i++)
-        {
-            if(batch.deposits[i].status != DepositStatus.Executed && batch.deposits[i].status != DepositStatus.Rejected)
-            {
+        for (uint256 i = 0; i < batch.deposits.length; i++) {
+            if (
+                batch.deposits[i].status != DepositStatus.Executed &&
+                batch.deposits[i].status != DepositStatus.Rejected
+            ) {
                 return false;
             }
         }
@@ -333,7 +357,10 @@ contract Bridge is AccessControl {
         return true;
     }
 
-    function wasBatchExecuted(uint256 batchNonceElrondETH) external view returns(bool) 
+    function wasBatchExecuted(uint256 batchNonceElrondETH)
+        external
+        view
+        returns (bool)
     {
         return executedBatches[batchNonceElrondETH];
     }
