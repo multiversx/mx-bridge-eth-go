@@ -235,7 +235,7 @@ func TestExecute(t *testing.T) {
 		)
 
 		go func() {
-			time.Sleep(11 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			provider.amITheLeader = true
 		}()
 
