@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -217,15 +218,15 @@ func TestWaitForSignatures(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	testHelpers.SetTestLogLevel()
-	t.Run("it will wait for execution when not leader", func(t *testing.T) {
-		expect := bridge.NewActionId(42)
+	t.Run("it will not execute if not leader", func(t *testing.T) {
 		batch := &bridge.Batch{
 			Id:           bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
-		destinationBridge := &bridgeStub{signersCount: 3, wasExecuted: false, wasProposedTransfer: true, proposeTransferActionId: expect}
-		timer := &testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond}
+		destinationBridge := &bridgeStub{signersCount: 3, wasExecuted: false, wasProposedTransfer: true, proposeTransferActionId: bridge.NewActionId(42)}
+		timer := &testHelpers.TimerStub{AfterDuration: 0 * time.Millisecond}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: false}
+
 		monitor := NewMonitor(
 			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
 			destinationBridge,
@@ -234,15 +235,53 @@ func TestExecute(t *testing.T) {
 			"testMonitor",
 		)
 
+		destinationBridge.lock()
+
 		go func() {
-			time.Sleep(10 * time.Millisecond)
-			provider.amITheLeader = true
+			monitor.Start(context.Background())
 		}()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 16*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		// allow signing
+		destinationBridge.signMutex.Unlock()
+		// make executing
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.executeMutex.Unlock()
 
+		time.Sleep(1 * time.Millisecond)
+		assert.Nil(t, destinationBridge.lastExecutedActionId)
+	})
+	t.Run("it will wait for execution when not leader", func(t *testing.T) {
+		expect := bridge.NewActionId(42)
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
+		destinationBridge := &bridgeStub{signersCount: 3, wasExecuted: false, wasProposedTransfer: true, proposeTransferActionId: expect}
+		timer := &testHelpers.TimerStub{AfterDuration: 0 * time.Millisecond}
+		provider := &topologyProviderStub{peerCount: 4, amITheLeader: false}
+
+		monitor := NewMonitor(
+			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
+			destinationBridge,
+			timer,
+			provider,
+			"testMonitor",
+		)
+
+		destinationBridge.lock()
+
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow signing
+		destinationBridge.signMutex.Unlock()
+		// make leader
+		time.Sleep(1 * time.Millisecond)
+		provider.amITheLeader = true
+		destinationBridge.executeMutex.Unlock()
+
+		time.Sleep(1 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
 }
@@ -413,6 +452,18 @@ type bridgeStub struct {
 	proposeTransferError           error
 	proposedStatusBatch            *bridge.Batch
 	proposeSetStatusActionId       bridge.ActionId
+
+	proposeSetStatusMutex sync.Mutex
+	proposeTransferMutex  sync.Mutex
+	signMutex             sync.Mutex
+	executeMutex          sync.Mutex
+}
+
+func (b *bridgeStub) lock() {
+	b.proposeSetStatusMutex.Lock()
+	b.proposeTransferMutex.Lock()
+	b.signMutex.Lock()
+	b.executeMutex.Lock()
 }
 
 func (b *bridgeStub) GetPending(context.Context) *bridge.Batch {
@@ -427,11 +478,13 @@ func (b *bridgeStub) GetPending(context.Context) *bridge.Batch {
 
 func (b *bridgeStub) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	b.proposedStatusBatch = batch
+	b.proposeSetStatusMutex.Lock()
 }
 
 func (b *bridgeStub) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	b.wasProposedTransfer = true
 	b.lastProposedBatch = batch
+	b.proposeTransferMutex.Lock()
 
 	return "propose_tx_hash", b.proposeTransferError
 }
@@ -459,11 +512,15 @@ func (b *bridgeStub) WasExecuted(context.Context, bridge.ActionId, bridge.BatchI
 
 func (b *bridgeStub) Sign(_ context.Context, actionId bridge.ActionId) (string, error) {
 	b.lastSignedActionId = actionId
+	b.signMutex.Lock()
+
 	return "sign_tx_hash", nil
 }
 
 func (b *bridgeStub) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) (string, error) {
 	b.lastExecutedActionId = actionId
+	b.executeMutex.Lock()
+
 	return "execution hash", nil
 }
 
