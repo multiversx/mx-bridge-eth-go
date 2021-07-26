@@ -64,10 +64,17 @@ func TestProposeTransaction(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		destinationBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow propose transfer
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.proposeTransferMutex.Unlock()
+
+		time.Sleep(1 * time.Millisecond)
 		assert.Equal(t, expected, destinationBridge.lastProposedBatch)
 	})
 	t.Run("it will proposeStatus Rejected when proposeTransfer fails", func(t *testing.T) {
@@ -88,10 +95,17 @@ func TestProposeTransaction(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		sourceBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow propose status
+		time.Sleep(1 * time.Millisecond)
+		sourceBridge.proposeSetStatusMutex.Unlock()
+
+		time.Sleep(1 * time.Millisecond)
 		assert.Equal(t, bridge.Rejected, sourceBridge.proposedStatusBatch.Transactions[0].Status)
 	})
 	t.Run("it will wait for proposal if not leader", func(t *testing.T) {
@@ -109,10 +123,13 @@ func TestProposeTransaction(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		destinationBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		time.Sleep(1 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastWasProposedTransferBatchId)
 	})
 	t.Run("it will sign proposed transaction if not leader", func(t *testing.T) {
@@ -130,13 +147,23 @@ func TestProposeTransaction(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		destinationBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow propose transfer
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.proposeTransferMutex.Unlock()
+		// allow signing
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.signMutex.Unlock()
+
+		time.Sleep(1 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastSignedActionId)
 	})
-	t.Run("it will try to proposeTransfer again if timeout", func(t *testing.T) {
+	t.Run("it will try to proposeTransfer again if timeout and it becomes leader", func(t *testing.T) {
 		expect := &bridge.Batch{
 			Id:           bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
@@ -152,15 +179,17 @@ func TestProposeTransaction(t *testing.T) {
 			"testMonitor",
 		)
 
+		destinationBridge.lock()
 		go func() {
-			time.Sleep(2 * time.Millisecond)
-			provider.amITheLeader = true
+			monitor.Start(context.Background())
 		}()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		// allow propose transfer
+		time.Sleep(1 * time.Millisecond)
+		provider.amITheLeader = true
+		destinationBridge.proposeTransferMutex.Unlock()
 
+		time.Sleep(1 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastProposedBatch)
 	})
 }
@@ -182,10 +211,23 @@ func TestWaitForSignatures(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		destinationBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow propose transfer
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.proposeTransferMutex.Unlock()
+		// allow signing transfer
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.signMutex.Unlock()
+		// allow executing
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.executeMutex.Unlock()
+
+		time.Sleep(1 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
 	t.Run("it will sleep and try to wait for signatures again when the number of signatures is < 67%", func(t *testing.T) {
@@ -203,15 +245,24 @@ func TestWaitForSignatures(t *testing.T) {
 			"testMonitor",
 		)
 
+		destinationBridge.lock()
+
 		go func() {
-			time.Sleep(8 * time.Millisecond)
-			destinationBridge.signersCount = 3
+			monitor.Start(context.Background())
 		}()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 11*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		// allow propose transfer
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.proposeTransferMutex.Unlock()
+		// allow signing transfer
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.signMutex.Unlock()
+		// allow executing
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.signersCount = 3
+		destinationBridge.executeMutex.Unlock()
 
+		time.Sleep(1 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
 }
@@ -518,9 +569,9 @@ func (b *bridgeStub) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 }
 
 func (b *bridgeStub) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
+	b.proposeTransferMutex.Lock()
 	b.wasProposedTransfer = true
 	b.lastProposedBatch = batch
-	b.proposeTransferMutex.Lock()
 
 	return "propose_tx_hash", b.proposeTransferError
 }
