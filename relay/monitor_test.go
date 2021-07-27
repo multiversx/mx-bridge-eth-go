@@ -71,10 +71,9 @@ func TestProposeTransaction(t *testing.T) {
 		}()
 
 		// allow propose transfer
-		time.Sleep(1 * time.Millisecond)
 		destinationBridge.proposeTransferMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expected, destinationBridge.lastProposedBatch)
 	})
 	t.Run("it will proposeStatus Rejected when proposeTransfer fails", func(t *testing.T) {
@@ -102,10 +101,9 @@ func TestProposeTransaction(t *testing.T) {
 		}()
 
 		// allow propose status
-		time.Sleep(1 * time.Millisecond)
 		sourceBridge.proposeSetStatusMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, bridge.Rejected, sourceBridge.proposedStatusBatch.Transactions[0].Status)
 	})
 	t.Run("it will wait for proposal if not leader", func(t *testing.T) {
@@ -129,7 +127,7 @@ func TestProposeTransaction(t *testing.T) {
 			monitor.Start(context.Background())
 		}()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastWasProposedTransferBatchId)
 	})
 	t.Run("it will sign proposed transaction if not leader", func(t *testing.T) {
@@ -154,13 +152,11 @@ func TestProposeTransaction(t *testing.T) {
 		}()
 
 		// allow propose transfer
-		time.Sleep(1 * time.Millisecond)
 		destinationBridge.proposeTransferMutex.Unlock()
 		// allow signing
-		time.Sleep(1 * time.Millisecond)
 		destinationBridge.signMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastSignedActionId)
 	})
 	t.Run("it will try to proposeTransfer again if timeout and it becomes leader", func(t *testing.T) {
@@ -185,11 +181,10 @@ func TestProposeTransaction(t *testing.T) {
 		}()
 
 		// allow propose transfer
-		time.Sleep(1 * time.Millisecond)
 		provider.amITheLeader = true
 		destinationBridge.proposeTransferMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastProposedBatch)
 	})
 }
@@ -218,16 +213,13 @@ func TestWaitForSignatures(t *testing.T) {
 		}()
 
 		// allow propose transfer
-		time.Sleep(1 * time.Millisecond)
 		destinationBridge.proposeTransferMutex.Unlock()
 		// allow signing transfer
-		time.Sleep(1 * time.Millisecond)
 		destinationBridge.signMutex.Unlock()
 		// allow executing
-		time.Sleep(1 * time.Millisecond)
 		destinationBridge.executeMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
 	t.Run("it will sleep and try to wait for signatures again when the number of signatures is < 67%", func(t *testing.T) {
@@ -292,10 +284,9 @@ func TestExecute(t *testing.T) {
 		// allow signing
 		destinationBridge.signMutex.Unlock()
 		// make executing
-		time.Sleep(1 * time.Millisecond)
 		destinationBridge.executeMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Nil(t, destinationBridge.lastExecutedActionId)
 	})
 	t.Run("it will wait for execution when not leader", func(t *testing.T) {
@@ -329,7 +320,7 @@ func TestExecute(t *testing.T) {
 		provider.amITheLeader = true
 		destinationBridge.executeMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
 }
@@ -364,10 +355,9 @@ func TestProposeSetStatus(t *testing.T) {
 		}()
 
 		// allow set status
-		time.Sleep(1 * time.Millisecond)
 		sourceBridge.proposeSetStatusMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, bridge.Executed, sourceBridge.proposedStatusBatch.Transactions[0].Status)
 	})
 	t.Run("it will sign proposed set status when not leader", func(t *testing.T) {
@@ -403,10 +393,9 @@ func TestProposeSetStatus(t *testing.T) {
 		}()
 
 		// allow set status
-		time.Sleep(1 * time.Millisecond)
 		sourceBridge.signMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, sourceBridge.lastSignedActionId)
 	})
 	t.Run("it will execute set status when leader and number of signatures > 67%", func(t *testing.T) {
@@ -443,16 +432,13 @@ func TestProposeSetStatus(t *testing.T) {
 		}()
 
 		// allow set status
-		time.Sleep(1 * time.Millisecond)
 		sourceBridge.proposeSetStatusMutex.Unlock()
 		// allow signing
-		time.Sleep(1 * time.Millisecond)
 		sourceBridge.signMutex.Unlock()
 		// allow execute
-		time.Sleep(1 * time.Millisecond)
 		sourceBridge.executeMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, sourceBridge.lastExecutedActionId)
 	})
 	t.Run("it will execute set status when leader After waiting", func(t *testing.T) {
@@ -489,17 +475,14 @@ func TestProposeSetStatus(t *testing.T) {
 		}()
 
 		// allow set status
-		time.Sleep(1 * time.Millisecond)
 		sourceBridge.proposeSetStatusMutex.Unlock()
 		// allow signing
-		time.Sleep(1 * time.Millisecond)
 		sourceBridge.signMutex.Unlock()
 		// allow execute
-		time.Sleep(1 * time.Millisecond)
 		provider.amITheLeader = true
 		sourceBridge.executeMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, sourceBridge.lastExecutedActionId)
 	})
 }
