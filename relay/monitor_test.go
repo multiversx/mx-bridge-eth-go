@@ -316,7 +316,7 @@ func TestExecute(t *testing.T) {
 		// allow signing
 		destinationBridge.signMutex.Unlock()
 		// make leader
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		provider.amITheLeader = true
 		destinationBridge.executeMutex.Unlock()
 
