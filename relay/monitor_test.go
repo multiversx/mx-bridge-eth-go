@@ -252,17 +252,14 @@ func TestWaitForSignatures(t *testing.T) {
 		}()
 
 		// allow propose transfer
-		time.Sleep(1 * time.Millisecond)
 		destinationBridge.proposeTransferMutex.Unlock()
 		// allow signing transfer
-		time.Sleep(1 * time.Millisecond)
 		destinationBridge.signMutex.Unlock()
 		// allow executing
-		time.Sleep(1 * time.Millisecond)
 		destinationBridge.signersCount = 3
 		destinationBridge.executeMutex.Unlock()
 
-		time.Sleep(3 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
 }
