@@ -14,6 +14,10 @@ type Mapper interface {
 	GetErc20Address(string) string
 }
 
+type RoleProvider interface {
+	IsWhitelisted(string) bool
+}
+
 type Bridge interface {
 	GetPending(context.Context) *Batch
 	ProposeSetStatus(context.Context, *Batch)

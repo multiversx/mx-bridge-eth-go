@@ -340,6 +340,8 @@ func (c *Client) GetErc20Address(tokenId string) string {
 	return address
 }
 
+// RoleProvider
+
 // Helpers
 
 func (c *Client) executeQuery(valueRequest *data.VmValueRequest) ([][]byte, error) {
