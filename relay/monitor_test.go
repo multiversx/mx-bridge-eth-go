@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -63,10 +64,16 @@ func TestProposeTransaction(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		destinationBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow propose transfer
+		destinationBridge.proposeTransferMutex.Unlock()
+
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expected, destinationBridge.lastProposedBatch)
 	})
 	t.Run("it will proposeStatus Rejected when proposeTransfer fails", func(t *testing.T) {
@@ -87,10 +94,16 @@ func TestProposeTransaction(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		sourceBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow propose status
+		sourceBridge.proposeSetStatusMutex.Unlock()
+
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, bridge.Rejected, sourceBridge.proposedStatusBatch.Transactions[0].Status)
 	})
 	t.Run("it will wait for proposal if not leader", func(t *testing.T) {
@@ -108,10 +121,13 @@ func TestProposeTransaction(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		destinationBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastWasProposedTransferBatchId)
 	})
 	t.Run("it will sign proposed transaction if not leader", func(t *testing.T) {
@@ -129,19 +145,27 @@ func TestProposeTransaction(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		destinationBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow propose transfer
+		destinationBridge.proposeTransferMutex.Unlock()
+		// allow signing
+		destinationBridge.signMutex.Unlock()
+
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastSignedActionId)
 	})
-	t.Run("it will try to proposeTransfer again if timeout", func(t *testing.T) {
+	t.Run("it will try to proposeTransfer again if timeout and it becomes leader", func(t *testing.T) {
 		expect := &bridge.Batch{
 			Id:           bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
 		destinationBridge := &bridgeStub{wasProposedTransfer: false}
-		timer := &testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond}
+		timer := &testHelpers.TimerStub{}
 		provider := &topologyProviderStub{peerCount: 2, amITheLeader: false}
 		monitor := NewMonitor(
 			&bridgeStub{pendingBatches: []*bridge.Batch{expect}},
@@ -151,15 +175,16 @@ func TestProposeTransaction(t *testing.T) {
 			"testMonitor",
 		)
 
+		destinationBridge.lock()
 		go func() {
-			time.Sleep(2 * time.Millisecond)
-			provider.amITheLeader = true
+			monitor.Start(context.Background())
 		}()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		// allow propose transfer
+		provider.amITheLeader = true
+		destinationBridge.proposeTransferMutex.Unlock()
 
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastProposedBatch)
 	})
 }
@@ -181,10 +206,20 @@ func TestWaitForSignatures(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		destinationBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow propose transfer
+		destinationBridge.proposeTransferMutex.Unlock()
+		// allow signing transfer
+		destinationBridge.signMutex.Unlock()
+		// allow executing
+		destinationBridge.executeMutex.Unlock()
+
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
 	t.Run("it will sleep and try to wait for signatures again when the number of signatures is < 67%", func(t *testing.T) {
@@ -197,35 +232,41 @@ func TestWaitForSignatures(t *testing.T) {
 		monitor := NewMonitor(
 			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
 			destinationBridge,
-			&testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond},
+			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 4, amITheLeader: true},
 			"testMonitor",
 		)
 
+		destinationBridge.lock()
+
 		go func() {
-			time.Sleep(8 * time.Millisecond)
-			destinationBridge.signersCount = 3
+			monitor.Start(context.Background())
 		}()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 11*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		// allow propose transfer
+		destinationBridge.proposeTransferMutex.Unlock()
+		// allow signing transfer
+		destinationBridge.signMutex.Unlock()
+		// allow executing
+		destinationBridge.signersCount = 3
+		destinationBridge.executeMutex.Unlock()
 
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
 }
 
 func TestExecute(t *testing.T) {
 	testHelpers.SetTestLogLevel()
-	t.Run("it will wait for execution when not leader", func(t *testing.T) {
-		expect := bridge.NewActionId(42)
+	t.Run("it will not execute if not leader", func(t *testing.T) {
 		batch := &bridge.Batch{
 			Id:           bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
-		destinationBridge := &bridgeStub{signersCount: 3, wasExecuted: false, wasProposedTransfer: true, proposeTransferActionId: expect}
-		timer := &testHelpers.TimerStub{AfterDuration: 3 * time.Millisecond}
+		destinationBridge := &bridgeStub{signersCount: 3, wasExecuted: false, wasProposedTransfer: true, proposeTransferActionId: bridge.NewActionId(42)}
+		timer := &testHelpers.TimerStub{}
 		provider := &topologyProviderStub{peerCount: 4, amITheLeader: false}
+
 		monitor := NewMonitor(
 			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
 			destinationBridge,
@@ -234,15 +275,53 @@ func TestExecute(t *testing.T) {
 			"testMonitor",
 		)
 
+		destinationBridge.lock()
+
 		go func() {
-			time.Sleep(11 * time.Millisecond)
-			provider.amITheLeader = true
+			monitor.Start(context.Background())
 		}()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 16*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		// allow signing
+		destinationBridge.signMutex.Unlock()
+		// make executing
+		destinationBridge.executeMutex.Unlock()
 
+		time.Sleep(5 * time.Millisecond)
+		assert.Nil(t, destinationBridge.lastExecutedActionId)
+	})
+	t.Run("it will wait for execution when not leader", func(t *testing.T) {
+		expect := bridge.NewActionId(42)
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
+		destinationBridge := &bridgeStub{signersCount: 3, wasExecuted: false, wasProposedTransfer: true, proposeTransferActionId: expect}
+		timer := &testHelpers.TimerStub{}
+		provider := &topologyProviderStub{peerCount: 4, amITheLeader: false}
+
+		monitor := NewMonitor(
+			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
+			destinationBridge,
+			timer,
+			provider,
+			"testMonitor",
+		)
+
+		destinationBridge.lock()
+
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow signing
+		time.Sleep(1 * time.Millisecond)
+		destinationBridge.signMutex.Unlock()
+		// make leader
+		time.Sleep(1 * time.Second)
+		provider.amITheLeader = true
+		destinationBridge.executeMutex.Unlock()
+
+		time.Sleep(1 * time.Second)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
 }
@@ -270,10 +349,16 @@ func TestProposeSetStatus(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		sourceBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow set status
+		sourceBridge.proposeSetStatusMutex.Unlock()
+
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, bridge.Executed, sourceBridge.proposedStatusBatch.Transactions[0].Status)
 	})
 	t.Run("it will sign proposed set status when not leader", func(t *testing.T) {
@@ -302,10 +387,16 @@ func TestProposeSetStatus(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		sourceBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow set status
+		sourceBridge.signMutex.Unlock()
+
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, sourceBridge.lastSignedActionId)
 	})
 	t.Run("it will execute set status when leader and number of signatures > 67%", func(t *testing.T) {
@@ -335,10 +426,20 @@ func TestProposeSetStatus(t *testing.T) {
 			"testMonitor",
 		)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		sourceBridge.lock()
 
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow set status
+		sourceBridge.proposeSetStatusMutex.Unlock()
+		// allow signing
+		sourceBridge.signMutex.Unlock()
+		// allow execute
+		sourceBridge.executeMutex.Unlock()
+
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, sourceBridge.lastExecutedActionId)
 	})
 	t.Run("it will execute set status when leader After waiting", func(t *testing.T) {
@@ -363,20 +464,26 @@ func TestProposeSetStatus(t *testing.T) {
 		monitor := NewMonitor(
 			sourceBridge,
 			destinationBridge,
-			&testHelpers.TimerStub{AfterDuration: 4 * time.Millisecond},
+			&testHelpers.TimerStub{},
 			provider,
 			"testMonitor",
 		)
 
+		sourceBridge.lock()
+
 		go func() {
-			time.Sleep(17 * time.Millisecond)
-			provider.amITheLeader = true
+			monitor.Start(context.Background())
 		}()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
-		defer cancel()
-		monitor.Start(ctx)
+		// allow set status
+		sourceBridge.proposeSetStatusMutex.Unlock()
+		// allow signing
+		sourceBridge.signMutex.Unlock()
+		// allow execute
+		provider.amITheLeader = true
+		sourceBridge.executeMutex.Unlock()
 
+		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, sourceBridge.lastExecutedActionId)
 	})
 }
@@ -413,6 +520,18 @@ type bridgeStub struct {
 	proposeTransferError           error
 	proposedStatusBatch            *bridge.Batch
 	proposeSetStatusActionId       bridge.ActionId
+
+	proposeSetStatusMutex sync.Mutex
+	proposeTransferMutex  sync.Mutex
+	signMutex             sync.Mutex
+	executeMutex          sync.Mutex
+}
+
+func (b *bridgeStub) lock() {
+	b.proposeSetStatusMutex.Lock()
+	b.proposeTransferMutex.Lock()
+	b.signMutex.Lock()
+	b.executeMutex.Lock()
 }
 
 func (b *bridgeStub) GetPending(context.Context) *bridge.Batch {
@@ -426,10 +545,12 @@ func (b *bridgeStub) GetPending(context.Context) *bridge.Batch {
 }
 
 func (b *bridgeStub) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
+	b.proposeSetStatusMutex.Lock()
 	b.proposedStatusBatch = batch
 }
 
 func (b *bridgeStub) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
+	b.proposeTransferMutex.Lock()
 	b.wasProposedTransfer = true
 	b.lastProposedBatch = batch
 
@@ -458,12 +579,16 @@ func (b *bridgeStub) WasExecuted(context.Context, bridge.ActionId, bridge.BatchI
 }
 
 func (b *bridgeStub) Sign(_ context.Context, actionId bridge.ActionId) (string, error) {
+	b.signMutex.Lock()
 	b.lastSignedActionId = actionId
+
 	return "sign_tx_hash", nil
 }
 
 func (b *bridgeStub) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) (string, error) {
+	b.executeMutex.Lock()
 	b.lastExecutedActionId = actionId
+
 	return "execution hash", nil
 }
 
