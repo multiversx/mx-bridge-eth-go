@@ -32,7 +32,7 @@ jobs:
               dep ensure
           fi
       - name: Run unit tests
-        run: make test
+        run: make test-coverage
 
       - name: Upload coverage
         run: bash <(curl -s https://codecov.io/bash) -f coverage.txt -y codecov.yml

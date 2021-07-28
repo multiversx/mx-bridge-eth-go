@@ -317,11 +317,11 @@ func TestExecute(t *testing.T) {
 		time.Sleep(1 * time.Millisecond)
 		destinationBridge.signMutex.Unlock()
 		// make leader
-		time.Sleep(5 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 		provider.amITheLeader = true
 		destinationBridge.executeMutex.Unlock()
 
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
 }
