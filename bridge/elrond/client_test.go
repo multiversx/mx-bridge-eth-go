@@ -432,6 +432,39 @@ func TestSign(t *testing.T) {
 	})
 }
 
+func TestIsWhitelisted(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
+	t.Run("where role is 2 it will return true", func(t *testing.T) {
+		role, _ := hex.DecodeString("02")
+		responseData := [][]byte{role}
+		proxy := &testProxy{
+			transactionCost:   1024,
+			queryResponseCode: "ok",
+			queryResponseData: responseData,
+		}
+		client, _ := buildTestClient(proxy)
+
+		isWhitelisted := client.IsWhitelisted("some address")
+
+		assert.True(t, isWhitelisted)
+	})
+	t.Run("where role is 1 it will return false", func(t *testing.T) {
+		role, _ := hex.DecodeString("01")
+		responseData := [][]byte{role}
+		proxy := &testProxy{
+			transactionCost:   1024,
+			queryResponseCode: "ok",
+			queryResponseData: responseData,
+		}
+		client, _ := buildTestClient(proxy)
+
+		isWhitelisted := client.IsWhitelisted("some address")
+
+		assert.False(t, isWhitelisted)
+	})
+}
+
 func buildTestClient(proxy *testProxy) (*Client, error) {
 	privateKey, err := erdgo.LoadPrivateKeyFromPemFile("grace.pem")
 	if err != nil {

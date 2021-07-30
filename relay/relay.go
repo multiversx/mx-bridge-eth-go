@@ -91,16 +91,20 @@ type Relay struct {
 
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
+
+	roleProvider        bridge.RoleProvider
+	elrondPublicAddress string
 }
 
 func NewRelay(config *Config, name string) (*Relay, error) {
 	relay := &Relay{}
 
-	elrondBridge, err := elrond.NewClient(config.Elrond)
+	elrondBridge, _, err := elrond.NewClient(config.Elrond)
 	if err != nil {
 		return nil, err
 	}
 	relay.elrondBridge = elrondBridge
+	relay.roleProvider = elrondBridge
 
 	ethBridge, err := eth.NewClient(config.Eth, relay, elrondBridge)
 	if err != nil {
@@ -178,6 +182,12 @@ func (r *Relay) ProcessReceivedMessage(message p2p.MessageP2P, _ core.PeerID) er
 
 	switch message.Topic() {
 	case JoinTopicName:
+		elrondPublicAddress := string(message.Data())
+		if !r.roleProvider.IsWhitelisted(elrondPublicAddress) {
+			r.log.Error(fmt.Sprintf("A peer with address %q tryed to join but is not whitelisted", elrondPublicAddress))
+			return nil
+		}
+
 		r.addPeer(message.Peer())
 		if err := r.broadcastTopology(message.Peer()); err != nil {
 			r.log.Error(err.Error())
@@ -302,7 +312,7 @@ func (r *Relay) join(ctx context.Context) {
 
 	select {
 	case <-r.timer.After(time.Duration(v) * time.Second):
-		r.messenger.Broadcast(JoinTopicName, []byte(JoinTopicName))
+		r.messenger.Broadcast(JoinTopicName, []byte(r.elrondPublicAddress))
 	case <-ctx.Done():
 	}
 }
