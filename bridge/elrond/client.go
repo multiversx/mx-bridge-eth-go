@@ -20,6 +20,12 @@ const (
 	ExecutionCost = 1000000000
 )
 
+const (
+	NoRights          = 0
+	CanPropose        = 1
+	CanProposeAndSign = 2
+)
+
 type QueryResponseErr struct {
 	code    string
 	message string
@@ -46,25 +52,25 @@ type Client struct {
 	log           logger.Logger
 }
 
-func NewClient(config bridge.Config) (*Client, error) {
+func NewClient(config bridge.Config) (*Client, string, error) {
 	log := logger.GetOrCreate("ElrondClient")
 
 	proxy := blockchain.NewElrondProxy(config.NetworkAddress, nil)
 
 	privateKey, err := erdgo.LoadPrivateKeyFromPemFile(config.PrivateKey)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	addressString, err := erdgo.GetAddressFromPrivateKey(privateKey)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	log.Info(fmt.Sprintf("Address: %q", addressString))
 
 	address, err := data.NewAddressFromBech32String(addressString)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	return &Client{
@@ -81,7 +87,7 @@ func NewClient(config bridge.Config) (*Client, error) {
 			return account.Nonce, nil
 		},
 		log: log,
-	}, nil
+	}, addressString, nil
 }
 
 func (c *Client) GetPending(context.Context) *bridge.Batch {
@@ -341,6 +347,21 @@ func (c *Client) GetErc20Address(tokenId string) string {
 }
 
 // RoleProvider
+
+func (c *Client) IsWhitelisted(address string) bool {
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("userRole").
+		HexString(address).
+		Build()
+
+	role, err := c.executeUintQuery(valueRequest)
+	if err != nil {
+		c.log.Error(err.Error())
+		return false
+	}
+
+	return role == CanProposeAndSign
+}
 
 // Helpers
 

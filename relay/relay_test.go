@@ -107,6 +107,8 @@ func TestJoinTopicProcessor(t *testing.T) {
 			ethBridge:    &bridgeStub{},
 
 			peers: Peers{"first", "second"},
+
+			roleProvider: &roleProviderStub{isWhitelisted: true},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -126,6 +128,30 @@ func TestJoinTopicProcessor(t *testing.T) {
 
 		assert.Equal(t, expected, got)
 	})
+	t.Run("on joined action when there are more peers then self and the peer is not whitelisted it will broadcast to private", func(t *testing.T) {
+		messenger := &netMessengerStub{}
+		relay := Relay{
+			messenger: messenger,
+			timer:     &testHelpers.TimerStub{},
+			log:       log,
+
+			elrondBridge: &bridgeStub{},
+			ethBridge:    &bridgeStub{},
+
+			peers: Peers{"first", "second"},
+
+			roleProvider: &roleProviderStub{isWhitelisted: false},
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+		defer cancel()
+		_ = relay.Start(ctx)
+
+		joinMessageProcessor := messenger.registeredMessageProcessors[JoinTopicName]
+		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("other"), "peer_near_me")
+
+		assert.Empty(t, messenger.lastSendData)
+	})
 	t.Run("when self joined will not broadcast to private", func(t *testing.T) {
 		messenger := &netMessengerStub{peerID: "self"}
 		relay := Relay{
@@ -135,6 +161,8 @@ func TestJoinTopicProcessor(t *testing.T) {
 
 			elrondBridge: &bridgeStub{},
 			ethBridge:    &bridgeStub{},
+
+			roleProvider: &roleProviderStub{isWhitelisted: true},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -159,6 +187,8 @@ func TestJoin(t *testing.T) {
 
 		elrondBridge: &bridgeStub{},
 		ethBridge:    &bridgeStub{},
+
+		elrondPublicAddress: "address",
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -259,7 +289,7 @@ func buildJoinedMessage(peerID core.PeerID) p2p.MessageP2P {
 	return &mock.P2PMessageMock{
 		TopicField: JoinTopicName,
 		PeerField:  peerID,
-		DataField:  []byte(JoinTopicName),
+		DataField:  []byte("address"),
 	}
 }
 
@@ -321,7 +351,7 @@ func (p *netMessengerStub) Addresses() []string {
 }
 
 func (p *netMessengerStub) Broadcast(topic string, data []byte) {
-	if topic == JoinTopicName && string(data) == JoinTopicName {
+	if topic == JoinTopicName && string(data) == "address" {
 		p.joinedWasCalled = true
 	}
 
@@ -339,4 +369,12 @@ func (p *netMessengerStub) SendToConnectedPeer(topic string, buff []byte, peerID
 
 func (p *netMessengerStub) Close() error {
 	return nil
+}
+
+type roleProviderStub struct {
+	isWhitelisted bool
+}
+
+func (r *roleProviderStub) IsWhitelisted(string) bool {
+	return r.isWhitelisted
 }

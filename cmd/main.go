@@ -34,7 +34,7 @@ var (
 		Name: "config",
 		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contain the main " +
 			"configurations such as the marshalizer type",
-		Value: "./config.xtoml",
+		Value: "./config.toml",
 	}
 )
 
@@ -58,7 +58,6 @@ func main() {
 
 	app.Action = func(c *cli.Context) error {
 		return startRelay(c)
-		//return playgroundElrond(c)
 	}
 
 	err := app.Run(os.Args)
