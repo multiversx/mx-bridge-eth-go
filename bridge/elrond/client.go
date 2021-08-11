@@ -119,12 +119,7 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 	addrPkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
 	var transactions []*bridge.DepositTransaction
 	for i := 1; i < len(responseData); i += 6 {
-		amount := new(big.Int)
-		amount, ok := amount.SetString(hex.EncodeToString(responseData[i+5]), 16)
-		if !ok {
-			c.log.Error("Error parsing amount to big int")
-			return nil
-		}
+		amount := new(big.Int).SetBytes(responseData[i+5])
 		blockNonce, err := strconv.ParseInt(hex.EncodeToString(responseData[i]), 16, 64)
 		if err != nil {
 			c.log.Error(err.Error())
