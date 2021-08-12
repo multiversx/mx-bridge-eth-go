@@ -119,11 +119,7 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 	addrPkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
 	var transactions []*bridge.DepositTransaction
 	for i := 1; i < len(responseData); i += 6 {
-		amount, err := strconv.ParseInt(hex.EncodeToString(responseData[i+5]), 16, 64)
-		if err != nil {
-			c.log.Error(err.Error())
-			return nil
-		}
+		amount := new(big.Int).SetBytes(responseData[i+5])
 		blockNonce, err := strconv.ParseInt(hex.EncodeToString(responseData[i]), 16, 64)
 		if err != nil {
 			c.log.Error(err.Error())
@@ -139,7 +135,7 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 			To:           fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
 			From:         addrPkConv.Encode(responseData[i+2]),
 			TokenAddress: fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+4])),
-			Amount:       big.NewInt(amount),
+			Amount:       amount,
 			DepositNonce: bridge.NewNonce(depositNonce),
 			BlockNonce:   bridge.NewNonce(blockNonce),
 			Status:       0,
