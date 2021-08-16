@@ -80,7 +80,7 @@ func startRelay(ctx *cli.Context) error {
 		return err
 	}
 
-	ethToElrRelay, err := relay.NewRelay(config, "EthToErlRelay")
+	ethToElrRelay, err := relay.NewRelay(config, "EthToElrRelay")
 	if err != nil {
 		return err
 	}

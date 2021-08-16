@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -17,13 +18,14 @@ import (
 )
 
 const (
-	ExecutionCost = 1000000000
+	ExecutionCost       = 250000000
+	nonceUpdateInterval = time.Minute
 )
 
 const (
-	NoRights          = 0
-	CanPropose        = 1
-	CanProposeAndSign = 2
+	NoRights = iota
+	CanPropose
+	CanProposeAndSign
 )
 
 type QueryResponseErr struct {
@@ -48,7 +50,7 @@ type Client struct {
 	bridgeAddress string
 	privateKey    []byte
 	address       string
-	nonce         func() (uint64, error)
+	nonce         uint64
 	log           logger.Logger
 }
 
@@ -73,35 +75,39 @@ func NewClient(config bridge.Config) (*Client, string, error) {
 		return nil, "", err
 	}
 
-	return &Client{
+	client := &Client{
 		proxy:         proxy,
 		bridgeAddress: config.BridgeAddress,
 		privateKey:    privateKey,
 		address:       address.AddressAsBech32String(),
-		nonce: func() (uint64, error) {
-			account, err := proxy.GetAccount(address)
-			if err != nil {
-				return 0, err
-			}
+		log:           log,
+	}
 
-			return account.Nonce, nil
-		},
-		log: log,
-	}, addressString, nil
+	go func() {
+		for {
+			account, err := proxy.GetAccount(address)
+			if err == nil {
+				client.nonce = account.Nonce
+			}
+			time.Sleep(nonceUpdateInterval)
+		}
+	}()
+
+	return client, addressString, nil
 }
 
 func (c *Client) GetPending(context.Context) *bridge.Batch {
 	c.log.Info("Elrond: Getting pending batch")
 	responseData, err := c.getCurrentBatch()
 	if err != nil {
-		c.log.Error(fmt.Sprintf("Error quering current batch: %q", err.Error()))
+		c.log.Error(fmt.Sprintf("Error querying current batch: %q", err.Error()))
 		return nil
 	}
 
 	if emptyResponse(responseData) {
 		_, err := c.getNextPendingBatch()
 		if err != nil {
-			c.log.Error(fmt.Sprintf("Error retriving next pending batch %q", err.Error()))
+			c.log.Error(fmt.Sprintf("Error retrieving next pending batch %q", err.Error()))
 			return nil
 		}
 	}
@@ -169,7 +175,7 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	if err != nil {
 		c.log.Error(err.Error())
 	}
-	c.log.Info(fmt.Sprintf("Elrond: Propsed status update with hash %s", hash))
+	c.log.Info(fmt.Sprintf("Elrond: Proposed status update with hash %s", hash))
 }
 
 func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
@@ -431,7 +437,7 @@ func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 		return nil, err
 	}
 
-	nonce, err := c.nonce()
+	nonce := c.nonce
 	if err != nil {
 		return nil, err
 	}
@@ -476,6 +482,9 @@ func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 	}
 
 	hash, err := c.proxy.SendTransaction(tx)
+	if err == nil {
+		c.nonce++
+	}
 
 	return hash, err
 }
