@@ -1,12 +1,11 @@
 
 const { expect } = require("chai");
-const { waffle } = require("hardhat");
+const { waffle, ethers, network } = require("hardhat");
 const { provider, deployContract } = waffle;
 
 const AFC = require('../artifacts/contracts/AFCoin.sol/AFCoin.json');
 const ERC20Safe = require('../artifacts/contracts/ERC20Safe.sol/ERC20Safe.json');
 const Bridge = require('../artifacts/contracts/Bridge.sol/Bridge.json');
-const { ethers } = require("ethers");
 
 describe("ERC20Safe", async function () {
   const [adminWallet, bridgeWallet, otherWallet] = provider.getWallets();
@@ -176,6 +175,25 @@ describe("ERC20Safe", async function () {
 
         expect(await safe.depositsCount.call()).to.equal(1);
       });
+
+      it('updates the lastUpdated timestamp on the batch', async function () {
+        // Deposit first transaction
+        await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+        batchNonce = await safe.batchesCount.call();
+        // Get batch after first transaction
+        batch = await safe.getBatch(batchNonce);
+
+        // Incrase time
+        await network.provider.send('evm_increaseTime', [100]);
+        await network.provider.send("evm_mine")
+
+        // Deposit second transaction
+        await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+        // Get batch after second transaction
+        updatedBatch = await safe.getBatch(batchNonce);
+
+        expect(batch.lastUpdated).to.not.equal(updatedBatch.lastUpdated);
+      })
     });
 
 
