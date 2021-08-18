@@ -17,7 +17,14 @@ import (
 )
 
 const (
-	ExecutionCost = 1000000000
+	SignCost              = 35_000_000
+	ProposeTransferCost   = 35_000_000
+	ProposeTransferTxCost = 15_000_000
+	ProposeStatusCost     = 50_000_000
+	PerformActionCost     = 60_000_000
+	PerformActionTxCost   = 20_000_000
+	GetNextTxBatchCost    = 250_000_000
+	ExecutionCost         = 0
 )
 
 const (
@@ -165,7 +172,7 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 		builder = builder.Int(big.NewInt(int64(tx.Status)))
 	}
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, ProposeStatusCost)
 	if err != nil {
 		c.log.Error(err.Error())
 	}
@@ -184,7 +191,7 @@ func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 			BigInt(tx.Amount)
 	}
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, uint64(ProposeTransferCost+len(batch.Transactions)*ProposeTransferTxCost))
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Proposed transfer for batch %v with hash %s", batch.Id, hash))
@@ -275,7 +282,7 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 		Func("sign").
 		ActionId(actionId)
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, SignCost)
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Singed with hash %q", hash))
@@ -286,12 +293,12 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 	return hash, err
 }
 
-func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) (string, error) {
+func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch) (string, error) {
 	builder := newBuilder().
 		Func("performAction").
 		ActionId(actionId)
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, uint64(PerformActionCost+len(batch.Transactions)*PerformActionTxCost))
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Executed actionId %v with hash %s", actionId, hash))
@@ -492,7 +499,7 @@ func (c *Client) getNextPendingBatch() (string, error) {
 	builder := newBuilder().
 		Func("getNextTransactionBatch")
 
-	return c.sendTransaction(builder, ExecutionCost)
+	return c.sendTransaction(builder, GetNextTxBatchCost)
 }
 
 func emptyResponse(response [][]byte) bool {
