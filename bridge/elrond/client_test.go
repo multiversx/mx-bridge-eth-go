@@ -601,13 +601,6 @@ func (p *testProxy) GetTransactionInfoWithResults(string) (*data.TransactionInfo
 	return nil, nil
 }
 
-func (p *testProxy) RequestTransactionCost(*data.Transaction) (*data.TxCostResponseData, error) {
-	return &data.TxCostResponseData{
-		TxCost:     p.transactionCost,
-		RetMessage: "",
-	}, p.transactionCostError
-}
-
 func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 	p.lastQueryArgs = valueRequest.Args
 	return &data.VmValuesResponseData{Data: &vm.VMOutputApi{ReturnCode: p.queryResponseCode, ReturnData: p.queryResponseData}}, nil

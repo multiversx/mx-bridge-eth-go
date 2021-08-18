@@ -3,7 +3,6 @@ package elrond
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -24,7 +23,6 @@ const (
 	PerformActionCost     = 60_000_000
 	PerformActionTxCost   = 20_000_000
 	GetNextTxBatchCost    = 250_000_000
-	ExecutionCost         = 0
 )
 
 const (
@@ -46,7 +44,6 @@ type elrondProxy interface {
 	GetNetworkConfig() (*data.NetworkConfig, error)
 	SendTransaction(*data.Transaction) (string, error)
 	GetTransactionInfoWithResults(hash string) (*data.TransactionInfo, error)
-	RequestTransactionCost(tx *data.Transaction) (*data.TxCostResponseData, error)
 	ExecuteVMQuery(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 }
 
@@ -446,7 +443,7 @@ func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 	tx := &data.Transaction{
 		ChainID:  networkConfig.ChainID,
 		Version:  networkConfig.MinTransactionVersion,
-		GasLimit: networkConfig.MinGasLimit,
+		GasLimit: cost,
 		GasPrice: networkConfig.MinGasPrice,
 		Nonce:    nonce,
 		Data:     builder.ToBytes(),
@@ -454,19 +451,6 @@ func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 		RcvAddr:  c.bridgeAddress,
 		Value:    "0",
 	}
-
-	if cost == 0 {
-		reqCost, err := c.proxy.RequestTransactionCost(tx)
-		if err != nil {
-			return nil, err
-		}
-		if reqCost.RetMessage != "" {
-			return nil, errors.New(reqCost.RetMessage)
-		}
-		cost = reqCost.TxCost
-	}
-
-	tx.GasLimit = cost
 
 	err = erdgo.SignTransaction(tx, c.privateKey)
 	if err != nil {
