@@ -72,7 +72,7 @@ describe("Bridge", async function () {
 
   describe('when initialized with a quorum that is lower than the minimum', async function () {
     it('reverts', async function () {
-      invalidQuorumValue = 1;
+      invalidQuorumValue = 0;
       await expect(deployContract(adminWallet, BridgeContract, [boardMembers.map(m => m.address), invalidQuorumValue, erc20Safe.address]))
         .to.be.revertedWith("Quorum is too low.");
     })
@@ -160,7 +160,7 @@ describe("Bridge", async function () {
 
     describe('when quorum is lower than the minimum', async function () {
       it('reverts', async function () {
-        await expect(bridge.setQuorum(2)).to.be.revertedWith('Quorum is too low.');
+        await expect(bridge.setQuorum(0)).to.be.revertedWith('Quorum is too low.');
       })
     })
   });
