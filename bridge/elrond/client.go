@@ -20,6 +20,12 @@ const (
 	ExecutionCost = 1000000000
 )
 
+const (
+	NoRights          = 0
+	CanPropose        = 1
+	CanProposeAndSign = 2
+)
+
 type QueryResponseErr struct {
 	code    string
 	message string
@@ -46,25 +52,25 @@ type Client struct {
 	log           logger.Logger
 }
 
-func NewClient(config bridge.Config) (*Client, error) {
+func NewClient(config bridge.Config) (*Client, string, error) {
 	log := logger.GetOrCreate("ElrondClient")
 
 	proxy := blockchain.NewElrondProxy(config.NetworkAddress, nil)
 
 	privateKey, err := erdgo.LoadPrivateKeyFromPemFile(config.PrivateKey)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	addressString, err := erdgo.GetAddressFromPrivateKey(privateKey)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	log.Info(fmt.Sprintf("Address: %q", addressString))
 
 	address, err := data.NewAddressFromBech32String(addressString)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	return &Client{
@@ -81,21 +87,21 @@ func NewClient(config bridge.Config) (*Client, error) {
 			return account.Nonce, nil
 		},
 		log: log,
-	}, nil
+	}, addressString, nil
 }
 
 func (c *Client) GetPending(context.Context) *bridge.Batch {
 	c.log.Info("Elrond: Getting pending batch")
 	responseData, err := c.getCurrentBatch()
 	if err != nil {
-		c.log.Error(err.Error())
+		c.log.Error(fmt.Sprintf("Error quering current batch: %q", err.Error()))
 		return nil
 	}
 
-	if len(responseData) == 0 {
+	if emptyResponse(responseData) {
 		_, err := c.getNextPendingBatch()
 		if err != nil {
-			c.log.Error(err.Error())
+			c.log.Error(fmt.Sprintf("Error retriving next pending batch %q", err.Error()))
 			return nil
 		}
 	}
@@ -106,18 +112,14 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 		return nil
 	}
 
-	if len(responseData) == 0 {
+	if emptyResponse(responseData) {
 		return nil
 	}
 
 	addrPkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
 	var transactions []*bridge.DepositTransaction
-	for i := 0; i < len(responseData); i += 6 {
-		amount, err := strconv.ParseInt(hex.EncodeToString(responseData[i+5]), 16, 64)
-		if err != nil {
-			c.log.Error(err.Error())
-			return nil
-		}
+	for i := 1; i < len(responseData); i += 6 {
+		amount := new(big.Int).SetBytes(responseData[i+5])
 		blockNonce, err := strconv.ParseInt(hex.EncodeToString(responseData[i]), 16, 64)
 		if err != nil {
 			c.log.Error(err.Error())
@@ -133,7 +135,7 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 			To:           fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
 			From:         addrPkConv.Encode(responseData[i+2]),
 			TokenAddress: fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+4])),
-			Amount:       big.NewInt(amount),
+			Amount:       amount,
 			DepositNonce: bridge.NewNonce(depositNonce),
 			BlockNonce:   bridge.NewNonce(blockNonce),
 			Status:       0,
@@ -142,8 +144,14 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 		transactions = append(transactions, tx)
 	}
 
+	batchId, err := strconv.ParseInt(hex.EncodeToString(responseData[0]), 16, 64)
+	if err != nil {
+		c.log.Error(err.Error())
+		return nil
+	}
+
 	return &bridge.Batch{
-		Id:           bridge.NewBatchId(0),
+		Id:           bridge.NewBatchId(batchId),
 		Transactions: transactions,
 	}
 }
@@ -151,13 +159,13 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	builder := newBuilder().
 		Func("proposeEsdtSafeSetCurrentTransactionBatchStatus").
-		Address(c.address)
+		BatchId(batch.Id)
 
 	for _, tx := range batch.Transactions {
 		builder = builder.Int(big.NewInt(int64(tx.Status)))
 	}
 
-	hash, err := c.sendTransaction(builder, 0)
+	hash, err := c.sendTransaction(builder, ExecutionCost)
 	if err != nil {
 		c.log.Error(err.Error())
 	}
@@ -167,7 +175,7 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	builder := newBuilder().
 		Func("proposeMultiTransferEsdtBatch").
-		Int(batch.Id)
+		BatchId(batch.Id)
 
 	for _, tx := range batch.Transactions {
 		builder = builder.
@@ -176,28 +184,32 @@ func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 			BigInt(tx.Amount)
 	}
 
-	hash, err := c.sendTransaction(builder, 0)
+	hash, err := c.sendTransaction(builder, ExecutionCost)
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Proposed transfer for batch %v with hash %s", batch.Id, hash))
+	} else {
+		c.log.Error(fmt.Sprintf("Elrond: Propose transfer errored with: %q", err.Error()))
 	}
 
 	return hash, err
 }
 
-func (c *Client) WasProposedTransfer(_ context.Context, batchId bridge.BatchId) bool {
+func (c *Client) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("wasTransferActionProposed").
-		BatchId(batchId).
+		BatchId(batch.Id).
+		WithTx(batch, c.GetTokenId).
 		Build()
 
 	return c.executeBoolQuery(valueRequest)
 }
 
-func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batchId bridge.BatchId) bridge.ActionId {
+func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("getActionIdForBatchId").
-		BatchId(batchId).
+		Func("getActionIdForTransferBatch").
+		BatchId(batch.Id).
+		WithTx(batch, c.GetTokenId).
 		Build()
 
 	response, err := c.executeUintQuery(valueRequest)
@@ -208,28 +220,33 @@ func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batchId bridge
 
 	actionId := bridge.NewActionId(int64(response))
 
-	c.log.Info(fmt.Sprintf("Elrond: got actionId %v for batchId %v", actionId, batchId))
+	c.log.Info(fmt.Sprintf("Elrond: got actionId %v for batchId %v", actionId, batch.Id))
 
 	return actionId
 }
 
 func (c *Client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
-		Func("wasSetCurrentTransactionBatchStatusActionProposed")
+		Func("wasSetCurrentTransactionBatchStatusActionProposed").
+		BatchId(batch.Id)
 
 	for _, tx := range batch.Transactions {
-		valueRequest.Int(big.NewInt(int64(tx.Status)))
+		valueRequest = valueRequest.BigInt(big.NewInt(int64(tx.Status)))
 	}
 
 	return c.executeBoolQuery(valueRequest.Build())
 }
 
-func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context) bridge.ActionId {
+func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
 		Func("getActionIdForSetCurrentTransactionBatchStatus").
-		Build()
+		BatchId(batch.Id)
 
-	response, err := c.executeUintQuery(valueRequest)
+	for _, tx := range batch.Transactions {
+		valueRequest = valueRequest.BigInt(big.NewInt(int64(tx.Status)))
+	}
+
+	response, err := c.executeUintQuery(valueRequest.Build())
 	if err != nil {
 		c.log.Error(err.Error())
 		return bridge.NewActionId(0)
@@ -258,10 +275,12 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 		Func("sign").
 		ActionId(actionId)
 
-	hash, err := c.sendTransaction(builder, 0)
+	hash, err := c.sendTransaction(builder, ExecutionCost)
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Singed with hash %q", hash))
+	} else {
+		c.log.Error(fmt.Sprintf("Elrond: Sign failed with %q;", err.Error()))
 	}
 
 	return hash, err
@@ -276,6 +295,8 @@ func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.B
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Executed actionId %v with hash %s", actionId, hash))
+	} else {
+		c.log.Error(fmt.Sprintf("Elrond: Executed failed with %q;", err.Error()))
 	}
 
 	return hash, err
@@ -319,6 +340,23 @@ func (c *Client) GetErc20Address(tokenId string) string {
 	}
 
 	return address
+}
+
+// RoleProvider
+
+func (c *Client) IsWhitelisted(address string) bool {
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+		Func("userRole").
+		HexString(address).
+		Build()
+
+	role, err := c.executeUintQuery(valueRequest)
+	if err != nil {
+		c.log.Error(err.Error())
+		return false
+	}
+
+	return role == CanProposeAndSign
 }
 
 // Helpers
@@ -457,6 +495,10 @@ func (c *Client) getNextPendingBatch() (string, error) {
 	return c.sendTransaction(builder, ExecutionCost)
 }
 
+func emptyResponse(response [][]byte) bool {
+	return len(response) == 0 || (len(response) == 1 && len(response[0]) == 0)
+}
+
 // Builders
 
 type valueRequestBuilder struct {
@@ -490,18 +532,18 @@ func (builder *valueRequestBuilder) Func(functionName string) *valueRequestBuild
 }
 
 func (builder *valueRequestBuilder) Nonce(nonce bridge.Nonce) *valueRequestBuilder {
-	return builder.Int(nonce)
+	return builder.BigInt(nonce)
 }
 
 func (builder *valueRequestBuilder) BatchId(batchId bridge.BatchId) *valueRequestBuilder {
-	return builder.Int(batchId)
+	return builder.BigInt(batchId)
 }
 
 func (builder *valueRequestBuilder) ActionId(actionId bridge.ActionId) *valueRequestBuilder {
-	return builder.Int(actionId)
+	return builder.BigInt(actionId)
 }
 
-func (builder *valueRequestBuilder) Int(value *big.Int) *valueRequestBuilder {
+func (builder *valueRequestBuilder) BigInt(value *big.Int) *valueRequestBuilder {
 	builder.args = append(builder.args, intToHex(value))
 
 	return builder
@@ -509,6 +551,25 @@ func (builder *valueRequestBuilder) Int(value *big.Int) *valueRequestBuilder {
 
 func (builder *valueRequestBuilder) HexString(value string) *valueRequestBuilder {
 	builder.args = append(builder.args, value)
+
+	return builder
+}
+
+func (builder *valueRequestBuilder) Address(value string) *valueRequestBuilder {
+	pkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
+	buff, _ := pkConv.Decode(value)
+	builder.args = append(builder.args, hex.EncodeToString(buff))
+
+	return builder
+}
+
+func (builder *valueRequestBuilder) WithTx(batch *bridge.Batch, mapper func(string) string) *valueRequestBuilder {
+	for _, tx := range batch.Transactions {
+		builder = builder.
+			Address(tx.To).
+			HexString(mapper(tx.TokenAddress[2:])).
+			BigInt(tx.Amount)
+	}
 
 	return builder
 }
@@ -534,6 +595,10 @@ func (builder *txDataBuilder) Func(function string) *txDataBuilder {
 }
 
 func (builder *txDataBuilder) ActionId(value bridge.ActionId) *txDataBuilder {
+	return builder.Int(value)
+}
+
+func (builder *txDataBuilder) BatchId(value bridge.BatchId) *txDataBuilder {
 	return builder.Int(value)
 }
 

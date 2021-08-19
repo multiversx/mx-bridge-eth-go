@@ -164,13 +164,12 @@ contract ERC20Safe {
         - timestamp
         - deposits List of the deposits included in this batch
         @dev This function is to be called by the bridge (which is called by the relayers)
-        It only returns final batches - batches that are full (batchSize) or the block time limit time has passed.
+        It only returns final batches - batches where the block time limit has passed.
     */
     function getNextPendingBatch() public view returns (Batch memory) {
         Batch memory batch = batches[currentPendingBatch];
 
-        if(((batch.timestamp + batchTimeLimit) < block.timestamp || batch.deposits.length >= batchSize) 
-            && (batch.lastUpdated + batchSettleLimit) < block.timestamp)
+        if ((batch.lastUpdated + batchSettleLimit) < block.timestamp)
         {
             return batch;
         }

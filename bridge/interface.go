@@ -14,14 +14,18 @@ type Mapper interface {
 	GetErc20Address(string) string
 }
 
+type RoleProvider interface {
+	IsWhitelisted(string) bool
+}
+
 type Bridge interface {
 	GetPending(context.Context) *Batch
 	ProposeSetStatus(context.Context, *Batch)
 	ProposeTransfer(context.Context, *Batch) (string, error)
-	WasProposedTransfer(context.Context, BatchId) bool
-	GetActionIdForProposeTransfer(context.Context, BatchId) ActionId
+	WasProposedTransfer(context.Context, *Batch) bool
+	GetActionIdForProposeTransfer(context.Context, *Batch) ActionId
 	WasProposedSetStatus(context.Context, *Batch) bool
-	GetActionIdForSetStatusOnPendingTransfer(context.Context) ActionId
+	GetActionIdForSetStatusOnPendingTransfer(context.Context, *Batch) ActionId
 	WasExecuted(context.Context, ActionId, BatchId) bool
 	Sign(context.Context, ActionId) (string, error)
 	Execute(context.Context, ActionId, BatchId) (string, error)

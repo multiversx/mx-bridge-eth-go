@@ -11,13 +11,12 @@ func SetTestLogLevel() {
 }
 
 type TimerStub struct {
-	AfterDuration time.Duration
-	TimeNowUnix   int64
-	WasStarted    bool
+	TimeNowUnix int64
+	WasStarted  bool
 }
 
 func (s *TimerStub) After(time.Duration) <-chan time.Time {
-	return time.After(s.AfterDuration)
+	return time.After(0 * time.Millisecond)
 }
 
 func (s *TimerStub) NowUnix() int64 {
