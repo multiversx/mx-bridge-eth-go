@@ -563,8 +563,7 @@ type testProxy struct {
 	queryResponseCode                 string
 	lastQueryArgs                     []string
 
-	transactionCost      uint64
-	transactionCostError error
+	transactionCost uint64
 }
 
 func (p *testProxy) GetNetworkConfig() (*data.NetworkConfig, error) {
