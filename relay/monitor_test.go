@@ -585,7 +585,7 @@ func (b *bridgeStub) Sign(_ context.Context, actionId bridge.ActionId) (string, 
 	return "sign_tx_hash", nil
 }
 
-func (b *bridgeStub) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) (string, error) {
+func (b *bridgeStub) Execute(_ context.Context, actionId bridge.ActionId, _ *bridge.Batch) (string, error) {
 	b.executeMutex.Lock()
 	b.lastExecutedActionId = actionId
 

@@ -187,8 +187,9 @@ func (c *Client) Sign(context.Context, bridge.ActionId) (string, error) {
 	return "", nil
 }
 
-func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batchId bridge.BatchId) (string, error) {
+func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batch *bridge.Batch) (string, error) {
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
+	batchId := batch.Id
 
 	blockNonce, err := c.blockchainClient.PendingNonceAt(ctx, fromAddress)
 	if err != nil {

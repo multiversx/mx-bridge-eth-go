@@ -3,7 +3,6 @@ package elrond
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -17,7 +16,13 @@ import (
 )
 
 const (
-	ExecutionCost = 1000000000
+	SignCost              = 35_000_000
+	ProposeTransferCost   = 35_000_000
+	ProposeTransferTxCost = 15_000_000
+	ProposeStatusCost     = 50_000_000
+	PerformActionCost     = 60_000_000
+	PerformActionTxCost   = 20_000_000
+	GetNextTxBatchCost    = 250_000_000
 )
 
 const (
@@ -39,7 +44,6 @@ type elrondProxy interface {
 	GetNetworkConfig() (*data.NetworkConfig, error)
 	SendTransaction(*data.Transaction) (string, error)
 	GetTransactionInfoWithResults(hash string) (*data.TransactionInfo, error)
-	RequestTransactionCost(tx *data.Transaction) (*data.TxCostResponseData, error)
 	ExecuteVMQuery(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 }
 
@@ -165,7 +169,7 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 		builder = builder.Int(big.NewInt(int64(tx.Status)))
 	}
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, ProposeStatusCost)
 	if err != nil {
 		c.log.Error(err.Error())
 	}
@@ -184,7 +188,7 @@ func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 			BigInt(tx.Amount)
 	}
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, uint64(ProposeTransferCost+len(batch.Transactions)*ProposeTransferTxCost))
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Proposed transfer for batch %v with hash %s", batch.Id, hash))
@@ -275,7 +279,7 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 		Func("sign").
 		ActionId(actionId)
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, SignCost)
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Singed with hash %q", hash))
@@ -286,12 +290,12 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 	return hash, err
 }
 
-func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) (string, error) {
+func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch) (string, error) {
 	builder := newBuilder().
 		Func("performAction").
 		ActionId(actionId)
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, uint64(PerformActionCost+len(batch.Transactions)*PerformActionTxCost))
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Executed actionId %v with hash %s", actionId, hash))
@@ -439,7 +443,7 @@ func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 	tx := &data.Transaction{
 		ChainID:  networkConfig.ChainID,
 		Version:  networkConfig.MinTransactionVersion,
-		GasLimit: networkConfig.MinGasLimit,
+		GasLimit: cost,
 		GasPrice: networkConfig.MinGasPrice,
 		Nonce:    nonce,
 		Data:     builder.ToBytes(),
@@ -447,19 +451,6 @@ func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 		RcvAddr:  c.bridgeAddress,
 		Value:    "0",
 	}
-
-	if cost == 0 {
-		reqCost, err := c.proxy.RequestTransactionCost(tx)
-		if err != nil {
-			return nil, err
-		}
-		if reqCost.RetMessage != "" {
-			return nil, errors.New(reqCost.RetMessage)
-		}
-		cost = reqCost.TxCost
-	}
-
-	tx.GasLimit = cost
 
 	err = erdgo.SignTransaction(tx, c.privateKey)
 	if err != nil {
@@ -492,7 +483,7 @@ func (c *Client) getNextPendingBatch() (string, error) {
 	builder := newBuilder().
 		Func("getNextTransactionBatch")
 
-	return c.sendTransaction(builder, ExecutionCost)
+	return c.sendTransaction(builder, GetNextTxBatchCost)
 }
 
 func emptyResponse(response [][]byte) bool {
