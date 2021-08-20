@@ -4,15 +4,20 @@ import (
 	"context"
 	"encoding/hex"
 	"math/big"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/data/vm"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -23,6 +28,70 @@ type TransactionError string
 
 func (e TransactionError) Error() string {
 	return string(e)
+}
+
+func createMockArguments() ClientArgs {
+	return ClientArgs{
+		Config: bridge.Config{
+			BridgeAddress:        "bridge address",
+			PrivateKey:           "grace.pem",
+			NonceUpdateInSeconds: 1,
+		},
+		Proxy: &mock.ElrondProxyStub{},
+	}
+}
+
+func TestNewClient(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArguments()
+	args.Config.NonceUpdateInSeconds = 0
+	c, err := NewClient(args)
+	require.Nil(t, c)
+	require.Equal(t, ErrInvalidNonceUpdateInterval, err)
+
+	args = createMockArguments()
+	args.Proxy = nil
+	c, err = NewClient(args)
+	require.Nil(t, c)
+	require.Equal(t, ErrNilProxy, err)
+
+	args = createMockArguments()
+	c, err = NewClient(args)
+	require.Nil(t, err)
+	require.NotNil(t, c)
+}
+
+func TestClient_PollsNonce(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArguments()
+	args.Config.NonceUpdateInSeconds = 1
+	numCalled := uint64(0)
+	args.Proxy = &mock.ElrondProxyStub{
+		GetAccountCalled: func(address core.AddressHandler) (*data.Account, error) {
+			atomic.AddUint64(&numCalled, 1)
+
+			return &data.Account{
+				Nonce: atomic.LoadUint64(&numCalled),
+			}, nil
+		},
+	}
+	c, _ := NewClient(args)
+	require.NotNil(t, c)
+
+	// sleep for 3.5 seconds (do not use a "round number" of seconds as it will make the
+	// test flaky)
+	time.Sleep(time.Second*3 + time.Millisecond*500)
+
+	err := c.Close()
+	require.Nil(t, err)
+
+	// the go routine should have stopped, preventing calls to the proxy
+	time.Sleep(time.Second*3 + time.Millisecond*500)
+
+	assert.Equal(t, uint64(3), atomic.LoadUint64(&numCalled))
+	assert.Equal(t, uint64(3), atomic.LoadUint64(&c.nonce))
 }
 
 func TestGetPending(t *testing.T) {
@@ -550,6 +619,7 @@ func buildTestClient(proxy *testProxy) (*Client, error) {
 	return client, nil
 }
 
+//TODO move this in mock package
 type testProxy struct {
 	transactionHash string
 	lastTransaction *data.Transaction
@@ -600,4 +670,12 @@ func (p *testProxy) GetTransactionInfoWithResults(string) (*data.TransactionInfo
 func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 	p.lastQueryArgs = valueRequest.Args
 	return &data.VmValuesResponseData{Data: &vm.VMOutputApi{ReturnCode: p.queryResponseCode, ReturnData: p.queryResponseData}}, nil
+}
+
+func (p *testProxy) GetAccount(_ core.AddressHandler) (*data.Account, error) {
+	return &data.Account{}, nil
+}
+
+func (p *testProxy) IsInterfaceNil() bool {
+	return p == nil
 }

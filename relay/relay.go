@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 
 	"github.com/ElrondNetwork/elrond-go/ntp"
 
@@ -27,8 +28,7 @@ const (
 	JoinTopicName    = "join/1"
 	PrivateTopicName = "private/1"
 	SignTopicName    = "sign/1"
-
-	Timeout = 40 * time.Second
+	Timeout          = 40 * time.Second
 )
 
 type Peers []core.PeerID
@@ -99,7 +99,12 @@ type Relay struct {
 func NewRelay(config *Config, name string) (*Relay, error) {
 	relay := &Relay{}
 
-	elrondBridge, _, err := elrond.NewClient(config.Elrond)
+	proxy := blockchain.NewElrondProxy(config.Elrond.NetworkAddress, nil)
+	clientArgs := elrond.ClientArgs{
+		Config: config.Elrond,
+		Proxy:  proxy,
+	}
+	elrondBridge, err := elrond.NewClient(clientArgs)
 	if err != nil {
 		return nil, err
 	}
