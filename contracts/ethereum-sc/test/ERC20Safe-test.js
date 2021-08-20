@@ -25,15 +25,21 @@ describe("ERC20Safe", async function () {
 
   describe('whitelistToken', async function () {
     it('adds the token to the whitelistedTokens list', async function () {
-      await safe.whitelistToken(afc.address);
+      await safe.whitelistToken(afc.address, 1);
 
       expect(await safe.whitelistedTokens(afc.address)).to.be.true;
     })
 
+    it('adds the limit for the token', async function () {
+      await safe.whitelistToken(afc.address, 1);
+
+      expect(await safe.tokenLimits(afc.address)).to.eq(1);
+    })
+
     it('emits event', async function () {
-      await expect(safe.whitelistToken(afc.address))
+      await expect(safe.whitelistToken(afc.address, 1))
         .to.emit(safe, 'TokenWhitelisted')
-        .withArgs(afc.address);
+        .withArgs(afc.address, 1);
     })
 
     describe('called by non admin', async function () {
@@ -42,14 +48,14 @@ describe("ERC20Safe", async function () {
       });
 
       it('reverts', async function () {
-        await (expect(nonAdminSafe.whitelistToken(afc.address))).to.be.revertedWith("Access Control: sender is not Admin");
+        await (expect(nonAdminSafe.whitelistToken(afc.address, 1))).to.be.revertedWith("Access Control: sender is not Admin");
       })
     })
   });
 
   describe('removeTokenFromWhitelist', async function () {
     beforeEach(async function () {
-      await safe.whitelistToken(afc.address);
+      await safe.whitelistToken(afc.address, 1);
     })
 
     it('removes the token to the whitelistedTokens list', async function () {
@@ -161,20 +167,65 @@ describe("ERC20Safe", async function () {
 
     describe("when token is whitelisted", async function () {
       beforeEach(async function () {
-        await safe.whitelistToken(afc.address);
+        await safe.whitelistToken(afc.address, amount);
       })
 
-      it("emits Deposited event", async () => {
-        await expect(safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq")))
-          .to.emit(safe, "ERC20Deposited")
-          .withArgs(1);
-      });
+      describe('when amount is below the limit', async function () {
+        it("reverts", async function () {
+          await expect(safe.deposit(afc.address, amount - 1, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq")))
+            .to.be.revertedWith("Tried to deposit an amount below the specified limit");
+        })
+      })
 
-      it('increments depositsCount', async () => {
-        await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+      describe('when amount is above the limit', async function () {
+        beforeEach(async function () {
+          await safe.whitelistToken(afc.address, amount - 1);
+        })
 
-        expect(await safe.depositsCount.call()).to.equal(1);
-      });
+        it("emits Deposited event", async () => {
+          await expect(safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq")))
+            .to.emit(safe, "ERC20Deposited")
+            .withArgs(1);
+        });
+
+        it('increments depositsCount', async () => {
+          await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+
+          expect(await safe.depositsCount.call()).to.equal(1);
+        });
+
+        it('updates the lastUpdated timestamp on the batch', async function () {
+          // Deposit first transaction
+          await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+          batchNonce = await await safe.batchesCount.call();
+          // Get batch after first transaction
+          batch = await safe.getBatch(batchNonce);
+
+          // Incrase time
+          await network.provider.send('evm_increaseTime', [100]);
+          await network.provider.send("evm_mine")
+
+          // Deposit second transaction
+          await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+          // Get batch after second transaction
+          updatedBatch = await safe.getBatch(batchNonce);
+
+          expect(batch.lastUpdated).to.not.equal(updatedBatch.lastUpdated);
+        })
+      })
+
+      describe('when amount is equal to the limit', async function () {
+        it("emits Deposited event", async () => {
+          await expect(safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq")))
+            .to.emit(safe, "ERC20Deposited")
+            .withArgs(1);
+        });
+
+        it('increments depositsCount', async () => {
+          await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+
+          expect(await safe.depositsCount.call()).to.equal(1);
+        });
 
       it('updates the lastUpdated timestamp on the batch', async function () {
         // Deposit first transaction
@@ -183,16 +234,17 @@ describe("ERC20Safe", async function () {
         // Get batch after first transaction
         batch = await safe.getBatch(batchNonce);
 
-        // Incrase time
-        await network.provider.send('evm_increaseTime', [100]);
-        await network.provider.send("evm_mine")
+          // Incrase time
+          await network.provider.send('evm_increaseTime', [100]);
+          await network.provider.send("evm_mine")
 
-        // Deposit second transaction
-        await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
-        // Get batch after second transaction
-        updatedBatch = await safe.getBatch(batchNonce);
+          // Deposit second transaction
+          await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
+          // Get batch after second transaction
+          updatedBatch = await safe.getBatch(batchNonce);
 
-        expect(batch.lastUpdated).to.not.equal(updatedBatch.lastUpdated);
+          expect(batch.lastUpdated).to.not.equal(updatedBatch.lastUpdated);
+        })
       })
     });
 

@@ -6,17 +6,13 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
-
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-
-	"github.com/ElrondNetwork/elrond-go/data/vm"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-sdk/erdgo"
-	"github.com/ElrondNetwork/elrond-sdk/erdgo/data"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/data/vm"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -141,6 +137,7 @@ func TestGetPending(t *testing.T) {
 		}
 
 		assert.Equal(t, expected, actual)
+		assert.Equal(t, uint64(250_000_000), proxy.lastTransaction.GasLimit)
 	})
 	t.Run("where there is no pending transaction it will return nil", func(t *testing.T) {
 		proxy := &testProxy{
@@ -185,6 +182,48 @@ func TestProposeTransfer(t *testing.T) {
 		expected := "proposeMultiTransferEsdtBatch@01@b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba@574554482d393761323662@2a"
 
 		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
+		assert.Equal(t, uint64(35_000_000+len(batch.Transactions)*15_000_000), proxy.lastTransaction.GasLimit)
+	})
+}
+
+func TestProposeSetStatus(t *testing.T) {
+	testHelpers.SetTestLogLevel()
+
+	t.Run("it will set proper function and params", func(t *testing.T) {
+		proxy := &testProxy{
+			transactionCost:   1024,
+			queryResponseCode: "ok",
+			queryResponseData: [][]byte{},
+		}
+		client, _ := buildTestClient(proxy)
+
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{
+				{
+					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+					From:         "0x132A150926691F08a693721503a38affeD18d524",
+					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+					Amount:       big.NewInt(42),
+					DepositNonce: bridge.NewNonce(1),
+					Status:       bridge.Executed,
+				},
+				{
+					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+					From:         "0x132A150926691F08a693721503a38affeD18d524",
+					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+					Amount:       big.NewInt(42),
+					DepositNonce: bridge.NewNonce(1),
+					Status:       bridge.Rejected,
+				},
+			},
+		}
+
+		client.ProposeSetStatus(context.TODO(), batch)
+		expected := "proposeEsdtSafeSetCurrentTransactionBatchStatus@01@03@04"
+
+		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
+		assert.Equal(t, uint64(50_000_000), proxy.lastTransaction.GasLimit)
 	})
 }
 
@@ -195,9 +234,31 @@ func TestExecute(t *testing.T) {
 	proxy := &testProxy{transactionCost: 1024, transactionHash: expectedTxHash}
 	client, _ := buildTestClient(proxy)
 
-	hash, _ := client.Execute(context.TODO(), bridge.NewActionId(42), bridge.NewBatchId(0))
+	batch := &bridge.Batch{
+		Id: bridge.NewBatchId(1),
+		Transactions: []*bridge.DepositTransaction{
+			{
+				To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+				From:         "0x132A150926691F08a693721503a38affeD18d524",
+				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+				Amount:       big.NewInt(42),
+				DepositNonce: bridge.NewNonce(1),
+				Status:       bridge.Executed,
+			},
+			{
+				To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+				From:         "0x132A150926691F08a693721503a38affeD18d524",
+				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
+				Amount:       big.NewInt(42),
+				DepositNonce: bridge.NewNonce(1),
+				Status:       bridge.Rejected,
+			},
+		},
+	}
+	hash, _ := client.Execute(context.TODO(), bridge.NewActionId(42), batch)
 
 	assert.Equal(t, expectedTxHash, hash)
+	assert.Equal(t, uint64(60_000_000+len(batch.Transactions)*20_000_000), proxy.lastTransaction.GasLimit)
 }
 
 func TestWasProposedTransfer(t *testing.T) {
@@ -414,8 +475,8 @@ func TestSign(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	t.Run("it will set proper transaction cost", func(t *testing.T) {
-		expect := uint64(1000000000)
-		proxy := &testProxy{transactionCost: expect}
+		expect := uint64(35_000_000)
+		proxy := &testProxy{}
 		client, _ := buildTestClient(proxy)
 
 		_, _ = client.Sign(context.TODO(), bridge.NewActionId(42))
@@ -466,12 +527,14 @@ func TestIsWhitelisted(t *testing.T) {
 }
 
 func buildTestClient(proxy *testProxy) (*Client, error) {
-	privateKey, err := erdgo.LoadPrivateKeyFromPemFile("grace.pem")
+	wallet := interactors.NewWallet()
+
+	privateKey, err := wallet.LoadPrivateKeyFromPemFile("grace.pem")
 	if err != nil {
 		return nil, err
 	}
 
-	address, err := erdgo.GetAddressFromPrivateKey(privateKey)
+	address, err := wallet.GetAddressFromPrivateKey(privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -498,8 +561,7 @@ type testProxy struct {
 	queryResponseCode                 string
 	lastQueryArgs                     []string
 
-	transactionCost      uint64
-	transactionCostError error
+	transactionCost uint64
 }
 
 func (p *testProxy) GetNetworkConfig() (*data.NetworkConfig, error) {
@@ -534,13 +596,6 @@ func (p *testProxy) SendTransaction(tx *data.Transaction) (string, error) {
 
 func (p *testProxy) GetTransactionInfoWithResults(string) (*data.TransactionInfo, error) {
 	return nil, nil
-}
-
-func (p *testProxy) RequestTransactionCost(*data.Transaction) (*data.TxCostResponseData, error) {
-	return &data.TxCostResponseData{
-		TxCost:     p.transactionCost,
-		RetMessage: "",
-	}, p.transactionCostError
 }
 
 func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {

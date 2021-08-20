@@ -237,8 +237,9 @@ func TestExecute(t *testing.T) {
 			blockchainClient: &blockchainClientStub{},
 			log:              logger.GetOrCreate("testEthClient"),
 		}
+		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
-		got, _ := client.Execute(context.TODO(), bridge.NewActionId(0), bridge.NewBatchId(42))
+		got, _ := client.Execute(context.TODO(), bridge.NewActionId(0), batch)
 
 		assert.Equal(t, expected, got)
 	})
@@ -260,8 +261,9 @@ func TestExecute(t *testing.T) {
 			},
 			log: logger.GetOrCreate("testEthClient"),
 		}
+		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
-		got, _ := client.Execute(context.TODO(), bridge.NewActionId(0), bridge.NewBatchId(42))
+		got, _ := client.Execute(context.TODO(), bridge.NewActionId(0), batch)
 
 		assert.Equal(t, expected, got)
 	})

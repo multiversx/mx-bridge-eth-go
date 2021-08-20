@@ -23,7 +23,7 @@ describe("Bridge", async function () {
   async function setupErc20Token() {
     afc = await deployContract(adminWallet, AFC, [1000]);
     await afc.approve(erc20Safe.address, 1000);
-    await erc20Safe.whitelistToken(afc.address);
+    await erc20Safe.whitelistToken(afc.address, 0);
   }
 
   async function setupFullBatch() {
@@ -219,7 +219,7 @@ describe("Bridge", async function () {
           await erc20Safe.deposit(afc.address, 2, hre.ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
 
           // 10 minutes into the future
-          timeElapsedSinceBatchCreation = (10 * 60);
+          timeElapsedSinceBatchCreation = (10 * 60 - 1);
           await network.provider.send('evm_increaseTime', [timeElapsedSinceBatchCreation]);
           await network.provider.send("evm_mine")
         });

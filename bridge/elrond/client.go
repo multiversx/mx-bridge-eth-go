@@ -3,7 +3,7 @@ package elrond
 import (
 	"context"
 	"encoding/hex"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -12,14 +12,24 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/core/pubkeyConverter"
-	"github.com/ElrondNetwork/elrond-sdk/erdgo"
-	"github.com/ElrondNetwork/elrond-sdk/erdgo/blockchain"
-	"github.com/ElrondNetwork/elrond-sdk/erdgo/data"
+	"github.com/ElrondNetwork/elrond-go/crypto/signing"
+	"github.com/ElrondNetwork/elrond-go/crypto/signing/ed25519"
+	"github.com/ElrondNetwork/elrond-go/crypto/signing/ed25519/singlesig"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 )
 
 const (
-	ExecutionCost       = 250000000
-	nonceUpdateInterval = time.Minute
+	SignCost              = 35_000_000
+	ProposeTransferCost   = 35_000_000
+	ProposeTransferTxCost = 15_000_000
+	ProposeStatusCost     = 50_000_000
+	PerformActionCost     = 60_000_000
+	PerformActionTxCost   = 20_000_000
+	GetNextTxBatchCost    = 250_000_000
+	nonceUpdateInterval   = time.Minute
 )
 
 const (
@@ -41,7 +51,6 @@ type elrondProxy interface {
 	GetNetworkConfig() (*data.NetworkConfig, error)
 	SendTransaction(*data.Transaction) (string, error)
 	GetTransactionInfoWithResults(hash string) (*data.TransactionInfo, error)
-	RequestTransactionCost(tx *data.Transaction) (*data.TxCostResponseData, error)
 	ExecuteVMQuery(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 }
 
@@ -49,7 +58,7 @@ type Client struct {
 	proxy         elrondProxy
 	bridgeAddress string
 	privateKey    []byte
-	address       string
+	address       core.AddressHandler
 	nonce         uint64
 	log           logger.Logger
 }
@@ -58,29 +67,26 @@ func NewClient(config bridge.Config) (*Client, string, error) {
 	log := logger.GetOrCreate("ElrondClient")
 
 	proxy := blockchain.NewElrondProxy(config.NetworkAddress, nil)
+	wallet := interactors.NewWallet()
 
-	privateKey, err := erdgo.LoadPrivateKeyFromPemFile(config.PrivateKey)
+	privateKey, err := wallet.LoadPrivateKeyFromPemFile(config.PrivateKey)
 	if err != nil {
 		return nil, "", err
 	}
 
-	addressString, err := erdgo.GetAddressFromPrivateKey(privateKey)
+	address, err := wallet.GetAddressFromPrivateKey(privateKey)
 	if err != nil {
 		return nil, "", err
 	}
-	log.Info(fmt.Sprintf("Address: %q", addressString))
 
-	address, err := data.NewAddressFromBech32String(addressString)
-	if err != nil {
-		return nil, "", err
-	}
+	log.Info("Elrond: NewClient", "address", address.AddressAsBech32String())
 
 	client := &Client{
 		proxy:         proxy,
 		bridgeAddress: config.BridgeAddress,
 		privateKey:    privateKey,
-		address:       address.AddressAsBech32String(),
-		log:           log,
+		address:       address,
+		log: log,
 	}
 
 	go func() {
@@ -171,7 +177,7 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 		builder = builder.Int(big.NewInt(int64(tx.Status)))
 	}
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, ProposeStatusCost)
 	if err != nil {
 		c.log.Error(err.Error())
 	}
@@ -190,7 +196,7 @@ func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 			BigInt(tx.Amount)
 	}
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, uint64(ProposeTransferCost+len(batch.Transactions)*ProposeTransferTxCost))
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Proposed transfer for batch %v with hash %s", batch.Id, hash))
@@ -202,7 +208,7 @@ func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 }
 
 func (c *Client) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("wasTransferActionProposed").
 		BatchId(batch.Id).
 		WithTx(batch, c.GetTokenId).
@@ -212,7 +218,7 @@ func (c *Client) WasProposedTransfer(_ context.Context, batch *bridge.Batch) boo
 }
 
 func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getActionIdForTransferBatch").
 		BatchId(batch.Id).
 		WithTx(batch, c.GetTokenId).
@@ -232,7 +238,7 @@ func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.
 }
 
 func (c *Client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bool {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("wasSetCurrentTransactionBatchStatusActionProposed").
 		BatchId(batch.Id)
 
@@ -244,7 +250,7 @@ func (c *Client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bo
 }
 
 func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getActionIdForSetCurrentTransactionBatchStatus").
 		BatchId(batch.Id)
 
@@ -262,7 +268,7 @@ func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, bat
 }
 
 func (c *Client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) bool {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("wasActionExecuted").
 		ActionId(actionId).
 		Build()
@@ -281,7 +287,7 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 		Func("sign").
 		ActionId(actionId)
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, SignCost)
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Singed with hash %q", hash))
@@ -292,12 +298,12 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 	return hash, err
 }
 
-func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) (string, error) {
+func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch) (string, error) {
 	builder := newBuilder().
 		Func("performAction").
 		ActionId(actionId)
 
-	hash, err := c.sendTransaction(builder, ExecutionCost)
+	hash, err := c.sendTransaction(builder, uint64(PerformActionCost+len(batch.Transactions)*PerformActionTxCost))
 
 	if err == nil {
 		c.log.Info(fmt.Sprintf("Elrond: Executed actionId %v with hash %s", actionId, hash))
@@ -309,7 +315,7 @@ func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, _ bridge.B
 }
 
 func (c *Client) SignersCount(_ context.Context, actionId bridge.ActionId) uint {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getActionSignerCount").
 		ActionId(actionId).
 		Build()
@@ -321,7 +327,7 @@ func (c *Client) SignersCount(_ context.Context, actionId bridge.ActionId) uint 
 // Mapper
 
 func (c *Client) GetTokenId(address string) string {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getTokenIdForErc20Address").
 		HexString(address).
 		Build()
@@ -335,7 +341,7 @@ func (c *Client) GetTokenId(address string) string {
 }
 
 func (c *Client) GetErc20Address(tokenId string) string {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getErc20AddressForTokenId").
 		HexString(tokenId).
 		Build()
@@ -351,7 +357,7 @@ func (c *Client) GetErc20Address(tokenId string) string {
 // RoleProvider
 
 func (c *Client) IsWhitelisted(address string) bool {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("userRole").
 		HexString(address).
 		Build()
@@ -445,34 +451,45 @@ func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 	tx := &data.Transaction{
 		ChainID:  networkConfig.ChainID,
 		Version:  networkConfig.MinTransactionVersion,
-		GasLimit: networkConfig.MinGasLimit,
+		GasLimit: cost,
 		GasPrice: networkConfig.MinGasPrice,
 		Nonce:    nonce,
 		Data:     builder.ToBytes(),
-		SndAddr:  c.address,
+		SndAddr:  c.address.AddressAsBech32String(),
 		RcvAddr:  c.bridgeAddress,
 		Value:    "0",
 	}
 
-	if cost == 0 {
-		reqCost, err := c.proxy.RequestTransactionCost(tx)
-		if err != nil {
-			return nil, err
-		}
-		if reqCost.RetMessage != "" {
-			return nil, errors.New(reqCost.RetMessage)
-		}
-		cost = reqCost.TxCost
-	}
-
-	tx.GasLimit = cost
-
-	err = erdgo.SignTransaction(tx, c.privateKey)
+	err = c.signTransactionWithPrivateKey(tx, c.privateKey)
 	if err != nil {
 		return nil, err
 	}
 
 	return tx, nil
+}
+
+// signTransactionWithPrivateKey signs a transaction with the provided private key
+// TODO use the transaction interactor for signing and sending transactions
+func (c *Client) signTransactionWithPrivateKey(tx *data.Transaction, privateKey []byte) error {
+	tx.Signature = ""
+	txSingleSigner := &singlesig.Ed25519Signer{}
+	suite := ed25519.NewEd25519()
+	keyGen := signing.NewKeyGenerator(suite)
+	txSignPrivKey, err := keyGen.PrivateKeyFromByteArray(privateKey)
+	if err != nil {
+		return err
+	}
+	bytes, err := json.Marshal(&tx)
+	if err != nil {
+		return err
+	}
+	signature, err := txSingleSigner.Sign(txSignPrivKey, bytes)
+	if err != nil {
+		return err
+	}
+	tx.Signature = hex.EncodeToString(signature)
+
+	return nil
 }
 
 func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, error) {
@@ -490,7 +507,7 @@ func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 }
 
 func (c *Client) getCurrentBatch() ([][]byte, error) {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address).
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getCurrentTxBatch").
 		Build()
 
@@ -501,7 +518,7 @@ func (c *Client) getNextPendingBatch() (string, error) {
 	builder := newBuilder().
 		Func("getNextTransactionBatch")
 
-	return c.sendTransaction(builder, ExecutionCost)
+	return c.sendTransaction(builder, GetNextTxBatchCost)
 }
 
 func emptyResponse(response [][]byte) bool {

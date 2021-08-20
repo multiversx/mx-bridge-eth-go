@@ -165,7 +165,7 @@ func (m *Monitor) waitForSignatures(ctx context.Context, ch chan State) {
 
 func (m *Monitor) execute(ctx context.Context, ch chan State) {
 	if m.topologyProvider.AmITheLeader() {
-		_, err := m.executingBridge.Execute(ctx, m.actionId, m.pendingBatch.Id)
+		_, err := m.executingBridge.Execute(ctx, m.actionId, m.pendingBatch)
 
 		if err != nil {
 			m.log.Error(err.Error())

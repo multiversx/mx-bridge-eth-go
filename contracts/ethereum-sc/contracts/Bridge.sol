@@ -32,7 +32,7 @@ contract Bridge is AccessControl {
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
 
     uint256 public quorum;
-    uint256 private minimumQuorum = 1;
+    uint256 private minimumQuorum = 3;
     address private immutable erc20SafeAddress;
     mapping(uint256 => bool) public executedBatches;
 
