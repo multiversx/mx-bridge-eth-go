@@ -6,17 +6,13 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
-
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-
-	"github.com/ElrondNetwork/elrond-go/data/vm"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-sdk/erdgo"
-	"github.com/ElrondNetwork/elrond-sdk/erdgo/data"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/data/vm"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -531,12 +527,14 @@ func TestIsWhitelisted(t *testing.T) {
 }
 
 func buildTestClient(proxy *testProxy) (*Client, error) {
-	privateKey, err := erdgo.LoadPrivateKeyFromPemFile("grace.pem")
+	wallet := interactors.NewWallet()
+
+	privateKey, err := wallet.LoadPrivateKeyFromPemFile("grace.pem")
 	if err != nil {
 		return nil, err
 	}
 
-	address, err := erdgo.GetAddressFromPrivateKey(privateKey)
+	address, err := wallet.GetAddressFromPrivateKey(privateKey)
 	if err != nil {
 		return nil, err
 	}
