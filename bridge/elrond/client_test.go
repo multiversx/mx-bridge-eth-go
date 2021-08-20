@@ -545,7 +545,6 @@ func buildTestClient(proxy *testProxy) (*Client, error) {
 		bridgeAddress: "",
 		privateKey:    privateKey,
 		address:       address,
-		nonce:         func() (uint64, error) { return 0, nil },
 	}
 
 	return client, nil

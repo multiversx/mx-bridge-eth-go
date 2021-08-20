@@ -86,7 +86,7 @@ func NewClient(config bridge.Config) (*Client, string, error) {
 		bridgeAddress: config.BridgeAddress,
 		privateKey:    privateKey,
 		address:       address,
-		log: log,
+		log:           log,
 	}
 
 	go func() {
@@ -99,7 +99,7 @@ func NewClient(config bridge.Config) (*Client, string, error) {
 		}
 	}()
 
-	return client, addressString, nil
+	return client, address.AddressAsBech32String(), nil
 }
 
 func (c *Client) GetPending(context.Context) *bridge.Batch {
