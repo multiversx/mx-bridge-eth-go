@@ -4,25 +4,96 @@ import (
 	"context"
 	"encoding/hex"
 	"math/big"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/data/vm"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
-	_ = bridge.Bridge(&Client{})
+	_ = bridge.Bridge(&client{})
 )
 
 type TransactionError string
 
 func (e TransactionError) Error() string {
 	return string(e)
+}
+
+func createMockArguments() ClientArgs {
+	return ClientArgs{
+		Config: bridge.Config{
+			BridgeAddress:        "bridge address",
+			PrivateKey:           "grace.pem",
+			NonceUpdateInSeconds: 1,
+		},
+		Proxy: &mock.ElrondProxyStub{},
+	}
+}
+
+func TestNewClient(t *testing.T) {
+	t.Run("wrong NonceUpdateInSeconds value", func(t *testing.T) {
+		args := createMockArguments()
+		args.Config.NonceUpdateInSeconds = 0
+		c, err := NewClient(args)
+		require.Nil(t, c)
+		require.Equal(t, ErrInvalidNonceUpdateInterval, err)
+	})
+	t.Run("nil proxy", func(t *testing.T) {
+		args := createMockArguments()
+		args.Proxy = nil
+		c, err := NewClient(args)
+		require.Nil(t, c)
+		require.Equal(t, ErrNilProxy, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		args := createMockArguments()
+		c, err := NewClient(args)
+		require.Nil(t, err)
+		require.NotNil(t, c)
+	})
+}
+
+func TestClient_PollsNonce(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArguments()
+	args.Config.NonceUpdateInSeconds = 1
+	numCalled := uint64(0)
+	args.Proxy = &mock.ElrondProxyStub{
+		GetAccountCalled: func(address core.AddressHandler) (*data.Account, error) {
+			atomic.AddUint64(&numCalled, 1)
+
+			return &data.Account{
+				Nonce: atomic.LoadUint64(&numCalled),
+			}, nil
+		},
+	}
+	c, _ := NewClient(args)
+	require.NotNil(t, c)
+
+	// sleep for 3.5 seconds (do not use a "round number" of seconds as it will make the
+	// test flaky)
+	time.Sleep(time.Second*3 + time.Millisecond*500)
+
+	err := c.Close()
+	require.Nil(t, err)
+
+	// the go routine should have stopped, preventing calls to the proxy
+	time.Sleep(time.Second*3 + time.Millisecond*500)
+
+	assert.Equal(t, uint64(3), atomic.LoadUint64(&numCalled))
+	assert.Equal(t, uint64(3), atomic.LoadUint64(&c.nonce))
 }
 
 func TestGetPending(t *testing.T) {
@@ -63,9 +134,9 @@ func TestGetPending(t *testing.T) {
 			queryResponseCode: "ok",
 			queryResponseData: responseData,
 		}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
-		actual := client.GetPending(context.TODO())
+		actual := c.GetPending(context.TODO())
 		tx1 := &bridge.DepositTransaction{
 			To:           "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
 			From:         "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
@@ -118,8 +189,8 @@ func TestGetPending(t *testing.T) {
 			afterTransactionQueryResponseData: responseData,
 		}
 
-		client, _ := buildTestClient(proxy)
-		actual := client.GetPending(context.TODO())
+		c, _ := buildTestClient(proxy)
+		actual := c.GetPending(context.TODO())
 		expected := &bridge.Batch{
 			Id: bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{
@@ -146,8 +217,8 @@ func TestGetPending(t *testing.T) {
 			shouldFail:        true,
 		}
 
-		client, _ := buildTestClient(proxy)
-		actual := client.GetPending(context.TODO())
+		c, _ := buildTestClient(proxy)
+		actual := c.GetPending(context.TODO())
 
 		assert.Nil(t, actual)
 	})
@@ -163,7 +234,7 @@ func TestProposeTransfer(t *testing.T) {
 			queryResponseCode: "ok",
 			queryResponseData: [][]byte{tokenId},
 		}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(1),
@@ -178,7 +249,7 @@ func TestProposeTransfer(t *testing.T) {
 			},
 		}
 
-		_, _ = client.ProposeTransfer(context.TODO(), batch)
+		_, _ = c.ProposeTransfer(context.TODO(), batch)
 		expected := "proposeMultiTransferEsdtBatch@01@b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba@574554482d393761323662@2a"
 
 		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
@@ -195,7 +266,7 @@ func TestProposeSetStatus(t *testing.T) {
 			queryResponseCode: "ok",
 			queryResponseData: [][]byte{},
 		}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(1),
@@ -219,7 +290,7 @@ func TestProposeSetStatus(t *testing.T) {
 			},
 		}
 
-		client.ProposeSetStatus(context.TODO(), batch)
+		c.ProposeSetStatus(context.TODO(), batch)
 		expected := "proposeEsdtSafeSetCurrentTransactionBatchStatus@01@03@04"
 
 		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
@@ -232,7 +303,7 @@ func TestExecute(t *testing.T) {
 
 	expectedTxHash := "expected hash"
 	proxy := &testProxy{transactionCost: 1024, transactionHash: expectedTxHash}
-	client, _ := buildTestClient(proxy)
+	c, _ := buildTestClient(proxy)
 
 	batch := &bridge.Batch{
 		Id: bridge.NewBatchId(1),
@@ -255,7 +326,7 @@ func TestExecute(t *testing.T) {
 			},
 		},
 	}
-	hash, _ := client.Execute(context.TODO(), bridge.NewActionId(42), batch)
+	hash, _ := c.Execute(context.TODO(), bridge.NewActionId(42), batch)
 
 	assert.Equal(t, expectedTxHash, hash)
 	assert.Equal(t, uint64(60_000_000+len(batch.Transactions)*20_000_000), proxy.lastTransaction.GasLimit)
@@ -266,7 +337,7 @@ func TestWasProposedTransfer(t *testing.T) {
 
 	t.Run("will return true when response is 1", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(12),
@@ -282,12 +353,12 @@ func TestWasProposedTransfer(t *testing.T) {
 			},
 		}
 
-		got := client.WasProposedTransfer(context.TODO(), batch)
+		got := c.WasProposedTransfer(context.TODO(), batch)
 		assert.True(t, got)
 	})
 	t.Run("will return false when response is 9", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(0)}}}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(41),
@@ -302,12 +373,12 @@ func TestWasProposedTransfer(t *testing.T) {
 			},
 		}
 
-		got := client.WasProposedTransfer(context.TODO(), batch)
+		got := c.WasProposedTransfer(context.TODO(), batch)
 		assert.False(t, got)
 	})
 	t.Run("will send tx's as arguments", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(41),
@@ -322,7 +393,7 @@ func TestWasProposedTransfer(t *testing.T) {
 			},
 		}
 
-		_ = client.WasProposedTransfer(context.TODO(), batch)
+		_ = c.WasProposedTransfer(context.TODO(), batch)
 
 		assert.Equal(t, 4, len(proxy.lastQueryArgs))
 		// batchID
@@ -336,7 +407,7 @@ func TestWasProposedTransfer(t *testing.T) {
 	})
 	t.Run("will return false when response code is not ok", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "not ok", queryResponseData: nil}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(41),
@@ -351,7 +422,7 @@ func TestWasProposedTransfer(t *testing.T) {
 			},
 		}
 
-		got := client.WasProposedTransfer(context.TODO(), batch)
+		got := c.WasProposedTransfer(context.TODO(), batch)
 		assert.False(t, got)
 	})
 }
@@ -360,9 +431,9 @@ func TestSignersCount(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
-	client, _ := buildTestClient(proxy)
+	c, _ := buildTestClient(proxy)
 
-	got := client.SignersCount(context.TODO(), bridge.NewActionId(0))
+	got := c.SignersCount(context.TODO(), bridge.NewActionId(0))
 
 	assert.Equal(t, uint(42), got)
 }
@@ -372,7 +443,7 @@ func TestWasProposedSetStatus(t *testing.T) {
 
 	t.Run("will return true when response is 1", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(1),
@@ -382,7 +453,7 @@ func TestWasProposedSetStatus(t *testing.T) {
 				},
 			},
 		}
-		got := client.WasProposedSetStatus(context.TODO(), batch)
+		got := c.WasProposedSetStatus(context.TODO(), batch)
 
 		assert.True(t, got)
 		assert.Equal(t, "01", proxy.lastQueryArgs[0])
@@ -390,13 +461,13 @@ func TestWasProposedSetStatus(t *testing.T) {
 	})
 	t.Run("will return false when response is empty", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{}}}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
 			Id:           bridge.NewBatchId(0),
 			Transactions: []*bridge.DepositTransaction{},
 		}
-		got := client.WasProposedSetStatus(context.TODO(), batch)
+		got := c.WasProposedSetStatus(context.TODO(), batch)
 
 		assert.False(t, got)
 	})
@@ -406,7 +477,7 @@ func TestGetActionIdForProposeTransfer(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
-	client, _ := buildTestClient(proxy)
+	c, _ := buildTestClient(proxy)
 
 	batch := &bridge.Batch{
 		Id: bridge.NewBatchId(41),
@@ -421,7 +492,7 @@ func TestGetActionIdForProposeTransfer(t *testing.T) {
 		},
 	}
 
-	got := client.GetActionIdForProposeTransfer(context.TODO(), batch)
+	got := c.GetActionIdForProposeTransfer(context.TODO(), batch)
 
 	assert.Equal(t, bridge.NewActionId(42), got)
 	assert.Equal(t, 4, len(proxy.lastQueryArgs))
@@ -439,7 +510,7 @@ func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(43)}}}
-	client, _ := buildTestClient(proxy)
+	c, _ := buildTestClient(proxy)
 
 	batch := &bridge.Batch{
 		Id: bridge.NewBatchId(12),
@@ -455,7 +526,7 @@ func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
 		},
 	}
 
-	got := client.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
+	got := c.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
 	assert.Equal(t, got, bridge.NewActionId(43))
 	assert.Equal(t, "0c", proxy.lastQueryArgs[0])
 	assert.Equal(t, "03", proxy.lastQueryArgs[1])
@@ -465,9 +536,9 @@ func TestWasExecuted(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
-	client, _ := buildTestClient(proxy)
+	c, _ := buildTestClient(proxy)
 
-	got := client.WasExecuted(context.TODO(), bridge.NewActionId(42), bridge.NewBatchId(0))
+	got := c.WasExecuted(context.TODO(), bridge.NewActionId(42), bridge.NewBatchId(0))
 	assert.True(t, got)
 }
 
@@ -477,17 +548,17 @@ func TestSign(t *testing.T) {
 	t.Run("it will set proper transaction cost", func(t *testing.T) {
 		expect := uint64(35_000_000)
 		proxy := &testProxy{}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
-		_, _ = client.Sign(context.TODO(), bridge.NewActionId(42))
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42))
 
 		assert.Equal(t, expect, proxy.lastTransaction.GasLimit)
 	})
 	t.Run("it will set proper function and params", func(t *testing.T) {
 		proxy := &testProxy{transactionCost: 1024}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
-		_, _ = client.Sign(context.TODO(), bridge.NewActionId(42))
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42))
 
 		assert.Equal(t, []byte("sign@2a"), proxy.lastTransaction.Data)
 	})
@@ -504,9 +575,9 @@ func TestIsWhitelisted(t *testing.T) {
 			queryResponseCode: "ok",
 			queryResponseData: responseData,
 		}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
-		isWhitelisted := client.IsWhitelisted("some address")
+		isWhitelisted := c.IsWhitelisted("some address")
 
 		assert.True(t, isWhitelisted)
 	})
@@ -518,15 +589,15 @@ func TestIsWhitelisted(t *testing.T) {
 			queryResponseCode: "ok",
 			queryResponseData: responseData,
 		}
-		client, _ := buildTestClient(proxy)
+		c, _ := buildTestClient(proxy)
 
-		isWhitelisted := client.IsWhitelisted("some address")
+		isWhitelisted := c.IsWhitelisted("some address")
 
 		assert.False(t, isWhitelisted)
 	})
 }
 
-func buildTestClient(proxy *testProxy) (*Client, error) {
+func buildTestClient(proxy *testProxy) (*client, error) {
 	wallet := interactors.NewWallet()
 
 	privateKey, err := wallet.LoadPrivateKeyFromPemFile("grace.pem")
@@ -539,18 +610,18 @@ func buildTestClient(proxy *testProxy) (*Client, error) {
 		return nil, err
 	}
 
-	client := &Client{
+	c := &client{
 		log:           logger.GetOrCreate("testHelpers"),
 		proxy:         proxy,
 		bridgeAddress: "",
 		privateKey:    privateKey,
 		address:       address,
-		nonce:         func() (uint64, error) { return 0, nil },
 	}
 
-	return client, nil
+	return c, nil
 }
 
+//TODO move this in mock package
 type testProxy struct {
 	transactionHash string
 	lastTransaction *data.Transaction
@@ -564,6 +635,7 @@ type testProxy struct {
 	transactionCost uint64
 }
 
+// GetNetworkConfig -
 func (p *testProxy) GetNetworkConfig() (*data.NetworkConfig, error) {
 	return &data.NetworkConfig{
 		ChainID:                  "testHelpers-chain",
@@ -583,6 +655,7 @@ func (p *testProxy) GetNetworkConfig() (*data.NetworkConfig, error) {
 	}, nil
 }
 
+// SendTransaction -
 func (p *testProxy) SendTransaction(tx *data.Transaction) (string, error) {
 	p.lastTransaction = tx
 	p.queryResponseData = p.afterTransactionQueryResponseData
@@ -594,11 +667,23 @@ func (p *testProxy) SendTransaction(tx *data.Transaction) (string, error) {
 	}
 }
 
+// GetTransactionInfoWithResults -
 func (p *testProxy) GetTransactionInfoWithResults(string) (*data.TransactionInfo, error) {
 	return nil, nil
 }
 
+// ExecuteVMQuery -
 func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 	p.lastQueryArgs = valueRequest.Args
 	return &data.VmValuesResponseData{Data: &vm.VMOutputApi{ReturnCode: p.queryResponseCode, ReturnData: p.queryResponseData}}, nil
+}
+
+// GetAccount -
+func (p *testProxy) GetAccount(_ core.AddressHandler) (*data.Account, error) {
+	return &data.Account{}, nil
+}
+
+// IsInterfaceNil -
+func (p *testProxy) IsInterfaceNil() bool {
+	return p == nil
 }
