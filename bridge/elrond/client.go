@@ -33,7 +33,7 @@ const (
 )
 
 const (
-	// CanProposeAndSign is the value for the role held by an active validator
+	// canProposeAndSign is the value for the role held by an active validator
 	canProposeAndSign = 2
 )
 
