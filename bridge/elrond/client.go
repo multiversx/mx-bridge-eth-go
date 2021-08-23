@@ -34,7 +34,7 @@ const (
 
 const (
 	// CanProposeAndSign is the value for the role held by an active validator
-	CanProposeAndSign = 2
+	canProposeAndSign = 2
 )
 
 // QueryResponseErr represents the query response error DTO struct
@@ -47,8 +47,8 @@ func (e QueryResponseErr) Error() string {
 	return fmt.Sprintf("Got response code %q and message %q", e.code, e.message)
 }
 
-// Client represents the Elrond Client implementation
-type Client struct {
+// client represents the Elrond Client implementation
+type client struct {
 	proxy               bridge.ElrondProxy
 	bridgeAddress       string
 	privateKey          []byte
@@ -66,7 +66,7 @@ type ClientArgs struct {
 }
 
 // NewClient returns a new Elrond Client instance
-func NewClient(args ClientArgs) (*Client, error) {
+func NewClient(args ClientArgs) (*client, error) {
 	log := logger.GetOrCreate("ElrondClient")
 
 	if check.IfNil(args.Proxy) {
@@ -89,7 +89,7 @@ func NewClient(args ClientArgs) (*Client, error) {
 
 	log.Info("Elrond: NewClient", "address", address.AddressAsBech32String())
 
-	c := &Client{
+	c := &client{
 		proxy:               args.Proxy,
 		bridgeAddress:       args.Config.BridgeAddress,
 		privateKey:          privateKey,
@@ -105,7 +105,7 @@ func NewClient(args ClientArgs) (*Client, error) {
 	return c, nil
 }
 
-func (c *Client) poll(ctx context.Context) {
+func (c *client) poll(ctx context.Context) {
 	for {
 		select {
 		case <-time.After(c.nonceUpdateInterval):
@@ -117,16 +117,19 @@ func (c *Client) poll(ctx context.Context) {
 	}
 }
 
-func (c *Client) saveCurrentNonce() {
+func (c *client) saveCurrentNonce() {
 	account, err := c.proxy.GetAccount(c.address)
-	if err == nil {
-		c.log.Debug("Elrond: polled account", "address", c.address.AddressAsBech32String(), "nonce", account.Nonce)
-		atomic.StoreUint64(&c.nonce, account.Nonce)
+	if err != nil {
+		c.log.Debug("Elrond: error polling account", "address", c.address.AddressAsBech32String(), "error", err.Error())
+		return
 	}
+
+	c.log.Debug("Elrond: polled account", "address", c.address.AddressAsBech32String(), "nonce", account.Nonce)
+	atomic.StoreUint64(&c.nonce, account.Nonce)
 }
 
 // GetPending returns the pending batch
-func (c *Client) GetPending(context.Context) *bridge.Batch {
+func (c *client) GetPending(context.Context) *bridge.Batch {
 	c.log.Info("Elrond: Getting pending batch")
 	responseData, err := c.getCurrentBatch()
 	if err != nil {
@@ -153,9 +156,16 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 	}
 
 	addrPkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32)
+	numArgs := 6
+	idxAmount := 5
 	var transactions []*bridge.DepositTransaction
-	for i := 1; i < len(responseData); i += 6 {
-		amount := new(big.Int).SetBytes(responseData[i+5])
+	for i := 1; i < len(responseData); i += numArgs {
+		if len(responseData) < i+idxAmount {
+			c.log.Warn("Elrond: got an unexpected number of arguments", "index", i, "total args", len(responseData))
+			break
+		}
+
+		amount := new(big.Int).SetBytes(responseData[i+idxAmount])
 		blockNonce, errParse := strconv.ParseInt(hex.EncodeToString(responseData[i]), 16, 64)
 		if errParse != nil {
 			c.log.Error("Elrond: parse error", "error", errParse.Error())
@@ -193,7 +203,7 @@ func (c *Client) GetPending(context.Context) *bridge.Batch {
 }
 
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
-func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
+func (c *client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	builder := newBuilder().
 		Func("proposeEsdtSafeSetCurrentTransactionBatchStatus").
 		BatchId(batch.Id)
@@ -212,7 +222,7 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 }
 
 // ProposeTransfer will trigger the propose transfer operation
-func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
+func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	builder := newBuilder().
 		Func("proposeMultiTransferEsdtBatch").
 		BatchId(batch.Id)
@@ -236,7 +246,7 @@ func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 }
 
 // WasProposedTransfer returns true if the transfer action proposed was triggered
-func (c *Client) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
+func (c *client) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("wasTransferActionProposed").
 		BatchId(batch.Id).
@@ -247,7 +257,7 @@ func (c *Client) WasProposedTransfer(_ context.Context, batch *bridge.Batch) boo
 }
 
 // GetActionIdForProposeTransfer returns the action ID for the propose transfer operation
-func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
+func (c *client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getActionIdForTransferBatch").
 		BatchId(batch.Id).
@@ -268,7 +278,7 @@ func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.
 }
 
 // WasProposedSetStatus returns true if the proposed set status was triggered
-func (c *Client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bool {
+func (c *client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("wasSetCurrentTransactionBatchStatusActionProposed").
 		BatchId(batch.Id)
@@ -281,7 +291,7 @@ func (c *Client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bo
 }
 
 // GetActionIdForSetStatusOnPendingTransfer returns the action ID for setting the status on the pending transfer batch
-func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
+func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getActionIdForSetCurrentTransactionBatchStatus").
 		BatchId(batch.Id)
@@ -300,7 +310,7 @@ func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, bat
 }
 
 // WasExecuted returns true if the provided actionId was executed or not
-func (c *Client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) bool {
+func (c *client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("wasActionExecuted").
 		ActionId(actionId).
@@ -316,7 +326,7 @@ func (c *Client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ brid
 }
 
 // Sign will trigger the execution of a sign operation
-func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, error) {
+func (c *client) Sign(_ context.Context, actionId bridge.ActionId) (string, error) {
 	builder := newBuilder().
 		Func("sign").
 		ActionId(actionId)
@@ -333,7 +343,7 @@ func (c *Client) Sign(_ context.Context, actionId bridge.ActionId) (string, erro
 }
 
 // Execute will trigger the execution of the provided action ID
-func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch) (string, error) {
+func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch) (string, error) {
 	builder := newBuilder().
 		Func("performAction").
 		ActionId(actionId)
@@ -350,7 +360,7 @@ func (c *Client) Execute(_ context.Context, actionId bridge.ActionId, batch *bri
 }
 
 // SignersCount returns the signers count
-func (c *Client) SignersCount(_ context.Context, actionId bridge.ActionId) uint {
+func (c *client) SignersCount(_ context.Context, actionId bridge.ActionId) uint {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getActionSignerCount").
 		ActionId(actionId).
@@ -361,7 +371,7 @@ func (c *Client) SignersCount(_ context.Context, actionId bridge.ActionId) uint 
 }
 
 // GetTokenId returns the token ID for the erc 20 address
-func (c *Client) GetTokenId(address string) string {
+func (c *client) GetTokenId(address string) string {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getTokenIdForErc20Address").
 		HexString(address).
@@ -376,7 +386,7 @@ func (c *Client) GetTokenId(address string) string {
 }
 
 // GetErc20Address returns the corresponding ERC20 address
-func (c *Client) GetErc20Address(tokenId string) string {
+func (c *client) GetErc20Address(tokenId string) string {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getErc20AddressForTokenId").
 		HexString(tokenId).
@@ -391,7 +401,7 @@ func (c *Client) GetErc20Address(tokenId string) string {
 }
 
 // IsWhitelisted returns true if the address can propose or sign
-func (c *Client) IsWhitelisted(address string) bool {
+func (c *client) IsWhitelisted(address string) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("userRole").
 		HexString(address).
@@ -403,10 +413,10 @@ func (c *Client) IsWhitelisted(address string) bool {
 		return false
 	}
 
-	return role == CanProposeAndSign
+	return role == canProposeAndSign
 }
 
-func (c *Client) executeQuery(valueRequest *data.VmValueRequest) ([][]byte, error) {
+func (c *client) executeQuery(valueRequest *data.VmValueRequest) ([][]byte, error) {
 	response, err := c.proxy.ExecuteVMQuery(valueRequest)
 	if err != nil {
 		return nil, err
@@ -419,7 +429,7 @@ func (c *Client) executeQuery(valueRequest *data.VmValueRequest) ([][]byte, erro
 	return response.Data.ReturnData, nil
 }
 
-func (c *Client) executeBoolQuery(valueRequest *data.VmValueRequest) bool {
+func (c *client) executeBoolQuery(valueRequest *data.VmValueRequest) bool {
 	responseData, err := c.executeQuery(valueRequest)
 	if err != nil {
 		c.log.Error(err.Error())
@@ -439,7 +449,7 @@ func (c *Client) executeBoolQuery(valueRequest *data.VmValueRequest) bool {
 	return result
 }
 
-func (c *Client) executeUintQuery(valueRequest *data.VmValueRequest) (uint64, error) {
+func (c *client) executeUintQuery(valueRequest *data.VmValueRequest) (uint64, error) {
 	responseData, err := c.executeQuery(valueRequest)
 	if err != nil {
 		return 0, err
@@ -457,7 +467,7 @@ func (c *Client) executeUintQuery(valueRequest *data.VmValueRequest) (uint64, er
 	return result, nil
 }
 
-func (c *Client) executeStringQuery(valueRequest *data.VmValueRequest) (string, error) {
+func (c *client) executeStringQuery(valueRequest *data.VmValueRequest) (string, error) {
 	responseData, err := c.executeQuery(valueRequest)
 	if err != nil {
 		return "", err
@@ -470,7 +480,7 @@ func (c *Client) executeStringQuery(valueRequest *data.VmValueRequest) (string, 
 	return fmt.Sprintf("%x", responseData[0]), nil
 }
 
-func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Transaction, error) {
+func (c *client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Transaction, error) {
 	networkConfig, err := c.proxy.GetNetworkConfig()
 	if err != nil {
 		return nil, err
@@ -503,7 +513,7 @@ func (c *Client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 
 // signTransactionWithPrivateKey signs a transaction with the provided private key
 // TODO use the transaction interactor for signing and sending transactions
-func (c *Client) signTransactionWithPrivateKey(tx *data.Transaction, privateKey []byte) error {
+func (c *client) signTransactionWithPrivateKey(tx *data.Transaction, privateKey []byte) error {
 	tx.Signature = ""
 	txSingleSigner := &singlesig.Ed25519Signer{}
 	suite := ed25519.NewEd25519()
@@ -525,7 +535,7 @@ func (c *Client) signTransactionWithPrivateKey(tx *data.Transaction, privateKey 
 	return nil
 }
 
-func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, error) {
+func (c *client) sendTransaction(builder *txDataBuilder, cost uint64) (string, error) {
 	tx, err := c.signTransaction(builder, cost)
 	if err != nil {
 		return "", err
@@ -539,7 +549,7 @@ func (c *Client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 	return hash, err
 }
 
-func (c *Client) getCurrentBatch() ([][]byte, error) {
+func (c *client) getCurrentBatch() ([][]byte, error) {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String()).
 		Func("getCurrentTxBatch").
 		Build()
@@ -547,7 +557,7 @@ func (c *Client) getCurrentBatch() ([][]byte, error) {
 	return c.executeQuery(valueRequest)
 }
 
-func (c *Client) getNextPendingBatch() (string, error) {
+func (c *client) getNextPendingBatch() (string, error) {
 	builder := newBuilder().
 		Func("getNextTransactionBatch")
 
@@ -555,12 +565,12 @@ func (c *Client) getNextPendingBatch() (string, error) {
 }
 
 // Address returns the current address held by the Client
-func (c *Client) Address() core.AddressHandler {
+func (c *client) Address() core.AddressHandler {
 	return c.address
 }
 
 // Close will close any started go routines. It returns nil.
-func (c *Client) Close() error {
+func (c *client) Close() error {
 	c.cancelFunc()
 
 	return nil
