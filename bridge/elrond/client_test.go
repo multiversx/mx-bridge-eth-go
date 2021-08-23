@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/data/vm"
