@@ -129,7 +129,6 @@ func NewRelay(config *Config, name string) (*Relay, error) {
 	relay.timer = NewDefaultTimer()
 	relay.log = logger.GetOrCreate(name)
 	relay.signatures = make(map[core.PeerID][]byte)
-	relay.elrondWalletAddressProvider = elrondBridge
 	return relay, nil
 }
 
