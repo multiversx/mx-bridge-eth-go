@@ -26,7 +26,6 @@ type RoleProvider interface {
 
 // WalletAddressProvider defines the operations for a wallet address provider
 type WalletAddressProvider interface {
-	GetBech32WalletAddress() string
 	GetHexWalletAddress() string
 }
 

@@ -319,7 +319,7 @@ func (r *Relay) join(ctx context.Context) {
 
 	select {
 	case <-r.timer.After(time.Duration(v) * time.Second):
-		r.log.Debug(fmt.Sprintf("Joining with address %s", r.elrondWalletAddressProvider.GetBech32WalletAddress()))
+		r.log.Debug(fmt.Sprintf("Joining with address %s", r.elrondWalletAddressProvider.GetHexWalletAddress()))
 		r.messenger.Broadcast(JoinTopicName, []byte(r.elrondWalletAddressProvider.GetHexWalletAddress()))
 	case <-ctx.Done():
 	}

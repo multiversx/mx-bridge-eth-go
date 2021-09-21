@@ -392,10 +392,6 @@ type walletAddressProviderStub struct {
 	address string
 }
 
-func (r *walletAddressProviderStub) GetBech32WalletAddress() string {
-	return r.address
-}
-
 func (r *walletAddressProviderStub) GetHexWalletAddress() string {
 	return r.address
 }
