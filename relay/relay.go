@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+
 	"fmt"
 	"math/rand"
 	"sync"
@@ -92,8 +93,8 @@ type Relay struct {
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
 
-	roleProvider        bridge.RoleProvider
-	elrondPublicAddress string
+	roleProvider                bridge.RoleProvider
+	elrondWalletAddressProvider bridge.WalletAddressProvider
 }
 
 func NewRelay(config *Config, name string) (*Relay, error) {
@@ -110,6 +111,7 @@ func NewRelay(config *Config, name string) (*Relay, error) {
 	}
 	relay.elrondBridge = elrondBridge
 	relay.roleProvider = elrondBridge
+	relay.elrondWalletAddressProvider = elrondBridge
 
 	ethBridge, err := eth.NewClient(config.Eth, relay, elrondBridge)
 	if err != nil {
@@ -127,7 +129,6 @@ func NewRelay(config *Config, name string) (*Relay, error) {
 	relay.timer = NewDefaultTimer()
 	relay.log = logger.GetOrCreate(name)
 	relay.signatures = make(map[core.PeerID][]byte)
-
 	return relay, nil
 }
 
@@ -317,7 +318,8 @@ func (r *Relay) join(ctx context.Context) {
 
 	select {
 	case <-r.timer.After(time.Duration(v) * time.Second):
-		r.messenger.Broadcast(JoinTopicName, []byte(r.elrondPublicAddress))
+		r.log.Debug(fmt.Sprintf("Joining with address %s", r.elrondWalletAddressProvider.GetHexWalletAddress()))
+		r.messenger.Broadcast(JoinTopicName, []byte(r.elrondWalletAddressProvider.GetHexWalletAddress()))
 	case <-ctx.Done():
 	}
 }

@@ -38,6 +38,8 @@ func TestInit(t *testing.T) {
 
 		elrondBridge: &bridgeStub{},
 		ethBridge:    &bridgeStub{},
+
+		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -79,6 +81,8 @@ func TestPrivateTopicProcessor(t *testing.T) {
 
 		elrondBridge: &bridgeStub{},
 		ethBridge:    &bridgeStub{},
+
+		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -108,7 +112,8 @@ func TestJoinTopicProcessor(t *testing.T) {
 
 			peers: Peers{"first", "second"},
 
-			roleProvider: &roleProviderStub{isWhitelisted: true},
+			roleProvider:                &roleProviderStub{isWhitelisted: true},
+			elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -140,7 +145,8 @@ func TestJoinTopicProcessor(t *testing.T) {
 
 			peers: Peers{"first", "second"},
 
-			roleProvider: &roleProviderStub{isWhitelisted: false},
+			roleProvider:                &roleProviderStub{isWhitelisted: false},
+			elrondWalletAddressProvider: &walletAddressProviderStub{address: ""},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -162,7 +168,8 @@ func TestJoinTopicProcessor(t *testing.T) {
 			elrondBridge: &bridgeStub{},
 			ethBridge:    &bridgeStub{},
 
-			roleProvider: &roleProviderStub{isWhitelisted: true},
+			roleProvider:                &roleProviderStub{isWhitelisted: true},
+			elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -188,7 +195,7 @@ func TestJoin(t *testing.T) {
 		elrondBridge: &bridgeStub{},
 		ethBridge:    &bridgeStub{},
 
-		elrondPublicAddress: "address",
+		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address"},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -234,6 +241,8 @@ func TestSignTopicProcessor(t *testing.T) {
 		ethBridge:    &bridgeStub{},
 
 		peers: Peers{"first", "second"},
+
+		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -377,4 +386,12 @@ type roleProviderStub struct {
 
 func (r *roleProviderStub) IsWhitelisted(string) bool {
 	return r.isWhitelisted
+}
+
+type walletAddressProviderStub struct {
+	address string
+}
+
+func (r *walletAddressProviderStub) GetHexWalletAddress() string {
+	return r.address
 }

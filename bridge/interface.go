@@ -24,6 +24,11 @@ type RoleProvider interface {
 	IsWhitelisted(string) bool
 }
 
+// WalletAddressProvider defines the operations for a wallet address provider
+type WalletAddressProvider interface {
+	GetHexWalletAddress() string
+}
+
 // Bridge defines the operations available for a validator operating on a bridge between 2 chains
 type Bridge interface {
 	GetPending(context.Context) *Batch
