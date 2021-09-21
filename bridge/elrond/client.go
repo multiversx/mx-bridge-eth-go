@@ -416,6 +416,11 @@ func (c *client) IsWhitelisted(address string) bool {
 	return role == canProposeAndSign
 }
 
+// GetWalletAddress returns the wallet address as a bech32 string
+func (c *client) GetWalletAddress() string {
+	return c.address.AddressAsBech32String()
+}
+
 func (c *client) executeQuery(valueRequest *data.VmValueRequest) ([][]byte, error) {
 	response, err := c.proxy.ExecuteVMQuery(valueRequest)
 	if err != nil {
@@ -562,11 +567,6 @@ func (c *client) getNextPendingBatch() (string, error) {
 		Func("getNextTransactionBatch")
 
 	return c.sendTransaction(builder, getNextTxBatchCost)
-}
-
-// Address returns the current address held by the Client
-func (c *client) Address() core.AddressHandler {
-	return c.address
 }
 
 // Close will close any started go routines. It returns nil.
