@@ -194,23 +194,15 @@ describe("ERC20Safe", async function () {
           expect(await safe.depositsCount.call()).to.equal(1);
         });
 
-        it('updates the lastUpdated timestamp on the batch', async function () {
-          // Deposit first transaction
+        it('updates the lastUpdatedBlockNumber on the batch', async function () {
           await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
           batchNonce = await await safe.batchesCount.call();
-          // Get batch after first transaction
-          batch = await safe.getBatch(batchNonce);
+          batchAfterFirstTx = await safe.getBatch(batchNonce);
 
-          // Incrase time
-          await network.provider.send('evm_increaseTime', [100]);
-          await network.provider.send("evm_mine")
-
-          // Deposit second transaction
           await safe.deposit(afc.address, amount, ethers.utils.toUtf8Bytes("erd13kgks9km5ky8vj2dfty79v769ej433k5xmyhzunk7fv4pndh7z2s8depqq"));
-          // Get batch after second transaction
-          updatedBatch = await safe.getBatch(batchNonce);
+          batchAfterSecondTx = await safe.getBatch(batchNonce);
 
-          expect(batch.lastUpdated).to.not.equal(updatedBatch.lastUpdated);
+          expect(batchAfterFirstTx.lastUpdatedBlockNumber).to.not.equal(batchAfterSecondTx.lastUpdatedBlockNumber);
         })
       })
 

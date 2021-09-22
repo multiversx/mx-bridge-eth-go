@@ -127,7 +127,8 @@ contract ERC20Safe {
 
         uint256 depositNonce = depositsCount+1;
         batch.deposits.push(Deposit(depositNonce, tokenAddress, amount, msg.sender, recipientAddress, DepositStatus.Pending));
-        batch.lastUpdated = block.timestamp;
+        batch.lastUpdated = currentTimestamp;
+        batch.lastUpdatedBlockNumber = block.number;
         depositsCount++;
 
         emit ERC20Deposited(depositNonce);
@@ -173,7 +174,7 @@ contract ERC20Safe {
         {
             return batch;
         }
-        return Batch(0, 0, 0, new Deposit[](0));
+        return Batch(0, 0, 0, 0, new Deposit[](0));
     }
 
     /**
