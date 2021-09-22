@@ -23,13 +23,13 @@ import (
 )
 
 const (
-	signCost              = 35_000_000
-	proposeTransferCost   = 35_000_000
-	proposeTransferTxCost = 15_000_000
-	proposeStatusCost     = 50_000_000
-	performActionCost     = 60_000_000
-	performActionTxCost   = 20_000_000
-	getNextTxBatchCost    = 250_000_000
+	signCost              = 45_000_000
+	proposeTransferCost   = 45_000_000
+	proposeTransferTxCost = 25_000_000
+	proposeStatusCost     = 60_000_000
+	performActionCost     = 70_000_000
+	performActionTxCost   = 30_000_000
+	getNextTxBatchCost    = 260_000_000
 )
 
 const (
