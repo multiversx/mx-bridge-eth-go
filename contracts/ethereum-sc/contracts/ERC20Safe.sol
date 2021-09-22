@@ -24,7 +24,6 @@ contract ERC20Safe {
     uint256 public depositsCount;
     uint256 public batchesCount;
     uint256 public batchTimeLimit = 10 minutes;
-    uint256 public batchSettleLimit = 10 minutes;
     uint256 public batchSettleBlockCount = 24;
     // Maximum number of transactions within a batch
     uint256 public batchSize = 10;
@@ -128,7 +127,6 @@ contract ERC20Safe {
 
         uint256 depositNonce = depositsCount+1;
         batch.deposits.push(Deposit(depositNonce, tokenAddress, amount, msg.sender, recipientAddress, DepositStatus.Pending));
-        batch.lastUpdated = currentTimestamp;
         batch.lastUpdatedBlockNumber = block.number;
         depositsCount++;
 
@@ -175,7 +173,7 @@ contract ERC20Safe {
         {
             return batch;
         }
-        return Batch(0, 0, 0, 0, new Deposit[](0));
+        return Batch(0, 0, 0, new Deposit[](0));
     }
 
     /**
