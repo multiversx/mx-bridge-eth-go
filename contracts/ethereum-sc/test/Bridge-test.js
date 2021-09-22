@@ -33,11 +33,11 @@ describe("Bridge", async function () {
   }
 
   async function settleCurrentBatch() {
-    // leave enough time to consider the batch settled (probability for a reorg is minimal)
-    // 10 minutes and one second into the future
-    settleTime = (10 * 60) + 1;
-    await network.provider.send('evm_increaseTime', [settleTime]);
-    await network.provider.send("evm_mine")
+    // leave enough time until settleBlockCount number of blocks have been mined (probability for a reorg is minimal)
+    settleBlockCount = await erc20Safe.batchSettleBlockCount.call();
+    for(i=0; i < settleBlockCount; i++) {
+      await network.provider.send("evm_mine");
+    }
   }
 
   async function setupReadyBatch() {
@@ -166,7 +166,6 @@ describe("Bridge", async function () {
   });
 
   describe('getNextPendingBatch', async function () {
-
     describe('when batch is ready', async function () {
       describe('by being full', async function () {
         beforeEach(async function () {
@@ -188,6 +187,7 @@ describe("Bridge", async function () {
       describe('by being old', async function () {
         beforeEach(async function () {
           await setupReadyBatch();
+          await settleCurrentBatch();
         })
 
         it('returns the batch', async function () {
