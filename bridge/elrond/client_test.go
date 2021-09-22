@@ -208,7 +208,7 @@ func TestGetPending(t *testing.T) {
 		}
 
 		assert.Equal(t, expected, actual)
-		assert.Equal(t, uint64(250_000_000), proxy.lastTransaction.GasLimit)
+		assert.Equal(t, uint64(260_000_000), proxy.lastTransaction.GasLimit)
 	})
 	t.Run("where there is no pending transaction it will return nil", func(t *testing.T) {
 		proxy := &testProxy{
@@ -253,7 +253,7 @@ func TestProposeTransfer(t *testing.T) {
 		expected := "proposeMultiTransferEsdtBatch@01@b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba@574554482d393761323662@2a"
 
 		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
-		assert.Equal(t, uint64(35_000_000+len(batch.Transactions)*15_000_000), proxy.lastTransaction.GasLimit)
+		assert.Equal(t, uint64(45_000_000+len(batch.Transactions)*25_000_000), proxy.lastTransaction.GasLimit)
 	})
 }
 
@@ -294,7 +294,7 @@ func TestProposeSetStatus(t *testing.T) {
 		expected := "proposeEsdtSafeSetCurrentTransactionBatchStatus@01@03@04"
 
 		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
-		assert.Equal(t, uint64(50_000_000), proxy.lastTransaction.GasLimit)
+		assert.Equal(t, uint64(60_000_000), proxy.lastTransaction.GasLimit)
 	})
 }
 
@@ -329,7 +329,7 @@ func TestExecute(t *testing.T) {
 	hash, _ := c.Execute(context.TODO(), bridge.NewActionId(42), batch)
 
 	assert.Equal(t, expectedTxHash, hash)
-	assert.Equal(t, uint64(60_000_000+len(batch.Transactions)*20_000_000), proxy.lastTransaction.GasLimit)
+	assert.Equal(t, uint64(70_000_000+len(batch.Transactions)*30_000_000), proxy.lastTransaction.GasLimit)
 }
 
 func TestWasProposedTransfer(t *testing.T) {
@@ -546,7 +546,7 @@ func TestSign(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	t.Run("it will set proper transaction cost", func(t *testing.T) {
-		expect := uint64(35_000_000)
+		expect := uint64(45_000_000)
 		proxy := &testProxy{}
 		c, _ := buildTestClient(proxy)
 
