@@ -24,7 +24,7 @@ contract ERC20Safe {
     uint256 public depositsCount;
     uint256 public batchesCount;
     uint256 public batchTimeLimit = 10 minutes;
-    uint256 public batchSettleBlockCount = 24;
+    uint256 public batchSettleBlockCount = 40; // 10 minutes (time limit) / 15 seconds (ethereum block time)
     // Maximum number of transactions within a batch
     uint256 public batchSize = 10;
     uint256 private constant maxBatchSize = 20;
