@@ -20,7 +20,7 @@ struct Deposit {
 
 struct Batch {
     uint256 nonce;
-    uint timestamp;
-    uint lastUpdatedBlockNumber;
+    uint256 timestamp;
+    uint256 lastUpdatedBlockNumber;
     Deposit[] deposits;
 }
