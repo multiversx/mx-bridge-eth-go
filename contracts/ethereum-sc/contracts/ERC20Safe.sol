@@ -24,7 +24,7 @@ contract ERC20Safe {
     uint256 public depositsCount;
     uint256 public batchesCount;
     uint256 public batchTimeLimit = 10 minutes;
-    uint256 public batchSettleLimit = 10 minutes;
+    uint256 public batchSettleBlockCount = 40; // 10 minutes (time limit) / 15 seconds (ethereum block time)
     // Maximum number of transactions within a batch
     uint256 public batchSize = 10;
     uint256 private constant maxBatchSize = 20;
@@ -127,7 +127,7 @@ contract ERC20Safe {
 
         uint256 depositNonce = depositsCount+1;
         batch.deposits.push(Deposit(depositNonce, tokenAddress, amount, msg.sender, recipientAddress, DepositStatus.Pending));
-        batch.lastUpdated = block.timestamp;
+        batch.lastUpdatedBlockNumber = block.number;
         depositsCount++;
 
         emit ERC20Deposited(depositNonce);
@@ -164,12 +164,12 @@ contract ERC20Safe {
         - timestamp
         - deposits List of the deposits included in this batch
         @dev This function is to be called by the bridge (which is called by the relayers)
-        It only returns final batches - batches where the block time limit has passed.
+        It only returns final batches - batches where the block time limit has passed and that have settled (minimal risk for reorgs).
     */
     function getNextPendingBatch() public view returns (Batch memory) {
         Batch memory batch = batches[currentPendingBatch];
 
-        if ((batch.lastUpdated + batchSettleLimit) < block.timestamp)
+        if ((batch.lastUpdatedBlockNumber + batchSettleBlockCount) <= block.number)
         {
             return batch;
         }
