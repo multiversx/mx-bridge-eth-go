@@ -361,7 +361,7 @@ func buildNetMessenger(cfg ConfigP2P) (NetMessenger, error) {
 	peerDiscoveryConfig := config.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
 		RefreshIntervalInSec:             5,
-		ProtocolID:                       "/erd/relay/1.0.0",
+		ProtocolID:                       cfg.ProtocolID,
 		InitialPeerList:                  cfg.InitialPeerList,
 		BucketSize:                       0,
 		RoutingTableRefreshIntervalInSec: 300,
