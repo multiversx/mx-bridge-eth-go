@@ -16,6 +16,7 @@ async function main() {
   const safeAddress = config["erc20Safe"];
   const bridgeAddress = config["bridge"];
   [adminWallet, depositor, relayer1] = await hre.ethers.getSigners();
+  
   // load deployed contracts
   const tokenContractFactory = await hre.ethers.getContractFactory("AFCoin");
   const safeContractFactory = await hre.ethers.getContractFactory("ERC20Safe");

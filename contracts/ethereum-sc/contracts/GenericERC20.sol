@@ -8,6 +8,6 @@ contract GenericERC20 is ERC20 {
     }
 
     function brrr(address recipientAddress) external {
-        _mint(recipientAddress, 200);
+        _mint(recipientAddress, 200 * (10 ** decimals()));
     }
 }
