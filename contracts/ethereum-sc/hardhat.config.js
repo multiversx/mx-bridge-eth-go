@@ -44,6 +44,92 @@ task("set-quorum", "Updates the quorum on the Bridge contract")
     console.log("Quorum updated: ", newQuorumSize);
   })
 
+task("deploy", "Deploys ERC20Safe and the Bridge contract")
+  .addParam("relayerAddresses", "JSON Array containing all relayer addresses to be added when the Bridge contract is deployed")
+  .addOptionalParam("quorum", "Quorum for proposals to be able to execute", 3, types.int)
+  .setAction(async taskArgs => {
+    relayerAddresses = JSON.parse(taskArgs.relayerAddresses);
+    quorum = taskArgs.quorum;
+    console.log("Relayers used for deploy", relayerAddresses);
+    adminWallet = await hre.ethers.getSigner();
+    console.log('Admin Public Address:', adminWallet.address);
+
+    const ERC20Safe = await hre.ethers.getContractFactory("ERC20Safe");
+    const safeContract = await ERC20Safe.deploy();
+    await safeContract.deployed();
+    console.log("ERC20Safe deployed to:", safeContract.address);
+
+    const Bridge = await hre.ethers.getContractFactory("Bridge");
+    const bridgeContract = await Bridge.deploy(relayerAddresses, quorum, safeContract.address);
+    await bridgeContract.deployed();
+    console.log("Bridge deployed to:", bridgeContract.address);
+    await safeContract.setBridgeAddress(bridgeContract.address);
+
+    fs = require('fs');
+    filename = 'setup.config.json';
+    data = {
+      erc20Safe: safeContract.address,
+      bridge: bridgeContract.address,
+      relayers: relayerAddresses
+    };
+    fs.writeFileSync(filename, JSON.stringify(data));
+  });
+
+task("deploy-test-tokens", "Deploys ERC20 contracts to use to test the bridge")
+  .setAction(async () => {
+    adminWallet = await ethers.getSigner();
+    const fs = require('fs');
+    const filename = 'setup.config.json';
+    let config = JSON.parse(fs.readFileSync(filename, 'utf8'));  
+    console.log('Current contract addresses');
+    console.log(config);
+    const safeAddress = config["erc20Safe"];
+    const safeContractFactory = await hre.ethers.getContractFactory("ERC20Safe");
+    const safe = await safeContractFactory.attach(safeAddress);
+    console.log("Safe at: ", safe.address);
+    //deploy contracts
+    const genericERC20Factory = await hre.ethers.getContractFactory("GenericERC20");
+
+    const usdcContract = await genericERC20Factory.deploy("Dummy USDC", "dUSDC");
+    await usdcContract.deployed();
+    console.log("Deployed dummy USDC: ", usdcContract.address);
+    const daiContract = await genericERC20Factory.deploy("Dummy DAI", "dDAI");
+    await daiContract.deployed();
+    console.log("Deployed dummy DAI: ", daiContract.address);
+    const egldContract = await genericERC20Factory.deploy("Dummy EGLD", "dEGLD");
+    await egldContract.deployed();
+    console.log("Deployed dummy EGLD: ", egldContract.address);
+
+    //whitelist tokens in safe
+    console.log("Whitelisting token ", usdcContract.address);
+    await safe.whitelistToken(usdcContract.address, 1);
+    console.log("Whitelisting token ", daiContract.address);
+    await safe.whitelistToken(daiContract.address, 1);
+    console.log("Whitelisting token ", egldContract.address);
+    await safe.whitelistToken(egldContract.address, 1);
+
+    //save in configuration file
+    config.tokens = [usdcContract.address, daiContract.address, egldContract.address]
+    fs.writeFileSync(filename, JSON.stringify(config));
+  })
+
+task("mint-test-tokens", "Mints tests tokens and sends them to the recipientAddress")
+  .addParam("recipientAddress", "Public address where the new tokens will be sent")
+  .setAction(async taskArgs => {
+    const recipientAddress = taskArgs.recipientAddress;
+    const fs = require('fs');
+    const filename = 'setup.config.json';
+    let config = JSON.parse(fs.readFileSync(filename, 'utf8'));  
+
+    for(i=0; i<config.tokens.length; i++) {
+      tokenContractAddress = config.tokens[i];
+      console.log('minting tokens for contract: ', tokenContractAddress);
+      tokenContract = (await hre.ethers.getContractFactory("GenericERC20")).attach(tokenContractAddress);
+      await tokenContract.brrr(recipientAddress);
+      console.log('minted tokens for contract: ', tokenContractAddress);
+    }
+  })
+
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 
@@ -58,6 +144,12 @@ module.exports = {
     },
     rinkeby: {
       url: "https://rinkeby.infura.io/v3/df34d380f59e469c97f1dab44199bca6",
+      accounts: {
+        mnemonic: "industry layer bird test junk shadow visa lottery human spatial pact balcony"
+      }
+    },
+    ropsten: {
+      url: "https://ropsten.infura.io/v3/a222f052232e4120b5756760d7293d20",
       accounts: {
         mnemonic: "industry layer bird test junk shadow visa lottery human spatial pact balcony"
       }
@@ -84,4 +176,3 @@ module.exports = {
     coinmarketcap: '26043cba-19e3-4a70-8575-916adb54fa12'
   }
 };
-
