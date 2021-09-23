@@ -143,13 +143,13 @@ module.exports = {
       url: 'http://127.0.0.1:8545'
     },
     rinkeby: {
-      url: "https://rinkeby.infura.io/v3/df34d380f59e469c97f1dab44199bca6",
+      url: "https://rinkeby.infura.io/v3/a2a8319a4e324ec4a3c5556b4c31fa08",
       accounts: {
         mnemonic: "industry layer bird test junk shadow visa lottery human spatial pact balcony"
       }
     },
     ropsten: {
-      url: "https://ropsten.infura.io/v3/a222f052232e4120b5756760d7293d20",
+      url: "https://ropsten.infura.io/v3/a2a8319a4e324ec4a3c5556b4c31fa08",
       accounts: {
         mnemonic: "industry layer bird test junk shadow visa lottery human spatial pact balcony"
       }
