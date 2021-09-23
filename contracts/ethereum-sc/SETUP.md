@@ -38,7 +38,7 @@ This is the contract that the relayers use to get and execute batches of transac
 Prerequisites:
 
 - Determine the network where you want it deployed
-- Determine and have access to the admin wallet
+- Admin wallet is the first account in the HD wallet configured in `hardhat.config.js` 
 - Determine and get the public addresses of all the relayers
 - Determine the quorum size (should be 2/3 from the number of relayers)
 
@@ -46,16 +46,13 @@ Prerequisites:
 
 Before being able to run the deploy, the correct `network` and admin wallet must be setup in `hardhat.config.js`
 
-Then in `scripts/deploy.js` update
+Deploy command:
 
-- the list of relayers with the list of public address from all the relayers.
-- the quorum value
+`npx hardhat deploy --relayer-addresses '["relayer1Address", "relayer2Address","relayer3Address"]' --quorum 3 --network <networkName>`  (e.g. network = `rinkeby` as it is setup in `hardhat.config.js`)
 
 Relayers can be changed over time, but the initial list is the one passed in the constructor of the bridge and saves gas during setup.
 
-run `npx hardhat run scripts/deploy.js --network <network>` (e.g. network = `rinkeby` as it is setup in `hardhat.config.js`)
-
-The sript will output the addresses of the deployed contracts and will also create a `setup.config.json` file containing these scripts.
+The script will output the addresses of the deployed contracts and will also create a `setup.config.json` file containing these scripts.
 e.g.
 
 ```
@@ -68,8 +65,20 @@ e.g.
 ## Whitelisting tokens
 
 Before a depositor can go in and call the `deposit` method with an ERC20 token, that ERC20 contract must be whitelisted.
-For this, there is a hardhat task: `whitelist-token`
-Run it with: `npx hardhat whitelist-token --address <tokenAddress>`
+For this, there is a hardhat task: `add-to-whitelist`
+Run it with: `npx hardhat add-to-whitelist --address <tokenAddress>`
+
+# For testing in testnets 
+
+## Creating and whitelisting test tokens
+In order to have some dummy ERC20 tokens, you can run the command:
+`npx hardhat deploy-test-tokens --network rinkeby`
+This will create three dummy ERC20 tokens: dUSDC, dDAI, dEGLD and will whitelist them in the contracts deployed with the deploy task.
+
+## Minting test tokens
+You can mint test tokens in the dummy contracts by running the command:
+`npx hardhat mint-test-tokens --recipient-address <recipientAddress>`
+This will mint and send 200 tokens in each of the dummy contracts created before.
 
 # Emergency shutdown
 
