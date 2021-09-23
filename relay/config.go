@@ -12,5 +12,5 @@ type ConfigP2P struct {
 	Port            string
 	Seed            string
 	InitialPeerList []string
-	ProtocolID		string
+	ProtocolID      string
 }
