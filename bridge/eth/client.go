@@ -24,7 +24,6 @@ import (
 
 const (
 	MessagePrefix = "\u0019Ethereum Signed Message:\n32"
-	GasLimit      = uint64(400000)
 )
 
 type BridgeContract interface {
@@ -52,6 +51,7 @@ type Client struct {
 
 	lastProposedStatuses []uint8
 	lastTransferBatch    *bridge.Batch
+	gasLimit uint64
 
 	log logger.Logger
 }
@@ -83,7 +83,7 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 	client := &Client{
 		bridgeContract:   instance,
 		blockchainClient: ethClient,
-
+		gasLimit:    config.GasLimit,
 		privateKey:  privateKey,
 		publicKey:   publicKeyECDSA,
 		broadcaster: broadcaster,
@@ -213,7 +213,7 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batch *bridge.B
 
 	auth.Nonce = big.NewInt(int64(blockNonce))
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = GasLimit
+	auth.GasLimit = c.gasLimit
 	auth.GasPrice = gasPrice
 	auth.Context = ctx
 

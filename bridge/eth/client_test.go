@@ -29,6 +29,7 @@ var (
 )
 
 const TestPrivateKey = "60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d7192efab"
+const GasLimit = uint64(400000)
 
 func TestGetPending(t *testing.T) {
 	testHelpers.SetTestLogLevel()
@@ -76,6 +77,7 @@ func TestGetPending(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := Client{
 				bridgeContract: &bridgeContractStub{batch: tt.receivedBatch},
+				gasLimit: GasLimit,
 				log:            logger.GetOrCreate("testEthClient"),
 			}
 
@@ -102,6 +104,7 @@ func TestProposeSetStatus(t *testing.T) {
 				bridgeContract: &bridgeContractStub{},
 				privateKey:     privateKey(t),
 				broadcaster:    broadcaster,
+				gasLimit: GasLimit,
 				log:            logger.GetOrCreate("testEthClient"),
 			}
 
@@ -127,6 +130,7 @@ func TestProposeTransfer(t *testing.T) {
 		privateKey:     privateKey(t),
 		broadcaster:    broadcaster,
 		mapper:         &mapperStub{},
+		gasLimit: GasLimit,
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
@@ -153,6 +157,7 @@ func TestSignersCount(t *testing.T) {
 	client := Client{
 		bridgeContract: &bridgeContractStub{},
 		broadcaster:    broadcaster,
+		gasLimit: GasLimit,
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
@@ -167,6 +172,7 @@ func TestWasExecuted(t *testing.T) {
 		client := Client{
 			bridgeContract: contract,
 			broadcaster:    &broadcasterStub{},
+			gasLimit: GasLimit,
 			log:            logger.GetOrCreate("testEthClient"),
 		}
 
@@ -180,6 +186,7 @@ func TestWasExecuted(t *testing.T) {
 			bridgeContract:    contract,
 			lastTransferBatch: &bridge.Batch{},
 			broadcaster:       &broadcasterStub{},
+			gasLimit: GasLimit,
 			log:               logger.GetOrCreate("testEthClient"),
 		}
 
@@ -192,6 +199,7 @@ func TestWasExecuted(t *testing.T) {
 			bridgeContract:       &bridgeContractStub{wasExecuted: true, wasBatchFinished: true},
 			log:                  logger.GetOrCreate("testEthClient"),
 			lastTransferBatch:    &bridge.Batch{},
+			gasLimit: GasLimit,
 			lastProposedStatuses: []uint8{bridge.Executed},
 		}
 
@@ -204,6 +212,7 @@ func TestWasExecuted(t *testing.T) {
 		client := Client{
 			bridgeContract:       &bridgeContractStub{wasExecuted: true},
 			log:                  logger.GetOrCreate("testEthClient"),
+			gasLimit: GasLimit,
 			lastProposedStatuses: []uint8{bridge.Executed},
 		}
 
@@ -216,6 +225,7 @@ func TestWasExecuted(t *testing.T) {
 			bridgeContract:       &bridgeContractStub{wasExecuted: false},
 			log:                  logger.GetOrCreate("testEthClient"),
 			lastProposedStatuses: []uint8{bridge.Executed},
+			gasLimit: GasLimit,
 			lastTransferBatch:    &bridge.Batch{},
 		}
 
@@ -236,6 +246,7 @@ func TestExecute(t *testing.T) {
 			broadcaster:      &broadcasterStub{},
 			blockchainClient: &blockchainClientStub{},
 			log:              logger.GetOrCreate("testEthClient"),
+			gasLimit: GasLimit,
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
@@ -259,6 +270,7 @@ func TestExecute(t *testing.T) {
 					TokenAddress: "0x574554482d323936313238",
 				}},
 			},
+			gasLimit: GasLimit,
 			log: logger.GetOrCreate("testEthClient"),
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}

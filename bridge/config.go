@@ -6,4 +6,5 @@ type Config struct {
 	BridgeAddress        string
 	PrivateKey           string
 	NonceUpdateInSeconds uint
+	GasLimit             uint64
 }
