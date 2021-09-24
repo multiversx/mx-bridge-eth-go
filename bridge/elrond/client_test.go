@@ -92,8 +92,8 @@ func TestClient_PollsNonce(t *testing.T) {
 	// the go routine should have stopped, preventing calls to the proxy
 	time.Sleep(time.Second*3 + time.Millisecond*500)
 
-	assert.Equal(t, uint64(3), atomic.LoadUint64(&numCalled))
-	assert.Equal(t, uint64(3), atomic.LoadUint64(&c.nonce))
+	assert.Equal(t, uint64(4), atomic.LoadUint64(&numCalled))
+	assert.Equal(t, uint64(4), atomic.LoadUint64(&c.nonce))
 }
 
 func TestGetPending(t *testing.T) {
