@@ -7,8 +7,8 @@ import (
 	"syscall"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-go-core/core"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/core"
 	"github.com/urfave/cli"
 	_ "github.com/urfave/cli"
 )

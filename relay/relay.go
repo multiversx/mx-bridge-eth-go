@@ -17,19 +17,20 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
+	"github.com/ElrondNetwork/elrond-go-core/core"
+	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/config"
-	"github.com/ElrondNetwork/elrond-go/core"
-	factoryMarshalizer "github.com/ElrondNetwork/elrond-go/marshal/factory"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 )
 
 const (
-	JoinTopicName    = "join/1"
-	PrivateTopicName = "private/1"
-	SignTopicName    = "sign/1"
-	Timeout          = 40 * time.Second
+	joinTopicName          = "join/1"
+	privateTopicName       = "private/1"
+	signTopicName          = "sign/1"
+	timeout                = 40 * time.Second
+	defaultTopicIdentifier = "default"
 )
 
 type Peers []core.PeerID
@@ -73,7 +74,7 @@ type NetMessenger interface {
 	ID() core.PeerID
 	Bootstrap() error
 	Addresses() []string
-	RegisterMessageProcessor(string, p2p.MessageProcessor) error
+	RegisterMessageProcessor(topic string, identifier string, processor p2p.MessageProcessor) error
 	HasTopic(name string) bool
 	CreateTopic(name string, createChannelForTopic bool) error
 	Broadcast(topic string, buff []byte)
@@ -171,7 +172,7 @@ func (r *Relay) AmITheLeader() bool {
 		return false
 	} else {
 		numberOfPeers := int64(len(r.peers))
-		index := (r.timer.NowUnix() / int64(Timeout.Seconds())) % numberOfPeers
+		index := (r.timer.NowUnix() / int64(timeout.Seconds())) % numberOfPeers
 
 		return r.peers[index] == r.messenger.ID()
 	}
@@ -187,7 +188,7 @@ func (r *Relay) ProcessReceivedMessage(message p2p.MessageP2P, _ core.PeerID) er
 	r.log.Info(fmt.Sprintf("Got message on topic %q", message.Topic()))
 
 	switch message.Topic() {
-	case JoinTopicName:
+	case joinTopicName:
 		elrondPublicAddress := string(message.Data())
 		if !r.roleProvider.IsWhitelisted(elrondPublicAddress) {
 			r.log.Error(fmt.Sprintf("A peer with address %q tryed to join but is not whitelisted", elrondPublicAddress))
@@ -198,9 +199,9 @@ func (r *Relay) ProcessReceivedMessage(message p2p.MessageP2P, _ core.PeerID) er
 		if err := r.broadcastTopology(message.Peer()); err != nil {
 			r.log.Error(err.Error())
 		}
-	case SignTopicName:
+	case signTopicName:
 		r.addSignatureForPeer(message.Peer(), message.Data())
-	case PrivateTopicName:
+	case privateTopicName:
 		if err := r.setTopology(message.Data()); err != nil {
 			r.log.Error(err.Error())
 		}
@@ -227,7 +228,7 @@ func (r *Relay) broadcastTopology(toPeer core.PeerID) error {
 		return err
 	}
 
-	if err := r.messenger.SendToConnectedPeer(PrivateTopicName, data.Bytes(), toPeer); err != nil {
+	if err := r.messenger.SendToConnectedPeer(privateTopicName, data.Bytes(), toPeer); err != nil {
 		return err
 	}
 
@@ -288,7 +289,7 @@ func (r *Relay) Signatures() [][]byte {
 }
 
 func (r *Relay) SendSignature(signature []byte) {
-	r.messenger.Broadcast(SignTopicName, signature)
+	r.messenger.Broadcast(signTopicName, signature)
 }
 
 // Helpers
@@ -319,7 +320,7 @@ func (r *Relay) join(ctx context.Context) {
 	select {
 	case <-r.timer.After(time.Duration(v) * time.Second):
 		r.log.Debug(fmt.Sprintf("Joining with address %s", r.elrondWalletAddressProvider.GetHexWalletAddress()))
-		r.messenger.Broadcast(JoinTopicName, []byte(r.elrondWalletAddressProvider.GetHexWalletAddress()))
+		r.messenger.Broadcast(joinTopicName, []byte(r.elrondWalletAddressProvider.GetHexWalletAddress()))
 	case <-ctx.Done():
 	}
 }
@@ -329,7 +330,7 @@ func (r *Relay) addSignatureForPeer(peerID core.PeerID, signature []byte) {
 }
 
 func (r *Relay) registerTopicProcessors() error {
-	topics := []string{JoinTopicName, PrivateTopicName, SignTopicName}
+	topics := []string{joinTopicName, privateTopicName, signTopicName}
 	for _, topic := range topics {
 		if !r.messenger.HasTopic(topic) {
 			if err := r.messenger.CreateTopic(topic, true); err != nil {
@@ -338,7 +339,7 @@ func (r *Relay) registerTopicProcessors() error {
 		}
 
 		r.log.Info(fmt.Sprintf("Registered on topic %q", topic))
-		if err := r.messenger.RegisterMessageProcessor(topic, r); err != nil {
+		if err := r.messenger.RegisterMessageProcessor(topic, defaultTopicIdentifier, r); err != nil {
 			return err
 		}
 	}
