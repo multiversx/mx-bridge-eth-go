@@ -27,11 +27,12 @@ import (
 )
 
 const (
-	joinTopicName          = "join/1"
-	privateTopicName       = "private/1"
-	signTopicName          = "sign/1"
-	timeout                = 40 * time.Second
-	defaultTopicIdentifier = "default"
+	joinTopicName            = "join/1"
+	privateTopicName         = "private/1"
+	signTopicName            = "sign/1"
+	timeout                  = 40 * time.Second
+	defaultTopicIdentifier   = "default"
+	p2pPeerNetworkDiscoverer = "optimized"
 )
 
 type Peers []core.PeerID
@@ -367,6 +368,7 @@ func buildNetMessenger(cfg ConfigP2P) (NetMessenger, error) {
 		InitialPeerList:                  cfg.InitialPeerList,
 		BucketSize:                       0,
 		RoutingTableRefreshIntervalInSec: 300,
+		Type:                             p2pPeerNetworkDiscoverer,
 	}
 
 	p2pConfig := config.P2PConfig{
