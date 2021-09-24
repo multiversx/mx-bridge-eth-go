@@ -11,21 +11,21 @@ import (
 )
 
 const (
-	MinSignaturePercent = 67
+	minSignaturePercent = 67
 )
 
-type State int
+type state int
 
 const (
-	GetPending               State = 0
-	ProposeTransfer          State = 1
-	WaitForSignatures        State = 2
-	Execute                  State = 3
-	WaitForTransferProposal  State = 4
-	WaitForExecute           State = 5
-	Stop                     State = 6
-	ProposeSetStatus         State = 7
-	WaitForSetStatusProposal State = 8
+	getPending               state = 0
+	proposeTransfer          state = 1
+	waitForSignatures        state = 2
+	execute                  state = 3
+	waitForTransferProposal  state = 4
+	waitForExecute           state = 5
+	stop                     state = 6
+	proposeSetStatus         state = 7
+	waitForSetStatusProposal state = 8
 )
 
 type Monitor struct {
@@ -38,7 +38,7 @@ type Monitor struct {
 	destinationBridge bridge.Bridge
 	executingBridge   bridge.Bridge
 
-	initialState State
+	initialState state
 	pendingBatch *bridge.Batch
 	actionId     bridge.ActionId
 }
@@ -58,30 +58,30 @@ func NewMonitor(sourceBridge, destinationBridge bridge.Bridge, timer Timer, topo
 func (m *Monitor) Start(ctx context.Context) {
 	m.log.Info(fmt.Sprintf("Started monitor %q", m.name))
 
-	ch := make(chan State, 1)
+	ch := make(chan state, 1)
 	ch <- m.initialState
 
 	for {
 		select {
-		case state := <-ch:
-			switch state {
-			case GetPending:
+		case stateValue := <-ch:
+			switch stateValue {
+			case getPending:
 				go m.getPending(ctx, ch)
-			case ProposeTransfer:
+			case proposeTransfer:
 				go m.proposeTransfer(ctx, ch)
-			case WaitForTransferProposal:
+			case waitForTransferProposal:
 				go m.waitForTransferProposal(ctx, ch)
-			case WaitForSignatures:
+			case waitForSignatures:
 				go m.waitForSignatures(ctx, ch)
-			case Execute:
+			case execute:
 				go m.execute(ctx, ch)
-			case WaitForExecute:
+			case waitForExecute:
 				go m.waitForExecute(ctx, ch)
-			case ProposeSetStatus:
+			case proposeSetStatus:
 				go m.proposeSetStatus(ctx, ch)
-			case WaitForSetStatusProposal:
+			case waitForSetStatusProposal:
 				go m.waitForSetStatusProposal(ctx, ch)
-			case Stop:
+			case stop:
 				return
 			}
 		case <-ctx.Done():
@@ -92,42 +92,42 @@ func (m *Monitor) Start(ctx context.Context) {
 
 // State
 
-func (m *Monitor) getPending(ctx context.Context, ch chan State) {
+func (m *Monitor) getPending(ctx context.Context, ch chan state) {
 	m.pendingBatch = m.sourceBridge.GetPending(ctx)
 
 	if m.pendingBatch == nil {
 		select {
 		case <-m.timer.After(5 * time.Second):
-			ch <- GetPending
+			ch <- getPending
 		case <-ctx.Done():
-			ch <- Stop
+			ch <- stop
 		}
 	} else {
 		m.topologyProvider.Clean()
-		ch <- ProposeTransfer
+		ch <- proposeTransfer
 	}
 }
 
-func (m *Monitor) proposeTransfer(ctx context.Context, ch chan State) {
+func (m *Monitor) proposeTransfer(ctx context.Context, ch chan state) {
 	if m.topologyProvider.AmITheLeader() {
 		_, err := m.destinationBridge.ProposeTransfer(ctx, m.pendingBatch)
 		if err != nil {
 			m.log.Error(err.Error())
 			m.pendingBatch.SetStatusOnAllTransactions(bridge.Rejected, err)
 			m.executingBridge = m.sourceBridge
-			ch <- ProposeSetStatus
+			ch <- proposeSetStatus
 		} else {
-			ch <- WaitForTransferProposal
+			ch <- waitForTransferProposal
 		}
 	} else {
-		ch <- WaitForTransferProposal
+		ch <- waitForTransferProposal
 	}
 }
 
-func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
+func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan state) {
 	m.log.Info(fmt.Sprintf("Waiting for proposal on batch with nonce %v", m.pendingBatch.Id))
 	select {
-	case <-m.timer.After(Timeout):
+	case <-m.timer.After(timeout):
 		if m.destinationBridge.WasProposedTransfer(ctx, m.pendingBatch) {
 			m.actionId = m.destinationBridge.GetActionIdForProposeTransfer(ctx, m.pendingBatch)
 			_, err := m.destinationBridge.Sign(ctx, m.actionId)
@@ -135,35 +135,35 @@ func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan State) {
 				m.log.Error(err.Error())
 			}
 			m.executingBridge = m.destinationBridge
-			ch <- WaitForSignatures
+			ch <- waitForSignatures
 		} else {
-			ch <- ProposeTransfer
+			ch <- proposeTransfer
 		}
 	case <-ctx.Done():
-		ch <- Stop
+		ch <- stop
 	}
 }
 
-func (m *Monitor) waitForSignatures(ctx context.Context, ch chan State) {
+func (m *Monitor) waitForSignatures(ctx context.Context, ch chan state) {
 	m.log.Info("Waiting for signatures")
 	select {
-	case <-m.timer.After(Timeout):
+	case <-m.timer.After(timeout):
 		count := m.executingBridge.SignersCount(ctx, m.actionId)
 		peerCount := m.topologyProvider.PeerCount()
-		minCountRequired := math.Ceil(float64(peerCount) * MinSignaturePercent / 100)
+		minCountRequired := math.Ceil(float64(peerCount) * minSignaturePercent / 100)
 
 		m.log.Info(fmt.Sprintf("Got %d signatures", count))
 		if count >= uint(minCountRequired) && count > 0 {
-			ch <- Execute
+			ch <- execute
 		} else {
-			ch <- WaitForSignatures
+			ch <- waitForSignatures
 		}
 	case <-ctx.Done():
-		ch <- Stop
+		ch <- stop
 	}
 }
 
-func (m *Monitor) execute(ctx context.Context, ch chan State) {
+func (m *Monitor) execute(ctx context.Context, ch chan state) {
 	if m.topologyProvider.AmITheLeader() {
 		_, err := m.executingBridge.Execute(ctx, m.actionId, m.pendingBatch)
 
@@ -172,41 +172,41 @@ func (m *Monitor) execute(ctx context.Context, ch chan State) {
 		}
 	}
 
-	ch <- WaitForExecute
+	ch <- waitForExecute
 }
 
-func (m *Monitor) waitForExecute(ctx context.Context, ch chan State) {
+func (m *Monitor) waitForExecute(ctx context.Context, ch chan state) {
 	m.log.Info("Waiting for execution")
 	select {
-	case <-m.timer.After(Timeout):
+	case <-m.timer.After(timeout):
 		if m.executingBridge.WasExecuted(ctx, m.actionId, m.pendingBatch.Id) {
 			m.pendingBatch.SetStatusOnAllTransactions(bridge.Executed, nil)
 
 			switch m.executingBridge {
 			case m.destinationBridge:
-				ch <- ProposeSetStatus
+				ch <- proposeSetStatus
 			case m.sourceBridge:
-				ch <- GetPending
+				ch <- getPending
 			}
 		} else {
-			ch <- Execute
+			ch <- execute
 		}
 	case <-ctx.Done():
-		ch <- Stop
+		ch <- stop
 	}
 }
 
-func (m *Monitor) proposeSetStatus(ctx context.Context, ch chan State) {
+func (m *Monitor) proposeSetStatus(ctx context.Context, ch chan state) {
 	if m.topologyProvider.AmITheLeader() {
 		m.sourceBridge.ProposeSetStatus(ctx, m.pendingBatch)
 	}
-	ch <- WaitForSetStatusProposal
+	ch <- waitForSetStatusProposal
 }
 
-func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan State) {
+func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan state) {
 	m.log.Info(fmt.Sprintf("Waiting for set status proposal on batch with nonce %v", m.pendingBatch.Id))
 	select {
-	case <-m.timer.After(Timeout):
+	case <-m.timer.After(timeout):
 		if m.sourceBridge.WasProposedSetStatus(ctx, m.pendingBatch) {
 			m.log.Info(fmt.Sprintf("Signing set status for batch with id %v", m.pendingBatch.Id))
 			m.actionId = m.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx, m.pendingBatch)
@@ -215,11 +215,11 @@ func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan State) {
 				m.log.Error(err.Error())
 			}
 			m.executingBridge = m.sourceBridge
-			ch <- WaitForSignatures
+			ch <- waitForSignatures
 		} else {
-			ch <- ProposeSetStatus
+			ch <- proposeSetStatus
 		}
 	case <-ctx.Done():
-		ch <- Stop
+		ch <- stop
 	}
 }

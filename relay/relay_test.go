@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 	"github.com/ElrondNetwork/elrond-go/p2p/mock"
 
+	"github.com/ElrondNetwork/elrond-go-core/core"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/core"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,6 +27,38 @@ var (
 )
 
 var log = logger.GetOrCreate("main")
+
+func TestNewRelay(t *testing.T) {
+	t.Parallel()
+
+	cfg := &Config{
+		Eth: bridge.Config{
+			NetworkAddress:       "http://127.0.0.1:8545",
+			BridgeAddress:        "5DdDe022a65F8063eE9adaC54F359CBF46166068",
+			PrivateKey:           "9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1",
+			NonceUpdateInSeconds: 0,
+			GasLimit:             0,
+		},
+		Elrond: bridge.Config{
+			NonceUpdateInSeconds: 60,
+			PrivateKey:           "testdata/grace.pem",
+			NetworkAddress:       "http://127.0.0.1:8079",
+			BridgeAddress:        "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+		},
+		P2P: ConfigP2P{
+			Port:            "0",
+			Seed:            "",
+			InitialPeerList: nil,
+			ProtocolID:      "erd/1.1.0",
+		},
+	}
+
+	r, err := NewRelay(cfg, "name")
+	require.Nil(t, err)
+	require.False(t, check.IfNil(r))
+
+	r.Clean()
+}
 
 func TestInit(t *testing.T) {
 	testHelpers.SetTestLogLevel()
@@ -47,12 +81,12 @@ func TestInit(t *testing.T) {
 	_ = relay.Start(ctx)
 
 	assert.True(t, messenger.bootstrapWasCalled)
-	assert.Contains(t, messenger.createdTopics, PrivateTopicName)
-	assert.Contains(t, messenger.createdTopics, JoinTopicName)
-	assert.Contains(t, messenger.createdTopics, SignTopicName)
-	assert.Contains(t, messenger.registeredMessageProcessors, PrivateTopicName)
-	assert.Contains(t, messenger.registeredMessageProcessors, JoinTopicName)
-	assert.Contains(t, messenger.registeredMessageProcessors, SignTopicName)
+	assert.Contains(t, messenger.createdTopics, privateTopicName)
+	assert.Contains(t, messenger.createdTopics, joinTopicName)
+	assert.Contains(t, messenger.createdTopics, signTopicName)
+	assert.Contains(t, messenger.registeredMessageProcessors, privateTopicName)
+	assert.Contains(t, messenger.registeredMessageProcessors, joinTopicName)
+	assert.Contains(t, messenger.registeredMessageProcessors, signTopicName)
 	assert.True(t, timer.WasStarted)
 }
 
@@ -89,7 +123,7 @@ func TestPrivateTopicProcessor(t *testing.T) {
 	defer cancel()
 	_ = relay.Start(ctx)
 
-	privateMessageProcessor := messenger.registeredMessageProcessors[PrivateTopicName]
+	privateMessageProcessor := messenger.registeredMessageProcessors[privateTopicName]
 	expected := Peers{"first", "second"}
 	message := buildPrivateMessage("other", expected)
 	_ = privateMessageProcessor.ProcessReceivedMessage(message, "peer_near_me")
@@ -120,7 +154,7 @@ func TestJoinTopicProcessor(t *testing.T) {
 		defer cancel()
 		_ = relay.Start(ctx)
 
-		joinMessageProcessor := messenger.registeredMessageProcessors[JoinTopicName]
+		joinMessageProcessor := messenger.registeredMessageProcessors[joinTopicName]
 		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("other"), "peer_near_me")
 
 		dec := gob.NewDecoder(bytes.NewReader(messenger.lastSendData))
@@ -153,7 +187,7 @@ func TestJoinTopicProcessor(t *testing.T) {
 		defer cancel()
 		_ = relay.Start(ctx)
 
-		joinMessageProcessor := messenger.registeredMessageProcessors[JoinTopicName]
+		joinMessageProcessor := messenger.registeredMessageProcessors[joinTopicName]
 		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("other"), "peer_near_me")
 
 		assert.Empty(t, messenger.lastSendData)
@@ -176,10 +210,10 @@ func TestJoinTopicProcessor(t *testing.T) {
 		defer cancel()
 		_ = relay.Start(ctx)
 
-		joinMessageProcessor := messenger.registeredMessageProcessors[JoinTopicName]
+		joinMessageProcessor := messenger.registeredMessageProcessors[joinTopicName]
 		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("self"), "peer_near_me")
 
-		assert.NotEqual(t, PrivateTopicName, messenger.lastSendTopicName)
+		assert.NotEqual(t, privateTopicName, messenger.lastSendTopicName)
 	})
 }
 
@@ -223,7 +257,7 @@ func TestSendSignature(t *testing.T) {
 	expectedData := []byte("signature")
 	relay.SendSignature(expectedData)
 
-	assert.Equal(t, SignTopicName, messenger.lastSendTopicName)
+	assert.Equal(t, signTopicName, messenger.lastSendTopicName)
 	assert.Equal(t, expectedData, messenger.lastSendData)
 }
 
@@ -249,7 +283,7 @@ func TestSignTopicProcessor(t *testing.T) {
 	defer cancel()
 	_ = relay.Start(ctx)
 
-	signMessageProcessor := messenger.registeredMessageProcessors[SignTopicName]
+	signMessageProcessor := messenger.registeredMessageProcessors[signTopicName]
 	expected := []byte("signature")
 	_ = signMessageProcessor.ProcessReceivedMessage(buildSignMessage("second", expected), "peer_near_me")
 
@@ -272,7 +306,7 @@ func TestAmILeader(t *testing.T) {
 		relay := Relay{
 			peers:     Peers{"self", "other"},
 			messenger: &netMessengerStub{peerID: "self"},
-			timer:     &testHelpers.TimerStub{TimeNowUnix: int64(Timeout.Seconds()) + 1},
+			timer:     &testHelpers.TimerStub{TimeNowUnix: int64(timeout.Seconds()) + 1},
 		}
 
 		assert.False(t, relay.AmITheLeader())
@@ -288,7 +322,7 @@ func buildPrivateMessage(peerID core.PeerID, peers Peers) p2p.MessageP2P {
 	}
 
 	return &mock.P2PMessageMock{
-		TopicField: PrivateTopicName,
+		TopicField: privateTopicName,
 		PeerField:  peerID,
 		DataField:  data.Bytes(),
 	}
@@ -296,7 +330,7 @@ func buildPrivateMessage(peerID core.PeerID, peers Peers) p2p.MessageP2P {
 
 func buildJoinedMessage(peerID core.PeerID) p2p.MessageP2P {
 	return &mock.P2PMessageMock{
-		TopicField: JoinTopicName,
+		TopicField: joinTopicName,
 		PeerField:  peerID,
 		DataField:  []byte("address"),
 	}
@@ -304,7 +338,7 @@ func buildJoinedMessage(peerID core.PeerID) p2p.MessageP2P {
 
 func buildSignMessage(peerID core.PeerID, signature []byte) p2p.MessageP2P {
 	return &mock.P2PMessageMock{
-		TopicField: SignTopicName,
+		TopicField: signTopicName,
 		PeerField:  peerID,
 		DataField:  signature,
 	}
@@ -332,7 +366,7 @@ func (p *netMessengerStub) Bootstrap() error {
 	return nil
 }
 
-func (p *netMessengerStub) RegisterMessageProcessor(topic string, handler p2p.MessageProcessor) error {
+func (p *netMessengerStub) RegisterMessageProcessor(topic string, _ string, handler p2p.MessageProcessor) error {
 	if p.registeredMessageProcessors == nil {
 		p.registeredMessageProcessors = make(map[string]p2p.MessageProcessor)
 	}
@@ -360,7 +394,7 @@ func (p *netMessengerStub) Addresses() []string {
 }
 
 func (p *netMessengerStub) Broadcast(topic string, data []byte) {
-	if topic == JoinTopicName && string(data) == "address" {
+	if topic == joinTopicName && string(data) == "address" {
 		p.joinedWasCalled = true
 	}
 
