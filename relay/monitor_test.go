@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"errors"
+	"math/big"
 	"sync"
 	"testing"
 	"time"
@@ -22,7 +23,7 @@ func TestGetPending(t *testing.T) {
 		}
 		sourceBridge := &bridgeStub{pendingBatches: []*bridge.Batch{expected}}
 		provider := &topologyProviderStub{}
-		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &testHelpers.TimerStub{}, provider, "testMonitor")
+		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &testHelpers.TimerStub{}, provider, &quorumProviderStub{}, "testMonitor")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 		defer cancel()
@@ -37,7 +38,7 @@ func TestGetPending(t *testing.T) {
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
 		sourceBridge := &bridgeStub{pendingBatches: []*bridge.Batch{nil, expected}}
-		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &testHelpers.TimerStub{}, &topologyProviderStub{}, "testMonitor")
+		monitor := NewMonitor(sourceBridge, &bridgeStub{}, &testHelpers.TimerStub{}, &topologyProviderStub{}, &quorumProviderStub{}, "testMonitor")
 
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Millisecond)
 		defer cancel()
@@ -61,6 +62,7 @@ func TestProposeTransaction(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 1, amITheLeader: true},
+			&quorumProviderStub{},
 			"testMonitor",
 		)
 
@@ -91,6 +93,7 @@ func TestProposeTransaction(t *testing.T) {
 			},
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 1, amITheLeader: true},
+			&quorumProviderStub{},
 			"testMonitor",
 		)
 
@@ -118,6 +121,7 @@ func TestProposeTransaction(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 2, amITheLeader: false},
+			&quorumProviderStub{},
 			"testMonitor",
 		)
 
@@ -142,6 +146,7 @@ func TestProposeTransaction(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 2, amITheLeader: false},
+			&quorumProviderStub{quorum: big.NewInt(3)},
 			"testMonitor",
 		)
 
@@ -172,6 +177,7 @@ func TestProposeTransaction(t *testing.T) {
 			destinationBridge,
 			timer,
 			provider,
+			&quorumProviderStub{},
 			"testMonitor",
 		)
 
@@ -191,18 +197,19 @@ func TestProposeTransaction(t *testing.T) {
 
 func TestWaitForSignatures(t *testing.T) {
 	testHelpers.SetTestLogLevel()
-	t.Run("it will execute transfer when leader and number of signatures is > 67%", func(t *testing.T) {
+	t.Run("it will execute transfer when leader and quorum is meet", func(t *testing.T) {
 		expect := bridge.NewActionId(42)
 		batch := &bridge.Batch{
 			Id:           bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
-		destinationBridge := &bridgeStub{signersCount: 3, proposeTransferActionId: expect}
+		destinationBridge := &bridgeStub{signersCount: 4, proposeTransferActionId: expect}
 		monitor := NewMonitor(
 			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
 			destinationBridge,
 			&testHelpers.TimerStub{},
-			&topologyProviderStub{peerCount: 4, amITheLeader: true},
+			&topologyProviderStub{peerCount: 10, amITheLeader: true},
+			&quorumProviderStub{quorum: big.NewInt(4)},
 			"testMonitor",
 		)
 
@@ -234,6 +241,7 @@ func TestWaitForSignatures(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 4, amITheLeader: true},
+			&quorumProviderStub{quorum: big.NewInt(1)},
 			"testMonitor",
 		)
 
@@ -272,6 +280,7 @@ func TestExecute(t *testing.T) {
 			destinationBridge,
 			timer,
 			provider,
+			&quorumProviderStub{quorum: big.NewInt(1)},
 			"testMonitor",
 		)
 
@@ -304,6 +313,7 @@ func TestExecute(t *testing.T) {
 			destinationBridge,
 			timer,
 			provider,
+			&quorumProviderStub{quorum: big.NewInt(1)},
 			"testMonitor",
 		)
 
@@ -346,6 +356,7 @@ func TestProposeSetStatus(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			provider,
+			&quorumProviderStub{quorum: big.NewInt(1)},
 			"testMonitor",
 		)
 
@@ -384,6 +395,7 @@ func TestProposeSetStatus(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			provider,
+			&quorumProviderStub{quorum: big.NewInt(1)},
 			"testMonitor",
 		)
 
@@ -423,6 +435,7 @@ func TestProposeSetStatus(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			provider,
+			&quorumProviderStub{quorum: big.NewInt(1)},
 			"testMonitor",
 		)
 
@@ -466,6 +479,7 @@ func TestProposeSetStatus(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			provider,
+			&quorumProviderStub{quorum: big.NewInt(1)},
 			"testMonitor",
 		)
 
@@ -486,6 +500,14 @@ func TestProposeSetStatus(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, sourceBridge.lastExecutedActionId)
 	})
+}
+
+type quorumProviderStub struct {
+	quorum *big.Int
+}
+
+func (s *quorumProviderStub) GetQuorum(_ context.Context) (*big.Int, error) {
+	return s.quorum, nil
 }
 
 type topologyProviderStub struct {

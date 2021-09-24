@@ -3,18 +3,14 @@ package relay
 import (
 	"context"
 	"fmt"
-	"math"
+	"math/big"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-const (
-	minSignaturePercent = 67
-)
-
-type state int
+type State int
 
 const (
 	getPending               state = 0
@@ -31,6 +27,7 @@ const (
 type Monitor struct {
 	name             string
 	topologyProvider TopologyProvider
+	quorumProvider   bridge.QuorumProvider
 	timer            Timer
 	log              logger.Logger
 
@@ -43,10 +40,11 @@ type Monitor struct {
 	actionId     bridge.ActionId
 }
 
-func NewMonitor(sourceBridge, destinationBridge bridge.Bridge, timer Timer, topologyProvider TopologyProvider, name string) *Monitor {
+func NewMonitor(sourceBridge, destinationBridge bridge.Bridge, timer Timer, topologyProvider TopologyProvider, quorumProvider bridge.QuorumProvider, name string) *Monitor {
 	return &Monitor{
 		name:             name,
 		topologyProvider: topologyProvider,
+		quorumProvider:   quorumProvider,
 		timer:            timer,
 		log:              logger.GetOrCreate(name),
 
@@ -147,14 +145,17 @@ func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan state) {
 func (m *Monitor) waitForSignatures(ctx context.Context, ch chan state) {
 	m.log.Info("Waiting for signatures")
 	select {
-	case <-m.timer.After(timeout):
-		count := m.executingBridge.SignersCount(ctx, m.actionId)
-		peerCount := m.topologyProvider.PeerCount()
-		minCountRequired := math.Ceil(float64(peerCount) * minSignaturePercent / 100)
+	case <-m.timer.After(Timeout):
+		count := big.NewInt(int64(m.executingBridge.SignersCount(ctx, m.actionId)))
+		quorum, err := m.quorumProvider.GetQuorum(ctx)
+		if err != nil {
+			m.log.Error(err.Error())
+			ch <- WaitForSignatures
+		}
 
-		m.log.Info(fmt.Sprintf("Got %d signatures", count))
-		if count >= uint(minCountRequired) && count > 0 {
-			ch <- execute
+		m.log.Info(fmt.Sprintf("Got %d signatures, the quorum is %d", count, quorum))
+		if m.wasQuorumReached(quorum, count) {
+			ch <- Execute
 		} else {
 			ch <- waitForSignatures
 		}
@@ -222,4 +223,10 @@ func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan state) {
 	case <-ctx.Done():
 		ch <- stop
 	}
+}
+
+// helpers
+
+func (m *Monitor) wasQuorumReached(quorum *big.Int, count *big.Int) bool {
+	return quorum.Cmp(count) == 0 || quorum.Cmp(count) == -1
 }

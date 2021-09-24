@@ -32,6 +32,7 @@ type BridgeContract interface {
 	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	WasBatchExecuted(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	WasBatchFinished(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
+	Quorum(opts *bind.CallOpts) (*big.Int, error)
 }
 
 type BlockchainClient interface {
@@ -51,7 +52,7 @@ type Client struct {
 
 	lastProposedStatuses []uint8
 	lastTransferBatch    *bridge.Batch
-	gasLimit uint64
+	gasLimit             uint64
 
 	log logger.Logger
 }
@@ -83,11 +84,11 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 	client := &Client{
 		bridgeContract:   instance,
 		blockchainClient: ethClient,
-		gasLimit:    config.GasLimit,
-		privateKey:  privateKey,
-		publicKey:   publicKeyECDSA,
-		broadcaster: broadcaster,
-		mapper:      mapper,
+		gasLimit:         config.GasLimit,
+		privateKey:       privateKey,
+		publicKey:        publicKeyECDSA,
+		broadcaster:      broadcaster,
+		mapper:           mapper,
 
 		log: log,
 	}
@@ -242,6 +243,12 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batch *bridge.B
 
 func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
 	return uint(len(c.broadcaster.Signatures()))
+}
+
+// QuorumProvider
+
+func (c *Client) GetQuorum(ctx context.Context) (*big.Int, error) {
+	return c.bridgeContract.Quorum(&bind.CallOpts{Context: ctx})
 }
 
 // utils

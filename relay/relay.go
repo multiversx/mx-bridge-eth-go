@@ -98,6 +98,7 @@ type Relay struct {
 
 	roleProvider                bridge.RoleProvider
 	elrondWalletAddressProvider bridge.WalletAddressProvider
+	quorumProvider              bridge.QuorumProvider
 }
 
 func NewRelay(config *Config, name string) (*Relay, error) {
@@ -121,6 +122,7 @@ func NewRelay(config *Config, name string) (*Relay, error) {
 		return nil, err
 	}
 	relay.ethBridge = ethBridge
+	relay.quorumProvider = ethBridge
 
 	messenger, err := buildNetMessenger(config.P2P)
 	if err != nil {
@@ -143,9 +145,9 @@ func (r *Relay) Start(ctx context.Context) error {
 
 	r.timer.Start()
 
-	monitorEth := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, "EthToElrond")
+	monitorEth := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, r.quorumProvider, "EthToElrond")
 	go monitorEth.Start(ctx)
-	monitorElrond := NewMonitor(r.elrondBridge, r.ethBridge, r.timer, r, "ElrondToEth")
+	monitorElrond := NewMonitor(r.elrondBridge, r.ethBridge, r.timer, r, r.quorumProvider, "ElrondToEth")
 	go monitorElrond.Start(ctx)
 
 	<-ctx.Done()
