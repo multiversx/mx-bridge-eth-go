@@ -13,3 +13,4 @@ NonceUpdateInSeconds = <the time in seconds between nonce reads. Eg: 60>
 Port = "10000"
 Seed = "seed"
 InitialPeerList = [<the initial seed hosted by elrond>]
+ProtocolID = "/erd/relay/1.0.0"
