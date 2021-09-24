@@ -21,6 +21,7 @@ import (
 	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/config"
+	"github.com/ElrondNetwork/elrond-go/epochStart/bootstrap/disabled"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 )
@@ -382,10 +383,12 @@ func buildNetMessenger(cfg ConfigP2P) (NetMessenger, error) {
 	}
 
 	args := libp2p.ArgsNetworkMessenger{
-		Marshalizer:   internalMarshalizer,
-		ListenAddress: libp2p.ListenAddrWithIp4AndTcp,
-		P2pConfig:     p2pConfig,
-		SyncTimer:     &libp2p.LocalSyncTimer{},
+		Marshalizer:          internalMarshalizer,
+		ListenAddress:        libp2p.ListenAddrWithIp4AndTcp,
+		P2pConfig:            p2pConfig,
+		SyncTimer:            &libp2p.LocalSyncTimer{},
+		PreferredPeersHolder: disabled.NewPreferredPeersHolder(),
+		NodeOperationMode:    p2p.NormalOperation,
 	}
 
 	messenger, err := libp2p.NewNetworkMessenger(args)
