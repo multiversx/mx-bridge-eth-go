@@ -100,6 +100,7 @@ func NewClient(args ClientArgs) (*client, error) {
 
 	var ctx context.Context
 	ctx, c.cancelFunc = context.WithCancel(context.Background())
+	c.saveCurrentNonce()
 	go c.poll(ctx)
 
 	return c, nil
