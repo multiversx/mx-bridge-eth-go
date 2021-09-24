@@ -10,7 +10,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-type State int
+type state int
 
 const (
 	getPending               state = 0
@@ -145,17 +145,17 @@ func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan state) {
 func (m *Monitor) waitForSignatures(ctx context.Context, ch chan state) {
 	m.log.Info("Waiting for signatures")
 	select {
-	case <-m.timer.After(Timeout):
+	case <-m.timer.After(timeout):
 		count := big.NewInt(int64(m.executingBridge.SignersCount(ctx, m.actionId)))
 		quorum, err := m.quorumProvider.GetQuorum(ctx)
 		if err != nil {
 			m.log.Error(err.Error())
-			ch <- WaitForSignatures
+			ch <- waitForSignatures
 		}
 
 		m.log.Info(fmt.Sprintf("Got %d signatures, the quorum is %d", count, quorum))
 		if m.wasQuorumReached(quorum, count) {
-			ch <- Execute
+			ch <- execute
 		} else {
 			ch <- waitForSignatures
 		}
