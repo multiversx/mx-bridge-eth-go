@@ -16,7 +16,7 @@ import (
 
 func TestGetPending(t *testing.T) {
 	testHelpers.SetTestLogLevel()
-	t.Run("it will clean and get the next pending transaction", func(t *testing.T) {
+	t.Run("it will get the next pending transaction", func(t *testing.T) {
 		expected := &bridge.Batch{
 			Id:           bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
@@ -30,7 +30,6 @@ func TestGetPending(t *testing.T) {
 		monitor.Start(ctx)
 
 		assert.Equal(t, expected, monitor.pendingBatch)
-		assert.True(t, provider.cleaned)
 	})
 	t.Run("it will sleep and try again if there is no pending transaction", func(t *testing.T) {
 		expected := &bridge.Batch{
@@ -228,6 +227,40 @@ func TestWaitForSignatures(t *testing.T) {
 
 		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
+	})
+	t.Run("it will clean when signatures gatherd", func(t *testing.T) {
+		expect := bridge.NewActionId(42)
+		batch := &bridge.Batch{
+			Id:           bridge.NewBatchId(1),
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		}
+		destinationBridge := &bridgeStub{signersCount: 4, proposeTransferActionId: expect}
+		provider := &topologyProviderStub{peerCount: 10, amITheLeader: true}
+
+		monitor := NewMonitor(
+			&bridgeStub{pendingBatches: []*bridge.Batch{batch}},
+			destinationBridge,
+			&testHelpers.TimerStub{},
+			provider,
+			&quorumProviderStub{quorum: big.NewInt(4)},
+			"testMonitor",
+		)
+
+		destinationBridge.lock()
+
+		go func() {
+			monitor.Start(context.Background())
+		}()
+
+		// allow propose transfer
+		destinationBridge.proposeTransferMutex.Unlock()
+		// allow signing transfer
+		destinationBridge.signMutex.Unlock()
+		// allow executing
+		destinationBridge.executeMutex.Unlock()
+
+		time.Sleep(5 * time.Millisecond)
+		assert.True(t, provider.cleaned)
 	})
 	t.Run("it will sleep and try to wait for signatures quorum not achieved", func(t *testing.T) {
 		expect := bridge.NewActionId(42)

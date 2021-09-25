@@ -101,7 +101,6 @@ func (m *Monitor) getPending(ctx context.Context, ch chan state) {
 			ch <- stop
 		}
 	} else {
-		m.topologyProvider.Clean()
 		ch <- proposeTransfer
 	}
 }
@@ -155,6 +154,7 @@ func (m *Monitor) waitForSignatures(ctx context.Context, ch chan state) {
 
 		m.log.Info(fmt.Sprintf("Got %d signatures, the quorum is %d", count, quorum))
 		if m.wasQuorumReached(quorum, count) {
+			m.topologyProvider.Clean()
 			ch <- execute
 		} else {
 			if m.wasExecuted(ctx) {
