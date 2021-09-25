@@ -52,6 +52,7 @@ type Client struct {
 
 	lastProposedStatuses []uint8
 	lastTransferBatch    *bridge.Batch
+	lastSignatureAction  func()
 	gasLimit             uint64
 
 	log logger.Logger
@@ -131,13 +132,17 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	for _, tx := range batch.Transactions {
 		c.lastProposedStatuses = append(c.lastProposedStatuses, tx.Status)
 	}
-	c.broadcastSignatureForFinishCurrentPendingTransaction(batch.Id, c.lastProposedStatuses)
+	c.lastSignatureAction = func() {
+		c.broadcastSignatureForFinishCurrentPendingTransaction(batch.Id, c.lastProposedStatuses)
+	}
 	c.log.Info(fmt.Sprintf("ETH: Broadcast status signatures for for batchId %v", batch.Id))
 }
 
 func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	c.lastTransferBatch = batch
-	c.broadcastSignatureForTransfer(batch)
+	c.lastSignatureAction = func() {
+		c.broadcastSignatureForTransfer(batch)
+	}
 	c.log.Info(fmt.Sprintf("ETH: Broadcast transfer signatures for for batchId %v", batch.Id))
 
 	return "", nil
@@ -147,7 +152,11 @@ func (c *Client) WasProposedTransfer(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForProposeTransfer(context.Context, *bridge.Batch) bridge.ActionId {
+func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
+	c.lastTransferBatch = batch
+	c.lastSignatureAction = func() {
+		c.broadcastSignatureForTransfer(batch)
+	}
 	return bridge.NewActionId(0)
 }
 
@@ -155,7 +164,14 @@ func (c *Client) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context, *bridge.Batch) bridge.ActionId {
+func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
+	for _, tx := range batch.Transactions {
+		c.lastProposedStatuses = append(c.lastProposedStatuses, tx.Status)
+	}
+	c.lastSignatureAction = func() {
+		c.broadcastSignatureForFinishCurrentPendingTransaction(batch.Id, c.lastProposedStatuses)
+	}
+
 	return bridge.NewActionId(0)
 }
 
@@ -185,6 +201,7 @@ func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, batchId bri
 }
 
 func (c *Client) Sign(context.Context, bridge.ActionId) (string, error) {
+	c.lastSignatureAction()
 	return "", nil
 }
 

@@ -91,11 +91,10 @@ func TestGetPending(t *testing.T) {
 
 func TestProposeSetStatus(t *testing.T) {
 	cases := []struct {
-		status       uint8
-		signatureHex string
+		status uint8
 	}{
-		{bridge.Executed, "0x524957e3081d49d98c98881abd5cf6f737722a4aa0e7915771a567e3cb45cfc625cd9fcf9ec53c86182e517c1e61dbc076722905d11b73e1ed42665ec051342701"},
-		{bridge.Rejected, "0xd9b1ae38d7e24837e90e7aaac2ae9ca1eb53dc7a30c41774ad7f7f5fd2371c2d0ac6e69643f6aaa25bd9b000dcf0b8be567bcde7f0a5fb5aad122273999bad2500"},
+		{bridge.Executed},
+		{bridge.Rejected},
 	}
 
 	for _, c := range cases {
@@ -116,9 +115,7 @@ func TestProposeSetStatus(t *testing.T) {
 				}},
 			}
 			client.ProposeSetStatus(context.TODO(), batch)
-			expectedSignature, _ := hexutil.Decode(c.signatureHex)
 
-			assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
 			assert.Equal(t, []uint8{c.status}, client.lastProposedStatuses)
 		})
 	}
@@ -147,10 +144,73 @@ func TestProposeTransfer(t *testing.T) {
 		},
 	}
 	_, _ = client.ProposeTransfer(context.TODO(), batch)
-	expectedSignature, _ := hexutil.Decode("0xab3ce0cdc229afc9fcd0447800142da85aa116f16a26e151b9cad95b361ab73d24694ded888a06a1e9b731af8a1b549a1fc5188117e40bea11d9e74af4a6d5fa01")
 
-	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
 	assert.Equal(t, batch, client.lastTransferBatch)
+}
+
+func TestSign(t *testing.T) {
+	buildStubs := func() (*broadcasterStub, Client) {
+		broadcaster := &broadcasterStub{}
+		client := Client{
+			bridgeContract: &bridgeContractStub{},
+			privateKey:     privateKey(t),
+			broadcaster:    broadcaster,
+			mapper:         &mapperStub{},
+			gasLimit:       GasLimit,
+			log:            logger.GetOrCreate("testEthClient"),
+		}
+
+		return broadcaster, client
+	}
+	t.Run("will sign propose status for executed tx", func(t *testing.T) {
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(42),
+			Transactions: []*bridge.DepositTransaction{{
+				Status: bridge.Executed,
+			}},
+		}
+		broadcaster, client := buildStubs()
+		client.ProposeSetStatus(context.TODO(), batch)
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(1))
+
+		expectedSignature, _ := hexutil.Decode("0x524957e3081d49d98c98881abd5cf6f737722a4aa0e7915771a567e3cb45cfc625cd9fcf9ec53c86182e517c1e61dbc076722905d11b73e1ed42665ec051342701")
+
+		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+	})
+	t.Run("will sign propose status for rejected tx", func(t *testing.T) {
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(42),
+			Transactions: []*bridge.DepositTransaction{{
+				Status: bridge.Rejected,
+			}},
+		}
+		broadcaster, client := buildStubs()
+		client.ProposeSetStatus(context.TODO(), batch)
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(1))
+
+		expectedSignature, _ := hexutil.Decode("0xd9b1ae38d7e24837e90e7aaac2ae9ca1eb53dc7a30c41774ad7f7f5fd2371c2d0ac6e69643f6aaa25bd9b000dcf0b8be567bcde7f0a5fb5aad122273999bad2500")
+
+		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+	})
+	t.Run("will sign tx for transfer", func(t *testing.T) {
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(42),
+			Transactions: []*bridge.DepositTransaction{{
+				To:           "cf95254084ab772696643f0e05ac4711ed674ac1",
+				From:         "04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3",
+				TokenAddress: "574554482d323936313238",
+				Amount:       big.NewInt(1),
+				DepositNonce: bridge.NewNonce(2),
+			},
+			},
+		}
+		broadcaster, client := buildStubs()
+		_, _ = client.ProposeTransfer(context.TODO(), batch)
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(1))
+		expectedSignature, _ := hexutil.Decode("0xab3ce0cdc229afc9fcd0447800142da85aa116f16a26e151b9cad95b361ab73d24694ded888a06a1e9b731af8a1b549a1fc5188117e40bea11d9e74af4a6d5fa01")
+
+		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+	})
 }
 
 func TestSignersCount(t *testing.T) {
