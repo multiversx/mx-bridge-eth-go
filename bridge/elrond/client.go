@@ -238,7 +238,7 @@ func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 	hash, err := c.sendTransaction(builder, uint64(proposeTransferCost+len(batch.Transactions)*proposeTransferTxCost))
 
 	if err == nil {
-		c.log.Info("Elrond: Proposed transfer for batch %v with hash %s", batch.Id, hash)
+		c.log.Info(fmt.Sprintf("Elrond: Proposed transfer for batch %v with hash %s", batch.Id, hash))
 	} else {
 		c.log.Error("Elrond: Propose transfer errored", "error", err.Error())
 	}
