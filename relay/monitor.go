@@ -123,7 +123,7 @@ func (m *Monitor) proposeTransfer(ctx context.Context, ch chan state) {
 }
 
 func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan state) {
-	m.log.Info(fmt.Sprintf("Waiting for proposal on batch with nonce %v", m.pendingBatch.Id))
+	m.log.Info(fmt.Sprintf("Waiting for transfer proposal on batch with nonce %v", m.pendingBatch.Id))
 	select {
 	case <-m.timer.After(timeout):
 		if m.destinationBridge.WasProposedTransfer(ctx, m.pendingBatch) {
@@ -157,7 +157,11 @@ func (m *Monitor) waitForSignatures(ctx context.Context, ch chan state) {
 		if m.wasQuorumReached(quorum, count) {
 			ch <- execute
 		} else {
-			ch <- waitForSignatures
+			if m.wasExecuted(ctx) {
+				m.executed(ctx, ch)
+			} else {
+				ch <- waitForSignatures
+			}
 		}
 	case <-ctx.Done():
 		ch <- stop
@@ -180,15 +184,8 @@ func (m *Monitor) waitForExecute(ctx context.Context, ch chan state) {
 	m.log.Info("Waiting for execution")
 	select {
 	case <-m.timer.After(timeout):
-		if m.executingBridge.WasExecuted(ctx, m.actionId, m.pendingBatch.Id) {
-			m.pendingBatch.SetStatusOnAllTransactions(bridge.Executed, nil)
-
-			switch m.executingBridge {
-			case m.destinationBridge:
-				ch <- proposeSetStatus
-			case m.sourceBridge:
-				ch <- getPending
-			}
+		if m.wasExecuted(ctx) {
+			m.executed(ctx, ch)
 		} else {
 			ch <- execute
 		}
@@ -229,4 +226,19 @@ func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan state) {
 
 func (m *Monitor) wasQuorumReached(quorum *big.Int, count *big.Int) bool {
 	return quorum.Cmp(count) == 0 || quorum.Cmp(count) == -1
+}
+
+func (m *Monitor) wasExecuted(ctx context.Context) bool {
+	return m.executingBridge.WasExecuted(ctx, m.actionId, m.pendingBatch.Id)
+}
+
+func (m *Monitor) executed(_ context.Context, ch chan state) {
+	m.pendingBatch.SetStatusOnAllTransactions(bridge.Executed, nil)
+
+	switch m.executingBridge {
+	case m.destinationBridge:
+		ch <- proposeSetStatus
+	case m.sourceBridge:
+		ch <- getPending
+	}
 }

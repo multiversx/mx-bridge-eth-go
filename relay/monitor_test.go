@@ -229,7 +229,7 @@ func TestWaitForSignatures(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
-	t.Run("it will sleep and try to wait for signatures again when the number of signatures is < 67%", func(t *testing.T) {
+	t.Run("it will sleep and try to wait for signatures quorum not achieved", func(t *testing.T) {
 		expect := bridge.NewActionId(42)
 		batch := &bridge.Batch{
 			Id:           bridge.NewBatchId(1),
@@ -241,7 +241,7 @@ func TestWaitForSignatures(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 4, amITheLeader: true},
-			&quorumProviderStub{quorum: big.NewInt(1)},
+			&quorumProviderStub{quorum: big.NewInt(3)},
 			"testMonitor",
 		)
 
