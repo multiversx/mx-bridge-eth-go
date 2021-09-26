@@ -150,8 +150,8 @@ func (r *Relay) Start(ctx context.Context) error {
 
 	r.timer.Start()
 
-	//monitorEth := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, r.quorumProvider, "EthToElrond")
-	//go monitorEth.Start(ctx)
+	monitorEth := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, r.quorumProvider, "EthToElrond")
+	go monitorEth.Start(ctx)
 	monitorElrond := NewMonitor(r.elrondBridge, r.ethBridge, r.timer, r, r.quorumProvider, "ElrondToEth")
 	go monitorElrond.Start(ctx)
 
@@ -337,6 +337,9 @@ func (r *Relay) join(ctx context.Context) {
 }
 
 func (r *Relay) addSignatureForPeer(peerID core.PeerID, signature []byte) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	r.signatures[peerID] = signature
 }
 
