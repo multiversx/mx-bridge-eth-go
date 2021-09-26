@@ -39,6 +39,11 @@ type Peers []core.PeerID
 
 type Signatures map[core.PeerID][]byte
 
+type Topology struct {
+	Peers      Peers
+	Signatures Signatures
+}
+
 type Timer interface {
 	After(d time.Duration) <-chan time.Time
 	NowUnix() int64
@@ -145,8 +150,8 @@ func (r *Relay) Start(ctx context.Context) error {
 
 	r.timer.Start()
 
-	monitorEth := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, r.quorumProvider, "EthToElrond")
-	go monitorEth.Start(ctx)
+	//monitorEth := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, r.quorumProvider, "EthToElrond")
+	//go monitorEth.Start(ctx)
 	monitorElrond := NewMonitor(r.elrondBridge, r.ethBridge, r.timer, r, r.quorumProvider, "ElrondToEth")
 	go monitorElrond.Start(ctx)
 
@@ -228,7 +233,8 @@ func (r *Relay) broadcastTopology(toPeer core.PeerID) error {
 
 	var data bytes.Buffer
 	enc := gob.NewEncoder(&data)
-	if err := enc.Encode(r.peers); err != nil {
+	topology := Topology{Peers: r.peers, Signatures: r.signatures}
+	if err := enc.Encode(topology); err != nil {
 		return err
 	}
 
@@ -243,7 +249,6 @@ func (r *Relay) setTopology(data []byte) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// TODO: ignore if peers are already set
 	if len(r.peers) > 1 {
 		// ignore this call if we already have peers
 		// TODO: find a better way here
@@ -251,11 +256,12 @@ func (r *Relay) setTopology(data []byte) error {
 	}
 
 	dec := gob.NewDecoder(bytes.NewReader(data))
-	var topology Peers
+	var topology Topology
 	if err := dec.Decode(&topology); err != nil {
 		return err
 	}
-	r.peers = topology
+	r.peers = topology.Peers
+	r.signatures = topology.Signatures
 
 	return nil
 }
@@ -264,7 +270,6 @@ func (r *Relay) addPeer(peerID core.PeerID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// TODO: account for peers that rejoin
 	if len(r.peers) == 0 || r.peers[len(r.peers)-1] < peerID {
 		r.peers = append(r.peers, peerID)
 		return
@@ -272,7 +277,9 @@ func (r *Relay) addPeer(peerID core.PeerID) {
 
 	// TODO: can optimize via binary search
 	for index, peer := range r.peers {
-		if peer > peerID {
+		if peer == peerID {
+			break
+		} else if peer > peerID {
 			r.peers = append(r.peers, "")
 			copy(r.peers[index+1:], r.peers[index:])
 			r.peers[index] = peerID
