@@ -214,11 +214,6 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batch *bridge.B
 		return "", err
 	}
 
-	gasPrice, err := c.blockchainClient.SuggestGasPrice(ctx)
-	if err != nil {
-		return "", err
-	}
-
 	chainId, err := c.blockchainClient.ChainID(ctx)
 	if err != nil {
 		return "", err
@@ -232,7 +227,6 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batch *bridge.B
 	auth.Nonce = big.NewInt(int64(blockNonce))
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = c.gasLimit
-	auth.GasPrice = gasPrice
 	auth.Context = ctx
 
 	var transaction *types.Transaction
