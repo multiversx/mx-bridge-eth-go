@@ -154,7 +154,6 @@ func (m *Monitor) waitForSignatures(ctx context.Context, ch chan state) {
 
 		m.log.Info(fmt.Sprintf("Got %d signatures, the quorum is %d", count, quorum))
 		if m.wasQuorumReached(quorum, count) {
-			m.topologyProvider.Clean()
 			ch <- execute
 		} else {
 			if m.wasExecuted(ctx) {
@@ -233,6 +232,7 @@ func (m *Monitor) wasExecuted(ctx context.Context) bool {
 }
 
 func (m *Monitor) executed(_ context.Context, ch chan state) {
+	m.topologyProvider.Clean()
 	m.pendingBatch.SetStatusOnAllTransactions(bridge.Executed, nil)
 
 	switch m.executingBridge {
