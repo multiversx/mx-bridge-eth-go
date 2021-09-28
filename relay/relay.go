@@ -284,7 +284,6 @@ func (r *Relay) addPeer(peerID core.PeerID) {
 		return
 	}
 
-	// TODO: can optimize via binary search
 	for index, peer := range r.peers {
 		switch {
 		case peer == peerID:
