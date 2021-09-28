@@ -22,20 +22,25 @@ In order to use it:
 relayers with the execute call, in order to save gas.
  */
 contract Bridge is AccessControl {
+
+/*============================ EVENTS ============================*/    
     event RelayerAdded(address newRelayer);
     event RelayerRemoved(address removedRelayer);
     event QuorumChanged(uint256 quorum);
 
+/*========================= CONTRACT STATE =========================*/    
     string private constant action = "CurrentPendingBatch";
     string private constant executeTransferAction = "ExecuteBatchedTransfer";
     string private constant prefix = "\x19Ethereum Signed Message:\n32";
     bytes32 public constant RELAYER_ROLE = keccak256("RELAYER_ROLE");
+    uint256 private constant minimumQuorum = 3;
 
     uint256 public quorum;
-    uint256 private minimumQuorum = 3;
-    address private immutable erc20SafeAddress;
+    ERC20Safe private immutable safe;
+
     mapping(uint256 => bool) public executedBatches;
 
+/*========================= MODIFIERS =========================*/    
     modifier onlyAdmin() {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
@@ -52,25 +57,29 @@ contract Bridge is AccessControl {
         _;
     }
 
+/*========================= PUBLIC API =========================*/    
+
+    /**
+    * @dev whoever deploys the contract is the admin
+    * DEFAULT_ADMIN_ROLE means that it can:
+    *   - adjust access control
+    *   - add/remove relayers
+    *   - add/remove tokens that can be bridged
+    */
     constructor(
         address[] memory board,
         uint256 intialQuorum,
-        address erc20Safe
+        ERC20Safe erc20Safe
     ) {
-        // whoever deploys the contract is the admin
-        // DEFAULT_ADMIN_ROLE means that it can:
-        //   - adjust access control
-        //   - add/remove relayers
-        //   - add/remove tokens that can be bridged
+        require(intialQuorum >= minimumQuorum, "Quorum is too low.");
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         for (uint256 i = 0; i < board.length; i++) {
             grantRole(RELAYER_ROLE, board[i]);
         }
 
-        require(intialQuorum >= minimumQuorum, "Quorum is too low.");
         quorum = intialQuorum;
-        erc20SafeAddress = erc20Safe;
+        safe = erc20Safe;
     }
 
     /**
@@ -122,7 +131,6 @@ contract Bridge is AccessControl {
         @dev Even if there are deposits in the Safe, the current batch might still return as empty. This is because it might not be final (not full, and not enough blocks elapsed)
     */
     function getNextPendingBatch() external view returns (Batch memory) {
-        ERC20Safe safe = ERC20Safe(erc20SafeAddress);
         return safe.getNextPendingBatch();
     }
 
@@ -151,7 +159,6 @@ contract Bridge is AccessControl {
             "Not enough signatures to achieve quorum"
         );
 
-        ERC20Safe safe = ERC20Safe(erc20SafeAddress);
         Batch memory batch = safe.getNextPendingBatch();
         require(batch.nonce == batchNonceETHElrond, "Invalid batch nonce");
 
@@ -323,7 +330,6 @@ contract Bridge is AccessControl {
         require(signersCount >= quorum, "Quorum was not met");
 
         for (uint256 j = 0; j < tokens.length; j++) {
-            ERC20Safe safe = ERC20Safe(erc20SafeAddress);
             safe.transfer(tokens[j], amounts[j], recipients[j]);
         }
     }
@@ -338,7 +344,6 @@ contract Bridge is AccessControl {
         view
         returns (bool)
     {
-        ERC20Safe safe = ERC20Safe(erc20SafeAddress);
         Batch memory batch = safe.getBatch(batchNonceETHElrond);
 
         if (batch.deposits.length == 0) {
