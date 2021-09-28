@@ -224,7 +224,7 @@ func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan state) {
 // helpers
 
 func (m *Monitor) wasQuorumReached(quorum *big.Int, count *big.Int) bool {
-	return quorum.Cmp(count) == 0 || quorum.Cmp(count) == -1
+	return quorum.Cmp(count) <= 0
 }
 
 func (m *Monitor) wasExecuted(ctx context.Context) bool {
