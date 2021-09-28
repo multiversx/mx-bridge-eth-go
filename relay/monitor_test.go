@@ -228,13 +228,13 @@ func TestWaitForSignatures(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 		assert.Equal(t, expect, destinationBridge.lastExecutedActionId)
 	})
-	t.Run("it will clean when signatures gatherd", func(t *testing.T) {
+	t.Run("it will clean when signatures after execute", func(t *testing.T) {
 		expect := bridge.NewActionId(42)
 		batch := &bridge.Batch{
 			Id:           bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
-		destinationBridge := &bridgeStub{signersCount: 4, proposeTransferActionId: expect}
+		destinationBridge := &bridgeStub{signersCount: 4, proposeTransferActionId: expect, wasExecuted: true}
 		provider := &topologyProviderStub{peerCount: 10, amITheLeader: true}
 
 		monitor := NewMonitor(
