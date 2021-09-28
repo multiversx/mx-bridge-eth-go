@@ -3,7 +3,9 @@ package eth
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"testing"
 
@@ -342,6 +344,35 @@ func TestExecute(t *testing.T) {
 	})
 }
 
+func TestGetQuorum(t *testing.T) {
+	cases := []struct {
+		actual   *big.Int
+		expected uint
+		error    error
+	}{
+		{actual: big.NewInt(42), expected: 42, error: nil},
+		{actual: big.NewInt(math.MaxUint32 + 1), expected: 0, error: errors.New("quorum is not a uint")},
+	}
+
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("When contract quorum is %v", c.actual), func(t *testing.T) {
+			client := Client{
+				bridgeContract: &bridgeContractStub{quorum: c.actual},
+				privateKey:     privateKey(t),
+				broadcaster:    &broadcasterStub{},
+				mapper:         &mapperStub{},
+				gasLimit:       GasLimit,
+				log:            logger.GetOrCreate("testEthClient"),
+			}
+
+			actual, err := client.GetQuorum(context.TODO())
+
+			assert.Equal(t, c.expected, actual)
+			assert.Equal(t, c.error, err)
+		})
+	}
+}
+
 func privateKey(t *testing.T) *ecdsa.PrivateKey {
 	t.Helper()
 
@@ -372,6 +403,7 @@ type bridgeContractStub struct {
 	wasBatchFinished    bool
 	executedTransaction *types.Transaction
 	transferTransaction *types.Transaction
+	quorum              *big.Int
 }
 
 func (c *bridgeContractStub) GetNextPendingBatch(*bind.CallOpts) (Batch, error) {
@@ -395,7 +427,7 @@ func (c *bridgeContractStub) WasBatchFinished(*bind.CallOpts, *big.Int) (bool, e
 }
 
 func (c *bridgeContractStub) Quorum(*bind.CallOpts) (*big.Int, error) {
-	return big.NewInt(42), nil
+	return c.quorum, nil
 }
 
 type broadcasterStub struct {

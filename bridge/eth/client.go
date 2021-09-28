@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -258,8 +259,17 @@ func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
 
 // QuorumProvider implementation
 
-func (c *Client) GetQuorum(ctx context.Context) (*big.Int, error) {
-	return c.bridgeContract.Quorum(&bind.CallOpts{Context: ctx})
+func (c *Client) GetQuorum(ctx context.Context) (uint, error) {
+	n, err := c.bridgeContract.Quorum(&bind.CallOpts{Context: ctx})
+	if err != nil {
+		return 0, err
+	}
+
+	if n.Cmp(big.NewInt(math.MaxUint32)) > 0 {
+		return 0, errors.New("quorum is not a uint")
+	}
+
+	return uint(n.Uint64()), nil
 }
 
 // utils

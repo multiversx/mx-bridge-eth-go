@@ -3,7 +3,6 @@ package relay
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
@@ -145,7 +144,7 @@ func (m *Monitor) waitForSignatures(ctx context.Context, ch chan state) {
 	m.log.Info("Waiting for signatures")
 	select {
 	case <-m.timer.After(timeout):
-		count := big.NewInt(int64(m.executingBridge.SignersCount(ctx, m.actionId)))
+		count := m.executingBridge.SignersCount(ctx, m.actionId)
 		quorum, err := m.quorumProvider.GetQuorum(ctx)
 		if err != nil {
 			m.log.Error(err.Error())
@@ -223,8 +222,8 @@ func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan state) {
 
 // helpers
 
-func (m *Monitor) wasQuorumReached(quorum *big.Int, count *big.Int) bool {
-	return quorum.Cmp(count) <= 0
+func (m *Monitor) wasQuorumReached(quorum uint, count uint) bool {
+	return quorum <= count
 }
 
 func (m *Monitor) wasExecuted(ctx context.Context) bool {

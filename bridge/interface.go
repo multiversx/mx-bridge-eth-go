@@ -2,7 +2,6 @@ package bridge
 
 import (
 	"context"
-	"math/big"
 
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -32,7 +31,7 @@ type WalletAddressProvider interface {
 
 // QuorumProvider defines the operations for a quorum provider
 type QuorumProvider interface {
-	GetQuorum(ctx context.Context) (*big.Int, error)
+	GetQuorum(ctx context.Context) (uint, error)
 }
 
 // Bridge defines the operations available for a validator operating on a bridge between 2 chains

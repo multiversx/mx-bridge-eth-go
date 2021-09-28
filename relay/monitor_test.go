@@ -3,7 +3,6 @@ package relay
 import (
 	"context"
 	"errors"
-	"math/big"
 	"sync"
 	"testing"
 	"time"
@@ -145,7 +144,7 @@ func TestProposeTransaction(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 2, amITheLeader: false},
-			&quorumProviderStub{quorum: big.NewInt(3)},
+			&quorumProviderStub{quorum: 3},
 			"testMonitor",
 		)
 
@@ -208,7 +207,7 @@ func TestWaitForSignatures(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 10, amITheLeader: true},
-			&quorumProviderStub{quorum: big.NewInt(4)},
+			&quorumProviderStub{quorum: 4},
 			"testMonitor",
 		)
 
@@ -242,7 +241,7 @@ func TestWaitForSignatures(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			provider,
-			&quorumProviderStub{quorum: big.NewInt(4)},
+			&quorumProviderStub{quorum: 4},
 			"testMonitor",
 		)
 
@@ -274,7 +273,7 @@ func TestWaitForSignatures(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			&topologyProviderStub{peerCount: 4, amITheLeader: true},
-			&quorumProviderStub{quorum: big.NewInt(3)},
+			&quorumProviderStub{quorum: 3},
 			"testMonitor",
 		)
 
@@ -313,7 +312,7 @@ func TestExecute(t *testing.T) {
 			destinationBridge,
 			timer,
 			provider,
-			&quorumProviderStub{quorum: big.NewInt(1)},
+			&quorumProviderStub{quorum: 1},
 			"testMonitor",
 		)
 
@@ -346,7 +345,7 @@ func TestExecute(t *testing.T) {
 			destinationBridge,
 			timer,
 			provider,
-			&quorumProviderStub{quorum: big.NewInt(1)},
+			&quorumProviderStub{quorum: 1},
 			"testMonitor",
 		)
 
@@ -389,7 +388,7 @@ func TestProposeSetStatus(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			provider,
-			&quorumProviderStub{quorum: big.NewInt(1)},
+			&quorumProviderStub{quorum: 1},
 			"testMonitor",
 		)
 
@@ -428,7 +427,7 @@ func TestProposeSetStatus(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			provider,
-			&quorumProviderStub{quorum: big.NewInt(1)},
+			&quorumProviderStub{quorum: 1},
 			"testMonitor",
 		)
 
@@ -468,7 +467,7 @@ func TestProposeSetStatus(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			provider,
-			&quorumProviderStub{quorum: big.NewInt(1)},
+			&quorumProviderStub{quorum: 1},
 			"testMonitor",
 		)
 
@@ -512,7 +511,7 @@ func TestProposeSetStatus(t *testing.T) {
 			destinationBridge,
 			&testHelpers.TimerStub{},
 			provider,
-			&quorumProviderStub{quorum: big.NewInt(1)},
+			&quorumProviderStub{quorum: 1},
 			"testMonitor",
 		)
 
@@ -536,10 +535,10 @@ func TestProposeSetStatus(t *testing.T) {
 }
 
 type quorumProviderStub struct {
-	quorum *big.Int
+	quorum uint
 }
 
-func (s *quorumProviderStub) GetQuorum(_ context.Context) (*big.Int, error) {
+func (s *quorumProviderStub) GetQuorum(_ context.Context) (uint, error) {
 	return s.quorum, nil
 }
 
