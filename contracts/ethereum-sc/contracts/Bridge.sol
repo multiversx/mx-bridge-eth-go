@@ -177,29 +177,7 @@ contract Bridge is AccessControl {
             signatureIndex < signatures.length;
             signatureIndex++
         ) {
-            bytes memory signature = signatures[signatureIndex];
-            require(signature.length == 65, "Malformed signature");
-
-            bytes32 r;
-            bytes32 s;
-            uint8 v;
-
-            assembly {
-                // first 32 bytes, after the length prefix
-                r := mload(add(signature, 32))
-                // second 32 bytes
-                s := mload(add(signature, 64))
-                // final byte (first byte of the next 32 bytes)
-                v := byte(0, mload(add(signature, 96)))
-            }
-
-            // adjust recoverid (v) for geth cannonical values of 0 or 1
-            // as per Ethereum's yellow paper: Appendinx F (Signing Transactions)
-            if (v == 0 || v == 1) {
-                v += 27;
-            }
-
-            address publicKey = ecrecover(hashedDepositData, v, r, s);
+            address publicKey = recover(signatures[signatureIndex], hashedDepositData);
             require(
                 hasRole(RELAYER_ROLE, publicKey),
                 "Not a recognized relayer"
@@ -276,29 +254,8 @@ contract Bridge is AccessControl {
 
         address[] memory validSigners = new address[](signatures.length);
         for (uint256 i = 0; i < signatures.length; i++) {
-            bytes memory signature = signatures[i];
-            require(signature.length == 65, "Malformed signature");
+            address publicKey = recover(signatures[i], hashedDepositData);
 
-            bytes32 r;
-            bytes32 s;
-            uint8 v;
-
-            assembly {
-                // first 32 bytes, after the length prefix
-                r := mload(add(signature, 32))
-                // second 32 bytes
-                s := mload(add(signature, 64))
-                // final byte (first byte of the next 32 bytes)
-                v := byte(0, mload(add(signature, 96)))
-            }
-
-            // adjust recoverid (v) for geth cannonical values of 0 or 1
-            // as per Ethereum's yellow paper: Appendinx F (Signing Transactions)
-            if (v == 0 || v == 1) {
-                v += 27;
-            }
-
-            address publicKey = ecrecover(hashedDepositData, v, r, s);
             require(
                 hasRole(RELAYER_ROLE, publicKey),
                 "Not a recognized relayer"
@@ -367,5 +324,30 @@ contract Bridge is AccessControl {
         returns (bool)
     {
         return executedBatches[batchNonceElrondETH];
+    }
+
+    function recover(bytes memory signature, bytes32 data) private pure returns (address) {
+        require(signature.length == 65, "Malformed signature");
+
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+
+        assembly {
+            // first 32 bytes, after the length prefix
+            r := mload(add(signature, 32))
+            // second 32 bytes
+            s := mload(add(signature, 64))
+            // final byte (first byte of the next 32 bytes)
+            v := byte(0, mload(add(signature, 96)))
+        }
+
+        // adjust recoverid (v) for geth cannonical values of 0 or 1
+        // as per Ethereum's yellow paper: Appendinx F (Signing Transactions)
+        if (v == 0 || v == 1) {
+            v += 27;
+        }
+
+        return ecrecover(data, v, r, s);
     }
 }
