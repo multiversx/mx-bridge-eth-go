@@ -161,51 +161,11 @@ contract Bridge is AccessControl {
         Batch memory batch = safe.getNextPendingBatch();
         require(batch.nonce == batchNonceETHElrond, "Invalid batch nonce");
 
-        bytes32 hashedSignedData = keccak256(
-            abi.encode(batchNonceETHElrond, newDepositStatuses, action)
+        validateQuorum(
+            signatures, 
+            getHashedDepositData(abi.encode(batchNonceETHElrond, newDepositStatuses, action))
         );
-        bytes memory prefixedSignData = abi.encodePacked(
-            prefix,
-            hashedSignedData
-        );
-        bytes32 hashedDepositData = keccak256(prefixedSignData);
-        uint256 signersCount;
-
-        address[] memory validSigners = new address[](signatures.length);
-        for (
-            uint256 signatureIndex = 0;
-            signatureIndex < signatures.length;
-            signatureIndex++
-        ) {
-            address publicKey = recover(signatures[signatureIndex], hashedDepositData);
-            require(
-                hasRole(RELAYER_ROLE, publicKey),
-                "Not a recognized relayer"
-            );
-
-            // Determine if we have multiple signatures from the same relayer
-            uint256 si;
-            for (si = 0; si < validSigners.length; si++) {
-                if (validSigners[si] == address(0)) {
-                    // We reached the end of the loop.
-                    // This preserves the value of `si` which is used below
-                    // as the first open position.
-                    break;
-                }
-
-                require(
-                    publicKey != validSigners[si],
-                    "Multiple signatures from the same relayer"
-                );
-            }
-            // We save this signer in the first open position.
-            validSigners[si] = publicKey;
-            // END: Determine if we have multiple signatures from the same relayer
-
-            signersCount++;
-        }
-
-        require(signersCount >= quorum, "Quorum was not met");
+        
         safe.finishCurrentPendingBatch(newDepositStatuses);
     }
 
@@ -235,55 +195,13 @@ contract Bridge is AccessControl {
             "Batch already executed"
         );
         executedBatches[batchNonceElrondETH] = true;
-        uint256 signersCount;
 
-        bytes32 hashedDepositData = keccak256(
-            abi.encodePacked(
-                prefix,
-                keccak256(
-                    abi.encode(
-                        recipients,
-                        tokens,
-                        amounts,
-                        batchNonceElrondETH,
-                        executeTransferAction
-                    )
-                )
+        validateQuorum(
+            signatures, 
+            getHashedDepositData(
+                abi.encode(recipients, tokens, amounts, batchNonceElrondETH, executeTransferAction)
             )
         );
-
-        address[] memory validSigners = new address[](signatures.length);
-        for (uint256 i = 0; i < signatures.length; i++) {
-            address publicKey = recover(signatures[i], hashedDepositData);
-
-            require(
-                hasRole(RELAYER_ROLE, publicKey),
-                "Not a recognized relayer"
-            );
-
-            // Determine if we have multiple signatures from the same relayer
-            uint256 si;
-            for (si = 0; si < validSigners.length; si++) {
-                if (validSigners[si] == address(0)) {
-                    // We reached the end of the loop.
-                    // This preserves the value of `si` which is used below
-                    // as the first open position.
-                    break;
-                }
-
-                require(
-                    publicKey != validSigners[si],
-                    "Multiple signatures from the same relayer"
-                );
-            }
-            // We save this signer in the first open position.
-            validSigners[si] = publicKey;
-            // END: Determine if we have multiple signatures from the same relayer
-
-            signersCount++;
-        }
-
-        require(signersCount >= quorum, "Quorum was not met");
 
         for (uint256 j = 0; j < tokens.length; j++) {
             safe.transfer(tokens[j], amounts[j], recipients[j]);
@@ -324,6 +242,47 @@ contract Bridge is AccessControl {
         returns (bool)
     {
         return executedBatches[batchNonceElrondETH];
+    }
+
+    function getHashedDepositData(bytes memory encodedData) private pure returns(bytes32) {
+        return keccak256(abi.encodePacked(prefix, keccak256(encodedData)));
+    }
+
+    function validateQuorum(bytes[] memory signatures, bytes32 data) private view {
+        uint256 signersCount;
+        address[] memory validSigners = new address[](signatures.length);
+
+        for (uint256 i = 0; i < signatures.length; i++) {
+            address publicKey = recover(signatures[i], data);
+
+            require(
+                hasRole(RELAYER_ROLE, publicKey),
+                "Not a recognized relayer"
+            );
+
+            // Determine if we have multiple signatures from the same relayer
+            uint256 si;
+            for (si = 0; si < validSigners.length; si++) {
+                if (validSigners[si] == address(0)) {
+                    // We reached the end of the loop.
+                    // This preserves the value of `si` which is used below
+                    // as the first open position.
+                    break;
+                }
+
+                require(
+                    publicKey != validSigners[si],
+                    "Multiple signatures from the same relayer"
+                );
+            }
+            // We save this signer in the first open position.
+            validSigners[si] = publicKey;
+            // END: Determine if we have multiple signatures from the same relayer
+
+            signersCount++;
+        }
+
+        require(signersCount >= quorum, "Quorum was not met");
     }
 
     function recover(bytes memory signature, bytes32 data) private pure returns (address) {
