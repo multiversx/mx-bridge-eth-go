@@ -287,12 +287,12 @@ func (r *Relay) addPeer(peerID core.PeerID) {
 	for index, peer := range r.peers {
 		switch {
 		case peer == peerID:
-			break
+			return
 		case peer > peerID:
 			r.peers = append(r.peers, "")
 			copy(r.peers[index+1:], r.peers[index:])
 			r.peers[index] = peerID
-			break
+			return
 		}
 	}
 }
