@@ -244,6 +244,7 @@ contract Bridge is AccessControl {
         return executedBatches[batchNonceElrondETH];
     }
 
+/*========================= PRIVATE API =========================*/
     function getHashedDepositData(bytes memory encodedData) private pure returns(bytes32) {
         return keccak256(abi.encodePacked(prefix, keccak256(encodedData)));
     }
