@@ -29,6 +29,11 @@ type WalletAddressProvider interface {
 	GetHexWalletAddress() string
 }
 
+// QuorumProvider defines the operations for a quorum provider
+type QuorumProvider interface {
+	GetQuorum(ctx context.Context) (uint, error)
+}
+
 // Bridge defines the operations available for a validator operating on a bridge between 2 chains
 type Bridge interface {
 	GetPending(context.Context) *Batch

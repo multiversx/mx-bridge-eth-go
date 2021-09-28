@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -32,6 +33,7 @@ type BridgeContract interface {
 	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	WasBatchExecuted(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	WasBatchFinished(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
+	Quorum(opts *bind.CallOpts) (*big.Int, error)
 }
 
 type BlockchainClient interface {
@@ -51,7 +53,8 @@ type Client struct {
 
 	lastProposedStatuses []uint8
 	lastTransferBatch    *bridge.Batch
-	gasLimit uint64
+	lastSignatureAction  func()
+	gasLimit             uint64
 
 	log logger.Logger
 }
@@ -83,11 +86,11 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 	client := &Client{
 		bridgeContract:   instance,
 		blockchainClient: ethClient,
-		gasLimit:    config.GasLimit,
-		privateKey:  privateKey,
-		publicKey:   publicKeyECDSA,
-		broadcaster: broadcaster,
-		mapper:      mapper,
+		gasLimit:         config.GasLimit,
+		privateKey:       privateKey,
+		publicKey:        publicKeyECDSA,
+		broadcaster:      broadcaster,
+		mapper:           mapper,
 
 		log: log,
 	}
@@ -130,13 +133,17 @@ func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	for _, tx := range batch.Transactions {
 		c.lastProposedStatuses = append(c.lastProposedStatuses, tx.Status)
 	}
-	c.broadcastSignatureForFinishCurrentPendingTransaction(batch.Id, c.lastProposedStatuses)
+	c.lastSignatureAction = func() {
+		c.broadcastSignatureForFinishCurrentPendingTransaction(batch.Id, c.lastProposedStatuses)
+	}
 	c.log.Info(fmt.Sprintf("ETH: Broadcast status signatures for for batchId %v", batch.Id))
 }
 
 func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	c.lastTransferBatch = batch
-	c.broadcastSignatureForTransfer(batch)
+	c.lastSignatureAction = func() {
+		c.broadcastSignatureForTransfer(batch)
+	}
 	c.log.Info(fmt.Sprintf("ETH: Broadcast transfer signatures for for batchId %v", batch.Id))
 
 	return "", nil
@@ -146,7 +153,11 @@ func (c *Client) WasProposedTransfer(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForProposeTransfer(context.Context, *bridge.Batch) bridge.ActionId {
+func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
+	c.lastTransferBatch = batch
+	c.lastSignatureAction = func() {
+		c.broadcastSignatureForTransfer(batch)
+	}
 	return bridge.NewActionId(0)
 }
 
@@ -154,7 +165,14 @@ func (c *Client) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForSetStatusOnPendingTransfer(context.Context, *bridge.Batch) bridge.ActionId {
+func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
+	for _, tx := range batch.Transactions {
+		c.lastProposedStatuses = append(c.lastProposedStatuses, tx.Status)
+	}
+	c.lastSignatureAction = func() {
+		c.broadcastSignatureForFinishCurrentPendingTransaction(batch.Id, c.lastProposedStatuses)
+	}
+
 	return bridge.NewActionId(0)
 }
 
@@ -184,6 +202,7 @@ func (c *Client) WasExecuted(ctx context.Context, _ bridge.ActionId, batchId bri
 }
 
 func (c *Client) Sign(context.Context, bridge.ActionId) (string, error) {
+	c.lastSignatureAction()
 	return "", nil
 }
 
@@ -192,11 +211,6 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batch *bridge.B
 	batchId := batch.Id
 
 	blockNonce, err := c.blockchainClient.PendingNonceAt(ctx, fromAddress)
-	if err != nil {
-		return "", err
-	}
-
-	gasPrice, err := c.blockchainClient.SuggestGasPrice(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -214,7 +228,6 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batch *bridge.B
 	auth.Nonce = big.NewInt(int64(blockNonce))
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = c.gasLimit
-	auth.GasPrice = gasPrice
 	auth.Context = ctx
 
 	var transaction *types.Transaction
@@ -242,6 +255,21 @@ func (c *Client) Execute(ctx context.Context, _ bridge.ActionId, batch *bridge.B
 
 func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
 	return uint(len(c.broadcaster.Signatures()))
+}
+
+// QuorumProvider implementation
+
+func (c *Client) GetQuorum(ctx context.Context) (uint, error) {
+	n, err := c.bridgeContract.Quorum(&bind.CallOpts{Context: ctx})
+	if err != nil {
+		return 0, err
+	}
+
+	if n.Cmp(big.NewInt(math.MaxUint32)) > 0 {
+		return 0, errors.New("quorum is not a uint")
+	}
+
+	return uint(n.Uint64()), nil
 }
 
 // utils

@@ -144,7 +144,8 @@ func TestJoinTopicProcessor(t *testing.T) {
 			elrondBridge: &bridgeStub{},
 			ethBridge:    &bridgeStub{},
 
-			peers: Peers{"first", "second"},
+			peers:      Peers{"first", "second"},
+			signatures: Signatures{"first": []byte("first signature")},
 
 			roleProvider:                &roleProviderStub{isWhitelisted: true},
 			elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
@@ -158,14 +159,16 @@ func TestJoinTopicProcessor(t *testing.T) {
 		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("other"), "peer_near_me")
 
 		dec := gob.NewDecoder(bytes.NewReader(messenger.lastSendData))
-		var got Peers
+		var got Topology
 		if err := dec.Decode(&got); err != nil {
 			t.Fatal(err)
 		}
 
-		expected := Peers{"first", "other", "second"}
+		expectedPeers := Peers{"first", "other", "second"}
+		expectedSignatures := Signatures{"first": []byte("first signature")}
 
-		assert.Equal(t, expected, got)
+		assert.Equal(t, expectedPeers, got.Peers)
+		assert.Equal(t, expectedSignatures, got.Signatures)
 	})
 	t.Run("on joined action when there are more peers then self and the peer is not whitelisted it will broadcast to private", func(t *testing.T) {
 		messenger := &netMessengerStub{}
@@ -214,6 +217,32 @@ func TestJoinTopicProcessor(t *testing.T) {
 		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("self"), "peer_near_me")
 
 		assert.NotEqual(t, privateTopicName, messenger.lastSendTopicName)
+	})
+	t.Run("on joined will not add to the peer list if already present", func(t *testing.T) {
+		messenger := &netMessengerStub{peerID: "self"}
+		expected := Peers{"first", "second"}
+		relay := Relay{
+			messenger: messenger,
+			timer:     &testHelpers.TimerStub{},
+			log:       log,
+
+			elrondBridge: &bridgeStub{},
+			ethBridge:    &bridgeStub{},
+
+			peers: Peers{"first", "second"},
+
+			roleProvider:                &roleProviderStub{isWhitelisted: true},
+			elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+		defer cancel()
+		_ = relay.Start(ctx)
+
+		joinMessageProcessor := messenger.registeredMessageProcessors[joinTopicName]
+		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("first"), "peer_near_me")
+
+		assert.Equal(t, expected, relay.peers)
 	})
 }
 
@@ -316,7 +345,7 @@ func TestAmILeader(t *testing.T) {
 func buildPrivateMessage(peerID core.PeerID, peers Peers) p2p.MessageP2P {
 	var data bytes.Buffer
 	enc := gob.NewEncoder(&data)
-	err := enc.Encode(peers)
+	err := enc.Encode(Topology{Peers: peers})
 	if err != nil {
 		panic(err)
 	}

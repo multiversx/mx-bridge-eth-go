@@ -3,7 +3,9 @@ package eth
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"testing"
 
@@ -26,6 +28,7 @@ import (
 // verify Client implements interface
 var (
 	_ = bridge.Bridge(&Client{})
+	_ = bridge.QuorumProvider(&Client{})
 )
 
 const TestPrivateKey = "60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d7192efab"
@@ -77,7 +80,7 @@ func TestGetPending(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := Client{
 				bridgeContract: &bridgeContractStub{batch: tt.receivedBatch},
-				gasLimit: GasLimit,
+				gasLimit:       GasLimit,
 				log:            logger.GetOrCreate("testEthClient"),
 			}
 
@@ -90,11 +93,10 @@ func TestGetPending(t *testing.T) {
 
 func TestProposeSetStatus(t *testing.T) {
 	cases := []struct {
-		status       uint8
-		signatureHex string
+		status uint8
 	}{
-		{bridge.Executed, "0x524957e3081d49d98c98881abd5cf6f737722a4aa0e7915771a567e3cb45cfc625cd9fcf9ec53c86182e517c1e61dbc076722905d11b73e1ed42665ec051342701"},
-		{bridge.Rejected, "0xd9b1ae38d7e24837e90e7aaac2ae9ca1eb53dc7a30c41774ad7f7f5fd2371c2d0ac6e69643f6aaa25bd9b000dcf0b8be567bcde7f0a5fb5aad122273999bad2500"},
+		{bridge.Executed},
+		{bridge.Rejected},
 	}
 
 	for _, c := range cases {
@@ -104,7 +106,7 @@ func TestProposeSetStatus(t *testing.T) {
 				bridgeContract: &bridgeContractStub{},
 				privateKey:     privateKey(t),
 				broadcaster:    broadcaster,
-				gasLimit: GasLimit,
+				gasLimit:       GasLimit,
 				log:            logger.GetOrCreate("testEthClient"),
 			}
 
@@ -115,9 +117,7 @@ func TestProposeSetStatus(t *testing.T) {
 				}},
 			}
 			client.ProposeSetStatus(context.TODO(), batch)
-			expectedSignature, _ := hexutil.Decode(c.signatureHex)
 
-			assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
 			assert.Equal(t, []uint8{c.status}, client.lastProposedStatuses)
 		})
 	}
@@ -130,7 +130,7 @@ func TestProposeTransfer(t *testing.T) {
 		privateKey:     privateKey(t),
 		broadcaster:    broadcaster,
 		mapper:         &mapperStub{},
-		gasLimit: GasLimit,
+		gasLimit:       GasLimit,
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
@@ -146,10 +146,73 @@ func TestProposeTransfer(t *testing.T) {
 		},
 	}
 	_, _ = client.ProposeTransfer(context.TODO(), batch)
-	expectedSignature, _ := hexutil.Decode("0xab3ce0cdc229afc9fcd0447800142da85aa116f16a26e151b9cad95b361ab73d24694ded888a06a1e9b731af8a1b549a1fc5188117e40bea11d9e74af4a6d5fa01")
 
-	assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
 	assert.Equal(t, batch, client.lastTransferBatch)
+}
+
+func TestSign(t *testing.T) {
+	buildStubs := func() (*broadcasterStub, Client) {
+		broadcaster := &broadcasterStub{}
+		client := Client{
+			bridgeContract: &bridgeContractStub{},
+			privateKey:     privateKey(t),
+			broadcaster:    broadcaster,
+			mapper:         &mapperStub{},
+			gasLimit:       GasLimit,
+			log:            logger.GetOrCreate("testEthClient"),
+		}
+
+		return broadcaster, client
+	}
+	t.Run("will sign propose status for executed tx", func(t *testing.T) {
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(42),
+			Transactions: []*bridge.DepositTransaction{{
+				Status: bridge.Executed,
+			}},
+		}
+		broadcaster, client := buildStubs()
+		client.ProposeSetStatus(context.TODO(), batch)
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(1))
+
+		expectedSignature, _ := hexutil.Decode("0x524957e3081d49d98c98881abd5cf6f737722a4aa0e7915771a567e3cb45cfc625cd9fcf9ec53c86182e517c1e61dbc076722905d11b73e1ed42665ec051342701")
+
+		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+	})
+	t.Run("will sign propose status for rejected tx", func(t *testing.T) {
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(42),
+			Transactions: []*bridge.DepositTransaction{{
+				Status: bridge.Rejected,
+			}},
+		}
+		broadcaster, client := buildStubs()
+		client.ProposeSetStatus(context.TODO(), batch)
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(1))
+
+		expectedSignature, _ := hexutil.Decode("0xd9b1ae38d7e24837e90e7aaac2ae9ca1eb53dc7a30c41774ad7f7f5fd2371c2d0ac6e69643f6aaa25bd9b000dcf0b8be567bcde7f0a5fb5aad122273999bad2500")
+
+		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+	})
+	t.Run("will sign tx for transfer", func(t *testing.T) {
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(42),
+			Transactions: []*bridge.DepositTransaction{{
+				To:           "cf95254084ab772696643f0e05ac4711ed674ac1",
+				From:         "04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3",
+				TokenAddress: "574554482d323936313238",
+				Amount:       big.NewInt(1),
+				DepositNonce: bridge.NewNonce(2),
+			},
+			},
+		}
+		broadcaster, client := buildStubs()
+		_, _ = client.ProposeTransfer(context.TODO(), batch)
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(1))
+		expectedSignature, _ := hexutil.Decode("0xab3ce0cdc229afc9fcd0447800142da85aa116f16a26e151b9cad95b361ab73d24694ded888a06a1e9b731af8a1b549a1fc5188117e40bea11d9e74af4a6d5fa01")
+
+		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+	})
 }
 
 func TestSignersCount(t *testing.T) {
@@ -157,7 +220,7 @@ func TestSignersCount(t *testing.T) {
 	client := Client{
 		bridgeContract: &bridgeContractStub{},
 		broadcaster:    broadcaster,
-		gasLimit: GasLimit,
+		gasLimit:       GasLimit,
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
@@ -172,7 +235,7 @@ func TestWasExecuted(t *testing.T) {
 		client := Client{
 			bridgeContract: contract,
 			broadcaster:    &broadcasterStub{},
-			gasLimit: GasLimit,
+			gasLimit:       GasLimit,
 			log:            logger.GetOrCreate("testEthClient"),
 		}
 
@@ -186,7 +249,7 @@ func TestWasExecuted(t *testing.T) {
 			bridgeContract:    contract,
 			lastTransferBatch: &bridge.Batch{},
 			broadcaster:       &broadcasterStub{},
-			gasLimit: GasLimit,
+			gasLimit:          GasLimit,
 			log:               logger.GetOrCreate("testEthClient"),
 		}
 
@@ -199,7 +262,7 @@ func TestWasExecuted(t *testing.T) {
 			bridgeContract:       &bridgeContractStub{wasExecuted: true, wasBatchFinished: true},
 			log:                  logger.GetOrCreate("testEthClient"),
 			lastTransferBatch:    &bridge.Batch{},
-			gasLimit: GasLimit,
+			gasLimit:             GasLimit,
 			lastProposedStatuses: []uint8{bridge.Executed},
 		}
 
@@ -212,7 +275,7 @@ func TestWasExecuted(t *testing.T) {
 		client := Client{
 			bridgeContract:       &bridgeContractStub{wasExecuted: true},
 			log:                  logger.GetOrCreate("testEthClient"),
-			gasLimit: GasLimit,
+			gasLimit:             GasLimit,
 			lastProposedStatuses: []uint8{bridge.Executed},
 		}
 
@@ -225,7 +288,7 @@ func TestWasExecuted(t *testing.T) {
 			bridgeContract:       &bridgeContractStub{wasExecuted: false},
 			log:                  logger.GetOrCreate("testEthClient"),
 			lastProposedStatuses: []uint8{bridge.Executed},
-			gasLimit: GasLimit,
+			gasLimit:             GasLimit,
 			lastTransferBatch:    &bridge.Batch{},
 		}
 
@@ -246,7 +309,7 @@ func TestExecute(t *testing.T) {
 			broadcaster:      &broadcasterStub{},
 			blockchainClient: &blockchainClientStub{},
 			log:              logger.GetOrCreate("testEthClient"),
-			gasLimit: GasLimit,
+			gasLimit:         GasLimit,
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
@@ -271,7 +334,7 @@ func TestExecute(t *testing.T) {
 				}},
 			},
 			gasLimit: GasLimit,
-			log: logger.GetOrCreate("testEthClient"),
+			log:      logger.GetOrCreate("testEthClient"),
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
@@ -279,6 +342,35 @@ func TestExecute(t *testing.T) {
 
 		assert.Equal(t, expected, got)
 	})
+}
+
+func TestGetQuorum(t *testing.T) {
+	cases := []struct {
+		actual   *big.Int
+		expected uint
+		error    error
+	}{
+		{actual: big.NewInt(42), expected: 42, error: nil},
+		{actual: big.NewInt(math.MaxUint32 + 1), expected: 0, error: errors.New("quorum is not a uint")},
+	}
+
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("When contract quorum is %v", c.actual), func(t *testing.T) {
+			client := Client{
+				bridgeContract: &bridgeContractStub{quorum: c.actual},
+				privateKey:     privateKey(t),
+				broadcaster:    &broadcasterStub{},
+				mapper:         &mapperStub{},
+				gasLimit:       GasLimit,
+				log:            logger.GetOrCreate("testEthClient"),
+			}
+
+			actual, err := client.GetQuorum(context.TODO())
+
+			assert.Equal(t, c.expected, actual)
+			assert.Equal(t, c.error, err)
+		})
+	}
 }
 
 func privateKey(t *testing.T) *ecdsa.PrivateKey {
@@ -311,6 +403,7 @@ type bridgeContractStub struct {
 	wasBatchFinished    bool
 	executedTransaction *types.Transaction
 	transferTransaction *types.Transaction
+	quorum              *big.Int
 }
 
 func (c *bridgeContractStub) GetNextPendingBatch(*bind.CallOpts) (Batch, error) {
@@ -331,6 +424,10 @@ func (c *bridgeContractStub) WasBatchExecuted(*bind.CallOpts, *big.Int) (bool, e
 
 func (c *bridgeContractStub) WasBatchFinished(*bind.CallOpts, *big.Int) (bool, error) {
 	return c.wasBatchFinished, nil
+}
+
+func (c *bridgeContractStub) Quorum(*bind.CallOpts) (*big.Int, error) {
+	return c.quorum, nil
 }
 
 type broadcasterStub struct {

@@ -3,15 +3,10 @@ package relay
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-)
-
-const (
-	minSignaturePercent = 67
 )
 
 type state int
@@ -31,6 +26,7 @@ const (
 type Monitor struct {
 	name             string
 	topologyProvider TopologyProvider
+	quorumProvider   bridge.QuorumProvider
 	timer            Timer
 	log              logger.Logger
 
@@ -43,10 +39,11 @@ type Monitor struct {
 	actionId     bridge.ActionId
 }
 
-func NewMonitor(sourceBridge, destinationBridge bridge.Bridge, timer Timer, topologyProvider TopologyProvider, name string) *Monitor {
+func NewMonitor(sourceBridge, destinationBridge bridge.Bridge, timer Timer, topologyProvider TopologyProvider, quorumProvider bridge.QuorumProvider, name string) *Monitor {
 	return &Monitor{
 		name:             name,
 		topologyProvider: topologyProvider,
+		quorumProvider:   quorumProvider,
 		timer:            timer,
 		log:              logger.GetOrCreate(name),
 
@@ -103,7 +100,6 @@ func (m *Monitor) getPending(ctx context.Context, ch chan state) {
 			ch <- stop
 		}
 	} else {
-		m.topologyProvider.Clean()
 		ch <- proposeTransfer
 	}
 }
@@ -125,7 +121,7 @@ func (m *Monitor) proposeTransfer(ctx context.Context, ch chan state) {
 }
 
 func (m *Monitor) waitForTransferProposal(ctx context.Context, ch chan state) {
-	m.log.Info(fmt.Sprintf("Waiting for proposal on batch with nonce %v", m.pendingBatch.Id))
+	m.log.Info(fmt.Sprintf("Waiting for transfer proposal on batch with nonce %v", m.pendingBatch.Id))
 	select {
 	case <-m.timer.After(timeout):
 		if m.destinationBridge.WasProposedTransfer(ctx, m.pendingBatch) {
@@ -149,14 +145,21 @@ func (m *Monitor) waitForSignatures(ctx context.Context, ch chan state) {
 	select {
 	case <-m.timer.After(timeout):
 		count := m.executingBridge.SignersCount(ctx, m.actionId)
-		peerCount := m.topologyProvider.PeerCount()
-		minCountRequired := math.Ceil(float64(peerCount) * minSignaturePercent / 100)
+		quorum, err := m.quorumProvider.GetQuorum(ctx)
+		if err != nil {
+			m.log.Error(err.Error())
+			ch <- waitForSignatures
+		}
 
-		m.log.Info(fmt.Sprintf("Got %d signatures", count))
-		if count >= uint(minCountRequired) && count > 0 {
+		m.log.Info(fmt.Sprintf("Got %d signatures, the quorum is %d", count, quorum))
+		if m.wasQuorumReached(quorum, count) {
 			ch <- execute
 		} else {
-			ch <- waitForSignatures
+			if m.wasExecuted(ctx) {
+				m.executed(ctx, ch)
+			} else {
+				ch <- waitForSignatures
+			}
 		}
 	case <-ctx.Done():
 		ch <- stop
@@ -179,15 +182,8 @@ func (m *Monitor) waitForExecute(ctx context.Context, ch chan state) {
 	m.log.Info("Waiting for execution")
 	select {
 	case <-m.timer.After(timeout):
-		if m.executingBridge.WasExecuted(ctx, m.actionId, m.pendingBatch.Id) {
-			m.pendingBatch.SetStatusOnAllTransactions(bridge.Executed, nil)
-
-			switch m.executingBridge {
-			case m.destinationBridge:
-				ch <- proposeSetStatus
-			case m.sourceBridge:
-				ch <- getPending
-			}
+		if m.wasExecuted(ctx) {
+			m.executed(ctx, ch)
 		} else {
 			ch <- execute
 		}
@@ -221,5 +217,27 @@ func (m *Monitor) waitForSetStatusProposal(ctx context.Context, ch chan state) {
 		}
 	case <-ctx.Done():
 		ch <- stop
+	}
+}
+
+// helpers
+
+func (m *Monitor) wasQuorumReached(quorum uint, count uint) bool {
+	return quorum <= count
+}
+
+func (m *Monitor) wasExecuted(ctx context.Context) bool {
+	return m.executingBridge.WasExecuted(ctx, m.actionId, m.pendingBatch.Id)
+}
+
+func (m *Monitor) executed(_ context.Context, ch chan state) {
+	m.topologyProvider.Clean()
+	m.pendingBatch.SetStatusOnAllTransactions(bridge.Executed, nil)
+
+	switch m.executingBridge {
+	case m.destinationBridge:
+		ch <- proposeSetStatus
+	case m.sourceBridge:
+		ch <- getPending
 	}
 }
