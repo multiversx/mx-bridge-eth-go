@@ -256,7 +256,7 @@ func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
 	return uint(len(c.broadcaster.Signatures()))
 }
 
-// QuorumProvider
+// QuorumProvider implementation
 
 func (c *Client) GetQuorum(ctx context.Context) (*big.Int, error) {
 	return c.bridgeContract.Quorum(&bind.CallOpts{Context: ctx})
