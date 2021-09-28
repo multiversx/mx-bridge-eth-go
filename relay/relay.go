@@ -173,10 +173,16 @@ func (r *Relay) Stop() error {
 // TopologyProvider
 
 func (r *Relay) PeerCount() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	return len(r.peers)
 }
 
 func (r *Relay) AmITheLeader() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if len(r.peers) == 0 {
 		return false
 	} else {
@@ -188,6 +194,9 @@ func (r *Relay) AmITheLeader() bool {
 }
 
 func (r *Relay) Clean() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	r.signatures = make(Signatures)
 }
 
