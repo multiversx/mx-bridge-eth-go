@@ -286,9 +286,10 @@ func (r *Relay) addPeer(peerID core.PeerID) {
 
 	// TODO: can optimize via binary search
 	for index, peer := range r.peers {
-		if peer == peerID {
+		switch {
+		case peer == peerID:
 			break
-		} else if peer > peerID {
+		case peer > peerID:
 			r.peers = append(r.peers, "")
 			copy(r.peers[index+1:], r.peers[index:])
 			r.peers[index] = peerID
