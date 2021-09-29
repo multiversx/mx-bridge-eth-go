@@ -189,14 +189,12 @@ func (c *Client) Sign(_ context.Context, action bridge.ActionId) (string, error)
 	switch int64FromActionId(action) {
 	case TransferAction:
 		c.broadcastSignatureForTransfer(c.pendingBatch)
-		break
 	case SetStatusAction:
 		var proposedStatuses []uint8
 		for _, tx := range c.pendingBatch.Transactions {
 			proposedStatuses = append(proposedStatuses, tx.Status)
 		}
 		c.broadcastSignatureForFinishCurrentPendingTransaction(c.pendingBatch.Id, proposedStatuses)
-		break
 	}
 
 	return "", nil
@@ -232,10 +230,8 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 	switch int64FromActionId(action) {
 	case TransferAction:
 		transaction, err = c.transfer(auth, signatures)
-		break
 	case SetStatusAction:
 		transaction, err = c.finish(auth, signatures)
-		break
 	}
 
 	if err != nil {
