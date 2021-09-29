@@ -100,7 +100,7 @@ func NewClient(args ClientArgs) (*client, error) {
 
 	var ctx context.Context
 	ctx, c.cancelFunc = context.WithCancel(context.Background())
-	c.saveCurrentNonce()
+	c.updateCurrentNonce()
 	go c.poll(ctx)
 
 	return c, nil
@@ -110,7 +110,7 @@ func (c *client) poll(ctx context.Context) {
 	for {
 		select {
 		case <-time.After(c.nonceUpdateInterval):
-			c.saveCurrentNonce()
+			c.updateCurrentNonce()
 		case <-ctx.Done():
 			c.log.Debug("Client.poll function is closing...")
 			return
@@ -118,15 +118,16 @@ func (c *client) poll(ctx context.Context) {
 	}
 }
 
-func (c *client) saveCurrentNonce() {
+func (c *client) updateCurrentNonce() {
 	account, err := c.proxy.GetAccount(c.address)
 	if err != nil {
 		c.log.Debug("Elrond: error polling account", "address", c.address.AddressAsBech32String(), "error", err.Error())
 		return
 	}
 
-	c.log.Debug("Elrond: polled account", "address", c.address.AddressAsBech32String(), "nonce", account.Nonce)
-	atomic.StoreUint64(&c.nonce, account.Nonce)
+	if c.nonce < account.Nonce {
+		atomic.StoreUint64(&c.nonce, account.Nonce)
+	}
 }
 
 // GetPending returns the pending batch
@@ -492,6 +493,7 @@ func (c *client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 		return nil, err
 	}
 
+	c.updateCurrentNonce()
 	nonce := atomic.LoadUint64(&c.nonce)
 	if err != nil {
 		return nil, err
