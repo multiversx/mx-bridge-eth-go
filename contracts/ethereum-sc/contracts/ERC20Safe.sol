@@ -112,8 +112,11 @@ contract ERC20Safe {
         require(amount >= tokenLimits[tokenAddress], "Tried to deposit an amount below the specified limit");
         uint256 currentTimestamp = block.timestamp;
 
+        bool batchTimeLimitExceeded = batches[batchesCount-1].timestamp + batchTimeLimit < currentTimestamp;
+        bool batchSizeExceeded = batches[batchesCount-1].deposits.length >= batchSize;
+
         Batch storage batch;
-        if (batchesCount == 0 || batches[batchesCount-1].timestamp + batchTimeLimit < currentTimestamp || batches[batchesCount-1].deposits.length >= batchSize)
+        if (batchesCount == 0 || batchTimeLimitExceeded || batchSizeExceeded)
         {
             batch = batches[batchesCount];
             batch.nonce = batchesCount + 1;
@@ -197,3 +200,4 @@ contract ERC20Safe {
         }
     }
 }
+
