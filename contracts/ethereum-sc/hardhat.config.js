@@ -1,4 +1,4 @@
-const { task } = require("hardhat/config");
+const { task, types } = require("hardhat/config");
 
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-solhint");
@@ -137,7 +137,13 @@ task("mint-test-tokens", "Mints tests tokens and sends them to the recipientAddr
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.8.5",
+  solidity: {
+    version: "0.8.5",
+    optimizer: {
+      enabled: true,
+      runs: 200,
+    },
+  },
   networks: {
     ganache: {
       url: 'http://127.0.0.1:8545'
