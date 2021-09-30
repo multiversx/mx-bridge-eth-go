@@ -47,10 +47,7 @@ func (thm *transactionHandlerMock) processSendTransaction(rw http.ResponseWriter
 		return
 	}
 
-	_, txHash, err := thm.createTransaction(sendTxRequest.Nonce, sendTxRequest.Value, sendTxRequest.Receiver,
-		sendTxRequest.ReceiverUsername, sendTxRequest.Sender, sendTxRequest.SenderUsername, sendTxRequest.GasPrice,
-		sendTxRequest.GasLimit, sendTxRequest.Data, sendTxRequest.Signature, sendTxRequest.ChainID, sendTxRequest.Version,
-		sendTxRequest.Options)
+	_, txHash, err := thm.createTransaction(sendTxRequest)
 	if err != nil {
 		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
 		return
@@ -65,60 +62,46 @@ func (thm *transactionHandlerMock) processSendTransaction(rw http.ResponseWriter
 
 // createTransaction will return a transaction from all the required fields
 // used to create a correct hash, as any running chain will output.
-func (thm *transactionHandlerMock) createTransaction(
-	nonce uint64,
-	value string,
-	receiver string,
-	receiverUsername []byte,
-	sender string,
-	senderUsername []byte,
-	gasPrice uint64,
-	gasLimit uint64,
-	dataField []byte,
-	signatureHex string,
-	chainID string,
-	version uint32,
-	options uint32,
-) (*transaction.Transaction, []byte, error) {
-	log.Debug("createTransaction", "nonce", nonce, "value", value, "receiver", receiver,
-		"receiverUsername", receiverUsername, "sender", sender, "senderUsername", senderUsername, "gasPrice", gasPrice,
-		"gasLimit", gasLimit, "dataField", string(dataField), "sig", signatureHex, "chainID", chainID, "version", version,
-		"options", options)
+func (thm *transactionHandlerMock) createTransaction(txRequest *apiTransaction.SendTxRequest) (*transaction.Transaction, []byte, error) {
+	log.Debug("createTransaction", "nonce", txRequest.Nonce, "value", txRequest.Value, "receiver", txRequest.Receiver,
+		"receiverUsername", txRequest.ReceiverUsername, "sender", txRequest.Sender, "senderUsername", txRequest.SenderUsername,
+		"gasPrice", txRequest.GasPrice, "gasLimit", txRequest.GasLimit, "dataField", string(txRequest.Data),
+		"sig", txRequest.Signature, "chainID", txRequest.ChainID, "version", txRequest.Version, "options", txRequest.Options)
 
-	receiverAddress, err := thm.addressConverter.Decode(receiver)
+	receiverAddress, err := thm.addressConverter.Decode(txRequest.Receiver)
 	if err != nil {
 		return nil, nil, errors.New("could not create receiver address from provided param")
 	}
 
-	senderAddress, err := thm.addressConverter.Decode(sender)
+	senderAddress, err := thm.addressConverter.Decode(txRequest.Sender)
 	if err != nil {
 		return nil, nil, errors.New("could not create sender address from provided param")
 	}
 
-	signatureBytes, err := hex.DecodeString(signatureHex)
+	signatureBytes, err := hex.DecodeString(txRequest.Signature)
 	if err != nil {
 		return nil, nil, errors.New("could not fetch signature bytes")
 	}
 
-	valAsBigInt, ok := big.NewInt(0).SetString(value, 10)
+	valAsBigInt, ok := big.NewInt(0).SetString(txRequest.Value, 10)
 	if !ok {
 		return nil, nil, errors.New("invalid value")
 	}
 
 	tx := &transaction.Transaction{
-		Nonce:       nonce,
+		Nonce:       txRequest.Nonce,
 		Value:       valAsBigInt,
 		RcvAddr:     receiverAddress,
-		RcvUserName: receiverUsername,
+		RcvUserName: txRequest.ReceiverUsername,
 		SndAddr:     senderAddress,
-		SndUserName: senderUsername,
-		GasPrice:    gasPrice,
-		GasLimit:    gasLimit,
-		Data:        dataField,
+		SndUserName: txRequest.SenderUsername,
+		GasPrice:    txRequest.GasPrice,
+		GasLimit:    txRequest.GasLimit,
+		Data:        txRequest.Data,
 		Signature:   signatureBytes,
-		ChainID:     []byte(chainID),
-		Version:     version,
-		Options:     options,
+		ChainID:     []byte(txRequest.ChainID),
+		Version:     txRequest.Version,
+		Options:     txRequest.Options,
 	}
 
 	var txHash []byte

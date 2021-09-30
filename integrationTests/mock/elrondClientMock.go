@@ -70,7 +70,7 @@ func (emc *ElrondMockClient) URL() string {
 
 func (emc *ElrondMockClient) processAddress(rw http.ResponseWriter, req *http.Request) {
 	address := req.RequestURI[len(addressEndpointName):]
-	account := emc.GetAccount(address)
+	account := emc.GetOrCreateAccount(address)
 
 	writeResponse(rw, http.StatusOK, "account", account, nil)
 }

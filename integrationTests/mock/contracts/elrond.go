@@ -9,7 +9,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-var log = logger.GetOrCreate("integrationTests/mock/constracts")
+var log = logger.GetOrCreate("integrationTests/mock/contracts")
 
 const canProposeAndSign = 2
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -463,7 +462,7 @@ func (c *client) executeUintQuery(valueRequest *data.VmValueRequest) (uint64, er
 	}
 
 	if len(responseData) == 0 {
-		return 0, errors.New("contract error, unexpected 0 length response data")
+		return 0, ErrUnexpectedLengthOnResponse
 	}
 
 	if len(responseData[0]) == 0 {

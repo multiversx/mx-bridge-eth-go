@@ -33,20 +33,6 @@ type MockEthElrondNetwork struct {
 	cancelFunc       func()
 }
 
-// Close will close any relayers/clients opened
-func (meen *MockEthElrondNetwork) Close(tb testing.TB) {
-	err := meen.Seeder.Close()
-	require.Nil(tb, err)
-
-	meen.cancelFunc()
-
-	for _, relayer := range meen.Relayers {
-		relayer.Clean()
-	}
-
-	meen.ElrondClient.Close()
-}
-
 // NewMockEthElrondNetwork creates a mocked eth elrond network with mocked clients
 func NewMockEthElrondNetwork(tb testing.TB, numRelayers int) *MockEthElrondNetwork {
 	network := &MockEthElrondNetwork{
@@ -56,12 +42,11 @@ func NewMockEthElrondNetwork(tb testing.TB, numRelayers int) *MockEthElrondNetwo
 	}
 	elrondContractAddress := "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx" //TODO remove this hardcoded value
 	network.ElrondContract = contracts.NewElrondContract(elrondContractAddress)
-	network.ElrondClient.SetAccount(elrondContractAddress, nil, network.ElrondContract.Contract)
+	network.ElrondClient.SetAccount(nil, network.ElrondContract.Contract)
 	network.ElrondContract.WhiteListAddress("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede") //TODO remove this hardcoded value
 
-	network.EthereumContract = mock.NewContract(ethContractAddress)
-	storedContractAddress := "0x" + strings.ToLower(ethContractAddress)
-	network.EthereumClient.SetAccount(storedContractAddress, nil, network.EthereumContract)
+	network.EthereumContract = mock.NewContract("0x" + strings.ToLower(ethContractAddress))
+	network.EthereumClient.SetAccount(nil, network.EthereumContract)
 
 	log.Info("Elrond mock client", "URL", network.ElrondClient.URL())
 
@@ -103,4 +88,18 @@ func NewMockEthElrondNetwork(tb testing.TB, numRelayers int) *MockEthElrondNetwo
 	}
 
 	return network
+}
+
+// Close will close any relayers/clients opened
+func (meen *MockEthElrondNetwork) Close(tb testing.TB) {
+	err := meen.Seeder.Close()
+	require.Nil(tb, err)
+
+	meen.cancelFunc()
+
+	for _, relayer := range meen.Relayers {
+		relayer.Clean()
+	}
+
+	meen.ElrondClient.Close()
 }
