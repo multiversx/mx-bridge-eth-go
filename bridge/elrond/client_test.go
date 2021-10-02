@@ -330,6 +330,7 @@ func TestExecute(t *testing.T) {
 
 	assert.Equal(t, expectedTxHash, hash)
 	assert.Equal(t, uint64(70_000_000+len(batch.Transactions)*30_000_000), proxy.lastTransaction.GasLimit)
+	assert.Equal(t, uint64(43), c.nonce)
 }
 
 func TestWasProposedTransfer(t *testing.T) {
@@ -613,6 +614,7 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 	c := &client{
 		log:           logger.GetOrCreate("testHelpers"),
 		proxy:         proxy,
+		nonce:         42,
 		bridgeAddress: "",
 		privateKey:    privateKey,
 		address:       address,
