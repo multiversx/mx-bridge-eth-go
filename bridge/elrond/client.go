@@ -461,6 +461,10 @@ func (c *client) executeUintQuery(valueRequest *data.VmValueRequest) (uint64, er
 		return 0, err
 	}
 
+	if len(responseData) == 0 {
+		return 0, ErrUnexpectedLengthOnResponse
+	}
+
 	if len(responseData[0]) == 0 {
 		return 0, err
 	}

@@ -209,7 +209,7 @@ func (r *Relay) ProcessReceivedMessage(message p2p.MessageP2P, _ core.PeerID) er
 	case joinTopicName:
 		elrondPublicAddress := string(message.Data())
 		if !r.roleProvider.IsWhitelisted(elrondPublicAddress) {
-			r.log.Error(fmt.Sprintf("A peer with address %q tryed to join but is not whitelisted", elrondPublicAddress))
+			r.log.Error(fmt.Sprintf("a peer with address %q tried to join but is not whitelisted", elrondPublicAddress))
 			return nil
 		}
 
