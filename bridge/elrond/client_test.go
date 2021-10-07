@@ -12,7 +12,10 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 	"github.com/ElrondNetwork/elrond-go-core/data/vm"
+	"github.com/ElrondNetwork/elrond-go-core/hashing/sha256"
+	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/storage/timecache"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
@@ -212,6 +215,13 @@ func TestGetPending(t *testing.T) {
 
 		assert.Nil(t, actual)
 		assert.Equal(t, uint64(260_000_000), proxy.lastTransaction.GasLimit)
+
+		proxy.lastTransaction = nil
+		actual = c.GetPending(context.TODO(), true)
+
+		//a transaction will not be issued again
+		assert.Nil(t, actual)
+		assert.Nil(t, proxy.lastTransaction)
 	})
 	t.Run("where there is no pending transaction it will return nil", func(t *testing.T) {
 		proxy := &testProxy{
@@ -626,6 +636,9 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 		bridgeAddress:  "",
 		privateKey:     privateKey,
 		address:        address,
+		timeCache:      timecache.NewTimeCache(time.Minute),
+		hasher:         sha256.NewSha256(),
+		marshalizer:    &marshal.JsonMarshalizer{},
 	}
 
 	return c, nil

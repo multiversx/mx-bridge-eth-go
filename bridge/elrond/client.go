@@ -10,12 +10,17 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
+	"github.com/ElrondNetwork/elrond-go-core/hashing"
+	"github.com/ElrondNetwork/elrond-go-core/hashing/sha256"
+	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/storage/timecache"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
@@ -54,6 +59,9 @@ type client struct {
 	address        core.AddressHandler
 	nonceTxHandler NonceTransactionsHandler
 	log            logger.Logger
+	timeCache      *timecache.TimeCache
+	marshalizer    marshal.Marshalizer
+	hasher         hashing.Hasher
 }
 
 // ClientArgs represents the argument for the NewClient constructor function
@@ -64,8 +72,6 @@ type ClientArgs struct {
 
 // NewClient returns a new Elrond Client instance
 func NewClient(args ClientArgs) (*client, error) {
-	log := logger.GetOrCreate("ElrondClient")
-
 	if check.IfNil(args.Proxy) {
 		return nil, ErrNilProxy
 	}
@@ -87,16 +93,19 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	log.Info("Elrond: NewClient", "address", address.AddressAsBech32String())
-
 	c := &client{
 		proxy:          args.Proxy,
 		bridgeAddress:  args.Config.BridgeAddress,
 		privateKey:     privateKey,
 		address:        address,
-		log:            log,
+		log:            logger.GetOrCreate("ElrondClient"),
 		nonceTxHandler: nonceTxsHandler,
+		timeCache:      timecache.NewTimeCache(time.Minute),
+		hasher:         sha256.NewSha256(),
+		marshalizer:    &marshal.JsonMarshalizer{},
 	}
+
+	c.log.Info("Elrond: NewClient", "address", address.AddressAsBech32String())
 
 	return c, nil
 }
@@ -122,7 +131,23 @@ func (c *client) getBatch(amITheLeader bool) ([][]byte, error) {
 		return responseData, nil
 	}
 
-	c.log.Debug("Elrond: queried the getNextTransactionBatch and found pending transactions. Will send the fetch transaction.")
+	identifier, err := elrondCore.CalculateHash(c.marshalizer, c.hasher, responseData)
+	if err != nil {
+		return make([][]byte, 0), fmt.Errorf("%w in client.getBatch", err)
+	}
+
+	c.timeCache.Sweep()
+	if c.timeCache.Has(string(identifier)) {
+		c.log.Debug("Elrond: queried the getNextTransactionBatch and found pending transactions",
+			"identifier", identifier, "result", "not sending getNextTransactionBatch transaction")
+
+		return make([][]byte, 0), err
+	}
+
+	_ = c.timeCache.Add(string(identifier))
+	c.log.Debug("Elrond: queried the getNextTransactionBatch and found pending transactions",
+		"identifier", identifier, "result", "will send getNextTransactionBatch transaction")
+
 	_, err = c.fetchNextTransactionBatch()
 
 	return make([][]byte, 0), err
