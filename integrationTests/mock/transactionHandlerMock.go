@@ -43,13 +43,13 @@ func (thm *transactionHandlerMock) processSendTransaction(rw http.ResponseWriter
 
 	err := json.Unmarshal(bodyBytes, sendTxRequest)
 	if err != nil {
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
 		return
 	}
 
 	_, txHash, err := thm.createTransaction(sendTxRequest)
 	if err != nil {
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
 		return
 	}
 
@@ -57,7 +57,7 @@ func (thm *transactionHandlerMock) processSendTransaction(rw http.ResponseWriter
 	thm.transactions[string(txHash)] = sendTxRequest
 	thm.mutTransactions.Unlock()
 
-	writeResponse(rw, http.StatusOK, "txHash", hex.EncodeToString(txHash), nil)
+	writeElrondResponse(rw, http.StatusOK, "txHash", hex.EncodeToString(txHash), nil)
 }
 
 // createTransaction will return a transaction from all the required fields

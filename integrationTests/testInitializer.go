@@ -29,12 +29,14 @@ type MockEthElrondNetwork struct {
 	ElrondClient     *mock.ElrondMockClient
 	ElrondContract   *contracts.ElrondContract
 	EthereumClient   *mock.EthereumMockClient
-	EthereumContract *mock.Contract
+	EthereumContract *contracts.EthereumContract
 	cancelFunc       func()
 }
 
 // NewMockEthElrondNetwork creates a mocked eth elrond network with mocked clients
 func NewMockEthElrondNetwork(tb testing.TB, numRelayers int) *MockEthElrondNetwork {
+	var err error
+
 	network := &MockEthElrondNetwork{
 		Seeder:         integrationTests.CreateMessengerWithKadDht(""),
 		ElrondClient:   mock.NewElrondMockClient(),
@@ -45,8 +47,9 @@ func NewMockEthElrondNetwork(tb testing.TB, numRelayers int) *MockEthElrondNetwo
 	network.ElrondClient.SetAccount(nil, network.ElrondContract.Contract)
 	network.ElrondContract.WhiteListAddress("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede") //TODO remove this hardcoded value
 
-	network.EthereumContract = mock.NewContract("0x" + strings.ToLower(ethContractAddress))
-	network.EthereumClient.SetAccount(nil, network.EthereumContract)
+	network.EthereumContract, err = contracts.NewEthereumContract("0x" + strings.ToLower(ethContractAddress))
+	require.Nil(tb, err)
+	network.EthereumClient.SetAccount(nil, network.EthereumContract.Contract)
 
 	log.Info("Elrond mock client", "URL", network.ElrondClient.URL())
 
@@ -77,7 +80,8 @@ func NewMockEthElrondNetwork(tb testing.TB, numRelayers int) *MockEthElrondNetwo
 			},
 		}
 
-		r, err := relay.NewRelay(cfg, name)
+		var r *relay.Relay
+		r, err = relay.NewRelay(cfg, name)
 		require.Nil(tb, err)
 		go func() {
 			errStart := r.Start(ctx)

@@ -56,7 +56,7 @@ func NewElrondMockClient() *ElrondMockClient {
 			return
 		}
 
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: unimplemented route %s", req.RequestURI))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: unimplemented route %s", req.RequestURI))
 	}))
 	emc.httpServer = httpServer
 
@@ -72,7 +72,7 @@ func (emc *ElrondMockClient) processAddress(rw http.ResponseWriter, req *http.Re
 	address := req.RequestURI[len(addressEndpointName):]
 	account := emc.GetOrCreateAccount(address)
 
-	writeResponse(rw, http.StatusOK, "account", account, nil)
+	writeElrondResponse(rw, http.StatusOK, "account", account, nil)
 }
 
 func (emc *ElrondMockClient) processNetworkConfig(rw http.ResponseWriter, _ *http.Request) {
@@ -96,7 +96,7 @@ func (emc *ElrondMockClient) processNetworkConfig(rw http.ResponseWriter, _ *htt
 	metrics[common.MetricGasPriceModifier] = "0.01"
 	metrics[common.MetricRoundsPerEpoch] = 14400
 
-	writeResponse(rw, http.StatusOK, "config", metrics, nil)
+	writeElrondResponse(rw, http.StatusOK, "config", metrics, nil)
 }
 
 // Close will close any allocated resources

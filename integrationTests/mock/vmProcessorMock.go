@@ -33,7 +33,7 @@ func (vm *vmProcessorMock) processVmValues(rw http.ResponseWriter, req *http.Req
 	case vmValuesQueryEndpointName:
 		vm.processQueryVmValues(rw, req)
 	default:
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("unknown URI in ElrondMockClient, uri %s", uri))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("unknown URI in ElrondMockClient, uri %s", uri))
 	}
 }
 
@@ -41,65 +41,65 @@ func (vm *vmProcessorMock) processHexVmValues(rw http.ResponseWriter, req *http.
 	results, err := vm.processVmValuesRequest(req)
 	if err != nil {
 		log.Error("vmProcessorMock.processVmValuesRequest", "error", err)
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
 		return
 	}
 
 	returnData, err := results.GetFirstReturnData(vmData.AsHex)
 	if err != nil {
 		log.Error("vmProcessorMock.GetFirstReturnData", "error", err)
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
 		return
 	}
 
-	writeResponse(rw, http.StatusOK, "data", returnData, nil)
+	writeElrondResponse(rw, http.StatusOK, "data", returnData, nil)
 }
 
 func (vm *vmProcessorMock) processStringVmValues(rw http.ResponseWriter, req *http.Request) {
 	results, err := vm.processVmValuesRequest(req)
 	if err != nil {
 		log.Error("vmProcessorMock.processVmValuesRequest", "error", err)
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
 		return
 	}
 
 	returnData, err := results.GetFirstReturnData(vmData.AsString)
 	if err != nil {
 		log.Error("vmProcessorMock.GetFirstReturnData", "error", err)
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
 		return
 	}
 
-	writeResponse(rw, http.StatusOK, "data", returnData, nil)
+	writeElrondResponse(rw, http.StatusOK, "data", returnData, nil)
 }
 
 func (vm *vmProcessorMock) processIntVmValues(rw http.ResponseWriter, req *http.Request) {
 	results, err := vm.processVmValuesRequest(req)
 	if err != nil {
 		log.Error("vmProcessorMock.processVmValuesRequest", "error", err)
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
 		return
 	}
 
 	returnData, err := results.GetFirstReturnData(vmData.AsBigIntString)
 	if err != nil {
 		log.Error("vmProcessorMock.GetFirstReturnData", "error", err)
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
 		return
 	}
 
-	writeResponse(rw, http.StatusOK, "data", returnData, nil)
+	writeElrondResponse(rw, http.StatusOK, "data", returnData, nil)
 }
 
 func (vm *vmProcessorMock) processQueryVmValues(rw http.ResponseWriter, req *http.Request) {
 	results, err := vm.processVmValuesRequest(req)
 	if err != nil {
 		log.Error("vmProcessorMock.processVmValuesRequest", "error", err)
-		writeResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
+		writeElrondResponse(rw, http.StatusInternalServerError, "", nil, fmt.Errorf("ElrondMockClient: %w", err))
 		return
 	}
 
-	writeResponse(rw, http.StatusOK, "data", results, nil)
+	writeElrondResponse(rw, http.StatusOK, "data", results, nil)
 }
 
 func (vm *vmProcessorMock) processVmValuesRequest(req *http.Request) (*vmData.VMOutputApi, error) {
