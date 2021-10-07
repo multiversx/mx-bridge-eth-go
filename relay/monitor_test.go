@@ -588,7 +588,7 @@ func (b *bridgeStub) lock() {
 	b.executeMutex.Lock()
 }
 
-func (b *bridgeStub) GetPending(context.Context) *bridge.Batch {
+func (b *bridgeStub) GetPending(context.Context, bool) *bridge.Batch {
 	defer func() { b.pendingBatchCallIndex++ }()
 
 	if b.pendingBatchCallIndex >= len(b.pendingBatches) {

@@ -90,7 +90,7 @@ func (m *Monitor) Start(ctx context.Context) {
 // State
 
 func (m *Monitor) getPending(ctx context.Context, ch chan state) {
-	m.pendingBatch = m.sourceBridge.GetPending(ctx)
+	m.pendingBatch = m.sourceBridge.GetPending(ctx, m.topologyProvider.AmITheLeader())
 
 	if m.pendingBatch == nil {
 		select {

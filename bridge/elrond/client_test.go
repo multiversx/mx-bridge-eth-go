@@ -104,7 +104,7 @@ func TestGetPending(t *testing.T) {
 		}
 		c, _ := buildTestClient(proxy)
 
-		actual := c.GetPending(context.TODO())
+		actual := c.GetPending(context.TODO(), false)
 		tx1 := &bridge.DepositTransaction{
 			To:           "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
 			From:         "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
@@ -132,7 +132,7 @@ func TestGetPending(t *testing.T) {
 
 		assert.Equal(t, expected, actual)
 	})
-	t.Run("when there is no current transaction it will call get pending", func(t *testing.T) {
+	t.Run("when there is no current transaction it will not call get pending", func(t *testing.T) {
 		batchId, _ := hex.DecodeString("01")
 		blockNonce, _ := hex.DecodeString("0564a7")
 		nonce, _ := hex.DecodeString("01")
@@ -158,24 +158,59 @@ func TestGetPending(t *testing.T) {
 		}
 
 		c, _ := buildTestClient(proxy)
-		actual := c.GetPending(context.TODO())
-		expected := &bridge.Batch{
-			Id: bridge.NewBatchId(1),
-			Transactions: []*bridge.DepositTransaction{
-				{
-					To:           "0xcf95254084ab772696643f0e05ac4711ed674ac1",
-					From:         "erd1qj4x6cpfknsnd5zgfr6mtzxzj5gc2envepces2v57lh3v4pg973sqtm427",
-					TokenAddress: "0x574554482d386538333666",
-					Amount:       big.NewInt(1),
-					DepositNonce: bridge.NewNonce(1),
-					BlockNonce:   bridge.NewNonce(353447),
-					Status:       0,
-					Error:        nil,
-				},
-			},
+		actual := c.GetPending(context.TODO(), true)
+
+		assert.Nil(t, actual)
+	})
+	t.Run("when there is no current transaction in current tx batch but there are pending should call", func(t *testing.T) {
+		batchId, _ := hex.DecodeString("01")
+		blockNonce, _ := hex.DecodeString("0564a7")
+		nonce, _ := hex.DecodeString("01")
+		from, _ := hex.DecodeString("04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3")
+		to, _ := hex.DecodeString("cf95254084ab772696643f0e05ac4711ed674ac1")
+		tokenIdentifier, _ := hex.DecodeString("574554482d386538333666")
+		amount, _ := hex.DecodeString("01")
+		responseData := [][]byte{
+			batchId,
+			blockNonce,
+			nonce,
+			from,
+			to,
+			tokenIdentifier,
+			amount,
 		}
 
-		assert.Equal(t, expected, actual)
+		proxy := &testProxy{
+			transactionCost:                   1024,
+			queryResponseCode:                 "ok",
+			queryResponseData:                 [][]byte{{}},
+			afterTransactionQueryResponseData: responseData,
+		}
+		proxy.ExecuteVMQueryCalled = func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			if vmRequest.FuncName == "getCurrentTxBatch" {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+						ReturnCode: "ok",
+					},
+				}, nil
+			}
+			if vmRequest.FuncName == "getNextTransactionBatch" {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: responseData,
+						ReturnCode: "ok",
+					},
+				}, nil
+			}
+
+			return nil, nil
+		}
+
+		c, _ := buildTestClient(proxy)
+		actual := c.GetPending(context.TODO(), true)
+
+		assert.Nil(t, actual)
 		assert.Equal(t, uint64(260_000_000), proxy.lastTransaction.GasLimit)
 	})
 	t.Run("where there is no pending transaction it will return nil", func(t *testing.T) {
@@ -186,7 +221,7 @@ func TestGetPending(t *testing.T) {
 		}
 
 		c, _ := buildTestClient(proxy)
-		actual := c.GetPending(context.TODO())
+		actual := c.GetPending(context.TODO(), false)
 
 		assert.Nil(t, actual)
 	})
@@ -609,6 +644,8 @@ type testProxy struct {
 	lastQueryArgs                     []string
 
 	transactionCost uint64
+
+	ExecuteVMQueryCalled func(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 }
 
 // GetNetworkConfig -
@@ -662,6 +699,10 @@ func (p *testProxy) GetTransactionInfoWithResults(string) (*data.TransactionInfo
 
 // ExecuteVMQuery -
 func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+	if p.ExecuteVMQueryCalled != nil {
+		return p.ExecuteVMQueryCalled(valueRequest)
+	}
+
 	p.lastQueryArgs = valueRequest.Args
 	return &data.VmValuesResponseData{Data: &vm.VMOutputApi{ReturnCode: p.queryResponseCode, ReturnData: p.queryResponseData}}, nil
 }

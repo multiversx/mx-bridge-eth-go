@@ -98,7 +98,7 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 	return client, nil
 }
 
-func (c *Client) GetPending(ctx context.Context) *bridge.Batch {
+func (c *Client) GetPending(ctx context.Context, _ bool) *bridge.Batch {
 	c.log.Info("ETH: Getting pending batch")
 	batch, err := c.bridgeContract.GetNextPendingBatch(&bind.CallOpts{Context: ctx})
 	if err != nil {

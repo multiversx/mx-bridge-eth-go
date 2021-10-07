@@ -101,24 +101,36 @@ func NewClient(args ClientArgs) (*client, error) {
 	return c, nil
 }
 
-// GetPending returns the pending batch
-func (c *client) GetPending(context.Context) *bridge.Batch {
+func (c *client) getBatch(amITheLeader bool) ([][]byte, error) {
 	c.log.Info("Elrond: Getting pending batch")
 	responseData, err := c.getCurrentBatch()
 	if err != nil {
-		c.log.Error("Elrond: Error querying current batch", "error", err.Error())
-		return nil
+		return nil, err
 	}
 
+	shouldReturn := !emptyResponse(responseData) || !amITheLeader
+	if shouldReturn {
+		return responseData, nil
+	}
+
+	// I am the leader here and the current batch is empty
+	responseData, err = c.queryNextTransactionBatch()
+	if err != nil {
+		return nil, err
+	}
 	if emptyResponse(responseData) {
-		_, err = c.getNextPendingBatch()
-		if err != nil {
-			c.log.Error("Elrond: Error retrieving next pending batch", "error", err.Error())
-			return nil
-		}
+		return responseData, nil
 	}
 
-	responseData, err = c.getCurrentBatch()
+	c.log.Debug("Elrond: queried the getNextTransactionBatch and found pending transactions. Will send the fetch transaction.")
+	_, err = c.fetchNextTransactionBatch()
+
+	return make([][]byte, 0), err
+}
+
+// GetPending returns the pending batch
+func (c *client) GetPending(_ context.Context, amITheLeader bool) *bridge.Batch {
+	responseData, err := c.getBatch(amITheLeader)
 	if err != nil {
 		c.log.Error("Elrond: Failed to get the current batch", "error", err.Error())
 		return nil
@@ -530,7 +542,15 @@ func (c *client) getCurrentBatch() ([][]byte, error) {
 	return c.executeQuery(valueRequest)
 }
 
-func (c *client) getNextPendingBatch() (string, error) {
+func (c *client) queryNextTransactionBatch() ([][]byte, error) {
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
+		Func("getNextTransactionBatch").
+		Build()
+
+	return c.executeQuery(valueRequest)
+}
+
+func (c *client) fetchNextTransactionBatch() (string, error) {
 	builder := newBuilder(c.log).
 		Func("getNextTransactionBatch")
 
