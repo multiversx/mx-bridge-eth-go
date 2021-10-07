@@ -34,6 +34,7 @@ type jsonError struct {
 type parsedEthRequest struct {
 	functionId string
 	address    string
+	id         int
 }
 
 // EthereumMockClient represents a mock Ethereum node that opens a http client
@@ -54,15 +55,15 @@ func NewEthereumMockClient() *EthereumMockClient {
 		ethRequest := &EthRequest{}
 		err := json.Unmarshal(bodyBytes, ethRequest)
 		if err != nil {
-			writeResponse(rw, http.StatusInternalServerError, "", nil,
-				fmt.Errorf("EtherumMockClient: error %w, route %s, body: %s", err, req.RequestURI, string(bodyBytes)))
+			writeEthereumResponse(rw, http.StatusInternalServerError, nil,
+				fmt.Errorf("EtherumMockClient: error %w, route %s, body: %s", err, req.RequestURI, string(bodyBytes)), 0)
 			return
 		}
 
 		parsed, err := emc.parseEthRequest(ethRequest)
 		if err != nil {
-			writeResponse(rw, http.StatusInternalServerError, "", nil,
-				fmt.Errorf("EtherumMockClient: error %w, route %s, body: %s", err, req.RequestURI, string(bodyBytes)))
+			writeEthereumResponse(rw, http.StatusInternalServerError, nil,
+				fmt.Errorf("EtherumMockClient: error %w, route %s, body: %s", err, req.RequestURI, string(bodyBytes)), ethRequest.ID)
 			return
 		}
 
@@ -82,51 +83,74 @@ func (emc *EthereumMockClient) parseEthRequest(request *EthRequest) (*parsedEthR
 	if request == nil {
 		return nil, errors.New("parseEthRequest function: nil EthRequest instance")
 	}
-	if len(request.Params) < 1 {
-		return nil, errors.New("parseEthRequest function: empty params list")
-	}
-	params := request.Params[0]
-	mapParams, isMap := params.(map[string]interface{})
-	if !isMap {
-		return nil, errors.New("parseEthRequest function: not a map of params on first item")
+	mapParams, err := emc.getParamsMap(request)
+	if err != nil {
+		return nil, err
 	}
 
 	per := &parsedEthRequest{
 		functionId: mapParams["data"].(string),
 		address:    mapParams["to"].(string),
+		id:         request.ID,
 	}
 
 	return per, nil
 }
 
+func (emc *EthereumMockClient) getParamsMap(request *EthRequest) (map[string]interface{}, error) {
+	for i := 0; i < len(request.Params); i++ {
+		p := request.Params[i]
+		mapParams, isMap := p.(map[string]interface{})
+		if !isMap {
+			continue
+		}
+
+		return mapParams, nil
+	}
+
+	if len(request.Params) < 1 {
+		return nil, errors.New("parseEthRequest function: error parsing params field")
+	}
+
+	//made the method calls like eth_getCode follow the same principle as any other function
+	mapParams := map[string]interface{}{
+		"to":   request.Params[0],
+		"data": request.Method,
+	}
+
+	return mapParams, nil
+}
+
 func (emc *EthereumMockClient) processParsedEthRequest(rw http.ResponseWriter, params *parsedEthRequest) {
 	contract, found := emc.GetContract(params.address)
 	if !found {
-		writeResponse(rw, http.StatusInternalServerError, "", nil,
-			fmt.Errorf("processParsedEthRequest: contact %s not found", params.address))
+		writeEthereumResponse(rw,
+			http.StatusInternalServerError,
+			nil,
+			fmt.Errorf("processParsedEthRequest: contact %s not found", params.address),
+			params.id)
 		return
 	}
 
-	_ = contract
-	//TODO create a valid response
-	//response := &jsonrpcMessage{
-	//    Version: "1",
-	//    ID:      nil,
-	//    Method:  "e",
-	//    Params:  nil,
-	//    Error:   &jsonError{
-	//        Code:    0,
-	//        Message: "ok",
-	//        Data:    nil,
-	//    },
-	//    Result:  nil,
-	//}
-	//
-	//buff, err := json.Marshal(response)
-	//log.LogIfError(err)
-	//rw.Write(buff)
-	//
-	//
+	handler := contract.GetHandler(params.functionId)
+	if handler == nil {
+		writeEthereumResponse(rw,
+			http.StatusInternalServerError,
+			nil,
+			fmt.Errorf("processParsedEthRequest: function %s for contact %s not found", params.functionId, params.address),
+			params.id)
+		return
+	}
 
-	log.Warn("parsed eth request", "params", params)
+	results, err := handler("", "", "")
+	if err != nil {
+		writeEthereumResponse(rw,
+			http.StatusInternalServerError,
+			nil,
+			fmt.Errorf("%w in processParsedEthRequest: function %s for contact %s", err, params.functionId, params.address),
+			params.id)
+		return
+	}
+
+	writeEthereumResponse(rw, http.StatusOK, results, nil, params.id)
 }
