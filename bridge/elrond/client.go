@@ -123,7 +123,7 @@ func (c *client) getBatch(amITheLeader bool) ([][]byte, error) {
 	}
 
 	// I am the leader here and the current batch is empty
-	responseData, err = c.queryNextTransactionBatch()
+	responseData, err = c.queryFetchNextTransactionBatch()
 	if err != nil {
 		return nil, err
 	}
@@ -138,15 +138,15 @@ func (c *client) getBatch(amITheLeader bool) ([][]byte, error) {
 
 	c.timeCache.Sweep()
 	if c.timeCache.Has(string(identifier)) {
-		c.log.Debug("Elrond: queried the getNextTransactionBatch and found pending transactions",
-			"identifier", identifier, "result", "not sending getNextTransactionBatch transaction")
+		c.log.Debug("Elrond: queried the fetchNextTransactionBatch and found pending transactions",
+			"identifier", identifier, "result", "not sending fetchNextTransactionBatch transaction")
 
 		return make([][]byte, 0), err
 	}
 
 	_ = c.timeCache.Add(string(identifier))
-	c.log.Debug("Elrond: queried the getNextTransactionBatch and found pending transactions",
-		"identifier", identifier, "result", "will send getNextTransactionBatch transaction")
+	c.log.Debug("Elrond: queried the fetchNextTransactionBatch and found pending transactions",
+		"identifier", identifier, "result", "will send fetchNextTransactionBatch transaction")
 
 	_, err = c.fetchNextTransactionBatch()
 
@@ -567,9 +567,9 @@ func (c *client) getCurrentBatch() ([][]byte, error) {
 	return c.executeQuery(valueRequest)
 }
 
-func (c *client) queryNextTransactionBatch() ([][]byte, error) {
+func (c *client) queryFetchNextTransactionBatch() ([][]byte, error) {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("getNextTransactionBatch").
+		Func("fetchNextTransactionBatch").
 		Build()
 
 	return c.executeQuery(valueRequest)
@@ -577,7 +577,7 @@ func (c *client) queryNextTransactionBatch() ([][]byte, error) {
 
 func (c *client) fetchNextTransactionBatch() (string, error) {
 	builder := newBuilder(c.log).
-		Func("getNextTransactionBatch")
+		Func("fetchNextTransactionBatch")
 
 	return c.sendTransaction(builder, getNextTxBatchCost)
 }

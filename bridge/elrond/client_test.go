@@ -198,7 +198,7 @@ func TestGetPending(t *testing.T) {
 					},
 				}, nil
 			}
-			if vmRequest.FuncName == "getNextTransactionBatch" {
+			if vmRequest.FuncName == "fetchNextTransactionBatch" {
 				return &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
 						ReturnData: responseData,
