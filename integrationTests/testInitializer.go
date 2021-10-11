@@ -30,6 +30,7 @@ type MockEthElrondNetwork struct {
 	ElrondContract   *contracts.ElrondContract
 	EthereumClient   *mock.EthereumMockClient
 	EthereumContract *contracts.EthereumContract
+	TokensHandler    contracts.TokensHandler
 	cancelFunc       func()
 }
 
@@ -41,9 +42,11 @@ func NewMockEthElrondNetwork(tb testing.TB, numRelayers int) *MockEthElrondNetwo
 		Seeder:         integrationTests.CreateMessengerWithKadDht(""),
 		ElrondClient:   mock.NewElrondMockClient(),
 		EthereumClient: mock.NewEthereumMockClient(),
+		TokensHandler:  mock.NewTokensHolder(),
 	}
 	elrondContractAddress := "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx" //TODO remove this hardcoded value
-	network.ElrondContract = contracts.NewElrondContract(elrondContractAddress)
+	network.ElrondContract, err = contracts.NewElrondContract(elrondContractAddress, network.TokensHandler)
+	require.Nil(tb, err)
 	network.ElrondClient.SetAccount(nil, network.ElrondContract.Contract)
 	network.ElrondContract.WhiteListAddress("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede") //TODO remove this hardcoded value
 
