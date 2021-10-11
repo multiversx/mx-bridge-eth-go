@@ -483,8 +483,11 @@ func (c *client) executeStringQuery(valueRequest *data.VmValueRequest) (string, 
 		return "", err
 	}
 
+	if len(responseData) == 0 {
+		return "", ErrUnexpectedLengthOnResponse
+	}
 	if len(responseData[0]) == 0 {
-		return "", err
+		return "", ErrUnexpectedLengthOnResponse
 	}
 
 	return fmt.Sprintf("%x", responseData[0]), nil

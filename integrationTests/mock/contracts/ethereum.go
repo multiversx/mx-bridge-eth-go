@@ -4,31 +4,32 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
 )
-
-const abiStructJson = `[
-{"inputs":[],"name":"getNextPendingBatch","outputs":[{"components":[{"internalType":"uint256","name":"nonce","type":"uint256"},{"internalType":"uint256","name":"timestamp","type":"uint256"},{"internalType":"uint256","name":"lastUpdatedBlockNumber","type":"uint256"},{"components":[{"internalType":"uint256","name":"nonce","type":"uint256"},{"internalType":"address","name":"tokenAddress","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"address","name":"depositor","type":"address"},{"internalType":"bytes","name":"recipient","type":"bytes"},{"internalType":"enumDepositStatus","name":"status","type":"uint8"}],"internalType":"structDeposit[]","name":"deposits","type":"tuple[]"}],"internalType":"structBatch","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"}],"name":"getRoleAdmin","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"grantRole","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes32","name":"role","type":"bytes32"},{"internalType":"address","name":"account","type":"address"}],"name":"hasRole","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"quorum","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"relayerAddress","type":"address"}],"name":"removeRelayer","outputs":[],"stateMutability":"nonpayable","type":"function"}
-]
-`
 
 // EthereumContract extends the contract implementation with the Elrond contract logic
 type EthereumContract struct {
 	*mock.Contract
-	abiInstance abi.ABI
+	abiInstance      abi.ABI
+	mutState         sync.Mutex
+	nonce            int
+	transferRequests []*transferRequest
 }
 
 // NewEthereumContract defines the mocked Etherum contract functions
 func NewEthereumContract(address string) (*EthereumContract, error) {
 	ec := &EthereumContract{
-		Contract: mock.NewContract(address),
+		Contract:         mock.NewContract(address),
+		transferRequests: make([]*transferRequest, 0),
 	}
 
-	abiInstance, err := abi.JSON(strings.NewReader(abiStructJson))
+	ethereumABIData := eth.BridgeMetaData.ABI
+	abiInstance, err := abi.JSON(strings.NewReader(ethereumABIData))
 	if err != nil {
 		return nil, err
 	}
@@ -46,34 +47,49 @@ func (ec *EthereumContract) createContractFunctions() {
 
 // should return ((uint256,uint256,uint256,(uint256,address,uint256,address,bytes,uint8)[]))
 func (ec *EthereumContract) getNextPendingBatch(_ string, _ string, _ ...string) ([][]byte, error) {
+	ec.mutState.Lock()
+	defer ec.mutState.Unlock()
+
 	b := &eth.Batch{
-		Nonce:                  big.NewInt(1),
-		Timestamp:              big.NewInt(2),
-		LastUpdatedBlockNumber: big.NewInt(3),
-		Deposits: []eth.Deposit{
-			{
-				Nonce:        big.NewInt(4),
-				TokenAddress: common.BytesToAddress([]byte("12345678901234567890")),
-				Amount:       big.NewInt(5),
-				Depositor:    common.BytesToAddress([]byte("23456789012345678901")),
-				Recipient:    []byte("recipient1"),
-				Status:       1,
-			},
-			{
-				Nonce:        big.NewInt(6),
-				TokenAddress: common.BytesToAddress([]byte("34567890123456789012")),
-				Amount:       big.NewInt(7),
-				Depositor:    common.BytesToAddress([]byte("45678901234567890123")),
-				Recipient:    []byte("recipient2"),
-				Status:       2,
-			},
-		},
+		Nonce:                  big.NewInt(int64(ec.nonce)),
+		Timestamp:              big.NewInt(1),
+		LastUpdatedBlockNumber: big.NewInt(2),
+		Deposits:               make([]eth.Deposit, 0),
 	}
+	ec.nonce++
+
+	for _, tr := range ec.transferRequests {
+		b.Deposits = append(b.Deposits, tr.toEthDepositInfo())
+	}
+
+	log.Debug("EthereumContract.getNextPendingBatch prepared deposit info", "num deposits", len(ec.transferRequests))
+	ec.transferRequests = make([]*transferRequest, 0)
 
 	method := ec.abiInstance.Methods["getNextPendingBatch"]
 	buff, err := method.Outputs.Pack(b)
 
 	return [][]byte{buff}, err
+}
+
+// AddTransferRequest will store the transfer request up until the next getNextPendingBatch function call
+func (ec *EthereumContract) AddTransferRequest(tokenAddress []byte, depositor []byte, to core.AddressHandler, amount *big.Int) {
+	ec.mutState.Lock()
+	defer ec.mutState.Unlock()
+
+	tr := &transferRequest{
+		depositor:    depositor,
+		to:           to,
+		tokenAddress: tokenAddress,
+		amount:       amount,
+		nonce:        ec.nonce,
+	}
+	ec.nonce++
+
+	ec.transferRequests = append(ec.transferRequests, tr)
+
+	log.Debug("EthereumContract.AddTransferRequest",
+		"token address", tokenAddress, "depositor", depositor, "to", to.AddressAsBech32String(),
+		"amount", amount.String())
 }
 
 func (ec *EthereumContract) getCode(caller string, value string, arguments ...string) ([][]byte, error) {
