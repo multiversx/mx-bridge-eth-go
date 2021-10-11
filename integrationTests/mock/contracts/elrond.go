@@ -47,13 +47,13 @@ func (ec *ElrondContract) createContractFunctions() {
 }
 
 func (ec *ElrondContract) getCurrentTxBatch(caller string, value string, arguments ...string) ([][]byte, error) {
-	log.Debug("getCurrentTxBatch", "caller", caller, "value", value, "arguments", fmt.Sprintf("%v", arguments))
+	log.Debug("getCurrentTxBatch", "caller", caller, "value", value, "arguments", arguments)
 
 	return make([][]byte, 0), nil
 }
 
 func (ec *ElrondContract) userRole(caller string, value string, arguments ...string) ([][]byte, error) {
-	log.Debug("userRole", "caller", caller, "value", value, "arguments", fmt.Sprintf("%v", arguments))
+	log.Debug("userRole", "caller", caller, "value", value, "arguments", arguments)
 
 	ec.mutWhitelisted.RLock()
 	_, isWhiteListed := ec.whitelistedAddresses[caller]
@@ -68,10 +68,10 @@ func (ec *ElrondContract) userRole(caller string, value string, arguments ...str
 }
 
 func (ec *ElrondContract) getTokenIdForErc20Address(caller string, value string, arguments ...string) ([][]byte, error) {
-	log.Debug("getTokenIdForErc20Address", "caller", caller, "value", value, "arguments", fmt.Sprintf("%v", arguments))
+	log.Debug("getTokenIdForErc20Address", "caller", caller, "value", value, "arguments", arguments)
 
 	if len(arguments) != 1 {
-		return nil, ErrInsufficientArguments
+		return nil, fmt.Errorf("%w - expected 1 argument", ErrInvalidNumberOfArguments)
 	}
 
 	address, err := hex.DecodeString(arguments[0])

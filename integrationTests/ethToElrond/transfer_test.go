@@ -33,5 +33,6 @@ func TestEthToElrond_Succeed(t *testing.T) {
 
 	//TODO finish test
 
-	time.Sleep(time.Second * 20)
+	//TODO make the relayers query faster and reduce this time duration
+	time.Sleep(time.Second * 120)
 }
