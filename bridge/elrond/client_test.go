@@ -12,10 +12,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 	"github.com/ElrondNetwork/elrond-go-core/data/vm"
-	"github.com/ElrondNetwork/elrond-go-core/hashing/sha256"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/storage/timecache"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
@@ -107,7 +104,7 @@ func TestGetPending(t *testing.T) {
 		}
 		c, _ := buildTestClient(proxy)
 
-		actual := c.GetPending(context.TODO(), false)
+		actual := c.GetPending(context.TODO())
 		tx1 := &bridge.DepositTransaction{
 			To:           "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
 			From:         "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
@@ -161,67 +158,9 @@ func TestGetPending(t *testing.T) {
 		}
 
 		c, _ := buildTestClient(proxy)
-		actual := c.GetPending(context.TODO(), true)
+		actual := c.GetPending(context.TODO())
 
 		assert.Nil(t, actual)
-	})
-	t.Run("when there is no current transaction in current tx batch but there are pending should call", func(t *testing.T) {
-		batchId, _ := hex.DecodeString("01")
-		blockNonce, _ := hex.DecodeString("0564a7")
-		nonce, _ := hex.DecodeString("01")
-		from, _ := hex.DecodeString("04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3")
-		to, _ := hex.DecodeString("cf95254084ab772696643f0e05ac4711ed674ac1")
-		tokenIdentifier, _ := hex.DecodeString("574554482d386538333666")
-		amount, _ := hex.DecodeString("01")
-		responseData := [][]byte{
-			batchId,
-			blockNonce,
-			nonce,
-			from,
-			to,
-			tokenIdentifier,
-			amount,
-		}
-
-		proxy := &testProxy{
-			transactionCost:                   1024,
-			queryResponseCode:                 "ok",
-			queryResponseData:                 [][]byte{{}},
-			afterTransactionQueryResponseData: responseData,
-		}
-		proxy.ExecuteVMQueryCalled = func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-			if vmRequest.FuncName == "getCurrentTxBatch" {
-				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{
-						ReturnData: make([][]byte, 0),
-						ReturnCode: "ok",
-					},
-				}, nil
-			}
-			if vmRequest.FuncName == "fetchNextTransactionBatch" {
-				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{
-						ReturnData: responseData,
-						ReturnCode: "ok",
-					},
-				}, nil
-			}
-
-			return nil, nil
-		}
-
-		c, _ := buildTestClient(proxy)
-		actual := c.GetPending(context.TODO(), true)
-
-		assert.Nil(t, actual)
-		assert.Equal(t, uint64(260_000_000), proxy.lastTransaction.GasLimit)
-
-		proxy.lastTransaction = nil
-		actual = c.GetPending(context.TODO(), true)
-
-		//a transaction will not be issued again
-		assert.Nil(t, actual)
-		assert.Nil(t, proxy.lastTransaction)
 	})
 	t.Run("where there is no pending transaction it will return nil", func(t *testing.T) {
 		proxy := &testProxy{
@@ -231,7 +170,7 @@ func TestGetPending(t *testing.T) {
 		}
 
 		c, _ := buildTestClient(proxy)
-		actual := c.GetPending(context.TODO(), false)
+		actual := c.GetPending(context.TODO())
 
 		assert.Nil(t, actual)
 	})
@@ -636,9 +575,6 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 		bridgeAddress:  "",
 		privateKey:     privateKey,
 		address:        address,
-		timeCache:      timecache.NewTimeCache(time.Minute),
-		hasher:         sha256.NewSha256(),
-		marshalizer:    &marshal.JsonMarshalizer{},
 	}
 
 	return c, nil

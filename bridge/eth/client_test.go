@@ -84,7 +84,7 @@ func TestGetPending(t *testing.T) {
 				log:            logger.GetOrCreate("testEthClient"),
 			}
 
-			got := client.GetPending(context.TODO(), false)
+			got := client.GetPending(context.TODO())
 
 			assert.Equal(t, tt.expectedBatch, got)
 		})

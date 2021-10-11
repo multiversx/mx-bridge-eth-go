@@ -588,7 +588,7 @@ func (b *bridgeStub) lock() {
 	b.executeMutex.Lock()
 }
 
-func (b *bridgeStub) GetPending(context.Context, bool) *bridge.Batch {
+func (b *bridgeStub) GetPending(_ context.Context) *bridge.Batch {
 	defer func() { b.pendingBatchCallIndex++ }()
 
 	if b.pendingBatchCallIndex >= len(b.pendingBatches) {
@@ -616,19 +616,19 @@ func (b *bridgeStub) WasProposedTransfer(_ context.Context, batch *bridge.Batch)
 	return b.wasProposedTransfer
 }
 
-func (b *bridgeStub) GetActionIdForProposeTransfer(context.Context, *bridge.Batch) bridge.ActionId {
+func (b *bridgeStub) GetActionIdForProposeTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
 	return b.proposeTransferActionId
 }
 
-func (b *bridgeStub) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
+func (b *bridgeStub) WasProposedSetStatus(_ context.Context, _ *bridge.Batch) bool {
 	return true
 }
 
-func (b *bridgeStub) GetActionIdForSetStatusOnPendingTransfer(context.Context, *bridge.Batch) bridge.ActionId {
+func (b *bridgeStub) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
 	return b.proposeSetStatusActionId
 }
 
-func (b *bridgeStub) WasExecuted(context.Context, bridge.ActionId, bridge.BatchId) bool {
+func (b *bridgeStub) WasExecuted(_ context.Context, _ bridge.ActionId, _ bridge.BatchId) bool {
 	return b.wasExecuted
 }
 
@@ -646,6 +646,6 @@ func (b *bridgeStub) Execute(_ context.Context, actionId bridge.ActionId, _ *bri
 	return "execution hash", nil
 }
 
-func (b *bridgeStub) SignersCount(context.Context, bridge.ActionId) uint {
+func (b *bridgeStub) SignersCount(_ context.Context, _ bridge.ActionId) uint {
 	return b.signersCount
 }

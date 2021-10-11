@@ -10,17 +10,12 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
-	"github.com/ElrondNetwork/elrond-go-core/hashing"
-	"github.com/ElrondNetwork/elrond-go-core/hashing/sha256"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/storage/timecache"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
@@ -33,7 +28,6 @@ const (
 	proposeStatusCost     = 60_000_000
 	performActionCost     = 70_000_000
 	performActionTxCost   = 30_000_000
-	getNextTxBatchCost    = 260_000_000
 )
 
 const (
@@ -59,9 +53,6 @@ type client struct {
 	address        core.AddressHandler
 	nonceTxHandler NonceTransactionsHandler
 	log            logger.Logger
-	timeCache      *timecache.TimeCache
-	marshalizer    marshal.Marshalizer
-	hasher         hashing.Hasher
 }
 
 // ClientArgs represents the argument for the NewClient constructor function
@@ -100,9 +91,6 @@ func NewClient(args ClientArgs) (*client, error) {
 		address:        address,
 		log:            logger.GetOrCreate("ElrondClient"),
 		nonceTxHandler: nonceTxsHandler,
-		timeCache:      timecache.NewTimeCache(time.Minute),
-		hasher:         sha256.NewSha256(),
-		marshalizer:    &marshal.JsonMarshalizer{},
 	}
 
 	c.log.Info("Elrond: NewClient", "address", address.AddressAsBech32String())
@@ -110,52 +98,10 @@ func NewClient(args ClientArgs) (*client, error) {
 	return c, nil
 }
 
-func (c *client) getBatch(amITheLeader bool) ([][]byte, error) {
+// GetPending returns the pending batch
+func (c *client) GetPending(_ context.Context) *bridge.Batch {
 	c.log.Info("Elrond: Getting pending batch")
 	responseData, err := c.getCurrentBatch()
-	if err != nil {
-		return nil, err
-	}
-
-	shouldReturn := !emptyResponse(responseData) || !amITheLeader
-	if shouldReturn {
-		return responseData, nil
-	}
-
-	// I am the leader here and the current batch is empty
-	responseData, err = c.queryFetchNextTransactionBatch()
-	if err != nil {
-		return nil, err
-	}
-	if emptyResponse(responseData) {
-		return responseData, nil
-	}
-
-	identifier, err := elrondCore.CalculateHash(c.marshalizer, c.hasher, responseData)
-	if err != nil {
-		return make([][]byte, 0), fmt.Errorf("%w in client.getBatch", err)
-	}
-
-	c.timeCache.Sweep()
-	if c.timeCache.Has(string(identifier)) {
-		c.log.Debug("Elrond: queried the fetchNextTransactionBatch and found pending transactions",
-			"identifier", identifier, "result", "not sending fetchNextTransactionBatch transaction")
-
-		return make([][]byte, 0), err
-	}
-
-	_ = c.timeCache.Add(string(identifier))
-	c.log.Debug("Elrond: queried the fetchNextTransactionBatch and found pending transactions",
-		"identifier", identifier, "result", "will send fetchNextTransactionBatch transaction")
-
-	_, err = c.fetchNextTransactionBatch()
-
-	return make([][]byte, 0), err
-}
-
-// GetPending returns the pending batch
-func (c *client) GetPending(_ context.Context, amITheLeader bool) *bridge.Batch {
-	responseData, err := c.getBatch(amITheLeader)
 	if err != nil {
 		c.log.Error("Elrond: Failed to get the current batch", "error", err.Error())
 		return nil
@@ -565,21 +511,6 @@ func (c *client) getCurrentBatch() ([][]byte, error) {
 		Build()
 
 	return c.executeQuery(valueRequest)
-}
-
-func (c *client) queryFetchNextTransactionBatch() ([][]byte, error) {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("fetchNextTransactionBatch").
-		Build()
-
-	return c.executeQuery(valueRequest)
-}
-
-func (c *client) fetchNextTransactionBatch() (string, error) {
-	builder := newBuilder(c.log).
-		Func("fetchNextTransactionBatch")
-
-	return c.sendTransaction(builder, getNextTxBatchCost)
 }
 
 // Close will close any started go routines. It returns nil.
