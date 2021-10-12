@@ -9,6 +9,7 @@ import (
 type ElrondProxyStub struct {
 	GetNetworkConfigCalled              func() (*data.NetworkConfig, error)
 	SendTransactionCalled               func(transaction *data.Transaction) (string, error)
+	SendTransactionsCalled              func(txs []*data.Transaction) ([]string, error)
 	GetTransactionInfoWithResultsCalled func(hash string) (*data.TransactionInfo, error)
 	ExecuteVMQueryCalled                func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 	GetAccountCalled                    func(address core.AddressHandler) (*data.Account, error)
@@ -30,6 +31,15 @@ func (eps *ElrondProxyStub) SendTransaction(transaction *data.Transaction) (stri
 	}
 
 	return "", nil
+}
+
+// SendTransactions -
+func (eps *ElrondProxyStub) SendTransactions(txs []*data.Transaction) ([]string, error) {
+	if eps.SendTransactionCalled != nil {
+		return eps.SendTransactionsCalled(txs)
+	}
+
+	return make([]string, 0), nil
 }
 
 // GetTransactionInfoWithResults -

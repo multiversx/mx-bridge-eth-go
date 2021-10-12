@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
@@ -29,7 +28,6 @@ const (
 	proposeStatusCost     = 60_000_000
 	performActionCost     = 70_000_000
 	performActionTxCost   = 30_000_000
-	getNextTxBatchCost    = 260_000_000
 )
 
 const (
@@ -49,14 +47,12 @@ func (e QueryResponseErr) Error() string {
 
 // client represents the Elrond Client implementation
 type client struct {
-	proxy               bridge.ElrondProxy
-	bridgeAddress       string
-	privateKey          []byte
-	address             core.AddressHandler
-	nonce               uint64
-	log                 logger.Logger
-	cancelFunc          func()
-	nonceUpdateInterval time.Duration
+	proxy          bridge.ElrondProxy
+	bridgeAddress  string
+	privateKey     []byte
+	address        core.AddressHandler
+	nonceTxHandler NonceTransactionsHandler
+	log            logger.Logger
 }
 
 // ClientArgs represents the argument for the NewClient constructor function
@@ -67,13 +63,8 @@ type ClientArgs struct {
 
 // NewClient returns a new Elrond Client instance
 func NewClient(args ClientArgs) (*client, error) {
-	log := logger.GetOrCreate("ElrondClient")
-
 	if check.IfNil(args.Proxy) {
 		return nil, ErrNilProxy
-	}
-	if args.Config.NonceUpdateInSeconds == 0 {
-		return nil, ErrInvalidNonceUpdateInterval
 	}
 	wallet := interactors.NewWallet()
 
@@ -87,66 +78,30 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	log.Info("Elrond: NewClient", "address", address.AddressAsBech32String())
-
-	c := &client{
-		proxy:               args.Proxy,
-		bridgeAddress:       args.Config.BridgeAddress,
-		privateKey:          privateKey,
-		address:             address,
-		log:                 log,
-		nonceUpdateInterval: time.Second * time.Duration(args.Config.NonceUpdateInSeconds),
+	// TODO inject this
+	nonceTxsHandler, err := interactors.NewNonceTransactionHandler(args.Proxy, time.Second*time.Duration(args.Config.IntervalToResendTxsInSeconds))
+	if err != nil {
+		return nil, err
 	}
 
-	var ctx context.Context
-	ctx, c.cancelFunc = context.WithCancel(context.Background())
-	c.saveCurrentNonce()
-	go c.poll(ctx)
+	c := &client{
+		proxy:          args.Proxy,
+		bridgeAddress:  args.Config.BridgeAddress,
+		privateKey:     privateKey,
+		address:        address,
+		log:            logger.GetOrCreate("ElrondClient"),
+		nonceTxHandler: nonceTxsHandler,
+	}
+
+	c.log.Info("Elrond: NewClient", "address", address.AddressAsBech32String())
 
 	return c, nil
 }
 
-func (c *client) poll(ctx context.Context) {
-	for {
-		select {
-		case <-time.After(c.nonceUpdateInterval):
-			c.saveCurrentNonce()
-		case <-ctx.Done():
-			c.log.Debug("Client.poll function is closing...")
-			return
-		}
-	}
-}
-
-func (c *client) saveCurrentNonce() {
-	account, err := c.proxy.GetAccount(c.address)
-	if err != nil {
-		c.log.Debug("Elrond: error polling account", "address", c.address.AddressAsBech32String(), "error", err.Error())
-		return
-	}
-
-	c.log.Debug("Elrond: polled account", "address", c.address.AddressAsBech32String(), "nonce", account.Nonce)
-	atomic.StoreUint64(&c.nonce, account.Nonce)
-}
-
 // GetPending returns the pending batch
-func (c *client) GetPending(context.Context) *bridge.Batch {
+func (c *client) GetPending(_ context.Context) *bridge.Batch {
 	c.log.Info("Elrond: Getting pending batch")
 	responseData, err := c.getCurrentBatch()
-	if err != nil {
-		c.log.Error("Elrond: Error querying current batch", "error", err.Error())
-		return nil
-	}
-
-	if emptyResponse(responseData) {
-		_, err = c.getNextPendingBatch()
-		if err != nil {
-			c.log.Error("Elrond: Error retrieving next pending batch", "error", err.Error())
-			return nil
-		}
-	}
-
-	responseData, err = c.getCurrentBatch()
 	if err != nil {
 		c.log.Error("Elrond: Failed to get the current batch", "error", err.Error())
 		return nil
@@ -499,7 +454,7 @@ func (c *client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 		return nil, err
 	}
 
-	nonce := atomic.LoadUint64(&c.nonce)
+	nonce, err := c.nonceTxHandler.GetNonce(c.address)
 	if err != nil {
 		return nil, err
 	}
@@ -554,12 +509,7 @@ func (c *client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 		return "", err
 	}
 
-	hash, err := c.proxy.SendTransaction(tx)
-	if err == nil {
-		atomic.AddUint64(&c.nonce, 1)
-	}
-
-	return hash, err
+	return c.nonceTxHandler.SendTransaction(tx)
 }
 
 func (c *client) getCurrentBatch() ([][]byte, error) {
@@ -570,18 +520,9 @@ func (c *client) getCurrentBatch() ([][]byte, error) {
 	return c.executeQuery(valueRequest)
 }
 
-func (c *client) getNextPendingBatch() (string, error) {
-	builder := newBuilder(c.log).
-		Func("getNextTransactionBatch")
-
-	return c.sendTransaction(builder, getNextTxBatchCost)
-}
-
 // Close will close any started go routines. It returns nil.
 func (c *client) Close() error {
-	c.cancelFunc()
-
-	return nil
+	return c.nonceTxHandler.Close()
 }
 
 func emptyResponse(response [][]byte) bool {
