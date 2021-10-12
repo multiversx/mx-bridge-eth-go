@@ -131,12 +131,12 @@ func (c *Client) GetPending(ctx context.Context) *bridge.Batch {
 
 func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	// Nothing needs to get proposed, simply gather signatures
-	c.log.Info("ETH: Broadcast status signatures for for batchId", batch.Id)
+	c.log.Info("ETH: Broadcast status signatures for batchId", batch.Id)
 }
 
 func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	// Nothing needs to get proposed, simply gather signatures
-	c.log.Info("ETH: Broadcast transfer signatures for for batchId", batch.Id)
+	c.log.Info("ETH: Broadcast transfer signatures for batchId", batch.Id)
 
 	return "", nil
 }
