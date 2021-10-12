@@ -7,7 +7,7 @@ require (
 	github.com/ElrondNetwork/elrond-go-core v1.1.0
 	github.com/ElrondNetwork/elrond-go-crypto v1.0.1
 	github.com/ElrondNetwork/elrond-go-logger v1.0.5
-	github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.4-0.20211006105649-57d1a38fa95a
+	github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.4
 	github.com/ethereum/go-ethereum v1.10.8
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.22.5

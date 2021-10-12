@@ -28,7 +28,6 @@ const (
 	proposeStatusCost     = 60_000_000
 	performActionCost     = 70_000_000
 	performActionTxCost   = 30_000_000
-	getNextTxBatchCost    = 260_000_000
 )
 
 const (
@@ -64,8 +63,6 @@ type ClientArgs struct {
 
 // NewClient returns a new Elrond Client instance
 func NewClient(args ClientArgs) (*client, error) {
-	log := logger.GetOrCreate("ElrondClient")
-
 	if check.IfNil(args.Proxy) {
 		return nil, ErrNilProxy
 	}
@@ -87,38 +84,24 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	log.Info("Elrond: NewClient", "address", address.AddressAsBech32String())
-
 	c := &client{
 		proxy:          args.Proxy,
 		bridgeAddress:  args.Config.BridgeAddress,
 		privateKey:     privateKey,
 		address:        address,
-		log:            log,
+		log:            logger.GetOrCreate("ElrondClient"),
 		nonceTxHandler: nonceTxsHandler,
 	}
+
+	c.log.Info("Elrond: NewClient", "address", address.AddressAsBech32String())
 
 	return c, nil
 }
 
 // GetPending returns the pending batch
-func (c *client) GetPending(context.Context) *bridge.Batch {
+func (c *client) GetPending(_ context.Context) *bridge.Batch {
 	c.log.Info("Elrond: Getting pending batch")
 	responseData, err := c.getCurrentBatch()
-	if err != nil {
-		c.log.Error("Elrond: Error querying current batch", "error", err.Error())
-		return nil
-	}
-
-	if emptyResponse(responseData) {
-		_, err = c.getNextPendingBatch()
-		if err != nil {
-			c.log.Error("Elrond: Error retrieving next pending batch", "error", err.Error())
-			return nil
-		}
-	}
-
-	responseData, err = c.getCurrentBatch()
 	if err != nil {
 		c.log.Error("Elrond: Failed to get the current batch", "error", err.Error())
 		return nil
@@ -528,13 +511,6 @@ func (c *client) getCurrentBatch() ([][]byte, error) {
 		Build()
 
 	return c.executeQuery(valueRequest)
-}
-
-func (c *client) getNextPendingBatch() (string, error) {
-	builder := newBuilder(c.log).
-		Func("getNextTransactionBatch")
-
-	return c.sendTransaction(builder, getNextTxBatchCost)
 }
 
 // Close will close any started go routines. It returns nil.

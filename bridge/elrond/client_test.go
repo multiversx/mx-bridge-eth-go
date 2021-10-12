@@ -132,7 +132,7 @@ func TestGetPending(t *testing.T) {
 
 		assert.Equal(t, expected, actual)
 	})
-	t.Run("when there is no current transaction it will call get pending", func(t *testing.T) {
+	t.Run("when there is no current transaction it will not call get pending", func(t *testing.T) {
 		batchId, _ := hex.DecodeString("01")
 		blockNonce, _ := hex.DecodeString("0564a7")
 		nonce, _ := hex.DecodeString("01")
@@ -159,24 +159,8 @@ func TestGetPending(t *testing.T) {
 
 		c, _ := buildTestClient(proxy)
 		actual := c.GetPending(context.TODO())
-		expected := &bridge.Batch{
-			Id: bridge.NewBatchId(1),
-			Transactions: []*bridge.DepositTransaction{
-				{
-					To:           "0xcf95254084ab772696643f0e05ac4711ed674ac1",
-					From:         "erd1qj4x6cpfknsnd5zgfr6mtzxzj5gc2envepces2v57lh3v4pg973sqtm427",
-					TokenAddress: "0x574554482d386538333666",
-					Amount:       big.NewInt(1),
-					DepositNonce: bridge.NewNonce(1),
-					BlockNonce:   bridge.NewNonce(353447),
-					Status:       0,
-					Error:        nil,
-				},
-			},
-		}
 
-		assert.Equal(t, expected, actual)
-		assert.Equal(t, uint64(260_000_000), proxy.lastTransaction.GasLimit)
+		assert.Nil(t, actual)
 	})
 	t.Run("where there is no pending transaction it will return nil", func(t *testing.T) {
 		proxy := &testProxy{
@@ -609,6 +593,8 @@ type testProxy struct {
 	lastQueryArgs                     []string
 
 	transactionCost uint64
+
+	ExecuteVMQueryCalled func(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 }
 
 // GetNetworkConfig -
@@ -662,6 +648,10 @@ func (p *testProxy) GetTransactionInfoWithResults(string) (*data.TransactionInfo
 
 // ExecuteVMQuery -
 func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+	if p.ExecuteVMQueryCalled != nil {
+		return p.ExecuteVMQueryCalled(valueRequest)
+	}
+
 	p.lastQueryArgs = valueRequest.Args
 	return &data.VmValuesResponseData{Data: &vm.VMOutputApi{ReturnCode: p.queryResponseCode, ReturnData: p.queryResponseData}}, nil
 }
