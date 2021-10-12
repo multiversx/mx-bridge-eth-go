@@ -16,6 +16,7 @@ const vmValuesHexEndpointName = "/vm-values/hex"
 const vmValuesStringEndpointName = "/vm-values/string"
 const vmValuesIntEndpointName = "/vm-values/int"
 const vmValuesQueryEndpointName = "/vm-values/query"
+const sendMultipleTransactionsEndpointName = "/transaction/send-multiple"
 const sendTransactionEndpointName = "/transaction/send"
 const networkConfigEndpointName = "/network/config"
 
@@ -45,6 +46,11 @@ func NewElrondMockClient() *ElrondMockClient {
 		}
 		if strings.Contains(req.RequestURI, vmValuesEndpointName) {
 			emc.vmProcessor.processVmValues(rw, req)
+			return
+		}
+		if strings.Contains(req.RequestURI, sendMultipleTransactionsEndpointName) {
+			//sendMultipleTransactionsEndpointName has to be processed BEFORE sendTransactionEndpointName
+			//TODO: emc.transactionHandlerMock.processSendMultipleTransactions(rw, req)
 			return
 		}
 		if strings.Contains(req.RequestURI, sendTransactionEndpointName) {
