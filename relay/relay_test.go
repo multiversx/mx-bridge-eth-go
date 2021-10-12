@@ -33,17 +33,17 @@ func TestNewRelay(t *testing.T) {
 
 	cfg := &Config{
 		Eth: bridge.Config{
-			NetworkAddress:       "http://127.0.0.1:8545",
-			BridgeAddress:        "5DdDe022a65F8063eE9adaC54F359CBF46166068",
-			PrivateKey:           "9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1",
-			NonceUpdateInSeconds: 0,
-			GasLimit:             0,
+			NetworkAddress:               "http://127.0.0.1:8545",
+			BridgeAddress:                "5DdDe022a65F8063eE9adaC54F359CBF46166068",
+			PrivateKey:                   "9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1",
+			IntervalToResendTxsInSeconds: 0,
+			GasLimit:                     0,
 		},
 		Elrond: bridge.Config{
-			NonceUpdateInSeconds: 60,
-			PrivateKey:           "testdata/grace.pem",
-			NetworkAddress:       "http://127.0.0.1:8079",
-			BridgeAddress:        "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+			IntervalToResendTxsInSeconds: 60,
+			PrivateKey:                   "testdata/grace.pem",
+			NetworkAddress:               "http://127.0.0.1:8079",
+			BridgeAddress:                "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 		},
 		P2P: ConfigP2P{
 			Port:            "0",

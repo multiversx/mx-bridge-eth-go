@@ -70,10 +70,10 @@ func NewMockEthElrondNetwork(tb testing.TB, numRelayers int) *MockEthElrondNetwo
 				GasLimit:       500000,
 			},
 			Elrond: bridge.Config{
-				NetworkAddress:       network.ElrondClient.URL(),
-				BridgeAddress:        elrondContractAdress,
-				PrivateKey:           "../testdata/grace.pem", //TODO replace here with a crypto.PrivateKey
-				NonceUpdateInSeconds: 60,
+				NetworkAddress:               network.ElrondClient.URL(),
+				BridgeAddress:                elrondContractAdress,
+				PrivateKey:                   "../testdata/grace.pem", //TODO replace here with a crypto.PrivateKey
+				IntervalToResendTxsInSeconds: 5,
 			},
 			P2P: relay.ConfigP2P{
 				Port:            "0",

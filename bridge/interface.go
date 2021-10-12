@@ -53,6 +53,7 @@ type Bridge interface {
 type ElrondProxy interface {
 	GetNetworkConfig() (*data.NetworkConfig, error)
 	SendTransaction(*data.Transaction) (string, error)
+	SendTransactions(txs []*data.Transaction) ([]string, error)
 	GetTransactionInfoWithResults(hash string) (*data.TransactionInfo, error)
 	ExecuteVMQuery(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 	GetAccount(address core.AddressHandler) (*data.Account, error)

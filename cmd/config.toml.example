@@ -8,7 +8,7 @@ GasLimit = 500000
 NetworkAddress = <the network address, Eg: https://devnet-gateway.elrond.com>
 BridgeAddress = <the elrond address for the bridge contract>
 PrivateKey = <the path to the pem file containing the relayer elrond wallet>
-NonceUpdateInSeconds = <the time in seconds between nonce reads. Eg: 60>
+IntervalToResendTxsInSeconds = <the time in seconds between nonce reads. Eg: 60>
 
 [P2P]
 Port = "10000"

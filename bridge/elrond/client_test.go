@@ -3,8 +3,8 @@ package elrond
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"math/big"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -33,9 +33,9 @@ func (e TransactionError) Error() string {
 func createMockArguments() ClientArgs {
 	return ClientArgs{
 		Config: bridge.Config{
-			BridgeAddress:        "bridge address",
-			PrivateKey:           "grace.pem",
-			NonceUpdateInSeconds: 1,
+			BridgeAddress:                "bridge address",
+			PrivateKey:                   "grace.pem",
+			IntervalToResendTxsInSeconds: 1,
 		},
 		Proxy: &mock.ElrondProxyStub{},
 	}
@@ -44,10 +44,10 @@ func createMockArguments() ClientArgs {
 func TestNewClient(t *testing.T) {
 	t.Run("wrong NonceUpdateInSeconds value", func(t *testing.T) {
 		args := createMockArguments()
-		args.Config.NonceUpdateInSeconds = 0
+		args.Config.IntervalToResendTxsInSeconds = 0
 		c, err := NewClient(args)
 		require.Nil(t, c)
-		require.Equal(t, ErrInvalidNonceUpdateInterval, err)
+		require.True(t, errors.Is(err, interactors.ErrInvalidValue))
 	})
 	t.Run("nil proxy", func(t *testing.T) {
 		args := createMockArguments()
@@ -62,38 +62,6 @@ func TestNewClient(t *testing.T) {
 		require.Nil(t, err)
 		require.NotNil(t, c)
 	})
-}
-
-func TestClient_PollsNonce(t *testing.T) {
-	t.Parallel()
-
-	args := createMockArguments()
-	args.Config.NonceUpdateInSeconds = 1
-	numCalled := uint64(0)
-	args.Proxy = &mock.ElrondProxyStub{
-		GetAccountCalled: func(address core.AddressHandler) (*data.Account, error) {
-			atomic.AddUint64(&numCalled, 1)
-
-			return &data.Account{
-				Nonce: atomic.LoadUint64(&numCalled),
-			}, nil
-		},
-	}
-	c, _ := NewClient(args)
-	require.NotNil(t, c)
-
-	// sleep for 3.5 seconds (do not use a "round number" of seconds as it will make the
-	// test flaky)
-	time.Sleep(time.Second*3 + time.Millisecond*500)
-
-	err := c.Close()
-	require.Nil(t, err)
-
-	// the go routine should have stopped, preventing calls to the proxy
-	time.Sleep(time.Second*3 + time.Millisecond*500)
-
-	assert.Equal(t, uint64(4), atomic.LoadUint64(&numCalled))
-	assert.Equal(t, uint64(4), atomic.LoadUint64(&c.nonce))
 }
 
 func TestGetPending(t *testing.T) {
@@ -164,7 +132,7 @@ func TestGetPending(t *testing.T) {
 
 		assert.Equal(t, expected, actual)
 	})
-	t.Run("when there is no current transaction it will call get pending", func(t *testing.T) {
+	t.Run("when there is no current transaction it will not call get pending", func(t *testing.T) {
 		batchId, _ := hex.DecodeString("01")
 		blockNonce, _ := hex.DecodeString("0564a7")
 		nonce, _ := hex.DecodeString("01")
@@ -191,24 +159,8 @@ func TestGetPending(t *testing.T) {
 
 		c, _ := buildTestClient(proxy)
 		actual := c.GetPending(context.TODO())
-		expected := &bridge.Batch{
-			Id: bridge.NewBatchId(1),
-			Transactions: []*bridge.DepositTransaction{
-				{
-					To:           "0xcf95254084ab772696643f0e05ac4711ed674ac1",
-					From:         "erd1qj4x6cpfknsnd5zgfr6mtzxzj5gc2envepces2v57lh3v4pg973sqtm427",
-					TokenAddress: "0x574554482d386538333666",
-					Amount:       big.NewInt(1),
-					DepositNonce: bridge.NewNonce(1),
-					BlockNonce:   bridge.NewNonce(353447),
-					Status:       0,
-					Error:        nil,
-				},
-			},
-		}
 
-		assert.Equal(t, expected, actual)
-		assert.Equal(t, uint64(260_000_000), proxy.lastTransaction.GasLimit)
+		assert.Nil(t, actual)
 	})
 	t.Run("where there is no pending transaction it will return nil", func(t *testing.T) {
 		proxy := &testProxy{
@@ -330,6 +282,9 @@ func TestExecute(t *testing.T) {
 
 	assert.Equal(t, expectedTxHash, hash)
 	assert.Equal(t, uint64(70_000_000+len(batch.Transactions)*30_000_000), proxy.lastTransaction.GasLimit)
+	nextNonce, err := c.nonceTxHandler.GetNonce(c.address)
+	require.Nil(t, err)
+	assert.Equal(t, uint64(43), nextNonce)
 }
 
 func TestWasProposedTransfer(t *testing.T) {
@@ -610,12 +565,16 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 		return nil, err
 	}
 
+	nonceTxHandler, _ := interactors.NewNonceTransactionHandler(proxy, time.Minute)
+
+	proxy.nonce = 42
 	c := &client{
-		log:           logger.GetOrCreate("testHelpers"),
-		proxy:         proxy,
-		bridgeAddress: "",
-		privateKey:    privateKey,
-		address:       address,
+		log:            logger.GetOrCreate("testHelpers"),
+		proxy:          proxy,
+		nonceTxHandler: nonceTxHandler,
+		bridgeAddress:  "",
+		privateKey:     privateKey,
+		address:        address,
 	}
 
 	return c, nil
@@ -626,6 +585,7 @@ type testProxy struct {
 	transactionHash string
 	lastTransaction *data.Transaction
 	shouldFail      bool
+	nonce           uint64
 
 	queryResponseData                 [][]byte
 	afterTransactionQueryResponseData [][]byte
@@ -633,6 +593,8 @@ type testProxy struct {
 	lastQueryArgs                     []string
 
 	transactionCost uint64
+
+	ExecuteVMQueryCalled func(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 }
 
 // GetNetworkConfig -
@@ -667,6 +629,18 @@ func (p *testProxy) SendTransaction(tx *data.Transaction) (string, error) {
 	}
 }
 
+// SendTransactions -
+func (p *testProxy) SendTransactions(txs []*data.Transaction) ([]string, error) {
+	p.lastTransaction = txs[len(txs)-1]
+	p.queryResponseData = p.afterTransactionQueryResponseData
+
+	if p.shouldFail {
+		return nil, TransactionError("failed")
+	} else {
+		return []string{p.transactionHash}, nil
+	}
+}
+
 // GetTransactionInfoWithResults -
 func (p *testProxy) GetTransactionInfoWithResults(string) (*data.TransactionInfo, error) {
 	return nil, nil
@@ -674,13 +648,19 @@ func (p *testProxy) GetTransactionInfoWithResults(string) (*data.TransactionInfo
 
 // ExecuteVMQuery -
 func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+	if p.ExecuteVMQueryCalled != nil {
+		return p.ExecuteVMQueryCalled(valueRequest)
+	}
+
 	p.lastQueryArgs = valueRequest.Args
 	return &data.VmValuesResponseData{Data: &vm.VMOutputApi{ReturnCode: p.queryResponseCode, ReturnData: p.queryResponseData}}, nil
 }
 
 // GetAccount -
 func (p *testProxy) GetAccount(_ core.AddressHandler) (*data.Account, error) {
-	return &data.Account{}, nil
+	return &data.Account{
+		Nonce: p.nonce,
+	}, nil
 }
 
 // IsInterfaceNil -
