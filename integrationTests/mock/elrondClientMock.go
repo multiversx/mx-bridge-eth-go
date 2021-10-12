@@ -2,6 +2,7 @@ package mock
 
 import (
 	"fmt"
+	"github.com/ElrondNetwork/elrond-go-core/data/api"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -32,11 +33,13 @@ type ElrondMockClient struct {
 
 // NewElrondMockClient creates a new Elrond Mock Client
 func NewElrondMockClient() *ElrondMockClient {
-	accounts := newAccountsMap()
+	contracts := make(map[string]*Contract)
+	accounts := newAccountsMap(make(map[string]*api.AccountResponse), contracts)
+	notifier := newContractNotifier(contracts)
 	emc := &ElrondMockClient{
 		accountsMap:            accounts,
 		vmProcessor:            newVmProcessorMock(accounts),
-		transactionHandlerMock: newTransactionHandlerMock(),
+		transactionHandlerMock: newTransactionHandlerMock(notifier),
 	}
 
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {

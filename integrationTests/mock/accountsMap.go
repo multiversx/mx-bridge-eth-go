@@ -12,10 +12,10 @@ type accountsMap struct {
 	accounts    map[string]*api.AccountResponse
 }
 
-func newAccountsMap() *accountsMap {
+func newAccountsMap(accounts map[string]*api.AccountResponse, contracts map[string]*Contract) *accountsMap {
 	return &accountsMap{
-		accounts:  make(map[string]*api.AccountResponse),
-		contracts: make(map[string]*Contract),
+		accounts:  accounts,
+		contracts: contracts,
 	}
 }
 
