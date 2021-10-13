@@ -552,6 +552,25 @@ func TestIsWhitelisted(t *testing.T) {
 	})
 }
 
+func TestParseIntFromByteSlice(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty slices", func(t *testing.T) {
+		val, err := parseIntFromByteSlice(nil)
+		require.Nil(t, err)
+		require.Equal(t, int64(0), val)
+
+		val, err = parseIntFromByteSlice([]byte(""))
+		require.Nil(t, err)
+		require.Equal(t, int64(0), val)
+	})
+	t.Run("value in slice", func(t *testing.T) {
+		val, err := parseIntFromByteSlice([]byte{255, 254})
+		require.Nil(t, err)
+		require.Equal(t, int64(255*256+254), val)
+	})
+}
+
 func buildTestClient(proxy *testProxy) (*client, error) {
 	wallet := interactors.NewWallet()
 
