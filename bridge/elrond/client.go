@@ -122,12 +122,12 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 		}
 
 		amount := new(big.Int).SetBytes(responseData[i+idxAmount])
-		blockNonce, errParse := strconv.ParseInt(hex.EncodeToString(responseData[i]), 16, 64)
+		blockNonce, errParse := parseIntFromByteSlice(responseData[i])
 		if errParse != nil {
 			c.log.Error("Elrond: parse error", "error", errParse.Error())
 			return nil
 		}
-		depositNonce, errParse := strconv.ParseInt(hex.EncodeToString(responseData[i+1]), 16, 64)
+		depositNonce, errParse := parseIntFromByteSlice(responseData[i+1])
 		if errParse != nil {
 			c.log.Error("Elrond: parse error", "error", errParse.Error())
 			return nil
@@ -146,7 +146,7 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 		transactions = append(transactions, tx)
 	}
 
-	batchId, err := strconv.ParseInt(hex.EncodeToString(responseData[0]), 16, 64)
+	batchId, err := parseIntFromByteSlice(responseData[0])
 	if err != nil {
 		c.log.Error("Elrond: parse error", "error", err.Error())
 		return nil
@@ -156,6 +156,19 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 		Id:           bridge.NewBatchId(batchId),
 		Transactions: transactions,
 	}
+}
+
+func parseIntFromByteSlice(buff []byte) (int64, error) {
+	if len(buff) == 0 {
+		return 0, nil
+	}
+
+	val, err := strconv.ParseInt(hex.EncodeToString(buff), 16, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return val, nil
 }
 
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation

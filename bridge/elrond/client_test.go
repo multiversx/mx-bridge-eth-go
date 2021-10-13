@@ -1,10 +1,12 @@
 package elrond
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
 	"math/big"
+	"strconv"
 	"testing"
 	"time"
 
@@ -549,6 +551,30 @@ func TestIsWhitelisted(t *testing.T) {
 		isWhitelisted := c.IsWhitelisted("some address")
 
 		assert.False(t, isWhitelisted)
+	})
+}
+
+func TestParseIntFromByteSlice(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty slices", func(t *testing.T) {
+		val, err := parseIntFromByteSlice(nil)
+		require.Nil(t, err)
+		require.Equal(t, int64(0), val)
+
+		val, err = parseIntFromByteSlice([]byte(""))
+		require.Nil(t, err)
+		require.Equal(t, int64(0), val)
+	})
+	t.Run("value in slice", func(t *testing.T) {
+		val, err := parseIntFromByteSlice([]byte{255, 254})
+		require.Nil(t, err)
+		require.Equal(t, int64(255*256+254), val)
+	})
+	t.Run("invalid byte slice", func(t *testing.T) {
+		val, err := parseIntFromByteSlice(bytes.Repeat([]byte{1}, 100))
+		require.IsTypef(t, &strconv.NumError{}, err, "should have been of type strconv.NumError")
+		require.Equal(t, int64(0), val)
 	})
 }
 
