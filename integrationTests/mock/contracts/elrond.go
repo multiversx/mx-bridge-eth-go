@@ -66,7 +66,11 @@ func (ec *ElrondContract) getCurrentTxBatch(caller string, value string, argumen
 
 func (ec *ElrondContract) wasTransferActionProposed(caller string, value string, arguments ...string) ([][]byte, error) {
 	log.Warn("wasTransferActionProposed", "caller", caller, "value", value, "arguments", fmt.Sprintf("%v", arguments))
-	batchId, _ := strconv.ParseInt(arguments[0], 10, 64)
+	batchId, errParse := parseIntFromByteSlice([]byte(arguments[0]))
+	if errParse != nil {
+		log.Error("Elrond: parse error", "error", errParse.Error())
+		return make([][]byte, 0), errParse
+	}
 	ret := byte(1) // we assume we have the action in map
 	if _, ok := ec.actionMapper[batchId]; !ok {
 		ret = 0
@@ -83,7 +87,11 @@ func (ec *ElrondContract) proposeMultiTransferEsdtBatch(caller string, value str
 		return make([][]byte, 0), nil
 	}
 	buf, _ := base64.URLEncoding.DecodeString(args[0])
-	batchId := int64(buf[0])
+	batchId, errParse := parseIntFromByteSlice(buf)
+	if errParse != nil {
+		log.Error("Elrond: parse error", "error", errParse.Error())
+		return make([][]byte, 0), errParse
+	}
 	// every 3rd elements starting from 2nd
 	// is empty string for separation so we skip any of them
 	for i := 2; i < len(args); i += 3 {
@@ -110,10 +118,10 @@ func (ec *ElrondContract) proposeEsdtSafeSetCurrentTransactionBatchStatus(caller
 
 func (ec *ElrondContract) getActionSignerCount(caller string, value string, arguments ...string) ([][]byte, error) {
 	log.Warn("getActionSignerCount", "caller", caller, "value", value, "arguments", fmt.Sprintf("%v", arguments))
-	batchId := int64(-1)
-	_, err := fmt.Sscan(arguments[0], &batchId)
-	if err != nil {
-		log.Error("ElrondContract: Error parsing batchId", "error", err.Error())
+	batchId, errParse := parseIntFromByteSlice([]byte(arguments[0]))
+	if errParse != nil {
+		log.Error("Elrond: parse error", "error", errParse.Error())
+		return make([][]byte, 0), errParse
 	}
 	ret := []byte{0}
 	if _, ok := ec.actionMapper[batchId]; !ok {
@@ -162,4 +170,17 @@ func (ec *ElrondContract) WhiteListAddress(address string) {
 	ec.mutWhitelisted.Lock()
 	ec.whitelistedAddresses[address] = struct{}{}
 	ec.mutWhitelisted.Unlock()
+}
+
+func parseIntFromByteSlice(buff []byte) (int64, error) {
+	if len(buff) == 0 {
+		return 0, nil
+	}
+
+	val, err := strconv.ParseInt(hex.EncodeToString(buff), 16, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return val, nil
 }
