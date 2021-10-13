@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ElrondNetwork/elrond-go-core/data/api"
 	"net/http"
 	"net/http/httptest"
 )
@@ -46,7 +45,7 @@ type EthereumMockClient struct {
 
 // NewEthereumMockClient creates a new Ethereum Mock Client
 func NewEthereumMockClient() *EthereumMockClient {
-	accounts := newAccountsMap(make(map[string]*api.AccountResponse), make(map[string]*Contract))
+	accounts := newAccountsMap()
 	emc := &EthereumMockClient{
 		accountsMap: accounts,
 	}

@@ -1,17 +1,19 @@
 package mock
+
 import (
 	"encoding/json"
+
 	apiTransaction "github.com/ElrondNetwork/elrond-go/api/transaction"
 	"github.com/ElrondNetwork/elrond-vm-common/parsers"
 )
 
 type contractNotifier struct {
-	contracts map[string]*Contract
+	accountsMap *accountsMap
 }
 
-func newContractNotifier(contracts map[string]*Contract) *contractNotifier {
+func newContractNotifier(accountsMap *accountsMap) *contractNotifier {
 	return &contractNotifier{
-		contracts: contracts,
+		accountsMap: accountsMap,
 	}
 }
 func (cn *contractNotifier) notifyContract(transaction *apiTransaction.SendTxRequest) {
@@ -19,7 +21,12 @@ func (cn *contractNotifier) notifyContract(transaction *apiTransaction.SendTxReq
 	function, args, _ := parsers.NewCallArgsParser().ParseData(string(transaction.Data))
 
 	log.Debug("ElrondContract: notifyContract", "function", function)
-	handler := cn.contracts[receiver].GetHandler(function)
+	contract, cerr := cn.accountsMap.GetContract(receiver)
+	if cerr != true {
+		log.Error("ElrondContract: Error notifyContract", "error", "Contract does not exist!")
+		return
+	}
+	handler := contract.GetHandler(function)
 
 	if handler == nil {
 		log.Error("ElrondContract: Error notifyContract", "error", "No handler found")

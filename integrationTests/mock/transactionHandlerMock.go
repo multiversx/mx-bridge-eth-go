@@ -24,7 +24,7 @@ type transactionHandlerMock struct {
 	hasher           hashing.Hasher
 	mutTransactions  sync.RWMutex
 	transactions     map[string]*apiTransaction.SendTxRequest
-	notifier		 *contractNotifier
+	notifier         *contractNotifier
 }
 
 func newTransactionHandlerMock(notifier *contractNotifier) *transactionHandlerMock {
@@ -32,7 +32,7 @@ func newTransactionHandlerMock(notifier *contractNotifier) *transactionHandlerMo
 		marshalizer:  &marshal.GogoProtoMarshalizer{},
 		hasher:       blake2b.NewBlake2b(),
 		transactions: make(map[string]*apiTransaction.SendTxRequest),
-		notifier: 	  notifier,
+		notifier:     notifier,
 	}
 	thm.addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, log)
 
@@ -57,8 +57,8 @@ func (thm *transactionHandlerMock) processSendTransaction(rw http.ResponseWriter
 
 	thm.mutTransactions.Lock()
 	thm.transactions[string(txHash)] = sendTxRequest
-	thm.notifier.notifyContract(sendTxRequest)
 	thm.mutTransactions.Unlock()
+	thm.notifier.notifyContract(sendTxRequest)
 
 	writeElrondResponse(rw, http.StatusOK, "txHash", hex.EncodeToString(txHash), nil)
 }
