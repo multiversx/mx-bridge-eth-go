@@ -163,7 +163,12 @@ func parseIntFromByteSlice(buff []byte) (int64, error) {
 		return 0, nil
 	}
 
-	return strconv.ParseInt(hex.EncodeToString(buff), 16, 64)
+	val, err := strconv.ParseInt(hex.EncodeToString(buff), 16, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return val, nil
 }
 
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
