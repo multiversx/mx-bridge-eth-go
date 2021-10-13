@@ -5,12 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"math/big"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -26,8 +26,8 @@ type ElrondContract struct {
 	mutWhitelisted       sync.RWMutex
 	whitelistedAddresses map[string]struct{}
 	tokensHandler        TokensHandler
-	action_mapper 			map[*big.Int]*big.Int
-	currentTxBatch			*bridge.Batch
+	actionMapper         map[*big.Int]*big.Int
+	currentTxBatch       *bridge.Batch
 }
 
 // NewElrondContract defines the mocked Elrond contract functions
@@ -40,7 +40,7 @@ func NewElrondContract(address string, th TokensHandler) (*ElrondContract, error
 		Contract:             mock.NewContract(address),
 		whitelistedAddresses: make(map[string]struct{}),
 		tokensHandler:        th,
-		action_mapper: 				make(map[*big.Int]*big.Int),
+		actionMapper:         make(map[*big.Int]*big.Int),
 	}
 
 	ec.createContractFunctions()
@@ -61,18 +61,19 @@ func (ec *ElrondContract) createContractFunctions() {
 func (ec *ElrondContract) getCurrentTxBatch(caller string, value string, arguments ...string) ([][]byte, error) {
 	log.Debug("getCurrentTxBatch", "caller", caller, "value", value, "arguments", arguments)
 
-	return make([][]byte, 0), nil //ec.currentTxBatch
+	return make([][]byte, 0), nil // ec.currentTxBatch
 }
 
 func (ec *ElrondContract) wasTransferActionProposed(caller string, value string, arguments ...string) ([][]byte, error) {
 	log.Warn("wasTransferActionProposed", "caller", caller, "value", value, "arguments", fmt.Sprintf("%v", arguments))
 	batchId, _ := strconv.ParseInt(arguments[0], 10, 64)
-	ret := byte(1) //we assume we have the action in map
-	if _, ok := ec.action_mapper[big.NewInt(batchId)]; !ok {
+	ret := byte(1) // we assume we have the action in map
+	if _, ok := ec.actionMapper[big.NewInt(batchId)]; !ok {
 		ret = 0
 	}
 	return [][]byte{{ret}}, nil
 }
+
 func (ec *ElrondContract) proposeMultiTransferEsdtBatch(caller string, value string, arguments ...string) ([][]byte, error) {
 	log.Warn("proposeMultiTransferEsdtBatch ", "caller", caller, "value", value, "arguments", fmt.Sprintf("%v", arguments))
 	var args []string
@@ -83,28 +84,30 @@ func (ec *ElrondContract) proposeMultiTransferEsdtBatch(caller string, value str
 	}
 	buf, _ := base64.URLEncoding.DecodeString(args[0])
 	batchId := int64(buf[0])
-	//every 3rd elements starting from 2nd
-	//is empty string for separation so we skip any of them
-	for  i:=2;i<len(args); i+=3 {
+	// every 3rd elements starting from 2nd
+	// is empty string for separation so we skip any of them
+	for i := 2; i < len(args); i += 3 {
 		token, _ := base64.URLEncoding.DecodeString(args[i])
 		amountInBytes, _ := base64.URLEncoding.DecodeString(args[i+1])
 		log.Debug("token: ", token, "amount: ", amountInBytes[0])
 	}
 	log.Debug(strings.Join(args, ":"))
 
-	ret := byte(1) //we assume we have the action in map
-	if _, ok := ec.action_mapper[big.NewInt(batchId)]; !ok {
+	ret := byte(1) // we assume we have the action in map
+	if _, ok := ec.actionMapper[big.NewInt(batchId)]; !ok {
 		ret = 0
-		ec.action_mapper[big.NewInt(batchId)] = big.NewInt(0)
+		ec.actionMapper[big.NewInt(batchId)] = big.NewInt(0)
 	}
 	return [][]byte{{ret}}, nil
 }
+
 func (ec *ElrondContract) proposeEsdtSafeSetCurrentTransactionBatchStatus(caller string, value string, arguments ...string) ([][]byte, error) {
 	log.Warn("proposeEsdtSafeSetCurrentTransactionBatchStatus ", "caller", caller, "value", value, "arguments", fmt.Sprintf("%v", arguments))
 
 	ret := byte(1)
 	return [][]byte{{ret}}, nil
 }
+
 func (ec *ElrondContract) getActionSignerCount(caller string, value string, arguments ...string) ([][]byte, error) {
 	log.Warn("getActionSignerCount", "caller", caller, "value", value, "arguments", fmt.Sprintf("%v", arguments))
 	batchId := int64(-1)
@@ -113,8 +116,8 @@ func (ec *ElrondContract) getActionSignerCount(caller string, value string, argu
 		log.Error("ElrondContract: Error parsing batchId", "error", err.Error())
 	}
 	ret := []byte{0}
-	if _, ok := ec.action_mapper[big.NewInt(batchId)]; !ok {
-		ret = ec.action_mapper[big.NewInt(batchId)].Bytes()
+	if _, ok := ec.actionMapper[big.NewInt(batchId)]; !ok {
+		ret = ec.actionMapper[big.NewInt(batchId)].Bytes()
 	}
 	return [][]byte{ret}, nil
 }

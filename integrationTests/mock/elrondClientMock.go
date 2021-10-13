@@ -52,8 +52,8 @@ func NewElrondMockClient() *ElrondMockClient {
 			return
 		}
 		if strings.Contains(req.RequestURI, sendMultipleTransactionsEndpointName) {
-			//sendMultipleTransactionsEndpointName has to be processed BEFORE sendTransactionEndpointName
-			//TODO: emc.transactionHandlerMock.processSendMultipleTransactions(rw, req)
+			// sendMultipleTransactionsEndpointName has to be processed BEFORE sendTransactionEndpointName
+			// TODO: emc.transactionHandlerMock.processSendMultipleTransactions(rw, req)
 			return
 		}
 		if strings.Contains(req.RequestURI, sendTransactionEndpointName) {
