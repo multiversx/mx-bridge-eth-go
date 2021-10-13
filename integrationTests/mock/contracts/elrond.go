@@ -26,7 +26,7 @@ type ElrondContract struct {
 	mutWhitelisted       sync.RWMutex
 	whitelistedAddresses map[string]struct{}
 	tokensHandler        TokensHandler
-	actionMapper         map[*big.Int]*big.Int
+	actionMapper         map[int64]*big.Int
 	currentTxBatch       *bridge.Batch
 }
 
@@ -40,7 +40,7 @@ func NewElrondContract(address string, th TokensHandler) (*ElrondContract, error
 		Contract:             mock.NewContract(address),
 		whitelistedAddresses: make(map[string]struct{}),
 		tokensHandler:        th,
-		actionMapper:         make(map[*big.Int]*big.Int),
+		actionMapper:         make(map[int64]*big.Int),
 	}
 
 	ec.createContractFunctions()
@@ -68,7 +68,7 @@ func (ec *ElrondContract) wasTransferActionProposed(caller string, value string,
 	log.Warn("wasTransferActionProposed", "caller", caller, "value", value, "arguments", fmt.Sprintf("%v", arguments))
 	batchId, _ := strconv.ParseInt(arguments[0], 10, 64)
 	ret := byte(1) // we assume we have the action in map
-	if _, ok := ec.actionMapper[big.NewInt(batchId)]; !ok {
+	if _, ok := ec.actionMapper[batchId]; !ok {
 		ret = 0
 	}
 	return [][]byte{{ret}}, nil
@@ -94,9 +94,9 @@ func (ec *ElrondContract) proposeMultiTransferEsdtBatch(caller string, value str
 	log.Debug(strings.Join(args, ":"))
 
 	ret := byte(1) // we assume we have the action in map
-	if _, ok := ec.actionMapper[big.NewInt(batchId)]; !ok {
+	if _, ok := ec.actionMapper[batchId]; !ok {
 		ret = 0
-		ec.actionMapper[big.NewInt(batchId)] = big.NewInt(0)
+		ec.actionMapper[batchId] = big.NewInt(0)
 	}
 	return [][]byte{{ret}}, nil
 }
@@ -116,8 +116,8 @@ func (ec *ElrondContract) getActionSignerCount(caller string, value string, argu
 		log.Error("ElrondContract: Error parsing batchId", "error", err.Error())
 	}
 	ret := []byte{0}
-	if _, ok := ec.actionMapper[big.NewInt(batchId)]; !ok {
-		ret = ec.actionMapper[big.NewInt(batchId)].Bytes()
+	if _, ok := ec.actionMapper[batchId]; !ok {
+		ret = ec.actionMapper[batchId].Bytes()
 	}
 	return [][]byte{ret}, nil
 }
