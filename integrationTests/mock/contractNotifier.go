@@ -21,8 +21,8 @@ func (cn *contractNotifier) notifyContract(transaction *apiTransaction.SendTxReq
 	function, args, _ := parsers.NewCallArgsParser().ParseData(string(transaction.Data))
 
 	log.Debug("ElrondContract: notifyContract", "function", function)
-	contract, cerr := cn.accountsMap.GetContract(receiver)
-	if cerr != true {
+	contract, exists := cn.accountsMap.GetContract(receiver)
+	if !exists {
 		log.Error("ElrondContract: Error notifyContract", "error", "Contract does not exist!")
 		return
 	}

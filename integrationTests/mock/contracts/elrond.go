@@ -61,7 +61,7 @@ func (ec *ElrondContract) createContractFunctions() {
 func (ec *ElrondContract) getCurrentTxBatch(caller string, value string, arguments ...string) ([][]byte, error) {
 	log.Debug("getCurrentTxBatch", "caller", caller, "value", value, "arguments", arguments)
 
-	return make([][]byte, 0), nil // ec.currentTxBatch
+	return make([][]byte, 0), nil
 }
 
 func (ec *ElrondContract) wasTransferActionProposed(caller string, value string, arguments ...string) ([][]byte, error) {
