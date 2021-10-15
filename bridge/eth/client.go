@@ -235,7 +235,7 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 	}
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("ETH: %w", err)
 	}
 
 	hash := transaction.Hash().String()
@@ -248,8 +248,8 @@ func (c *Client) transfer(auth *bind.TransactOpts, signatures [][]byte) (*types.
 	batch := c.pendingBatch
 	tokens := c.tokenAddresses(batch.Transactions)
 	recipients := recipientsAddresses(batch.Transactions)
-	amounts := amounts(batch.Transactions)
-	return c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amounts, batch.Id, signatures)
+	amount := amounts(batch.Transactions)
+	return c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amount, batch.Id, signatures)
 }
 
 func (c *Client) finish(auth *bind.TransactOpts, signatures [][]byte) (*types.Transaction, error) {
