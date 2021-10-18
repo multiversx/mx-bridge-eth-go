@@ -15,6 +15,7 @@ func TestFlowGetPendingContinuously(t *testing.T) {
 	t.Parallel()
 
 	bem := &mock.BridgeExecutorMock{
+		FunctionCalledCounter: make(map[string]int),
 		HasPendingBatchCalled: func() bool {
 			return false
 		},
@@ -31,13 +32,14 @@ func TestFlowGetPendingContinuously(t *testing.T) {
 		require.Nil(t, err)
 	}
 
-	assert.Equal(t, numSteps, bem.NumCalledGetPendingBatchCalled)
+	assert.Equal(t, numSteps, bem.GetFunctionCounter("GetPendingBatch"))
 }
 
 func TestFlowProposePendingBatchNotBeingTheLeader(t *testing.T) {
 	t.Parallel()
 
 	bem := &mock.BridgeExecutorMock{
+		FunctionCalledCounter: make(map[string]int),
 		HasPendingBatchCalled: func() bool {
 			return true
 		},
@@ -60,10 +62,10 @@ func TestFlowProposePendingBatchNotBeingTheLeader(t *testing.T) {
 		ethToElrond.GetPending,
 	}
 
-	assert.Equal(t, 2, bem.NumCalledGetPendingBatchCalled)
-	assert.Equal(t, 2, bem.NumHasPendingBatchCalled)
-	assert.Equal(t, 1, bem.NumCalledIsLeaderCalled)
-	assert.Equal(t, 0, bem.NumCalledProposeTransferCalled)
+	assert.Equal(t, 2, bem.GetFunctionCounter("GetPendingBatch"))
+	assert.Equal(t, 2, bem.GetFunctionCounter("HasPendingBatch"))
+	assert.Equal(t, 1, bem.GetFunctionCounter("IsLeader"))
+	assert.Equal(t, 0, bem.GetFunctionCounter("ProposeTransfer"))
 
 	assert.Equal(t, expectedExecutedSteps, smm.ExecutedSteps)
 }
@@ -72,6 +74,7 @@ func TestFlowProposePendingBatchBeingTheLeader(t *testing.T) {
 	t.Parallel()
 
 	bem := &mock.BridgeExecutorMock{
+		FunctionCalledCounter: make(map[string]int),
 		HasPendingBatchCalled: func() bool {
 			return true
 		},
@@ -97,10 +100,10 @@ func TestFlowProposePendingBatchBeingTheLeader(t *testing.T) {
 		ethToElrond.GetPending,
 	}
 
-	assert.Equal(t, 2, bem.NumCalledGetPendingBatchCalled)
-	assert.Equal(t, 2, bem.NumHasPendingBatchCalled)
-	assert.Equal(t, 1, bem.NumCalledIsLeaderCalled)
-	assert.Equal(t, 1, bem.NumCalledProposeTransferCalled)
+	assert.Equal(t, 2, bem.GetFunctionCounter("GetPendingBatch"))
+	assert.Equal(t, 2, bem.GetFunctionCounter("HasPendingBatch"))
+	assert.Equal(t, 1, bem.GetFunctionCounter("IsLeader"))
+	assert.Equal(t, 1, bem.GetFunctionCounter("ProposeTransfer"))
 
 	assert.Equal(t, expectedExecutedSteps, smm.ExecutedSteps)
 }
@@ -110,6 +113,7 @@ func TestFlowProposePendingBatchBeingTheLeaderErrors(t *testing.T) {
 
 	expectedErr := errors.New("expected error")
 	bem := &mock.BridgeExecutorMock{
+		FunctionCalledCounter: make(map[string]int),
 		HasPendingBatchCalled: func() bool {
 			return true
 		},
@@ -138,10 +142,10 @@ func TestFlowProposePendingBatchBeingTheLeaderErrors(t *testing.T) {
 		ethToElrond.GetPending,
 	}
 
-	assert.Equal(t, 2, bem.NumCalledGetPendingBatchCalled)
-	assert.Equal(t, 2, bem.NumHasPendingBatchCalled)
-	assert.Equal(t, 1, bem.NumCalledIsLeaderCalled)
-	assert.Equal(t, 1, bem.NumCalledProposeTransferCalled)
+	assert.Equal(t, 2, bem.GetFunctionCounter("GetPendingBatch"))
+	assert.Equal(t, 2, bem.GetFunctionCounter("HasPendingBatch"))
+	assert.Equal(t, 1, bem.GetFunctionCounter("IsLeader"))
+	assert.Equal(t, 1, bem.GetFunctionCounter("ProposeTransfer"))
 
 	assert.Equal(t, expectedExecutedSteps, smm.ExecutedSteps)
 }
