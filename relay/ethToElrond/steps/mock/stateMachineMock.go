@@ -9,11 +9,10 @@ import (
 
 // StateMachineMock -
 type StateMachineMock struct {
-	Steps                 relay.MachineStates
-	ExecutedSteps         []relay.StepIdentifier
-	InitialStep           relay.StepIdentifier
-	CurrentStep           relay.Step
-	CurrentStepIdentifier relay.StepIdentifier
+	Steps         relay.MachineStates
+	ExecutedSteps []relay.StepIdentifier
+	InitialStep   relay.StepIdentifier
+	CurrentStep   relay.Step
 }
 
 // NewStateMachineMock -
@@ -29,7 +28,6 @@ func NewStateMachineMock(steps relay.MachineStates, initialStep relay.StepIdenti
 func (smm *StateMachineMock) Initialize() error {
 	var err error
 	smm.CurrentStep, err = smm.getNextStep(smm.InitialStep)
-	smm.CurrentStepIdentifier = smm.InitialStep
 
 	return err
 }
@@ -49,15 +47,15 @@ func (smm *StateMachineMock) ExecuteOneStep() error {
 		return fmt.Errorf("current step is nil. Call Initialize() first")
 	}
 
+	fmt.Printf("executing step %s...\n", smm.CurrentStep.Identifier())
 	nextStepIdentifier := smm.CurrentStep.Execute()
-	smm.ExecutedSteps = append(smm.ExecutedSteps, smm.CurrentStepIdentifier)
+	smm.ExecutedSteps = append(smm.ExecutedSteps, smm.CurrentStep.Identifier())
 
 	nextStep, err := smm.getNextStep(nextStepIdentifier)
 	if err != nil {
 		return err
 	}
 
-	smm.CurrentStepIdentifier = nextStepIdentifier
 	smm.CurrentStep = nextStep
 
 	return nil

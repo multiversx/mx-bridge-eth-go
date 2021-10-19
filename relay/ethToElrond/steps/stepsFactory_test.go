@@ -20,9 +20,9 @@ func TestCreateSteps_Errors(t *testing.T) {
 func TestCreateSteps_ShouldWork(t *testing.T) {
 	t.Parallel()
 
-	steps, err := CreateSteps(&mock.BridgeExecutorMock{})
+	steps, err := CreateSteps(mock.NewBridgeExecutorMock())
 
 	require.NotNil(t, steps)
 	require.Nil(t, err)
-	require.Equal(t, 2, len(steps))
+	require.Equal(t, 7, len(steps))
 }

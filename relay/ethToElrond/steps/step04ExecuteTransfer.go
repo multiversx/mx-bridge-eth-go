@@ -1,0 +1,38 @@
+package steps
+
+import (
+	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
+)
+
+type executeTransferStep struct {
+	bridge BridgeExecutor
+}
+
+// Execute will execute this step returning the next step to be executed
+func (step *executeTransferStep) Execute() relay.StepIdentifier {
+	if step.bridge.IsLeader() {
+		step.bridge.ExecuteTransferOnDestination()
+	}
+
+	step.bridge.WaitStepToFinish(step.Identifier())
+	if step.bridge.WasTransferExecutedOnDestination() {
+		step.bridge.CleanTopology()
+		step.bridge.SetStatusExecutedOnAllTransactions()
+
+		return ethToElrond.ProposingSetStatus
+	}
+
+	// remain in this step
+	return step.Identifier()
+}
+
+// Identifier returns the step's identifier
+func (step *executeTransferStep) Identifier() relay.StepIdentifier {
+	return ethToElrond.ExecutingTransfer
+}
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (step *executeTransferStep) IsInterfaceNil() bool {
+	return step == nil
+}
