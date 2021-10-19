@@ -12,7 +12,7 @@ type executeTransferStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *executeTransferStep) Execute(ctx context.Context) relay.StepIdentifier {
+func (step *executeTransferStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
 	if step.bridge.IsLeader() {
 		step.bridge.ExecuteTransferOnDestination(ctx)
 	}
@@ -22,11 +22,11 @@ func (step *executeTransferStep) Execute(ctx context.Context) relay.StepIdentifi
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 
-		return ethToElrond.ProposeSetStatus
+		return ethToElrond.ProposeSetStatus, nil
 	}
 
 	// remain in this step
-	return step.Identifier()
+	return step.Identifier(), nil
 }
 
 // Identifier returns the step's identifier

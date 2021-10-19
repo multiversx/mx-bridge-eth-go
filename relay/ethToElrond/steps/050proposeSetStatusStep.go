@@ -12,7 +12,7 @@ type proposeSetStatusStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *proposeSetStatusStep) Execute(ctx context.Context) relay.StepIdentifier {
+func (step *proposeSetStatusStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
 	if step.bridge.IsLeader() {
 		step.bridge.ProposeSetStatusOnSource(ctx)
 	}
@@ -20,12 +20,12 @@ func (step *proposeSetStatusStep) Execute(ctx context.Context) relay.StepIdentif
 	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
 	if !step.bridge.WasProposeSetStatusExecutedOnSource() {
 		// remain in this step
-		return step.Identifier()
+		return step.Identifier(), nil
 	}
 
 	step.bridge.SignProposeSetStatusOnDestination(ctx)
 
-	return ethToElrond.WaitForSignaturesForProposeSetStatus
+	return ethToElrond.WaitForSignaturesForProposeSetStatus, nil
 }
 
 // Identifier returns the step's identifier

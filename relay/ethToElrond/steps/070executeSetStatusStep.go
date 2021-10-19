@@ -12,7 +12,7 @@ type executeSetStatusStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *executeSetStatusStep) Execute(ctx context.Context) relay.StepIdentifier {
+func (step *executeSetStatusStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
 	if step.bridge.IsLeader() {
 		step.bridge.ExecuteSetStatusOnSource(ctx)
 	}
@@ -22,11 +22,11 @@ func (step *executeSetStatusStep) Execute(ctx context.Context) relay.StepIdentif
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 
-		return ethToElrond.GetPending
+		return ethToElrond.GetPending, nil
 	}
 
 	// remain in this step
-	return step.Identifier()
+	return step.Identifier(), nil
 }
 
 // Identifier returns the step's identifier

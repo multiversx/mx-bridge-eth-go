@@ -84,8 +84,7 @@ func (sm *stateMachine) executeLoop(ctx context.Context) {
 		case <-time.After(sm.durationBetweenSteps):
 			err := sm.executeStep(ctx)
 			if err != nil {
-				sm.log.Error(fmt.Sprintf("%s: state machine error", sm.stateMachineName),
-					"status", "state machine stopped",
+				sm.log.Error(fmt.Sprintf("%s: state machine stopped", sm.stateMachineName),
 					"error", err)
 				return
 			}
@@ -96,9 +95,11 @@ func (sm *stateMachine) executeLoop(ctx context.Context) {
 func (sm *stateMachine) executeStep(ctx context.Context) error {
 	sm.log.Trace(fmt.Sprintf("%s: executing step", sm.stateMachineName),
 		"step", sm.currentStep.Identifier())
-	nextStepIdentifier := sm.currentStep.Execute(ctx)
+	nextStepIdentifier, err := sm.currentStep.Execute(ctx)
+	if err != nil {
+		return err
+	}
 
-	var err error
 	sm.currentStep, err = sm.getNextStep(nextStepIdentifier)
 
 	return err

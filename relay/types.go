@@ -6,7 +6,7 @@ type StepIdentifier string
 
 // Step defines a state machine step
 type Step interface {
-	Execute(ctx context.Context) StepIdentifier
+	Execute(ctx context.Context) (StepIdentifier, error)
 	Identifier() StepIdentifier
 	IsInterfaceNil() bool
 }

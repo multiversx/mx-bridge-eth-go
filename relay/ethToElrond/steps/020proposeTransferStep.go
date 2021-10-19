@@ -12,26 +12,26 @@ type proposeTransferStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *proposeTransferStep) Execute(ctx context.Context) relay.StepIdentifier {
+func (step *proposeTransferStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
 	if step.bridge.IsLeader() {
 		err := step.bridge.ProposeTransferOnDestination(ctx)
 		if err != nil {
 			step.bridge.PrintDebugInfo("bridge.ProposeTransfer", "error", err)
 			step.bridge.SetStatusRejectedOnAllTransactions()
 
-			return ethToElrond.ProposeSetStatus
+			return ethToElrond.ProposeSetStatus, nil
 		}
 	}
 
 	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
 	if !step.bridge.WasProposeTransferExecutedOnDestination() {
 		// remain in this step
-		return step.Identifier()
+		return step.Identifier(), nil
 	}
 
 	step.bridge.SignProposeTransferOnDestination(ctx)
 
-	return ethToElrond.WaitForSignaturesForProposeTransfer
+	return ethToElrond.WaitForSignaturesForProposeTransfer, nil
 }
 
 // Identifier returns the step's identifier

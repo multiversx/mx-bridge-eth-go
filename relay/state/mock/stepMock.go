@@ -8,12 +8,12 @@ import (
 
 // StepMock -
 type StepMock struct {
-	ExecuteCalled    func(ctx context.Context) relay.StepIdentifier
+	ExecuteCalled    func(ctx context.Context) (relay.StepIdentifier, error)
 	IdentifierCalled func() relay.StepIdentifier
 }
 
 // Execute -
-func (sm *StepMock) Execute(ctx context.Context) relay.StepIdentifier {
+func (sm *StepMock) Execute(ctx context.Context) (relay.StepIdentifier, error) {
 	return sm.ExecuteCalled(ctx)
 }
 

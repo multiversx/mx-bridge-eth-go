@@ -12,14 +12,14 @@ type getPendingStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *getPendingStep) Execute(ctx context.Context) relay.StepIdentifier {
+func (step *getPendingStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
 	step.bridge.GetPendingBatch(ctx)
 	if step.bridge.HasPendingBatch() {
-		return ethToElrond.ProposeTransfer
+		return ethToElrond.ProposeTransfer, nil
 	}
 
 	// remain in this step
-	return step.Identifier()
+	return step.Identifier(), nil
 }
 
 // Identifier returns the step's identifier
