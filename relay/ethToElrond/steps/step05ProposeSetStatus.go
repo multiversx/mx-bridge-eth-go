@@ -17,13 +17,17 @@ func (step *proposeSetStatusStep) Execute(ctx context.Context) (relay.StepIdenti
 		step.bridge.ProposeSetStatusOnSource(ctx)
 	}
 
-	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
-	if !step.bridge.WasProposeSetStatusExecutedOnSource() {
+	err := step.bridge.WaitStepToFinish(step.Identifier(), ctx)
+	if err != nil {
+		return step.Identifier(), err
+	}
+
+	if !step.bridge.WasProposeSetStatusExecutedOnSource(ctx) {
 		// remain in this step
 		return step.Identifier(), nil
 	}
 
-	step.bridge.SignProposeSetStatusOnDestination(ctx)
+	step.bridge.SignProposeSetStatusOnSource(ctx)
 
 	return ethToElrond.WaitingSignaturesForProposeSetStatus, nil
 }

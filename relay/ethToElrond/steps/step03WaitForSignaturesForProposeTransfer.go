@@ -13,12 +13,16 @@ type waitForSignaturesForProposeTransferStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *waitForSignaturesForProposeTransferStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
-	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
-	if step.bridge.IsQuorumReachedForProposeTransfer() {
+	err := step.bridge.WaitStepToFinish(step.Identifier(), ctx)
+	if err != nil {
+		return step.Identifier(), err
+	}
+
+	if step.bridge.IsQuorumReachedForProposeTransfer(ctx) {
 		return ethToElrond.ExecutingTransfer, nil
 	}
 
-	if step.bridge.WasProposeTransferExecutedOnDestination() {
+	if step.bridge.WasProposeTransferExecutedOnDestination(ctx) {
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 

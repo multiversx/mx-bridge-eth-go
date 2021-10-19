@@ -4,31 +4,32 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
 // BridgeExecutor defines the behavior of the component that handles the operations to be done on the bridge
 type BridgeExecutor interface {
 	HasPendingBatch() bool
 	IsLeader() bool
-	WasProposeTransferExecutedOnDestination() bool
-	WasProposeSetStatusExecutedOnSource() bool
-	WasTransferExecutedOnDestination() bool
-	WasSetStatusExecutedOnSource() bool
-	IsQuorumReachedForProposeTransfer() bool
-	IsQuorumReachedForProposeSetStatus() bool
+	WasProposeTransferExecutedOnDestination(ctx context.Context) bool
+	WasProposeSetStatusExecutedOnSource(ctx context.Context) bool
+	WasExecutedOnDestination(ctx context.Context) bool
+	WasExecutedOnSource(ctx context.Context) bool
+	IsQuorumReachedForProposeTransfer(ctx context.Context) bool
+	IsQuorumReachedForProposeSetStatus(ctx context.Context) bool
 
-	PrintDebugInfo(message string, extras ...interface{})
+	PrintInfo(logLevel logger.LogLevel, message string, extras ...interface{})
 	GetPendingBatch(ctx context.Context)
 	ProposeTransferOnDestination(ctx context.Context) error
 	ProposeSetStatusOnSource(ctx context.Context)
 	CleanTopology()
 	ExecuteTransferOnDestination(ctx context.Context)
 	ExecuteSetStatusOnSource(ctx context.Context)
-	SetStatusRejectedOnAllTransactions()
+	SetStatusRejectedOnAllTransactions(err error)
 	SetStatusExecutedOnAllTransactions()
 	SignProposeTransferOnDestination(ctx context.Context)
-	SignProposeSetStatusOnDestination(ctx context.Context)
-	WaitStepToFinish(step relay.StepIdentifier, ctx context.Context)
+	SignProposeSetStatusOnSource(ctx context.Context)
+	WaitStepToFinish(step relay.StepIdentifier, ctx context.Context) error
 
 	IsInterfaceNil() bool
 }

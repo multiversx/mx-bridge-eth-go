@@ -1,6 +1,7 @@
 package steps
 
 import (
+	"context"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
@@ -15,7 +16,7 @@ func TestFlowAsLeaderWaitSigsForTransferQuorumNotReachedWithStubChecking(t *test
 
 	bem := mock.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
-	bem.IsQuorumReachedForProposeTransferCalled = falseHandler
+	bem.IsQuorumReachedForProposeTransferCalled = falseHandlerWithContext
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
@@ -49,15 +50,15 @@ func TestFlowAsLeaderWaitSigsForTransferQuorumNotReachedWithStubChecking(t *test
 	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeTransferOnDestination))
 	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeTransfer))
 	assert.Equal(t, 0, bem.GetFunctionCounter(executeTransferOnDestination))
-	assert.Equal(t, 0, bem.GetFunctionCounter(wasTransferExecutedOnDestination))
+	assert.Equal(t, 0, bem.GetFunctionCounter(wasExecutedOnDestination))
 	assert.Equal(t, 2, bem.GetFunctionCounter(cleanTopology))
 	assert.Equal(t, 2, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
 	assert.Equal(t, 1, bem.GetFunctionCounter(proposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeSetStatusExecutedOnSource))
-	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeSetStatus))
 	assert.Equal(t, 1, bem.GetFunctionCounter(executeSetStatusOnSource))
-	assert.Equal(t, 1, bem.GetFunctionCounter(wasSetStatusExecutedOnSource))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasExecutedOnSource))
 }
 
 func TestFlowAsLeaderWaitSigsTransferWasNotProposedWithStubChecking(t *testing.T) {
@@ -65,9 +66,9 @@ func TestFlowAsLeaderWaitSigsTransferWasNotProposedWithStubChecking(t *testing.T
 
 	bem := mock.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
-	bem.IsQuorumReachedForProposeTransferCalled = falseHandler
+	bem.IsQuorumReachedForProposeTransferCalled = falseHandlerWithContext
 	counter := 0
-	bem.WasProposeTransferExecutedOnDestinationCalled = func() bool {
+	bem.WasProposeTransferExecutedOnDestinationCalled = func(ctx context.Context) bool {
 		counter++
 		return counter <= 1
 	}
@@ -111,7 +112,7 @@ func TestFlowAsLeaderWaitSigsForSetStatusQuorumNotReachedWithStubChecking(t *tes
 
 	bem := mock.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
-	bem.IsQuorumReachedForProposeSetStatusCalled = falseHandler
+	bem.IsQuorumReachedForProposeSetStatusCalled = falseHandlerWithContext
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)

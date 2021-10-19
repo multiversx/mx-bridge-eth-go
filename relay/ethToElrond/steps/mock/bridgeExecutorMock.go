@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
 var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/steps/mock.(*BridgeExecutorMock)."
@@ -18,25 +19,25 @@ type BridgeExecutorMock struct {
 
 	HasPendingBatchCalled                         func() bool
 	IsLeaderCalled                                func() bool
-	WasProposeTransferExecutedOnDestinationCalled func() bool
-	WasProposeSetStatusExecutedOnSourceCalled     func() bool
-	WasTransferExecutedOnDestinationCalled        func() bool
-	WasSetStatusExecutedOnSourceCalled            func() bool
-	IsQuorumReachedForProposeTransferCalled       func() bool
-	IsQuorumReachedForProposeSetStatusCalled      func() bool
+	WasProposeTransferExecutedOnDestinationCalled func(ctx context.Context) bool
+	WasProposeSetStatusExecutedOnSourceCalled     func(ctx context.Context) bool
+	WasExecutedOnDestinationCalled                func(ctx context.Context) bool
+	WasExecutedOnSourceCalled                     func(ctx context.Context) bool
+	IsQuorumReachedForProposeTransferCalled       func(ctx context.Context) bool
+	IsQuorumReachedForProposeSetStatusCalled      func(ctx context.Context) bool
 
-	PrintDebugInfoCalled                     func(message string, extras ...interface{})
+	PrintInfoCalled                          func(logLevel logger.LogLevel, message string, extras ...interface{})
 	GetPendingBatchCalled                    func(ctx context.Context)
 	ProposeTransferOnDestinationCalled       func(ctx context.Context) error
 	ProposeSetStatusOnSourceCalled           func(ctx context.Context)
 	CleanTopologyCalled                      func()
 	ExecuteTransferOnDestinationCalled       func(ctx context.Context)
 	ExecuteSetStatusOnSourceCalled           func(ctx context.Context)
-	SetStatusRejectedOnAllTransactionsCalled func()
+	SetStatusRejectedOnAllTransactionsCalled func(err error)
 	SetStatusExecutedOnAllTransactionsCalled func()
 	SignProposeTransferOnDestinationCalled   func(ctx context.Context)
-	SignProposeSetStatusOnDestinationCalled  func(ctx context.Context)
-	WaitStepToFinishCalled                   func(step relay.StepIdentifier, ctx context.Context)
+	SignProposeSetStatusOnSourceCalled       func(ctx context.Context)
+	WaitStepToFinishCalled                   func(step relay.StepIdentifier, ctx context.Context) error
 }
 
 // NewBridgeExecutorMock creates a new BridgeExecutorMock instance
@@ -69,60 +70,60 @@ func (bem *BridgeExecutorMock) IsLeader() bool {
 }
 
 // WasProposeTransferExecutedOnDestination -
-func (bem *BridgeExecutorMock) WasProposeTransferExecutedOnDestination() bool {
+func (bem *BridgeExecutorMock) WasProposeTransferExecutedOnDestination(ctx context.Context) bool {
 	bem.incrementFunctionCounter()
 	if bem.WasProposeTransferExecutedOnDestinationCalled != nil {
-		return bem.WasProposeTransferExecutedOnDestinationCalled()
+		return bem.WasProposeTransferExecutedOnDestinationCalled(ctx)
 	}
 
 	return false
 }
 
 // WasProposeSetStatusExecutedOnSource -
-func (bem *BridgeExecutorMock) WasProposeSetStatusExecutedOnSource() bool {
+func (bem *BridgeExecutorMock) WasProposeSetStatusExecutedOnSource(ctx context.Context) bool {
 	bem.incrementFunctionCounter()
 	if bem.WasProposeSetStatusExecutedOnSourceCalled != nil {
-		return bem.WasProposeSetStatusExecutedOnSourceCalled()
+		return bem.WasProposeSetStatusExecutedOnSourceCalled(ctx)
 	}
 
 	return false
 }
 
-// WasTransferExecutedOnDestination -
-func (bem *BridgeExecutorMock) WasTransferExecutedOnDestination() bool {
+// WasExecutedOnDestination -
+func (bem *BridgeExecutorMock) WasExecutedOnDestination(ctx context.Context) bool {
 	bem.incrementFunctionCounter()
-	if bem.WasTransferExecutedOnDestinationCalled != nil {
-		return bem.WasTransferExecutedOnDestinationCalled()
+	if bem.WasExecutedOnDestinationCalled != nil {
+		return bem.WasExecutedOnDestinationCalled(ctx)
 	}
 
 	return false
 }
 
-// WasSetStatusExecutedOnSource -
-func (bem *BridgeExecutorMock) WasSetStatusExecutedOnSource() bool {
+// WasExecutedOnSource -
+func (bem *BridgeExecutorMock) WasExecutedOnSource(ctx context.Context) bool {
 	bem.incrementFunctionCounter()
-	if bem.WasSetStatusExecutedOnSourceCalled != nil {
-		return bem.WasSetStatusExecutedOnSourceCalled()
+	if bem.WasExecutedOnSourceCalled != nil {
+		return bem.WasExecutedOnSourceCalled(ctx)
 	}
 
 	return false
 }
 
 // IsQuorumReachedForProposeTransfer -
-func (bem *BridgeExecutorMock) IsQuorumReachedForProposeTransfer() bool {
+func (bem *BridgeExecutorMock) IsQuorumReachedForProposeTransfer(ctx context.Context) bool {
 	bem.incrementFunctionCounter()
 	if bem.IsQuorumReachedForProposeTransferCalled != nil {
-		return bem.IsQuorumReachedForProposeTransferCalled()
+		return bem.IsQuorumReachedForProposeTransferCalled(ctx)
 	}
 
 	return false
 }
 
 // IsQuorumReachedForProposeSetStatus -
-func (bem *BridgeExecutorMock) IsQuorumReachedForProposeSetStatus() bool {
+func (bem *BridgeExecutorMock) IsQuorumReachedForProposeSetStatus(ctx context.Context) bool {
 	bem.incrementFunctionCounter()
 	if bem.IsQuorumReachedForProposeSetStatusCalled != nil {
-		return bem.IsQuorumReachedForProposeSetStatusCalled()
+		return bem.IsQuorumReachedForProposeSetStatusCalled(ctx)
 	}
 
 	return false
@@ -130,11 +131,11 @@ func (bem *BridgeExecutorMock) IsQuorumReachedForProposeSetStatus() bool {
 
 // -------- action functions
 
-// PrintDebugInfo -
-func (bem *BridgeExecutorMock) PrintDebugInfo(message string, extras ...interface{}) {
+// PrintInfo -
+func (bem *BridgeExecutorMock) PrintInfo(logLevel logger.LogLevel, message string, extras ...interface{}) {
 	bem.incrementFunctionCounter()
-	if bem.PrintDebugInfoCalled != nil {
-		bem.PrintDebugInfoCalled(message, extras...)
+	if bem.PrintInfoCalled != nil {
+		bem.PrintInfoCalled(logLevel, message, extras...)
 	}
 }
 
@@ -189,10 +190,10 @@ func (bem *BridgeExecutorMock) ExecuteSetStatusOnSource(ctx context.Context) {
 }
 
 // SetStatusRejectedOnAllTransactions -
-func (bem *BridgeExecutorMock) SetStatusRejectedOnAllTransactions() {
+func (bem *BridgeExecutorMock) SetStatusRejectedOnAllTransactions(err error) {
 	bem.incrementFunctionCounter()
 	if bem.SetStatusRejectedOnAllTransactionsCalled != nil {
-		bem.SetStatusRejectedOnAllTransactionsCalled()
+		bem.SetStatusRejectedOnAllTransactionsCalled(err)
 	}
 }
 
@@ -212,20 +213,22 @@ func (bem *BridgeExecutorMock) SignProposeTransferOnDestination(ctx context.Cont
 	}
 }
 
-// SignProposeSetStatusOnDestination -
-func (bem *BridgeExecutorMock) SignProposeSetStatusOnDestination(ctx context.Context) {
+// SignProposeSetStatusOnSource -
+func (bem *BridgeExecutorMock) SignProposeSetStatusOnSource(ctx context.Context) {
 	bem.incrementFunctionCounter()
-	if bem.SignProposeSetStatusOnDestinationCalled != nil {
-		bem.SignProposeSetStatusOnDestinationCalled(ctx)
+	if bem.SignProposeSetStatusOnSourceCalled != nil {
+		bem.SignProposeSetStatusOnSourceCalled(ctx)
 	}
 }
 
 // WaitStepToFinish -
-func (bem *BridgeExecutorMock) WaitStepToFinish(step relay.StepIdentifier, ctx context.Context) {
+func (bem *BridgeExecutorMock) WaitStepToFinish(step relay.StepIdentifier, ctx context.Context) error {
 	bem.incrementFunctionCounter()
 	if bem.WaitStepToFinishCalled != nil {
-		bem.WaitStepToFinishCalled(step, ctx)
+		return bem.WaitStepToFinishCalled(step, ctx)
 	}
+
+	return nil
 }
 
 // -------- helper functions
