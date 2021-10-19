@@ -1,8 +1,9 @@
 package steps
 
 import (
+	"fmt"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 )
 
@@ -12,18 +13,44 @@ func CreateSteps(executor BridgeExecutor) (relay.MachineStates, error) {
 		return nil, ErrNilBridgeExecutor
 	}
 
-	return createMachineStates(executor), nil
+	return createMachineStates(executor)
 }
 
-func createMachineStates(executor BridgeExecutor) relay.MachineStates {
+func createMachineStates(executor BridgeExecutor) (relay.MachineStates, error) {
 	machineStates := make(relay.MachineStates)
 
-	machineStates[ethToElrond.GetPending] = &getPendingStep{
-		bridge: executor,
-	}
-	machineStates[ethToElrond.ProposeTransfer] = &proposeTransferStep{
-		bridge: executor,
+	steps := []relay.Step{
+		&getPendingStep{
+			bridge: executor,
+		},
+		&proposeTransferStep{
+			bridge: executor,
+		},
+		&waitForSignaturesForProposeTransferStep{
+			bridge: executor,
+		},
+		&executeTransferStep{
+			bridge: executor,
+		},
+		&proposeSetStatusStep{
+			bridge: executor,
+		},
+		&waitForSignaturesForProposeSetStatusStep{
+			bridge: executor,
+		},
+		&executeSetStatusStep{
+			bridge: executor,
+		},
 	}
 
-	return machineStates
+	for _, s := range steps {
+		_, found := machineStates[s.Identifier()]
+		if found {
+			return nil, fmt.Errorf("%w for identifier '%s'", ErrDuplicatedStepIdentifier, s.Identifier())
+		}
+
+		machineStates[s.Identifier()] = s
+	}
+
+	return machineStates, nil
 }

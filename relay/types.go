@@ -5,6 +5,7 @@ type StepIdentifier string
 // Step defines a state machine step
 type Step interface {
 	Execute() StepIdentifier
+	Identifier() StepIdentifier
 	IsInterfaceNil() bool
 }
 

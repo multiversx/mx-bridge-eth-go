@@ -10,16 +10,22 @@ type getPendingStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (gps *getPendingStep) Execute() relay.StepIdentifier {
-	gps.bridge.GetPendingBatch()
-	if gps.bridge.HasPendingBatch() {
+func (step *getPendingStep) Execute() relay.StepIdentifier {
+	step.bridge.GetPendingBatch()
+	if step.bridge.HasPendingBatch() {
 		return ethToElrond.ProposeTransfer
 	}
 
+	// remain in this step
+	return step.Identifier()
+}
+
+// Identifier returns the step's identifier
+func (step *getPendingStep) Identifier() relay.StepIdentifier {
 	return ethToElrond.GetPending
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
-func (gps *getPendingStep) IsInterfaceNil() bool {
-	return gps == nil
+func (step *getPendingStep) IsInterfaceNil() bool {
+	return step == nil
 }

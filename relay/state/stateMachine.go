@@ -13,6 +13,7 @@ import (
 
 // ArgsStateMachine represents the state machine arguments
 type ArgsStateMachine struct {
+	StateMachineName     string
 	Steps                relay.MachineStates
 	StartStateIdentifier relay.StepIdentifier
 	DurationBetweenSteps time.Duration
@@ -20,6 +21,7 @@ type ArgsStateMachine struct {
 }
 
 type stateMachine struct {
+	stateMachineName     string
 	steps                relay.MachineStates
 	currentStep          relay.Step
 	durationBetweenSteps time.Duration
@@ -36,6 +38,7 @@ func NewStateMachine(args ArgsStateMachine) (*stateMachine, error) {
 	}
 
 	sm := &stateMachine{
+		stateMachineName:     args.StateMachineName,
 		steps:                args.Steps,
 		durationBetweenSteps: args.DurationBetweenSteps,
 		log:                  args.Log,
@@ -76,12 +79,14 @@ func (sm *stateMachine) executeLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			sm.log.Debug("state machine main execute loop is closing...")
+			sm.log.Debug(fmt.Sprintf("%s: state machine main execute loop is closing...", sm.stateMachineName))
 			return
 		case <-time.After(sm.durationBetweenSteps):
 			err := sm.executeStep()
 			if err != nil {
-				sm.log.Error("state machine error", "status", "state machine stopped", "error", err)
+				sm.log.Error(fmt.Sprintf("%s: state machine error", sm.stateMachineName),
+					"status", "state machine stopped",
+					"error", err)
 				return
 			}
 		}
@@ -89,6 +94,8 @@ func (sm *stateMachine) executeLoop(ctx context.Context) {
 }
 
 func (sm *stateMachine) executeStep() error {
+	sm.log.Trace(fmt.Sprintf("%s: executing step", sm.stateMachineName),
+		"step", sm.currentStep.Identifier())
 	nextStepIdentifier := sm.currentStep.Execute()
 
 	var err error
