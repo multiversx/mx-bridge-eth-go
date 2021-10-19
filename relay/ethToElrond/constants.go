@@ -1,24 +1,24 @@
 package ethToElrond
 
 const (
-	// GetPending is the step definition for the pending transactions check
-	GetPending = "get pending transactions"
+	// GettingPending is the step definition for the pending transactions check
+	GettingPending = "getting the pending transactions"
 
-	// ProposeTransfer is the step definition for the propose transfer operation
-	ProposeTransfer = "propose transfer"
+	// ProposingTransfer is the step definition for the propose transfer operation
+	ProposingTransfer = "proposing transfer"
 
-	// WaitForSignaturesForProposeTransfer is the step definition for the signature gathering process for propose transfer
-	WaitForSignaturesForProposeTransfer = "wait for signatures for transfer propose"
+	// WaitingSignaturesForProposeTransfer is the step definition for the signature gathering process for propose transfer
+	WaitingSignaturesForProposeTransfer = "waiting signatures for propose transfer"
 
-	// ExecuteTransfer is the step definition for the execution of the transfer operation on the destination chain
-	ExecuteTransfer = "execute transfer"
+	// ExecutingTransfer is the step definition for the execution of the transfer operation on the destination chain
+	ExecutingTransfer = "executing transfer"
 
-	// ProposeSetStatus is the step definition for the propose set status operation
-	ProposeSetStatus = "propose set status"
+	// ProposingSetStatus is the step definition for the propose set status operation
+	ProposingSetStatus = "proposing set status"
 
-	// WaitForSignaturesForProposeSetStatus is the step definition for the signature gathering process for propose set status
-	WaitForSignaturesForProposeSetStatus = "wait for signatures for set status propose"
+	// WaitingSignaturesForProposeSetStatus is the step definition for the signature gathering process for propose set status
+	WaitingSignaturesForProposeSetStatus = "waiting signatures for propose set status"
 
-	// ExecuteSetStatus is the step definition for the execution of the set status operation on the source chain
-	ExecuteSetStatus = "execute set status"
+	// ExecutingSetStatus is the step definition for the execution of the set status operation on the source chain
+	ExecutingSetStatus = "executing set status"
 )

@@ -17,7 +17,7 @@ func (step *proposeTransferStep) Execute() relay.StepIdentifier {
 			step.bridge.PrintDebugInfo("bridge.ProposeTransfer", "error", err)
 			step.bridge.SetStatusRejectedOnAllTransactions()
 
-			return ethToElrond.ProposeSetStatus
+			return ethToElrond.ProposingSetStatus
 		}
 	}
 
@@ -29,12 +29,12 @@ func (step *proposeTransferStep) Execute() relay.StepIdentifier {
 
 	step.bridge.SignProposeTransferOnDestination()
 
-	return ethToElrond.WaitForSignaturesForProposeTransfer
+	return ethToElrond.WaitingSignaturesForProposeTransfer
 }
 
 // Identifier returns the step's identifier
 func (step *proposeTransferStep) Identifier() relay.StepIdentifier {
-	return ethToElrond.ProposeTransfer
+	return ethToElrond.ProposingTransfer
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

@@ -20,7 +20,7 @@ func (step *executeSetStatusStep) Execute() relay.StepIdentifier {
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 
-		return ethToElrond.GetPending
+		return ethToElrond.GettingPending
 	}
 
 	// remain in this step
@@ -29,7 +29,7 @@ func (step *executeSetStatusStep) Execute() relay.StepIdentifier {
 
 // Identifier returns the step's identifier
 func (step *executeSetStatusStep) Identifier() relay.StepIdentifier {
-	return ethToElrond.ExecuteSetStatus
+	return ethToElrond.ExecutingSetStatus
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

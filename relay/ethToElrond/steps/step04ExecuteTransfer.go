@@ -20,7 +20,7 @@ func (step *executeTransferStep) Execute() relay.StepIdentifier {
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 
-		return ethToElrond.ProposeSetStatus
+		return ethToElrond.ProposingSetStatus
 	}
 
 	// remain in this step
@@ -29,7 +29,7 @@ func (step *executeTransferStep) Execute() relay.StepIdentifier {
 
 // Identifier returns the step's identifier
 func (step *executeTransferStep) Identifier() relay.StepIdentifier {
-	return ethToElrond.ExecuteTransfer
+	return ethToElrond.ExecutingTransfer
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

@@ -13,7 +13,7 @@ type getPendingStep struct {
 func (step *getPendingStep) Execute() relay.StepIdentifier {
 	step.bridge.GetPendingBatch()
 	if step.bridge.HasPendingBatch() {
-		return ethToElrond.ProposeTransfer
+		return ethToElrond.ProposingTransfer
 	}
 
 	// remain in this step
@@ -22,7 +22,7 @@ func (step *getPendingStep) Execute() relay.StepIdentifier {
 
 // Identifier returns the step's identifier
 func (step *getPendingStep) Identifier() relay.StepIdentifier {
-	return ethToElrond.GetPending
+	return ethToElrond.GettingPending
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

@@ -23,12 +23,12 @@ func (step *proposeSetStatusStep) Execute() relay.StepIdentifier {
 
 	step.bridge.SignProposeSetStatusOnDestination()
 
-	return ethToElrond.WaitForSignaturesForProposeSetStatus
+	return ethToElrond.WaitingSignaturesForProposeSetStatus
 }
 
 // Identifier returns the step's identifier
 func (step *proposeSetStatusStep) Identifier() relay.StepIdentifier {
-	return ethToElrond.ProposeSetStatus
+	return ethToElrond.ProposingSetStatus
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

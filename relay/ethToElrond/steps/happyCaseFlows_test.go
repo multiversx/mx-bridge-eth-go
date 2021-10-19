@@ -10,6 +10,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	getPendingBatch                         = "GetPendingBatch"
+	hasPendingBatch                         = "HasPendingBatch"
+	isLeader                                = "IsLeader"
+	proposeTransferOnDestination            = "ProposeTransferOnDestination"
+	printDebugInfo                          = "PrintDebugInfo"
+	setStatusRejectedOnAllTransactions      = "SetStatusRejectedOnAllTransactions"
+	waitStepToFinish                        = "WaitStepToFinish"
+	wasProposeTransferExecutedOnDestination = "WasProposeTransferExecutedOnDestination"
+	signProposeTransferOnDestination        = "SignProposeTransferOnDestination"
+	isQuorumReachedForProposeTransfer       = "IsQuorumReachedForProposeTransfer"
+	executeTransferOnDestination            = "ExecuteTransferOnDestination"
+	wasTransferExecutedOnDestination        = "WasTransferExecutedOnDestination"
+	cleanTopology                           = "CleanTopology"
+	setStatusExecutedOnAllTransactions      = "SetStatusExecutedOnAllTransactions"
+	proposeSetStatusOnSource                = "ProposeSetStatusOnSource"
+	wasProposeSetStatusExecutedOnSource     = "WasProposeSetStatusExecutedOnSource"
+	signProposeSetStatusOnDestination       = "SignProposeSetStatusOnDestination"
+	isQuorumReachedForProposeSetStatus      = "IsQuorumReachedForProposeSetStatus"
+	executeSetStatusOnSource                = "ExecuteSetStatusOnSource"
+	wasSetStatusExecutedOnSource            = "WasSetStatusExecutedOnSource"
+)
+
 var trueHandler = func() bool { return true }
 var falseHandler = func() bool { return false }
 
@@ -28,13 +51,11 @@ func TestGetPendingEndlessLoop(t *testing.T) {
 	t.Parallel()
 
 	bem := mock.NewBridgeExecutorMock()
-	bem.HasPendingBatchCalled = func() bool {
-		return false
-	}
+	bem.HasPendingBatchCalled = falseHandler
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GetPending)
+	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -55,7 +76,7 @@ func TestFlowAsLeaderForTwoCompleteFlows(t *testing.T) {
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GetPending)
+	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -66,20 +87,20 @@ func TestFlowAsLeaderForTwoCompleteFlows(t *testing.T) {
 	}
 
 	expectedSteps := []relay.StepIdentifier{
-		ethToElrond.GetPending,
-		ethToElrond.ProposeTransfer,
-		ethToElrond.WaitForSignaturesForProposeTransfer,
-		ethToElrond.ExecuteTransfer,
-		ethToElrond.ProposeSetStatus,
-		ethToElrond.WaitForSignaturesForProposeSetStatus,
-		ethToElrond.ExecuteSetStatus,
-		ethToElrond.GetPending,
-		ethToElrond.ProposeTransfer,
-		ethToElrond.WaitForSignaturesForProposeTransfer,
-		ethToElrond.ExecuteTransfer,
-		ethToElrond.ProposeSetStatus,
-		ethToElrond.WaitForSignaturesForProposeSetStatus,
-		ethToElrond.ExecuteSetStatus,
+		ethToElrond.GettingPending,
+		ethToElrond.ProposingTransfer,
+		ethToElrond.WaitingSignaturesForProposeTransfer,
+		ethToElrond.ExecutingTransfer,
+		ethToElrond.ProposingSetStatus,
+		ethToElrond.WaitingSignaturesForProposeSetStatus,
+		ethToElrond.ExecutingSetStatus,
+		ethToElrond.GettingPending,
+		ethToElrond.ProposingTransfer,
+		ethToElrond.WaitingSignaturesForProposeTransfer,
+		ethToElrond.ExecutingTransfer,
+		ethToElrond.ProposingSetStatus,
+		ethToElrond.WaitingSignaturesForProposeSetStatus,
+		ethToElrond.ExecutingSetStatus,
 	}
 
 	assert.Equal(t, expectedSteps, smm.ExecutedSteps)
@@ -94,7 +115,7 @@ func TestFlowAsSignerForTwoCompleteFlows(t *testing.T) {
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GetPending)
+	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -105,20 +126,20 @@ func TestFlowAsSignerForTwoCompleteFlows(t *testing.T) {
 	}
 
 	expectedSteps := []relay.StepIdentifier{
-		ethToElrond.GetPending,
-		ethToElrond.ProposeTransfer,
-		ethToElrond.WaitForSignaturesForProposeTransfer,
-		ethToElrond.ExecuteTransfer,
-		ethToElrond.ProposeSetStatus,
-		ethToElrond.WaitForSignaturesForProposeSetStatus,
-		ethToElrond.ExecuteSetStatus,
-		ethToElrond.GetPending,
-		ethToElrond.ProposeTransfer,
-		ethToElrond.WaitForSignaturesForProposeTransfer,
-		ethToElrond.ExecuteTransfer,
-		ethToElrond.ProposeSetStatus,
-		ethToElrond.WaitForSignaturesForProposeSetStatus,
-		ethToElrond.ExecuteSetStatus,
+		ethToElrond.GettingPending,
+		ethToElrond.ProposingTransfer,
+		ethToElrond.WaitingSignaturesForProposeTransfer,
+		ethToElrond.ExecutingTransfer,
+		ethToElrond.ProposingSetStatus,
+		ethToElrond.WaitingSignaturesForProposeSetStatus,
+		ethToElrond.ExecutingSetStatus,
+		ethToElrond.GettingPending,
+		ethToElrond.ProposingTransfer,
+		ethToElrond.WaitingSignaturesForProposeTransfer,
+		ethToElrond.ExecutingTransfer,
+		ethToElrond.ProposingSetStatus,
+		ethToElrond.WaitingSignaturesForProposeSetStatus,
+		ethToElrond.ExecutingSetStatus,
 	}
 
 	assert.Equal(t, expectedSteps, smm.ExecutedSteps)
@@ -132,7 +153,7 @@ func TestFlowAsLeaderForOneCompleteFlowWithStubChecking(t *testing.T) {
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GetPending)
+	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -143,34 +164,34 @@ func TestFlowAsLeaderForOneCompleteFlowWithStubChecking(t *testing.T) {
 	}
 
 	expectedSteps := []relay.StepIdentifier{
-		ethToElrond.GetPending,
-		ethToElrond.ProposeTransfer,
-		ethToElrond.WaitForSignaturesForProposeTransfer,
-		ethToElrond.ExecuteTransfer,
-		ethToElrond.ProposeSetStatus,
-		ethToElrond.WaitForSignaturesForProposeSetStatus,
-		ethToElrond.ExecuteSetStatus,
+		ethToElrond.GettingPending,
+		ethToElrond.ProposingTransfer,
+		ethToElrond.WaitingSignaturesForProposeTransfer,
+		ethToElrond.ExecutingTransfer,
+		ethToElrond.ProposingSetStatus,
+		ethToElrond.WaitingSignaturesForProposeSetStatus,
+		ethToElrond.ExecutingSetStatus,
 	}
 
 	assert.Equal(t, expectedSteps, smm.ExecutedSteps)
-	assert.Equal(t, 1, bem.GetFunctionCounter("GetPendingBatch"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("HasPendingBatch"))
-	assert.Equal(t, 4, bem.GetFunctionCounter("IsLeader"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("ProposeTransferOnDestination"))
-	assert.Equal(t, 6, bem.GetFunctionCounter("WaitStepToFinish"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("WasProposeTransferExecutedOnDestination"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("SignProposeTransferOnDestination"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("IsQuorumReachedForProposeTransfer"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("ExecuteTransferOnDestination"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("WasTransferExecutedOnDestination"))
-	assert.Equal(t, 2, bem.GetFunctionCounter("CleanTopology"))
-	assert.Equal(t, 2, bem.GetFunctionCounter("SetStatusExecutedOnAllTransactions"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("ProposeSetStatusOnSource"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("WasProposeSetStatusExecutedOnSource"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("SignProposeSetStatusOnDestination"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("IsQuorumReachedForProposeSetStatus"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("ExecuteSetStatusOnSource"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("WasSetStatusExecutedOnSource"))
+	assert.Equal(t, 1, bem.GetFunctionCounter(getPendingBatch))
+	assert.Equal(t, 1, bem.GetFunctionCounter(hasPendingBatch))
+	assert.Equal(t, 4, bem.GetFunctionCounter(isLeader))
+	assert.Equal(t, 1, bem.GetFunctionCounter(proposeTransferOnDestination))
+	assert.Equal(t, 6, bem.GetFunctionCounter(waitStepToFinish))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeTransferExecutedOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeTransferOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeTransfer))
+	assert.Equal(t, 1, bem.GetFunctionCounter(executeTransferOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasTransferExecutedOnDestination))
+	assert.Equal(t, 2, bem.GetFunctionCounter(cleanTopology))
+	assert.Equal(t, 2, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
+	assert.Equal(t, 1, bem.GetFunctionCounter(proposeSetStatusOnSource))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeSetStatusExecutedOnSource))
+	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeSetStatus))
+	assert.Equal(t, 1, bem.GetFunctionCounter(executeSetStatusOnSource))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasSetStatusExecutedOnSource))
 }
 
 func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
@@ -182,7 +203,7 @@ func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GetPending)
+	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -193,32 +214,32 @@ func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
 	}
 
 	expectedSteps := []relay.StepIdentifier{
-		ethToElrond.GetPending,
-		ethToElrond.ProposeTransfer,
-		ethToElrond.WaitForSignaturesForProposeTransfer,
-		ethToElrond.ExecuteTransfer,
-		ethToElrond.ProposeSetStatus,
-		ethToElrond.WaitForSignaturesForProposeSetStatus,
-		ethToElrond.ExecuteSetStatus,
+		ethToElrond.GettingPending,
+		ethToElrond.ProposingTransfer,
+		ethToElrond.WaitingSignaturesForProposeTransfer,
+		ethToElrond.ExecutingTransfer,
+		ethToElrond.ProposingSetStatus,
+		ethToElrond.WaitingSignaturesForProposeSetStatus,
+		ethToElrond.ExecutingSetStatus,
 	}
 
 	assert.Equal(t, expectedSteps, smm.ExecutedSteps)
-	assert.Equal(t, 1, bem.GetFunctionCounter("GetPendingBatch"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("HasPendingBatch"))
-	assert.Equal(t, 4, bem.GetFunctionCounter("IsLeader"))
-	assert.Equal(t, 0, bem.GetFunctionCounter("ProposeTransferOnDestination"))
-	assert.Equal(t, 6, bem.GetFunctionCounter("WaitStepToFinish"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("WasProposeTransferExecutedOnDestination"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("SignProposeTransferOnDestination"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("IsQuorumReachedForProposeTransfer"))
-	assert.Equal(t, 0, bem.GetFunctionCounter("ExecuteTransferOnDestination"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("WasTransferExecutedOnDestination"))
-	assert.Equal(t, 2, bem.GetFunctionCounter("CleanTopology"))
-	assert.Equal(t, 2, bem.GetFunctionCounter("SetStatusExecutedOnAllTransactions"))
-	assert.Equal(t, 0, bem.GetFunctionCounter("ProposeSetStatusOnSource"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("WasProposeSetStatusExecutedOnSource"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("SignProposeSetStatusOnDestination"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("IsQuorumReachedForProposeSetStatus"))
-	assert.Equal(t, 0, bem.GetFunctionCounter("ExecuteSetStatusOnSource"))
-	assert.Equal(t, 1, bem.GetFunctionCounter("WasSetStatusExecutedOnSource"))
+	assert.Equal(t, 1, bem.GetFunctionCounter(getPendingBatch))
+	assert.Equal(t, 1, bem.GetFunctionCounter(hasPendingBatch))
+	assert.Equal(t, 4, bem.GetFunctionCounter(isLeader))
+	assert.Equal(t, 0, bem.GetFunctionCounter(proposeTransferOnDestination))
+	assert.Equal(t, 6, bem.GetFunctionCounter(waitStepToFinish))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeTransferExecutedOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeTransferOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeTransfer))
+	assert.Equal(t, 0, bem.GetFunctionCounter(executeTransferOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasTransferExecutedOnDestination))
+	assert.Equal(t, 2, bem.GetFunctionCounter(cleanTopology))
+	assert.Equal(t, 2, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
+	assert.Equal(t, 0, bem.GetFunctionCounter(proposeSetStatusOnSource))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeSetStatusExecutedOnSource))
+	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeSetStatus))
+	assert.Equal(t, 0, bem.GetFunctionCounter(executeSetStatusOnSource))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasSetStatusExecutedOnSource))
 }
