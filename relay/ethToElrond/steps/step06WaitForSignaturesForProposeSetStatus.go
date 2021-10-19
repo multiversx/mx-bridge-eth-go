@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"context"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
 )
@@ -10,21 +12,21 @@ type waitForSignaturesForProposeSetStatusStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *waitForSignaturesForProposeSetStatusStep) Execute() relay.StepIdentifier {
-	step.bridge.WaitStepToFinish(step.Identifier())
+func (step *waitForSignaturesForProposeSetStatusStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
+	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
 	if step.bridge.IsQuorumReachedForProposeSetStatus() {
-		return ethToElrond.ExecutingSetStatus
+		return ethToElrond.ExecutingSetStatus, nil
 	}
 
 	if step.bridge.WasProposeSetStatusExecutedOnSource() {
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 
-		return ethToElrond.GettingPending
+		return ethToElrond.GettingPending, nil
 	}
 
 	// remain in this step
-	return step.Identifier()
+	return step.Identifier(), nil
 }
 
 // Identifier returns the step's identifier

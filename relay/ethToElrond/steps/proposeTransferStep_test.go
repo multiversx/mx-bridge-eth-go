@@ -1,6 +1,7 @@
 package steps
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -16,7 +17,7 @@ func TestFlowAsLeaderProposeTransferOnDestinationErrorsWithStubChecking(t *testi
 
 	bem := mock.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
-	bem.ProposeTransferOnDestinationCalled = func() error {
+	bem.ProposeTransferOnDestinationCalled = func(ctx context.Context) error {
 		return errors.New("expected error")
 	}
 

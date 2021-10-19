@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"context"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
 )
@@ -10,21 +12,21 @@ type executeTransferStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *executeTransferStep) Execute() relay.StepIdentifier {
+func (step *executeTransferStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
 	if step.bridge.IsLeader() {
-		step.bridge.ExecuteTransferOnDestination()
+		step.bridge.ExecuteTransferOnDestination(ctx)
 	}
 
-	step.bridge.WaitStepToFinish(step.Identifier())
+	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
 	if step.bridge.WasTransferExecutedOnDestination() {
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 
-		return ethToElrond.ProposingSetStatus
+		return ethToElrond.ProposingSetStatus, nil
 	}
 
 	// remain in this step
-	return step.Identifier()
+	return step.Identifier(), nil
 }
 
 // Identifier returns the step's identifier

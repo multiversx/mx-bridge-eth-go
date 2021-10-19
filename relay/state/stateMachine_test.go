@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"sync/atomic"
@@ -18,8 +19,8 @@ func createMockArgs() state.ArgsStateMachine {
 	return state.ArgsStateMachine{
 		Steps: relay.MachineStates{
 			"mock": &mock.StepMock{
-				ExecuteCalled: func() relay.StepIdentifier {
-					return "mock"
+				ExecuteCalled: func(ctx context.Context) (relay.StepIdentifier, error) {
+					return "mock", nil
 				},
 			},
 		},
@@ -86,12 +87,12 @@ func TestStateMachine_CloseDoesNotCallNewExecute(t *testing.T) {
 	wg.Add(1)
 
 	args.Steps["mock"] = &mock.StepMock{
-		ExecuteCalled: func() relay.StepIdentifier {
+		ExecuteCalled: func(ctx context.Context) (relay.StepIdentifier, error) {
 			atomic.AddUint32(&numCalled, 1)
 
 			wg.Wait()
 
-			return "mock"
+			return "mock", nil
 		},
 	}
 
@@ -111,8 +112,24 @@ func TestStateMachine_StateMachineErrors(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
 	args.Steps["mock"] = &mock.StepMock{
-		ExecuteCalled: func() relay.StepIdentifier {
-			return "not found"
+		ExecuteCalled: func(ctx context.Context) (relay.StepIdentifier, error) {
+			return "not found", nil
+		},
+	}
+
+	sm, _ := state.NewStateMachine(args)
+	time.Sleep(time.Millisecond * 100)
+
+	assert.False(t, sm.LoopStatus())
+}
+
+func TestStateMachine_StepErrorsShouldStopTheStateMachine(t *testing.T) {
+	t.Parallel()
+	args := createMockArgs()
+	expectedErr := errors.New("expected error")
+	args.Steps["mock"] = &mock.StepMock{
+		ExecuteCalled: func(ctx context.Context) (relay.StepIdentifier, error) {
+			return "mock", expectedErr
 		},
 	}
 

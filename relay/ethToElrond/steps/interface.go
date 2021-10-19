@@ -1,6 +1,10 @@
 package steps
 
-import "github.com/ElrondNetwork/elrond-eth-bridge/relay"
+import (
+	"context"
+
+	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+)
 
 // BridgeExecutor defines the behavior of the component that handles the operations to be done on the bridge
 type BridgeExecutor interface {
@@ -14,17 +18,17 @@ type BridgeExecutor interface {
 	IsQuorumReachedForProposeSetStatus() bool
 
 	PrintDebugInfo(message string, extras ...interface{})
-	GetPendingBatch()
-	ProposeTransferOnDestination() error
-	ProposeSetStatusOnSource()
+	GetPendingBatch(ctx context.Context)
+	ProposeTransferOnDestination(ctx context.Context) error
+	ProposeSetStatusOnSource(ctx context.Context)
 	CleanTopology()
-	ExecuteTransferOnDestination()
-	ExecuteSetStatusOnSource()
+	ExecuteTransferOnDestination(ctx context.Context)
+	ExecuteSetStatusOnSource(ctx context.Context)
 	SetStatusRejectedOnAllTransactions()
 	SetStatusExecutedOnAllTransactions()
-	SignProposeTransferOnDestination()
-	SignProposeSetStatusOnDestination()
-	WaitStepToFinish(step relay.StepIdentifier)
+	SignProposeTransferOnDestination(ctx context.Context)
+	SignProposeSetStatusOnDestination(ctx context.Context)
+	WaitStepToFinish(step relay.StepIdentifier, ctx context.Context)
 
 	IsInterfaceNil() bool
 }
