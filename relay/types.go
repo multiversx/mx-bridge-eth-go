@@ -1,10 +1,12 @@
 package relay
 
+import "context"
+
 type StepIdentifier string
 
 // Step defines a state machine step
 type Step interface {
-	Execute() StepIdentifier
+	Execute(ctx context.Context) StepIdentifier
 	Identifier() StepIdentifier
 	IsInterfaceNil() bool
 }

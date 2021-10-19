@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"sync/atomic"
@@ -18,7 +19,7 @@ func createMockArgs() state.ArgsStateMachine {
 	return state.ArgsStateMachine{
 		Steps: relay.MachineStates{
 			"mock": &mock.StepMock{
-				ExecuteCalled: func() relay.StepIdentifier {
+				ExecuteCalled: func(ctx context.Context) relay.StepIdentifier {
 					return "mock"
 				},
 			},
@@ -86,7 +87,7 @@ func TestStateMachine_CloseDoesNotCallNewExecute(t *testing.T) {
 	wg.Add(1)
 
 	args.Steps["mock"] = &mock.StepMock{
-		ExecuteCalled: func() relay.StepIdentifier {
+		ExecuteCalled: func(ctx context.Context) relay.StepIdentifier {
 			atomic.AddUint32(&numCalled, 1)
 
 			wg.Wait()
@@ -111,7 +112,7 @@ func TestStateMachine_StateMachineErrors(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
 	args.Steps["mock"] = &mock.StepMock{
-		ExecuteCalled: func() relay.StepIdentifier {
+		ExecuteCalled: func(ctx context.Context) relay.StepIdentifier {
 			return "not found"
 		},
 	}

@@ -1,18 +1,20 @@
 package mock
 
 import (
+	"context"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 )
 
 // StepMock -
 type StepMock struct {
-	ExecuteCalled    func() relay.StepIdentifier
+	ExecuteCalled    func(ctx context.Context) relay.StepIdentifier
 	IdentifierCalled func() relay.StepIdentifier
 }
 
 // Execute -
-func (sm *StepMock) Execute() relay.StepIdentifier {
-	return sm.ExecuteCalled()
+func (sm *StepMock) Execute(ctx context.Context) relay.StepIdentifier {
+	return sm.ExecuteCalled(ctx)
 }
 
 // Identifier -

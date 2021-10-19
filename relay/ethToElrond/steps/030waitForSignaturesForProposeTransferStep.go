@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"context"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
 )
@@ -10,8 +12,8 @@ type waitForSignaturesForProposeTransferStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *waitForSignaturesForProposeTransferStep) Execute() relay.StepIdentifier {
-	step.bridge.WaitStepToFinish(step.Identifier())
+func (step *waitForSignaturesForProposeTransferStep) Execute(ctx context.Context) relay.StepIdentifier {
+	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
 	if step.bridge.IsQuorumReachedForProposeTransfer() {
 		return ethToElrond.ExecuteTransfer
 	}

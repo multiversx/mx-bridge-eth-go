@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
@@ -48,7 +49,7 @@ func (smm *StateMachineMock) ExecuteOneStep() error {
 	}
 
 	fmt.Printf("executing step %s...\n", smm.CurrentStep.Identifier())
-	nextStepIdentifier := smm.CurrentStep.Execute()
+	nextStepIdentifier := smm.CurrentStep.Execute(context.Background())
 	smm.ExecutedSteps = append(smm.ExecutedSteps, smm.CurrentStep.Identifier())
 
 	nextStep, err := smm.getNextStep(nextStepIdentifier)

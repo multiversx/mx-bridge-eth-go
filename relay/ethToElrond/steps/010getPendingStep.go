@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"context"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
 )
@@ -10,8 +12,8 @@ type getPendingStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *getPendingStep) Execute() relay.StepIdentifier {
-	step.bridge.GetPendingBatch()
+func (step *getPendingStep) Execute(ctx context.Context) relay.StepIdentifier {
+	step.bridge.GetPendingBatch(ctx)
 	if step.bridge.HasPendingBatch() {
 		return ethToElrond.ProposeTransfer
 	}

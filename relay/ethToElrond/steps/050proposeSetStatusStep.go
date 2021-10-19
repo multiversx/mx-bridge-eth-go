@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"context"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
 )
@@ -10,18 +12,18 @@ type proposeSetStatusStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *proposeSetStatusStep) Execute() relay.StepIdentifier {
+func (step *proposeSetStatusStep) Execute(ctx context.Context) relay.StepIdentifier {
 	if step.bridge.IsLeader() {
-		step.bridge.ProposeSetStatusOnSource()
+		step.bridge.ProposeSetStatusOnSource(ctx)
 	}
 
-	step.bridge.WaitStepToFinish(step.Identifier())
+	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
 	if !step.bridge.WasProposeSetStatusExecutedOnSource() {
 		// remain in this step
 		return step.Identifier()
 	}
 
-	step.bridge.SignProposeSetStatusOnDestination()
+	step.bridge.SignProposeSetStatusOnDestination(ctx)
 
 	return ethToElrond.WaitForSignaturesForProposeSetStatus
 }
