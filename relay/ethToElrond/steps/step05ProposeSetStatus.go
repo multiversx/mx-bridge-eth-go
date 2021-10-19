@@ -25,12 +25,12 @@ func (step *proposeSetStatusStep) Execute(ctx context.Context) (relay.StepIdenti
 
 	step.bridge.SignProposeSetStatusOnDestination(ctx)
 
-	return ethToElrond.WaitForSignaturesForProposeSetStatus, nil
+	return ethToElrond.WaitingSignaturesForProposeSetStatus, nil
 }
 
 // Identifier returns the step's identifier
 func (step *proposeSetStatusStep) Identifier() relay.StepIdentifier {
-	return ethToElrond.ProposeSetStatus
+	return ethToElrond.ProposingSetStatus
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

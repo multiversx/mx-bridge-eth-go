@@ -19,7 +19,7 @@ func (step *proposeTransferStep) Execute(ctx context.Context) (relay.StepIdentif
 			step.bridge.PrintDebugInfo("bridge.ProposeTransfer", "error", err)
 			step.bridge.SetStatusRejectedOnAllTransactions()
 
-			return ethToElrond.ProposeSetStatus, nil
+			return ethToElrond.ProposingSetStatus, nil
 		}
 	}
 
@@ -31,12 +31,12 @@ func (step *proposeTransferStep) Execute(ctx context.Context) (relay.StepIdentif
 
 	step.bridge.SignProposeTransferOnDestination(ctx)
 
-	return ethToElrond.WaitForSignaturesForProposeTransfer, nil
+	return ethToElrond.WaitingSignaturesForProposeTransfer, nil
 }
 
 // Identifier returns the step's identifier
 func (step *proposeTransferStep) Identifier() relay.StepIdentifier {
-	return ethToElrond.ProposeTransfer
+	return ethToElrond.ProposingTransfer
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

@@ -15,14 +15,14 @@ type waitForSignaturesForProposeTransferStep struct {
 func (step *waitForSignaturesForProposeTransferStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
 	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
 	if step.bridge.IsQuorumReachedForProposeTransfer() {
-		return ethToElrond.ExecuteTransfer, nil
+		return ethToElrond.ExecutingTransfer, nil
 	}
 
 	if step.bridge.WasProposeTransferExecutedOnDestination() {
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 
-		return ethToElrond.ProposeSetStatus, nil
+		return ethToElrond.ProposingSetStatus, nil
 	}
 
 	// remain in this step
@@ -31,7 +31,7 @@ func (step *waitForSignaturesForProposeTransferStep) Execute(ctx context.Context
 
 // Identifier returns the step's identifier
 func (step *waitForSignaturesForProposeTransferStep) Identifier() relay.StepIdentifier {
-	return ethToElrond.WaitForSignaturesForProposeTransfer
+	return ethToElrond.WaitingSignaturesForProposeTransfer
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
