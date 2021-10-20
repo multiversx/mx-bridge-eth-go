@@ -3,9 +3,14 @@ package mock
 import "context"
 
 type QuorumProviderStub struct {
-	quorum uint
+	GetQuorumCalled func(ctx context.Context) (uint, error)
+
+	GetQuorumError error
 }
 
-func (s *QuorumProviderStub) GetQuorum(_ context.Context) (uint, error) {
-	return s.quorum, nil
+func (s *QuorumProviderStub) GetQuorum(ctx context.Context) (uint, error) {
+	if s.GetQuorumCalled != nil {
+		return s.GetQuorumCalled(ctx)
+	}
+	return 0, s.GetQuorumError
 }

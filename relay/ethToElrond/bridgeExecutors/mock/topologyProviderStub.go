@@ -1,19 +1,27 @@
 package mock
 
 type TopologyProviderStub struct {
-	amITheLeader bool
-	peerCount    int
-	cleaned      bool
+	AmITheLeaderCalled func() bool
+	PeerCountCalled    func() int
+	CleanCalled        func()
 }
 
 func (s *TopologyProviderStub) AmITheLeader() bool {
-	return s.amITheLeader
+	if s.AmITheLeaderCalled != nil {
+		return s.AmITheLeaderCalled()
+	}
+	return false
 }
 
 func (s *TopologyProviderStub) PeerCount() int {
-	return s.peerCount
+	if s.PeerCountCalled != nil {
+		return s.PeerCountCalled()
+	}
+	return 0
 }
 
 func (s *TopologyProviderStub) Clean() {
-	s.cleaned = true
+	if s.CleanCalled != nil {
+		s.CleanCalled()
+	}
 }
