@@ -27,6 +27,7 @@ func createMockArgs() stateMachine.ArgsStateMachine {
 		StartStateIdentifier: "mock",
 		DurationBetweenSteps: time.Millisecond,
 		Log:                  logger.GetOrCreate("test"),
+		Timer:                &mock.TimerMock{},
 	}
 }
 
@@ -64,6 +65,14 @@ func TestNewStateMachine(t *testing.T) {
 
 		assert.Nil(t, sm)
 		assert.True(t, errors.Is(err, stateMachine.ErrStepNotFound))
+	})
+	t.Run("nil timer", func(t *testing.T) {
+		args := createMockArgs()
+		args.Timer = nil
+		sm, err := stateMachine.NewStateMachine(args)
+
+		assert.Nil(t, sm)
+		assert.True(t, errors.Is(err, stateMachine.ErrNilTimer))
 	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockArgs()

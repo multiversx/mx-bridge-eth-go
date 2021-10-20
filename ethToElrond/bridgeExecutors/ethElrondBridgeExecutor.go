@@ -23,6 +23,7 @@ type ArgsEthElrondBridgeExecutor struct {
 	DestinationBridge bridge.Bridge
 	TopologyProvider  TopologyProvider
 	QuorumProvider    bridge.QuorumProvider
+	Timer             Timer
 }
 
 // ethElrondBridgeExecutor represents the eth-elrond bridge executor adapter
@@ -36,6 +37,7 @@ type ethElrondBridgeExecutor struct {
 	actionId          bridge.ActionId
 	topologyProvider  TopologyProvider
 	quorumProvider    bridge.QuorumProvider
+	timer             Timer
 }
 
 // NewEthElrondBridgeExecutor will return a new instance of the ethElrondBridgeExecutor struct
@@ -52,6 +54,7 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 		destinationBridge: args.DestinationBridge,
 		topologyProvider:  args.TopologyProvider,
 		quorumProvider:    args.QuorumProvider,
+		timer:             args.Timer,
 	}, nil
 }
 
@@ -71,6 +74,9 @@ func checkArgs(args ArgsEthElrondBridgeExecutor) error {
 	}
 	if check.IfNilReflect(args.QuorumProvider) {
 		return ErrNilQuorumProvider
+	}
+	if check.IfNilReflect(args.Timer) {
+		return ErrNilTimer
 	}
 
 	return nil
@@ -232,7 +238,7 @@ func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step core.StepIdentifi
 		"step", step, "batch ID", executor.getBatchID())
 
 	select {
-	case <-time.After(defaultWaitTime):
+	case <-executor.timer.After(defaultWaitTime):
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

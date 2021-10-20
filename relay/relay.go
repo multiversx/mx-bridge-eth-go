@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"io"
 
 	"fmt"
 	"math/rand"
@@ -11,6 +12,10 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
+	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 
 	"github.com/ElrondNetwork/elrond-go/ntp"
@@ -150,17 +155,65 @@ func (r *Relay) Start(ctx context.Context) error {
 
 	r.timer.Start()
 
-	monitorEth := NewMonitor(r.ethBridge, r.elrondBridge, r.timer, r, r.quorumProvider, "EthToElrond")
-	go monitorEth.Start(ctx)
-	monitorElrond := NewMonitor(r.elrondBridge, r.ethBridge, r.timer, r, r.quorumProvider, "ElrondToEth")
-	go monitorElrond.Start(ctx)
-
-	<-ctx.Done()
-	if err := r.Stop(); err != nil {
+	smEthToElrond, err := r.createAndStartBridge(r.ethBridge, r.elrondBridge, "EthToElrond")
+	if err != nil {
+		return err
+	}
+	smElrondToEth, err := r.createAndStartBridge(r.elrondBridge, r.ethBridge, "ElrondToEth")
+	if err != nil {
 		return err
 	}
 
+	<-ctx.Done()
+	err = smEthToElrond.Close()
+	r.log.LogIfError(err)
+
+	err = smElrondToEth.Close()
+	r.log.LogIfError(err)
+
+	err = r.Stop()
+	r.log.LogIfError(err)
+
 	return nil
+}
+
+func (r *Relay) createAndStartBridge(
+	sourceBridge bridge.Bridge,
+	destinationBridge bridge.Bridge,
+	name string,
+) (io.Closer, error) {
+	logExecutor := logger.GetOrCreate(name + "/executor")
+	argsExecutor := bridgeExecutors.ArgsEthElrondBridgeExecutor{
+		ExecutorName:      name,
+		Logger:            logExecutor,
+		SourceBridge:      sourceBridge,
+		DestinationBridge: destinationBridge,
+		TopologyProvider:  r,
+		QuorumProvider:    r.quorumProvider,
+		Timer:             r.timer,
+	}
+
+	bridgeExecutor, err := bridgeExecutors.NewEthElrondBridgeExecutor(argsExecutor)
+	if err != nil {
+		return nil, err
+	}
+
+	stepsMap, err := steps.CreateSteps(bridgeExecutor)
+	if err != nil {
+		return nil, err
+	}
+
+	logStateMachine := logger.GetOrCreate(name + "/statemachine")
+	argsStateMachine := stateMachine.ArgsStateMachine{
+		StateMachineName:     name,
+		Steps:                stepsMap,
+		StartStateIdentifier: ethToElrond.GettingPending,
+		DurationBetweenSteps: time.Second * 5,
+		Log:                  logStateMachine,
+		Timer:                r.timer,
+	}
+
+	return stateMachine.NewStateMachine(argsStateMachine)
 }
 
 func (r *Relay) Stop() error {
