@@ -122,6 +122,8 @@ func (executor *ethElrondBridgeExecutor) isQuorumReachedOnBridge(ctx context.Con
 	quorum, err := executor.quorumProvider.GetQuorum(ctx)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
+
+		return false
 	}
 
 	executor.logger.Info(executor.appendMessageToName("got signatures"),
