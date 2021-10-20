@@ -3,7 +3,7 @@ package steps
 import (
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -3,8 +3,8 @@ package steps
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 )
 
 type proposeSetStatusStep struct {
@@ -12,7 +12,7 @@ type proposeSetStatusStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *proposeSetStatusStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
+func (step *proposeSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	if step.bridge.IsLeader() {
 		step.bridge.ProposeSetStatusOnSource(ctx)
 	}
@@ -33,7 +33,7 @@ func (step *proposeSetStatusStep) Execute(ctx context.Context) (relay.StepIdenti
 }
 
 // Identifier returns the step's identifier
-func (step *proposeSetStatusStep) Identifier() relay.StepIdentifier {
+func (step *proposeSetStatusStep) Identifier() core.StepIdentifier {
 	return ethToElrond.ProposingSetStatus
 }
 

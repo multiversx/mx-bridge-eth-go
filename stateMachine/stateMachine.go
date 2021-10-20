@@ -1,11 +1,11 @@
-package state
+package stateMachine
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/atomic"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -14,16 +14,16 @@ import (
 // ArgsStateMachine represents the state machine arguments
 type ArgsStateMachine struct {
 	StateMachineName     string
-	Steps                relay.MachineStates
-	StartStateIdentifier relay.StepIdentifier
+	Steps                core.MachineStates
+	StartStateIdentifier core.StepIdentifier
 	DurationBetweenSteps time.Duration
 	Log                  logger.Logger
 }
 
 type stateMachine struct {
 	stateMachineName     string
-	steps                relay.MachineStates
-	currentStep          relay.Step
+	steps                core.MachineStates
+	currentStep          core.Step
 	durationBetweenSteps time.Duration
 	log                  logger.Logger
 	cancel               func()
@@ -105,7 +105,7 @@ func (sm *stateMachine) executeStep(ctx context.Context) error {
 	return err
 }
 
-func (sm *stateMachine) getNextStep(identifier relay.StepIdentifier) (relay.Step, error) {
+func (sm *stateMachine) getNextStep(identifier core.StepIdentifier) (core.Step, error) {
 	nextStep, ok := sm.steps[identifier]
 	if !ok {
 		return nil, fmt.Errorf("%w for identifier '%s'", ErrStepNotFound, identifier)

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -89,7 +89,7 @@ func TestFlowAsLeaderForTwoCompleteFlows(t *testing.T) {
 		require.Nil(t, err)
 	}
 
-	expectedSteps := []relay.StepIdentifier{
+	expectedSteps := []core.StepIdentifier{
 		ethToElrond.GettingPending,
 		ethToElrond.ProposingTransfer,
 		ethToElrond.WaitingSignaturesForProposeTransfer,
@@ -128,7 +128,7 @@ func TestFlowAsSignerForTwoCompleteFlows(t *testing.T) {
 		require.Nil(t, err)
 	}
 
-	expectedSteps := []relay.StepIdentifier{
+	expectedSteps := []core.StepIdentifier{
 		ethToElrond.GettingPending,
 		ethToElrond.ProposingTransfer,
 		ethToElrond.WaitingSignaturesForProposeTransfer,
@@ -166,7 +166,7 @@ func TestFlowAsLeaderForOneCompleteFlowWithStubChecking(t *testing.T) {
 		require.Nil(t, err)
 	}
 
-	expectedSteps := []relay.StepIdentifier{
+	expectedSteps := []core.StepIdentifier{
 		ethToElrond.GettingPending,
 		ethToElrond.ProposingTransfer,
 		ethToElrond.WaitingSignaturesForProposeTransfer,
@@ -216,7 +216,7 @@ func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
 		require.Nil(t, err)
 	}
 
-	expectedSteps := []relay.StepIdentifier{
+	expectedSteps := []core.StepIdentifier{
 		ethToElrond.GettingPending,
 		ethToElrond.ProposingTransfer,
 		ethToElrond.WaitingSignaturesForProposeTransfer,

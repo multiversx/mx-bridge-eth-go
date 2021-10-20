@@ -3,12 +3,12 @@ package steps
 import (
 	"fmt"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 )
 
 // CreateSteps creates all machine states providing the bridge executor
-func CreateSteps(executor BridgeExecutor) (relay.MachineStates, error) {
+func CreateSteps(executor BridgeExecutor) (core.MachineStates, error) {
 	if check.IfNil(executor) {
 		return nil, ErrNilBridgeExecutor
 	}
@@ -16,10 +16,10 @@ func CreateSteps(executor BridgeExecutor) (relay.MachineStates, error) {
 	return createMachineStates(executor)
 }
 
-func createMachineStates(executor BridgeExecutor) (relay.MachineStates, error) {
-	machineStates := make(relay.MachineStates)
+func createMachineStates(executor BridgeExecutor) (core.MachineStates, error) {
+	machineStates := make(core.MachineStates)
 
-	steps := []relay.Step{
+	steps := []core.Step{
 		&getPendingStep{
 			bridge: executor,
 		},

@@ -3,8 +3,8 @@ package steps
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 )
 
 type waitForSignaturesForProposeTransferStep struct {
@@ -12,7 +12,7 @@ type waitForSignaturesForProposeTransferStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *waitForSignaturesForProposeTransferStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
+func (step *waitForSignaturesForProposeTransferStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	err := step.bridge.WaitStepToFinish(step.Identifier(), ctx)
 	if err != nil {
 		return step.Identifier(), err
@@ -34,7 +34,7 @@ func (step *waitForSignaturesForProposeTransferStep) Execute(ctx context.Context
 }
 
 // Identifier returns the step's identifier
-func (step *waitForSignaturesForProposeTransferStep) Identifier() relay.StepIdentifier {
+func (step *waitForSignaturesForProposeTransferStep) Identifier() core.StepIdentifier {
 	return ethToElrond.WaitingSignaturesForProposeTransfer
 }
 

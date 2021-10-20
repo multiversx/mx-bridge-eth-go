@@ -3,8 +3,8 @@ package steps
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 )
 
 type getPendingStep struct {
@@ -12,7 +12,7 @@ type getPendingStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *getPendingStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
+func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	step.bridge.GetPendingBatch(ctx)
 	if step.bridge.HasPendingBatch() {
 		return ethToElrond.ProposingTransfer, nil
@@ -23,7 +23,7 @@ func (step *getPendingStep) Execute(ctx context.Context) (relay.StepIdentifier, 
 }
 
 // Identifier returns the step's identifier
-func (step *getPendingStep) Identifier() relay.StepIdentifier {
+func (step *getPendingStep) Identifier() core.StepIdentifier {
 	return ethToElrond.GettingPending
 }
 

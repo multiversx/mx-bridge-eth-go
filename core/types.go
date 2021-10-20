@@ -1,8 +1,12 @@
-package relay
+package core
 
 import "context"
 
+// StepIdentifier defines a step name
 type StepIdentifier string
+
+// MachineStates defines all available steps for a state machine to run
+type MachineStates map[StepIdentifier]Step
 
 // Step defines a state machine step
 type Step interface {
@@ -10,6 +14,3 @@ type Step interface {
 	Identifier() StepIdentifier
 	IsInterfaceNil() bool
 }
-
-// MachineStates defines all available steps for a state machine to run
-type MachineStates map[StepIdentifier]Step

@@ -6,11 +6,11 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/mock.(*BridgeExecutorMock)."
+var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/mock.(*BridgeExecutorMock)."
 
 // BridgeExecutorMock -
 type BridgeExecutorMock struct {
@@ -37,7 +37,7 @@ type BridgeExecutorMock struct {
 	SetStatusExecutedOnAllTransactionsCalled func()
 	SignProposeTransferOnDestinationCalled   func(ctx context.Context)
 	SignProposeSetStatusOnSourceCalled       func(ctx context.Context)
-	WaitStepToFinishCalled                   func(step relay.StepIdentifier, ctx context.Context) error
+	WaitStepToFinishCalled                   func(step core.StepIdentifier, ctx context.Context) error
 }
 
 // NewBridgeExecutorMock creates a new BridgeExecutorMock instance
@@ -222,7 +222,7 @@ func (bem *BridgeExecutorMock) SignProposeSetStatusOnSource(ctx context.Context)
 }
 
 // WaitStepToFinish -
-func (bem *BridgeExecutorMock) WaitStepToFinish(step relay.StepIdentifier, ctx context.Context) error {
+func (bem *BridgeExecutorMock) WaitStepToFinish(step core.StepIdentifier, ctx context.Context) error {
 	bem.incrementFunctionCounter()
 	if bem.WaitStepToFinishCalled != nil {
 		return bem.WaitStepToFinishCalled(step, ctx)
