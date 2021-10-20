@@ -22,7 +22,7 @@ func (step *executeTransferStep) Execute(ctx context.Context) (core.StepIdentifi
 		return step.Identifier(), err
 	}
 
-	if step.bridge.WasExecutedOnDestination(ctx) {
+	if step.bridge.WasTransferExecutedOnDestination(ctx) {
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 

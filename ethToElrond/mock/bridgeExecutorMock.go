@@ -21,8 +21,8 @@ type BridgeExecutorMock struct {
 	IsLeaderCalled                                func() bool
 	WasProposeTransferExecutedOnDestinationCalled func(ctx context.Context) bool
 	WasProposeSetStatusExecutedOnSourceCalled     func(ctx context.Context) bool
-	WasExecutedOnDestinationCalled                func(ctx context.Context) bool
-	WasExecutedOnSourceCalled                     func(ctx context.Context) bool
+	WasTransferExecutedOnDestinationCalled        func(ctx context.Context) bool
+	WasSetStatusExecutedOnSourceCalled            func(ctx context.Context) bool
 	IsQuorumReachedForProposeTransferCalled       func(ctx context.Context) bool
 	IsQuorumReachedForProposeSetStatusCalled      func(ctx context.Context) bool
 
@@ -89,21 +89,21 @@ func (bem *BridgeExecutorMock) WasProposeSetStatusExecutedOnSource(ctx context.C
 	return false
 }
 
-// WasExecutedOnDestination -
-func (bem *BridgeExecutorMock) WasExecutedOnDestination(ctx context.Context) bool {
+// WasTransferExecutedOnDestination -
+func (bem *BridgeExecutorMock) WasTransferExecutedOnDestination(ctx context.Context) bool {
 	bem.incrementFunctionCounter()
-	if bem.WasExecutedOnDestinationCalled != nil {
-		return bem.WasExecutedOnDestinationCalled(ctx)
+	if bem.WasTransferExecutedOnDestinationCalled != nil {
+		return bem.WasTransferExecutedOnDestinationCalled(ctx)
 	}
 
 	return false
 }
 
-// WasExecutedOnSource -
-func (bem *BridgeExecutorMock) WasExecutedOnSource(ctx context.Context) bool {
+// WasSetStatusExecutedOnSource -
+func (bem *BridgeExecutorMock) WasSetStatusExecutedOnSource(ctx context.Context) bool {
 	bem.incrementFunctionCounter()
-	if bem.WasExecutedOnSourceCalled != nil {
-		return bem.WasExecutedOnSourceCalled(ctx)
+	if bem.WasSetStatusExecutedOnSourceCalled != nil {
+		return bem.WasSetStatusExecutedOnSourceCalled(ctx)
 	}
 
 	return false
