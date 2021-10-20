@@ -17,8 +17,12 @@ func (step *executeTransferStep) Execute(ctx context.Context) (relay.StepIdentif
 		step.bridge.ExecuteTransferOnDestination(ctx)
 	}
 
-	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
-	if step.bridge.WasTransferExecutedOnDestination() {
+	err := step.bridge.WaitStepToFinish(step.Identifier(), ctx)
+	if err != nil {
+		return step.Identifier(), err
+	}
+
+	if step.bridge.WasTransferExecutedOnDestination(ctx) {
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 

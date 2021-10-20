@@ -17,8 +17,12 @@ func (step *executeSetStatusStep) Execute(ctx context.Context) (relay.StepIdenti
 		step.bridge.ExecuteSetStatusOnSource(ctx)
 	}
 
-	step.bridge.WaitStepToFinish(step.Identifier(), ctx)
-	if step.bridge.WasSetStatusExecutedOnSource() {
+	err := step.bridge.WaitStepToFinish(step.Identifier(), ctx)
+	if err != nil {
+		return step.Identifier(), err
+	}
+
+	if step.bridge.WasSetStatusExecutedOnSource(ctx) {
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 

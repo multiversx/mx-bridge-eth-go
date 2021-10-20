@@ -7,7 +7,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/steps/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -59,7 +59,7 @@ func TestFlowAsLeaderProposeTransferOnDestinationErrorsWithStubChecking(t *testi
 	assert.Equal(t, 1, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
 	assert.Equal(t, 1, bem.GetFunctionCounter(proposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeSetStatusExecutedOnSource))
-	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeSetStatus))
 	assert.Equal(t, 1, bem.GetFunctionCounter(executeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasSetStatusExecutedOnSource))
@@ -70,7 +70,7 @@ func TestFlowAsLeaderWasNotProposedTransferWithStubChecking(t *testing.T) {
 
 	bem := mock.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
-	bem.WasProposeTransferExecutedOnDestinationCalled = falseHandler
+	bem.WasProposeTransferExecutedOnDestinationCalled = falseHandlerWithContext
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)

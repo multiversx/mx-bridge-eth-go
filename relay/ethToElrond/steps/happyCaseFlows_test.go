@@ -1,11 +1,12 @@
 package steps
 
 import (
+	"context"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/steps/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +16,7 @@ const (
 	hasPendingBatch                         = "HasPendingBatch"
 	isLeader                                = "IsLeader"
 	proposeTransferOnDestination            = "ProposeTransferOnDestination"
-	printDebugInfo                          = "PrintDebugInfo"
+	printDebugInfo                          = "PrintInfo"
 	setStatusRejectedOnAllTransactions      = "SetStatusRejectedOnAllTransactions"
 	waitStepToFinish                        = "WaitStepToFinish"
 	wasProposeTransferExecutedOnDestination = "WasProposeTransferExecutedOnDestination"
@@ -27,24 +28,26 @@ const (
 	setStatusExecutedOnAllTransactions      = "SetStatusExecutedOnAllTransactions"
 	proposeSetStatusOnSource                = "ProposeSetStatusOnSource"
 	wasProposeSetStatusExecutedOnSource     = "WasProposeSetStatusExecutedOnSource"
-	signProposeSetStatusOnDestination       = "SignProposeSetStatusOnDestination"
+	signProposeSetStatusOnSource            = "SignProposeSetStatusOnSource"
 	isQuorumReachedForProposeSetStatus      = "IsQuorumReachedForProposeSetStatus"
 	executeSetStatusOnSource                = "ExecuteSetStatusOnSource"
 	wasSetStatusExecutedOnSource            = "WasSetStatusExecutedOnSource"
 )
 
 var trueHandler = func() bool { return true }
+var trueHandlerWithContext = func(_ context.Context) bool { return true }
 var falseHandler = func() bool { return false }
+var falseHandlerWithContext = func(_ context.Context) bool { return false }
 
 func setAllDecisionHandlersToTrue(bem *mock.BridgeExecutorMock) {
 	bem.HasPendingBatchCalled = trueHandler
 	bem.IsLeaderCalled = trueHandler
-	bem.WasProposeTransferExecutedOnDestinationCalled = trueHandler
-	bem.WasProposeSetStatusExecutedOnSourceCalled = trueHandler
-	bem.WasTransferExecutedOnDestinationCalled = trueHandler
-	bem.WasSetStatusExecutedOnSourceCalled = trueHandler
-	bem.IsQuorumReachedForProposeTransferCalled = trueHandler
-	bem.IsQuorumReachedForProposeSetStatusCalled = trueHandler
+	bem.WasProposeTransferExecutedOnDestinationCalled = trueHandlerWithContext
+	bem.WasProposeSetStatusExecutedOnSourceCalled = trueHandlerWithContext
+	bem.WasTransferExecutedOnDestinationCalled = trueHandlerWithContext
+	bem.WasSetStatusExecutedOnSourceCalled = trueHandlerWithContext
+	bem.IsQuorumReachedForProposeTransferCalled = trueHandlerWithContext
+	bem.IsQuorumReachedForProposeSetStatusCalled = trueHandlerWithContext
 }
 
 func TestGetPendingEndlessLoop(t *testing.T) {
@@ -188,7 +191,7 @@ func TestFlowAsLeaderForOneCompleteFlowWithStubChecking(t *testing.T) {
 	assert.Equal(t, 2, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
 	assert.Equal(t, 1, bem.GetFunctionCounter(proposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeSetStatusExecutedOnSource))
-	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeSetStatus))
 	assert.Equal(t, 1, bem.GetFunctionCounter(executeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasSetStatusExecutedOnSource))
@@ -238,7 +241,7 @@ func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
 	assert.Equal(t, 2, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
 	assert.Equal(t, 0, bem.GetFunctionCounter(proposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeSetStatusExecutedOnSource))
-	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeSetStatus))
 	assert.Equal(t, 0, bem.GetFunctionCounter(executeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasSetStatusExecutedOnSource))
