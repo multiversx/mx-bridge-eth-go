@@ -10,7 +10,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/steps/mock.(*BridgeExecutorMock)."
+var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/mock.(*BridgeExecutorMock)."
 
 // BridgeExecutorMock -
 type BridgeExecutorMock struct {

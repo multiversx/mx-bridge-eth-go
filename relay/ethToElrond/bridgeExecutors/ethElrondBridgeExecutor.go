@@ -8,11 +8,22 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
 // TODO load this from config
 const defaultWaitTime = time.Second * 40
+
+// ArgsEthElrondBridgeExecutor is the DTO used in the NewEthElrondBridgeExecutor constructor function
+type ArgsEthElrondBridgeExecutor struct {
+	ExecutorName      string
+	Logger            logger.Logger
+	SourceBridge      bridge.Bridge
+	DestinationBridge bridge.Bridge
+	TopologyProvider  relay.TopologyProvider
+	QuorumProvider    bridge.QuorumProvider
+}
 
 // ethElrondBridgeExecutor represents the eth-elrond bridge executor adapter
 // this implementation is not concurrent safe. Should be called from a single go routine
@@ -25,6 +36,44 @@ type ethElrondBridgeExecutor struct {
 	actionId          bridge.ActionId
 	topologyProvider  relay.TopologyProvider
 	quorumProvider    bridge.QuorumProvider
+}
+
+// NewEthElrondBridgeExecutor will return a new instance of the ethElrondBridgeExecutor struct
+func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBridgeExecutor, error) {
+	err := checkArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ethElrondBridgeExecutor{
+		executorName:      args.ExecutorName,
+		logger:            args.Logger,
+		sourceBridge:      args.SourceBridge,
+		destinationBridge: args.DestinationBridge,
+		topologyProvider:  args.TopologyProvider,
+		quorumProvider:    args.QuorumProvider,
+	}, nil
+}
+
+func checkArgs(args ArgsEthElrondBridgeExecutor) error {
+	//TODO add IsInterfaceNil on all implementations
+	if check.IfNilReflect(args.SourceBridge) {
+		return fmt.Errorf("%w for the source bridge", ErrNilBridge)
+	}
+	if check.IfNilReflect(args.DestinationBridge) {
+		return fmt.Errorf("%w for the destination bridge", ErrNilBridge)
+	}
+	if check.IfNil(args.Logger) {
+		return ErrNilLogger
+	}
+	if check.IfNilReflect(args.TopologyProvider) {
+		return ErrNilTopologyProvider
+	}
+	if check.IfNilReflect(args.QuorumProvider) {
+		return ErrNilQuorumProvider
+	}
+
+	return nil
 }
 
 // HasPendingBatch returns true if the pending batch is not nil

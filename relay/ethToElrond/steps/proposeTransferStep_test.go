@@ -7,7 +7,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/steps/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
