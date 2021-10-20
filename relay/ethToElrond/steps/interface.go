@@ -13,8 +13,8 @@ type BridgeExecutor interface {
 	IsLeader() bool
 	WasProposeTransferExecutedOnDestination(ctx context.Context) bool
 	WasProposeSetStatusExecutedOnSource(ctx context.Context) bool
-	WasExecutedOnDestination(ctx context.Context) bool
-	WasExecutedOnSource(ctx context.Context) bool
+	WasTransferExecutedOnDestination(ctx context.Context) bool
+	WasSetStatusExecutedOnSource(ctx context.Context) bool
 	IsQuorumReachedForProposeTransfer(ctx context.Context) bool
 	IsQuorumReachedForProposeSetStatus(ctx context.Context) bool
 

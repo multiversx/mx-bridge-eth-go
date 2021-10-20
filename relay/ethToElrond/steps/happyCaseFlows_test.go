@@ -23,7 +23,7 @@ const (
 	signProposeTransferOnDestination        = "SignProposeTransferOnDestination"
 	isQuorumReachedForProposeTransfer       = "IsQuorumReachedForProposeTransfer"
 	executeTransferOnDestination            = "ExecuteTransferOnDestination"
-	wasExecutedOnDestination                = "WasExecutedOnDestination"
+	wasTransferExecutedOnDestination        = "WasTransferExecutedOnDestination"
 	cleanTopology                           = "CleanTopology"
 	setStatusExecutedOnAllTransactions      = "SetStatusExecutedOnAllTransactions"
 	proposeSetStatusOnSource                = "ProposeSetStatusOnSource"
@@ -31,7 +31,7 @@ const (
 	signProposeSetStatusOnSource            = "SignProposeSetStatusOnSource"
 	isQuorumReachedForProposeSetStatus      = "IsQuorumReachedForProposeSetStatus"
 	executeSetStatusOnSource                = "ExecuteSetStatusOnSource"
-	wasExecutedOnSource                     = "WasExecutedOnSource"
+	wasSetStatusExecutedOnSource            = "WasSetStatusExecutedOnSource"
 )
 
 var trueHandler = func() bool { return true }
@@ -44,8 +44,8 @@ func setAllDecisionHandlersToTrue(bem *mock.BridgeExecutorMock) {
 	bem.IsLeaderCalled = trueHandler
 	bem.WasProposeTransferExecutedOnDestinationCalled = trueHandlerWithContext
 	bem.WasProposeSetStatusExecutedOnSourceCalled = trueHandlerWithContext
-	bem.WasExecutedOnDestinationCalled = trueHandlerWithContext
-	bem.WasExecutedOnSourceCalled = trueHandlerWithContext
+	bem.WasTransferExecutedOnDestinationCalled = trueHandlerWithContext
+	bem.WasSetStatusExecutedOnSourceCalled = trueHandlerWithContext
 	bem.IsQuorumReachedForProposeTransferCalled = trueHandlerWithContext
 	bem.IsQuorumReachedForProposeSetStatusCalled = trueHandlerWithContext
 }
@@ -186,7 +186,7 @@ func TestFlowAsLeaderForOneCompleteFlowWithStubChecking(t *testing.T) {
 	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeTransferOnDestination))
 	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeTransfer))
 	assert.Equal(t, 1, bem.GetFunctionCounter(executeTransferOnDestination))
-	assert.Equal(t, 1, bem.GetFunctionCounter(wasExecutedOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasTransferExecutedOnDestination))
 	assert.Equal(t, 2, bem.GetFunctionCounter(cleanTopology))
 	assert.Equal(t, 2, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
 	assert.Equal(t, 1, bem.GetFunctionCounter(proposeSetStatusOnSource))
@@ -194,7 +194,7 @@ func TestFlowAsLeaderForOneCompleteFlowWithStubChecking(t *testing.T) {
 	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeSetStatus))
 	assert.Equal(t, 1, bem.GetFunctionCounter(executeSetStatusOnSource))
-	assert.Equal(t, 1, bem.GetFunctionCounter(wasExecutedOnSource))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasSetStatusExecutedOnSource))
 }
 
 func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
@@ -236,7 +236,7 @@ func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
 	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeTransferOnDestination))
 	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeTransfer))
 	assert.Equal(t, 0, bem.GetFunctionCounter(executeTransferOnDestination))
-	assert.Equal(t, 1, bem.GetFunctionCounter(wasExecutedOnDestination))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasTransferExecutedOnDestination))
 	assert.Equal(t, 2, bem.GetFunctionCounter(cleanTopology))
 	assert.Equal(t, 2, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
 	assert.Equal(t, 0, bem.GetFunctionCounter(proposeSetStatusOnSource))
@@ -244,5 +244,5 @@ func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
 	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeSetStatus))
 	assert.Equal(t, 0, bem.GetFunctionCounter(executeSetStatusOnSource))
-	assert.Equal(t, 1, bem.GetFunctionCounter(wasExecutedOnSource))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasSetStatusExecutedOnSource))
 }

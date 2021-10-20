@@ -54,7 +54,7 @@ func TestFlowAsLeaderProposeTransferOnDestinationErrorsWithStubChecking(t *testi
 	assert.Equal(t, 0, bem.GetFunctionCounter(signProposeTransferOnDestination))
 	assert.Equal(t, 0, bem.GetFunctionCounter(isQuorumReachedForProposeTransfer))
 	assert.Equal(t, 0, bem.GetFunctionCounter(executeTransferOnDestination))
-	assert.Equal(t, 0, bem.GetFunctionCounter(wasExecutedOnDestination))
+	assert.Equal(t, 0, bem.GetFunctionCounter(wasTransferExecutedOnDestination))
 	assert.Equal(t, 1, bem.GetFunctionCounter(cleanTopology))
 	assert.Equal(t, 1, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
 	assert.Equal(t, 1, bem.GetFunctionCounter(proposeSetStatusOnSource))
@@ -62,7 +62,7 @@ func TestFlowAsLeaderProposeTransferOnDestinationErrorsWithStubChecking(t *testi
 	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(isQuorumReachedForProposeSetStatus))
 	assert.Equal(t, 1, bem.GetFunctionCounter(executeSetStatusOnSource))
-	assert.Equal(t, 1, bem.GetFunctionCounter(wasExecutedOnSource))
+	assert.Equal(t, 1, bem.GetFunctionCounter(wasSetStatusExecutedOnSource))
 }
 
 func TestFlowAsLeaderWasNotProposedTransferWithStubChecking(t *testing.T) {

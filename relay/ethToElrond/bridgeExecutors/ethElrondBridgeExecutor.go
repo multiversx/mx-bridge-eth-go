@@ -33,7 +33,7 @@ type ethElrondBridgeExecutor struct {
 	sourceBridge      bridge.Bridge
 	destinationBridge bridge.Bridge
 	pendingBatch      *bridge.Batch
-	actionId          bridge.ActionId
+	actionID          bridge.ActionId
 	topologyProvider  relay.TopologyProvider
 	quorumProvider    bridge.QuorumProvider
 }
@@ -98,12 +98,12 @@ func (executor *ethElrondBridgeExecutor) WasProposeSetStatusExecutedOnSource(ctx
 
 // WasExecutedOnDestination returns true if the action ID was executed on the destination bridge
 func (executor *ethElrondBridgeExecutor) WasExecutedOnDestination(ctx context.Context) bool {
-	return executor.destinationBridge.WasExecuted(ctx, executor.actionId, executor.pendingBatch.Id)
+	return executor.destinationBridge.WasExecuted(ctx, executor.actionID, executor.pendingBatch.Id)
 }
 
 // WasExecutedOnSource returns true if the action ID was executed on the source bridge
 func (executor *ethElrondBridgeExecutor) WasExecutedOnSource(ctx context.Context) bool {
-	return executor.sourceBridge.WasExecuted(ctx, executor.actionId, executor.pendingBatch.Id)
+	return executor.sourceBridge.WasExecuted(ctx, executor.actionID, executor.pendingBatch.Id)
 }
 
 // IsQuorumReachedForProposeTransfer returns true if the quorum has been reached for the propose transfer operation
@@ -112,7 +112,7 @@ func (executor *ethElrondBridgeExecutor) IsQuorumReachedForProposeTransfer(ctx c
 }
 
 func (executor *ethElrondBridgeExecutor) isQuorumReachedOnBridge(ctx context.Context, bridge bridge.Bridge) bool {
-	count := bridge.SignersCount(ctx, executor.actionId)
+	count := bridge.SignersCount(ctx, executor.actionID)
 	quorum, err := executor.quorumProvider.GetQuorum(ctx)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
@@ -125,7 +125,7 @@ func (executor *ethElrondBridgeExecutor) isQuorumReachedOnBridge(ctx context.Con
 }
 
 func (executor *ethElrondBridgeExecutor) isQuorumReached(quorum uint, count uint) bool {
-	return quorum <= count
+	return count >= quorum
 }
 
 // IsQuorumReachedForProposeSetStatus returns true if the quorum has been reached for the propose set status operation
@@ -181,7 +181,7 @@ func (executor *ethElrondBridgeExecutor) CleanTopology() {
 
 // ExecuteTransferOnDestination will execute the action ID on the destination bridge
 func (executor *ethElrondBridgeExecutor) ExecuteTransferOnDestination(ctx context.Context) {
-	_, err := executor.destinationBridge.Execute(ctx, executor.actionId, executor.pendingBatch)
+	_, err := executor.destinationBridge.Execute(ctx, executor.actionID, executor.pendingBatch)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
 	}
@@ -189,7 +189,7 @@ func (executor *ethElrondBridgeExecutor) ExecuteTransferOnDestination(ctx contex
 
 // ExecuteSetStatusOnSource will execute the action ID on the source bridge
 func (executor *ethElrondBridgeExecutor) ExecuteSetStatusOnSource(ctx context.Context) {
-	_, err := executor.sourceBridge.Execute(ctx, executor.actionId, executor.pendingBatch)
+	_, err := executor.sourceBridge.Execute(ctx, executor.actionID, executor.pendingBatch)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
 	}
@@ -208,8 +208,8 @@ func (executor *ethElrondBridgeExecutor) SetStatusExecutedOnAllTransactions() {
 // SignProposeTransferOnDestination will fetch and sign the action ID for the propose transfer operation
 func (executor *ethElrondBridgeExecutor) SignProposeTransferOnDestination(ctx context.Context) {
 	executor.logger.Info(executor.appendMessageToName("signing propose transfer"), "batch ID", executor.getBatchID())
-	executor.actionId = executor.destinationBridge.GetActionIdForProposeTransfer(ctx, executor.pendingBatch)
-	_, err := executor.destinationBridge.Sign(ctx, executor.actionId)
+	executor.actionID = executor.destinationBridge.GetActionIdForProposeTransfer(ctx, executor.pendingBatch)
+	_, err := executor.destinationBridge.Sign(ctx, executor.actionID)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
 	}
@@ -218,8 +218,8 @@ func (executor *ethElrondBridgeExecutor) SignProposeTransferOnDestination(ctx co
 // SignProposeSetStatusOnSource will fetch and sign the batch ID for the set status operation
 func (executor *ethElrondBridgeExecutor) SignProposeSetStatusOnSource(ctx context.Context) {
 	executor.logger.Info(executor.appendMessageToName("signing set status"), "batch ID", executor.getBatchID())
-	executor.actionId = executor.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx, executor.pendingBatch)
-	_, err := executor.sourceBridge.Sign(ctx, executor.actionId)
+	executor.actionID = executor.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx, executor.pendingBatch)
+	_, err := executor.sourceBridge.Sign(ctx, executor.actionID)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
 	}

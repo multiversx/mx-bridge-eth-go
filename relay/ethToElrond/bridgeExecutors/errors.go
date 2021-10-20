@@ -2,7 +2,7 @@ package bridgeExecutors
 
 import "errors"
 
-// ErrNilBridge signals that a nil instance has been provided
+// ErrNilBridge signals that a nil bridge instance has been provided
 var ErrNilBridge = errors.New("nil bridge")
 
 // ErrNilLogger signals that a nil logger instance has been provided
