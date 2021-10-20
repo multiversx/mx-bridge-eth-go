@@ -18,18 +18,6 @@ func ActionIdToString(id bridge.ActionId) string {
 	return idAsBigInt.String()
 }
 
-// BatchIdToString -
-func BatchIdToString(id bridge.BatchId) string {
-	if id == nil {
-		return ""
-	}
-
-	var idAsBigInt *big.Int
-	idAsBigInt = id
-
-	return idAsBigInt.String()
-}
-
 // CloneBatch -
 func CloneBatch(batch *bridge.Batch) *bridge.Batch {
 	if batch == nil {
