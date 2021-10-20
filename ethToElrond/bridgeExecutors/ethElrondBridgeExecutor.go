@@ -59,7 +59,7 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 }
 
 func checkArgs(args ArgsEthElrondBridgeExecutor) error {
-	//TODO add IsInterfaceNil on all implementations
+	// TODO add IsInterfaceNil on all implementations
 	if check.IfNilReflect(args.SourceBridge) {
 		return fmt.Errorf("%w for the source bridge", ErrNilBridge)
 	}
@@ -102,13 +102,13 @@ func (executor *ethElrondBridgeExecutor) WasProposeSetStatusExecutedOnSource(ctx
 	return executor.sourceBridge.WasProposedSetStatus(ctx, executor.pendingBatch)
 }
 
-// WasExecutedOnDestination returns true if the action ID was executed on the destination bridge
-func (executor *ethElrondBridgeExecutor) WasExecutedOnDestination(ctx context.Context) bool {
+// WasTransferExecutedOnDestination returns true if the action ID was executed on the destination bridge
+func (executor *ethElrondBridgeExecutor) WasTransferExecutedOnDestination(ctx context.Context) bool {
 	return executor.destinationBridge.WasExecuted(ctx, executor.actionID, executor.pendingBatch.Id)
 }
 
-// WasExecutedOnSource returns true if the action ID was executed on the source bridge
-func (executor *ethElrondBridgeExecutor) WasExecutedOnSource(ctx context.Context) bool {
+// WasSetStatusExecutedOnSource returns true if the action ID was executed on the source bridge
+func (executor *ethElrondBridgeExecutor) WasSetStatusExecutedOnSource(ctx context.Context) bool {
 	return executor.sourceBridge.WasExecuted(ctx, executor.actionID, executor.pendingBatch.Id)
 }
 
@@ -143,7 +143,7 @@ func (executor *ethElrondBridgeExecutor) IsQuorumReachedForProposeSetStatus(ctx 
 func (executor *ethElrondBridgeExecutor) PrintInfo(logLevel logger.LogLevel, message string, extras ...interface{}) {
 	message = executor.appendMessageToName(message)
 
-	//TODO add a new method in the logger repo to print with a desired level, directly
+	// TODO add a new method in the logger repo to print with a desired level, directly
 	switch logLevel {
 	case logger.LogTrace:
 		executor.logger.Trace(message, extras...)
