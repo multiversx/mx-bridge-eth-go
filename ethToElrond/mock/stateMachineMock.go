@@ -4,23 +4,23 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 )
 
 // StateMachineMock -
 type StateMachineMock struct {
-	Steps         relay.MachineStates
-	ExecutedSteps []relay.StepIdentifier
-	InitialStep   relay.StepIdentifier
-	CurrentStep   relay.Step
+	Steps         core.MachineStates
+	ExecutedSteps []core.StepIdentifier
+	InitialStep   core.StepIdentifier
+	CurrentStep   core.Step
 }
 
 // NewStateMachineMock -
-func NewStateMachineMock(steps relay.MachineStates, initialStep relay.StepIdentifier) *StateMachineMock {
+func NewStateMachineMock(steps core.MachineStates, initialStep core.StepIdentifier) *StateMachineMock {
 	return &StateMachineMock{
 		Steps:         steps,
-		ExecutedSteps: make([]relay.StepIdentifier, 0),
+		ExecutedSteps: make([]core.StepIdentifier, 0),
 		InitialStep:   initialStep,
 	}
 }
@@ -33,7 +33,7 @@ func (smm *StateMachineMock) Initialize() error {
 	return err
 }
 
-func (smm *StateMachineMock) getNextStep(identifier relay.StepIdentifier) (relay.Step, error) {
+func (smm *StateMachineMock) getNextStep(identifier core.StepIdentifier) (core.Step, error) {
 	nextStep, ok := smm.Steps[identifier]
 	if !ok {
 		return nil, fmt.Errorf("step not found for identifier '%s'", identifier)

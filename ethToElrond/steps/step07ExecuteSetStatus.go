@@ -3,18 +3,18 @@ package steps
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 )
 
-type executeTransferStep struct {
+type executeSetStatusStep struct {
 	bridge BridgeExecutor
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *executeTransferStep) Execute(ctx context.Context) (relay.StepIdentifier, error) {
+func (step *executeSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	if step.bridge.IsLeader() {
-		step.bridge.ExecuteTransferOnDestination(ctx)
+		step.bridge.ExecuteSetStatusOnSource(ctx)
 	}
 
 	err := step.bridge.WaitStepToFinish(step.Identifier(), ctx)
@@ -22,11 +22,11 @@ func (step *executeTransferStep) Execute(ctx context.Context) (relay.StepIdentif
 		return step.Identifier(), err
 	}
 
-	if step.bridge.WasTransferExecutedOnDestination(ctx) {
+	if step.bridge.WasSetStatusExecutedOnSource(ctx) {
 		step.bridge.CleanTopology()
 		step.bridge.SetStatusExecutedOnAllTransactions()
 
-		return ethToElrond.ProposingSetStatus, nil
+		return ethToElrond.GettingPending, nil
 	}
 
 	// remain in this step
@@ -34,11 +34,11 @@ func (step *executeTransferStep) Execute(ctx context.Context) (relay.StepIdentif
 }
 
 // Identifier returns the step's identifier
-func (step *executeTransferStep) Identifier() relay.StepIdentifier {
-	return ethToElrond.ExecutingTransfer
+func (step *executeSetStatusStep) Identifier() core.StepIdentifier {
+	return ethToElrond.ExecutingSetStatus
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
-func (step *executeTransferStep) IsInterfaceNil() bool {
+func (step *executeSetStatusStep) IsInterfaceNil() bool {
 	return step == nil
 }

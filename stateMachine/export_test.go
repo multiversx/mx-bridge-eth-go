@@ -1,4 +1,4 @@
-package state
+package stateMachine
 
 // LoopStatus -
 func (sm *stateMachine) LoopStatus() bool {

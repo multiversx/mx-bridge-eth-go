@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
@@ -21,7 +21,7 @@ type ArgsEthElrondBridgeExecutor struct {
 	Logger            logger.Logger
 	SourceBridge      bridge.Bridge
 	DestinationBridge bridge.Bridge
-	TopologyProvider  relay.TopologyProvider
+	TopologyProvider  TopologyProvider
 	QuorumProvider    bridge.QuorumProvider
 }
 
@@ -34,7 +34,7 @@ type ethElrondBridgeExecutor struct {
 	destinationBridge bridge.Bridge
 	pendingBatch      *bridge.Batch
 	actionID          bridge.ActionId
-	topologyProvider  relay.TopologyProvider
+	topologyProvider  TopologyProvider
 	quorumProvider    bridge.QuorumProvider
 }
 
@@ -227,7 +227,7 @@ func (executor *ethElrondBridgeExecutor) SignProposeSetStatusOnSource(ctx contex
 
 // WaitStepToFinish will wait a predefined time and then will return. Returns the error if the provided context
 // signals the `Done` event
-func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step relay.StepIdentifier, ctx context.Context) error {
+func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step core.StepIdentifier, ctx context.Context) error {
 	executor.logger.Info(executor.appendMessageToName("waiting for transfer proposal"),
 		"step", step, "batch ID", executor.getBatchID())
 

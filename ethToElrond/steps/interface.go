@@ -3,7 +3,7 @@ package steps
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
@@ -29,7 +29,7 @@ type BridgeExecutor interface {
 	SetStatusExecutedOnAllTransactions()
 	SignProposeTransferOnDestination(ctx context.Context)
 	SignProposeSetStatusOnSource(ctx context.Context)
-	WaitStepToFinish(step relay.StepIdentifier, ctx context.Context) error
+	WaitStepToFinish(step core.StepIdentifier, ctx context.Context) error
 
 	IsInterfaceNil() bool
 }
