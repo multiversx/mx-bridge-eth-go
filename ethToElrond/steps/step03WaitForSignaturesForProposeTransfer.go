@@ -24,7 +24,6 @@ func (step *waitForSignaturesForProposeTransferStep) Execute(ctx context.Context
 
 	if step.bridge.WasProposeTransferExecutedOnDestination(ctx) {
 		step.bridge.CleanTopology()
-		step.bridge.SetStatusExecutedOnAllTransactions()
 
 		return ethToElrond.ProposingSetStatus, nil
 	}

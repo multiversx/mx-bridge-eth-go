@@ -208,9 +208,23 @@ func (executor *ethElrondBridgeExecutor) SetStatusRejectedOnAllTransactions(err 
 	executor.pendingBatch.SetStatusOnAllTransactions(bridge.Rejected, err)
 }
 
-// SetStatusExecutedOnAllTransactions will set all transactions to executed status
-func (executor *ethElrondBridgeExecutor) SetStatusExecutedOnAllTransactions() {
-	executor.pendingBatch.SetStatusOnAllTransactions(bridge.Executed, nil)
+// SetTransactionsStatusesAccordingToDestination will set all transactions to the status got from the destination bridge
+func (executor *ethElrondBridgeExecutor) SetTransactionsStatusesAccordingToDestination(ctx context.Context) error {
+	batchId := executor.pendingBatch.Id
+	statuses, err := executor.destinationBridge.GetTransactionsStatuses(ctx, executor.pendingBatch.Id)
+	if err != nil {
+		return err
+	}
+
+	if len(statuses) != len(executor.pendingBatch.Transactions) {
+		return fmt.Errorf("%w for batch ID %v", ErrBatchIDStatusMismatch, batchId)
+	}
+
+	for i, tx := range executor.pendingBatch.Transactions {
+		tx.Status = statuses[i]
+	}
+
+	return nil
 }
 
 // SignProposeTransferOnDestination will fetch and sign the action ID for the propose transfer operation

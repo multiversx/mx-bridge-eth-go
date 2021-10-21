@@ -16,3 +16,6 @@ var ErrNilQuorumProvider = errors.New("nil quorum provider")
 
 // ErrNilTimer signals that a nil timer was provided
 var ErrNilTimer = errors.New("nil timer")
+
+// ErrBatchIDStatusMismatch signals that the status values mismatch the number of the transactions from pending batch
+var ErrBatchIDStatusMismatch = errors.New("batch ID status mismatch")

@@ -8,18 +8,14 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
-
-	"github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -30,12 +26,13 @@ const (
 )
 
 type BridgeContract interface {
-	GetNextPendingBatch(opts *bind.CallOpts) (Batch, error)
+	GetNextPendingBatch(opts *bind.CallOpts) (contract.Batch, error)
 	FinishCurrentPendingBatch(opts *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error)
 	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	WasBatchExecuted(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	WasBatchFinished(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	Quorum(opts *bind.CallOpts) (*big.Int, error)
+	GetStatusesAfterExecution(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error)
 }
 
 type BlockchainClient interface {
@@ -67,7 +64,7 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 		return nil, err
 	}
 
-	instance, err := NewBridge(common.HexToAddress(config.BridgeAddress), ethClient)
+	instance, err := contract.NewBridge(common.HexToAddress(config.BridgeAddress), ethClient)
 	if err != nil {
 		return nil, err
 	}
@@ -183,6 +180,11 @@ func (c *Client) WasExecuted(ctx context.Context, actionId bridge.ActionId, batc
 	}
 
 	return wasExecuted
+}
+
+// GetTransactionsStatuses will return the transactions statuses from the batch ID
+func (c *Client) GetTransactionsStatuses(ctx context.Context, batchId bridge.BatchId) ([]uint8, error) {
+	return c.bridgeContract.GetStatusesAfterExecution(&bind.CallOpts{Context: ctx}, batchId)
 }
 
 func (c *Client) Sign(_ context.Context, action bridge.ActionId) (string, error) {

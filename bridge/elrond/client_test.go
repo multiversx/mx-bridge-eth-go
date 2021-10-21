@@ -578,6 +578,89 @@ func TestParseIntFromByteSlice(t *testing.T) {
 	})
 }
 
+func TestClient_GetTransactionsStatuses(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil batch", func(t *testing.T) {
+		proxy := &mock.ElrondProxyStub{}
+		c := &client{
+			proxy: proxy,
+		}
+
+		statuses, err := c.GetTransactionsStatuses(nil, nil)
+
+		assert.Nil(t, statuses)
+		assert.Equal(t, ErrNilBatchId, err)
+	})
+	t.Run("proxy errors", func(t *testing.T) {
+		expectedErr := errors.New("expected error")
+		proxy := &mock.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return nil, expectedErr
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+
+		assert.Nil(t, statuses)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("no statuses returned", func(t *testing.T) {
+		proxy := &mock.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				response := &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+						ReturnCode: "ok",
+					},
+				}
+
+				return response, nil
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+
+		assert.Nil(t, statuses)
+		assert.True(t, errors.Is(err, ErrNoStatusForBatchID))
+	})
+	t.Run("should work", func(t *testing.T) {
+		providedStatuses := []byte{3, 2}
+		proxy := &mock.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				response := &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: [][]byte{providedStatuses},
+						ReturnCode: "ok",
+					},
+				}
+
+				return response, nil
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+
+		assert.Nil(t, err)
+		assert.Equal(t, statuses, statuses)
+	})
+}
+
 func buildTestClient(proxy *testProxy) (*client, error) {
 	wallet := interactors.NewWallet()
 

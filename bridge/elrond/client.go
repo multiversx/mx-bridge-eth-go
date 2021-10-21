@@ -259,6 +259,28 @@ func (c *client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bo
 	return c.executeBoolQuery(valueRequest.Build())
 }
 
+// GetTransactionsStatuses will return the transactions statuses from the batch ID
+func (c *client) GetTransactionsStatuses(_ context.Context, batchId bridge.BatchId) ([]uint8, error) {
+	if batchId == nil {
+		return nil, ErrNilBatchId
+	}
+
+	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
+		Func("getStatusesAfterExecution").
+		BatchId(batchId)
+
+	values, err := c.executeQuery(valueRequest.Build())
+	if err != nil {
+		return nil, err
+	}
+
+	if len(values) == 0 {
+		return nil, fmt.Errorf("%w for batch ID %v", ErrNoStatusForBatchID, batchId)
+	}
+
+	return values[0], nil
+}
+
 // GetActionIdForSetStatusOnPendingTransfer returns the action ID for setting the status on the pending transfer batch
 func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).

@@ -26,7 +26,7 @@ type BridgeExecutor interface {
 	ExecuteTransferOnDestination(ctx context.Context)
 	ExecuteSetStatusOnSource(ctx context.Context)
 	SetStatusRejectedOnAllTransactions(err error)
-	SetStatusExecutedOnAllTransactions()
+	SetTransactionsStatusesAccordingToDestination(ctx context.Context) error
 	SignProposeTransferOnDestination(ctx context.Context)
 	SignProposeSetStatusOnSource(ctx context.Context)
 	WaitStepToFinish(step core.StepIdentifier, ctx context.Context) error

@@ -63,6 +63,9 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 
 	destinationActionID := bridge.NewActionId(343553)
 	destinationBridge.SetActionID(destinationActionID)
+	destinationBridge.GetTransactionsStatusesCalled = func(ctx context.Context, batchId bridge.BatchId) ([]uint8, error) {
+		return makeMockStatuses(len(pendingBatch.Transactions)), nil
+	}
 
 	sm, err := createAndStartBridge(sourceBridge, destinationBridge, 1, 1, true, "test")
 	require.Nil(t, err)
@@ -77,6 +80,19 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 
 	checkStatusWhenExecutedOnSource(t, sourceBridge, pendingBatch, sourceActionID)
 	checkStatusWhenExecutedOnDestination(t, destinationBridge, pendingBatch, destinationActionID)
+}
+
+func makeMockStatuses(numTxs int) []byte {
+	statuses := make([]byte, numTxs)
+	for i := 0; i < numTxs; i++ {
+		if i%2 == 0 {
+			statuses[i] = bridge.Rejected
+		} else {
+			statuses[i] = bridge.Executed
+		}
+	}
+
+	return statuses
 }
 
 func createAndStartBridge(
@@ -157,8 +173,9 @@ func checkStatusWhenExecutedOnSource(
 
 	proposedStatusBatch := sourceBridge.GetProposedSetStatusBatch()
 	require.Equal(t, len(pendingBatch.Transactions), len(proposedStatusBatch.Transactions))
-	for _, tx := range proposedStatusBatch.Transactions {
-		assert.Equal(t, bridge.Executed, tx.Status)
+	statuses := makeMockStatuses(len(proposedStatusBatch.Transactions))
+	for i, tx := range proposedStatusBatch.Transactions {
+		assert.Equal(t, statuses[i], tx.Status)
 	}
 
 	assert.Nil(t, sourceBridge.GetProposedTransferBatch())
@@ -171,10 +188,6 @@ func checkStatusWhenExecutedOnDestination(
 	destinationActionID bridge.ActionId,
 ) {
 	proposedBatch := integrationTests.CloneBatch(pendingBatch)
-	for _, tx := range proposedBatch.Transactions {
-		tx.Status = bridge.Executed
-	}
-
 	assert.Equal(t, proposedBatch, destinationBridge.GetProposedTransferBatch())
 
 	expectedSignedMapOnSource := map[string]int{

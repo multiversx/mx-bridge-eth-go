@@ -47,6 +47,7 @@ type Bridge interface {
 	Sign(context.Context, ActionId) (string, error)
 	Execute(context.Context, ActionId, *Batch) (string, error)
 	SignersCount(context.Context, ActionId) uint
+	GetTransactionsStatuses(ctx context.Context, batchID BatchId) ([]uint8, error)
 }
 
 // ElrondProxy defines the behavior of a proxy able to serve Elrond blockchain requests

@@ -13,11 +13,16 @@ type proposeSetStatusStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *proposeSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+	err := step.bridge.SetTransactionsStatusesAccordingToDestination(ctx)
+	if err != nil {
+		return step.Identifier(), nil
+	}
+
 	if step.bridge.IsLeader() {
 		step.bridge.ProposeSetStatusOnSource(ctx)
 	}
 
-	err := step.bridge.WaitStepToFinish(step.Identifier(), ctx)
+	err = step.bridge.WaitStepToFinish(step.Identifier(), ctx)
 	if err != nil {
 		return step.Identifier(), err
 	}

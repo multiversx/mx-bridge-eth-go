@@ -12,26 +12,26 @@ import (
 )
 
 const (
-	getPendingBatch                         = "GetPendingBatch"
-	hasPendingBatch                         = "HasPendingBatch"
-	isLeader                                = "IsLeader"
-	proposeTransferOnDestination            = "ProposeTransferOnDestination"
-	printDebugInfo                          = "PrintInfo"
-	setStatusRejectedOnAllTransactions      = "SetStatusRejectedOnAllTransactions"
-	waitStepToFinish                        = "WaitStepToFinish"
-	wasProposeTransferExecutedOnDestination = "WasProposeTransferExecutedOnDestination"
-	signProposeTransferOnDestination        = "SignProposeTransferOnDestination"
-	isQuorumReachedForProposeTransfer       = "IsQuorumReachedForProposeTransfer"
-	executeTransferOnDestination            = "ExecuteTransferOnDestination"
-	wasTransferExecutedOnDestination        = "WasTransferExecutedOnDestination"
-	cleanTopology                           = "CleanTopology"
-	setStatusExecutedOnAllTransactions      = "SetStatusExecutedOnAllTransactions"
-	proposeSetStatusOnSource                = "ProposeSetStatusOnSource"
-	wasProposeSetStatusExecutedOnSource     = "WasProposeSetStatusExecutedOnSource"
-	signProposeSetStatusOnSource            = "SignProposeSetStatusOnSource"
-	isQuorumReachedForProposeSetStatus      = "IsQuorumReachedForProposeSetStatus"
-	executeSetStatusOnSource                = "ExecuteSetStatusOnSource"
-	wasSetStatusExecutedOnSource            = "WasSetStatusExecutedOnSource"
+	getPendingBatch                               = "GetPendingBatch"
+	hasPendingBatch                               = "HasPendingBatch"
+	isLeader                                      = "IsLeader"
+	proposeTransferOnDestination                  = "ProposeTransferOnDestination"
+	printDebugInfo                                = "PrintInfo"
+	setStatusRejectedOnAllTransactions            = "SetStatusRejectedOnAllTransactions"
+	waitStepToFinish                              = "WaitStepToFinish"
+	wasProposeTransferExecutedOnDestination       = "WasProposeTransferExecutedOnDestination"
+	signProposeTransferOnDestination              = "SignProposeTransferOnDestination"
+	isQuorumReachedForProposeTransfer             = "IsQuorumReachedForProposeTransfer"
+	executeTransferOnDestination                  = "ExecuteTransferOnDestination"
+	wasTransferExecutedOnDestination              = "WasTransferExecutedOnDestination"
+	cleanTopology                                 = "CleanTopology"
+	setTransactionsStatusesAccordingToDestination = "SetTransactionsStatusesAccordingToDestination"
+	proposeSetStatusOnSource                      = "ProposeSetStatusOnSource"
+	wasProposeSetStatusExecutedOnSource           = "WasProposeSetStatusExecutedOnSource"
+	signProposeSetStatusOnSource                  = "SignProposeSetStatusOnSource"
+	isQuorumReachedForProposeSetStatus            = "IsQuorumReachedForProposeSetStatus"
+	executeSetStatusOnSource                      = "ExecuteSetStatusOnSource"
+	wasSetStatusExecutedOnSource                  = "WasSetStatusExecutedOnSource"
 )
 
 var trueHandler = func() bool { return true }
@@ -188,7 +188,7 @@ func TestFlowAsLeaderForOneCompleteFlowWithStubChecking(t *testing.T) {
 	assert.Equal(t, 1, bem.GetFunctionCounter(executeTransferOnDestination))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasTransferExecutedOnDestination))
 	assert.Equal(t, 2, bem.GetFunctionCounter(cleanTopology))
-	assert.Equal(t, 2, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
+	assert.Equal(t, 1, bem.GetFunctionCounter(setTransactionsStatusesAccordingToDestination))
 	assert.Equal(t, 1, bem.GetFunctionCounter(proposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeSetStatusExecutedOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))
@@ -238,7 +238,7 @@ func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
 	assert.Equal(t, 0, bem.GetFunctionCounter(executeTransferOnDestination))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasTransferExecutedOnDestination))
 	assert.Equal(t, 2, bem.GetFunctionCounter(cleanTopology))
-	assert.Equal(t, 2, bem.GetFunctionCounter(setStatusExecutedOnAllTransactions))
+	assert.Equal(t, 1, bem.GetFunctionCounter(setTransactionsStatusesAccordingToDestination))
 	assert.Equal(t, 0, bem.GetFunctionCounter(proposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeSetStatusExecutedOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))

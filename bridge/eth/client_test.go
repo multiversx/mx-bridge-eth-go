@@ -9,20 +9,17 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/stretchr/testify/assert"
 )
 
 // verify Client implements interface
@@ -39,14 +36,14 @@ func TestGetPending(t *testing.T) {
 
 	useCases := []struct {
 		name          string
-		receivedBatch Batch
+		receivedBatch contract.Batch
 		expectedBatch *bridge.Batch
 	}{
 		{
 			name: "it will map a non empty batch",
-			receivedBatch: Batch{
+			receivedBatch: contract.Batch{
 				Nonce: big.NewInt(1),
-				Deposits: []Deposit{
+				Deposits: []contract.Deposit{
 					{
 						TokenAddress: common.HexToAddress("0x093c0B280ba430A9Cc9C3649FF34FCBf6347bC50"),
 						Amount:       big.NewInt(42),
@@ -69,7 +66,7 @@ func TestGetPending(t *testing.T) {
 		},
 		{
 			name: "it will return nil for an empty batch",
-			receivedBatch: Batch{
+			receivedBatch: contract.Batch{
 				Nonce: big.NewInt(0),
 			},
 			expectedBatch: nil,
@@ -78,8 +75,13 @@ func TestGetPending(t *testing.T) {
 
 	for _, tt := range useCases {
 		t.Run(tt.name, func(t *testing.T) {
+			bcs := &mock.BridgeContractStub{
+				GetNextPendingBatchCalled: func(opts *bind.CallOpts) (contract.Batch, error) {
+					return tt.receivedBatch, nil
+				},
+			}
 			client := Client{
-				bridgeContract: &bridgeContractStub{batch: tt.receivedBatch},
+				bridgeContract: bcs,
 				gasLimit:       GasLimit,
 				log:            logger.GetOrCreate("testEthClient"),
 			}
@@ -95,7 +97,7 @@ func TestSign(t *testing.T) {
 	buildStubs := func() (*broadcasterStub, Client) {
 		broadcaster := &broadcasterStub{}
 		client := Client{
-			bridgeContract: &bridgeContractStub{},
+			bridgeContract: &mock.BridgeContractStub{},
 			privateKey:     privateKey(t),
 			broadcaster:    broadcaster,
 			mapper:         &mapperStub{},
@@ -159,7 +161,7 @@ func TestSign(t *testing.T) {
 func TestSignersCount(t *testing.T) {
 	broadcaster := &broadcasterStub{lastBroadcastSignature: []byte("signature")}
 	client := Client{
-		bridgeContract: &bridgeContractStub{},
+		bridgeContract: &mock.BridgeContractStub{},
 		broadcaster:    broadcaster,
 		gasLimit:       GasLimit,
 		log:            logger.GetOrCreate("testEthClient"),
@@ -172,9 +174,13 @@ func TestSignersCount(t *testing.T) {
 
 func TestWasExecuted(t *testing.T) {
 	t.Run("when action is set status", func(t *testing.T) {
-		contract := &bridgeContractStub{wasBatchFinished: true}
+		bcs := &mock.BridgeContractStub{
+			WasBatchFinishedCalled: func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error) {
+				return true, nil
+			},
+		}
 		client := Client{
-			bridgeContract: contract,
+			bridgeContract: bcs,
 			broadcaster:    &broadcasterStub{},
 			gasLimit:       GasLimit,
 			log:            logger.GetOrCreate("testEthClient"),
@@ -185,9 +191,13 @@ func TestWasExecuted(t *testing.T) {
 		assert.Equal(t, true, got)
 	})
 	t.Run("when action is transfer", func(t *testing.T) {
-		contract := &bridgeContractStub{wasExecuted: true}
+		bcs := &mock.BridgeContractStub{
+			WasBatchExecutedCalled: func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error) {
+				return true, nil
+			},
+		}
 		client := Client{
-			bridgeContract: contract,
+			bridgeContract: bcs,
 			pendingBatch:   &bridge.Batch{},
 			broadcaster:    &broadcasterStub{},
 			gasLimit:       GasLimit,
@@ -203,9 +213,13 @@ func TestWasExecuted(t *testing.T) {
 func TestExecute(t *testing.T) {
 	t.Run("when action is set status", func(t *testing.T) {
 		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
-		contract := &bridgeContractStub{executedTransaction: types.NewTx(&types.AccessListTx{})}
+		bcs := &mock.BridgeContractStub{
+			FinishCurrentPendingBatchCalled: func(opts *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error) {
+				return types.NewTx(&types.AccessListTx{}), nil
+			},
+		}
 		client := Client{
-			bridgeContract:   contract,
+			bridgeContract:   bcs,
 			privateKey:       privateKey(t),
 			publicKey:        publicKey(t),
 			broadcaster:      &broadcasterStub{},
@@ -222,9 +236,13 @@ func TestExecute(t *testing.T) {
 	})
 	t.Run("when action is transfer", func(t *testing.T) {
 		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
-		contract := &bridgeContractStub{transferTransaction: types.NewTx(&types.AccessListTx{})}
+		bcs := &mock.BridgeContractStub{
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+				return types.NewTx(&types.AccessListTx{}), nil
+			},
+		}
 		client := Client{
-			bridgeContract:   contract,
+			bridgeContract:   bcs,
 			privateKey:       privateKey(t),
 			publicKey:        publicKey(t),
 			broadcaster:      &broadcasterStub{},
@@ -259,8 +277,13 @@ func TestGetQuorum(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("When contract quorum is %v", c.actual), func(t *testing.T) {
+			bcs := &mock.BridgeContractStub{
+				QuorumCalled: func(opts *bind.CallOpts) (*big.Int, error) {
+					return c.actual, nil
+				},
+			}
 			client := Client{
-				bridgeContract: &bridgeContractStub{quorum: c.actual},
+				bridgeContract: bcs,
 				privateKey:     privateKey(t),
 				broadcaster:    &broadcasterStub{},
 				mapper:         &mapperStub{},
@@ -274,6 +297,32 @@ func TestGetQuorum(t *testing.T) {
 			assert.Equal(t, c.error, err)
 		})
 	}
+}
+
+func TestClient_GetTransactionsStatuses(t *testing.T) {
+	t.Parallel()
+
+	methodCalled := false
+	statuses := []byte{1, 2}
+	bcs := &mock.BridgeContractStub{
+		GetStatusesAfterExecutionCalled: func(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error) {
+			methodCalled = true
+			return statuses, nil
+		},
+	}
+	client := Client{
+		bridgeContract: bcs,
+		privateKey:     privateKey(t),
+		broadcaster:    &broadcasterStub{},
+		mapper:         &mapperStub{},
+		gasLimit:       GasLimit,
+		log:            logger.GetOrCreate("testEthClient"),
+	}
+
+	returned, err := client.GetTransactionsStatuses(nil, bridge.NewBatchId(12))
+	assert.Nil(t, err)
+	assert.Equal(t, statuses, returned)
+	assert.True(t, methodCalled)
 }
 
 func privateKey(t *testing.T) *ecdsa.PrivateKey {
@@ -298,39 +347,6 @@ func publicKey(t *testing.T) *ecdsa.PublicKey {
 	}
 
 	return publicKeyECDSA
-}
-
-type bridgeContractStub struct {
-	batch               Batch
-	wasExecuted         bool
-	wasBatchFinished    bool
-	executedTransaction *types.Transaction
-	transferTransaction *types.Transaction
-	quorum              *big.Int
-}
-
-func (c *bridgeContractStub) GetNextPendingBatch(*bind.CallOpts) (Batch, error) {
-	return c.batch, nil
-}
-
-func (c *bridgeContractStub) FinishCurrentPendingBatch(*bind.TransactOpts, *big.Int, []uint8, [][]byte) (*types.Transaction, error) {
-	return c.executedTransaction, nil
-}
-
-func (c *bridgeContractStub) ExecuteTransfer(*bind.TransactOpts, []common.Address, []common.Address, []*big.Int, *big.Int, [][]byte) (*types.Transaction, error) {
-	return c.transferTransaction, nil
-}
-
-func (c *bridgeContractStub) WasBatchExecuted(*bind.CallOpts, *big.Int) (bool, error) {
-	return c.wasExecuted, nil
-}
-
-func (c *bridgeContractStub) WasBatchFinished(*bind.CallOpts, *big.Int) (bool, error) {
-	return c.wasBatchFinished, nil
-}
-
-func (c *bridgeContractStub) Quorum(*bind.CallOpts) (*big.Int, error) {
-	return c.quorum, nil
 }
 
 type broadcasterStub struct {
