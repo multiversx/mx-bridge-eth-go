@@ -9,7 +9,8 @@ import (
 
 // TODO remove this after the relay.go full refactoring
 
-type bridgeStub struct {
+type bridgeMock struct {
+	sync.RWMutex
 	pendingBatchCallIndex          int
 	pendingBatches                 []*bridge.Batch
 	wasProposedTransfer            bool
@@ -23,23 +24,16 @@ type bridgeStub struct {
 	proposeTransferError           error
 	proposedStatusBatch            *bridge.Batch
 	proposeSetStatusActionId       bridge.ActionId
-
-	proposeSetStatusMutex sync.Mutex
-	proposeTransferMutex  sync.Mutex
-	signMutex             sync.Mutex
-	executeMutex          sync.Mutex
-}
-
-func (b *bridgeStub) lock() {
-	b.proposeSetStatusMutex.Lock()
-	b.proposeTransferMutex.Lock()
-	b.signMutex.Lock()
-	b.executeMutex.Lock()
 }
 
 // GetPending -
-func (b *bridgeStub) GetPending(_ context.Context) *bridge.Batch {
-	defer func() { b.pendingBatchCallIndex++ }()
+func (b *bridgeMock) GetPending(_ context.Context) *bridge.Batch {
+	b.Lock()
+	defer b.Unlock()
+
+	defer func() {
+		b.pendingBatchCallIndex++
+	}()
 
 	if b.pendingBatchCallIndex >= len(b.pendingBatches) {
 		return nil
@@ -49,14 +43,18 @@ func (b *bridgeStub) GetPending(_ context.Context) *bridge.Batch {
 }
 
 // ProposeSetStatus -
-func (b *bridgeStub) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
-	b.proposeSetStatusMutex.Lock()
+func (b *bridgeMock) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
+	b.Lock()
+	defer b.Unlock()
+
 	b.proposedStatusBatch = batch
 }
 
 // ProposeTransfer -
-func (b *bridgeStub) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
-	b.proposeTransferMutex.Lock()
+func (b *bridgeMock) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
+	b.Lock()
+	defer b.Unlock()
+
 	b.wasProposedTransfer = true
 	b.lastProposedBatch = batch
 
@@ -64,48 +62,62 @@ func (b *bridgeStub) ProposeTransfer(_ context.Context, batch *bridge.Batch) (st
 }
 
 // WasProposedTransfer -
-func (b *bridgeStub) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
+func (b *bridgeMock) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
+	b.Lock()
+	defer b.Unlock()
+
 	b.lastWasProposedTransferBatchId = batch.Id
+
 	return b.wasProposedTransfer
 }
 
 // GetActionIdForProposeTransfer -
-func (b *bridgeStub) GetActionIdForProposeTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
+func (b *bridgeMock) GetActionIdForProposeTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
+	b.RLock()
+	defer b.RUnlock()
+
 	return b.proposeTransferActionId
 }
 
 // WasProposedSetStatus -
-func (b *bridgeStub) WasProposedSetStatus(_ context.Context, _ *bridge.Batch) bool {
+func (b *bridgeMock) WasProposedSetStatus(_ context.Context, _ *bridge.Batch) bool {
 	return true
 }
 
 // GetActionIdForSetStatusOnPendingTransfer -
-func (b *bridgeStub) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
+func (b *bridgeMock) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
+	b.RLock()
+	defer b.RUnlock()
+
 	return b.proposeSetStatusActionId
 }
 
 // WasExecuted -
-func (b *bridgeStub) WasExecuted(_ context.Context, _ bridge.ActionId, _ bridge.BatchId) bool {
+func (b *bridgeMock) WasExecuted(_ context.Context, _ bridge.ActionId, _ bridge.BatchId) bool {
 	return b.wasExecuted
 }
 
 // Sign -
-func (b *bridgeStub) Sign(_ context.Context, actionId bridge.ActionId) (string, error) {
-	b.signMutex.Lock()
+func (b *bridgeMock) Sign(_ context.Context, actionId bridge.ActionId) (string, error) {
+	b.Lock()
+	defer b.Unlock()
+
 	b.lastSignedActionId = actionId
 
 	return "sign_tx_hash", nil
 }
 
 // Execute -
-func (b *bridgeStub) Execute(_ context.Context, actionId bridge.ActionId, _ *bridge.Batch) (string, error) {
-	b.executeMutex.Lock()
+func (b *bridgeMock) Execute(_ context.Context, actionId bridge.ActionId, _ *bridge.Batch) (string, error) {
+	b.Lock()
+	defer b.Unlock()
+
 	b.lastExecutedActionId = actionId
 
 	return "execution hash", nil
 }
 
 // SignersCount -
-func (b *bridgeStub) SignersCount(_ context.Context, _ bridge.ActionId) uint {
+func (b *bridgeMock) SignersCount(_ context.Context, _ bridge.ActionId) uint {
 	return b.signersCount
 }

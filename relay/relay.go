@@ -36,6 +36,7 @@ const (
 	privateTopicName         = "private/1"
 	signTopicName            = "sign/1"
 	timeout                  = 40 * time.Second
+	stepTime                 = time.Second * 5 // TODO extract this in config
 	defaultTopicIdentifier   = "default"
 	p2pPeerNetworkDiscoverer = "optimized"
 )
@@ -208,7 +209,7 @@ func (r *Relay) createAndStartBridge(
 		StateMachineName:     name,
 		Steps:                stepsMap,
 		StartStateIdentifier: ethToElrond.GettingPending,
-		DurationBetweenSteps: time.Second * 5,
+		DurationBetweenSteps: stepTime,
 		Log:                  logStateMachine,
 		Timer:                r.timer,
 	}

@@ -102,8 +102,8 @@ func (bm *BridgeMock) SetActionID(actionID bridge.ActionId) {
 
 // WasProposedSetStatus -
 func (bm *BridgeMock) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bool {
-	bm.Lock()
-	defer bm.Unlock()
+	bm.RLock()
+	defer bm.RUnlock()
 
 	return reflect.DeepEqual(batch, bm.proposedStatusBatch)
 }
@@ -118,8 +118,8 @@ func (bm *BridgeMock) GetActionIdForSetStatusOnPendingTransfer(_ context.Context
 
 // WasExecuted -
 func (bm *BridgeMock) WasExecuted(_ context.Context, id bridge.ActionId, id2 bridge.BatchId) bool {
-	bm.Lock()
-	defer bm.Unlock()
+	bm.RLock()
+	defer bm.RUnlock()
 
 	return reflect.DeepEqual(id, bm.executedActionID) && reflect.DeepEqual(id2, bm.executedBatchID)
 }
