@@ -143,6 +143,7 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 			Status:       0,
 			Error:        nil,
 		}
+		c.log.Trace("created deposit transaction: " + tx.String())
 		transactions = append(transactions, tx)
 	}
 
