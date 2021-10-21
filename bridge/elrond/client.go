@@ -37,12 +37,15 @@ const (
 
 // QueryResponseErr represents the query response error DTO struct
 type QueryResponseErr struct {
-	code    string
-	message string
+	code      string
+	message   string
+	function  string
+	arguments []string
 }
 
 func (e QueryResponseErr) Error() string {
-	return fmt.Sprintf("Got response code %q and message %q", e.code, e.message)
+	return fmt.Sprintf("got response code %q and message %q while querying function %q with arguments %v",
+		e.code, e.message, e.function, e.arguments)
 }
 
 // client represents the Elrond Client implementation
@@ -398,7 +401,12 @@ func (c *client) executeQuery(valueRequest *data.VmValueRequest) ([][]byte, erro
 	}
 
 	if response.Data.ReturnCode != "ok" {
-		return nil, QueryResponseErr{response.Data.ReturnCode, response.Data.ReturnMessage}
+		return nil, QueryResponseErr{
+			code:      response.Data.ReturnCode,
+			message:   response.Data.ReturnMessage,
+			function:  valueRequest.FuncName,
+			arguments: valueRequest.Args,
+		}
 	}
 
 	return response.Data.ReturnData, nil
