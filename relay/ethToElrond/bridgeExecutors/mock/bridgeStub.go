@@ -9,21 +9,22 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 )
 
-var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/bridgeExecutors/mock.(*bridgeStub)."
+var fullPathBridgeStub = "github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/bridgeExecutors/mock.(*BridgeStub)."
 
 // BridgeStub -
 type BridgeStub struct {
 	functionCalledCounter map[string]int
-	mutExecutor           sync.RWMutex
+	mutBridge             sync.RWMutex
+
+	WasProposedTransferCalled  func(ctx context.Context, batch *bridge.Batch) bool
+	WasProposedSetStatusCalled func(ctx context.Context, batch *bridge.Batch) bool
+	WasExecutedCalled          func(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool
 
 	GetPendingCalled                               func(ctx context.Context) *bridge.Batch
 	ProposeSetStatusCalled                         func(ctx context.Context, batch *bridge.Batch)
 	ProposeTransferCalled                          func(ctx context.Context, batch *bridge.Batch) (string, error)
-	WasProposedTransferCalled                      func(ctx context.Context, batch *bridge.Batch) bool
 	GetActionIdForProposeTransferCalled            func(ctx context.Context, batch *bridge.Batch) bridge.ActionId
-	WasProposedSetStatusCalled                     func(ctx context.Context, batch *bridge.Batch) bool
 	GetActionIdForSetStatusOnPendingTransferCalled func(ctx context.Context, batch *bridge.Batch) bridge.ActionId
-	WasExecutedCalled                              func(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool
 	SignCalled                                     func(ctx context.Context, id bridge.ActionId) (string, error)
 	ExecuteCalled                                  func(ctx context.Context, id bridge.ActionId, batch *bridge.Batch) (string, error)
 	SignersCountCalled                             func(ctx context.Context, id bridge.ActionId) uint
@@ -33,8 +34,47 @@ type BridgeStub struct {
 	ExecuteError         error
 }
 
+// NewBridgeStub creates a new BridgeStub instance
+func NewBridgeStub() *BridgeStub {
+	return &BridgeStub{
+		functionCalledCounter: make(map[string]int),
+	}
+}
+
+// -------- decision functions
+
+// WasProposedTransfer -
+func (b *BridgeStub) WasProposedTransfer(ctx context.Context, batch *bridge.Batch) bool {
+	b.incrementFunctionCounter()
+	if b.WasProposedTransferCalled != nil {
+		return b.WasProposedTransferCalled(ctx, batch)
+	}
+	return false
+}
+
+// WasProposedSetStatus -
+func (b *BridgeStub) WasProposedSetStatus(ctx context.Context, batch *bridge.Batch) bool {
+	b.incrementFunctionCounter()
+	if b.WasProposedSetStatusCalled != nil {
+		return b.WasProposedSetStatusCalled(ctx, batch)
+	}
+	return false
+}
+
+// WasExecuted -
+func (b *BridgeStub) WasExecuted(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool {
+	b.incrementFunctionCounter()
+	if b.WasExecutedCalled != nil {
+		return b.WasExecutedCalled(ctx, id, id2)
+	}
+	return false
+}
+
+// -------- action functions
+
 // GetPending -
 func (b *BridgeStub) GetPending(ctx context.Context) *bridge.Batch {
+	b.incrementFunctionCounter()
 	if b.GetPendingCalled != nil {
 		return b.GetPendingCalled(ctx)
 	}
@@ -43,6 +83,7 @@ func (b *BridgeStub) GetPending(ctx context.Context) *bridge.Batch {
 
 // ProposeSetStatus -
 func (b *BridgeStub) ProposeSetStatus(ctx context.Context, batch *bridge.Batch) {
+	b.incrementFunctionCounter()
 	if b.ProposeSetStatusCalled != nil {
 		b.ProposeSetStatusCalled(ctx, batch)
 	}
@@ -50,6 +91,7 @@ func (b *BridgeStub) ProposeSetStatus(ctx context.Context, batch *bridge.Batch) 
 
 // ProposeTransfer -
 func (b *BridgeStub) ProposeTransfer(ctx context.Context, batch *bridge.Batch) (string, error) {
+	b.incrementFunctionCounter()
 	if b.ProposeTransferCalled != nil {
 		called, err := b.ProposeTransferCalled(ctx, batch)
 		if err != nil {
@@ -60,42 +102,21 @@ func (b *BridgeStub) ProposeTransfer(ctx context.Context, batch *bridge.Batch) (
 	return "propose_tx_hash", b.ProposeTransferError
 }
 
-// WasProposedTransfer -
-func (b *BridgeStub) WasProposedTransfer(ctx context.Context, batch *bridge.Batch) bool {
-	if b.WasProposedTransferCalled != nil {
-		return b.WasProposedTransferCalled(ctx, batch)
-	}
-	return false
-}
-
 // GetActionIdForProposeTransfer -
 func (b *BridgeStub) GetActionIdForProposeTransfer(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
+	b.incrementFunctionCounter()
 	return b.GetActionIdForProposeTransferCalled(ctx, batch)
-}
-
-// WasProposedSetStatus -
-func (b *BridgeStub) WasProposedSetStatus(ctx context.Context, batch *bridge.Batch) bool {
-	if b.WasProposedSetStatusCalled != nil {
-		return b.WasProposedSetStatusCalled(ctx, batch)
-	}
-	return false
 }
 
 // GetActionIdForSetStatusOnPendingTransfer -
 func (b *BridgeStub) GetActionIdForSetStatusOnPendingTransfer(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
+	b.incrementFunctionCounter()
 	return b.GetActionIdForSetStatusOnPendingTransferCalled(ctx, batch)
-}
-
-// WasExecuted -
-func (b *BridgeStub) WasExecuted(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool {
-	if b.WasExecutedCalled != nil {
-		return b.WasExecutedCalled(ctx, id, id2)
-	}
-	return false
 }
 
 // Sign -
 func (b *BridgeStub) Sign(ctx context.Context, id bridge.ActionId) (string, error) {
+	b.incrementFunctionCounter()
 	if b.SignCalled != nil {
 		return b.SignCalled(ctx, id)
 	}
@@ -104,6 +125,7 @@ func (b *BridgeStub) Sign(ctx context.Context, id bridge.ActionId) (string, erro
 
 // Execute -
 func (b *BridgeStub) Execute(ctx context.Context, id bridge.ActionId, batch *bridge.Batch) (string, error) {
+	b.incrementFunctionCounter()
 	if b.ExecuteCalled != nil {
 		return b.ExecuteCalled(ctx, id, batch)
 	}
@@ -112,6 +134,7 @@ func (b *BridgeStub) Execute(ctx context.Context, id bridge.ActionId, batch *bri
 
 // SignersCount -
 func (b *BridgeStub) SignersCount(ctx context.Context, id bridge.ActionId) uint {
+	b.incrementFunctionCounter()
 	if b.SignersCountCalled != nil {
 		return b.SignersCountCalled(ctx, id)
 	}
@@ -122,8 +145,8 @@ func (b *BridgeStub) SignersCount(ctx context.Context, id bridge.ActionId) uint 
 
 // incrementFunctionCounter increments the counter for the function that called it
 func (b *BridgeStub) incrementFunctionCounter() {
-	b.mutExecutor.Lock()
-	defer b.mutExecutor.Unlock()
+	b.mutBridge.Lock()
+	defer b.mutBridge.Unlock()
 
 	pc, _, _, _ := runtime.Caller(1)
 	fmt.Printf("BridgeExecutorMock: called %s\n", runtime.FuncForPC(pc).Name())
@@ -132,8 +155,8 @@ func (b *BridgeStub) incrementFunctionCounter() {
 
 // GetFunctionCounter returns the called counter of a given function
 func (b *BridgeStub) GetFunctionCounter(function string) int {
-	b.mutExecutor.Lock()
-	defer b.mutExecutor.Unlock()
+	b.mutBridge.Lock()
+	defer b.mutBridge.Unlock()
 
-	return b.functionCalledCounter[fullPath+function]
+	return b.functionCalledCounter[fullPathBridgeStub+function]
 }
