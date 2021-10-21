@@ -23,6 +23,7 @@ type ArgsEthElrondBridgeExecutor struct {
 	DestinationBridge bridge.Bridge
 	TopologyProvider  TopologyProvider
 	QuorumProvider    bridge.QuorumProvider
+	Timer             Timer
 }
 
 // ethElrondBridgeExecutor represents the eth-elrond bridge executor adapter
@@ -36,6 +37,7 @@ type ethElrondBridgeExecutor struct {
 	actionID          bridge.ActionId
 	topologyProvider  TopologyProvider
 	quorumProvider    bridge.QuorumProvider
+	timer             Timer
 }
 
 // NewEthElrondBridgeExecutor will return a new instance of the ethElrondBridgeExecutor struct
@@ -52,11 +54,12 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 		destinationBridge: args.DestinationBridge,
 		topologyProvider:  args.TopologyProvider,
 		quorumProvider:    args.QuorumProvider,
+		timer:             args.Timer,
 	}, nil
 }
 
 func checkArgs(args ArgsEthElrondBridgeExecutor) error {
-	//TODO add IsInterfaceNil on all implementations
+	// TODO add IsInterfaceNil on all implementations
 	if check.IfNilReflect(args.SourceBridge) {
 		return fmt.Errorf("%w for the source bridge", ErrNilBridge)
 	}
@@ -71,6 +74,9 @@ func checkArgs(args ArgsEthElrondBridgeExecutor) error {
 	}
 	if check.IfNilReflect(args.QuorumProvider) {
 		return ErrNilQuorumProvider
+	}
+	if check.IfNilReflect(args.Timer) {
+		return ErrNilTimer
 	}
 
 	return nil
@@ -96,13 +102,13 @@ func (executor *ethElrondBridgeExecutor) WasProposeSetStatusExecutedOnSource(ctx
 	return executor.sourceBridge.WasProposedSetStatus(ctx, executor.pendingBatch)
 }
 
-// WasExecutedOnDestination returns true if the action ID was executed on the destination bridge
-func (executor *ethElrondBridgeExecutor) WasExecutedOnDestination(ctx context.Context) bool {
+// WasTransferExecutedOnDestination returns true if the action ID was executed on the destination bridge
+func (executor *ethElrondBridgeExecutor) WasTransferExecutedOnDestination(ctx context.Context) bool {
 	return executor.destinationBridge.WasExecuted(ctx, executor.actionID, executor.pendingBatch.Id)
 }
 
-// WasExecutedOnSource returns true if the action ID was executed on the source bridge
-func (executor *ethElrondBridgeExecutor) WasExecutedOnSource(ctx context.Context) bool {
+// WasSetStatusExecutedOnSource returns true if the action ID was executed on the source bridge
+func (executor *ethElrondBridgeExecutor) WasSetStatusExecutedOnSource(ctx context.Context) bool {
 	return executor.sourceBridge.WasExecuted(ctx, executor.actionID, executor.pendingBatch.Id)
 }
 
@@ -116,6 +122,8 @@ func (executor *ethElrondBridgeExecutor) isQuorumReachedOnBridge(ctx context.Con
 	quorum, err := executor.quorumProvider.GetQuorum(ctx)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
+
+		return false
 	}
 
 	executor.logger.Info(executor.appendMessageToName("got signatures"),
@@ -137,7 +145,7 @@ func (executor *ethElrondBridgeExecutor) IsQuorumReachedForProposeSetStatus(ctx 
 func (executor *ethElrondBridgeExecutor) PrintInfo(logLevel logger.LogLevel, message string, extras ...interface{}) {
 	message = executor.appendMessageToName(message)
 
-	//TODO add a new method in the logger repo to print with a desired level, directly
+	// TODO add a new method in the logger repo to print with a desired level, directly
 	switch logLevel {
 	case logger.LogTrace:
 		executor.logger.Trace(message, extras...)
@@ -232,7 +240,7 @@ func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step core.StepIdentifi
 		"step", step, "batch ID", executor.getBatchID())
 
 	select {
-	case <-time.After(defaultWaitTime):
+	case <-executor.timer.After(defaultWaitTime):
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

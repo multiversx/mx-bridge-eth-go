@@ -18,6 +18,7 @@ type ArgsStateMachine struct {
 	StartStateIdentifier core.StepIdentifier
 	DurationBetweenSteps time.Duration
 	Log                  logger.Logger
+	Timer                Timer
 }
 
 type stateMachine struct {
@@ -28,6 +29,7 @@ type stateMachine struct {
 	log                  logger.Logger
 	cancel               func()
 	loopStatus           *atomic.Flag
+	timer                Timer
 }
 
 // NewStateMachine creates a state machine able to execute all provided steps
@@ -43,6 +45,7 @@ func NewStateMachine(args ArgsStateMachine) (*stateMachine, error) {
 		durationBetweenSteps: args.DurationBetweenSteps,
 		log:                  args.Log,
 		loopStatus:           &atomic.Flag{},
+		timer:                args.Timer,
 	}
 	sm.currentStep, err = sm.getNextStep(args.StartStateIdentifier)
 	if err != nil {
@@ -68,6 +71,9 @@ func checkArgs(args ArgsStateMachine) error {
 	if check.IfNil(args.Log) {
 		return ErrNilLogger
 	}
+	if check.IfNilReflect(args.Timer) {
+		return ErrNilTimer
+	}
 
 	return nil
 }
@@ -81,7 +87,7 @@ func (sm *stateMachine) executeLoop(ctx context.Context) {
 		case <-ctx.Done():
 			sm.log.Debug(fmt.Sprintf("%s: state machine main execute loop is closing...", sm.stateMachineName))
 			return
-		case <-time.After(sm.durationBetweenSteps):
+		case <-sm.timer.After(sm.durationBetweenSteps):
 			err := sm.executeStep(ctx)
 			if err != nil {
 				sm.log.Error(fmt.Sprintf("%s: state machine stopped", sm.stateMachineName),
