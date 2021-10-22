@@ -9,7 +9,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 )
 
-var fullPathBridgeStub = "github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/bridgeExecutors/mock.(*BridgeStub)."
+var fullPathBridgeStub = "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors/mock.(*BridgeStub)."
 
 // BridgeStub -
 type BridgeStub struct {

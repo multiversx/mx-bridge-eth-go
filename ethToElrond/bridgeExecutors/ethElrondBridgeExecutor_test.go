@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/bridgeExecutors/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors/mock"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,6 +22,7 @@ func createMockArgs() ArgsEthElrondBridgeExecutor {
 		DestinationBridge: mock.NewBridgeStub(),
 		TopologyProvider:  &mock.TopologyProviderStub{},
 		QuorumProvider:    &mock.QuorumProviderStub{},
+		Timer:             &mock.TimerMock{},
 	}
 }
 
@@ -67,6 +68,14 @@ func TestNewbridgeExecutors(t *testing.T) {
 		assert.Nil(t, executor)
 		assert.Equal(t, ErrNilQuorumProvider, err)
 	})
+	t.Run("nil timer", func(t *testing.T) {
+		args := createMockArgs()
+		args.Timer = nil
+		executor, err := NewEthElrondBridgeExecutor(args)
+
+		assert.Nil(t, executor)
+		assert.Equal(t, ErrNilTimer, err)
+	})
 }
 
 func TestGetPending(t *testing.T) {
@@ -75,12 +84,12 @@ func TestGetPending(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
-		assert.Equal(t, false, executor.HasPendingBatch())
+		assert.False(t, executor.IsInterfaceNil())
+		assert.False(t, executor.HasPendingBatch())
 
 		executor.GetPendingBatch(nil)
 
-		assert.Equal(t, false, executor.HasPendingBatch())
+		assert.False(t, executor.HasPendingBatch())
 		assert.Nil(t, executor.pendingBatch)
 	})
 	t.Run("it will get the next pending transaction", func(t *testing.T) {
@@ -96,11 +105,11 @@ func TestGetPending(t *testing.T) {
 		args.SourceBridge = sb
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
-		assert.Equal(t, false, executor.HasPendingBatch())
+		assert.False(t, executor.IsInterfaceNil())
+		assert.False(t, executor.HasPendingBatch())
 		executor.GetPendingBatch(nil)
 
-		assert.Equal(t, true, executor.HasPendingBatch())
+		assert.True(t, executor.HasPendingBatch())
 		assert.Equal(t, expected, executor.pendingBatch)
 	})
 }
@@ -116,8 +125,8 @@ func TestLeader(t *testing.T) {
 		args.TopologyProvider = tp
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
-		assert.Equal(t, true, executor.IsLeader())
+		assert.False(t, executor.IsInterfaceNil())
+		assert.True(t, executor.IsLeader())
 	})
 	t.Run("relayer is NOT leader", func(t *testing.T) {
 		args := createMockArgs()
@@ -128,8 +137,8 @@ func TestLeader(t *testing.T) {
 		args.TopologyProvider = tp
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
-		assert.Equal(t, false, executor.IsLeader())
+		assert.False(t, executor.IsInterfaceNil())
+		assert.False(t, executor.IsLeader())
 	})
 }
 
@@ -153,10 +162,10 @@ func TestWasProposeTransferExecutedOnDestination(t *testing.T) {
 		args.DestinationBridge = db
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
 		executor.GetPendingBatch(nil)
-		assert.Equal(t, true, executor.WasProposeTransferExecutedOnDestination(nil))
+		assert.True(t, executor.WasProposeTransferExecutedOnDestination(nil))
 	})
 }
 
@@ -178,10 +187,10 @@ func TestWasProposeSetStatusExecutedOnSource(t *testing.T) {
 		args.SourceBridge = sb
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
 		executor.GetPendingBatch(nil)
-		assert.Equal(t, true, executor.WasProposeSetStatusExecutedOnSource(nil))
+		assert.True(t, executor.WasProposeSetStatusExecutedOnSource(nil))
 	})
 }
 
@@ -205,10 +214,10 @@ func TestWasExecuted(t *testing.T) {
 		args.DestinationBridge = db
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
 		executor.GetPendingBatch(nil)
-		assert.Equal(t, true, executor.WasExecutedOnDestination(nil))
+		assert.True(t, executor.WasTransferExecutedOnDestination(nil))
 	})
 	t.Run("OnDestination", func(t *testing.T) {
 		expected := &bridge.Batch{
@@ -226,10 +235,10 @@ func TestWasExecuted(t *testing.T) {
 		args.SourceBridge = sb
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
 		executor.GetPendingBatch(nil)
-		assert.Equal(t, true, executor.WasExecutedOnSource(nil))
+		assert.True(t, executor.WasSetStatusExecutedOnSource(nil))
 	})
 }
 
@@ -244,9 +253,9 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		}
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
-		assert.Equal(t, false, executor.IsQuorumReachedForProposeTransfer(nil))
+		assert.False(t, executor.IsQuorumReachedForProposeTransfer(nil))
 	})
 	t.Run("no signs", func(t *testing.T) {
 		args := createMockArgs()
@@ -257,9 +266,9 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		}
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
-		assert.Equal(t, false, executor.IsQuorumReachedForProposeTransfer(nil))
+		assert.False(t, executor.IsQuorumReachedForProposeTransfer(nil))
 	})
 	t.Run("less < quorum", func(t *testing.T) {
 		args := createMockArgs()
@@ -275,9 +284,9 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		args.DestinationBridge = db
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
-		assert.Equal(t, false, executor.IsQuorumReachedForProposeTransfer(nil))
+		assert.False(t, executor.IsQuorumReachedForProposeTransfer(nil))
 	})
 	t.Run("signs == quorum", func(t *testing.T) {
 		args := createMockArgs()
@@ -294,9 +303,9 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		args.DestinationBridge = db
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
-		assert.Equal(t, true, executor.IsQuorumReachedForProposeTransfer(nil))
+		assert.True(t, executor.IsQuorumReachedForProposeTransfer(nil))
 	})
 	t.Run("signs > quorum", func(t *testing.T) {
 		args := createMockArgs()
@@ -313,9 +322,9 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		args.DestinationBridge = db
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
-		assert.Equal(t, true, executor.IsQuorumReachedForProposeTransfer(nil))
+		assert.True(t, executor.IsQuorumReachedForProposeTransfer(nil))
 	})
 
 }
@@ -331,9 +340,9 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
-		assert.Equal(t, false, executor.IsQuorumReachedForProposeSetStatus(nil))
+		assert.False(t, executor.IsQuorumReachedForProposeSetStatus(nil))
 	})
 	t.Run("no signs", func(t *testing.T) {
 		args := createMockArgs()
@@ -344,9 +353,9 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
-		assert.Equal(t, false, executor.IsQuorumReachedForProposeSetStatus(nil))
+		assert.False(t, executor.IsQuorumReachedForProposeSetStatus(nil))
 	})
 	t.Run("less < quorum", func(t *testing.T) {
 		args := createMockArgs()
@@ -363,9 +372,9 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		args.SourceBridge = sb
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
-		assert.Equal(t, false, executor.IsQuorumReachedForProposeSetStatus(nil))
+		assert.False(t, executor.IsQuorumReachedForProposeSetStatus(nil))
 	})
 	t.Run("signs == quorum", func(t *testing.T) {
 		args := createMockArgs()
@@ -382,9 +391,9 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		args.SourceBridge = sb
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
-		assert.Equal(t, true, executor.IsQuorumReachedForProposeSetStatus(nil))
+		assert.True(t, executor.IsQuorumReachedForProposeSetStatus(nil))
 	})
 	t.Run("signs > quorum", func(t *testing.T) {
 		args := createMockArgs()
@@ -401,9 +410,9 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		args.SourceBridge = sb
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
-		assert.Equal(t, true, executor.IsQuorumReachedForProposeSetStatus(nil))
+		assert.True(t, executor.IsQuorumReachedForProposeSetStatus(nil))
 	})
 }
 
@@ -412,14 +421,14 @@ func TestPrintInfo(t *testing.T) {
 	printInfoTest := func() {
 		r := recover()
 		if r != nil {
-			assert.Fail(t, fmt.Sprintf("should not have paniced: %v", r))
+			assert.Fail(t, fmt.Sprintf("should not have panicked: %v", r))
 		}
 	}
 	t.Run("Trace", func(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 		defer printInfoTest()
 		executor.PrintInfo(logger.LogTrace, "test")
 
@@ -428,7 +437,7 @@ func TestPrintInfo(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 		defer printInfoTest()
 		executor.PrintInfo(logger.LogDebug, "test")
 	})
@@ -436,7 +445,7 @@ func TestPrintInfo(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 		defer printInfoTest()
 		executor.PrintInfo(logger.LogInfo, "test")
 	})
@@ -444,7 +453,7 @@ func TestPrintInfo(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 		defer printInfoTest()
 		executor.PrintInfo(logger.LogWarning, "test")
 	})
@@ -452,7 +461,7 @@ func TestPrintInfo(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 		defer printInfoTest()
 		executor.PrintInfo(logger.LogError, "test")
 	})
@@ -460,7 +469,7 @@ func TestPrintInfo(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 		defer printInfoTest()
 		executor.PrintInfo(logger.LogNone, "test")
 	})
@@ -477,7 +486,7 @@ func TestProposeTransferOnDestination(t *testing.T) {
 		args.DestinationBridge = db
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
 		err = executor.ProposeTransferOnDestination(nil)
 		assert.Equal(t, expectedError, err)
@@ -493,7 +502,7 @@ func TestProposeTransferOnDestination(t *testing.T) {
 
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 
 		err = executor.ProposeTransferOnDestination(nil)
 		assert.Nil(t, err)
@@ -507,7 +516,7 @@ func TestProposeSetStatusOnSource(t *testing.T) {
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
+	assert.False(t, executor.IsInterfaceNil())
 
 	executor.ProposeSetStatusOnSource(nil)
 	assert.Equal(t, 1, sb.GetFunctionCounter("ProposeSetStatus"))
@@ -531,7 +540,7 @@ func TestExecuteTransferOnDestination(t *testing.T) {
 	args.DestinationBridge = db
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
+	assert.False(t, executor.IsInterfaceNil())
 	executor.ExecuteTransferOnDestination(nil)
 	assert.Equal(t, 1, db.GetFunctionCounter("Execute"))
 }
@@ -544,7 +553,7 @@ func TestExecuteTransferOnDestinationReturnsError(t *testing.T) {
 	args.DestinationBridge = db
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
+	assert.False(t, executor.IsInterfaceNil())
 	executor.ExecuteTransferOnDestination(nil)
 	assert.Equal(t, 1, db.GetFunctionCounter("Execute"))
 }
@@ -556,7 +565,7 @@ func TestExecuteSetStatusOnSource(t *testing.T) {
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
+	assert.False(t, executor.IsInterfaceNil())
 	executor.ExecuteSetStatusOnSource(nil)
 	assert.Equal(t, 1, sb.GetFunctionCounter("Execute"))
 }
@@ -569,7 +578,7 @@ func TestExecuteSetStatusOnSourceReturnsError(t *testing.T) {
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
+	assert.False(t, executor.IsInterfaceNil())
 	executor.ExecuteSetStatusOnSource(nil)
 	assert.Equal(t, 1, sb.GetFunctionCounter("Execute"))
 }
@@ -593,11 +602,11 @@ func TestSetStatusRejectedOnAllTransactions(t *testing.T) {
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
-	assert.Equal(t, false, executor.HasPendingBatch())
+	assert.False(t, executor.IsInterfaceNil())
+	assert.False(t, executor.HasPendingBatch())
 	executor.GetPendingBatch(nil)
 
-	assert.Equal(t, true, executor.HasPendingBatch())
+	assert.True(t, executor.HasPendingBatch())
 	executor.SetStatusRejectedOnAllTransactions(expectedError)
 	for _, transaction := range executor.pendingBatch.Transactions {
 		assert.Equal(t, bridge.Rejected, transaction.Status)
@@ -623,11 +632,11 @@ func TestSetStatusExecutedOnAllTransactions(t *testing.T) {
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
-	assert.Equal(t, false, executor.HasPendingBatch())
+	assert.False(t, executor.IsInterfaceNil())
+	assert.False(t, executor.HasPendingBatch())
 	executor.GetPendingBatch(nil)
 
-	assert.Equal(t, true, executor.HasPendingBatch())
+	assert.True(t, executor.HasPendingBatch())
 	executor.SetStatusExecutedOnAllTransactions()
 	for _, transaction := range executor.pendingBatch.Transactions {
 		assert.Equal(t, bridge.Executed, transaction.Status)
@@ -648,12 +657,12 @@ func TestSignProposeTransferOnDestination(t *testing.T) {
 	args.DestinationBridge = db
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
-	assert.Equal(t, false, executor.HasPendingBatch())
+	assert.False(t, executor.IsInterfaceNil())
+	assert.False(t, executor.HasPendingBatch())
 
 	executor.GetPendingBatch(nil)
 
-	assert.Equal(t, false, executor.HasPendingBatch())
+	assert.False(t, executor.HasPendingBatch())
 	executor.SignProposeTransferOnDestination(nil)
 	assert.Equal(t, 1, db.GetFunctionCounter("GetActionIdForProposeTransfer"))
 	assert.Equal(t, 1, db.GetFunctionCounter("Sign"))
@@ -671,12 +680,12 @@ func TestSignProposeTransferOnDestinationReturnsError(t *testing.T) {
 
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
-	assert.Equal(t, false, executor.HasPendingBatch())
+	assert.False(t, executor.IsInterfaceNil())
+	assert.False(t, executor.HasPendingBatch())
 
 	executor.GetPendingBatch(nil)
 
-	assert.Equal(t, false, executor.HasPendingBatch())
+	assert.False(t, executor.HasPendingBatch())
 	executor.SignProposeTransferOnDestination(nil)
 	assert.Equal(t, 1, db.GetFunctionCounter("GetActionIdForProposeTransfer"))
 	assert.Equal(t, 1, db.GetFunctionCounter("Sign"))
@@ -702,12 +711,12 @@ func TestSignProposeSetStatusOnSource(t *testing.T) {
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
-	assert.Equal(t, false, executor.HasPendingBatch())
+	assert.False(t, executor.IsInterfaceNil())
+	assert.False(t, executor.HasPendingBatch())
 
 	executor.GetPendingBatch(nil)
 
-	assert.Equal(t, true, executor.HasPendingBatch())
+	assert.True(t, executor.HasPendingBatch())
 	executor.SignProposeSetStatusOnSource(nil)
 	assert.Equal(t, 1, sb.GetFunctionCounter("GetActionIdForSetStatusOnPendingTransfer"))
 	assert.Equal(t, 1, sb.GetFunctionCounter("Sign"))
@@ -732,12 +741,12 @@ func TestSignProposeSetStatusOnSourceReturnsError(t *testing.T) {
 
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
-	assert.Equal(t, false, executor.IsInterfaceNil())
-	assert.Equal(t, false, executor.HasPendingBatch())
+	assert.False(t, executor.IsInterfaceNil())
+	assert.False(t, executor.HasPendingBatch())
 
 	executor.GetPendingBatch(nil)
 
-	assert.Equal(t, true, executor.HasPendingBatch())
+	assert.True(t, executor.HasPendingBatch())
 	executor.SignProposeSetStatusOnSource(nil)
 	assert.Equal(t, 1, sb.GetFunctionCounter("GetActionIdForSetStatusOnPendingTransfer"))
 	assert.Equal(t, 1, sb.GetFunctionCounter("Sign"))
@@ -749,7 +758,7 @@ func TestWaitStepToFinish(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 		ctx, _ := context.WithTimeout(context.Background(), time.Second*0)
 		err = executor.WaitStepToFinish(ethToElrond.GettingPending, ctx)
 		assert.Equal(t, ctx.Err(), err)
@@ -758,7 +767,7 @@ func TestWaitStepToFinish(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 		ctx, _ := context.WithTimeout(context.Background(), defaultWaitTime-time.Second)
 		err = executor.WaitStepToFinish(ethToElrond.GettingPending, ctx)
 		assert.Equal(t, ctx.Err(), err)
@@ -767,7 +776,7 @@ func TestWaitStepToFinish(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 		ctx, _ := context.WithTimeout(context.Background(), defaultWaitTime)
 		err = executor.WaitStepToFinish(ethToElrond.GettingPending, ctx)
 		assert.Nil(t, err)
@@ -776,7 +785,7 @@ func TestWaitStepToFinish(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
-		assert.Equal(t, false, executor.IsInterfaceNil())
+		assert.False(t, executor.IsInterfaceNil())
 		ctx, _ := context.WithTimeout(context.Background(), defaultWaitTime+time.Second)
 		err = executor.WaitStepToFinish(ethToElrond.GettingPending, ctx)
 		assert.Nil(t, err)

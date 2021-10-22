@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-var fullPathTopologyProviderStub = "github.com/ElrondNetwork/elrond-eth-bridge/relay/ethToElrond/bridgeExecutors/mock.(*TopologyProviderStub)."
+var fullPathTopologyProviderStub = "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors/mock.(*TopologyProviderStub)."
 
 // TopologyProviderStub -
 type TopologyProviderStub struct {
