@@ -70,8 +70,8 @@ func TestInit(t *testing.T) {
 		timer:     &timer,
 		log:       log,
 
-		elrondBridge: &bridgeStub{},
-		ethBridge:    &bridgeStub{},
+		elrondBridge: &bridgeMock{},
+		ethBridge:    &bridgeMock{},
 
 		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
 	}
@@ -113,8 +113,8 @@ func TestPrivateTopicProcessor(t *testing.T) {
 		timer:     &testHelpers.TimerStub{},
 		log:       log,
 
-		elrondBridge: &bridgeStub{},
-		ethBridge:    &bridgeStub{},
+		elrondBridge: &bridgeMock{},
+		ethBridge:    &bridgeMock{},
 
 		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
 	}
@@ -141,8 +141,8 @@ func TestJoinTopicProcessor(t *testing.T) {
 			timer:     &testHelpers.TimerStub{},
 			log:       log,
 
-			elrondBridge: &bridgeStub{},
-			ethBridge:    &bridgeStub{},
+			elrondBridge: &bridgeMock{},
+			ethBridge:    &bridgeMock{},
 
 			peers:      Peers{"first", "second"},
 			signatures: Signatures{"first": []byte("first signature")},
@@ -177,8 +177,8 @@ func TestJoinTopicProcessor(t *testing.T) {
 			timer:     &testHelpers.TimerStub{},
 			log:       log,
 
-			elrondBridge: &bridgeStub{},
-			ethBridge:    &bridgeStub{},
+			elrondBridge: &bridgeMock{},
+			ethBridge:    &bridgeMock{},
 
 			peers: Peers{"first", "second"},
 
@@ -202,8 +202,8 @@ func TestJoinTopicProcessor(t *testing.T) {
 			timer:     &testHelpers.TimerStub{},
 			log:       log,
 
-			elrondBridge: &bridgeStub{},
-			ethBridge:    &bridgeStub{},
+			elrondBridge: &bridgeMock{},
+			ethBridge:    &bridgeMock{},
 
 			roleProvider:                &roleProviderStub{isWhitelisted: true},
 			elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
@@ -226,8 +226,8 @@ func TestJoinTopicProcessor(t *testing.T) {
 			timer:     &testHelpers.TimerStub{},
 			log:       log,
 
-			elrondBridge: &bridgeStub{},
-			ethBridge:    &bridgeStub{},
+			elrondBridge: &bridgeMock{},
+			ethBridge:    &bridgeMock{},
 
 			peers: Peers{"first", "second"},
 
@@ -255,8 +255,8 @@ func TestJoin(t *testing.T) {
 		timer:     &testHelpers.TimerStub{},
 		log:       log,
 
-		elrondBridge: &bridgeStub{},
-		ethBridge:    &bridgeStub{},
+		elrondBridge: &bridgeMock{},
+		ethBridge:    &bridgeMock{},
 
 		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address"},
 	}
@@ -277,8 +277,8 @@ func TestSendSignature(t *testing.T) {
 		timer:     &testHelpers.TimerStub{},
 		log:       log,
 
-		elrondBridge: &bridgeStub{},
-		ethBridge:    &bridgeStub{},
+		elrondBridge: &bridgeMock{},
+		ethBridge:    &bridgeMock{},
 	}
 
 	_, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -300,8 +300,8 @@ func TestSignTopicProcessor(t *testing.T) {
 		log:        log,
 		signatures: make(map[core.PeerID][]byte),
 
-		elrondBridge: &bridgeStub{},
-		ethBridge:    &bridgeStub{},
+		elrondBridge: &bridgeMock{},
+		ethBridge:    &bridgeMock{},
 
 		peers: Peers{"first", "second"},
 
