@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"strconv"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
+	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	"github.com/ElrondNetwork/elrond-go-core/data/vm"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
@@ -108,24 +110,26 @@ func TestGetPending(t *testing.T) {
 
 		actual := c.GetPending(context.TODO())
 		tx1 := &bridge.DepositTransaction{
-			To:           "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
-			From:         "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
-			TokenAddress: "0x574554482d656366316331",
-			Amount:       big.NewInt(1),
-			DepositNonce: bridge.NewNonce(1),
-			BlockNonce:   bridge.NewNonce(154947),
-			Status:       0,
-			Error:        nil,
+			To:            "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
+			DisplayableTo: "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
+			From:          "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
+			TokenAddress:  "0x574554482d656366316331",
+			Amount:        big.NewInt(1),
+			DepositNonce:  bridge.NewNonce(1),
+			BlockNonce:    bridge.NewNonce(154947),
+			Status:        0,
+			Error:         nil,
 		}
 		tx2 := &bridge.DepositTransaction{
-			To:           "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
-			From:         "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
-			TokenAddress: "0x574554482d656366316331",
-			Amount:       big.NewInt(2),
-			DepositNonce: bridge.NewNonce(2),
-			BlockNonce:   bridge.NewNonce(154947),
-			Status:       0,
-			Error:        nil,
+			To:            "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
+			DisplayableTo: "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
+			From:          "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
+			TokenAddress:  "0x574554482d656366316331",
+			Amount:        big.NewInt(2),
+			DepositNonce:  bridge.NewNonce(2),
+			BlockNonce:    bridge.NewNonce(154947),
+			Status:        0,
+			Error:         nil,
 		}
 		expected := &bridge.Batch{
 			Id:           bridge.NewBatchId(1),
@@ -190,11 +194,16 @@ func TestProposeTransfer(t *testing.T) {
 		}
 		c, _ := buildTestClient(proxy)
 
+		bech32Address := "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8"
+		pkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32, c.log)
+		buff, _ := pkConv.Decode(bech32Address)
+		hexAddress := hex.EncodeToString(buff)
+
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{
 				{
-					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+					To:           string(buff),
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
@@ -204,7 +213,7 @@ func TestProposeTransfer(t *testing.T) {
 		}
 
 		_, _ = c.ProposeTransfer(context.TODO(), batch)
-		expected := "proposeMultiTransferEsdtBatch@01@b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba@574554482d393761323662@2a"
+		expected := fmt.Sprintf("proposeMultiTransferEsdtBatch@01@%s@574554482d393761323662@2a", hexAddress)
 
 		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
 		assert.Equal(t, uint64(45_000_000+len(batch.Transactions)*25_000_000), proxy.lastTransaction.GasLimit)

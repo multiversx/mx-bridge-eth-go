@@ -13,6 +13,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
+	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -34,6 +35,9 @@ const GasLimit = uint64(400000)
 func TestGetPending(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
+	pkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32, logger.GetOrCreate("test"))
+	buff, _ := pkConv.Decode("erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8")
+
 	useCases := []struct {
 		name          string
 		receivedBatch contract.Batch
@@ -48,7 +52,7 @@ func TestGetPending(t *testing.T) {
 						TokenAddress: common.HexToAddress("0x093c0B280ba430A9Cc9C3649FF34FCBf6347bC50"),
 						Amount:       big.NewInt(42),
 						Depositor:    common.HexToAddress("0x132A150926691F08a693721503a38affeD18d524"),
-						Recipient:    []byte("erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8"),
+						Recipient:    buff,
 						Status:       0,
 					},
 				},
@@ -56,10 +60,12 @@ func TestGetPending(t *testing.T) {
 			expectedBatch: &bridge.Batch{
 				Id: big.NewInt(1),
 				Transactions: []*bridge.DepositTransaction{
-					{To: "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
-						From:         "0x132A150926691F08a693721503a38affeD18d524",
-						TokenAddress: "0x093c0B280ba430A9Cc9C3649FF34FCBf6347bC50",
-						Amount:       big.NewInt(42),
+					{
+						To:            string(buff),
+						DisplayableTo: "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+						From:          "0x132A150926691F08a693721503a38affeD18d524",
+						TokenAddress:  "0x093c0B280ba430A9Cc9C3649FF34FCBf6347bC50",
+						Amount:        big.NewInt(42),
 					},
 				},
 			},
@@ -85,6 +91,7 @@ func TestGetPending(t *testing.T) {
 				gasLimit:       GasLimit,
 				log:            logger.GetOrCreate("testEthClient"),
 			}
+			client.addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, client.log)
 
 			got := client.GetPending(context.TODO())
 

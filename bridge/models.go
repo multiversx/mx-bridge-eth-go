@@ -27,20 +27,21 @@ func NewActionId(value int64) ActionId {
 }
 
 type DepositTransaction struct {
-	To           string
-	From         string
-	TokenAddress string
-	Amount       *big.Int
-	DepositNonce Nonce
-	BlockNonce   Nonce
-	Status       uint8
-	Error        error
+	To            string
+	DisplayableTo string
+	From          string
+	TokenAddress  string
+	Amount        *big.Int
+	DepositNonce  Nonce
+	BlockNonce    Nonce
+	Status        uint8
+	Error         error
 }
 
 // String will convert the deposit transaction to a string
 func (dt *DepositTransaction) String() string {
 	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %v, block nonce: %v, "+
-		"status: %d, error: %v", dt.To, dt.From, dt.TokenAddress, dt.Amount, dt.DepositNonce, dt.BlockNonce, dt.Status, dt.Error)
+		"status: %d, error: %v", dt.DisplayableTo, dt.From, dt.TokenAddress, dt.Amount, dt.DepositNonce, dt.BlockNonce, dt.Status, dt.Error)
 }
 
 type Batch struct {

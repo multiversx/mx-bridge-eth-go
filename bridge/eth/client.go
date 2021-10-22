@@ -10,6 +10,8 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -23,6 +25,7 @@ const (
 	MessagePrefix   = "\u0019Ethereum Signed Message:\n32"
 	TransferAction  = int64(0)
 	SetStatusAction = int64(1)
+	addressLength   = 32
 )
 
 type BridgeContract interface {
@@ -44,6 +47,7 @@ type BlockchainClient interface {
 type Client struct {
 	bridgeContract   BridgeContract
 	blockchainClient BlockchainClient
+	addressConverter core.PubkeyConverter
 
 	privateKey   *ecdsa.PrivateKey
 	publicKey    *ecdsa.PublicKey
@@ -88,9 +92,9 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 		publicKey:        publicKeyECDSA,
 		broadcaster:      broadcaster,
 		mapper:           mapper,
-
-		log: log,
+		log:              log,
 	}
+	client.addressConverter, err = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 
 	return client, nil
 }
@@ -108,11 +112,12 @@ func (c *Client) GetPending(ctx context.Context) *bridge.Batch {
 		var transactions []*bridge.DepositTransaction
 		for _, deposit := range batch.Deposits {
 			tx := &bridge.DepositTransaction{
-				To:           string(deposit.Recipient),
-				From:         deposit.Depositor.String(),
-				TokenAddress: deposit.TokenAddress.String(),
-				Amount:       deposit.Amount,
-				DepositNonce: deposit.Nonce,
+				To:            string(deposit.Recipient),
+				DisplayableTo: c.addressConverter.Encode(deposit.Recipient),
+				From:          deposit.Depositor.String(),
+				TokenAddress:  deposit.TokenAddress.String(),
+				Amount:        deposit.Amount,
+				DepositNonce:  deposit.Nonce,
 			}
 			c.log.Trace("created deposit transaction: " + tx.String())
 			transactions = append(transactions, tx)

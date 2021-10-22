@@ -766,7 +766,7 @@ func TestWaitStepToFinish(t *testing.T) {
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
 		assert.False(t, executor.IsInterfaceNil())
-		ctx, cancel := context.WithTimeout(context.Background(), testDuration+time.Second*500)
+		ctx, cancel := context.WithTimeout(context.Background(), testDuration+time.Millisecond*500)
 		defer cancel()
 
 		err = executor.WaitStepToFinish(ethToElrond.GettingPending, ctx)

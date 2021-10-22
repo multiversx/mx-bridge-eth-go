@@ -137,14 +137,15 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 		}
 
 		tx := &bridge.DepositTransaction{
-			To:           fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
-			From:         addrPkConv.Encode(responseData[i+2]),
-			TokenAddress: fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+4])),
-			Amount:       amount,
-			DepositNonce: bridge.NewNonce(depositNonce),
-			BlockNonce:   bridge.NewNonce(blockNonce),
-			Status:       0,
-			Error:        nil,
+			To:            fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
+			DisplayableTo: fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
+			From:          addrPkConv.Encode(responseData[i+2]),
+			TokenAddress:  fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+4])),
+			Amount:        amount,
+			DepositNonce:  bridge.NewNonce(depositNonce),
+			BlockNonce:    bridge.NewNonce(blockNonce),
+			Status:        0,
+			Error:         nil,
 		}
 		c.log.Trace("created deposit transaction: " + tx.String())
 		transactions = append(transactions, tx)
@@ -202,7 +203,7 @@ func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 
 	for _, tx := range batch.Transactions {
 		builder = builder.
-			Address(tx.To).
+			Address([]byte(tx.To)).
 			HexString(c.GetTokenId(tx.TokenAddress[2:])).
 			BigInt(tx.Amount)
 	}
@@ -689,10 +690,8 @@ func (builder *txDataBuilder) BigInt(value *big.Int) *txDataBuilder {
 	return builder
 }
 
-func (builder *txDataBuilder) Address(value string) *txDataBuilder {
-	pkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32, builder.log)
-	buff, _ := pkConv.Decode(value)
-	builder.elements = append(builder.elements, hex.EncodeToString(buff))
+func (builder *txDataBuilder) Address(bytes []byte) *txDataBuilder {
+	builder.elements = append(builder.elements, hex.EncodeToString(bytes))
 
 	return builder
 }
