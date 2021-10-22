@@ -28,6 +28,7 @@ type BridgeStub struct {
 	SignCalled                                     func(ctx context.Context, id bridge.ActionId) (string, error)
 	ExecuteCalled                                  func(ctx context.Context, id bridge.ActionId, batch *bridge.Batch) (string, error)
 	SignersCountCalled                             func(ctx context.Context, id bridge.ActionId) uint
+	GetTransactionsStatusesCalled                  func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error)
 
 	ProposeTransferError error
 	SignError            error
@@ -139,6 +140,16 @@ func (b *BridgeStub) SignersCount(ctx context.Context, id bridge.ActionId) uint 
 		return b.SignersCountCalled(ctx, id)
 	}
 	return 0
+}
+
+// GetTransactionsStatuses -
+func (b *BridgeStub) GetTransactionsStatuses(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+	b.incrementFunctionCounter()
+	if b.GetTransactionsStatusesCalled != nil {
+		return b.GetTransactionsStatusesCalled(ctx, batchID)
+	}
+
+	return make([]byte, 0), nil
 }
 
 // -------- helper functions

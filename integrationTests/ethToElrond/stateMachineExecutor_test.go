@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
@@ -126,9 +127,8 @@ func createAndStartBridge(
 		DestinationBridge: destinationBridge,
 		TopologyProvider:  topologyProvider,
 		QuorumProvider:    quorumProvider,
-		Timer: &mock.TimerMock{
-			OverrideTimeAfter: time.Millisecond * 2,
-		},
+		Timer:             &mock.TimerMock{},
+		DurationsMap:      createMockDurationsMap(),
 	}
 
 	bridgeExecutor, err := bridgeExecutors.NewEthElrondBridgeExecutor(argsExecutor)
@@ -152,6 +152,18 @@ func createAndStartBridge(
 	}
 
 	return stateMachine.NewStateMachine(argsStateMachine)
+}
+
+func createMockDurationsMap() map[core.StepIdentifier]time.Duration {
+	return map[core.StepIdentifier]time.Duration{
+		ethToElrond.GettingPending:                       time.Millisecond,
+		ethToElrond.ProposingTransfer:                    time.Millisecond,
+		ethToElrond.WaitingSignaturesForProposeTransfer:  time.Millisecond,
+		ethToElrond.ExecutingTransfer:                    time.Millisecond,
+		ethToElrond.ProposingSetStatus:                   time.Millisecond,
+		ethToElrond.WaitingSignaturesForProposeSetStatus: time.Millisecond,
+		ethToElrond.ExecutingSetStatus:                   time.Millisecond,
+	}
 }
 
 func checkStatusWhenExecutedOnSource(

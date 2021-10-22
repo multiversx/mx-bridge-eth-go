@@ -4,20 +4,22 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/stretchr/testify/require"
-
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
+	relayMock "github.com/ElrondNetwork/elrond-eth-bridge/relay/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
-	"github.com/ElrondNetwork/elrond-go/p2p/mock"
-
 	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-go/p2p/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // implements interface
@@ -31,7 +33,7 @@ var log = logger.GetOrCreate("main")
 func TestNewRelay(t *testing.T) {
 	t.Parallel()
 
-	cfg := &Config{
+	cfg := Config{
 		Eth: bridge.Config{
 			NetworkAddress:               "http://127.0.0.1:8545",
 			BridgeAddress:                "5DdDe022a65F8063eE9adaC54F359CBF46166068",
@@ -324,22 +326,118 @@ func TestAmILeader(t *testing.T) {
 
 	t.Run("will return true when time matches current index", func(t *testing.T) {
 		relay := Relay{
-			peers:     Peers{"self"},
-			messenger: &netMessengerStub{peerID: "self"},
-			timer:     &testHelpers.TimerStub{TimeNowUnix: 0},
+			peers:        Peers{"self"},
+			messenger:    &netMessengerStub{peerID: "self"},
+			timer:        &testHelpers.TimerStub{TimeNowUnix: 0},
+			stepDuration: time.Second,
 		}
 
 		assert.True(t, relay.AmITheLeader())
 	})
 	t.Run("will return false when time does not match", func(t *testing.T) {
+		stepDuration := time.Second * 6
 		relay := Relay{
-			peers:     Peers{"self", "other"},
-			messenger: &netMessengerStub{peerID: "self"},
-			timer:     &testHelpers.TimerStub{TimeNowUnix: int64(timeout.Seconds()) + 1},
+			stepDuration: stepDuration,
+			peers:        Peers{"self", "other"},
+			messenger:    &netMessengerStub{peerID: "self"},
+			timer:        &testHelpers.TimerStub{TimeNowUnix: int64(stepDuration.Seconds()) + 1},
 		}
 
 		assert.False(t, relay.AmITheLeader())
 	})
+}
+
+func TestRelay_CreateAndStartBridge(t *testing.T) {
+	t.Parallel()
+	t.Run("nil bridge should error", func(t *testing.T) {
+		relay := &Relay{
+			quorumProvider: &relayMock.QuorumProviderStub{},
+			timer:          &relayMock.TimerMock{},
+			log:            logger.GetOrCreate("test"),
+		}
+
+		stateMachine, err := relay.createAndStartBridge(nil, &bridgeMock{}, "test")
+		require.True(t, check.IfNilReflect(stateMachine))
+		require.NotNil(t, err)
+		require.True(t, strings.Contains(err.Error(), "source bridge"))
+		require.True(t, strings.Contains(err.Error(), "nil bridge"))
+	})
+	t.Run("invalid step time duration", func(t *testing.T) {
+		relay := &Relay{
+			quorumProvider:     &relayMock.QuorumProviderStub{},
+			timer:              &relayMock.TimerMock{},
+			stateMachineConfig: createMockDurationsMapConfig(),
+			log:                logger.GetOrCreate("test"),
+		}
+		relay.stateMachineConfig.StepDurationInMillis = 999
+
+		stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, "test")
+		require.True(t, check.IfNilReflect(stateMachine))
+		require.True(t, errors.Is(err, ErrInvalidDurationConfig))
+	})
+	t.Run("missing duration for step", func(t *testing.T) {
+		relay := &Relay{
+			quorumProvider:     &relayMock.QuorumProviderStub{},
+			timer:              &relayMock.TimerMock{},
+			stateMachineConfig: createMockDurationsMapConfig(),
+			log:                logger.GetOrCreate("test"),
+		}
+		relay.stateMachineConfig.Steps = relay.stateMachineConfig.Steps[1:]
+
+		stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, "test")
+		require.True(t, check.IfNilReflect(stateMachine))
+		require.True(t, errors.Is(err, ErrMissingDurationConfig))
+	})
+	t.Run("should work", func(t *testing.T) {
+		relay := &Relay{
+			quorumProvider:     &relayMock.QuorumProviderStub{},
+			timer:              &relayMock.TimerMock{},
+			stateMachineConfig: createMockDurationsMapConfig(),
+			log:                logger.GetOrCreate("test"),
+		}
+
+		stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, "test")
+		require.Nil(t, err)
+		require.NotNil(t, stateMachine)
+
+		_ = stateMachine.Close()
+	})
+}
+
+func createMockDurationsMapConfig() ConfigStateMachine {
+	return ConfigStateMachine{
+		StepDurationInMillis: 1000,
+		Steps: []StepConfig{
+			{
+				Name:             ethToElrond.GettingPending,
+				DurationInMillis: 1,
+			},
+			{
+				Name:             ethToElrond.ProposingTransfer,
+				DurationInMillis: 1,
+			},
+			{
+				Name:             ethToElrond.WaitingSignaturesForProposeTransfer,
+				DurationInMillis: 1,
+			},
+			{
+				Name:             ethToElrond.ExecutingTransfer,
+				DurationInMillis: 1,
+			},
+			{
+				Name:             ethToElrond.ProposingSetStatus,
+				DurationInMillis: 1,
+			},
+			{
+				Name:             ethToElrond.WaitingSignaturesForProposeSetStatus,
+				DurationInMillis: 1,
+			},
+			{
+				Name:             ethToElrond.ExecutingSetStatus,
+				DurationInMillis: 1,
+			},
+		},
+	}
 }
 
 func buildPrivateMessage(peerID core.PeerID, peers Peers) p2p.MessageP2P {

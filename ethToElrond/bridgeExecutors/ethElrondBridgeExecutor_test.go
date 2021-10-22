@@ -8,11 +8,15 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors/mock"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+const testDuration = time.Second
 
 func createMockArgs() ArgsEthElrondBridgeExecutor {
 	return ArgsEthElrondBridgeExecutor{
@@ -23,6 +27,9 @@ func createMockArgs() ArgsEthElrondBridgeExecutor {
 		TopologyProvider:  &mock.TopologyProviderStub{},
 		QuorumProvider:    &mock.QuorumProviderStub{},
 		Timer:             &mock.TimerMock{},
+		DurationsMap: map[core.StepIdentifier]time.Duration{
+			ethToElrond.GettingPending: testDuration,
+		},
 	}
 }
 
@@ -75,6 +82,14 @@ func TestNewbridgeExecutors(t *testing.T) {
 
 		assert.Nil(t, executor)
 		assert.Equal(t, ErrNilTimer, err)
+	})
+	t.Run("nil duration map", func(t *testing.T) {
+		args := createMockArgs()
+		args.DurationsMap = nil
+		executor, err := NewEthElrondBridgeExecutor(args)
+
+		assert.Nil(t, executor)
+		assert.Equal(t, ErrNilDurationsMap, err)
 	})
 }
 
@@ -614,36 +629,6 @@ func TestSetStatusRejectedOnAllTransactions(t *testing.T) {
 	}
 }
 
-func TestSetStatusExecutedOnAllTransactions(t *testing.T) {
-	t.Parallel()
-	expected := &bridge.Batch{
-		Id: bridge.NewBatchId(1),
-		Transactions: []*bridge.DepositTransaction{
-			{To: "address1", DepositNonce: bridge.NewNonce(0)},
-			{To: "address2", DepositNonce: bridge.NewNonce(1)},
-			{To: "address3", DepositNonce: bridge.NewNonce(2)},
-		},
-	}
-	args := createMockArgs()
-	sb := mock.NewBridgeStub()
-	sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
-		return expected
-	}
-	args.SourceBridge = sb
-	executor, err := NewEthElrondBridgeExecutor(args)
-	assert.Nil(t, err)
-	assert.False(t, executor.IsInterfaceNil())
-	assert.False(t, executor.HasPendingBatch())
-	executor.GetPendingBatch(nil)
-
-	assert.True(t, executor.HasPendingBatch())
-	executor.SetStatusExecutedOnAllTransactions()
-	for _, transaction := range executor.pendingBatch.Transactions {
-		assert.Equal(t, bridge.Executed, transaction.Status)
-		assert.Nil(t, transaction.Error)
-	}
-}
-
 func TestSignProposeTransferOnDestination(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
@@ -759,7 +744,9 @@ func TestWaitStepToFinish(t *testing.T) {
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
 		assert.False(t, executor.IsInterfaceNil())
-		ctx, _ := context.WithTimeout(context.Background(), time.Second*0)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*0)
+		defer cancel()
+
 		err = executor.WaitStepToFinish(ethToElrond.GettingPending, ctx)
 		assert.Equal(t, ctx.Err(), err)
 	})
@@ -768,26 +755,89 @@ func TestWaitStepToFinish(t *testing.T) {
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
 		assert.False(t, executor.IsInterfaceNil())
-		ctx, _ := context.WithTimeout(context.Background(), defaultWaitTime-time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), testDuration-time.Millisecond*500)
+		defer cancel()
+
 		err = executor.WaitStepToFinish(ethToElrond.GettingPending, ctx)
 		assert.Equal(t, ctx.Err(), err)
-	})
-	t.Run("wait == defaultWaitTime", func(t *testing.T) {
-		args := createMockArgs()
-		executor, err := NewEthElrondBridgeExecutor(args)
-		assert.Nil(t, err)
-		assert.False(t, executor.IsInterfaceNil())
-		ctx, _ := context.WithTimeout(context.Background(), defaultWaitTime)
-		err = executor.WaitStepToFinish(ethToElrond.GettingPending, ctx)
-		assert.Nil(t, err)
 	})
 	t.Run("wait > defaultWaitTime", func(t *testing.T) {
 		args := createMockArgs()
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
 		assert.False(t, executor.IsInterfaceNil())
-		ctx, _ := context.WithTimeout(context.Background(), defaultWaitTime+time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), testDuration+time.Second*500)
+		defer cancel()
+
 		err = executor.WaitStepToFinish(ethToElrond.GettingPending, ctx)
 		assert.Nil(t, err)
+	})
+}
+
+func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
+	t.Parallel()
+	t.Run("destinationBridge.GetTransactionsStatuses returns error", func(t *testing.T) {
+		args := createMockArgs()
+		db := mock.NewBridgeStub()
+		expectedErr := errors.New("expected error")
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+			return nil, expectedErr
+		}
+		args.DestinationBridge = db
+		executor, err := NewEthElrondBridgeExecutor(args)
+		require.Nil(t, err)
+		executor.SetPendingBatch(&bridge.Batch{})
+
+		err = executor.SetTransactionsStatusesAccordingToDestination(nil)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("destinationBridge.GetTransactionsStatuses empty response", func(t *testing.T) {
+		args := createMockArgs()
+		db := mock.NewBridgeStub()
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+			return make([]byte, 0), nil
+		}
+		args.DestinationBridge = db
+		executor, err := NewEthElrondBridgeExecutor(args)
+		require.Nil(t, err)
+		batch := &bridge.Batch{
+			Transactions: []*bridge.DepositTransaction{
+				{},
+			},
+		}
+		executor.SetPendingBatch(batch)
+
+		err = executor.SetTransactionsStatusesAccordingToDestination(nil)
+		assert.True(t, errors.Is(err, ErrBatchIDStatusMismatch))
+	})
+	t.Run("destinationBridge.GetTransactionsStatuses sets the status", func(t *testing.T) {
+		args := createMockArgs()
+		db := mock.NewBridgeStub()
+		numTxs := 10
+		statuses := make([]byte, numTxs)
+		for i := 0; i < numTxs; i++ {
+			statuses[i] = byte(i)
+		}
+
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+			return statuses, nil
+		}
+		args.DestinationBridge = db
+		executor, err := NewEthElrondBridgeExecutor(args)
+		require.Nil(t, err)
+
+		batch := &bridge.Batch{}
+		for i := 0; i < numTxs; i++ {
+			batch.Transactions = append(batch.Transactions, &bridge.DepositTransaction{})
+		}
+		executor.SetPendingBatch(batch)
+
+		err = executor.SetTransactionsStatusesAccordingToDestination(nil)
+		assert.Nil(t, err)
+
+		assert.Equal(t, numTxs, len(batch.Transactions)) // extra-protection that the number of txs was not modified
+		for i := 0; i < numTxs; i++ {
+			assert.Equal(t, byte(i), batch.Transactions[i].Status)
+		}
 	})
 }

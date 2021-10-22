@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
@@ -35,10 +36,9 @@ const (
 	joinTopicName            = "join/1"
 	privateTopicName         = "private/1"
 	signTopicName            = "sign/1"
-	timeout                  = 40 * time.Second
-	stepTime                 = time.Second * 5 // TODO extract this in config
 	defaultTopicIdentifier   = "default"
 	p2pPeerNetworkDiscoverer = "optimized"
+	minimumDurationForStep   = time.Second
 )
 
 type Peers []core.PeerID
@@ -110,10 +110,14 @@ type Relay struct {
 	roleProvider                bridge.RoleProvider
 	elrondWalletAddressProvider bridge.WalletAddressProvider
 	quorumProvider              bridge.QuorumProvider
+	stepDuration                time.Duration
+	stateMachineConfig          ConfigStateMachine
 }
 
-func NewRelay(config *Config, name string) (*Relay, error) {
-	relay := &Relay{}
+func NewRelay(config Config, name string) (*Relay, error) {
+	relay := &Relay{
+		stateMachineConfig: config.StateMachine,
+	}
 
 	proxy := blockchain.NewElrondProxy(config.Elrond.NetworkAddress, nil)
 	clientArgs := elrond.ClientArgs{
@@ -183,6 +187,8 @@ func (r *Relay) createAndStartBridge(
 	destinationBridge bridge.Bridge,
 	name string,
 ) (io.Closer, error) {
+	durationsMap := r.processStateMachineConfigDurations()
+
 	logExecutor := logger.GetOrCreate(name + "/executor")
 	argsExecutor := bridgeExecutors.ArgsEthElrondBridgeExecutor{
 		ExecutorName:      name,
@@ -192,6 +198,7 @@ func (r *Relay) createAndStartBridge(
 		TopologyProvider:  r,
 		QuorumProvider:    r.quorumProvider,
 		Timer:             r.timer,
+		DurationsMap:      durationsMap,
 	}
 
 	bridgeExecutor, err := bridgeExecutors.NewEthElrondBridgeExecutor(argsExecutor)
@@ -204,17 +211,55 @@ func (r *Relay) createAndStartBridge(
 		return nil, err
 	}
 
+	err = r.checkDurations(stepsMap, durationsMap)
+	if err != nil {
+		return nil, err
+	}
+
 	logStateMachine := logger.GetOrCreate(name + "/statemachine")
 	argsStateMachine := stateMachine.ArgsStateMachine{
 		StateMachineName:     name,
 		Steps:                stepsMap,
 		StartStateIdentifier: ethToElrond.GettingPending,
-		DurationBetweenSteps: stepTime,
+		DurationBetweenSteps: r.stepDuration,
 		Log:                  logStateMachine,
 		Timer:                r.timer,
 	}
 
 	return stateMachine.NewStateMachine(argsStateMachine)
+}
+
+func (r *Relay) processStateMachineConfigDurations() map[coreBridge.StepIdentifier]time.Duration {
+	cfg := r.stateMachineConfig
+	r.stepDuration = time.Duration(cfg.StepDurationInMillis) * time.Millisecond
+	r.log.Debug("loaded state machine StepDuration from configs", "duration", r.stepDuration)
+
+	durationsMap := make(map[coreBridge.StepIdentifier]time.Duration)
+	for _, stepCfg := range cfg.Steps {
+		d := time.Duration(stepCfg.DurationInMillis) * time.Millisecond
+		durationsMap[coreBridge.StepIdentifier(stepCfg.Name)] = d
+		r.log.Debug("loaded StepDuration from configs", "step", stepCfg.Name, "duration", d)
+	}
+
+	return durationsMap
+}
+
+func (r *Relay) checkDurations(
+	steps map[coreBridge.StepIdentifier]coreBridge.Step,
+	stepsDurations map[coreBridge.StepIdentifier]time.Duration,
+) error {
+	if r.stepDuration < minimumDurationForStep {
+		return fmt.Errorf("%w for config %q", ErrInvalidDurationConfig, "StepDurationInMillis")
+	}
+
+	for stepIdentifer := range steps {
+		_, found := stepsDurations[stepIdentifer]
+		if !found {
+			return fmt.Errorf("%w for step %q", ErrMissingDurationConfig, stepIdentifer)
+		}
+	}
+
+	return nil
 }
 
 func (r *Relay) Stop() error {
@@ -241,7 +286,7 @@ func (r *Relay) AmITheLeader() bool {
 		return false
 	} else {
 		numberOfPeers := int64(len(r.peers))
-		index := (r.timer.NowUnix() / int64(timeout.Seconds())) % numberOfPeers
+		index := (r.timer.NowUnix() / int64(r.stepDuration.Seconds())) % numberOfPeers
 
 		return r.peers[index] == r.messenger.ID()
 	}

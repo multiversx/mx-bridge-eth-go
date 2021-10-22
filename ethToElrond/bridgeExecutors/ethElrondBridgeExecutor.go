@@ -12,9 +12,6 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-// TODO load this from config
-const defaultWaitTime = time.Second * 40
-
 // ArgsEthElrondBridgeExecutor is the DTO used in the NewEthElrondBridgeExecutor constructor function
 type ArgsEthElrondBridgeExecutor struct {
 	ExecutorName      string
@@ -24,6 +21,7 @@ type ArgsEthElrondBridgeExecutor struct {
 	TopologyProvider  TopologyProvider
 	QuorumProvider    bridge.QuorumProvider
 	Timer             Timer
+	DurationsMap      map[core.StepIdentifier]time.Duration
 }
 
 // ethElrondBridgeExecutor represents the eth-elrond bridge executor adapter
@@ -38,6 +36,7 @@ type ethElrondBridgeExecutor struct {
 	topologyProvider  TopologyProvider
 	quorumProvider    bridge.QuorumProvider
 	timer             Timer
+	durationsMap      map[core.StepIdentifier]time.Duration
 }
 
 // NewEthElrondBridgeExecutor will return a new instance of the ethElrondBridgeExecutor struct
@@ -55,6 +54,7 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 		topologyProvider:  args.TopologyProvider,
 		quorumProvider:    args.QuorumProvider,
 		timer:             args.Timer,
+		durationsMap:      args.DurationsMap,
 	}, nil
 }
 
@@ -77,6 +77,9 @@ func checkArgs(args ArgsEthElrondBridgeExecutor) error {
 	}
 	if check.IfNilReflect(args.Timer) {
 		return ErrNilTimer
+	}
+	if args.DurationsMap == nil {
+		return ErrNilDurationsMap
 	}
 
 	return nil
@@ -250,11 +253,16 @@ func (executor *ethElrondBridgeExecutor) SignProposeSetStatusOnSource(ctx contex
 // WaitStepToFinish will wait a predefined time and then will return. Returns the error if the provided context
 // signals the `Done` event
 func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step core.StepIdentifier, ctx context.Context) error {
+	duration, found := executor.durationsMap[step]
+	if !found {
+		return fmt.Errorf("%w for step %s", ErrDurationForStepNotFound, step)
+	}
+
 	executor.logger.Info(executor.appendMessageToName("waiting for transfer proposal"),
-		"step", step, "batch ID", executor.getBatchID())
+		"step", step, "batch ID", executor.getBatchID(), "duration", duration)
 
 	select {
-	case <-executor.timer.After(defaultWaitTime):
+	case <-executor.timer.After(duration):
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
