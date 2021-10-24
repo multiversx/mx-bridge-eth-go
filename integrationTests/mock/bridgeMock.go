@@ -21,6 +21,7 @@ type BridgeMock struct {
 	proposedStatusBatch           *bridge.Batch
 	GetPendingCalled              func()
 	GetTransactionsStatusesCalled func(ctx context.Context, batchId bridge.BatchId) ([]uint8, error)
+	ProposeTransferCalled         func(_ context.Context, batch *bridge.Batch) (string, error)
 }
 
 // GetPending -
@@ -60,7 +61,11 @@ func (bm *BridgeMock) GetProposedSetStatusBatch() *bridge.Batch {
 }
 
 // ProposeTransfer -
-func (bm *BridgeMock) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
+func (bm *BridgeMock) ProposeTransfer(ctx context.Context, batch *bridge.Batch) (string, error) {
+	if bm.ProposeTransferCalled != nil {
+		return bm.ProposeTransferCalled(ctx, batch)
+	}
+
 	bm.Lock()
 	defer bm.Unlock()
 

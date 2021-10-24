@@ -13,7 +13,7 @@ type proposeSetStatusStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *proposeSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	err := step.bridge.SetTransactionsStatusesAccordingToDestination(ctx)
+	err := step.bridge.SetTransactionsStatusesIfNeeded(ctx)
 	if err != nil {
 		return step.Identifier(), nil
 	}

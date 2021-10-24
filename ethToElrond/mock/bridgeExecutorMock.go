@@ -26,18 +26,18 @@ type BridgeExecutorMock struct {
 	IsQuorumReachedForProposeTransferCalled       func(ctx context.Context) bool
 	IsQuorumReachedForProposeSetStatusCalled      func(ctx context.Context) bool
 
-	PrintInfoCalled                                     func(logLevel logger.LogLevel, message string, extras ...interface{})
-	GetPendingBatchCalled                               func(ctx context.Context)
-	ProposeTransferOnDestinationCalled                  func(ctx context.Context) error
-	ProposeSetStatusOnSourceCalled                      func(ctx context.Context)
-	CleanTopologyCalled                                 func()
-	ExecuteTransferOnDestinationCalled                  func(ctx context.Context)
-	ExecuteSetStatusOnSourceCalled                      func(ctx context.Context)
-	SetStatusRejectedOnAllTransactionsCalled            func(err error)
-	SetTransactionsStatusesAccordingToDestinationCalled func(ctx context.Context) error
-	SignProposeTransferOnDestinationCalled              func(ctx context.Context)
-	SignProposeSetStatusOnSourceCalled                  func(ctx context.Context)
-	WaitStepToFinishCalled                              func(step core.StepIdentifier, ctx context.Context) error
+	PrintInfoCalled                          func(logLevel logger.LogLevel, message string, extras ...interface{})
+	GetPendingBatchCalled                    func(ctx context.Context)
+	ProposeTransferOnDestinationCalled       func(ctx context.Context) error
+	ProposeSetStatusOnSourceCalled           func(ctx context.Context)
+	CleanTopologyCalled                      func()
+	ExecuteTransferOnDestinationCalled       func(ctx context.Context)
+	ExecuteSetStatusOnSourceCalled           func(ctx context.Context)
+	SetStatusRejectedOnAllTransactionsCalled func(err error)
+	SetTransactionsStatusesIfNeededCalled    func(ctx context.Context) error
+	SignProposeTransferOnDestinationCalled   func(ctx context.Context)
+	SignProposeSetStatusOnSourceCalled       func(ctx context.Context)
+	WaitStepToFinishCalled                   func(step core.StepIdentifier, ctx context.Context) error
 }
 
 // NewBridgeExecutorMock creates a new BridgeExecutorMock instance
@@ -197,11 +197,11 @@ func (bem *BridgeExecutorMock) SetStatusRejectedOnAllTransactions(err error) {
 	}
 }
 
-// SetTransactionsStatusesAccordingToDestination -
-func (bem *BridgeExecutorMock) SetTransactionsStatusesAccordingToDestination(ctx context.Context) error {
+// SetTransactionsStatusesIfNeeded -
+func (bem *BridgeExecutorMock) SetTransactionsStatusesIfNeeded(ctx context.Context) error {
 	bem.incrementFunctionCounter()
-	if bem.SetTransactionsStatusesAccordingToDestinationCalled != nil {
-		return bem.SetTransactionsStatusesAccordingToDestinationCalled(ctx)
+	if bem.SetTransactionsStatusesIfNeededCalled != nil {
+		return bem.SetTransactionsStatusesIfNeededCalled(ctx)
 	}
 
 	return nil

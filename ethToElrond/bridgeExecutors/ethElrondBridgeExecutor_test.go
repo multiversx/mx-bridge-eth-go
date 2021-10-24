@@ -786,9 +786,16 @@ func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
 		args.DestinationBridge = db
 		executor, err := NewEthElrondBridgeExecutor(args)
 		require.Nil(t, err)
-		executor.SetPendingBatch(&bridge.Batch{})
+		batch := &bridge.Batch{
+			Transactions: []*bridge.DepositTransaction{
+				{
+					Status: 0,
+				},
+			},
+		}
+		executor.SetPendingBatch(batch)
 
-		err = executor.SetTransactionsStatusesAccordingToDestination(nil)
+		err = executor.SetTransactionsStatusesIfNeeded(nil)
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses empty response", func(t *testing.T) {
@@ -807,7 +814,7 @@ func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
 		}
 		executor.SetPendingBatch(batch)
 
-		err = executor.SetTransactionsStatusesAccordingToDestination(nil)
+		err = executor.SetTransactionsStatusesIfNeeded(nil)
 		assert.True(t, errors.Is(err, ErrBatchIDStatusMismatch))
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses sets the status", func(t *testing.T) {
@@ -832,12 +839,96 @@ func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
 		}
 		executor.SetPendingBatch(batch)
 
-		err = executor.SetTransactionsStatusesAccordingToDestination(nil)
+		err = executor.SetTransactionsStatusesIfNeeded(nil)
 		assert.Nil(t, err)
 
 		assert.Equal(t, numTxs, len(batch.Transactions)) // extra-protection that the number of txs was not modified
 		for i := 0; i < numTxs; i++ {
 			assert.Equal(t, byte(i), batch.Transactions[i].Status)
+		}
+	})
+	t.Run("destinationBridge.GetTransactionsStatuses rejected transactions should not call destination bridge", func(t *testing.T) {
+		args := createMockArgs()
+		db := mock.NewBridgeStub()
+		numTxs := 10
+		statuses := make([]byte, numTxs)
+		for i := 0; i < numTxs; i++ {
+			statuses[i] = byte(i)
+		}
+
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+			require.Fail(t, "should have not called the destination bridge")
+			return nil, nil
+		}
+		args.DestinationBridge = db
+		executor, err := NewEthElrondBridgeExecutor(args)
+		require.Nil(t, err)
+
+		batch := &bridge.Batch{}
+		for i := 0; i < numTxs; i++ {
+			tx := &bridge.DepositTransaction{
+				Status: bridge.Rejected,
+			}
+			batch.Transactions = append(batch.Transactions, tx)
+		}
+		executor.SetPendingBatch(batch)
+
+		err = executor.SetTransactionsStatusesIfNeeded(nil)
+		assert.Nil(t, err)
+
+		assert.Equal(t, numTxs, len(batch.Transactions)) // extra-protection that the number of txs was not modified
+		for i := 0; i < numTxs; i++ {
+			assert.Equal(t, bridge.Rejected, batch.Transactions[i].Status)
+		}
+	})
+	t.Run("destinationBridge.GetTransactionsStatuses nil pending batch should not call destination bridge", func(t *testing.T) {
+		args := createMockArgs()
+		db := mock.NewBridgeStub()
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+			require.Fail(t, "should have not called the destination bridge")
+			return nil, nil
+		}
+		args.DestinationBridge = db
+		executor, err := NewEthElrondBridgeExecutor(args)
+		require.Nil(t, err)
+
+		err = executor.SetTransactionsStatusesIfNeeded(nil)
+		assert.Nil(t, err)
+	})
+	t.Run("destinationBridge.GetTransactionsStatuses one tx was not rejected should call the destination bridge", func(t *testing.T) {
+		args := createMockArgs()
+		db := mock.NewBridgeStub()
+		numTxs := 10
+		statuses := make([]byte, numTxs)
+		for i := 0; i < numTxs; i++ {
+			statuses[i] = byte(i)
+		}
+
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+			return statuses, nil
+		}
+		args.DestinationBridge = db
+		executor, err := NewEthElrondBridgeExecutor(args)
+		require.Nil(t, err)
+
+		batch := &bridge.Batch{}
+		for i := 0; i < numTxs; i++ {
+			tx := &bridge.DepositTransaction{
+				Status: bridge.Rejected,
+			}
+			if i == numTxs-1 {
+				tx.Status = bridge.Executed
+			}
+			batch.Transactions = append(batch.Transactions, tx)
+		}
+		executor.SetPendingBatch(batch)
+
+		err = executor.SetTransactionsStatusesIfNeeded(nil)
+		assert.Nil(t, err)
+
+		assert.Equal(t, numTxs, len(batch.Transactions)) // extra-protection that the number of txs was not modified
+		for i := 0; i < numTxs; i++ {
+			assert.Equal(t, statuses[i], batch.Transactions[i].Status)
 		}
 	})
 }
