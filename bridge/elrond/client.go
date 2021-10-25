@@ -41,11 +41,12 @@ type QueryResponseErr struct {
 	message   string
 	function  string
 	arguments []string
+	address   string
 }
 
 func (e QueryResponseErr) Error() string {
-	return fmt.Sprintf("got response code %q and message %q while querying function %q with arguments %v",
-		e.code, e.message, e.function, e.arguments)
+	return fmt.Sprintf("got response code %q and message %q while querying function %q with arguments %v "+
+		"and address %v", e.code, e.message, e.function, e.arguments, e.address)
 }
 
 // client represents the Elrond Client implementation
@@ -85,6 +86,11 @@ func NewClient(args ClientArgs) (*client, error) {
 	nonceTxsHandler, err := interactors.NewNonceTransactionHandler(args.Proxy, time.Second*time.Duration(args.Config.IntervalToResendTxsInSeconds))
 	if err != nil {
 		return nil, err
+	}
+
+	_, err = data.NewAddressFromBech32String(args.Config.BridgeAddress)
+	if err != nil {
+		return nil, fmt.Errorf("%w for args.Config.BridgeAddress", err)
 	}
 
 	c := &client{
@@ -429,6 +435,7 @@ func (c *client) executeQuery(valueRequest *data.VmValueRequest) ([][]byte, erro
 			message:   response.Data.ReturnMessage,
 			function:  valueRequest.FuncName,
 			arguments: valueRequest.Args,
+			address:   valueRequest.Address,
 		}
 	}
 
