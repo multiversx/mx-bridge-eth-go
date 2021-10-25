@@ -12,9 +12,6 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-// TODO load this from config
-const defaultWaitTime = time.Second * 40
-
 // ArgsEthElrondBridgeExecutor is the DTO used in the NewEthElrondBridgeExecutor constructor function
 type ArgsEthElrondBridgeExecutor struct {
 	ExecutorName      string
@@ -24,6 +21,7 @@ type ArgsEthElrondBridgeExecutor struct {
 	TopologyProvider  TopologyProvider
 	QuorumProvider    bridge.QuorumProvider
 	Timer             Timer
+	DurationsMap      map[core.StepIdentifier]time.Duration
 }
 
 // ethElrondBridgeExecutor represents the eth-elrond bridge executor adapter
@@ -38,6 +36,7 @@ type ethElrondBridgeExecutor struct {
 	topologyProvider  TopologyProvider
 	quorumProvider    bridge.QuorumProvider
 	timer             Timer
+	durationsMap      map[core.StepIdentifier]time.Duration
 }
 
 // NewEthElrondBridgeExecutor will return a new instance of the ethElrondBridgeExecutor struct
@@ -55,6 +54,7 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 		topologyProvider:  args.TopologyProvider,
 		quorumProvider:    args.QuorumProvider,
 		timer:             args.Timer,
+		durationsMap:      args.DurationsMap,
 	}, nil
 }
 
@@ -77,6 +77,9 @@ func checkArgs(args ArgsEthElrondBridgeExecutor) error {
 	}
 	if check.IfNilReflect(args.Timer) {
 		return ErrNilTimer
+	}
+	if args.DurationsMap == nil {
+		return ErrNilDurationsMap
 	}
 
 	return nil
@@ -208,9 +211,44 @@ func (executor *ethElrondBridgeExecutor) SetStatusRejectedOnAllTransactions(err 
 	executor.pendingBatch.SetStatusOnAllTransactions(bridge.Rejected, err)
 }
 
-// SetStatusExecutedOnAllTransactions will set all transactions to executed status
-func (executor *ethElrondBridgeExecutor) SetStatusExecutedOnAllTransactions() {
-	executor.pendingBatch.SetStatusOnAllTransactions(bridge.Executed, nil)
+// UpdateTransactionsStatusesIfNeeded will update all transactions to the status got from the destination bridge, if
+// the transactions statuses are not set to Rejected
+func (executor *ethElrondBridgeExecutor) UpdateTransactionsStatusesIfNeeded(ctx context.Context) error {
+	if !executor.isStatusesCheckOnDestinationNeeded() {
+		return nil
+	}
+
+	batchId := executor.pendingBatch.Id
+	statuses, err := executor.destinationBridge.GetTransactionsStatuses(ctx, executor.pendingBatch.Id)
+	if err != nil {
+		return err
+	}
+
+	if len(statuses) != len(executor.pendingBatch.Transactions) {
+		return fmt.Errorf("%w for batch ID %v", ErrBatchIDStatusMismatch, batchId)
+	}
+
+	for i, tx := range executor.pendingBatch.Transactions {
+		tx.Status = statuses[i]
+	}
+
+	return nil
+}
+
+// isStatusesCheckOnDestinationNeeded will return true if at least one transaction status is different from the Rejected value
+func (executor *ethElrondBridgeExecutor) isStatusesCheckOnDestinationNeeded() bool {
+	if executor.pendingBatch == nil {
+		executor.logger.Error("nil pending batch on ethElrondBridgeExecutor.isStatusesCheckOnDestinationNeeded")
+		return false
+	}
+	// if all statuses are rejected, there was an error, so we do not need to check the statuses on destination
+	for _, tx := range executor.pendingBatch.Transactions {
+		if tx.Status != bridge.Rejected {
+			return true
+		}
+	}
+
+	return false
 }
 
 // SignProposeTransferOnDestination will fetch and sign the action ID for the propose transfer operation
@@ -236,11 +274,16 @@ func (executor *ethElrondBridgeExecutor) SignProposeSetStatusOnSource(ctx contex
 // WaitStepToFinish will wait a predefined time and then will return. Returns the error if the provided context
 // signals the `Done` event
 func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step core.StepIdentifier, ctx context.Context) error {
+	duration, found := executor.durationsMap[step]
+	if !found {
+		return fmt.Errorf("%w for step %s", ErrDurationForStepNotFound, step)
+	}
+
 	executor.logger.Info(executor.appendMessageToName("waiting for transfer proposal"),
-		"step", step, "batch ID", executor.getBatchID())
+		"step", step, "batch ID", executor.getBatchID(), "duration", duration)
 
 	select {
-	case <-executor.timer.After(defaultWaitTime):
+	case <-executor.timer.After(duration):
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

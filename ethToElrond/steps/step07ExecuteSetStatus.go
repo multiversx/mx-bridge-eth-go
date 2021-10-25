@@ -24,7 +24,6 @@ func (step *executeSetStatusStep) Execute(ctx context.Context) (core.StepIdentif
 
 	if step.bridge.WasSetStatusExecutedOnSource(ctx) {
 		step.bridge.CleanTopology()
-		step.bridge.SetStatusExecutedOnAllTransactions()
 
 		return ethToElrond.GettingPending, nil
 	}

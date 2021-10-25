@@ -12,14 +12,16 @@ import (
 // BridgeMock -
 type BridgeMock struct {
 	sync.RWMutex
-	pendingBatch          *bridge.Batch
-	proposedTransferBatch *bridge.Batch
-	actionID              bridge.ActionId
-	signedActionIDMap     map[string]int
-	executedActionID      bridge.ActionId
-	executedBatchID       bridge.BatchId
-	proposedStatusBatch   *bridge.Batch
-	GetPendingCalled      func()
+	pendingBatch                  *bridge.Batch
+	proposedTransferBatch         *bridge.Batch
+	actionID                      bridge.ActionId
+	signedActionIDMap             map[string]int
+	executedActionID              bridge.ActionId
+	executedBatchID               bridge.BatchId
+	proposedStatusBatch           *bridge.Batch
+	GetPendingCalled              func()
+	GetTransactionsStatusesCalled func(ctx context.Context, batchId bridge.BatchId) ([]uint8, error)
+	ProposeTransferCalled         func(_ context.Context, batch *bridge.Batch) (string, error)
 }
 
 // GetPending -
@@ -47,7 +49,7 @@ func (bm *BridgeMock) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	bm.Lock()
 	defer bm.Unlock()
 
-	bm.proposedStatusBatch = batch
+	bm.proposedStatusBatch = integrationTests.CloneBatch(batch)
 }
 
 // GetProposedSetStatusBatch -
@@ -59,11 +61,15 @@ func (bm *BridgeMock) GetProposedSetStatusBatch() *bridge.Batch {
 }
 
 // ProposeTransfer -
-func (bm *BridgeMock) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
+func (bm *BridgeMock) ProposeTransfer(ctx context.Context, batch *bridge.Batch) (string, error) {
+	if bm.ProposeTransferCalled != nil {
+		return bm.ProposeTransferCalled(ctx, batch)
+	}
+
 	bm.Lock()
 	defer bm.Unlock()
 
-	bm.proposedTransferBatch = batch
+	bm.proposedTransferBatch = integrationTests.CloneBatch(batch)
 
 	return "", nil
 }
@@ -176,4 +182,13 @@ func (bm *BridgeMock) SignersCount(_ context.Context, id bridge.ActionId) uint {
 
 	idString := integrationTests.ActionIdToString(id)
 	return uint(bm.signedActionIDMap[idString])
+}
+
+// GetTransactionsStatuses -
+func (bm *BridgeMock) GetTransactionsStatuses(ctx context.Context, batchId bridge.BatchId) ([]uint8, error) {
+	if bm.GetTransactionsStatusesCalled != nil {
+		return bm.GetTransactionsStatusesCalled(ctx, batchId)
+	}
+
+	return make([]byte, 0), nil
 }

@@ -34,7 +34,7 @@ type BridgeExecutorMock struct {
 	ExecuteTransferOnDestinationCalled       func(ctx context.Context)
 	ExecuteSetStatusOnSourceCalled           func(ctx context.Context)
 	SetStatusRejectedOnAllTransactionsCalled func(err error)
-	SetStatusExecutedOnAllTransactionsCalled func()
+	SetTransactionsStatusesIfNeededCalled    func(ctx context.Context) error
 	SignProposeTransferOnDestinationCalled   func(ctx context.Context)
 	SignProposeSetStatusOnSourceCalled       func(ctx context.Context)
 	WaitStepToFinishCalled                   func(step core.StepIdentifier, ctx context.Context) error
@@ -197,12 +197,14 @@ func (bem *BridgeExecutorMock) SetStatusRejectedOnAllTransactions(err error) {
 	}
 }
 
-// SetStatusExecutedOnAllTransactions -
-func (bem *BridgeExecutorMock) SetStatusExecutedOnAllTransactions() {
+// UpdateTransactionsStatusesIfNeeded -
+func (bem *BridgeExecutorMock) UpdateTransactionsStatusesIfNeeded(ctx context.Context) error {
 	bem.incrementFunctionCounter()
-	if bem.SetStatusExecutedOnAllTransactionsCalled != nil {
-		bem.SetStatusExecutedOnAllTransactionsCalled()
+	if bem.SetTransactionsStatusesIfNeededCalled != nil {
+		return bem.SetTransactionsStatusesIfNeededCalled(ctx)
 	}
+
+	return nil
 }
 
 // SignProposeTransferOnDestination -

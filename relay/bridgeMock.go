@@ -24,6 +24,7 @@ type bridgeMock struct {
 	proposeTransferError           error
 	proposedStatusBatch            *bridge.Batch
 	proposeSetStatusActionId       bridge.ActionId
+	transactionsStatuses           []byte
 }
 
 // GetPending -
@@ -115,6 +116,14 @@ func (b *bridgeMock) Execute(_ context.Context, actionId bridge.ActionId, _ *bri
 	b.lastExecutedActionId = actionId
 
 	return "execution hash", nil
+}
+
+// GetTransactionsStatuses -
+func (b *bridgeMock) GetTransactionsStatuses(_ context.Context, _ bridge.BatchId) ([]uint8, error) {
+	b.RLock()
+	defer b.RUnlock()
+
+	return b.transactionsStatuses, nil
 }
 
 // SignersCount -

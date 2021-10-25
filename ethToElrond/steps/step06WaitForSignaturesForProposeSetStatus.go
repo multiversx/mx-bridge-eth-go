@@ -24,7 +24,6 @@ func (step *waitForSignaturesForProposeSetStatusStep) Execute(ctx context.Contex
 
 	if step.bridge.WasProposeSetStatusExecutedOnSource(ctx) {
 		step.bridge.CleanTopology()
-		step.bridge.SetStatusExecutedOnAllTransactions()
 
 		return ethToElrond.GettingPending, nil
 	}
