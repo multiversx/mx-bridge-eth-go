@@ -633,9 +633,7 @@ func (builder *valueRequestBuilder) HexString(value string) *valueRequestBuilder
 }
 
 func (builder *valueRequestBuilder) Address(value string) *valueRequestBuilder {
-	pkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32, builder.log)
-	buff, _ := pkConv.Decode(value)
-	builder.args = append(builder.args, hex.EncodeToString(buff))
+	builder.args = append(builder.args, hex.EncodeToString([]byte(value)))
 
 	return builder
 }

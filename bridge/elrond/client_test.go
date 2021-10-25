@@ -37,7 +37,7 @@ func (e TransactionError) Error() string {
 func createMockArguments() ClientArgs {
 	return ClientArgs{
 		Config: bridge.Config{
-			BridgeAddress:                "bridge address",
+			BridgeAddress:                "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
 			PrivateKey:                   "grace.pem",
 			IntervalToResendTxsInSeconds: 1,
 		},
@@ -346,11 +346,12 @@ func TestWasProposedTransfer(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 		c, _ := buildTestClient(proxy)
 
+		to := []byte("12345678901234567890123456789012")
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(41),
 			Transactions: []*bridge.DepositTransaction{
 				{
-					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+					To:           string(to),
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
@@ -365,7 +366,7 @@ func TestWasProposedTransfer(t *testing.T) {
 		// batchID
 		assert.Equal(t, "29", proxy.lastQueryArgs[0])
 		// tx to address
-		assert.Equal(t, "b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba", proxy.lastQueryArgs[1])
+		assert.Equal(t, hex.EncodeToString(to), proxy.lastQueryArgs[1])
 		// tokenId
 		assert.Equal(t, "01", proxy.lastQueryArgs[2])
 		// amount
@@ -445,11 +446,12 @@ func TestGetActionIdForProposeTransfer(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	c, _ := buildTestClient(proxy)
 
+	to := []byte("12345678901234567890123456789012")
 	batch := &bridge.Batch{
 		Id: bridge.NewBatchId(41),
 		Transactions: []*bridge.DepositTransaction{
 			{
-				To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+				To:           string(to),
 				From:         "0x132A150926691F08a693721503a38affeD18d524",
 				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 				Amount:       big.NewInt(42),
@@ -465,7 +467,7 @@ func TestGetActionIdForProposeTransfer(t *testing.T) {
 	// batchID
 	assert.Equal(t, "29", proxy.lastQueryArgs[0])
 	// tx to address
-	assert.Equal(t, "b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba", proxy.lastQueryArgs[1])
+	assert.Equal(t, hex.EncodeToString(to), proxy.lastQueryArgs[1])
 	// tokenId
 	assert.Equal(t, "2a", proxy.lastQueryArgs[2])
 	// amount
