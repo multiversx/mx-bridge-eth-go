@@ -25,7 +25,7 @@ const (
 	executeTransferOnDestination            = "ExecuteTransferOnDestination"
 	wasTransferExecutedOnDestination        = "WasTransferExecutedOnDestination"
 	cleanTopology                           = "CleanTopology"
-	setTransactionsStatusesIfNeeded         = "SetTransactionsStatusesIfNeeded"
+	updateTransactionsStatusesIfNeeded      = "UpdateTransactionsStatusesIfNeeded"
 	proposeSetStatusOnSource                = "ProposeSetStatusOnSource"
 	wasProposeSetStatusExecutedOnSource     = "WasProposeSetStatusExecutedOnSource"
 	signProposeSetStatusOnSource            = "SignProposeSetStatusOnSource"
@@ -188,7 +188,7 @@ func TestFlowAsLeaderForOneCompleteFlowWithStubChecking(t *testing.T) {
 	assert.Equal(t, 1, bem.GetFunctionCounter(executeTransferOnDestination))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasTransferExecutedOnDestination))
 	assert.Equal(t, 2, bem.GetFunctionCounter(cleanTopology))
-	assert.Equal(t, 1, bem.GetFunctionCounter(setTransactionsStatusesIfNeeded))
+	assert.Equal(t, 1, bem.GetFunctionCounter(updateTransactionsStatusesIfNeeded))
 	assert.Equal(t, 1, bem.GetFunctionCounter(proposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeSetStatusExecutedOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))
@@ -238,7 +238,7 @@ func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
 	assert.Equal(t, 0, bem.GetFunctionCounter(executeTransferOnDestination))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasTransferExecutedOnDestination))
 	assert.Equal(t, 2, bem.GetFunctionCounter(cleanTopology))
-	assert.Equal(t, 1, bem.GetFunctionCounter(setTransactionsStatusesIfNeeded))
+	assert.Equal(t, 1, bem.GetFunctionCounter(updateTransactionsStatusesIfNeeded))
 	assert.Equal(t, 0, bem.GetFunctionCounter(proposeSetStatusOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(wasProposeSetStatusExecutedOnSource))
 	assert.Equal(t, 1, bem.GetFunctionCounter(signProposeSetStatusOnSource))

@@ -95,6 +95,9 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 		log:              log,
 	}
 	client.addressConverter, err = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	if err != nil {
+		return nil, err
+	}
 
 	return client, nil
 }

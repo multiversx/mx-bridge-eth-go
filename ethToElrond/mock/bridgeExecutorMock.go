@@ -197,8 +197,8 @@ func (bem *BridgeExecutorMock) SetStatusRejectedOnAllTransactions(err error) {
 	}
 }
 
-// SetTransactionsStatusesIfNeeded -
-func (bem *BridgeExecutorMock) SetTransactionsStatusesIfNeeded(ctx context.Context) error {
+// UpdateTransactionsStatusesIfNeeded -
+func (bem *BridgeExecutorMock) UpdateTransactionsStatusesIfNeeded(ctx context.Context) error {
 	bem.incrementFunctionCounter()
 	if bem.SetTransactionsStatusesIfNeededCalled != nil {
 		return bem.SetTransactionsStatusesIfNeededCalled(ctx)

@@ -143,9 +143,9 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 		}
 
 		tx := &bridge.DepositTransaction{
+			From:          addrPkConv.Encode(responseData[i+2]),
 			To:            fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
 			DisplayableTo: fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
-			From:          addrPkConv.Encode(responseData[i+2]),
 			TokenAddress:  fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+4])),
 			Amount:        amount,
 			DepositNonce:  bridge.NewNonce(depositNonce),

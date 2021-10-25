@@ -14,9 +14,9 @@ type proposeSetStatusStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *proposeSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	err := step.bridge.SetTransactionsStatusesIfNeeded(ctx)
+	err := step.bridge.UpdateTransactionsStatusesIfNeeded(ctx)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogDebug, "proposeSetStatus.Execute StepSetTransactionsStatusesIfNeeded", "error", err)
+		step.bridge.PrintInfo(logger.LogDebug, "proposeSetStatus.Execute UpdateTransactionsStatusesIfNeeded", "error", err)
 
 		return step.Identifier(), nil
 	}
