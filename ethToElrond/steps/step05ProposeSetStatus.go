@@ -5,6 +5,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
 type proposeSetStatusStep struct {
@@ -15,6 +16,8 @@ type proposeSetStatusStep struct {
 func (step *proposeSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	err := step.bridge.SetTransactionsStatusesIfNeeded(ctx)
 	if err != nil {
+		step.bridge.PrintInfo(logger.LogDebug, "proposeSetStatus.Execute StepSetTransactionsStatusesIfNeeded", "error", err)
+
 		return step.Identifier(), nil
 	}
 

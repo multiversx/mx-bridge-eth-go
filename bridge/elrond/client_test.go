@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -645,13 +646,87 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		assert.Nil(t, statuses)
 		assert.True(t, errors.Is(err, ErrNoStatusForBatchID))
 	})
-	t.Run("should work", func(t *testing.T) {
-		providedStatuses := []byte{3, 2}
+	t.Run("not finished", func(t *testing.T) {
 		proxy := &mock.ElrondProxyStub{
 			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
-						ReturnData: [][]byte{providedStatuses},
+						ReturnData: [][]byte{{0}},
+						ReturnCode: "ok",
+					},
+				}
+
+				return response, nil
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+
+		assert.Nil(t, statuses)
+		assert.True(t, errors.Is(err, ErrBatchNotFinished))
+	})
+	t.Run("malformed response - no results", func(t *testing.T) {
+		proxy := &mock.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				response := &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: [][]byte{{1}},
+						ReturnCode: "ok",
+					},
+				}
+
+				return response, nil
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+
+		assert.Nil(t, statuses)
+		assert.True(t, errors.Is(err, ErrMalformedBatchResponse))
+		assert.True(t, strings.Contains(err.Error(), "status is finished, no results are given"))
+	})
+	t.Run("malformed response - empty response", func(t *testing.T) {
+		proxy := &mock.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				response := &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: [][]byte{{1}, {}},
+						ReturnCode: "ok",
+					},
+				}
+
+				return response, nil
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+
+		assert.Nil(t, statuses)
+		assert.True(t, errors.Is(err, ErrMalformedBatchResponse))
+		assert.True(t, strings.Contains(err.Error(), "for result index 1"))
+	})
+	t.Run("should work", func(t *testing.T) {
+		providedStatuses := [][]byte{{1}, {3}, {0, 0, 2}}
+		proxy := &mock.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				response := &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: providedStatuses,
 						ReturnCode: "ok",
 					},
 				}

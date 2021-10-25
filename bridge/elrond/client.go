@@ -288,8 +288,32 @@ func (c *client) GetTransactionsStatuses(_ context.Context, batchId bridge.Batch
 	if len(values) == 0 {
 		return nil, fmt.Errorf("%w for batch ID %v", ErrNoStatusForBatchID, batchId)
 	}
+	isFinished := c.convertToBool(values[0])
+	if !isFinished {
+		return nil, fmt.Errorf("%w for batch ID %v", ErrBatchNotFinished, batchId)
+	}
 
-	return values[0], nil
+	results := make([]byte, len(values)-1)
+	for i := 1; i < len(values); i++ {
+		results[i-1], err = getStatusFromBuff(values[i])
+		if err != nil {
+			return nil, fmt.Errorf("%w for result index %d", err, i)
+		}
+	}
+
+	if len(results) == 0 {
+		return nil, fmt.Errorf("%w status is finished, no results are given", ErrMalformedBatchResponse)
+	}
+
+	return results, nil
+}
+
+func getStatusFromBuff(buff []byte) (byte, error) {
+	if len(buff) == 0 {
+		return 0, ErrMalformedBatchResponse
+	}
+
+	return buff[len(buff)-1], nil
 }
 
 // GetActionIdForSetStatusOnPendingTransfer returns the action ID for setting the status on the pending transfer batch
@@ -449,11 +473,19 @@ func (c *client) executeBoolQuery(valueRequest *data.VmValueRequest) bool {
 		return false
 	}
 
-	if len(responseData[0]) == 0 {
+	if len(responseData) == 0 {
 		return false
 	}
 
-	result, err := strconv.ParseBool(fmt.Sprintf("%d", responseData[0][0]))
+	return c.convertToBool(responseData[0])
+}
+
+func (c *client) convertToBool(buff []byte) bool {
+	if len(buff) == 0 {
+		return false
+	}
+
+	result, err := strconv.ParseBool(fmt.Sprintf("%d", buff[0]))
 	if err != nil {
 		c.log.Error(err.Error())
 		return false
