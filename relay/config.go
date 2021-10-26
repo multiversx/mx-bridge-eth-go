@@ -38,3 +38,10 @@ type StepConfig struct {
 	Name             string
 	DurationInMillis uint64
 }
+
+type ContextFlagsConfig struct {
+	LogLevel          string
+	ConfigurationFile string
+	RestApiInterface  string
+	EnablePprof       bool
+}

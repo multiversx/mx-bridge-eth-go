@@ -20,39 +20,22 @@ const (
 	filePathPlaceholder = "[path]"
 )
 
-var (
-	logLevel = cli.StringFlag{
-		Name: "log-level",
-		Usage: "This flag specifies the logger `level(s)`. It can contain multiple comma-separated value. For example" +
-			", if set to *:INFO the logs for all packages will have the INFO level. However, if set to *:INFO,api:DEBUG" +
-			" the logs for all packages will have the INFO level, excepting the api package which will receive a DEBUG" +
-			" log level.",
-		Value: "*:" + logger.LogDebug.String(),
-	}
-
-	configurationFile = cli.StringFlag{
-		Name: "config",
-		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contain the main " +
-			"configurations such as the marshalizer type",
-		Value: "./config.toml",
-	}
-)
-
 var log = logger.GetOrCreate("main")
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "Relay CLI app"
 	app.Usage = "This is the entry point for the bridge relay"
-	app.Flags = []cli.Flag{
-		logLevel,
-		configurationFile,
-	}
+	app.Flags = getFlags()
 	app.Version = "v0.0.1"
 	app.Authors = []cli.Author{
 		{
 			Name:  "The Agile Freaks team",
 			Email: "office@agilefreaks.com",
+		},
+		{
+			Name:  "The Elrond Team",
+			Email: "contact@elrond.com",
 		},
 	}
 
@@ -68,19 +51,19 @@ func main() {
 }
 
 func startRelay(ctx *cli.Context) error {
-	logLevelFlagValue := ctx.GlobalString(logLevel.Name)
-	err := logger.SetLogLevel(logLevelFlagValue)
+	flagsConfig := getFlagsConfig(ctx)
+
+	err := logger.SetLogLevel(flagsConfig.LogLevel)
 	if err != nil {
 		return err
 	}
 
-	configurationFileName := ctx.GlobalString(configurationFile.Name)
-	config, err := loadConfig(configurationFileName)
+	config, err := loadConfig(flagsConfig.ConfigurationFile)
 	if err != nil {
 		return err
 	}
 
-	ethToElrRelay, err := relay.NewRelay(*config, "EthToElrRelay")
+	ethToElrRelay, err := relay.NewRelay(*config, *flagsConfig, "EthToElrRelay")
 	if err != nil {
 		return err
 	}

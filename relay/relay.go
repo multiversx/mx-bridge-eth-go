@@ -42,9 +42,6 @@ const (
 	minimumDurationForStep   = time.Second
 )
 
-// defaultRestInterface default interface for RestApi
-const defaultRestInterface = "localhost:8080"
-
 type Peers []core.PeerID
 
 type Signatures map[core.PeerID][]byte
@@ -116,9 +113,10 @@ type Relay struct {
 	quorumProvider              bridge.QuorumProvider
 	stepDuration                time.Duration
 	stateMachineConfig          ConfigStateMachine
+	flagsConfig                 ContextFlagsConfig
 }
 
-func NewRelay(config Config, name string) (*Relay, error) {
+func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Relay, error) {
 	relay := &Relay{
 		stateMachineConfig: config.StateMachine,
 	}
@@ -158,6 +156,7 @@ func NewRelay(config Config, name string) (*Relay, error) {
 	relay.timer = NewDefaultTimer()
 	relay.log = logger.GetOrCreate(name)
 	relay.signatures = make(map[core.PeerID][]byte)
+	relay.flagsConfig = flagsConfig
 
 	relay.log.Debug("creating API services")
 	_, err = relay.createHttpServer()
@@ -487,7 +486,11 @@ func (r *Relay) registerTopicProcessors() error {
 
 func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
 
-	httpServerWrapper, err := api.NewWebServerHandler(defaultRestInterface)
+	httpServerArgs := api.ArgsNewWebServer{
+		Facade: api.NewRelayerFacade(r.flagsConfig.RestApiInterface, r.flagsConfig.EnablePprof),
+	}
+
+	httpServerWrapper, err := api.NewWebServerHandler(httpServerArgs)
 	if err != nil {
 		return nil, err
 	}

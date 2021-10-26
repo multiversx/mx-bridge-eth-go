@@ -61,8 +61,8 @@ func TestNewRelay(t *testing.T) {
 			},
 		},
 	}
-
-	r, err := NewRelay(cfg, "name")
+	flagsConfig := ContextFlagsConfig{}
+	r, err := NewRelay(cfg, flagsConfig, "name")
 	require.Nil(t, err)
 	require.False(t, check.IfNil(r))
 

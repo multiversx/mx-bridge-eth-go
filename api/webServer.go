@@ -11,22 +11,28 @@ import (
 	"github.com/ElrondNetwork/elrond-go/api/shared"
 	"github.com/btcsuite/websocket"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 )
 
-var log = logger.GetOrCreate("api/gin")
+var log = logger.GetOrCreate("api")
+
+// ArgsNewWebServer holds the arguments needed to create a new instance of webServer
+type ArgsNewWebServer struct {
+	Facade ApiFacadeHandler
+}
 
 type webServer struct {
 	sync.RWMutex
-	addr       string
+	facade     ApiFacadeHandler
 	httpServer shared.HttpServerCloser
 	cancelFunc func()
 }
 
 // NewWebServerHandler returns a new instance of webServer
-func NewWebServerHandler(addr string) (*webServer, error) {
+func NewWebServerHandler(args ArgsNewWebServer) (*webServer, error) {
 	gws := &webServer{
-		addr: addr,
+		facade: args.Facade,
 	}
 
 	return gws, nil
@@ -49,8 +55,8 @@ func (ws *webServer) StartHttpServer() error {
 
 	ws.registerRoutes(engine)
 
-	server := &http.Server{Addr: ws.addr, Handler: engine}
-	log.Debug("creating gin web sever", "interface", ws.addr)
+	server := &http.Server{Addr: ws.facade.RestApiInterface(), Handler: engine}
+	log.Debug("creating gin web sever", "interface", ws.facade.RestApiInterface())
 	var err error
 	ws.httpServer, err = NewHttpServer(server)
 	if err != nil {
@@ -63,10 +69,11 @@ func (ws *webServer) StartHttpServer() error {
 }
 
 // UpdateFacade will update webServer facade.
-// no facade for current implementation -> not used
-func (ws *webServer) UpdateFacade(_ shared.FacadeHandler) error {
+func (ws *webServer) UpdateFacade(facade shared.FacadeHandler) error {
 	ws.Lock()
 	defer ws.Unlock()
+
+	ws.facade = facade
 
 	return nil
 }
@@ -75,6 +82,10 @@ func (ws *webServer) registerRoutes(ginRouter *gin.Engine) {
 
 	marshalizerForLogs := &marshal.GogoProtoMarshalizer{}
 	registerLoggerWsRoute(ginRouter, marshalizerForLogs)
+
+	if ws.facade.PprofEnabled() {
+		pprof.Register(ginRouter)
+	}
 }
 
 // registerLoggerWsRoute will register the log route
