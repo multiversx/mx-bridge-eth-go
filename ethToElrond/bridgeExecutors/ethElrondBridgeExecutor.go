@@ -255,7 +255,7 @@ func (executor *ethElrondBridgeExecutor) isStatusesCheckOnDestinationNeeded() bo
 func (executor *ethElrondBridgeExecutor) SignProposeTransferOnDestination(ctx context.Context) {
 	executor.logger.Info(executor.appendMessageToName("signing propose transfer"), "batch ID", executor.getBatchID())
 	executor.actionID = executor.destinationBridge.GetActionIdForProposeTransfer(ctx, executor.pendingBatch)
-	_, err := executor.destinationBridge.Sign(ctx, executor.actionID)
+	_, err := executor.destinationBridge.Sign(ctx, executor.actionID, executor.pendingBatch)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
 	}
@@ -265,7 +265,7 @@ func (executor *ethElrondBridgeExecutor) SignProposeTransferOnDestination(ctx co
 func (executor *ethElrondBridgeExecutor) SignProposeSetStatusOnSource(ctx context.Context) {
 	executor.logger.Info(executor.appendMessageToName("signing set status"), "batch ID", executor.getBatchID())
 	executor.actionID = executor.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx, executor.pendingBatch)
-	_, err := executor.sourceBridge.Sign(ctx, executor.actionID)
+	_, err := executor.sourceBridge.Sign(ctx, executor.actionID, executor.pendingBatch)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
 	}

@@ -44,7 +44,7 @@ type Bridge interface {
 	WasProposedSetStatus(context.Context, *Batch) bool
 	GetActionIdForSetStatusOnPendingTransfer(context.Context, *Batch) ActionId
 	WasExecuted(context.Context, ActionId, BatchId) bool
-	Sign(context.Context, ActionId) (string, error)
+	Sign(context.Context, ActionId, *Batch) (string, error)
 	Execute(context.Context, ActionId, *Batch) (string, error)
 	SignersCount(context.Context, ActionId) uint
 	GetTransactionsStatuses(ctx context.Context, batchID BatchId) ([]uint8, error)

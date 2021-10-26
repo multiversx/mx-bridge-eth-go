@@ -131,7 +131,7 @@ func (bm *BridgeMock) WasExecuted(_ context.Context, id bridge.ActionId, id2 bri
 }
 
 // Sign -
-func (bm *BridgeMock) Sign(_ context.Context, id bridge.ActionId) (string, error) {
+func (bm *BridgeMock) Sign(_ context.Context, id bridge.ActionId, _ *bridge.Batch) (string, error) {
 	bm.Lock()
 	defer bm.Unlock()
 

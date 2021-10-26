@@ -116,7 +116,7 @@ func (b *BridgeStub) GetActionIdForSetStatusOnPendingTransfer(ctx context.Contex
 }
 
 // Sign -
-func (b *BridgeStub) Sign(ctx context.Context, id bridge.ActionId) (string, error) {
+func (b *BridgeStub) Sign(ctx context.Context, id bridge.ActionId, _ *bridge.Batch) (string, error) {
 	b.incrementFunctionCounter()
 	if b.SignCalled != nil {
 		return b.SignCalled(ctx, id)

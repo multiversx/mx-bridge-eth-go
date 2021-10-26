@@ -99,7 +99,7 @@ func (b *bridgeMock) WasExecuted(_ context.Context, _ bridge.ActionId, _ bridge.
 }
 
 // Sign -
-func (b *bridgeMock) Sign(_ context.Context, actionId bridge.ActionId) (string, error) {
+func (b *bridgeMock) Sign(_ context.Context, actionId bridge.ActionId, _ *bridge.Batch) (string, error) {
 	b.Lock()
 	defer b.Unlock()
 
