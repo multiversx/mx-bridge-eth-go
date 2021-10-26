@@ -61,7 +61,7 @@ type client struct {
 
 // ClientArgs represents the argument for the NewClient constructor function
 type ClientArgs struct {
-	Config bridge.Config
+	Config bridge.ElrondConfig
 	Proxy  bridge.ElrondProxy
 }
 

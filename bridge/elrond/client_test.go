@@ -37,7 +37,7 @@ func (e TransactionError) Error() string {
 
 func createMockArguments() ClientArgs {
 	return ClientArgs{
-		Config: bridge.Config{
+		Config: bridge.ElrondConfig{
 			BridgeAddress:                "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
 			PrivateKey:                   "grace.pem",
 			IntervalToResendTxsInSeconds: 1,

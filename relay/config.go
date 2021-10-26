@@ -4,8 +4,8 @@ import "github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 
 // Config general configuration struct
 type Config struct {
-	Eth          bridge.Config
-	Elrond       bridge.Config
+	Eth          bridge.EthereumConfig
+	Elrond       bridge.ElrondConfig
 	P2P          ConfigP2P
 	StateMachine ConfigStateMachine
 }

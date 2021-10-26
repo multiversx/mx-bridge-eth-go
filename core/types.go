@@ -14,3 +14,6 @@ type Step interface {
 	Identifier() StepIdentifier
 	IsInterfaceNil() bool
 }
+
+// EthGasPriceSelector defines the ethereum gas price selector
+type EthGasPriceSelector string

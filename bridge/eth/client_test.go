@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // verify Client implements interface
@@ -234,6 +235,7 @@ func TestExecute(t *testing.T) {
 			pendingBatch:     &bridge.Batch{},
 			log:              logger.GetOrCreate("testEthClient"),
 			gasLimit:         GasLimit,
+			gasHandler:       &mock.GasHandlerStub{},
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
@@ -243,8 +245,10 @@ func TestExecute(t *testing.T) {
 	})
 	t.Run("when action is transfer", func(t *testing.T) {
 		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
+		gasPrice := 1000
 		bcs := &mock.BridgeContractStub{
 			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+				assert.Equal(t, big.NewInt(int64(gasPrice)), opts.GasPrice)
 				return types.NewTx(&types.AccessListTx{}), nil
 			},
 		}
@@ -255,6 +259,11 @@ func TestExecute(t *testing.T) {
 			broadcaster:      &broadcasterStub{},
 			mapper:           &mapperStub{},
 			blockchainClient: &blockchainClientStub{},
+			gasHandler: &mock.GasHandlerStub{
+				GetCurrentGasPriceCalled: func() (int, error) {
+					return gasPrice, nil
+				},
+			},
 			pendingBatch: &bridge.Batch{
 				Id: bridge.NewBatchId(42),
 				Transactions: []*bridge.DepositTransaction{{
@@ -269,6 +278,42 @@ func TestExecute(t *testing.T) {
 		got, _ := client.Execute(context.TODO(), bridge.NewActionId(TransferAction), batch)
 
 		assert.Equal(t, expected, got)
+	})
+	t.Run("gas price handler errors", func(t *testing.T) {
+		bcs := &mock.BridgeContractStub{
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+				require.Fail(t, "should have not been called")
+
+				return nil, nil
+			},
+		}
+		gasPriceError := fmt.Errorf("gas price error")
+		client := Client{
+			bridgeContract:   bcs,
+			privateKey:       privateKey(t),
+			publicKey:        publicKey(t),
+			broadcaster:      &broadcasterStub{},
+			mapper:           &mapperStub{},
+			blockchainClient: &blockchainClientStub{},
+			gasHandler: &mock.GasHandlerStub{
+				GetCurrentGasPriceCalled: func() (int, error) {
+					return 0, gasPriceError
+				},
+			},
+			pendingBatch: &bridge.Batch{
+				Id: bridge.NewBatchId(42),
+				Transactions: []*bridge.DepositTransaction{{
+					TokenAddress: "0x574554482d323936313238",
+				}},
+			},
+			gasLimit: GasLimit,
+			log:      logger.GetOrCreate("testEthClient"),
+		}
+		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
+
+		got, err := client.Execute(context.TODO(), bridge.NewActionId(TransferAction), batch)
+		assert.Equal(t, "", got)
+		assert.Equal(t, gasPriceError, err)
 	})
 }
 
