@@ -10,6 +10,10 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/ElrondNetwork/elrond-go/config"
+	"github.com/stretchr/testify/require"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	relayMock "github.com/ElrondNetwork/elrond-eth-bridge/relay/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
@@ -52,6 +56,12 @@ func TestNewRelay(t *testing.T) {
 			Seed:            "",
 			InitialPeerList: nil,
 			ProtocolID:      "erd/1.1.0",
+		},
+		Relayer: ConfigRelayer{
+			Marshalizer: config.MarshalizerConfig{
+				Type:           "gogo protobuf",
+				SizeCheckDelta: 10,
+			},
 		},
 	}
 

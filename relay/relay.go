@@ -11,7 +11,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/api"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+	"github.com/ElrondNetwork/elrond-go-core/marshal"
+	"github.com/ElrondNetwork/elrond-go/api/shared"
 	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
@@ -40,6 +43,9 @@ const (
 	p2pPeerNetworkDiscoverer = "optimized"
 	minimumDurationForStep   = time.Second
 )
+
+// defaultRestInterface default interface for RestApi
+const defaultRestInterface = "localhost:8080"
 
 type Peers []core.PeerID
 
@@ -139,7 +145,12 @@ func NewRelay(config Config, name string) (*Relay, error) {
 	relay.ethBridge = ethBridge
 	relay.quorumProvider = ethBridge
 
-	messenger, err := buildNetMessenger(config.P2P)
+	marshalizer, err := factoryMarshalizer.NewMarshalizer(config.Relayer.Marshalizer.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	messenger, err := buildNetMessenger(config, marshalizer)
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +160,13 @@ func NewRelay(config Config, name string) (*Relay, error) {
 	relay.timer = NewDefaultTimer()
 	relay.log = logger.GetOrCreate(name)
 	relay.signatures = make(map[core.PeerID][]byte)
+
+	relay.log.Debug("creating API services")
+	_, err = relay.createHttpServer()
+	if err != nil {
+		return nil, err
+	}
+
 	return relay, nil
 }
 
@@ -469,23 +487,34 @@ func (r *Relay) registerTopicProcessors() error {
 	return nil
 }
 
-func buildNetMessenger(cfg ConfigP2P) (NetMessenger, error) {
-	internalMarshalizer, err := factoryMarshalizer.NewMarshalizer("gogo protobuf")
+func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
+
+	httpServerWrapper, err := api.NewWebServerHandler(defaultRestInterface)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
+	err = httpServerWrapper.StartHttpServer()
+	if err != nil {
+		return nil, err
+	}
+
+	return httpServerWrapper, nil
+}
+
+func buildNetMessenger(cfg *Config, marshalizer marshal.Marshalizer) (NetMessenger, error) {
+
 	nodeConfig := config.NodeConfig{
-		Port:                       cfg.Port,
-		Seed:                       cfg.Seed,
+		Port:                       cfg.P2P.Port,
+		Seed:                       cfg.P2P.Seed,
 		MaximumExpectedPeerCount:   0,
 		ThresholdMinConnectedPeers: 0,
 	}
 	peerDiscoveryConfig := config.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
 		RefreshIntervalInSec:             5,
-		ProtocolID:                       cfg.ProtocolID,
-		InitialPeerList:                  cfg.InitialPeerList,
+		ProtocolID:                       cfg.P2P.ProtocolID,
+		InitialPeerList:                  cfg.P2P.InitialPeerList,
 		BucketSize:                       0,
 		RoutingTableRefreshIntervalInSec: 300,
 		Type:                             p2pPeerNetworkDiscoverer,
@@ -505,7 +534,7 @@ func buildNetMessenger(cfg ConfigP2P) (NetMessenger, error) {
 	}
 
 	args := libp2p.ArgsNetworkMessenger{
-		Marshalizer:          internalMarshalizer,
+		Marshalizer:          marshalizer,
 		ListenAddress:        libp2p.ListenAddrWithIp4AndTcp,
 		P2pConfig:            p2pConfig,
 		SyncTimer:            &libp2p.LocalSyncTimer{},

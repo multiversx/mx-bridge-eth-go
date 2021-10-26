@@ -1,6 +1,9 @@
 package relay
 
-import "github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+import (
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-go/config"
+)
 
 // Config general configuration struct
 type Config struct {
@@ -8,6 +11,7 @@ type Config struct {
 	Elrond       bridge.Config
 	P2P          ConfigP2P
 	StateMachine ConfigStateMachine
+	Relayer      ConfigRelayer
 }
 
 // ConfigP2P configuration for the P2P communication
@@ -16,6 +20,11 @@ type ConfigP2P struct {
 	Seed            string
 	InitialPeerList []string
 	ProtocolID      string
+}
+
+// ConfigRelayer configuration for general relayer configuration
+type ConfigRelayer struct {
+	Marshalizer config.MarshalizerConfig
 }
 
 // ConfigStateMachine the configuration for the state machine
