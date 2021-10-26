@@ -10,16 +10,13 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go/config"
-	"github.com/stretchr/testify/require"
-
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	relayMock "github.com/ElrondNetwork/elrond-eth-bridge/relay/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/mock"
 	"github.com/stretchr/testify/assert"

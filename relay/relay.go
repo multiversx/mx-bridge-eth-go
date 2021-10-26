@@ -12,27 +12,25 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/api"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
-	"github.com/ElrondNetwork/elrond-go/api/shared"
 	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
-
-	"github.com/ElrondNetwork/elrond-go/ntp"
-
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/api/shared"
 	"github.com/ElrondNetwork/elrond-go/config"
-	"github.com/ElrondNetwork/elrond-go/epochStart/bootstrap/disabled"
+	"github.com/ElrondNetwork/elrond-go/ntp"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
+	"github.com/ElrondNetwork/elrond-go/update/disabled"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 )
 
 const (
@@ -150,7 +148,7 @@ func NewRelay(config Config, name string) (*Relay, error) {
 		return nil, err
 	}
 
-	messenger, err := buildNetMessenger(config, marshalizer)
+	messenger, err := buildNetMessenger(&config, marshalizer)
 	if err != nil {
 		return nil, err
 	}
