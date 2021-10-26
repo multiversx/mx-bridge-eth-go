@@ -3,6 +3,7 @@ package gasManagement
 import (
 	"encoding/json"
 	"errors"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -116,7 +117,7 @@ func TestGasStation_InvalidJsonResponse(t *testing.T) {
 	assert.False(t, gs.loopStatus.IsSet())
 	assert.Nil(t, gs.GetLatestResponse())
 	gasPrice, err := gs.GetCurrentGasPrice()
-	assert.Equal(t, 0, gasPrice)
+	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
 }
 
@@ -196,27 +197,31 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	gs.SetSelector(core.EthFastGasPrice)
 	price, err := gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	assert.Equal(t, gsResponse.Fast, price)
+	expected := big.NewInt(0).Mul(big.NewInt(int64(gsResponse.Fast)), gasPriceMultiplier)
+	assert.Equal(t, expected, price)
 
 	gs.SetSelector(core.EthFastestGasPrice)
 	price, err = gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	assert.Equal(t, gsResponse.Fastest, price)
+	expected = big.NewInt(0).Mul(big.NewInt(int64(gsResponse.Fastest)), gasPriceMultiplier)
+	assert.Equal(t, expected, price)
 
 	gs.SetSelector(core.EthAverageGasPrice)
 	price, err = gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	assert.Equal(t, gsResponse.Average, price)
+	expected = big.NewInt(0).Mul(big.NewInt(int64(gsResponse.Average)), gasPriceMultiplier)
+	assert.Equal(t, expected, price)
 
 	gs.SetSelector(core.EthSafeLowGasPrice)
 	price, err = gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	assert.Equal(t, gsResponse.SafeLow, price)
+	expected = big.NewInt(0).Mul(big.NewInt(int64(gsResponse.SafeLow)), gasPriceMultiplier)
+	assert.Equal(t, expected, price)
 
 	gs.SetSelector("invalid")
 	price, err = gs.GetCurrentGasPrice()
 	require.True(t, errors.Is(err, ErrInvalidGasPriceSelector))
-	assert.Equal(t, 0, price)
+	assert.Equal(t, big.NewInt(0), price)
 }
 
 func TestGasStation_GetCurrentGasPriceExceededMaximum(t *testing.T) {
@@ -245,5 +250,5 @@ func TestGasStation_GetCurrentGasPriceExceededMaximum(t *testing.T) {
 
 	price, err := gs.GetCurrentGasPrice()
 	require.True(t, errors.Is(err, ErrGasPriceIsHigherThanTheMaximumSet))
-	assert.Equal(t, 0, price)
+	assert.Equal(t, big.NewInt(0), price)
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"sync"
 	"time"
@@ -17,6 +18,8 @@ import (
 const minPollingInterval = time.Second
 const minRequestTime = time.Millisecond
 const logPath = "EthClient/gasStation"
+
+var gasPriceMultiplier = big.NewInt(100000000)
 
 // ArgsGasStation is the DTO used for the creating a new gas handler instance
 type ArgsGasStation struct {
@@ -151,12 +154,12 @@ func (gs *gasStation) doRequestReturningBytes(ctx context.Context) ([]byte, erro
 // GetCurrentGasPrice will return the read value from the last query carried on the service provider
 // It errors if the gas price values were not fetched from the service provider or the fetched value
 // exceeds the maximum gas price provided
-func (gs *gasStation) GetCurrentGasPrice() (int, error) {
+func (gs *gasStation) GetCurrentGasPrice() (*big.Int, error) {
 	gs.mut.RLock()
 	defer gs.mut.RUnlock()
 
 	if gs.latestResponse == nil {
-		return 0, ErrLatestGasPricesWereNotFetched
+		return big.NewInt(0), ErrLatestGasPricesWereNotFetched
 	}
 
 	gasPrice := 0
@@ -170,15 +173,16 @@ func (gs *gasStation) GetCurrentGasPrice() (int, error) {
 	case core.EthAverageGasPrice:
 		gasPrice = gs.latestResponse.Average
 	default:
-		return 0, fmt.Errorf("%w: %q", ErrInvalidGasPriceSelector, gs.gasPriceSelector)
+		return big.NewInt(0), fmt.Errorf("%w: %q", ErrInvalidGasPriceSelector, gs.gasPriceSelector)
 	}
 
 	if gasPrice > gs.maximumGasPrice {
-		return 0, fmt.Errorf("%w maximum value: %d, fetched value: %d, gas price selector: %s",
+		return big.NewInt(0), fmt.Errorf("%w maximum value: %d, fetched value: %d, gas price selector: %s",
 			ErrGasPriceIsHigherThanTheMaximumSet, gs.maximumGasPrice, gasPrice, gs.gasPriceSelector)
 	}
 
-	return gasPrice, nil
+	result := big.NewInt(int64(gasPrice))
+	return result.Mul(result, gasPriceMultiplier), nil
 }
 
 // Close will stop any started go routines

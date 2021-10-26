@@ -47,7 +47,7 @@ type BlockchainClient interface {
 
 // GasHandler defines the component able to fetch the current gas price
 type GasHandler interface {
-	GetCurrentGasPrice() (int, error)
+	GetCurrentGasPrice() (*big.Int, error)
 	IsInterfaceNil() bool
 }
 
@@ -250,7 +250,7 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = c.gasLimit
 	auth.Context = ctx
-	auth.GasPrice = big.NewInt(int64(gasPrice))
+	auth.GasPrice = gasPrice
 
 	var transaction *types.Transaction
 

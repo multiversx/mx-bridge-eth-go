@@ -1,17 +1,19 @@
 package mock
 
+import "math/big"
+
 // GasHandlerStub -
 type GasHandlerStub struct {
-	GetCurrentGasPriceCalled func() (int, error)
+	GetCurrentGasPriceCalled func() (*big.Int, error)
 }
 
 // GetCurrentGasPrice -
-func (ghs *GasHandlerStub) GetCurrentGasPrice() (int, error) {
+func (ghs *GasHandlerStub) GetCurrentGasPrice() (*big.Int, error) {
 	if ghs.GetCurrentGasPriceCalled != nil {
 		return ghs.GetCurrentGasPriceCalled()
 	}
 
-	return 0, nil
+	return big.NewInt(0), nil
 }
 
 // IsInterfaceNil -

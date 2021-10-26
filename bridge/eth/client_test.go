@@ -258,8 +258,8 @@ func TestExecute(t *testing.T) {
 			mapper:           &mapperStub{},
 			blockchainClient: &blockchainClientStub{},
 			gasHandler: &mock.GasHandlerStub{
-				GetCurrentGasPriceCalled: func() (int, error) {
-					return gasPrice, nil
+				GetCurrentGasPriceCalled: func() (*big.Int, error) {
+					return big.NewInt(int64(gasPrice)), nil
 				},
 			},
 			gasLimit: GasLimit,
@@ -288,8 +288,8 @@ func TestExecute(t *testing.T) {
 			mapper:           &mapperStub{},
 			blockchainClient: &blockchainClientStub{},
 			gasHandler: &mock.GasHandlerStub{
-				GetCurrentGasPriceCalled: func() (int, error) {
-					return 0, gasPriceError
+				GetCurrentGasPriceCalled: func() (*big.Int, error) {
+					return big.NewInt(0), gasPriceError
 				},
 			},
 			gasLimit: GasLimit,
