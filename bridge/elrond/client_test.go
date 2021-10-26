@@ -599,7 +599,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 			proxy: proxy,
 		}
 
-		statuses, err := c.GetTransactionsStatuses(nil, nil)
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), nil)
 
 		assert.Nil(t, statuses)
 		assert.Equal(t, ErrNilBatchId, err)
@@ -617,7 +617,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
 
 		assert.Nil(t, statuses)
 		assert.Equal(t, expectedErr, err)
@@ -641,7 +641,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
 
 		assert.Nil(t, statuses)
 		assert.True(t, errors.Is(err, ErrNoStatusForBatchID))
@@ -665,7 +665,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
 
 		assert.Nil(t, statuses)
 		assert.True(t, errors.Is(err, ErrBatchNotFinished))
@@ -689,7 +689,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
 
 		assert.Nil(t, statuses)
 		assert.True(t, errors.Is(err, ErrMalformedBatchResponse))
@@ -714,7 +714,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
 
 		assert.Nil(t, statuses)
 		assert.True(t, errors.Is(err, ErrMalformedBatchResponse))
@@ -740,7 +740,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(nil, bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
 
 		assert.Nil(t, err)
 		assert.Equal(t, statuses, statuses)

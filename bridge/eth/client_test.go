@@ -357,7 +357,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
-	returned, err := client.GetTransactionsStatuses(nil, bridge.NewBatchId(12))
+	returned, err := client.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(12))
 	assert.Nil(t, err)
 	assert.Equal(t, statuses, returned)
 	assert.True(t, methodCalled)
