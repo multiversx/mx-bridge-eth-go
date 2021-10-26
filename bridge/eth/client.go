@@ -263,7 +263,7 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 	}
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("ETH: %w", err)
 	}
 
 	hash := transaction.Hash().String()

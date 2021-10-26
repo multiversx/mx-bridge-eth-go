@@ -16,6 +16,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/mock"
 	"github.com/stretchr/testify/assert"
@@ -59,6 +60,12 @@ func TestNewRelay(t *testing.T) {
 			Seed:            "",
 			InitialPeerList: nil,
 			ProtocolID:      "erd/1.1.0",
+		},
+		Relayer: ConfigRelayer{
+			Marshalizer: config.MarshalizerConfig{
+				Type:           "gogo protobuf",
+				SizeCheckDelta: 10,
+			},
 		},
 	}
 
