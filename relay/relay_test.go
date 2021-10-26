@@ -9,7 +9,6 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
@@ -31,6 +30,7 @@ var log = logger.GetOrCreate("main")
 
 func TestNewRelay(t *testing.T) {
 	t.Parallel()
+
 	cfg := &Config{
 		Eth: bridge.Config{
 			NetworkAddress:               "http://127.0.0.1:8545",
@@ -50,21 +50,6 @@ func TestNewRelay(t *testing.T) {
 			Seed:            "",
 			InitialPeerList: nil,
 			ProtocolID:      "erd/1.1.0",
-		},
-		Relayer: ConfigRelayer{
-			RemoteLogViewer: false,
-			Marshalizer: config.MarshalizerConfig{
-				Type:           "gogo protobuf",
-				SizeCheckDelta: 10,
-			},
-			Antiflood: config.WebServerAntifloodConfig{
-				SimultaneousRequests:         100,
-				SameSourceRequests:           10000,
-				SameSourceResetIntervalInSec: 1,
-				EndpointsThrottlers: []config.EndpointsThrottlersConfig{
-					{Endpoint: "/transaction/:hash", MaxNumGoRoutines: 10},
-				},
-			},
 		},
 	}
 

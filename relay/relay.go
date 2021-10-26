@@ -158,15 +158,14 @@ func NewRelay(config *Config, name string) (*Relay, error) {
 		Facade:          ef,
 		AntiFloodConfig: config.Relayer.Antiflood,
 	}
-	if config.Relayer.RemoteLogViewer {
-		_, err = relay.createHttpServer(httpServerArgs)
-		if err != nil {
-			return nil, err
-		}
-		err = api.Start(DefaultRestInterface, marshalizer)
-		if err != nil {
-			return nil, err
-		}
+
+	_, err = relay.createHttpServer(httpServerArgs)
+	if err != nil {
+		return nil, err
+	}
+	err = api.Start(DefaultRestInterface, marshalizer)
+	if err != nil {
+		return nil, err
 	}
 	return relay, nil
 }

@@ -20,7 +20,6 @@ type ConfigP2P struct {
 }
 
 type ConfigRelayer struct {
-	RemoteLogViewer bool
-	Marshalizer     config.MarshalizerConfig
-	Antiflood       config.WebServerAntifloodConfig
+	Marshalizer config.MarshalizerConfig
+	Antiflood   config.WebServerAntifloodConfig
 }
