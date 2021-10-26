@@ -292,12 +292,6 @@ func TestExecute(t *testing.T) {
 					return 0, gasPriceError
 				},
 			},
-			pendingBatch: &bridge.Batch{
-				Id: bridge.NewBatchId(42),
-				Transactions: []*bridge.DepositTransaction{{
-					TokenAddress: "0x574554482d323936313238",
-				}},
-			},
 			gasLimit: GasLimit,
 			log:      logger.GetOrCreate("testEthClient"),
 		}
