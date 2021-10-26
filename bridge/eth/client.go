@@ -55,17 +55,13 @@ type Client struct {
 	bridgeContract   BridgeContract
 	blockchainClient BlockchainClient
 	addressConverter core.PubkeyConverter
-
-	privateKey   *ecdsa.PrivateKey
-	publicKey    *ecdsa.PublicKey
-	broadcaster  bridge.Broadcaster
-	mapper       bridge.Mapper
-	pendingBatch *bridge.Batch
-	gasHandler   GasHandler
-
-	gasLimit uint64
-
-	log logger.Logger
+	privateKey       *ecdsa.PrivateKey
+	publicKey        *ecdsa.PublicKey
+	broadcaster      bridge.Broadcaster
+	mapper           bridge.Mapper
+	gasLimit         uint64
+	log              logger.Logger
+	gasHandler       GasHandler
 }
 
 func NewClient(
@@ -114,6 +110,9 @@ func NewClient(
 		gasHandler:       gasHandler,
 	}
 	client.addressConverter, err = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	if err != nil {
+		return nil, err
+	}
 
 	return client, nil
 }
@@ -167,9 +166,7 @@ func (c *Client) WasProposedTransfer(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
-	c.pendingBatch = batch
-
+func (c *Client) GetActionIdForProposeTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
 	return bridge.NewActionId(TransferAction)
 }
 
@@ -177,9 +174,7 @@ func (c *Client) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
-	c.pendingBatch = batch
-
+func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
 	return bridge.NewActionId(SetStatusAction)
 }
 
@@ -189,7 +184,7 @@ func (c *Client) WasExecuted(ctx context.Context, actionId bridge.ActionId, batc
 
 	switch int64FromActionId(actionId) {
 	case TransferAction:
-		wasExecuted, err = c.bridgeContract.WasBatchExecuted(&bind.CallOpts{Context: ctx}, c.pendingBatch.Id)
+		wasExecuted, err = c.bridgeContract.WasBatchExecuted(&bind.CallOpts{Context: ctx}, batchId)
 	case SetStatusAction:
 		wasExecuted, err = c.bridgeContract.WasBatchFinished(&bind.CallOpts{Context: ctx}, batchId)
 	}
@@ -212,16 +207,16 @@ func (c *Client) GetTransactionsStatuses(ctx context.Context, batchId bridge.Bat
 	return c.bridgeContract.GetStatusesAfterExecution(&bind.CallOpts{Context: ctx}, batchId)
 }
 
-func (c *Client) Sign(_ context.Context, action bridge.ActionId) (string, error) {
+func (c *Client) Sign(_ context.Context, action bridge.ActionId, batch *bridge.Batch) (string, error) {
 	switch int64FromActionId(action) {
 	case TransferAction:
-		c.broadcastSignatureForTransfer(c.pendingBatch)
+		c.broadcastSignatureForTransfer(batch)
 	case SetStatusAction:
 		var proposedStatuses []uint8
-		for _, tx := range c.pendingBatch.Transactions {
+		for _, tx := range batch.Transactions {
 			proposedStatuses = append(proposedStatuses, tx.Status)
 		}
-		c.broadcastSignatureForFinishCurrentPendingTransaction(c.pendingBatch.Id, proposedStatuses)
+		c.broadcastSignatureForFinishCurrentPendingTransaction(batch.Id, proposedStatuses)
 	}
 
 	return "", nil
@@ -262,9 +257,9 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 	signatures := c.broadcaster.Signatures()
 	switch int64FromActionId(action) {
 	case TransferAction:
-		transaction, err = c.transfer(auth, signatures)
+		transaction, err = c.transfer(auth, signatures, batch)
 	case SetStatusAction:
-		transaction, err = c.finish(auth, signatures)
+		transaction, err = c.finish(auth, signatures, batch)
 	}
 
 	if err != nil {
@@ -277,8 +272,7 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 	return hash, err
 }
 
-func (c *Client) transfer(auth *bind.TransactOpts, signatures [][]byte) (*types.Transaction, error) {
-	batch := c.pendingBatch
+func (c *Client) transfer(auth *bind.TransactOpts, signatures [][]byte, batch *bridge.Batch) (*types.Transaction, error) {
 	tokens := c.tokenAddresses(batch.Transactions)
 	recipients := recipientsAddresses(batch.Transactions)
 	amountsValues := amounts(batch.Transactions)
@@ -289,16 +283,16 @@ func (c *Client) transfer(auth *bind.TransactOpts, signatures [][]byte) (*types.
 	return c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amountsValues, batch.Id, signatures)
 }
 
-func (c *Client) finish(auth *bind.TransactOpts, signatures [][]byte) (*types.Transaction, error) {
+func (c *Client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bridge.Batch) (*types.Transaction, error) {
 	var proposedStatuses []uint8
-	for _, tx := range c.pendingBatch.Transactions {
+	for _, tx := range batch.Transactions {
 		proposedStatuses = append(proposedStatuses, tx.Status)
 	}
 
 	c.log.Debug("client.finish", "auth", transactOptsToString(auth),
-		"batchId", c.pendingBatch.Id, "proposed statuses", proposedStatuses)
+		"batchId", batch.Id, "proposed statuses", proposedStatuses)
 
-	return c.bridgeContract.FinishCurrentPendingBatch(auth, c.pendingBatch.Id, proposedStatuses, signatures)
+	return c.bridgeContract.FinishCurrentPendingBatch(auth, batch.Id, proposedStatuses, signatures)
 }
 
 func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {

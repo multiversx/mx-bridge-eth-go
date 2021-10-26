@@ -124,7 +124,7 @@ func TestSign(t *testing.T) {
 		}
 		broadcaster, client := buildStubs()
 		client.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
-		_, _ = client.Sign(context.TODO(), bridge.NewActionId(SetStatusAction))
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(SetStatusAction), batch)
 
 		expectedSignature, _ := hexutil.Decode("0x524957e3081d49d98c98881abd5cf6f737722a4aa0e7915771a567e3cb45cfc625cd9fcf9ec53c86182e517c1e61dbc076722905d11b73e1ed42665ec051342701")
 
@@ -139,7 +139,7 @@ func TestSign(t *testing.T) {
 		}
 		broadcaster, client := buildStubs()
 		client.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
-		_, _ = client.Sign(context.TODO(), bridge.NewActionId(SetStatusAction))
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(SetStatusAction), batch)
 
 		expectedSignature, _ := hexutil.Decode("0xd9b1ae38d7e24837e90e7aaac2ae9ca1eb53dc7a30c41774ad7f7f5fd2371c2d0ac6e69643f6aaa25bd9b000dcf0b8be567bcde7f0a5fb5aad122273999bad2500")
 
@@ -159,7 +159,7 @@ func TestSign(t *testing.T) {
 		}
 		broadcaster, client := buildStubs()
 		client.GetActionIdForProposeTransfer(context.TODO(), batch)
-		_, _ = client.Sign(context.TODO(), bridge.NewActionId(TransferAction))
+		_, _ = client.Sign(context.TODO(), bridge.NewActionId(TransferAction), batch)
 		expectedSignature, _ := hexutil.Decode("0xab3ce0cdc229afc9fcd0447800142da85aa116f16a26e151b9cad95b361ab73d24694ded888a06a1e9b731af8a1b549a1fc5188117e40bea11d9e74af4a6d5fa01")
 
 		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
@@ -206,7 +206,6 @@ func TestWasExecuted(t *testing.T) {
 		}
 		client := Client{
 			bridgeContract: bcs,
-			pendingBatch:   &bridge.Batch{},
 			broadcaster:    &broadcasterStub{},
 			gasLimit:       GasLimit,
 			log:            logger.GetOrCreate("testEthClient"),
@@ -232,7 +231,6 @@ func TestExecute(t *testing.T) {
 			publicKey:        publicKey(t),
 			broadcaster:      &broadcasterStub{},
 			blockchainClient: &blockchainClientStub{},
-			pendingBatch:     &bridge.Batch{},
 			log:              logger.GetOrCreate("testEthClient"),
 			gasLimit:         GasLimit,
 			gasHandler:       &mock.GasHandlerStub{},
@@ -263,12 +261,6 @@ func TestExecute(t *testing.T) {
 				GetCurrentGasPriceCalled: func() (int, error) {
 					return gasPrice, nil
 				},
-			},
-			pendingBatch: &bridge.Batch{
-				Id: bridge.NewBatchId(42),
-				Transactions: []*bridge.DepositTransaction{{
-					TokenAddress: "0x574554482d323936313238",
-				}},
 			},
 			gasLimit: GasLimit,
 			log:      logger.GetOrCreate("testEthClient"),

@@ -774,7 +774,7 @@ func TestWaitStepToFinish(t *testing.T) {
 	})
 }
 
-func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
+func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 	t.Parallel()
 	t.Run("destinationBridge.GetTransactionsStatuses returns error", func(t *testing.T) {
 		args := createMockArgs()
@@ -795,7 +795,7 @@ func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
 		}
 		executor.SetPendingBatch(batch)
 
-		err = executor.SetTransactionsStatusesIfNeeded(nil)
+		err = executor.UpdateTransactionsStatusesIfNeeded(nil)
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses empty response", func(t *testing.T) {
@@ -814,7 +814,7 @@ func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
 		}
 		executor.SetPendingBatch(batch)
 
-		err = executor.SetTransactionsStatusesIfNeeded(nil)
+		err = executor.UpdateTransactionsStatusesIfNeeded(nil)
 		assert.True(t, errors.Is(err, ErrBatchIDStatusMismatch))
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses sets the status", func(t *testing.T) {
@@ -839,7 +839,7 @@ func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
 		}
 		executor.SetPendingBatch(batch)
 
-		err = executor.SetTransactionsStatusesIfNeeded(nil)
+		err = executor.UpdateTransactionsStatusesIfNeeded(nil)
 		assert.Nil(t, err)
 
 		assert.Equal(t, numTxs, len(batch.Transactions)) // extra-protection that the number of txs was not modified
@@ -873,7 +873,7 @@ func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
 		}
 		executor.SetPendingBatch(batch)
 
-		err = executor.SetTransactionsStatusesIfNeeded(nil)
+		err = executor.UpdateTransactionsStatusesIfNeeded(nil)
 		assert.Nil(t, err)
 
 		assert.Equal(t, numTxs, len(batch.Transactions)) // extra-protection that the number of txs was not modified
@@ -892,7 +892,7 @@ func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
 		executor, err := NewEthElrondBridgeExecutor(args)
 		require.Nil(t, err)
 
-		err = executor.SetTransactionsStatusesIfNeeded(nil)
+		err = executor.UpdateTransactionsStatusesIfNeeded(nil)
 		assert.Nil(t, err)
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses one tx was not rejected should call the destination bridge", func(t *testing.T) {
@@ -923,7 +923,7 @@ func TestSetTransactionsStatusesAccordingToDestination(t *testing.T) {
 		}
 		executor.SetPendingBatch(batch)
 
-		err = executor.SetTransactionsStatusesIfNeeded(nil)
+		err = executor.UpdateTransactionsStatusesIfNeeded(nil)
 		assert.Nil(t, err)
 
 		assert.Equal(t, numTxs, len(batch.Transactions)) // extra-protection that the number of txs was not modified

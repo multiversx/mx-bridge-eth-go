@@ -143,9 +143,9 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 		}
 
 		tx := &bridge.DepositTransaction{
+			From:          addrPkConv.Encode(responseData[i+2]),
 			To:            fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
 			DisplayableTo: fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
-			From:          addrPkConv.Encode(responseData[i+2]),
 			TokenAddress:  fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+4])),
 			Amount:        amount,
 			DepositNonce:  bridge.NewNonce(depositNonce),
@@ -352,7 +352,7 @@ func (c *client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ brid
 }
 
 // Sign will trigger the execution of a sign operation
-func (c *client) Sign(_ context.Context, actionId bridge.ActionId) (string, error) {
+func (c *client) Sign(_ context.Context, actionId bridge.ActionId, _ *bridge.Batch) (string, error) {
 	builder := newBuilder(c.log).
 		Func("sign").
 		ActionId(actionId)

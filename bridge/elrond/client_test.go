@@ -519,7 +519,7 @@ func TestSign(t *testing.T) {
 		proxy := &testProxy{}
 		c, _ := buildTestClient(proxy)
 
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42))
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42), nil)
 
 		assert.Equal(t, expect, proxy.lastTransaction.GasLimit)
 	})
@@ -527,7 +527,7 @@ func TestSign(t *testing.T) {
 		proxy := &testProxy{transactionCost: 1024}
 		c, _ := buildTestClient(proxy)
 
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42))
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42), nil)
 
 		assert.Equal(t, []byte("sign@2a"), proxy.lastTransaction.Data)
 	})
