@@ -352,7 +352,7 @@ func (c *client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ brid
 }
 
 // Sign will trigger the execution of a sign operation
-func (c *client) Sign(_ context.Context, actionId bridge.ActionId) (string, error) {
+func (c *client) Sign(_ context.Context, actionId bridge.ActionId, _ *bridge.Batch) (string, error) {
 	builder := newBuilder(c.log).
 		Func("sign").
 		ActionId(actionId)
