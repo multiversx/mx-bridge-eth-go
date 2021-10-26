@@ -10,12 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/api"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
-	"github.com/ElrondNetwork/elrond-go/api/gin"
 	"github.com/ElrondNetwork/elrond-go/api/shared"
-	"github.com/ElrondNetwork/elrond-go/cmd/seednode/api"
-	"github.com/ElrondNetwork/elrond-go/facade/initial"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 
 	"github.com/ElrondNetwork/elrond-go/ntp"
@@ -40,7 +38,8 @@ const (
 	p2pPeerNetworkDiscoverer = "optimized"
 )
 
-const DefaultRestInterface = "localhost:8080"
+// defaultRestInterface default interface for RestApi
+const defaultRestInterface = "localhost:8080"
 
 type Peers []core.PeerID
 
@@ -153,20 +152,11 @@ func NewRelay(config *Config, name string) (*Relay, error) {
 	relay.signatures = make(map[core.PeerID][]byte)
 
 	relay.log.Debug("creating API services")
-	ef := initial.NewInitialNodeFacade("api interface", false)
-	httpServerArgs := gin.ArgsNewWebServer{
-		Facade:          ef,
-		AntiFloodConfig: config.Relayer.Antiflood,
+	_, err = relay.createHttpServer()
+	if err != nil {
+		return nil, err
 	}
 
-	_, err = relay.createHttpServer(httpServerArgs)
-	if err != nil {
-		return nil, err
-	}
-	err = api.Start(DefaultRestInterface, marshalizer)
-	if err != nil {
-		return nil, err
-	}
 	return relay, nil
 }
 
@@ -398,9 +388,9 @@ func (r *Relay) registerTopicProcessors() error {
 	return nil
 }
 
-func (r *Relay) createHttpServer(httpServerArgs gin.ArgsNewWebServer) (shared.UpgradeableHttpServerHandler, error) {
+func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
 
-	httpServerWrapper, err := gin.NewGinWebServerHandler(httpServerArgs)
+	httpServerWrapper, err := api.NewWebServerHandler(defaultRestInterface)
 	if err != nil {
 		return nil, err
 	}

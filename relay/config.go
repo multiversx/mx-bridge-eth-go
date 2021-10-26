@@ -19,7 +19,7 @@ type ConfigP2P struct {
 	ProtocolID      string
 }
 
+// ConfigRelayer configuration for general relayer configurationx
 type ConfigRelayer struct {
 	Marshalizer config.MarshalizerConfig
-	Antiflood   config.WebServerAntifloodConfig
 }

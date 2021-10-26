@@ -8,7 +8,10 @@ require (
 	github.com/ElrondNetwork/elrond-go-crypto v1.0.1
 	github.com/ElrondNetwork/elrond-go-logger v1.0.5
 	github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.6
+	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792
 	github.com/ethereum/go-ethereum v1.10.8
+	github.com/gin-contrib/cors v0.0.0-20190301062745-f9e10995c85a
+	github.com/gin-gonic/gin v1.7.4
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.22.5
 )
