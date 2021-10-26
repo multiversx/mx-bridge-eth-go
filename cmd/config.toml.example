@@ -16,6 +16,11 @@
     InitialPeerList = [<the initial seed hosted by elrond>]
     ProtocolID = "/erd/relay/1.0.0"
 
+[Relayer]
+    [Relayer.Marshalizer]
+       Type = "gogo protobuf"
+       SizeCheckDelta = 10
+
 [StateMachine]
     StepDurationInMillis = 6000
     Steps = [
