@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // verify Client implements interface
@@ -229,9 +230,10 @@ func TestExecute(t *testing.T) {
 			privateKey:       privateKey(t),
 			publicKey:        publicKey(t),
 			broadcaster:      &broadcasterStub{},
-			blockchainClient: &blockchainClientStub{},
+			blockchainClient: &mock.BlockchainClientStub{},
 			log:              logger.GetOrCreate("testEthClient"),
 			gasLimit:         GasLimit,
+			gasHandler:       &mock.GasHandlerStub{},
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
@@ -241,26 +243,108 @@ func TestExecute(t *testing.T) {
 	})
 	t.Run("when action is transfer", func(t *testing.T) {
 		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
+		gasPrice := 1000
+		nonce := 1234
+		blockNonce := 4321
+		executeTransferCalled := false
 		bcs := &mock.BridgeContractStub{
 			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+				executeTransferCalled = true
+
+				assert.Equal(t, big.NewInt(int64(gasPrice)), opts.GasPrice)
+				assert.Equal(t, opts.Nonce, big.NewInt(int64(nonce)))
 				return types.NewTx(&types.AccessListTx{}), nil
 			},
 		}
+		client := Client{
+			bridgeContract: bcs,
+			privateKey:     privateKey(t),
+			publicKey:      publicKey(t),
+			broadcaster:    &broadcasterStub{},
+			mapper:         &mapperStub{},
+			blockchainClient: &mock.BlockchainClientStub{
+				BlockNumberCalled: func(ctx context.Context) (uint64, error) {
+					return uint64(blockNonce), nil
+				},
+				NonceAtCalled: func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
+					require.Equal(t, big.NewInt(int64(blockNonce)), blockNumber)
+					return uint64(nonce), nil
+				},
+			},
+			gasHandler: &mock.GasHandlerStub{
+				GetCurrentGasPriceCalled: func() (*big.Int, error) {
+					return big.NewInt(int64(gasPrice)), nil
+				},
+			},
+			gasLimit: GasLimit,
+			log:      logger.GetOrCreate("testEthClient"),
+		}
+		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
+
+		got, err := client.Execute(context.TODO(), bridge.NewActionId(TransferAction), batch)
+		require.Nil(t, err)
+		assert.Equal(t, expected, got)
+		assert.True(t, executeTransferCalled)
+	})
+	t.Run("gas price handler errors", func(t *testing.T) {
+		bcs := &mock.BridgeContractStub{
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+				require.Fail(t, "should have not been called")
+
+				return nil, nil
+			},
+		}
+		gasPriceError := fmt.Errorf("gas price error")
 		client := Client{
 			bridgeContract:   bcs,
 			privateKey:       privateKey(t),
 			publicKey:        publicKey(t),
 			broadcaster:      &broadcasterStub{},
 			mapper:           &mapperStub{},
-			blockchainClient: &blockchainClientStub{},
-			gasLimit:         GasLimit,
-			log:              logger.GetOrCreate("testEthClient"),
+			blockchainClient: &mock.BlockchainClientStub{},
+			gasHandler: &mock.GasHandlerStub{
+				GetCurrentGasPriceCalled: func() (*big.Int, error) {
+					return big.NewInt(0), gasPriceError
+				},
+			},
+			gasLimit: GasLimit,
+			log:      logger.GetOrCreate("testEthClient"),
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
-		got, _ := client.Execute(context.TODO(), bridge.NewActionId(TransferAction), batch)
+		got, err := client.Execute(context.TODO(), bridge.NewActionId(TransferAction), batch)
+		assert.Equal(t, "", got)
+		assert.Equal(t, gasPriceError, err)
+	})
+	t.Run("blockchain client errors on blockNumber", func(t *testing.T) {
+		bcs := &mock.BridgeContractStub{
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+				require.Fail(t, "should have not been called")
 
-		assert.Equal(t, expected, got)
+				return nil, nil
+			},
+		}
+		blockNumError := fmt.Errorf("block number error")
+		client := Client{
+			bridgeContract: bcs,
+			privateKey:     privateKey(t),
+			publicKey:      publicKey(t),
+			broadcaster:    &broadcasterStub{},
+			mapper:         &mapperStub{},
+			blockchainClient: &mock.BlockchainClientStub{
+				BlockNumberCalled: func(ctx context.Context) (uint64, error) {
+					return 0, blockNumError
+				},
+			},
+			gasHandler: &mock.GasHandlerStub{},
+			gasLimit:   GasLimit,
+			log:        logger.GetOrCreate("testEthClient"),
+		}
+		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
+
+		got, err := client.Execute(context.TODO(), bridge.NewActionId(TransferAction), batch)
+		assert.Equal(t, "", got)
+		assert.True(t, errors.Is(err, blockNumError))
 	})
 }
 
@@ -318,7 +402,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
-	returned, err := client.GetTransactionsStatuses(nil, bridge.NewBatchId(12))
+	returned, err := client.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(12))
 	assert.Nil(t, err)
 	assert.Equal(t, statuses, returned)
 	assert.True(t, methodCalled)
@@ -327,20 +411,20 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 func privateKey(t *testing.T) *ecdsa.PrivateKey {
 	t.Helper()
 
-	privateKey, err := crypto.HexToECDSA(TestPrivateKey)
+	sk, err := crypto.HexToECDSA(TestPrivateKey)
 	if err != nil {
 		t.Fatal(err)
 		return nil
 	}
 
-	return privateKey
+	return sk
 }
 
 func publicKey(t *testing.T) *ecdsa.PublicKey {
 	t.Helper()
 
-	publicKey := privateKey(t).Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	pk := privateKey(t).Public()
+	publicKeyECDSA, ok := pk.(*ecdsa.PublicKey)
 	if !ok {
 		t.Fatal("error casting public key to ECDSA")
 	}
@@ -358,20 +442,6 @@ func (b *broadcasterStub) SendSignature(signature []byte) {
 
 func (b *broadcasterStub) Signatures() [][]byte {
 	return [][]byte{b.lastBroadcastSignature}
-}
-
-type blockchainClientStub struct{}
-
-func (b *blockchainClientStub) PendingNonceAt(context.Context, common.Address) (uint64, error) {
-	return 0, nil
-}
-
-func (b *blockchainClientStub) SuggestGasPrice(context.Context) (*big.Int, error) {
-	return nil, nil
-}
-
-func (b *blockchainClientStub) ChainID(context.Context) (*big.Int, error) {
-	return big.NewInt(42), nil
 }
 
 type mapperStub struct{}

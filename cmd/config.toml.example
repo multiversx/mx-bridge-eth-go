@@ -3,6 +3,13 @@
     BridgeAddress = <the eth address for the bridge contract>
     PrivateKey = <the private key of the relayer eth wallet>
     GasLimit = 500000
+    [Eth.GasStation]
+        URL = "https://ethgasstation.info/api/ethgasAPI.json?" # gas station URL. Suggestion to provide the api-key here
+        PollingIntervalInSeconds = 60 # number of seconds between gas price polling
+        RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the gas price request
+        MaximumAllowedGasPrice = 2000 # maximum value allowed for the fetched gas price value
+        # GasPriceSelector available options: "fast", "fastest", "safeLow", "average"
+        GasPriceSelector = "fast" # selector used to provide the gas price
 
 [Elrond]
     NetworkAddress = <the network address, Eg: https://devnet-gateway.elrond.com>
@@ -22,13 +29,25 @@
        SizeCheckDelta = 10
 
 [StateMachine]
-    StepDurationInMillis = 6000
-    Steps = [
-        { Name = "getting the pending transactions", DurationInMillis = 48000 },
-        { Name = "proposing transfer", DurationInMillis = 48000 },
-        { Name = "waiting signatures for propose transfer", DurationInMillis = 48000 },
-        { Name = "executing transfer", DurationInMillis = 48000 },
-        { Name = "proposing set status", DurationInMillis = 48000 },
-        { Name = "waiting signatures for propose set status", DurationInMillis = 48000 },
-        { Name = "executing set status", DurationInMillis = 48000 }
-    ]
+    [StateMachine.EthToElrond]
+        StepDurationInMillis = 6000
+        Steps = [
+            { Name = "getting the pending transactions", DurationInMillis = 12000 },
+            { Name = "proposing transfer", DurationInMillis = 12000 },
+            { Name = "waiting signatures for propose transfer", DurationInMillis = 12000 },
+            { Name = "executing transfer", DurationInMillis = 12000 },
+            { Name = "proposing set status", DurationInMillis = 600000 }, # 10 minutes
+            { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
+            { Name = "executing set status", DurationInMillis = 12000 }
+        ]
+    [StateMachine.ElrondToEth]
+        StepDurationInMillis = 6000
+        Steps = [
+            { Name = "getting the pending transactions", DurationInMillis = 12000 },
+            { Name = "proposing transfer", DurationInMillis = 12000 },
+            { Name = "waiting signatures for propose transfer", DurationInMillis = 12000 },
+            { Name = "executing transfer", DurationInMillis = 600000 }, # 10 minutes
+            { Name = "proposing set status", DurationInMillis = 12000 },
+            { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
+            { Name = "executing set status", DurationInMillis = 12000 }
+        ]

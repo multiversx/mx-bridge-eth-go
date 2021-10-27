@@ -16,6 +16,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
 	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
@@ -113,8 +114,8 @@ type Relay struct {
 	elrondWalletAddressProvider bridge.WalletAddressProvider
 	quorumProvider              bridge.QuorumProvider
 	stepDuration                time.Duration
-	stateMachineConfig          ConfigStateMachine
-	flagsConfig                 ContextFlagsConfig
+	stateMachineConfig          map[string]ConfigStateMachine
+
 }
 
 func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Relay, error) {
@@ -135,7 +136,20 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	relay.roleProvider = elrondBridge
 	relay.elrondWalletAddressProvider = elrondBridge
 
-	ethBridge, err := eth.NewClient(config.Eth, relay, elrondBridge)
+	argsGasStation := gasManagement.ArgsGasStation{
+		RequestURL:             config.Eth.GasStation.URL,
+		RequestPollingInterval: time.Duration(config.Eth.GasStation.PollingIntervalInSeconds) * time.Second,
+		RequestTime:            time.Duration(config.Eth.GasStation.RequestTimeInSeconds) * time.Second,
+		MaximumGasPrice:        config.Eth.GasStation.MaximumAllowedGasPrice,
+		GasPriceSelector:       coreBridge.EthGasPriceSelector(config.Eth.GasStation.GasPriceSelector),
+	}
+
+	gs, err := gasManagement.NewGasStation(argsGasStation)
+	if err != nil {
+		return nil, err
+	}
+
+	ethBridge, err := eth.NewClient(config.Eth, relay, elrondBridge, gs)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +217,10 @@ func (r *Relay) createAndStartBridge(
 	destinationBridge bridge.Bridge,
 	name string,
 ) (io.Closer, error) {
-	durationsMap := r.processStateMachineConfigDurations()
+	durationsMap, err := r.processStateMachineConfigDurations(name)
+	if err != nil {
+		return nil, err
+	}
 
 	logExecutor := logger.GetOrCreate(name + "/executor")
 	argsExecutor := bridgeExecutors.ArgsEthElrondBridgeExecutor{
@@ -245,8 +262,11 @@ func (r *Relay) createAndStartBridge(
 	return stateMachine.NewStateMachine(argsStateMachine)
 }
 
-func (r *Relay) processStateMachineConfigDurations() map[coreBridge.StepIdentifier]time.Duration {
-	cfg := r.stateMachineConfig
+func (r *Relay) processStateMachineConfigDurations(name string) (map[coreBridge.StepIdentifier]time.Duration, error) {
+	cfg, exists := r.stateMachineConfig[name]
+	if !exists {
+		return nil, fmt.Errorf("%w for %q", ErrMissingConfig, name)
+	}
 	r.stepDuration = time.Duration(cfg.StepDurationInMillis) * time.Millisecond
 	r.log.Debug("loaded state machine StepDuration from configs", "duration", r.stepDuration)
 
@@ -257,7 +277,7 @@ func (r *Relay) processStateMachineConfigDurations() map[coreBridge.StepIdentifi
 		r.log.Debug("loaded StepDuration from configs", "step", stepCfg.Name, "duration", d)
 	}
 
-	return durationsMap
+	return durationsMap, nil
 }
 
 func (r *Relay) checkDurations(
