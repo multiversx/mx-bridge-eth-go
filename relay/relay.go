@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/api"
-	"github.com/ElrondNetwork/elrond-eth-bridge/api/facade"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
@@ -21,6 +20,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
+	"github.com/ElrondNetwork/elrond-eth-bridge/facade"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"

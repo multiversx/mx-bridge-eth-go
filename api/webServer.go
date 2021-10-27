@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	apiErrors "github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
-	// "github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
