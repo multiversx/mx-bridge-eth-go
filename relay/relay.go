@@ -20,6 +20,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
+	"github.com/ElrondNetwork/elrond-eth-bridge/facade"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
@@ -42,9 +43,6 @@ const (
 	p2pPeerNetworkDiscoverer = "optimized"
 	minimumDurationForStep   = time.Second
 )
-
-// defaultRestInterface default interface for RestApi
-const defaultRestInterface = "localhost:8080"
 
 type Peers []core.PeerID
 
@@ -117,9 +115,10 @@ type Relay struct {
 	quorumProvider              bridge.QuorumProvider
 	stepDuration                time.Duration
 	stateMachineConfig          map[string]ConfigStateMachine
+
 }
 
-func NewRelay(config Config, name string) (*Relay, error) {
+func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Relay, error) {
 	relay := &Relay{
 		stateMachineConfig: config.StateMachine,
 	}
@@ -172,6 +171,7 @@ func NewRelay(config Config, name string) (*Relay, error) {
 	relay.timer = NewDefaultTimer()
 	relay.log = logger.GetOrCreate(name)
 	relay.signatures = make(map[core.PeerID][]byte)
+	relay.flagsConfig = flagsConfig
 
 	relay.log.Debug("creating API services")
 	_, err = relay.createHttpServer()
@@ -507,7 +507,11 @@ func (r *Relay) registerTopicProcessors() error {
 
 func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
 
-	httpServerWrapper, err := api.NewWebServerHandler(defaultRestInterface)
+	httpServerArgs := api.ArgsNewWebServer{
+		Facade: facade.NewRelayerFacade(r.flagsConfig.RestApiInterface, r.flagsConfig.EnablePprof),
+	}
+
+	httpServerWrapper, err := api.NewWebServerHandler(httpServerArgs)
 	if err != nil {
 		return nil, err
 	}
