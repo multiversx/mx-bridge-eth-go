@@ -12,8 +12,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
-	"github.com/ElrondNetwork/elrond-go-crypto/signing"
-	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
+	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
@@ -35,6 +34,8 @@ const (
 	canProposeAndSign = 2
 )
 
+var txSingleSigner = &singlesig.Ed25519Signer{}
+
 // QueryResponseErr represents the query response error DTO struct
 type QueryResponseErr struct {
 	code      string
@@ -53,7 +54,7 @@ func (e QueryResponseErr) Error() string {
 type client struct {
 	proxy          bridge.ElrondProxy
 	bridgeAddress  string
-	privateKey     []byte
+	privateKey     crypto.PrivateKey
 	address        core.AddressHandler
 	nonceTxHandler NonceTransactionsHandler
 	log            logger.Logger
@@ -61,8 +62,10 @@ type client struct {
 
 // ClientArgs represents the argument for the NewClient constructor function
 type ClientArgs struct {
-	Config bridge.ElrondConfig
-	Proxy  bridge.ElrondProxy
+	Config     bridge.ElrondConfig
+	Proxy      bridge.ElrondProxy
+	PrivateKey crypto.PrivateKey
+	Address    core.AddressHandler
 }
 
 // NewClient returns a new Elrond Client instance
@@ -70,16 +73,11 @@ func NewClient(args ClientArgs) (*client, error) {
 	if check.IfNil(args.Proxy) {
 		return nil, ErrNilProxy
 	}
-	wallet := interactors.NewWallet()
-
-	privateKey, err := wallet.LoadPrivateKeyFromPemFile(args.Config.PrivateKey)
-	if err != nil {
-		return nil, err
+	if check.IfNil(args.PrivateKey) {
+		return nil, ErrNilPrivateKey
 	}
-
-	address, err := wallet.GetAddressFromPrivateKey(privateKey)
-	if err != nil {
-		return nil, err
+	if check.IfNil(args.Address) {
+		return nil, ErrNilAddressHandler
 	}
 
 	// TODO inject this
@@ -96,13 +94,13 @@ func NewClient(args ClientArgs) (*client, error) {
 	c := &client{
 		proxy:          args.Proxy,
 		bridgeAddress:  args.Config.BridgeAddress,
-		privateKey:     privateKey,
-		address:        address,
+		privateKey:     args.PrivateKey,
+		address:        args.Address,
 		log:            logger.GetOrCreate("ElrondClient"),
 		nonceTxHandler: nonceTxsHandler,
 	}
 
-	c.log.Info("Elrond: NewClient", "address", address.AddressAsBech32String())
+	c.log.Info("Elrond: NewClient", "address", c.address.AddressAsBech32String())
 
 	return c, nil
 }
@@ -548,7 +546,7 @@ func (c *client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 		Value:    "0",
 	}
 
-	err = c.signTransactionWithPrivateKey(tx, c.privateKey)
+	err = c.signTransactionWithPrivateKey(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -558,20 +556,13 @@ func (c *client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 
 // signTransactionWithPrivateKey signs a transaction with the provided private key
 // TODO use the transaction interactor for signing and sending transactions
-func (c *client) signTransactionWithPrivateKey(tx *data.Transaction, privateKey []byte) error {
+func (c *client) signTransactionWithPrivateKey(tx *data.Transaction) error {
 	tx.Signature = ""
-	txSingleSigner := &singlesig.Ed25519Signer{}
-	suite := ed25519.NewEd25519()
-	keyGen := signing.NewKeyGenerator(suite)
-	txSignPrivKey, err := keyGen.PrivateKeyFromByteArray(privateKey)
-	if err != nil {
-		return err
-	}
 	bytes, err := json.Marshal(&tx)
 	if err != nil {
 		return err
 	}
-	signature, err := txSingleSigner.Sign(txSignPrivKey, bytes)
+	signature, err := txSingleSigner.Sign(c.privateKey, bytes)
 	if err != nil {
 		return err
 	}
@@ -600,6 +591,11 @@ func (c *client) getCurrentBatch() ([][]byte, error) {
 // Close will close any started go routines. It returns nil.
 func (c *client) Close() error {
 	return c.nonceTxHandler.Close()
+}
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (c *client) IsInterfaceNil() bool {
+	return c == nil
 }
 
 func emptyResponse(response [][]byte) bool {

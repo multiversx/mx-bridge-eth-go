@@ -16,3 +16,9 @@ var ErrBatchNotFinished = errors.New("batch not finished yet")
 
 // ErrMalformedBatchResponse signals that a batch response is malformed
 var ErrMalformedBatchResponse = errors.New("batch response is malformed")
+
+// ErrNilPrivateKey signals that a nil private key has been provided
+var ErrNilPrivateKey = errors.New("nil private key")
+
+// ErrNilAddressHandler signals that a nil address handler has been provided
+var ErrNilAddressHandler = errors.New("nil address handler")
