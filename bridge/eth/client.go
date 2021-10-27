@@ -39,9 +39,10 @@ type BridgeContract interface {
 	GetStatusesAfterExecution(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error)
 }
 
+// BlockchainClient defines the RPC operations on the Ethereum node
 type BlockchainClient interface {
-	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
-	SuggestGasPrice(ctx context.Context) (*big.Int, error)
+	BlockNumber(ctx context.Context) (uint64, error)
+	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	ChainID(ctx context.Context) (*big.Int, error)
 }
 
@@ -226,7 +227,7 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
 	batchId := batch.Id
 
-	blockNonce, err := c.blockchainClient.PendingNonceAt(ctx, fromAddress)
+	nonce, err := c.getNonce(ctx, fromAddress)
 	if err != nil {
 		return "", err
 	}
@@ -246,7 +247,7 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 		return "", err
 	}
 
-	auth.Nonce = big.NewInt(int64(blockNonce))
+	auth.Nonce = big.NewInt(nonce)
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = c.gasLimit
 	auth.Context = ctx
@@ -270,6 +271,17 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 	c.log.Info(fmt.Sprintf("ETH: Executed batchId %v with hash %s", batchId, hash))
 
 	return hash, err
+}
+
+func (c *Client) getNonce(ctx context.Context, fromAddress common.Address) (int64, error) {
+	blockNonce, err := c.blockchainClient.BlockNumber(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("%w in getNonce, BlockNumber call", err)
+	}
+
+	nonce, err := c.blockchainClient.NonceAt(ctx, fromAddress, big.NewInt(int64(blockNonce)))
+
+	return int64(nonce), err
 }
 
 func (c *Client) transfer(auth *bind.TransactOpts, signatures [][]byte, batch *bridge.Batch) (*types.Transaction, error) {
