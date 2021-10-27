@@ -29,13 +29,25 @@
        SizeCheckDelta = 10
 
 [StateMachine]
-    StepDurationInMillis = 6000
-    Steps = [
-        { Name = "getting the pending transactions", DurationInMillis = 48000 },
-        { Name = "proposing transfer", DurationInMillis = 48000 },
-        { Name = "waiting signatures for propose transfer", DurationInMillis = 48000 },
-        { Name = "executing transfer", DurationInMillis = 48000 },
-        { Name = "proposing set status", DurationInMillis = 48000 },
-        { Name = "waiting signatures for propose set status", DurationInMillis = 48000 },
-        { Name = "executing set status", DurationInMillis = 48000 }
-    ]
+    [StateMachine.EthToElrond]
+        StepDurationInMillis = 6000
+        Steps = [
+            { Name = "getting the pending transactions", DurationInMillis = 12000 },
+            { Name = "proposing transfer", DurationInMillis = 12000 },
+            { Name = "waiting signatures for propose transfer", DurationInMillis = 48000 },
+            { Name = "executing transfer", DurationInMillis = 12000 },
+            { Name = "proposing set status", DurationInMillis = 12000 },
+            { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
+            { Name = "executing set status", DurationInMillis = 12000 }
+        ]
+    [StateMachine.ElrondToEth]
+        StepDurationInMillis = 6000
+        Steps = [
+            { Name = "getting the pending transactions", DurationInMillis = 12000 },
+            { Name = "proposing transfer", DurationInMillis = 12000 },
+            { Name = "waiting signatures for propose transfer", DurationInMillis = 12000 },
+            { Name = "executing transfer", DurationInMillis = 12000 },
+            { Name = "proposing set status", DurationInMillis = 12000 },
+            { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
+            { Name = "executing set status", DurationInMillis = 12000 }
+        ]
