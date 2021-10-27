@@ -16,6 +16,7 @@ type NetMessenger interface {
 	Broadcast(topic string, buff []byte)
 	SendToConnectedPeer(topic string, buff []byte, peerID core.PeerID) error
 	Close() error
+	IsInterfaceNil() bool
 }
 
 // RoleProvider defines the operations for a role provider

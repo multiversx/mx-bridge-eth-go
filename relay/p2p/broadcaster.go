@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -17,6 +18,7 @@ const (
 	joinTopicName          = "join/1"
 	signTopicName          = "sign/1"
 	defaultTopicIdentifier = "default"
+	joinTopicMessage       = "join topic"
 )
 
 // ArgsBroadcaster is the DTO used in the broadcaster constructor
@@ -39,7 +41,10 @@ type broadcaster struct {
 
 // NewBroadcaster will create a new broadcaster able to pass messages and signatures
 func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
-	// TODO add checks
+	err := checkArgs(args)
+	if err != nil {
+		return nil, err
+	}
 
 	b := &broadcaster{
 		messenger:        args.Messenger,
@@ -55,7 +60,6 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 		},
 	}
 
-	var err error
 	pk := b.privateKey.GeneratePublic()
 	b.publicKeyBytes, err = pk.ToByteArray()
 	if err != nil {
@@ -63,6 +67,29 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 	}
 
 	return b, err
+}
+
+func checkArgs(args ArgsBroadcaster) error {
+	if check.IfNil(args.Log) {
+		return ErrNilLogger
+	}
+	if check.IfNil(args.KeyGen) {
+		return ErrNilKeyGenerator
+	}
+	if check.IfNil(args.PrivateKey) {
+		return ErrNilPrivateKey
+	}
+	if check.IfNil(args.SingleSigner) {
+		return ErrNilSingleSigner
+	}
+	if check.IfNil(args.RoleProvider) {
+		return ErrNilRoleProvider
+	}
+	if check.IfNil(args.Messenger) {
+		return ErrNilMessenger
+	}
+
+	return nil
 }
 
 // RegisterOnTopics will register the messenger on all required topics
@@ -150,7 +177,7 @@ func (b *broadcaster) BroadcastSignature(signature []byte) {
 // BroadcastJoinTopic will send the provided signature as payload in a wrapped signed message to the other peers.
 // It will broadcast the message to all available peers
 func (b *broadcaster) BroadcastJoinTopic() {
-	err := b.broadcastMessage([]byte("dummy"), joinTopicName)
+	err := b.broadcastMessage([]byte(joinTopicMessage), joinTopicName)
 	if err != nil {
 		b.log.Error("error sending signature", "error", err)
 	}

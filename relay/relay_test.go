@@ -425,6 +425,11 @@ func (p *netMessengerStub) Close() error {
 	return nil
 }
 
+// IsInterfaceNil -
+func (p *netMessengerStub) IsInterfaceNil() bool {
+	return p == nil
+}
+
 type walletAddressProviderStub struct {
 	address string
 }
