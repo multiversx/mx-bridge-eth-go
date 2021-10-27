@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"sync"
 
+	apiErrors "github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
+	// "github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/api/logs"
@@ -19,23 +22,41 @@ var log = logger.GetOrCreate("api")
 
 // ArgsNewWebServer holds the arguments needed to create a new instance of webServer
 type ArgsNewWebServer struct {
-	Facade ApiFacadeHandler
+	Facade FacadeHandler
 }
 
 type webServer struct {
 	sync.RWMutex
-	facade     ApiFacadeHandler
+	facade     FacadeHandler
 	httpServer shared.HttpServerCloser
 	cancelFunc func()
 }
 
 // NewWebServerHandler returns a new instance of webServer
 func NewWebServerHandler(args ArgsNewWebServer) (*webServer, error) {
+	err := checkArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
 	gws := &webServer{
 		facade: args.Facade,
 	}
 
 	return gws, nil
+}
+
+// checkArgs check the arguments of an ArgsNewWebServer
+func checkArgs(args ArgsNewWebServer) error {
+	errHandler := func(details string) error {
+		return fmt.Errorf("%w: %s", apiErrors.ErrCannotCreateWebServer, details)
+	}
+
+	if check.IfNil(args.Facade) {
+		return errHandler("nil facade")
+	}
+
+	return nil
 }
 
 // StartHttpServer will create a new instance of http.Server and populate it with all the routes

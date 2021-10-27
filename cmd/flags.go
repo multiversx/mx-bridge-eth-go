@@ -66,6 +66,8 @@ func getFlags() []cli.Flag {
 func getFlagsConfig(ctx *cli.Context) *relay.ContextFlagsConfig {
 	flagsConfig := &relay.ContextFlagsConfig{}
 
+	flagsConfig.LogLevel = ctx.GlobalString(logLevel.Name)
+	flagsConfig.ConfigurationFile = ctx.GlobalString(configurationFile.Name)
 	flagsConfig.EnablePprof = ctx.GlobalBool(profileMode.Name)
 	flagsConfig.RestApiInterface = ctx.GlobalString(restApiInterface.Name)
 

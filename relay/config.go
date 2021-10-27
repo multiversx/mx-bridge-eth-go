@@ -39,6 +39,7 @@ type StepConfig struct {
 	DurationInMillis uint64
 }
 
+// ContextFlagsConfig the configuration for flags
 type ContextFlagsConfig struct {
 	LogLevel          string
 	ConfigurationFile string

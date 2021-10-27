@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/api"
+	"github.com/ElrondNetwork/elrond-eth-bridge/api/facade"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
@@ -487,7 +488,7 @@ func (r *Relay) registerTopicProcessors() error {
 func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
 
 	httpServerArgs := api.ArgsNewWebServer{
-		Facade: api.NewRelayerFacade(r.flagsConfig.RestApiInterface, r.flagsConfig.EnablePprof),
+		Facade: facade.NewRelayerFacade(r.flagsConfig.RestApiInterface, r.flagsConfig.EnablePprof),
 	}
 
 	httpServerWrapper, err := api.NewWebServerHandler(httpServerArgs)
