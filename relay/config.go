@@ -10,7 +10,7 @@ type Config struct {
 	Eth          bridge.EthereumConfig
 	Elrond       bridge.ElrondConfig
 	P2P          ConfigP2P
-	StateMachine ConfigStateMachine
+	StateMachine map[string]ConfigStateMachine
 	Relayer      ConfigRelayer
 }
 
