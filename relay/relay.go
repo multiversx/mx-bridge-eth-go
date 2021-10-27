@@ -116,7 +116,7 @@ type Relay struct {
 	elrondWalletAddressProvider bridge.WalletAddressProvider
 	quorumProvider              bridge.QuorumProvider
 	stepDuration                time.Duration
-	stateMachineConfig          ConfigStateMachine
+	stateMachineConfig          map[string]ConfigStateMachine
 }
 
 func NewRelay(config Config, name string) (*Relay, error) {
@@ -217,7 +217,7 @@ func (r *Relay) createAndStartBridge(
 	destinationBridge bridge.Bridge,
 	name string,
 ) (io.Closer, error) {
-	durationsMap := r.processStateMachineConfigDurations()
+	durationsMap := r.processStateMachineConfigDurations(name)
 
 	logExecutor := logger.GetOrCreate(name + "/executor")
 	argsExecutor := bridgeExecutors.ArgsEthElrondBridgeExecutor{
@@ -259,8 +259,8 @@ func (r *Relay) createAndStartBridge(
 	return stateMachine.NewStateMachine(argsStateMachine)
 }
 
-func (r *Relay) processStateMachineConfigDurations() map[coreBridge.StepIdentifier]time.Duration {
-	cfg := r.stateMachineConfig
+func (r *Relay) processStateMachineConfigDurations(name string) map[coreBridge.StepIdentifier]time.Duration {
+	cfg := r.stateMachineConfig[name]
 	r.stepDuration = time.Duration(cfg.StepDurationInMillis) * time.Millisecond
 	r.log.Debug("loaded state machine StepDuration from configs", "duration", r.stepDuration)
 
