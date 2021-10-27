@@ -11,6 +11,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -44,6 +45,12 @@ type BlockchainClient interface {
 	ChainID(ctx context.Context) (*big.Int, error)
 }
 
+// GasHandler defines the component able to fetch the current gas price
+type GasHandler interface {
+	GetCurrentGasPrice() (*big.Int, error)
+	IsInterfaceNil() bool
+}
+
 type Client struct {
 	bridgeContract   BridgeContract
 	blockchainClient BlockchainClient
@@ -54,10 +61,21 @@ type Client struct {
 	mapper           bridge.Mapper
 	gasLimit         uint64
 	log              logger.Logger
+	gasHandler       GasHandler
 }
 
-func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper bridge.Mapper) (*Client, error) {
+func NewClient(
+	config bridge.EthereumConfig,
+	broadcaster bridge.Broadcaster,
+	mapper bridge.Mapper,
+	gasHandler GasHandler,
+) (*Client, error) {
+
 	log := logger.GetOrCreate("EthClient")
+
+	if check.IfNil(gasHandler) {
+		return nil, ErrNilGasHandler
+	}
 
 	ethClient, err := ethclient.Dial(config.NetworkAddress)
 	if err != nil {
@@ -89,6 +107,7 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 		broadcaster:      broadcaster,
 		mapper:           mapper,
 		log:              log,
+		gasHandler:       gasHandler,
 	}
 	client.addressConverter, err = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
@@ -222,10 +241,16 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 		return "", err
 	}
 
+	gasPrice, err := c.gasHandler.GetCurrentGasPrice()
+	if err != nil {
+		return "", err
+	}
+
 	auth.Nonce = big.NewInt(int64(blockNonce))
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = c.gasLimit
 	auth.Context = ctx
+	auth.GasPrice = gasPrice
 
 	var transaction *types.Transaction
 
@@ -250,8 +275,12 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 func (c *Client) transfer(auth *bind.TransactOpts, signatures [][]byte, batch *bridge.Batch) (*types.Transaction, error) {
 	tokens := c.tokenAddresses(batch.Transactions)
 	recipients := recipientsAddresses(batch.Transactions)
-	amount := amounts(batch.Transactions)
-	return c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amount, batch.Id, signatures)
+	amountsValues := amounts(batch.Transactions)
+
+	c.log.Debug("client.transfer", "auth", transactOptsToString(auth),
+		"batchId", batch.Id, "tokens", tokens, "recipients", recipients, "amounts", amountsValues)
+
+	return c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amountsValues, batch.Id, signatures)
 }
 
 func (c *Client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bridge.Batch) (*types.Transaction, error) {
@@ -259,6 +288,10 @@ func (c *Client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bri
 	for _, tx := range batch.Transactions {
 		proposedStatuses = append(proposedStatuses, tx.Status)
 	}
+
+	c.log.Debug("client.finish", "auth", transactOptsToString(auth),
+		"batchId", batch.Id, "proposed statuses", proposedStatuses)
+
 	return c.bridgeContract.FinishCurrentPendingBatch(auth, batch.Id, proposedStatuses, signatures)
 }
 
@@ -432,4 +465,18 @@ func finishCurrentPendingTransactionArgs() (abi.Arguments, error) {
 
 func int64FromActionId(actionId bridge.ActionId) int64 {
 	return (*big.Int)(actionId).Int64()
+}
+
+func transactOptsToString(opts *bind.TransactOpts) string {
+	if opts == nil {
+		return "<nil>"
+	}
+
+	return fmt.Sprintf("from: %v, nonce: %v, value: %v, gas price: %v, gas limit: %v",
+		opts.From,
+		opts.Nonce,
+		opts.Value,
+		opts.GasPrice,
+		opts.GasLimit,
+	)
 }
