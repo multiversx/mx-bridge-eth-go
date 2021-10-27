@@ -553,6 +553,7 @@ func createMapMockDurationsMapConfig() map[string]ConfigStateMachine {
 	m["EthToElrond"] = createMockDurationsMapConfig()
 	return m
 }
+
 func getMapMockDurationsMapConfigKeys(m map[string]ConfigStateMachine) []string {
 	keys := []string{}
 	for k := range m {
