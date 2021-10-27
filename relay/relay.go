@@ -217,7 +217,10 @@ func (r *Relay) createAndStartBridge(
 	destinationBridge bridge.Bridge,
 	name string,
 ) (io.Closer, error) {
-	durationsMap := r.processStateMachineConfigDurations(name)
+	durationsMap, err := r.processStateMachineConfigDurations(name)
+	if err != nil {
+		return nil, err
+	}
 
 	logExecutor := logger.GetOrCreate(name + "/executor")
 	argsExecutor := bridgeExecutors.ArgsEthElrondBridgeExecutor{
@@ -259,8 +262,11 @@ func (r *Relay) createAndStartBridge(
 	return stateMachine.NewStateMachine(argsStateMachine)
 }
 
-func (r *Relay) processStateMachineConfigDurations(name string) map[coreBridge.StepIdentifier]time.Duration {
-	cfg := r.stateMachineConfig[name]
+func (r *Relay) processStateMachineConfigDurations(name string) (map[coreBridge.StepIdentifier]time.Duration, error) {
+	cfg, exists := r.stateMachineConfig[name]
+	if !exists {
+		return nil, fmt.Errorf("%w for %q", ErrMissingConfig, name)
+	}
 	r.stepDuration = time.Duration(cfg.StepDurationInMillis) * time.Millisecond
 	r.log.Debug("loaded state machine StepDuration from configs", "duration", r.stepDuration)
 
@@ -271,7 +277,7 @@ func (r *Relay) processStateMachineConfigDurations(name string) map[coreBridge.S
 		r.log.Debug("loaded StepDuration from configs", "step", stepCfg.Name, "duration", d)
 	}
 
-	return durationsMap
+	return durationsMap, nil
 }
 
 func (r *Relay) checkDurations(

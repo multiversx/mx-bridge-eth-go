@@ -365,52 +365,145 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 	t.Parallel()
 	t.Run("nil bridge should error", func(t *testing.T) {
 		relay := &Relay{
-			quorumProvider: &relayMock.QuorumProviderStub{},
-			timer:          &relayMock.TimerMock{},
-			log:            logger.GetOrCreate("test"),
+			quorumProvider:     &relayMock.QuorumProviderStub{},
+			timer:              &relayMock.TimerMock{},
+			log:                logger.GetOrCreate("test"),
+			stateMachineConfig: createMapMockDurationsMapConfig(),
 		}
 
-		stateMachine, err := relay.createAndStartBridge(nil, &bridgeMock{}, "test")
+		stateMachine, err := relay.createAndStartBridge(nil, &bridgeMock{}, "EthToElrond")
 		require.True(t, check.IfNilReflect(stateMachine))
 		require.NotNil(t, err)
 		require.True(t, strings.Contains(err.Error(), "source bridge"))
 		require.True(t, strings.Contains(err.Error(), "nil bridge"))
 	})
 	t.Run("invalid step time duration", func(t *testing.T) {
-		relay := &Relay{
-			quorumProvider:     &relayMock.QuorumProviderStub{},
-			timer:              &relayMock.TimerMock{},
-			stateMachineConfig: createMockDurationsMapConfig(),
-			log:                logger.GetOrCreate("test"),
-		}
-		relay.stateMachineConfig.StepDurationInMillis = 999
+		t.Run("for first half", func(t *testing.T) {
+			relay := &Relay{
+				quorumProvider:     &relayMock.QuorumProviderStub{},
+				timer:              &relayMock.TimerMock{},
+				stateMachineConfig: createMapMockDurationsMapConfig(),
+				log:                logger.GetOrCreate("test"),
+			}
+			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
+			key := halfBridgeKeys[0]
+			halfBridge := relay.stateMachineConfig[key]
+			halfBridge.StepDurationInMillis = 999
+			relay.stateMachineConfig[key] = halfBridge
 
-		stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, "test")
-		require.True(t, check.IfNilReflect(stateMachine))
-		require.True(t, errors.Is(err, ErrInvalidDurationConfig))
+			stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, key)
+			require.True(t, check.IfNilReflect(stateMachine))
+			require.True(t, errors.Is(err, ErrInvalidDurationConfig))
+		})
+		t.Run("for second half", func(t *testing.T) {
+			relay := &Relay{
+				quorumProvider:     &relayMock.QuorumProviderStub{},
+				timer:              &relayMock.TimerMock{},
+				stateMachineConfig: createMapMockDurationsMapConfig(),
+				log:                logger.GetOrCreate("test"),
+			}
+			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
+			key := halfBridgeKeys[1]
+			halfBridge := relay.stateMachineConfig[key]
+			halfBridge.StepDurationInMillis = 999
+			relay.stateMachineConfig[key] = halfBridge
+
+			stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, key)
+			require.True(t, check.IfNilReflect(stateMachine))
+			require.True(t, errors.Is(err, ErrInvalidDurationConfig))
+		})
+		t.Run("for both parts", func(t *testing.T) {
+			relay := &Relay{
+				quorumProvider:     &relayMock.QuorumProviderStub{},
+				timer:              &relayMock.TimerMock{},
+				stateMachineConfig: createMapMockDurationsMapConfig(),
+				log:                logger.GetOrCreate("test"),
+			}
+			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
+			key := halfBridgeKeys[0]
+			halfBridge := relay.stateMachineConfig[key]
+			halfBridge.StepDurationInMillis = 999
+			relay.stateMachineConfig[key] = halfBridge
+
+			key = halfBridgeKeys[1]
+			halfBridge = relay.stateMachineConfig[key]
+			halfBridge.StepDurationInMillis = 999
+			relay.stateMachineConfig[key] = halfBridge
+
+			stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, key)
+			require.True(t, check.IfNilReflect(stateMachine))
+			require.True(t, errors.Is(err, ErrInvalidDurationConfig))
+		})
 	})
 	t.Run("missing duration for step", func(t *testing.T) {
-		relay := &Relay{
-			quorumProvider:     &relayMock.QuorumProviderStub{},
-			timer:              &relayMock.TimerMock{},
-			stateMachineConfig: createMockDurationsMapConfig(),
-			log:                logger.GetOrCreate("test"),
-		}
-		relay.stateMachineConfig.Steps = relay.stateMachineConfig.Steps[1:]
+		t.Run("for first half", func(t *testing.T) {
+			relay := &Relay{
+				quorumProvider:     &relayMock.QuorumProviderStub{},
+				timer:              &relayMock.TimerMock{},
+				stateMachineConfig: createMapMockDurationsMapConfig(),
+				log:                logger.GetOrCreate("test"),
+			}
+			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
+			key := halfBridgeKeys[0]
+			halfBridge := relay.stateMachineConfig[key]
+			halfBridge.Steps = halfBridge.Steps[1:]
+			relay.stateMachineConfig[key] = halfBridge
 
-		stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, "test")
-		require.True(t, check.IfNilReflect(stateMachine))
-		require.True(t, errors.Is(err, ErrMissingDurationConfig))
+			stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, key)
+			require.True(t, check.IfNilReflect(stateMachine))
+			require.True(t, errors.Is(err, ErrMissingDurationConfig))
+		})
+		t.Run("for second half", func(t *testing.T) {
+			relay := &Relay{
+				quorumProvider:     &relayMock.QuorumProviderStub{},
+				timer:              &relayMock.TimerMock{},
+				stateMachineConfig: createMapMockDurationsMapConfig(),
+				log:                logger.GetOrCreate("test"),
+			}
+			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
+			key := halfBridgeKeys[1]
+			halfBridge := relay.stateMachineConfig[key]
+			halfBridge.Steps = halfBridge.Steps[1:]
+			relay.stateMachineConfig[key] = halfBridge
+
+			stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, key)
+			require.True(t, check.IfNilReflect(stateMachine))
+			require.True(t, errors.Is(err, ErrMissingDurationConfig))
+		})
+		t.Run("for both parts", func(t *testing.T) {
+			relay := &Relay{
+				quorumProvider:     &relayMock.QuorumProviderStub{},
+				timer:              &relayMock.TimerMock{},
+				stateMachineConfig: createMapMockDurationsMapConfig(),
+				log:                logger.GetOrCreate("test"),
+			}
+			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
+			key := halfBridgeKeys[0]
+			halfBridge := relay.stateMachineConfig[key]
+			halfBridge.Steps = halfBridge.Steps[1:]
+			relay.stateMachineConfig[key] = halfBridge
+
+			key = halfBridgeKeys[1]
+			halfBridge = relay.stateMachineConfig[key]
+			halfBridge.Steps = halfBridge.Steps[1:]
+			relay.stateMachineConfig[key] = halfBridge
+
+			stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, key)
+			require.True(t, check.IfNilReflect(stateMachine))
+			require.True(t, errors.Is(err, ErrMissingDurationConfig))
+		})
 	})
 	t.Run("should work", func(t *testing.T) {
 		relay := &Relay{
 			quorumProvider:     &relayMock.QuorumProviderStub{},
 			timer:              &relayMock.TimerMock{},
-			stateMachineConfig: createMockDurationsMapConfig(),
+			stateMachineConfig: createMapMockDurationsMapConfig(),
 			log:                logger.GetOrCreate("test"),
 		}
 
-		stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, "test")
+		halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
+
+		stateMachine, err := relay.createAndStartBridge(&bridgeMock{}, &bridgeMock{}, halfBridgeKeys[0])
 		require.Nil(t, err)
 		require.NotNil(t, stateMachine)
 
@@ -452,6 +545,20 @@ func createMockDurationsMapConfig() ConfigStateMachine {
 			},
 		},
 	}
+}
+
+func createMapMockDurationsMapConfig() map[string]ConfigStateMachine {
+	m := make(map[string]ConfigStateMachine)
+	m["ElrondToEth"] = createMockDurationsMapConfig()
+	m["EthToElrond"] = createMockDurationsMapConfig()
+	return m
+}
+func getMapMockDurationsMapConfigKeys(m map[string]ConfigStateMachine) []string {
+	keys := []string{}
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func buildPrivateMessage(peerID core.PeerID, peers Peers) p2p.MessageP2P {
