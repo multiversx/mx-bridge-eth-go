@@ -1,20 +1,20 @@
 [Eth]
-NetworkAddress = <a network address, Eg: http://127.0.0.1:8545 for ganache>
-BridgeAddress = <the eth address for the bridge contract>
-PrivateKey = <the private key of the relayer eth wallet>
-GasLimit = 500000
+    NetworkAddress = <a network address, Eg: http://127.0.0.1:8545 for ganache>
+    BridgeAddress = <the eth address for the bridge contract>
+    PrivateKey = <the private key of the relayer eth wallet>
+    GasLimit = 500000
 
 [Elrond]
-NetworkAddress = <the network address, Eg: https://devnet-gateway.elrond.com>
-BridgeAddress = <the elrond address for the bridge contract>
-PrivateKey = <the path to the pem file containing the relayer elrond wallet>
-IntervalToResendTxsInSeconds = <the time in seconds between nonce reads. Eg: 60>
+    NetworkAddress = <the network address, Eg: https://devnet-gateway.elrond.com>
+    BridgeAddress = <the elrond address for the bridge contract>
+    PrivateKey = <the path to the pem file containing the relayer elrond wallet>
+    IntervalToResendTxsInSeconds = <the time in seconds between nonce reads. Eg: 60>
 
 [P2P]
-Port = "10000"
-Seed = "seed"
-InitialPeerList = [<the initial seed hosted by elrond>]
-ProtocolID = "/erd/relay/1.0.0"
+    Port = "10000"
+    Seed = "seed"
+    InitialPeerList = [<the initial seed hosted by elrond>]
+    ProtocolID = "/erd/relay/1.0.0"
 
 [Relayer]
     [Relayer.Marshalizer]
