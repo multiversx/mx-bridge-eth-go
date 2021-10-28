@@ -13,13 +13,13 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/roleProvider"
 	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/facade"
 	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
+	"github.com/ElrondNetwork/elrond-eth-bridge/relay/roleProvider"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
@@ -94,7 +94,7 @@ type Relay struct {
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
 
-	roleProvider                bridge.RoleProvider
+	roleProvider                RoleProvider
 	elrondWalletAddressProvider bridge.WalletAddressProvider
 	quorumProvider              bridge.QuorumProvider
 	stepDuration                time.Duration

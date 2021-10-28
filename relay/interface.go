@@ -25,3 +25,9 @@ type Broadcaster interface {
 	Close() error
 	IsInterfaceNil() bool
 }
+
+// RoleProvider defines the operations for a role provider
+type RoleProvider interface {
+	IsWhitelisted(string) bool
+	IsInterfaceNil() bool
+}
