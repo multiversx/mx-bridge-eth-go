@@ -6,4 +6,4 @@ import "errors"
 var ErrNilHttpServer = errors.New("nil http server")
 
 // ErrCannotCreateWebServer signals that the gin web server cannot be created
-var ErrCannotCreateWebServer = errors.New("cannot create web server")
+var ErrNilFacade = errors.New("nil facade")

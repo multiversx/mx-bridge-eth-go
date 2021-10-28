@@ -2,13 +2,18 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/cmd/node/factory"
+	"github.com/ElrondNetwork/elrond-go/common/logging"
 	"github.com/urfave/cli"
 	_ "github.com/urfave/cli"
 )
@@ -18,6 +23,9 @@ const (
 	exitCodeInterrupt = 2
 
 	filePathPlaceholder = "[path]"
+
+	defaultLogsPath = "logs"
+	logFilePrefix   = "elrond-eth-bridge"
 )
 
 var log = logger.GetOrCreate("main")
@@ -53,6 +61,11 @@ func main() {
 func startRelay(ctx *cli.Context) error {
 	flagsConfig := getFlagsConfig(ctx)
 
+	fileLogging, errLogger := attachFileLogger(log, flagsConfig)
+	if errLogger != nil {
+		return errLogger
+	}
+
 	err := logger.SetLogLevel(flagsConfig.LogLevel)
 	if err != nil {
 		return err
@@ -61,6 +74,13 @@ func startRelay(ctx *cli.Context) error {
 	config, err := loadConfig(flagsConfig.ConfigurationFile)
 	if err != nil {
 		return err
+	}
+
+	if !check.IfNil(fileLogging) {
+		err := fileLogging.ChangeFileLifeSpan(time.Second * time.Duration(config.Logs.LogFileLifeSpanInSec))
+		if err != nil {
+			return err
+		}
 	}
 
 	ethToElrRelay, err := relay.NewRelay(*config, *flagsConfig, "EthToElrRelay")
@@ -110,4 +130,39 @@ func loadConfig(filepath string) (*relay.Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func attachFileLogger(log logger.Logger, flagsConfig *relay.ContextFlagsConfig) (factory.FileLoggingHandler, error) {
+	var fileLogging factory.FileLoggingHandler
+	var err error
+	if flagsConfig.SaveLogFile {
+		fileLogging, err = logging.NewFileLogging(flagsConfig.WorkingDir, defaultLogsPath, logFilePrefix)
+		if err != nil {
+			return nil, fmt.Errorf("%w creating a log file", err)
+		}
+	}
+
+	err = logger.SetDisplayByteSlice(logger.ToHex)
+	log.LogIfError(err)
+	logger.ToggleLoggerName(flagsConfig.EnableLogName)
+	logLevelFlagValue := flagsConfig.LogLevel
+	err = logger.SetLogLevel(logLevelFlagValue)
+	if err != nil {
+		return nil, err
+	}
+
+	if flagsConfig.DisableAnsiColor {
+		err = logger.RemoveLogObserver(os.Stdout)
+		if err != nil {
+			return nil, err
+		}
+
+		err = logger.AddLogObserver(os.Stdout, &logger.PlainFormatter{})
+		if err != nil {
+			return nil, err
+		}
+	}
+	log.Trace("logger updated", "level", logLevelFlagValue, "disable ANSI color", flagsConfig.DisableAnsiColor)
+
+	return fileLogging, nil
 }
