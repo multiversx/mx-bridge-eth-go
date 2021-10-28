@@ -1,9 +1,7 @@
 package relay
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"errors"
 	"strings"
 	"testing"
@@ -18,7 +16,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
-	"github.com/ElrondNetwork/elrond-go/p2p/mock"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,6 +79,7 @@ func TestInit(t *testing.T) {
 
 	messenger := &netMessengerStub{}
 	timer := testHelpers.TimerStub{}
+	broadcastJoinTopicCalled := false
 	relay := Relay{
 		messenger: messenger,
 		timer:     &timer,
@@ -90,6 +89,11 @@ func TestInit(t *testing.T) {
 		ethBridge:    &bridgeMock{},
 
 		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
+		broadcaster: &relayMock.BroadcasterStub{
+			BroadcastJoinTopicCalled: func() {
+				broadcastJoinTopicCalled = true
+			},
+		},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -97,242 +101,27 @@ func TestInit(t *testing.T) {
 	_ = relay.Start(ctx)
 
 	assert.True(t, messenger.bootstrapWasCalled)
-	assert.Contains(t, messenger.createdTopics, privateTopicName)
-	assert.Contains(t, messenger.createdTopics, joinTopicName)
-	assert.Contains(t, messenger.createdTopics, signTopicName)
-	assert.Contains(t, messenger.registeredMessageProcessors, privateTopicName)
-	assert.Contains(t, messenger.registeredMessageProcessors, joinTopicName)
-	assert.Contains(t, messenger.registeredMessageProcessors, signTopicName)
 	assert.True(t, timer.WasStarted)
+	assert.True(t, broadcastJoinTopicCalled)
 }
 
 func TestClean(t *testing.T) {
 	testHelpers.SetTestLogLevel()
 
 	t.Run("it will clean signatures", func(t *testing.T) {
+		clearCalled := false
 		relay := Relay{
-			signatures: Signatures{"peer": []byte("some signature")},
+			broadcaster: &relayMock.BroadcasterStub{
+				ClearSignaturesCalled: func() {
+					clearCalled = true
+				},
+			},
 		}
 
 		relay.Clean()
 
-		assert.Empty(t, relay.signatures)
+		assert.True(t, clearCalled)
 	})
-}
-
-func TestPrivateTopicProcessor(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
-	messenger := &netMessengerStub{}
-	relay := Relay{
-		messenger: messenger,
-		timer:     &testHelpers.TimerStub{},
-		log:       log,
-
-		elrondBridge: &bridgeMock{},
-		ethBridge:    &bridgeMock{},
-
-		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-	defer cancel()
-	_ = relay.Start(ctx)
-
-	privateMessageProcessor := messenger.registeredMessageProcessors[privateTopicName]
-	expected := Peers{"first", "second"}
-	message := buildPrivateMessage("other", expected)
-	_ = privateMessageProcessor.ProcessReceivedMessage(message, "peer_near_me")
-
-	assert.Equal(t, expected, relay.peers)
-}
-
-func TestJoinTopicProcessor(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
-	t.Run("on joined action when there are more peers then self will broadcast to private", func(t *testing.T) {
-		messenger := &netMessengerStub{}
-		relay := Relay{
-			messenger: messenger,
-			timer:     &testHelpers.TimerStub{},
-			log:       log,
-
-			elrondBridge: &bridgeMock{},
-			ethBridge:    &bridgeMock{},
-
-			peers:      Peers{"first", "second"},
-			signatures: Signatures{"first": []byte("first signature")},
-
-			roleProvider:                &roleProviderStub{isWhitelisted: true},
-			elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		joinMessageProcessor := messenger.registeredMessageProcessors[joinTopicName]
-		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("other"), "peer_near_me")
-
-		dec := gob.NewDecoder(bytes.NewReader(messenger.lastSendData))
-		var got Topology
-		if err := dec.Decode(&got); err != nil {
-			t.Fatal(err)
-		}
-
-		expectedPeers := Peers{"first", "other", "second"}
-		expectedSignatures := Signatures{"first": []byte("first signature")}
-
-		assert.Equal(t, expectedPeers, got.Peers)
-		assert.Equal(t, expectedSignatures, got.Signatures)
-	})
-	t.Run("on joined action when there are more peers then self and the peer is not whitelisted it will broadcast to private", func(t *testing.T) {
-		messenger := &netMessengerStub{}
-		relay := Relay{
-			messenger: messenger,
-			timer:     &testHelpers.TimerStub{},
-			log:       log,
-
-			elrondBridge: &bridgeMock{},
-			ethBridge:    &bridgeMock{},
-
-			peers: Peers{"first", "second"},
-
-			roleProvider:                &roleProviderStub{isWhitelisted: false},
-			elrondWalletAddressProvider: &walletAddressProviderStub{address: ""},
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		joinMessageProcessor := messenger.registeredMessageProcessors[joinTopicName]
-		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("other"), "peer_near_me")
-
-		assert.Empty(t, messenger.lastSendData)
-	})
-	t.Run("when self joined will not broadcast to private", func(t *testing.T) {
-		messenger := &netMessengerStub{peerID: "self"}
-		relay := Relay{
-			messenger: messenger,
-			timer:     &testHelpers.TimerStub{},
-			log:       log,
-
-			elrondBridge: &bridgeMock{},
-			ethBridge:    &bridgeMock{},
-
-			roleProvider:                &roleProviderStub{isWhitelisted: true},
-			elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		joinMessageProcessor := messenger.registeredMessageProcessors[joinTopicName]
-		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("self"), "peer_near_me")
-
-		assert.NotEqual(t, privateTopicName, messenger.lastSendTopicName)
-	})
-	t.Run("on joined will not add to the peer list if already present", func(t *testing.T) {
-		messenger := &netMessengerStub{peerID: "self"}
-		expected := Peers{"first", "second"}
-		relay := Relay{
-			messenger: messenger,
-			timer:     &testHelpers.TimerStub{},
-			log:       log,
-
-			elrondBridge: &bridgeMock{},
-			ethBridge:    &bridgeMock{},
-
-			peers: Peers{"first", "second"},
-
-			roleProvider:                &roleProviderStub{isWhitelisted: true},
-			elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-		defer cancel()
-		_ = relay.Start(ctx)
-
-		joinMessageProcessor := messenger.registeredMessageProcessors[joinTopicName]
-		_ = joinMessageProcessor.ProcessReceivedMessage(buildJoinedMessage("first"), "peer_near_me")
-
-		assert.Equal(t, expected, relay.peers)
-	})
-}
-
-func TestJoin(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
-	messenger := &netMessengerStub{}
-	relay := Relay{
-		messenger: messenger,
-		timer:     &testHelpers.TimerStub{},
-		log:       log,
-
-		elrondBridge: &bridgeMock{},
-		ethBridge:    &bridgeMock{},
-
-		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address"},
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-	defer cancel()
-	_ = relay.Start(ctx)
-
-	assert.True(t, messenger.joinedWasCalled)
-}
-
-func TestSendSignature(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
-	messenger := &netMessengerStub{}
-	relay := Relay{
-		messenger: messenger,
-		timer:     &testHelpers.TimerStub{},
-		log:       log,
-
-		elrondBridge: &bridgeMock{},
-		ethBridge:    &bridgeMock{},
-	}
-
-	_, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-	defer cancel()
-	expectedData := []byte("signature")
-	relay.SendSignature(expectedData)
-
-	assert.Equal(t, signTopicName, messenger.lastSendTopicName)
-	assert.Equal(t, expectedData, messenger.lastSendData)
-}
-
-func TestSignTopicProcessor(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
-	messenger := &netMessengerStub{peerID: "first"}
-	relay := Relay{
-		messenger:  messenger,
-		timer:      &testHelpers.TimerStub{},
-		log:        log,
-		signatures: make(map[core.PeerID][]byte),
-
-		elrondBridge: &bridgeMock{},
-		ethBridge:    &bridgeMock{},
-
-		peers: Peers{"first", "second"},
-
-		elrondWalletAddressProvider: &walletAddressProviderStub{address: "address1"},
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-	defer cancel()
-	_ = relay.Start(ctx)
-
-	signMessageProcessor := messenger.registeredMessageProcessors[signTopicName]
-	expected := []byte("signature")
-	_ = signMessageProcessor.ProcessReceivedMessage(buildSignMessage("second", expected), "peer_near_me")
-
-	assert.Equal(t, expected, relay.Signatures()[0])
 }
 
 func TestAmILeader(t *testing.T) {
@@ -340,7 +129,12 @@ func TestAmILeader(t *testing.T) {
 
 	t.Run("will return true when time matches current index", func(t *testing.T) {
 		relay := Relay{
-			peers:        Peers{"self"},
+			broadcaster: &relayMock.BroadcasterStub{
+				SortedPublicKeysCalled: func() [][]byte {
+					return [][]byte{[]byte("self")}
+				},
+			},
+			address:      data.NewAddressFromBytes([]byte("self")),
 			messenger:    &netMessengerStub{peerID: "self"},
 			timer:        &testHelpers.TimerStub{TimeNowUnix: 0},
 			stepDuration: time.Second,
@@ -352,9 +146,13 @@ func TestAmILeader(t *testing.T) {
 		stepDuration := time.Second * 6
 		relay := Relay{
 			stepDuration: stepDuration,
-			peers:        Peers{"self", "other"},
-			messenger:    &netMessengerStub{peerID: "self"},
-			timer:        &testHelpers.TimerStub{TimeNowUnix: int64(stepDuration.Seconds()) + 1},
+			broadcaster: &relayMock.BroadcasterStub{
+				SortedPublicKeysCalled: func() [][]byte {
+					return [][]byte{[]byte("self"), []byte("other")}
+				},
+			},
+			address: data.NewAddressFromBytes([]byte("self")),
+			timer:   &testHelpers.TimerStub{TimeNowUnix: int64(stepDuration.Seconds()) + 1},
 		}
 
 		assert.False(t, relay.AmITheLeader())
@@ -555,42 +353,11 @@ func createMapMockDurationsMapConfig() map[string]ConfigStateMachine {
 }
 
 func getMapMockDurationsMapConfigKeys(m map[string]ConfigStateMachine) []string {
-	keys := []string{}
+	keys := make([]string, 0)
 	for k := range m {
 		keys = append(keys, k)
 	}
 	return keys
-}
-
-func buildPrivateMessage(peerID core.PeerID, peers Peers) p2p.MessageP2P {
-	var data bytes.Buffer
-	enc := gob.NewEncoder(&data)
-	err := enc.Encode(Topology{Peers: peers})
-	if err != nil {
-		panic(err)
-	}
-
-	return &mock.P2PMessageMock{
-		TopicField: privateTopicName,
-		PeerField:  peerID,
-		DataField:  data.Bytes(),
-	}
-}
-
-func buildJoinedMessage(peerID core.PeerID) p2p.MessageP2P {
-	return &mock.P2PMessageMock{
-		TopicField: joinTopicName,
-		PeerField:  peerID,
-		DataField:  []byte("address"),
-	}
-}
-
-func buildSignMessage(peerID core.PeerID, signature []byte) p2p.MessageP2P {
-	return &mock.P2PMessageMock{
-		TopicField: signTopicName,
-		PeerField:  peerID,
-		DataField:  signature,
-	}
 }
 
 type netMessengerStub struct {
@@ -598,7 +365,6 @@ type netMessengerStub struct {
 	registeredMessageProcessors map[string]p2p.MessageProcessor
 	createdTopics               []string
 
-	joinedWasCalled    bool
 	bootstrapWasCalled bool
 
 	lastSendTopicName string
@@ -643,10 +409,6 @@ func (p *netMessengerStub) Addresses() []string {
 }
 
 func (p *netMessengerStub) Broadcast(topic string, data []byte) {
-	if topic == joinTopicName && string(data) == "address" {
-		p.joinedWasCalled = true
-	}
-
 	p.lastSendTopicName = topic
 	p.lastSendData = data
 }
@@ -663,12 +425,9 @@ func (p *netMessengerStub) Close() error {
 	return nil
 }
 
-type roleProviderStub struct {
-	isWhitelisted bool
-}
-
-func (r *roleProviderStub) IsWhitelisted(string) bool {
-	return r.isWhitelisted
+// IsInterfaceNil -
+func (p *netMessengerStub) IsInterfaceNil() bool {
+	return p == nil
 }
 
 type walletAddressProviderStub struct {

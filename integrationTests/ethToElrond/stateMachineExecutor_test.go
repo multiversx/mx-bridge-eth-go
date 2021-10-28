@@ -70,7 +70,7 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 		return makeMockStatuses(len(pendingBatch.Transactions)), nil
 	}
 
-	sm, err := createAndStartBridge(sourceBridge, destinationBridge, 1, 1, true, "test")
+	sm, err := createAndStartBridge(sourceBridge, destinationBridge, 1, true, "test")
 	require.Nil(t, err)
 
 	select {
@@ -140,7 +140,7 @@ func TestBridgeExecutorWithStateMachineFailedToProposeTransfer(t *testing.T) {
 		return nil, nil
 	}
 
-	sm, err := createAndStartBridge(sourceBridge, destinationBridge, 1, 1, true, "test")
+	sm, err := createAndStartBridge(sourceBridge, destinationBridge, 1, true, "test")
 	require.Nil(t, err)
 
 	select {
@@ -173,7 +173,6 @@ func createAndStartBridge(
 	sourceBridge bridge.Bridge,
 	destinationBridge bridge.Bridge,
 	quorum uint,
-	numPeers int,
 	isLeader bool,
 	name string,
 ) (io.Closer, error) {
@@ -184,9 +183,6 @@ func createAndStartBridge(
 	}
 
 	topologyProvider := &mock.TopologyProviderStub{
-		PeerCountCalled: func() int {
-			return numPeers
-		},
 		AmITheLeaderCalled: func() bool {
 			return isLeader
 		},

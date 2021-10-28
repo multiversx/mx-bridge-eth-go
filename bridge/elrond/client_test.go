@@ -17,6 +17,8 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	"github.com/ElrondNetwork/elrond-go-core/data/vm"
+	"github.com/ElrondNetwork/elrond-go-crypto/signing"
+	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -26,7 +28,9 @@ import (
 )
 
 var (
-	_ = bridge.Bridge(&client{})
+	_      = bridge.Bridge(&client{})
+	suite  = ed25519.NewEd25519()
+	keyGen = signing.NewKeyGenerator(suite)
 )
 
 type TransactionError string
@@ -36,13 +40,18 @@ func (e TransactionError) Error() string {
 }
 
 func createMockArguments() ClientArgs {
+	sk, pk := keyGen.GeneratePair()
+	pkBytes, _ := pk.ToByteArray()
+	addr := data.NewAddressFromBytes(pkBytes)
+
 	return ClientArgs{
 		Config: bridge.ElrondConfig{
 			BridgeAddress:                "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
-			PrivateKey:                   "grace.pem",
 			IntervalToResendTxsInSeconds: 1,
 		},
-		Proxy: &mock.ElrondProxyStub{},
+		Proxy:      &mock.ElrondProxyStub{},
+		PrivateKey: sk,
+		Address:    addr,
 	}
 }
 
@@ -60,6 +69,20 @@ func TestNewClient(t *testing.T) {
 		c, err := NewClient(args)
 		require.Nil(t, c)
 		require.Equal(t, ErrNilProxy, err)
+	})
+	t.Run("nil private key", func(t *testing.T) {
+		args := createMockArguments()
+		args.PrivateKey = nil
+		c, err := NewClient(args)
+		require.Nil(t, c)
+		require.Equal(t, ErrNilPrivateKey, err)
+	})
+	t.Run("nil address", func(t *testing.T) {
+		args := createMockArguments()
+		args.Address = nil
+		c, err := NewClient(args)
+		require.Nil(t, c)
+		require.Equal(t, ErrNilAddressHandler, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockArguments()
@@ -761,6 +784,7 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 	}
 
 	nonceTxHandler, _ := interactors.NewNonceTransactionHandler(proxy, time.Minute)
+	txSignPrivKey, _ := keyGen.PrivateKeyFromByteArray(privateKey)
 
 	proxy.nonce = 42
 	c := &client{
@@ -768,7 +792,7 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 		proxy:          proxy,
 		nonceTxHandler: nonceTxHandler,
 		bridgeAddress:  "",
-		privateKey:     privateKey,
+		privateKey:     txSignPrivKey,
 		address:        address,
 	}
 

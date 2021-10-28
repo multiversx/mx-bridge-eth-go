@@ -14,7 +14,6 @@ type TopologyProviderStub struct {
 	mutTopology           sync.RWMutex
 
 	AmITheLeaderCalled func() bool
-	PeerCountCalled    func() int
 	CleanCalled        func()
 }
 
@@ -32,15 +31,6 @@ func (s *TopologyProviderStub) AmITheLeader() bool {
 		return s.AmITheLeaderCalled()
 	}
 	return false
-}
-
-// PeerCount -
-func (s *TopologyProviderStub) PeerCount() int {
-	s.incrementFunctionCounter()
-	if s.PeerCountCalled != nil {
-		return s.PeerCountCalled()
-	}
-	return 0
 }
 
 // Clean -

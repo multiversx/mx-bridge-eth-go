@@ -22,6 +22,7 @@ type Mapper interface {
 // RoleProvider defines the operations for a role provider
 type RoleProvider interface {
 	IsWhitelisted(string) bool
+	IsInterfaceNil() bool
 }
 
 // WalletAddressProvider defines the operations for a wallet address provider
