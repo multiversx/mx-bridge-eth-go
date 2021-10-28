@@ -533,7 +533,7 @@ func (c *client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 	return tx, nil
 }
 
-// signTransactionWithPrivateKey signs a transaction with the provided private key
+// signTransactionWithPrivateKey signs a transaction with the client's private key
 // TODO use the transaction interactor for signing and sending transactions
 func (c *client) signTransactionWithPrivateKey(tx *data.Transaction) error {
 	tx.Signature = ""
