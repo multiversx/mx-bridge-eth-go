@@ -556,39 +556,6 @@ func TestSign(t *testing.T) {
 	})
 }
 
-func TestIsWhitelisted(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
-	t.Run("where role is 2 it will return true", func(t *testing.T) {
-		role, _ := hex.DecodeString("02")
-		responseData := [][]byte{role}
-		proxy := &testProxy{
-			transactionCost:   1024,
-			queryResponseCode: "ok",
-			queryResponseData: responseData,
-		}
-		c, _ := buildTestClient(proxy)
-
-		isWhitelisted := c.IsWhitelisted("some address")
-
-		assert.True(t, isWhitelisted)
-	})
-	t.Run("where role is 1 it will return false", func(t *testing.T) {
-		role, _ := hex.DecodeString("01")
-		responseData := [][]byte{role}
-		proxy := &testProxy{
-			transactionCost:   1024,
-			queryResponseCode: "ok",
-			queryResponseData: responseData,
-		}
-		c, _ := buildTestClient(proxy)
-
-		isWhitelisted := c.IsWhitelisted("some address")
-
-		assert.False(t, isWhitelisted)
-	})
-}
-
 func TestParseIntFromByteSlice(t *testing.T) {
 	t.Parallel()
 
@@ -799,7 +766,7 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 	return c, nil
 }
 
-//TODO move this in mock package
+// TODO move this in mock package
 type testProxy struct {
 	transactionHash string
 	lastTransaction *data.Transaction

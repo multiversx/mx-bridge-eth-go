@@ -1,6 +1,10 @@
 package relay
 
-import "context"
+import (
+	"context"
+
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+)
 
 // Startable defines an entity that is able to Start or Stop
 type Startable interface {
@@ -23,5 +27,11 @@ type Broadcaster interface {
 	SortedPublicKeys() [][]byte
 	RegisterOnTopics() error
 	Close() error
+	IsInterfaceNil() bool
+}
+
+// RoleProvider defines the operations for a role provider
+type RoleProvider interface {
+	IsWhitelisted(address core.AddressHandler) bool
 	IsInterfaceNil() bool
 }

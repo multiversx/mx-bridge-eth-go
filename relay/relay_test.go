@@ -64,6 +64,9 @@ func TestNewRelay(t *testing.T) {
 				Type:           "gogo protobuf",
 				SizeCheckDelta: 10,
 			},
+			RoleProvider: RoleProviderConfig{
+				PollingIntervalInMillis: 1000,
+			},
 		},
 	}
 	flagsConfig := ContextFlagsConfig{}

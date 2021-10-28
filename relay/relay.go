@@ -19,6 +19,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/facade"
 	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
+	"github.com/ElrondNetwork/elrond-eth-bridge/relay/roleProvider"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
@@ -93,7 +94,7 @@ type Relay struct {
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
 
-	roleProvider                bridge.RoleProvider
+	roleProvider                RoleProvider
 	elrondWalletAddressProvider bridge.WalletAddressProvider
 	quorumProvider              bridge.QuorumProvider
 	stepDuration                time.Duration
@@ -139,7 +140,19 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 		return nil, err
 	}
 	relay.elrondBridge = elrondBridge
-	relay.roleProvider = elrondBridge
+
+	argsRoleProvider := roleProvider.ArgsElrondRoleProvider{
+		ChainInteractor: elrondBridge,
+		Log:             relay.log,
+		PollingInterval: time.Duration(config.Relayer.RoleProvider.PollingIntervalInMillis) * time.Millisecond,
+	}
+
+	erp, err := roleProvider.NewElrondRoleProvider(argsRoleProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	relay.roleProvider = erp
 	relay.elrondWalletAddressProvider = elrondBridge
 
 	argsGasStation := gasManagement.ArgsGasStation{
@@ -379,7 +392,6 @@ func (r *Relay) init(ctx context.Context) error {
 }
 
 func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
-
 	httpServerArgs := api.ArgsNewWebServer{
 		Facade: facade.NewRelayerFacade(r.flagsConfig.RestApiInterface, r.flagsConfig.EnablePprof),
 	}

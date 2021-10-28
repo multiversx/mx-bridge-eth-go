@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"encoding/hex"
 	"errors"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/p2p"
+	ergoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -182,8 +182,8 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		msg, buff := createSignedMessageAndMarshaledBytes()
 
 		args.RoleProvider = &mock.RoleProviderStub{
-			IsWhitelistedCalled: func(s string) bool {
-				assert.Equal(t, hex.EncodeToString(msg.PublicKeyBytes), s)
+			IsWhitelistedCalled: func(address ergoCore.AddressHandler) bool {
+				assert.Equal(t, msg.PublicKeyBytes, address.AddressBytes())
 				isWhiteListedCalled = true
 				return false
 			},

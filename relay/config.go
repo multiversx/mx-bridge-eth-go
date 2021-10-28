@@ -24,7 +24,8 @@ type ConfigP2P struct {
 
 // ConfigRelayer configuration for general relayer configuration
 type ConfigRelayer struct {
-	Marshalizer config.MarshalizerConfig
+	Marshalizer  config.MarshalizerConfig
+	RoleProvider RoleProviderConfig
 }
 
 // ConfigStateMachine the configuration for the state machine
@@ -45,4 +46,9 @@ type ContextFlagsConfig struct {
 	ConfigurationFile string
 	RestApiInterface  string
 	EnablePprof       bool
+}
+
+// RoleProviderConfig is the configuration for the role provider component
+type RoleProviderConfig struct {
+	PollingIntervalInMillis uint64
 }

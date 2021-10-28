@@ -19,12 +19,6 @@ type Mapper interface {
 	GetErc20Address(string) string
 }
 
-// RoleProvider defines the operations for a role provider
-type RoleProvider interface {
-	IsWhitelisted(string) bool
-	IsInterfaceNil() bool
-}
-
 // WalletAddressProvider defines the operations for a wallet address provider
 type WalletAddressProvider interface {
 	GetHexWalletAddress() string

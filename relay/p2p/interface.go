@@ -3,6 +3,7 @@ package p2p
 import (
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go/p2p"
+	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 )
 
 // NetMessenger is the definition of an entity able to receive and send messages
@@ -21,6 +22,6 @@ type NetMessenger interface {
 
 // RoleProvider defines the operations for a role provider
 type RoleProvider interface {
-	IsWhitelisted(string) bool
+	IsWhitelisted(address erdgoCore.AddressHandler) bool
 	IsInterfaceNil() bool
 }
