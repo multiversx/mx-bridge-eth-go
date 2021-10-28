@@ -29,5 +29,4 @@ node_modules
 cache
 artifacts
 
-cmd/config.toml
 /cmd/cmd

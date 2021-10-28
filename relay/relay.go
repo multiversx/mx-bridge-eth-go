@@ -111,7 +111,7 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	}
 
 	wallet := interactors.NewWallet()
-	privateKey, err := wallet.LoadPrivateKeyFromPemFile(config.Elrond.PrivateKey)
+	privateKey, err := wallet.LoadPrivateKeyFromPemFile(config.Elrond.PrivateKeyFile)
 	if err != nil {
 		return nil, err
 	}

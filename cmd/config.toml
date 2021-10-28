@@ -1,7 +1,7 @@
 [Eth]
-    NetworkAddress = <a network address, Eg: http://127.0.0.1:8545 for ganache>
-    BridgeAddress = <the eth address for the bridge contract>
-    PrivateKey = <the private key of the relayer eth wallet>
+    NetworkAddress = "http://127.0.0.1:8545" # a network address
+    BridgeAddress = "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c" # the eth address for the bridge contract
+    PrivateKeyFile = "../relay/testdata/grace.sk" # the path to the file containing the relayer eth private key
     GasLimit = 500000
     [Eth.GasStation]
         URL = "https://ethgasstation.info/api/ethgasAPI.json?" # gas station URL. Suggestion to provide the api-key here
@@ -12,15 +12,14 @@
         GasPriceSelector = "fast" # selector used to provide the gas price
 
 [Elrond]
-    NetworkAddress = <the network address, Eg: https://devnet-gateway.elrond.com>
-    BridgeAddress = <the elrond address for the bridge contract>
-    PrivateKey = <the path to the pem file containing the relayer elrond wallet>
-    IntervalToResendTxsInSeconds = <the time in seconds between nonce reads. Eg: 60>
-
+    NetworkAddress = "https://devnet-gateway.elrond.com" # the network address
+    BridgeAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the elrond address for the bridge contract
+    PrivateKeyFile = "../relay/testdata/grace.pem" # the path to the pem file containing the relayer elrond wallet
+    IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
 [P2P]
-    Port = "10000"
-    Seed = "seed"
-    InitialPeerList = [<the initial seed hosted by elrond>]
+    Port = "10010"
+    Seed = "seed-elrond-eth-bridge-0"
+    InitialPeerList = []
     ProtocolID = "/erd/relay/1.0.0"
 
 [Relayer]
@@ -54,3 +53,5 @@
             { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
             { Name = "executing set status", DurationInMillis = 12000 }
         ]
+[Logs]
+    LogFileLifeSpanInSec = 86400 # 24h
