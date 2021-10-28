@@ -12,6 +12,7 @@ type Config struct {
 	P2P          ConfigP2P
 	StateMachine map[string]ConfigStateMachine
 	Relayer      ConfigRelayer
+	Logs         LogsConfig
 }
 
 // ConfigP2P configuration for the P2P communication
