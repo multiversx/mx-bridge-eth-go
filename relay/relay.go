@@ -13,6 +13,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/roleProvider"
 	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
@@ -139,7 +140,20 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 		return nil, err
 	}
 	relay.elrondBridge = elrondBridge
-	relay.roleProvider = elrondBridge
+
+	argsRoleProvider := roleProvider.ArgsElrondRoleProvider{
+		ChainClient:     elrondBridge,
+		Log:             relay.log,
+		UsePolling:      config.Relayer.RoleProvider.UsePolling,
+		PollingInterval: time.Duration(config.Relayer.RoleProvider.PollingIntervalInMillis) * time.Millisecond,
+	}
+
+	erp, err := roleProvider.NewElrondRoleProvider(argsRoleProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	relay.roleProvider = erp
 	relay.elrondWalletAddressProvider = elrondBridge
 
 	argsGasStation := gasManagement.ArgsGasStation{

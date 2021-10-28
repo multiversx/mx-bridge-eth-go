@@ -29,11 +29,6 @@ const (
 	performActionTxCost   = 30_000_000
 )
 
-const (
-	// canProposeAndSign is the value for the role held by an active validator
-	canProposeAndSign = 2
-)
-
 var txSingleSigner = &singlesig.Ed25519Signer{}
 
 // QueryResponseErr represents the query response error DTO struct
@@ -424,22 +419,6 @@ func (c *client) GetErc20Address(tokenId string) string {
 	return address
 }
 
-// IsWhitelisted returns true if the address can propose or sign
-func (c *client) IsWhitelisted(address string) bool {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("userRole").
-		HexString(address).
-		Build()
-
-	role, err := c.executeUintQuery(valueRequest)
-	if err != nil {
-		c.log.Error(err.Error())
-		return false
-	}
-
-	return role == canProposeAndSign
-}
-
 // GetHexWalletAddress returns the wallet address as a hex string
 func (c *client) GetHexWalletAddress() string {
 	return hex.EncodeToString(c.address.AddressBytes())
@@ -584,6 +563,19 @@ func (c *client) getCurrentBatch() ([][]byte, error) {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
 		Func("getCurrentTxBatch").
 		Build()
+
+	return c.executeQuery(valueRequest)
+}
+
+// ExecuteVmQueryOnBridgeContract is able to execute queries on the defined bridge contract
+func (c *client) ExecuteVmQueryOnBridgeContract(function string, params ...[]byte) ([][]byte, error) {
+	valueRequestBuilderInstance := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
+		Func(function)
+	for _, param := range params {
+		valueRequestBuilderInstance.HexString(hex.EncodeToString(param))
+	}
+
+	valueRequest := valueRequestBuilderInstance.Build()
 
 	return c.executeQuery(valueRequest)
 }
