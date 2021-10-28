@@ -302,7 +302,7 @@ func (c *Client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bri
 	}
 
 	c.log.Debug("client.finish", "auth", transactOptsToString(auth),
-		"batchId", batch.Id, "proposed statuses", proposedStatuses)
+		"batchId", batch.Id, "proposed statuses", proposedStatuses, "num signatures", len(signatures))
 
 	return c.bridgeContract.FinishCurrentPendingBatch(auth, batch.Id, proposedStatuses, signatures)
 }
