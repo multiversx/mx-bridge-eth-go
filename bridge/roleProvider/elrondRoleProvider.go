@@ -110,19 +110,39 @@ func (erp *elrondRoleProvider) requestsLoop(ctx context.Context) {
 
 func (erp *elrondRoleProvider) processResults(results [][]byte) {
 	currentList := make([]string, 0, len(results))
-
+	newAddresses := make([]string, 0)
+	previousAddresses := erp.whitelistedAddresses
 	erp.mut.Lock()
 	erp.whitelistedAddresses = make(map[string]struct{})
 
 	for _, result := range results {
 		address := data.NewAddressFromBytes(result)
 		currentList = append(currentList, address.AddressAsBech32String())
+		hexAddress := hex.EncodeToString(result)
+		_, alreadyExists := previousAddresses[hexAddress]
+		if !alreadyExists {
+			newAddresses = append(newAddresses, address.AddressAsBech32String())
+		} else {
+			delete(previousAddresses, hexAddress)
+		}
 
-		erp.whitelistedAddresses[hex.EncodeToString(result)] = struct{}{}
+		erp.whitelistedAddresses[hexAddress] = struct{}{}
 	}
 	erp.mut.Unlock()
-
-	erp.log.Debug("fetched whitelisted addresses:\n" + strings.Join(currentList, "\n"))
+	message := "fetched whitelisted addresses:"
+	if len(newAddresses) > 0 {
+		message += "\n\tnew joiners:\n\t" + strings.Join(newAddresses, "\n\t")
+	}
+	if len(previousAddresses) > 0 {
+		message += "\n\tleavers:\n"
+		for k := range previousAddresses {
+			message += "\t" + k + "\n"
+		}
+	}
+	if message == "fetched whitelisted addresses:" {
+		message += " no changes!"
+	}
+	erp.log.Debug(message)
 }
 
 // IsWhitelisted returns true if the hex address provided is whitelisted
