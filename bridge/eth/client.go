@@ -290,7 +290,8 @@ func (c *Client) transfer(auth *bind.TransactOpts, signatures [][]byte, batch *b
 	amountsValues := amounts(batch.Transactions)
 
 	c.log.Debug("client.transfer", "auth", transactOptsToString(auth),
-		"batchId", batch.Id, "tokens", tokens, "recipients", recipients, "amounts", amountsValues)
+		"batchId", batch.Id, "tokens", tokens, "recipients", recipients, "amounts", amountsValues,
+		"num signatures", len(signatures))
 
 	return c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amountsValues, batch.Id, signatures)
 }
