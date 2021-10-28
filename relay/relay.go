@@ -142,9 +142,8 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	relay.elrondBridge = elrondBridge
 
 	argsRoleProvider := roleProvider.ArgsElrondRoleProvider{
-		ChainClient:     elrondBridge,
+		ChainInteractor: elrondBridge,
 		Log:             relay.log,
-		UsePolling:      config.Relayer.RoleProvider.UsePolling,
 		PollingInterval: time.Duration(config.Relayer.RoleProvider.PollingIntervalInMillis) * time.Millisecond,
 	}
 
@@ -393,7 +392,6 @@ func (r *Relay) init(ctx context.Context) error {
 }
 
 func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
-
 	httpServerArgs := api.ArgsNewWebServer{
 		Facade: facade.NewRelayerFacade(r.flagsConfig.RestApiInterface, r.flagsConfig.EnablePprof),
 	}

@@ -2,8 +2,8 @@ package roleProvider
 
 import "errors"
 
-// ErrNilChainClient signals that a nil chain client was provided
-var ErrNilChainClient = errors.New("nil chain client")
+// ErrNilChainInteractor signals that a nil chain interactor was provided
+var ErrNilChainInteractor = errors.New("nil chain interactor")
 
 // ErrNilLogger signals that a nil logger was provided
 var ErrNilLogger = errors.New("nil logger")

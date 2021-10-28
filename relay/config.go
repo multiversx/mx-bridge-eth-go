@@ -50,6 +50,5 @@ type ContextFlagsConfig struct {
 
 // RoleProviderConfig is the configuration for the role provider component
 type RoleProviderConfig struct {
-	UsePolling              bool
 	PollingIntervalInMillis uint64
 }

@@ -1,7 +1,6 @@
 package roleProvider
 
 import (
-	"encoding/hex"
 	"errors"
 	"sync"
 	"sync/atomic"
@@ -11,13 +10,13 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/roleProvider/mock"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/stretchr/testify/assert"
 )
 
 func createMockArgs() ArgsElrondRoleProvider {
 	return ArgsElrondRoleProvider{
-		ChainClient:     &mock.ChainClientStub{},
-		UsePolling:      true,
+		ChainInteractor: &mock.ChainInteractorStub{},
 		PollingInterval: time.Second,
 		Log:             logger.GetOrCreate("test"),
 	}
@@ -26,13 +25,13 @@ func createMockArgs() ArgsElrondRoleProvider {
 func TestNewElrondRoleProvider(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil chain client should error", func(t *testing.T) {
+	t.Run("nil chain interactor should error", func(t *testing.T) {
 		args := createMockArgs()
-		args.ChainClient = nil
+		args.ChainInteractor = nil
 
 		erp, err := NewElrondRoleProvider(args)
 		assert.True(t, check.IfNil(erp))
-		assert.Equal(t, ErrNilChainClient, err)
+		assert.Equal(t, ErrNilChainInteractor, err)
 	})
 	t.Run("nil logger should error", func(t *testing.T) {
 		args := createMockArgs()
@@ -59,145 +58,108 @@ func TestNewElrondRoleProvider(t *testing.T) {
 
 		_ = erp.Close()
 	})
-	t.Run("should work with invalid time but disabled polling", func(t *testing.T) {
-		args := createMockArgs()
-		args.UsePolling = false
-		args.PollingInterval = time.Second - time.Nanosecond
-
-		erp, err := NewElrondRoleProvider(args)
-		assert.False(t, check.IfNil(erp))
-		assert.Nil(t, err)
-
-		_ = erp.Close()
-	})
 }
 
-func TestElrondRoleProvider_QueryWhiteListed(t *testing.T) {
+func TestElrondRoleProvider_QueryPollingErrorsEachTimeWillRetry(t *testing.T) {
 	t.Parallel()
 
-	t.Run("query without polling errors each time will retry", func(t *testing.T) {
-		expectedErr := errors.New("expected error")
-		wgErrorPollingIntervalSet := &sync.WaitGroup{}
-		wgErrorPollingIntervalSet.Add(1)
+	expectedErr := errors.New("expected error")
+	wgErrorPollingIntervalSet := &sync.WaitGroup{}
+	wgErrorPollingIntervalSet.Add(1)
 
-		numCalls := uint32(0)
-		args := createMockArgs()
-		args.ChainClient = &mock.ChainClientStub{
-			ExecuteVmQueryOnBridgeContractCalled: func(function string, params ...[]byte) ([][]byte, error) {
-				wgErrorPollingIntervalSet.Wait()
+	numCalls := uint32(0)
+	args := createMockArgs()
+	args.ChainInteractor = &mock.ChainInteractorStub{
+		ExecuteVmQueryOnBridgeContractCalled: func(function string, params ...[]byte) ([][]byte, error) {
+			wgErrorPollingIntervalSet.Wait()
 
-				atomic.AddUint32(&numCalls, 1)
-				return nil, expectedErr
-			},
-		}
+			atomic.AddUint32(&numCalls, 1)
+			return nil, expectedErr
+		},
+	}
 
-		args.UsePolling = false
+	erp, _ := NewElrondRoleProvider(args)
+	erp.pollingWhenError = time.Millisecond * 100
+	wgErrorPollingIntervalSet.Done()
 
-		erp, _ := NewElrondRoleProvider(args)
-		erp.pollingWhenError = time.Millisecond * 100
-		wgErrorPollingIntervalSet.Done()
+	time.Sleep(time.Millisecond * 350)
+	assert.True(t, erp.loopStatus.IsSet())
 
-		time.Sleep(time.Millisecond * 350)
-		assert.True(t, erp.loopStatus.IsSet())
+	assert.Equal(t, uint32(4), atomic.LoadUint32(&numCalls))
+	_ = erp.Close()
 
-		assert.Equal(t, uint32(4), atomic.LoadUint32(&numCalls))
-		_ = erp.Close()
+	time.Sleep(time.Second)
+	assert.False(t, erp.loopStatus.IsSet())
 
-		time.Sleep(time.Second)
-		assert.False(t, erp.loopStatus.IsSet())
+	assert.Equal(t, uint32(4), atomic.LoadUint32(&numCalls))
+}
 
-		assert.Equal(t, uint32(4), atomic.LoadUint32(&numCalls))
-	})
-	t.Run("query with polling errors each time will retry", func(t *testing.T) {
-		expectedErr := errors.New("expected error")
-		wgErrorPollingIntervalSet := &sync.WaitGroup{}
-		wgErrorPollingIntervalSet.Add(1)
+func TestElrondProvider_QueryWithLargePollingIntervalShouldWork(t *testing.T) {
+	t.Parallel()
 
-		numCalls := uint32(0)
-		args := createMockArgs()
-		args.ChainClient = &mock.ChainClientStub{
-			ExecuteVmQueryOnBridgeContractCalled: func(function string, params ...[]byte) ([][]byte, error) {
-				wgErrorPollingIntervalSet.Wait()
+	whitelistedAddresses := [][]byte{
+		[]byte("address 1"),
+		[]byte("address 2"),
+	}
 
-				atomic.AddUint32(&numCalls, 1)
-				return nil, expectedErr
-			},
-		}
+	args := createMockArgs()
+	args.PollingInterval = time.Hour
+	args.ChainInteractor = &mock.ChainInteractorStub{
+		ExecuteVmQueryOnBridgeContractCalled: func(function string, params ...[]byte) ([][]byte, error) {
+			return whitelistedAddresses, nil
+		},
+	}
 
-		erp, _ := NewElrondRoleProvider(args)
-		erp.pollingWhenError = time.Millisecond * 100
-		wgErrorPollingIntervalSet.Done()
+	erp, _ := NewElrondRoleProvider(args)
+	time.Sleep(time.Second)
+	_ = erp.Close()
 
-		time.Sleep(time.Millisecond * 350)
-		assert.True(t, erp.loopStatus.IsSet())
+	for _, addr := range whitelistedAddresses {
+		addressHandler := data.NewAddressFromBytes(addr)
+		assert.True(t, erp.IsWhitelisted(addressHandler))
+	}
 
-		assert.Equal(t, uint32(4), atomic.LoadUint32(&numCalls))
-		_ = erp.Close()
+	randomAddress := data.NewAddressFromBytes([]byte("random address"))
+	assert.False(t, erp.IsWhitelisted(randomAddress))
+	assert.False(t, erp.IsWhitelisted(nil))
+	erp.mut.RLock()
+	assert.Equal(t, 2, len(erp.whitelistedAddresses))
+	erp.mut.RUnlock()
+}
 
-		time.Sleep(time.Second)
-		assert.False(t, erp.loopStatus.IsSet())
+func TestElrondProvider_QueryWithSmallPollingIntervalShouldWork(t *testing.T) {
+	t.Parallel()
 
-		assert.Equal(t, uint32(4), atomic.LoadUint32(&numCalls))
-	})
-	t.Run("query with large polling interval should work", func(t *testing.T) {
-		whitelistedAddresses := [][]byte{
-			[]byte("address 1"),
-			[]byte("address 2"),
-		}
+	whitelistedAddresses := [][]byte{
+		[]byte("address 1"),
+		[]byte("address 2"),
+	}
 
-		args := createMockArgs()
-		args.PollingInterval = time.Hour
-		args.ChainClient = &mock.ChainClientStub{
-			ExecuteVmQueryOnBridgeContractCalled: func(function string, params ...[]byte) ([][]byte, error) {
-				return whitelistedAddresses, nil
-			},
-		}
+	args := createMockArgs()
+	args.PollingInterval = time.Second
+	numCalls := uint32(0)
+	args.ChainInteractor = &mock.ChainInteractorStub{
+		ExecuteVmQueryOnBridgeContractCalled: func(function string, params ...[]byte) ([][]byte, error) {
+			atomic.AddUint32(&numCalls, 1)
+			return whitelistedAddresses, nil
+		},
+	}
 
-		erp, _ := NewElrondRoleProvider(args)
-		time.Sleep(time.Second)
-		_ = erp.Close()
+	erp, _ := NewElrondRoleProvider(args)
+	time.Sleep(time.Millisecond * 3500)
+	_ = erp.Close()
 
-		for _, addr := range whitelistedAddresses {
-			assert.True(t, erp.IsWhitelisted(hex.EncodeToString(addr)))
-		}
+	assert.Equal(t, uint32(4), atomic.LoadUint32(&numCalls))
 
-		assert.False(t, erp.IsWhitelisted("random address"))
-		erp.mut.RLock()
-		assert.Equal(t, 2, len(erp.whitelistedAddresses))
-		erp.mut.RUnlock()
-	})
-	t.Run("query without polling should query only once", func(t *testing.T) {
-		whitelistedAddresses := [][]byte{
-			[]byte("address 1"),
-			[]byte("address 2"),
-		}
+	for _, addr := range whitelistedAddresses {
+		addressHandler := data.NewAddressFromBytes(addr)
+		assert.True(t, erp.IsWhitelisted(addressHandler))
+	}
 
-		args := createMockArgs()
-		args.UsePolling = false
-		args.PollingInterval = time.Millisecond
-		numCalls := uint32(0)
-		args.ChainClient = &mock.ChainClientStub{
-			ExecuteVmQueryOnBridgeContractCalled: func(function string, params ...[]byte) ([][]byte, error) {
-				atomic.AddUint32(&numCalls, 1)
-				return whitelistedAddresses, nil
-			},
-		}
-
-		erp, _ := NewElrondRoleProvider(args)
-		time.Sleep(time.Second)
-		assert.False(t, erp.loopStatus.IsSet())
-
-		_ = erp.Close()
-
-		for _, addr := range whitelistedAddresses {
-			assert.True(t, erp.IsWhitelisted(hex.EncodeToString(addr)))
-		}
-
-		assert.False(t, erp.IsWhitelisted("random address"))
-		erp.mut.RLock()
-		assert.Equal(t, 2, len(erp.whitelistedAddresses))
-		erp.mut.RUnlock()
-		assert.Equal(t, uint32(1), atomic.LoadUint32(&numCalls))
-	})
-
+	randomAddress := data.NewAddressFromBytes([]byte("random address"))
+	assert.False(t, erp.IsWhitelisted(randomAddress))
+	assert.False(t, erp.IsWhitelisted(nil))
+	erp.mut.RLock()
+	assert.Equal(t, 2, len(erp.whitelistedAddresses))
+	erp.mut.RUnlock()
 }

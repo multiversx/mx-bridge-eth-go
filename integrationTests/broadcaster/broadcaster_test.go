@@ -2,7 +2,6 @@ package broadcaster
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"sort"
 	"testing"
@@ -11,6 +10,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,9 +28,9 @@ func TestNetworkOfBroadcastersShouldPassTheSignatures(t *testing.T) {
 	privateKeys, publicKeysBytes := createKeys(t, numBroadcasters)
 
 	roleProvider := &mock.RoleProviderStub{
-		IsWhitelistedCalled: func(s string) bool {
+		IsWhitelistedCalled: func(address core.AddressHandler) bool {
 			for _, pkBytes := range publicKeysBytes {
-				if hex.EncodeToString(pkBytes) == s {
+				if bytes.Equal(address.AddressBytes(), pkBytes) {
 					return true
 				}
 			}
@@ -97,9 +97,9 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenNotJoining(t *
 	privateKeys, publicKeysBytes := createKeys(t, numBroadcasters)
 
 	roleProvider := &mock.RoleProviderStub{
-		IsWhitelistedCalled: func(s string) bool {
+		IsWhitelistedCalled: func(address core.AddressHandler) bool {
 			for _, pkBytes := range publicKeysBytes {
-				if hex.EncodeToString(pkBytes) == s {
+				if bytes.Equal(address.AddressBytes(), pkBytes) {
 					return true
 				}
 			}
@@ -157,9 +157,9 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 	privateKeys, publicKeysBytes := createKeys(t, numBroadcasters)
 
 	roleProvider := &mock.RoleProviderStub{
-		IsWhitelistedCalled: func(s string) bool {
+		IsWhitelistedCalled: func(address core.AddressHandler) bool {
 			for _, pkBytes := range publicKeysBytes {
-				if hex.EncodeToString(pkBytes) == s {
+				if bytes.Equal(address.AddressBytes(), pkBytes) {
 					return true
 				}
 			}

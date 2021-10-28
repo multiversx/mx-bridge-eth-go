@@ -3,7 +3,6 @@ package facade
 type relayerFacade struct {
 	apiInterface string
 	pprofEnabled bool
-	cancelFunc   func()
 }
 
 // NewRelayerFacade is the implementation of the relayer facade

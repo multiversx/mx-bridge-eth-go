@@ -12,8 +12,7 @@ func ActionIdToString(id bridge.ActionId) string {
 		return ""
 	}
 
-	var idAsBigInt *big.Int
-	idAsBigInt = id
+	idAsBigInt := *id
 
 	return idAsBigInt.String()
 }
@@ -41,8 +40,7 @@ func CloneBatchID(batchID bridge.BatchId) bridge.BatchId {
 		return nil
 	}
 
-	var batchIdAsBigInt *big.Int
-	batchIdAsBigInt = batchID
+	batchIdAsBigInt := *batchID
 
 	return bridge.NewBatchId(batchIdAsBigInt.Int64())
 }
@@ -53,8 +51,7 @@ func CloneNonce(nonce bridge.Nonce) bridge.Nonce {
 		return nil
 	}
 
-	var nonceAsBigInt *big.Int
-	nonceAsBigInt = nonce
+	nonceAsBigInt := *nonce
 
 	return bridge.NewNonce(nonceAsBigInt.Int64())
 }

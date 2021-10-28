@@ -120,12 +120,12 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ core.Peer
 		return err
 	}
 
+	addr := data.NewAddressFromBytes(msg.PublicKeyBytes)
 	hexPkBytes := hex.EncodeToString(msg.PublicKeyBytes)
-	if !b.roleProvider.IsWhitelisted(hexPkBytes) {
+	if !b.roleProvider.IsWhitelisted(addr) {
 		return fmt.Errorf("%w for peer: %s", ErrPeerNotWhitelisted, hexPkBytes)
 	}
 
-	addr := data.NewAddressFromBytes(msg.PublicKeyBytes)
 	b.log.Debug("got message", "topic", message.Topic(),
 		"msg.Payload", msg.Payload, "msg.Nonce", msg.Nonce, "msg.PublicKey", addr.AddressAsBech32String())
 

@@ -2,7 +2,6 @@ package roleProvider
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"strings"
 	"sync"
@@ -11,31 +10,29 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core/atomic"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 )
 
 const getAllStakedRelayersFunctionName = "getAllStakedRelayers"
 const pollingIntervalInCaseOfError = time.Second * 5
-const initialStartupDelay = time.Nanosecond
 const minimumPollingInterval = time.Second
 
 // ArgsElrondRoleProvider is the argument for the elrond role provider constructor
 type ArgsElrondRoleProvider struct {
-	ChainClient     ChainClient
-	UsePolling      bool
-	PollingInterval time.Duration
+	ChainInteractor ChainInteractor
 	Log             logger.Logger
+	PollingInterval time.Duration
 }
 
 type elrondRoleProvider struct {
-	chainClient          ChainClient
+	chainInteractor      ChainInteractor
 	log                  logger.Logger
-	usePolling           bool
+	whitelistedAddresses map[string]struct{}
+	cancel               func()
 	pollingInterval      time.Duration
 	pollingWhenError     time.Duration
 	mut                  sync.RWMutex
-	whitelistedAddresses map[string]struct{}
-	cancel               func()
 	loopStatus           atomic.Flag
 }
 
@@ -47,9 +44,8 @@ func NewElrondRoleProvider(args ArgsElrondRoleProvider) (*elrondRoleProvider, er
 	}
 
 	erp := &elrondRoleProvider{
-		chainClient:          args.ChainClient,
+		chainInteractor:      args.ChainInteractor,
 		log:                  args.Log,
-		usePolling:           args.UsePolling,
 		pollingInterval:      args.PollingInterval,
 		whitelistedAddresses: make(map[string]struct{}),
 		pollingWhenError:     pollingIntervalInCaseOfError,
@@ -64,13 +60,13 @@ func NewElrondRoleProvider(args ArgsElrondRoleProvider) (*elrondRoleProvider, er
 }
 
 func checkArgs(args ArgsElrondRoleProvider) error {
-	if check.IfNil(args.ChainClient) {
-		return ErrNilChainClient
+	if check.IfNil(args.ChainInteractor) {
+		return ErrNilChainInteractor
 	}
 	if check.IfNil(args.Log) {
 		return ErrNilLogger
 	}
-	if args.PollingInterval < minimumPollingInterval && args.UsePolling {
+	if args.PollingInterval < minimumPollingInterval {
 		return fmt.Errorf("%w for PollingInterval", ErrInvalidValue)
 	}
 
@@ -81,30 +77,24 @@ func (erp *elrondRoleProvider) requestsLoop(ctx context.Context) {
 	erp.loopStatus.Set()
 	defer erp.loopStatus.Unset()
 
-	pollingChan := time.After(initialStartupDelay)
 	for {
+		pollingChan := time.After(erp.pollingInterval)
+
+		results, err := erp.chainInteractor.ExecuteVmQueryOnBridgeContract(getAllStakedRelayersFunctionName)
+		if err != nil {
+			erp.log.Error("error in elrondRoleProvider.requestsLoop",
+				"error", err, "retrying after", erp.pollingWhenError)
+			pollingChan = time.After(erp.pollingWhenError)
+		} else {
+			erp.processResults(results)
+		}
+
 		select {
 		case <-pollingChan:
 		case <-ctx.Done():
 			erp.log.Debug("role provider main requests loop is closing...")
 			return
 		}
-
-		results, err := erp.chainClient.ExecuteVmQueryOnBridgeContract(getAllStakedRelayersFunctionName)
-		if err != nil {
-			erp.log.Error("error in elrondRoleProvider.requestsLoop",
-				"error", err, "retrying after", erp.pollingWhenError)
-			pollingChan = time.After(erp.pollingWhenError)
-			continue
-		}
-
-		erp.processResults(results)
-
-		if !erp.usePolling {
-			return
-		}
-
-		pollingChan = time.After(erp.pollingInterval)
 	}
 }
 
@@ -118,19 +108,23 @@ func (erp *elrondRoleProvider) processResults(results [][]byte) {
 		address := data.NewAddressFromBytes(result)
 		currentList = append(currentList, address.AddressAsBech32String())
 
-		erp.whitelistedAddresses[hex.EncodeToString(result)] = struct{}{}
+		erp.whitelistedAddresses[string(address.AddressBytes())] = struct{}{}
 	}
 	erp.mut.Unlock()
 
 	erp.log.Debug("fetched whitelisted addresses:\n" + strings.Join(currentList, "\n"))
 }
 
-// IsWhitelisted returns true if the hex address provided is whitelisted
-func (erp *elrondRoleProvider) IsWhitelisted(hexAddress string) bool {
+// IsWhitelisted returns true if the non-nil address provided is whitelisted or not
+func (erp *elrondRoleProvider) IsWhitelisted(address core.AddressHandler) bool {
+	if check.IfNil(address) {
+		return false
+	}
+
 	erp.mut.RLock()
 	defer erp.mut.RUnlock()
 
-	_, exists := erp.whitelistedAddresses[hexAddress]
+	_, exists := erp.whitelistedAddresses[string(address.AddressBytes())]
 
 	return exists
 }
