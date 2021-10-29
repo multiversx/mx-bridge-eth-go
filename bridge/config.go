@@ -4,7 +4,7 @@ package bridge
 type ElrondConfig struct {
 	NetworkAddress               string
 	BridgeAddress                string
-	PrivateKey                   string
+	PrivateKeyFile               string
 	IntervalToResendTxsInSeconds uint64
 	GasLimit                     uint64
 }
@@ -13,7 +13,7 @@ type ElrondConfig struct {
 type EthereumConfig struct {
 	NetworkAddress               string
 	BridgeAddress                string
-	PrivateKey                   string
+	PrivateKeyFile               string
 	IntervalToResendTxsInSeconds uint64
 	GasLimit                     uint64
 	GasStation                   GasStationConfig

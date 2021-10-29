@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/big"
 
@@ -88,7 +89,11 @@ func NewClient(
 		return nil, err
 	}
 
-	privateKey, err := crypto.HexToECDSA(config.PrivateKey)
+	privateKeyBytes, err := ioutil.ReadFile(config.PrivateKeyFile)
+	if err != nil {
+		return nil, err
+	}
+	privateKey, err := crypto.HexToECDSA(string(privateKeyBytes))
 	if err != nil {
 		return nil, err
 	}

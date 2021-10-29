@@ -47,12 +47,9 @@ func NewWebServerHandler(args ArgsNewWebServer) (*webServer, error) {
 
 // checkArgs check the arguments of an ArgsNewWebServer
 func checkArgs(args ArgsNewWebServer) error {
-	errHandler := func(details string) error {
-		return fmt.Errorf("%w: %s", apiErrors.ErrCannotCreateWebServer, details)
-	}
 
 	if check.IfNil(args.Facade) {
-		return errHandler("nil facade")
+		return apiErrors.ErrNilFacade
 	}
 
 	return nil

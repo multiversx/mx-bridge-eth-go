@@ -12,6 +12,7 @@ type Config struct {
 	P2P          ConfigP2P
 	StateMachine map[string]ConfigStateMachine
 	Relayer      ConfigRelayer
+	Logs         LogsConfig
 }
 
 // ConfigP2P configuration for the P2P communication
@@ -42,10 +43,19 @@ type StepConfig struct {
 
 // ContextFlagsConfig the configuration for flags
 type ContextFlagsConfig struct {
+	WorkingDir        string
 	LogLevel          string
+	DisableAnsiColor  bool
 	ConfigurationFile string
+	SaveLogFile       bool
+	EnableLogName     bool
 	RestApiInterface  string
 	EnablePprof       bool
+}
+
+// LogsConfig will hold settings related to the logging sub-system
+type LogsConfig struct {
+	LogFileLifeSpanInSec int
 }
 
 // RoleProviderConfig is the configuration for the role provider component

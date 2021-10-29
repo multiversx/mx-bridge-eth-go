@@ -36,7 +36,7 @@ func TestNewRelay(t *testing.T) {
 		Eth: bridge.EthereumConfig{
 			NetworkAddress:               "http://127.0.0.1:8545",
 			BridgeAddress:                "5DdDe022a65F8063eE9adaC54F359CBF46166068",
-			PrivateKey:                   "9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1",
+			PrivateKeyFile:               "testdata/grace.sk",
 			IntervalToResendTxsInSeconds: 0,
 			GasLimit:                     0,
 			GasStation: bridge.GasStationConfig{
@@ -49,7 +49,7 @@ func TestNewRelay(t *testing.T) {
 		},
 		Elrond: bridge.ElrondConfig{
 			IntervalToResendTxsInSeconds: 60,
-			PrivateKey:                   "testdata/grace.pem",
+			PrivateKeyFile:               "testdata/grace.pem",
 			NetworkAddress:               "http://127.0.0.1:8079",
 			BridgeAddress:                "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 		},
