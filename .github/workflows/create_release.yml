@@ -50,7 +50,7 @@ jobs:
       - name: Build
         run: |
           mkdir -p ${BUILD_DIR}
-          cd ${GITHUB_WORKSPACE}/cmd && go build -o "${BUILD_DIR}/" -a -i -ldflags="-X main.appVersion=${APP_VER}"
+          cd ${GITHUB_WORKSPACE}/cmd/bridge && go build -o "${BUILD_DIR}/" -a -i -ldflags="-X main.appVersion=${APP_VER}"
 
       - name: Package
         run: |
