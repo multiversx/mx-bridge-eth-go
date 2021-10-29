@@ -1,5 +1,6 @@
 package mock
 
+// FacadeStub is the mock implementation of a node router handler
 type FacadeStub struct {
 	RestApiInterfaceCalled func() string
 	PprofEnabledCalled     func() bool
