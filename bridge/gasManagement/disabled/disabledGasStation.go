@@ -5,7 +5,7 @@ import "math/big"
 // DisabledGasStation implementation in case no gasStation is used
 type DisabledGasStation struct{}
 
-// GetCurrentGasPrice return nil; gas price will be automatically determined
+// GetCurrentGasPrice returns nil,nil and will cause the gas price to be determined automatically
 func (dgs *DisabledGasStation) GetCurrentGasPrice() (*big.Int, error) {
 	return nil, nil
 }
