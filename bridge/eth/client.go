@@ -47,12 +47,6 @@ type BlockchainClient interface {
 	ChainID(ctx context.Context) (*big.Int, error)
 }
 
-// GasHandler defines the component able to fetch the current gas price
-type GasHandler interface {
-	GetCurrentGasPrice() (*big.Int, error)
-	IsInterfaceNil() bool
-}
-
 type Client struct {
 	bridgeContract   BridgeContract
 	blockchainClient BlockchainClient
@@ -63,14 +57,14 @@ type Client struct {
 	mapper           bridge.Mapper
 	gasLimit         uint64
 	log              logger.Logger
-	gasHandler       GasHandler
+	gasHandler       bridge.GasHandler
 }
 
 func NewClient(
 	config bridge.EthereumConfig,
 	broadcaster bridge.Broadcaster,
 	mapper bridge.Mapper,
-	gasHandler GasHandler,
+	gasHandler bridge.GasHandler,
 ) (*Client, error) {
 
 	log := logger.GetOrCreate("EthClient")
