@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/cmd/node/factory"
+	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
 	"github.com/urfave/cli"
 	_ "github.com/urfave/cli"
@@ -30,12 +32,22 @@ const (
 
 var log = logger.GetOrCreate("main")
 
+// appVersion should be populated at build time using ldflags
+// Usage examples:
+// linux/mac:
+//            go build -i -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)"
+// windows:
+//            for /f %i in ('git describe --tags --long --dirty') do set VERS=%i
+//            go build -i -v -ldflags="-X main.appVersion=%VERS%"
+var appVersion = common.UnVersionedAppString
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "Relay CLI app"
 	app.Usage = "This is the entry point for the bridge relay"
 	app.Flags = getFlags()
-	app.Version = "v0.0.1"
+	machineID := core.GetAnonymizedMachineID(app.Name)
+	app.Version = fmt.Sprintf("%s/%s/%s-%s/%s", appVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH, machineID)
 	app.Authors = []cli.Author{
 		{
 			Name:  "The Agile Freaks team",
@@ -48,7 +60,7 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) error {
-		return startRelay(c)
+		return startRelay(c, app.Version)
 	}
 
 	err := app.Run(os.Args)
@@ -58,13 +70,15 @@ func main() {
 	}
 }
 
-func startRelay(ctx *cli.Context) error {
+func startRelay(ctx *cli.Context, version string) error {
 	flagsConfig := getFlagsConfig(ctx)
 
 	fileLogging, errLogger := attachFileLogger(log, flagsConfig)
 	if errLogger != nil {
 		return errLogger
 	}
+
+	log.Info("starting bridge node", "version", version, "pid", os.Getpid())
 
 	err := logger.SetLogLevel(flagsConfig.LogLevel)
 	if err != nil {

@@ -21,7 +21,7 @@ var (
 		Name: "config",
 		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contain the main " +
 			"configurations such as storage setups, epoch duration and so on.",
-		Value: "./config.toml",
+		Value: "config/config.toml",
 	}
 	// logFile is used when the log output needs to be logged in a file
 	logSaveFile = cli.BoolFlag{
