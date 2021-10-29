@@ -21,6 +21,7 @@ type EthereumConfig struct {
 
 // GasStationConfig represents the configuration for the gas station handler
 type GasStationConfig struct {
+	Enabled                  bool
 	URL                      string
 	PollingIntervalInSeconds int
 	RequestTimeInSeconds     int

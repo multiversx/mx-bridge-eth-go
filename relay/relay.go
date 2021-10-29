@@ -13,6 +13,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement/factory"
 	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
@@ -163,7 +164,7 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 		GasPriceSelector:       coreBridge.EthGasPriceSelector(config.Eth.GasStation.GasPriceSelector),
 	}
 
-	gs, err := gasManagement.NewGasStation(argsGasStation)
+	gs, err := factory.CreateGasStation(argsGasStation, config.Eth.GasStation.Enabled)
 	if err != nil {
 		return nil, err
 	}

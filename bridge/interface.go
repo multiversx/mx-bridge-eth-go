@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -53,5 +54,11 @@ type ElrondProxy interface {
 	GetTransactionInfoWithResults(hash string) (*data.TransactionInfo, error)
 	ExecuteVMQuery(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 	GetAccount(address core.AddressHandler) (*data.Account, error)
+	IsInterfaceNil() bool
+}
+
+// GasHandler defines the component able to fetch the current gas price
+type GasHandler interface {
+	GetCurrentGasPrice() (*big.Int, error)
 	IsInterfaceNil() bool
 }

@@ -40,6 +40,7 @@ func TestNewRelay(t *testing.T) {
 			IntervalToResendTxsInSeconds: 0,
 			GasLimit:                     0,
 			GasStation: bridge.GasStationConfig{
+				Enabled:                  true,
 				URL:                      "",
 				PollingIntervalInSeconds: 1,
 				RequestTimeInSeconds:     1,
