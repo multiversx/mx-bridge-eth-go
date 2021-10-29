@@ -24,11 +24,14 @@ type ArgsNewWebServer struct {
 	Facade FacadeHandler
 }
 
+type httpServerCreationHandler func(engine *gin.Engine, facade FacadeHandler) (shared.HttpServerCloser, string, error)
+
 type webServer struct {
 	sync.RWMutex
-	facade     FacadeHandler
-	httpServer shared.HttpServerCloser
-	cancelFunc func()
+	facade                  FacadeHandler
+	httpServer              shared.HttpServerCloser
+	createHttpServerHandler httpServerCreationHandler
+	accessURL               string
 }
 
 // NewWebServerHandler returns a new instance of webServer
@@ -41,6 +44,7 @@ func NewWebServerHandler(args ArgsNewWebServer) (*webServer, error) {
 	gws := &webServer{
 		facade: args.Facade,
 	}
+	gws.createHttpServerHandler = createHttpServer
 
 	return gws, nil
 }
@@ -72,10 +76,8 @@ func (ws *webServer) StartHttpServer() error {
 
 	ws.registerRoutes(engine)
 
-	server := &http.Server{Addr: ws.facade.RestApiInterface(), Handler: engine}
-	log.Debug("creating gin web sever", "interface", ws.facade.RestApiInterface())
 	var err error
-	ws.httpServer, err = NewHttpServer(server)
+	ws.httpServer, ws.accessURL, err = ws.createHttpServerHandler(engine, ws.facade)
 	if err != nil {
 		return err
 	}
@@ -83,6 +85,15 @@ func (ws *webServer) StartHttpServer() error {
 	go ws.httpServer.Start()
 
 	return nil
+}
+
+func createHttpServer(engine *gin.Engine, facade FacadeHandler) (shared.HttpServerCloser, string, error) {
+	serv := &http.Server{Addr: facade.RestApiInterface(), Handler: engine}
+	log.Debug("creating gin web sever", "interface", facade.RestApiInterface())
+
+	s, err := NewHttpServer(serv)
+
+	return s, serv.Addr, err
 }
 
 // UpdateFacade will update webServer facade.
@@ -132,10 +143,6 @@ func registerLoggerWsRoute(ws *gin.Engine, marshalizer marshal.Marshalizer) {
 
 // Close will handle the closing of inner components
 func (ws *webServer) Close() error {
-	if ws.cancelFunc != nil {
-		ws.cancelFunc()
-	}
-
 	ws.Lock()
 	err := ws.httpServer.Close()
 	ws.Unlock()
