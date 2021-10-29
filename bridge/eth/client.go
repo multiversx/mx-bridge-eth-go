@@ -114,6 +114,9 @@ func NewClient(
 		return nil, err
 	}
 
+	ethAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	log.Info("Ethereum: NewClient", "address", ethAddress)
+
 	return client, nil
 }
 

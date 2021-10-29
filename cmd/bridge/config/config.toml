@@ -1,7 +1,7 @@
 [Eth]
     NetworkAddress = "http://127.0.0.1:8545" # a network address
     BridgeAddress = "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c" # the eth address for the bridge contract
-    PrivateKeyFile = "../relay/testdata/grace.sk" # the path to the file containing the relayer eth private key
+    PrivateKeyFile = "config/ethereum.sk" # the path to the file containing the relayer eth private key
     GasLimit = 500000
     [Eth.GasStation]
         Enabled = true
@@ -15,7 +15,7 @@
 [Elrond]
     NetworkAddress = "https://devnet-gateway.elrond.com" # the network address
     BridgeAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the elrond address for the bridge contract
-    PrivateKeyFile = "../relay/testdata/grace.pem" # the path to the pem file containing the relayer elrond wallet
+    PrivateKeyFile = "config/elrond.pem" # the path to the pem file containing the relayer elrond wallet
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
 [P2P]
     Port = "10010"
