@@ -1,4 +1,4 @@
-package mock
+package interactors
 
 import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"

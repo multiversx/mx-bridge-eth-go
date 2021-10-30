@@ -1,4 +1,4 @@
-package mock
+package facade
 
 // FacadeStub is the mock implementation of a node router handler
 type FacadeStub struct {

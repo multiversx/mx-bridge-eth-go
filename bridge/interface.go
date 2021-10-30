@@ -20,11 +20,6 @@ type Mapper interface {
 	GetErc20Address(string) string
 }
 
-// WalletAddressProvider defines the operations for a wallet address provider
-type WalletAddressProvider interface {
-	GetHexWalletAddress() string
-}
-
 // QuorumProvider defines the operations for a quorum provider
 type QuorumProvider interface {
 	GetQuorum(ctx context.Context) (uint, error)

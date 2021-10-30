@@ -1,4 +1,4 @@
-package mock
+package testsCommon
 
 // BroadcasterStub -
 type BroadcasterStub struct {

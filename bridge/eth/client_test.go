@@ -11,8 +11,8 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/mock"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -34,8 +34,6 @@ const TestPrivateKey = "60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d
 const GasLimit = uint64(400000)
 
 func TestGetPending(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	pkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32, logger.GetOrCreate("test"))
 	buff, _ := pkConv.Decode("erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8")
 
@@ -82,7 +80,7 @@ func TestGetPending(t *testing.T) {
 
 	for _, tt := range useCases {
 		t.Run(tt.name, func(t *testing.T) {
-			bcs := &mock.BridgeContractStub{
+			bcs := &mockInteractors.BridgeContractStub{
 				GetNextPendingBatchCalled: func(opts *bind.CallOpts) (contract.Batch, error) {
 					return tt.receivedBatch, nil
 				},
@@ -105,7 +103,7 @@ func TestSign(t *testing.T) {
 	buildStubs := func() (*broadcasterStub, Client) {
 		broadcaster := &broadcasterStub{}
 		client := Client{
-			bridgeContract: &mock.BridgeContractStub{},
+			bridgeContract: &mockInteractors.BridgeContractStub{},
 			privateKey:     privateKey(t),
 			broadcaster:    broadcaster,
 			mapper:         &mapperStub{},
@@ -169,7 +167,7 @@ func TestSign(t *testing.T) {
 func TestSignersCount(t *testing.T) {
 	broadcaster := &broadcasterStub{lastBroadcastSignature: []byte("signature")}
 	client := Client{
-		bridgeContract: &mock.BridgeContractStub{},
+		bridgeContract: &mockInteractors.BridgeContractStub{},
 		broadcaster:    broadcaster,
 		gasLimit:       GasLimit,
 		log:            logger.GetOrCreate("testEthClient"),
@@ -182,7 +180,7 @@ func TestSignersCount(t *testing.T) {
 
 func TestWasExecuted(t *testing.T) {
 	t.Run("when action is set status", func(t *testing.T) {
-		bcs := &mock.BridgeContractStub{
+		bcs := &mockInteractors.BridgeContractStub{
 			WasBatchFinishedCalled: func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error) {
 				return true, nil
 			},
@@ -199,7 +197,7 @@ func TestWasExecuted(t *testing.T) {
 		assert.Equal(t, true, got)
 	})
 	t.Run("when action is transfer", func(t *testing.T) {
-		bcs := &mock.BridgeContractStub{
+		bcs := &mockInteractors.BridgeContractStub{
 			WasBatchExecutedCalled: func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error) {
 				return true, nil
 			},
@@ -220,7 +218,7 @@ func TestWasExecuted(t *testing.T) {
 func TestExecute(t *testing.T) {
 	t.Run("when action is set status", func(t *testing.T) {
 		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
-		bcs := &mock.BridgeContractStub{
+		bcs := &mockInteractors.BridgeContractStub{
 			FinishCurrentPendingBatchCalled: func(opts *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error) {
 				return types.NewTx(&types.AccessListTx{}), nil
 			},
@@ -230,10 +228,10 @@ func TestExecute(t *testing.T) {
 			privateKey:       privateKey(t),
 			publicKey:        publicKey(t),
 			broadcaster:      &broadcasterStub{},
-			blockchainClient: &mock.BlockchainClientStub{},
+			blockchainClient: &mockInteractors.BlockchainClientStub{},
 			log:              logger.GetOrCreate("testEthClient"),
 			gasLimit:         GasLimit,
-			gasHandler:       &mock.GasHandlerStub{},
+			gasHandler:       &testsCommon.GasHandlerStub{},
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
@@ -247,7 +245,7 @@ func TestExecute(t *testing.T) {
 		nonce := 1234
 		blockNonce := 4321
 		executeTransferCalled := false
-		bcs := &mock.BridgeContractStub{
+		bcs := &mockInteractors.BridgeContractStub{
 			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
 				executeTransferCalled = true
 
@@ -262,7 +260,7 @@ func TestExecute(t *testing.T) {
 			publicKey:      publicKey(t),
 			broadcaster:    &broadcasterStub{},
 			mapper:         &mapperStub{},
-			blockchainClient: &mock.BlockchainClientStub{
+			blockchainClient: &mockInteractors.BlockchainClientStub{
 				BlockNumberCalled: func(ctx context.Context) (uint64, error) {
 					return uint64(blockNonce), nil
 				},
@@ -271,7 +269,7 @@ func TestExecute(t *testing.T) {
 					return uint64(nonce), nil
 				},
 			},
-			gasHandler: &mock.GasHandlerStub{
+			gasHandler: &testsCommon.GasHandlerStub{
 				GetCurrentGasPriceCalled: func() (*big.Int, error) {
 					return big.NewInt(int64(gasPrice)), nil
 				},
@@ -287,7 +285,7 @@ func TestExecute(t *testing.T) {
 		assert.True(t, executeTransferCalled)
 	})
 	t.Run("gas price handler errors", func(t *testing.T) {
-		bcs := &mock.BridgeContractStub{
+		bcs := &mockInteractors.BridgeContractStub{
 			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
 				require.Fail(t, "should have not been called")
 
@@ -301,8 +299,8 @@ func TestExecute(t *testing.T) {
 			publicKey:        publicKey(t),
 			broadcaster:      &broadcasterStub{},
 			mapper:           &mapperStub{},
-			blockchainClient: &mock.BlockchainClientStub{},
-			gasHandler: &mock.GasHandlerStub{
+			blockchainClient: &mockInteractors.BlockchainClientStub{},
+			gasHandler: &testsCommon.GasHandlerStub{
 				GetCurrentGasPriceCalled: func() (*big.Int, error) {
 					return big.NewInt(0), gasPriceError
 				},
@@ -317,7 +315,7 @@ func TestExecute(t *testing.T) {
 		assert.Equal(t, gasPriceError, err)
 	})
 	t.Run("blockchain client errors on blockNumber", func(t *testing.T) {
-		bcs := &mock.BridgeContractStub{
+		bcs := &mockInteractors.BridgeContractStub{
 			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
 				require.Fail(t, "should have not been called")
 
@@ -331,12 +329,12 @@ func TestExecute(t *testing.T) {
 			publicKey:      publicKey(t),
 			broadcaster:    &broadcasterStub{},
 			mapper:         &mapperStub{},
-			blockchainClient: &mock.BlockchainClientStub{
+			blockchainClient: &mockInteractors.BlockchainClientStub{
 				BlockNumberCalled: func(ctx context.Context) (uint64, error) {
 					return 0, blockNumError
 				},
 			},
-			gasHandler: &mock.GasHandlerStub{},
+			gasHandler: &testsCommon.GasHandlerStub{},
 			gasLimit:   GasLimit,
 			log:        logger.GetOrCreate("testEthClient"),
 		}
@@ -360,7 +358,7 @@ func TestGetQuorum(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("When contract quorum is %v", c.actual), func(t *testing.T) {
-			bcs := &mock.BridgeContractStub{
+			bcs := &mockInteractors.BridgeContractStub{
 				QuorumCalled: func(opts *bind.CallOpts) (*big.Int, error) {
 					return c.actual, nil
 				},
@@ -387,7 +385,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 
 	methodCalled := false
 	statuses := []byte{1, 2}
-	bcs := &mock.BridgeContractStub{
+	bcs := &mockInteractors.BridgeContractStub{
 		GetStatusesAfterExecutionCalled: func(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error) {
 			methodCalled = true
 			return statuses, nil

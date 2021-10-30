@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/testscommon"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +21,7 @@ func createMockArgs() ArgsPollingHandler {
 		Name:             "test",
 		PollingInterval:  time.Millisecond,
 		PollingWhenError: time.Millisecond,
-		Executor:         &testscommon.ExecutorStub{},
+		Executor:         &testsCommon.ExecutorStub{},
 	}
 }
 
@@ -75,7 +75,7 @@ func TestPollingHandler_NotStartedShouldNotCallExecutor(t *testing.T) {
 	t.Parallel()
 
 	args := createMockArgs()
-	args.Executor = &testscommon.ExecutorStub{
+	args.Executor = &testsCommon.ExecutorStub{
 		ExecuteCalled: func(ctx context.Context) error {
 			require.Fail(t, "should have not called execute")
 
@@ -98,7 +98,7 @@ func TestPollingHandler_StartedShouldCallExecuteMultipleTimes(t *testing.T) {
 
 	numCalls := uint32(0)
 	args := createMockArgs()
-	args.Executor = &testscommon.ExecutorStub{
+	args.Executor = &testsCommon.ExecutorStub{
 		ExecuteCalled: func(ctx context.Context) error {
 			atomic.AddUint32(&numCalls, 1)
 
@@ -127,7 +127,7 @@ func TestPollingHandler_StartedShouldTerminateExecutorOnClose(t *testing.T) {
 	t.Parallel()
 
 	args := createMockArgs()
-	args.Executor = &testscommon.ExecutorStub{
+	args.Executor = &testsCommon.ExecutorStub{
 		ExecuteCalled: func(ctx context.Context) error {
 			<-ctx.Done()
 
@@ -157,7 +157,7 @@ func TestPollingHandler_StartedShouldUseDifferentPollingTimeOnError(t *testing.T
 	args := createMockArgs()
 	args.PollingInterval = time.Hour
 	numCalls := uint32(0)
-	args.Executor = &testscommon.ExecutorStub{
+	args.Executor = &testsCommon.ExecutorStub{
 		ExecuteCalled: func(ctx context.Context) error {
 			atomic.AddUint32(&numCalls, 1)
 

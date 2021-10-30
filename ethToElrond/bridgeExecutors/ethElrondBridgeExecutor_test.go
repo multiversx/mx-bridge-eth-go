@@ -10,7 +10,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,11 +22,11 @@ func createMockArgs() ArgsEthElrondBridgeExecutor {
 	return ArgsEthElrondBridgeExecutor{
 		ExecutorName:      "executorMock",
 		Logger:            logger.GetOrCreate("test"),
-		SourceBridge:      mock.NewBridgeStub(),
-		DestinationBridge: mock.NewBridgeStub(),
-		TopologyProvider:  &mock.TopologyProviderStub{},
-		QuorumProvider:    &mock.QuorumProviderStub{},
-		Timer:             &mock.TimerMock{},
+		SourceBridge:      testsCommon.NewBridgeStub(),
+		DestinationBridge: testsCommon.NewBridgeStub(),
+		TopologyProvider:  &testsCommon.TopologyProviderStub{},
+		QuorumProvider:    &testsCommon.QuorumProviderStub{},
+		Timer:             &testsCommon.TimerMock{},
 		DurationsMap: map[core.StepIdentifier]time.Duration{
 			ethToElrond.GettingPending: testDuration,
 		},
@@ -113,7 +113,7 @@ func TestGetPending(t *testing.T) {
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
 		args := createMockArgs()
-		sb := mock.NewBridgeStub()
+		sb := testsCommon.NewBridgeStub()
 		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
 			return expected
 		}
@@ -133,7 +133,7 @@ func TestLeader(t *testing.T) {
 	t.Parallel()
 	t.Run("relayer is leader", func(t *testing.T) {
 		args := createMockArgs()
-		tp := mock.NewTopologyProviderStub()
+		tp := testsCommon.NewTopologyProviderStub()
 		tp.AmITheLeaderCalled = func() bool {
 			return true
 		}
@@ -145,7 +145,7 @@ func TestLeader(t *testing.T) {
 	})
 	t.Run("relayer is NOT leader", func(t *testing.T) {
 		args := createMockArgs()
-		tp := mock.NewTopologyProviderStub()
+		tp := testsCommon.NewTopologyProviderStub()
 		tp.AmITheLeaderCalled = func() bool {
 			return false
 		}
@@ -165,12 +165,12 @@ func TestWasProposeTransferExecutedOnDestination(t *testing.T) {
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
 		args := createMockArgs()
-		sb := mock.NewBridgeStub()
+		sb := testsCommon.NewBridgeStub()
 		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
 			return expected
 		}
 		args.SourceBridge = sb
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		db.WasProposedTransferCalled = func(ctx context.Context, batch *bridge.Batch) bool {
 			return true
 		}
@@ -192,7 +192,7 @@ func TestWasProposeSetStatusExecutedOnSource(t *testing.T) {
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
 		args := createMockArgs()
-		sb := mock.NewBridgeStub()
+		sb := testsCommon.NewBridgeStub()
 		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
 			return expected
 		}
@@ -217,12 +217,12 @@ func TestWasExecuted(t *testing.T) {
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
 		args := createMockArgs()
-		sb := mock.NewBridgeStub()
+		sb := testsCommon.NewBridgeStub()
 		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
 			return expected
 		}
 		args.SourceBridge = sb
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		db.WasExecutedCalled = func(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool {
 			return true
 		}
@@ -240,7 +240,7 @@ func TestWasExecuted(t *testing.T) {
 			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 		}
 		args := createMockArgs()
-		sb := mock.NewBridgeStub()
+		sb := testsCommon.NewBridgeStub()
 		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
 			return expected
 		}
@@ -261,7 +261,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 	t.Parallel()
 	t.Run("quorum error", func(t *testing.T) {
 		args := createMockArgs()
-		args.QuorumProvider = &mock.QuorumProviderStub{
+		args.QuorumProvider = &testsCommon.QuorumProviderStub{
 			GetQuorumCalled: func(ctx context.Context) (uint, error) {
 				return 0, errors.New("some error")
 			},
@@ -274,7 +274,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 	})
 	t.Run("no signs", func(t *testing.T) {
 		args := createMockArgs()
-		args.QuorumProvider = &mock.QuorumProviderStub{
+		args.QuorumProvider = &testsCommon.QuorumProviderStub{
 			GetQuorumCalled: func(ctx context.Context) (uint, error) {
 				return 3, nil
 			},
@@ -287,12 +287,12 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 	})
 	t.Run("less < quorum", func(t *testing.T) {
 		args := createMockArgs()
-		args.QuorumProvider = &mock.QuorumProviderStub{
+		args.QuorumProvider = &testsCommon.QuorumProviderStub{
 			GetQuorumCalled: func(ctx context.Context) (uint, error) {
 				return 3, nil
 			},
 		}
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		db.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
 			return 2
 		}
@@ -305,13 +305,13 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 	})
 	t.Run("signs == quorum", func(t *testing.T) {
 		args := createMockArgs()
-		args.QuorumProvider = &mock.QuorumProviderStub{
+		args.QuorumProvider = &testsCommon.QuorumProviderStub{
 			GetQuorumCalled: func(ctx context.Context) (uint, error) {
 				return 3, nil
 			},
 		}
 
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		db.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
 			return 3
 		}
@@ -324,13 +324,13 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 	})
 	t.Run("signs > quorum", func(t *testing.T) {
 		args := createMockArgs()
-		args.QuorumProvider = &mock.QuorumProviderStub{
+		args.QuorumProvider = &testsCommon.QuorumProviderStub{
 			GetQuorumCalled: func(ctx context.Context) (uint, error) {
 				return 3, nil
 			},
 		}
 
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		db.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
 			return 4
 		}
@@ -348,7 +348,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 	t.Parallel()
 	t.Run("quorum error", func(t *testing.T) {
 		args := createMockArgs()
-		args.QuorumProvider = &mock.QuorumProviderStub{
+		args.QuorumProvider = &testsCommon.QuorumProviderStub{
 			GetQuorumCalled: func(ctx context.Context) (uint, error) {
 				return 0, errors.New("some error")
 			},
@@ -361,7 +361,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 	})
 	t.Run("no signs", func(t *testing.T) {
 		args := createMockArgs()
-		args.QuorumProvider = &mock.QuorumProviderStub{
+		args.QuorumProvider = &testsCommon.QuorumProviderStub{
 			GetQuorumCalled: func(ctx context.Context) (uint, error) {
 				return 3, nil
 			},
@@ -374,13 +374,13 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 	})
 	t.Run("less < quorum", func(t *testing.T) {
 		args := createMockArgs()
-		args.QuorumProvider = &mock.QuorumProviderStub{
+		args.QuorumProvider = &testsCommon.QuorumProviderStub{
 			GetQuorumCalled: func(ctx context.Context) (uint, error) {
 				return 3, nil
 			},
 		}
 
-		sb := mock.NewBridgeStub()
+		sb := testsCommon.NewBridgeStub()
 		sb.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
 			return 2
 		}
@@ -393,13 +393,13 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 	})
 	t.Run("signs == quorum", func(t *testing.T) {
 		args := createMockArgs()
-		args.QuorumProvider = &mock.QuorumProviderStub{
+		args.QuorumProvider = &testsCommon.QuorumProviderStub{
 			GetQuorumCalled: func(ctx context.Context) (uint, error) {
 				return 3, nil
 			},
 		}
 
-		sb := mock.NewBridgeStub()
+		sb := testsCommon.NewBridgeStub()
 		sb.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
 			return 3
 		}
@@ -412,13 +412,13 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 	})
 	t.Run("signs > quorum", func(t *testing.T) {
 		args := createMockArgs()
-		args.QuorumProvider = &mock.QuorumProviderStub{
+		args.QuorumProvider = &testsCommon.QuorumProviderStub{
 			GetQuorumCalled: func(ctx context.Context) (uint, error) {
 				return 3, nil
 			},
 		}
 
-		sb := mock.NewBridgeStub()
+		sb := testsCommon.NewBridgeStub()
 		sb.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
 			return 4
 		}
@@ -496,7 +496,7 @@ func TestProposeTransferOnDestination(t *testing.T) {
 		args := createMockArgs()
 		expectedError := errors.New("some error")
 
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		db.ProposeTransferError = expectedError
 		args.DestinationBridge = db
 		executor, err := NewEthElrondBridgeExecutor(args)
@@ -509,7 +509,7 @@ func TestProposeTransferOnDestination(t *testing.T) {
 	t.Run("no error", func(t *testing.T) {
 		args := createMockArgs()
 
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		db.ProposeTransferCalled = func(ctx context.Context, batch *bridge.Batch) (string, error) {
 			return "propose_tx_hash", nil
 		}
@@ -527,7 +527,7 @@ func TestProposeTransferOnDestination(t *testing.T) {
 func TestProposeSetStatusOnSource(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
-	sb := mock.NewBridgeStub()
+	sb := testsCommon.NewBridgeStub()
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
@@ -540,7 +540,7 @@ func TestProposeSetStatusOnSource(t *testing.T) {
 func TestCleanTopology(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
-	tp := mock.NewTopologyProviderStub()
+	tp := testsCommon.NewTopologyProviderStub()
 	args.TopologyProvider = tp
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
@@ -551,7 +551,7 @@ func TestCleanTopology(t *testing.T) {
 func TestExecuteTransferOnDestination(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
-	db := mock.NewBridgeStub()
+	db := testsCommon.NewBridgeStub()
 	args.DestinationBridge = db
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
@@ -563,7 +563,7 @@ func TestExecuteTransferOnDestination(t *testing.T) {
 func TestExecuteTransferOnDestinationReturnsError(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
-	db := mock.NewBridgeStub()
+	db := testsCommon.NewBridgeStub()
 	db.ExecuteError = errors.New("some error")
 	args.DestinationBridge = db
 	executor, err := NewEthElrondBridgeExecutor(args)
@@ -576,7 +576,7 @@ func TestExecuteTransferOnDestinationReturnsError(t *testing.T) {
 func TestExecuteSetStatusOnSource(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
-	sb := mock.NewBridgeStub()
+	sb := testsCommon.NewBridgeStub()
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
@@ -588,7 +588,7 @@ func TestExecuteSetStatusOnSource(t *testing.T) {
 func TestExecuteSetStatusOnSourceReturnsError(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
-	sb := mock.NewBridgeStub()
+	sb := testsCommon.NewBridgeStub()
 	sb.ExecuteError = errors.New("some error")
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
@@ -610,7 +610,7 @@ func TestSetStatusRejectedOnAllTransactions(t *testing.T) {
 	}
 	expectedError := errors.New("some error")
 	args := createMockArgs()
-	sb := mock.NewBridgeStub()
+	sb := testsCommon.NewBridgeStub()
 	sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
 		return expected
 	}
@@ -632,7 +632,7 @@ func TestSetStatusRejectedOnAllTransactions(t *testing.T) {
 func TestSignProposeTransferOnDestination(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
-	db := mock.NewBridgeStub()
+	db := testsCommon.NewBridgeStub()
 	db.SignCalled = func(ctx context.Context, id bridge.ActionId) (string, error) {
 		return "sign-tx-has", nil
 	}
@@ -656,7 +656,7 @@ func TestSignProposeTransferOnDestination(t *testing.T) {
 func TestSignProposeTransferOnDestinationReturnsError(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
-	db := mock.NewBridgeStub()
+	db := testsCommon.NewBridgeStub()
 	db.SignError = errors.New("some error")
 	db.GetActionIdForProposeTransferCalled = func(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
 		return bridge.NewActionId(1)
@@ -683,7 +683,7 @@ func TestSignProposeSetStatusOnSource(t *testing.T) {
 		Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 	}
 	args := createMockArgs()
-	sb := mock.NewBridgeStub()
+	sb := testsCommon.NewBridgeStub()
 	sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
 		return expected
 	}
@@ -714,7 +714,7 @@ func TestSignProposeSetStatusOnSourceReturnsError(t *testing.T) {
 		Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
 	}
 	args := createMockArgs()
-	sb := mock.NewBridgeStub()
+	sb := testsCommon.NewBridgeStub()
 	sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
 		return expected
 	}
@@ -778,7 +778,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 	t.Parallel()
 	t.Run("destinationBridge.GetTransactionsStatuses returns error", func(t *testing.T) {
 		args := createMockArgs()
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		expectedErr := errors.New("expected error")
 		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
 			return nil, expectedErr
@@ -800,7 +800,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses empty response", func(t *testing.T) {
 		args := createMockArgs()
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
 			return make([]byte, 0), nil
 		}
@@ -819,7 +819,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses sets the status", func(t *testing.T) {
 		args := createMockArgs()
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		numTxs := 10
 		statuses := make([]byte, numTxs)
 		for i := 0; i < numTxs; i++ {
@@ -849,7 +849,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses rejected transactions should not call destination bridge", func(t *testing.T) {
 		args := createMockArgs()
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		numTxs := 10
 		statuses := make([]byte, numTxs)
 		for i := 0; i < numTxs; i++ {
@@ -883,7 +883,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses nil pending batch should not call destination bridge", func(t *testing.T) {
 		args := createMockArgs()
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
 			require.Fail(t, "should have not called the destination bridge")
 			return nil, nil
@@ -897,7 +897,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses one tx was not rejected should call the destination bridge", func(t *testing.T) {
 		args := createMockArgs()
-		db := mock.NewBridgeStub()
+		db := testsCommon.NewBridgeStub()
 		numTxs := 10
 		statuses := make([]byte, numTxs)
 		for i := 0; i < numTxs; i++ {

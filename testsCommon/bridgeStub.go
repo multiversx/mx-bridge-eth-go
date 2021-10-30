@@ -1,4 +1,4 @@
-package mock
+package testsCommon
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 )
 
-var fullPathBridgeStub = "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors/mock.(*BridgeStub)."
+var fullPathBridgeStub = "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon.(*BridgeStub)."
 
 // BridgeStub -
 type BridgeStub struct {

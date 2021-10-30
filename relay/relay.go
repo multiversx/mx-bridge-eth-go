@@ -98,15 +98,14 @@ type Relay struct {
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
 
-	elrondRoleProvider          ElrondRoleProvider
-	elrondWalletAddressProvider bridge.WalletAddressProvider
-	quorumProvider              bridge.QuorumProvider
-	stepDuration                time.Duration
-	stateMachineConfig          map[string]ConfigStateMachine
-	flagsConfig                 ContextFlagsConfig
-	broadcaster                 Broadcaster
-	address                     erdgoCore.AddressHandler
-	pollingHandlers             []io.Closer
+	elrondRoleProvider ElrondRoleProvider
+	quorumProvider     bridge.QuorumProvider
+	stepDuration       time.Duration
+	stateMachineConfig map[string]ConfigStateMachine
+	flagsConfig        ContextFlagsConfig
+	broadcaster        Broadcaster
+	address            erdgoCore.AddressHandler
+	pollingHandlers    []io.Closer
 }
 
 func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Relay, error) {
@@ -150,8 +149,6 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	if err != nil {
 		return nil, err
 	}
-
-	relay.elrondWalletAddressProvider = elrondBridge
 
 	argsGasStation := gasManagement.ArgsGasStation{
 		RequestURL:             config.Eth.GasStation.URL,

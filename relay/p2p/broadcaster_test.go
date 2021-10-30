@@ -4,8 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p/mock"
-	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testscommon/crypto"
+	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/crypto"
+	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
+	roleProvidersMock "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
@@ -19,9 +20,9 @@ import (
 
 func createMockArgsBroadcaster() ArgsBroadcaster {
 	return ArgsBroadcaster{
-		Messenger:    &mock.MessengerStub{},
+		Messenger:    &p2pMocks.MessengerStub{},
 		Log:          logger.GetOrCreate("test"),
-		RoleProvider: &mock.RoleProviderStub{},
+		RoleProvider: &roleProvidersMock.ElrondRoleProviderStub{},
 		KeyGen:       &cryptoMocks.KeyGenStub{},
 		SingleSigner: &cryptoMocks.SingleSignerStub{},
 		PrivateKey:   &cryptoMocks.PrivateKeyStub{},
@@ -111,7 +112,7 @@ func TestBroadcaster_RegisterOnTopics(t *testing.T) {
 	t.Run("create topic errors should error", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
 		expectedErr := errors.New("expected error")
-		args.Messenger = &mock.MessengerStub{
+		args.Messenger = &p2pMocks.MessengerStub{
 			CreateTopicCalled: func(name string, createChannelForTopic bool) error {
 				return expectedErr
 			},
@@ -125,7 +126,7 @@ func TestBroadcaster_RegisterOnTopics(t *testing.T) {
 	t.Run("register errors should error", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
 		expectedErr := errors.New("expected error")
-		args.Messenger = &mock.MessengerStub{
+		args.Messenger = &p2pMocks.MessengerStub{
 			RegisterMessageProcessorCalled: func(topic string, identifier string, processor p2p.MessageProcessor) error {
 				return expectedErr
 			},
@@ -140,7 +141,7 @@ func TestBroadcaster_RegisterOnTopics(t *testing.T) {
 		args := createMockArgsBroadcaster()
 		createTopics := make(map[string]int)
 		register := make(map[string]int)
-		args.Messenger = &mock.MessengerStub{
+		args.Messenger = &p2pMocks.MessengerStub{
 			CreateTopicCalled: func(name string, createChannelForTopic bool) error {
 				createTopics[name]++
 				return nil
@@ -170,7 +171,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		args := createMockArgsBroadcaster()
 
 		b, _ := NewBroadcaster(args)
-		p2pMsg := &mock.P2PMessageMock{
+		p2pMsg := &p2pMocks.P2PMessageMock{
 			DataField: []byte("gibberish"),
 		}
 
@@ -182,7 +183,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		isWhiteListedCalled := false
 		msg, buff := createSignedMessageAndMarshaledBytes()
 
-		args.RoleProvider = &mock.RoleProviderStub{
+		args.RoleProvider = &roleProvidersMock.ElrondRoleProviderStub{
 			IsWhitelistedCalled: func(address ergoCore.AddressHandler) bool {
 				assert.Equal(t, msg.PublicKeyBytes, address.AddressBytes())
 				isWhiteListedCalled = true
@@ -191,7 +192,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		}
 
 		b, _ := NewBroadcaster(args)
-		p2pMsg := &mock.P2PMessageMock{
+		p2pMsg := &p2pMocks.P2PMessageMock{
 			DataField: buff,
 		}
 
@@ -204,7 +205,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		msg1, buff1 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload1"), []byte("pk1"))
 		sendWasCalled := false
 		pid := core.PeerID("pid1")
-		args.Messenger = &mock.MessengerStub{
+		args.Messenger = &p2pMocks.MessengerStub{
 			SendToConnectedPeerCalled: func(topic string, buff []byte, peerID core.PeerID) error {
 				assert.Equal(t, signTopicName, topic)
 				assert.Equal(t, pid, peerID)
@@ -219,7 +220,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		b.addSignedMessage(msg1)
 
 		msg2, buff2 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload2"), []byte("pk2"))
-		p2pMsg := &mock.P2PMessageMock{
+		p2pMsg := &p2pMocks.P2PMessageMock{
 			DataField:  buff2,
 			TopicField: joinTopicName,
 			PeerField:  pid,
@@ -235,10 +236,10 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		args := createMockArgsBroadcaster()
 		msg1, buff1 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload1"), []byte("pk1"))
 		msg2, buff2 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload2"), []byte("pk2"))
-		args.Messenger = &mock.MessengerStub{}
+		args.Messenger = &p2pMocks.MessengerStub{}
 
 		b, _ := NewBroadcaster(args)
-		p2pMsg := &mock.P2PMessageMock{
+		p2pMsg := &p2pMocks.P2PMessageMock{
 			DataField:  buff2,
 			TopicField: signTopicName,
 		}
@@ -246,7 +247,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		err := b.ProcessReceivedMessage(p2pMsg, "")
 		assert.Nil(t, err)
 
-		p2pMsg = &mock.P2PMessageMock{
+		p2pMsg = &p2pMocks.P2PMessageMock{
 			DataField:  buff1,
 			TopicField: signTopicName,
 		}
@@ -270,7 +271,7 @@ func TestBroadcaster_BroadcastJoinTopic(t *testing.T) {
 			return sig, nil
 		},
 	}
-	args.Messenger = &mock.MessengerStub{
+	args.Messenger = &p2pMocks.MessengerStub{
 		BroadcastCalled: func(topic string, buff []byte) {
 			broadcastCalled = true
 			assert.Equal(t, joinTopicName, topic)
@@ -301,7 +302,7 @@ func TestBroadcaster_BroadcastSignature(t *testing.T) {
 			return sig, nil
 		},
 	}
-	args.Messenger = &mock.MessengerStub{
+	args.Messenger = &p2pMocks.MessengerStub{
 		BroadcastCalled: func(topic string, buff []byte) {
 			broadcastCalled = true
 			assert.Equal(t, signTopicName, topic)
@@ -324,7 +325,7 @@ func TestBroadcaster_Close(t *testing.T) {
 
 	closeWasCalled := true
 	args := createMockArgsBroadcaster()
-	args.Messenger = &mock.MessengerStub{
+	args.Messenger = &p2pMocks.MessengerStub{
 		CloseCalled: func() error {
 			closeWasCalled = true
 			return nil

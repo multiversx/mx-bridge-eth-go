@@ -6,7 +6,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/stateMachine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +39,7 @@ var trueHandlerWithContext = func(_ context.Context) bool { return true }
 var falseHandler = func() bool { return false }
 var falseHandlerWithContext = func(_ context.Context) bool { return false }
 
-func setAllDecisionHandlersToTrue(bem *mock.BridgeExecutorMock) {
+func setAllDecisionHandlersToTrue(bem *stateMachine.BridgeExecutorMock) {
 	bem.HasPendingBatchCalled = trueHandler
 	bem.IsLeaderCalled = trueHandler
 	bem.WasProposeTransferExecutedOnDestinationCalled = trueHandlerWithContext
@@ -53,12 +53,12 @@ func setAllDecisionHandlersToTrue(bem *mock.BridgeExecutorMock) {
 func TestGetPendingEndlessLoop(t *testing.T) {
 	t.Parallel()
 
-	bem := mock.NewBridgeExecutorMock()
+	bem := stateMachine.NewBridgeExecutorMock()
 	bem.HasPendingBatchCalled = falseHandler
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
+	smm := stateMachine.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -74,12 +74,12 @@ func TestGetPendingEndlessLoop(t *testing.T) {
 func TestFlowAsLeaderForTwoCompleteFlows(t *testing.T) {
 	t.Parallel()
 
-	bem := mock.NewBridgeExecutorMock()
+	bem := stateMachine.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
+	smm := stateMachine.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -112,13 +112,13 @@ func TestFlowAsLeaderForTwoCompleteFlows(t *testing.T) {
 func TestFlowAsSignerForTwoCompleteFlows(t *testing.T) {
 	t.Parallel()
 
-	bem := mock.NewBridgeExecutorMock()
+	bem := stateMachine.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
 	bem.IsLeaderCalled = falseHandler
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
+	smm := stateMachine.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -151,12 +151,12 @@ func TestFlowAsSignerForTwoCompleteFlows(t *testing.T) {
 func TestFlowAsLeaderForOneCompleteFlowWithStubChecking(t *testing.T) {
 	t.Parallel()
 
-	bem := mock.NewBridgeExecutorMock()
+	bem := stateMachine.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
+	smm := stateMachine.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -200,13 +200,13 @@ func TestFlowAsLeaderForOneCompleteFlowWithStubChecking(t *testing.T) {
 func TestFlowAsSignerForOneCompleteFlowWithStubChecking(t *testing.T) {
 	t.Parallel()
 
-	bem := mock.NewBridgeExecutorMock()
+	bem := stateMachine.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
 	bem.IsLeaderCalled = falseHandler
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
+	smm := stateMachine.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
