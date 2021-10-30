@@ -3,6 +3,7 @@ package relay
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement/factory"
 	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core/polling"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
@@ -43,6 +45,7 @@ import (
 const (
 	p2pPeerNetworkDiscoverer = "optimized"
 	minimumDurationForStep   = time.Second
+	pollingDurationOnError   = time.Second * 5
 )
 
 type Peers []core.PeerID
@@ -95,7 +98,7 @@ type Relay struct {
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
 
-	roleProvider                RoleProvider
+	elrondRoleProvider          ElrondRoleProvider
 	elrondWalletAddressProvider bridge.WalletAddressProvider
 	quorumProvider              bridge.QuorumProvider
 	stepDuration                time.Duration
@@ -103,6 +106,7 @@ type Relay struct {
 	flagsConfig                 ContextFlagsConfig
 	broadcaster                 Broadcaster
 	address                     erdgoCore.AddressHandler
+	pollingHandlers             []io.Closer
 }
 
 func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Relay, error) {
@@ -142,18 +146,11 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	}
 	relay.elrondBridge = elrondBridge
 
-	argsRoleProvider := roleProvider.ArgsElrondRoleProvider{
-		ChainInteractor: elrondBridge,
-		Log:             relay.log,
-		PollingInterval: time.Duration(config.Relayer.RoleProvider.PollingIntervalInMillis) * time.Millisecond,
-	}
-
-	erp, err := roleProvider.NewElrondRoleProvider(argsRoleProvider)
+	err = relay.createRoleProviders(config)
 	if err != nil {
 		return nil, err
 	}
 
-	relay.roleProvider = erp
 	relay.elrondWalletAddressProvider = elrondBridge
 
 	argsGasStation := gasManagement.ArgsGasStation{
@@ -190,7 +187,7 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	argsBroadcaster := relayp2p.ArgsBroadcaster{
 		Messenger:    messenger,
 		Log:          relay.log,
-		RoleProvider: relay.roleProvider,
+		RoleProvider: relay.elrondRoleProvider,
 		KeyGen:       keyGen,
 		SingleSigner: &singlesig.Ed25519Signer{},
 		PrivateKey:   txSignPrivKey,
@@ -210,6 +207,52 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	}
 
 	return relay, nil
+}
+
+func (r *Relay) createRoleProviders(config Config) error {
+	err := r.createElrondRoleProvider(config)
+	if err != nil {
+		return err
+	}
+
+	// TODO(next PR) create here the Ethereum role provider
+
+	return nil
+}
+
+func (r *Relay) createElrondRoleProvider(config Config) error {
+	chainInteractor, ok := r.elrondBridge.(ElrondChainInteractor)
+	if !ok {
+		return errors.New("programming error: r.ElrondBridge is not of type ElrondChainInteractor")
+	}
+
+	argsRoleProvider := roleProvider.ArgsElrondRoleProvider{
+		ElrondChainInteractor: chainInteractor,
+		Log:                   r.log,
+	}
+
+	erp, err := roleProvider.NewElrondRoleProvider(argsRoleProvider)
+	if err != nil {
+		return err
+	}
+	r.elrondRoleProvider = erp
+
+	argsPollingHandler := polling.ArgsPollingHandler{
+		Log:              r.log,
+		Name:             "Elrond role provider",
+		PollingInterval:  time.Duration(config.Relayer.RoleProvider.PollingIntervalInMillis) * time.Millisecond,
+		PollingWhenError: pollingDurationOnError,
+		Executor:         r.elrondRoleProvider,
+	}
+
+	pollingHandler, err := polling.NewPollingHandler(argsPollingHandler)
+	if err != nil {
+		return err
+	}
+
+	r.pollingHandlers = append(r.pollingHandlers, pollingHandler)
+
+	return pollingHandler.StartProcessingLoop()
 }
 
 func (r *Relay) Start(ctx context.Context) error {
@@ -330,9 +373,16 @@ func (r *Relay) checkDurations(
 }
 
 func (r *Relay) Stop() error {
-	if err := r.timer.Close(); err != nil {
+	for _, closer := range r.pollingHandlers {
+		err := closer.Close()
+		r.log.LogIfError(err)
+	}
+
+	err := r.timer.Close()
+	if err != nil {
 		r.log.Error(err.Error())
 	}
+
 	return r.broadcaster.Close()
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // Startable defines an entity that is able to Start or Stop
@@ -30,8 +31,21 @@ type Broadcaster interface {
 	IsInterfaceNil() bool
 }
 
-// RoleProvider defines the operations for a role provider
-type RoleProvider interface {
+// ElrondRoleProvider defines the operations for the Elrond role provider
+type ElrondRoleProvider interface {
+	Execute(ctx context.Context) error
 	IsWhitelisted(address core.AddressHandler) bool
+	IsInterfaceNil() bool
+}
+
+// ElrondChainInteractor defines an Elrond client able to respond to VM queries
+type ElrondChainInteractor interface {
+	ExecuteVmQueryOnBridgeContract(function string, params ...[]byte) ([][]byte, error)
+	IsInterfaceNil() bool
+}
+
+// EthereumChainInteractor defines an Ethereum client able to respond to requests
+type EthereumChainInteractor interface {
+	GetRelayers(ctx context.Context) ([]common.Address, error)
 	IsInterfaceNil() bool
 }

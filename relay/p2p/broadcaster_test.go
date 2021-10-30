@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p/mock"
+	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testscommon/crypto"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
@@ -21,9 +22,9 @@ func createMockArgsBroadcaster() ArgsBroadcaster {
 		Messenger:    &mock.MessengerStub{},
 		Log:          logger.GetOrCreate("test"),
 		RoleProvider: &mock.RoleProviderStub{},
-		KeyGen:       &mock.KeyGenStub{},
-		SingleSigner: &mock.SingleSignerStub{},
-		PrivateKey:   &mock.PrivateKeyStub{},
+		KeyGen:       &cryptoMocks.KeyGenStub{},
+		SingleSigner: &cryptoMocks.SingleSignerStub{},
+		PrivateKey:   &cryptoMocks.PrivateKeyStub{},
 	}
 }
 
@@ -81,9 +82,9 @@ func TestNewBroadcaster(t *testing.T) {
 	t.Run("public key conversion fails", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
 		expectedErr := errors.New("expected error")
-		args.PrivateKey = &mock.PrivateKeyStub{
+		args.PrivateKey = &cryptoMocks.PrivateKeyStub{
 			GeneratePublicCalled: func() crypto.PublicKey {
-				return &mock.PublicKeyStub{
+				return &cryptoMocks.PublicKeyStub{
 					ToByteArrayCalled: func() ([]byte, error) {
 						return nil, expectedErr
 					},
@@ -264,7 +265,7 @@ func TestBroadcaster_BroadcastJoinTopic(t *testing.T) {
 	marshalizer := &marshal.JsonMarshalizer{}
 	sig := []byte("signature")
 	args := createMockArgsBroadcaster()
-	args.SingleSigner = &mock.SingleSignerStub{
+	args.SingleSigner = &cryptoMocks.SingleSignerStub{
 		SignCalled: func(private crypto.PrivateKey, msg []byte) ([]byte, error) {
 			return sig, nil
 		},
@@ -295,7 +296,7 @@ func TestBroadcaster_BroadcastSignature(t *testing.T) {
 	sig := []byte("signature")
 	externalSignature := []byte("external signature")
 	args := createMockArgsBroadcaster()
-	args.SingleSigner = &mock.SingleSignerStub{
+	args.SingleSigner = &cryptoMocks.SingleSignerStub{
 		SignCalled: func(private crypto.PrivateKey, msg []byte) ([]byte, error) {
 			return sig, nil
 		},
