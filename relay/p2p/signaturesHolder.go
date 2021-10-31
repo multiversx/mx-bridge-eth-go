@@ -9,22 +9,24 @@ import (
 type signaturesHolder struct {
 	mut            sync.RWMutex
 	signedMessages map[string]*SignedMessage
+	ethMessages    []*EthereumSignature
 	nonces         map[string]uint64
 }
 
 func newSignatureHolder() *signaturesHolder {
 	return &signaturesHolder{
 		signedMessages: make(map[string]*SignedMessage),
+		ethMessages:    make([]*EthereumSignature, 0),
 		nonces:         make(map[string]uint64),
 	}
 }
 
-func (sh *signaturesHolder) addSignedMessage(msg *SignedMessage) {
+func (sh *signaturesHolder) addSignedMessage(msg *SignedMessage, ethSignatureMsg *EthereumSignature) {
 	sh.mut.Lock()
 	defer sh.mut.Unlock()
 
 	oldNonce := sh.nonces[string(msg.PublicKeyBytes)]
-	if oldNonce > msg.Nonce {
+	if oldNonce >= msg.Nonce {
 		// only accept newer signatures in order to prevent replay attacks from a malicious relayer that stored old
 		// signature messages
 		return
@@ -32,6 +34,7 @@ func (sh *signaturesHolder) addSignedMessage(msg *SignedMessage) {
 
 	sh.nonces[string(msg.PublicKeyBytes)] = msg.Nonce
 	sh.signedMessages[string(msg.PublicKeyBytes)] = msg
+	sh.ethMessages = append(sh.ethMessages, ethSignatureMsg)
 }
 
 func (sh *signaturesHolder) addJoinedMessage(msg *SignedMessage) {
@@ -54,19 +57,24 @@ func (sh *signaturesHolder) ClearSignatures() {
 	defer sh.mut.Unlock()
 
 	sh.signedMessages = make(map[string]*SignedMessage)
+	sh.ethMessages = make([]*EthereumSignature, 0)
 }
 
 // Signatures will provide all gathered signatures
-func (sh *signaturesHolder) Signatures() [][]byte {
+func (sh *signaturesHolder) Signatures(msgHash []byte) [][]byte {
 	sh.mut.RLock()
 	defer sh.mut.RUnlock()
 
-	result := make([][]byte, 0, len(sh.signedMessages))
+	uniqueEthSigs := make(map[string]struct{})
+	for _, ethMsg := range sh.ethMessages {
+		if bytes.Equal(ethMsg.MessageHash, msgHash) {
+			uniqueEthSigs[string(ethMsg.Signature)] = struct{}{}
+		}
+	}
 
-	// the ethereum signatures are stored in the Payload field. The Signature field is the ed25519 sig applied
-	// over the Payload and Nonce
-	for _, msg := range sh.signedMessages {
-		result = append(result, msg.Payload)
+	result := make([][]byte, 0, len(sh.signedMessages))
+	for sig := range uniqueEthSigs {
+		result = append(result, []byte(sig))
 	}
 
 	return result
@@ -78,8 +86,8 @@ func (sh *signaturesHolder) storedSignedMessages() []*SignedMessage {
 
 	result := make([]*SignedMessage, 0, len(sh.signedMessages))
 
-	// the ethereum signatures are stored in the Payload field. The Signature field is the ed25519 sig applied
-	// over the Payload and Nonce
+	// the ethereum signatures are stored in the Payload field, in a serialized form of an EthereumSignature message.
+	// The Signature field is the ed25519 sig applied over the Payload and Nonce
 	for _, msg := range sh.signedMessages {
 		result = append(result, msg)
 	}

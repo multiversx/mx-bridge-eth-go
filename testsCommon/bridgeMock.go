@@ -172,7 +172,7 @@ func (bm *BridgeMock) GetExecuted() (bridge.ActionId, bridge.BatchId) {
 }
 
 // SignersCount -
-func (bm *BridgeMock) SignersCount(_ context.Context, id bridge.ActionId) uint {
+func (bm *BridgeMock) SignersCount(_ context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
 	bm.RLock()
 	defer bm.RUnlock()
 

@@ -38,6 +38,7 @@ type BridgeContract interface {
 	WasBatchFinished(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	Quorum(opts *bind.CallOpts) (*big.Int, error)
 	GetStatusesAfterExecution(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error)
+	GetRelayers(opts *bind.CallOpts) ([]common.Address, error)
 }
 
 // BlockchainClient defines the RPC operations on the Ethereum node
@@ -181,6 +182,11 @@ func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *
 	return bridge.NewActionId(SetStatusAction)
 }
 
+// GetRelayers returns the current registered relayers from the Ethereum SC
+func (c *Client) GetRelayers(ctx context.Context) ([]common.Address, error) {
+	return c.bridgeContract.GetRelayers(&bind.CallOpts{Context: ctx})
+}
+
 func (c *Client) WasExecuted(ctx context.Context, actionId bridge.ActionId, batchId bridge.BatchId) bool {
 	var wasExecuted bool
 	var err error = nil
@@ -215,11 +221,7 @@ func (c *Client) Sign(_ context.Context, action bridge.ActionId, batch *bridge.B
 	case TransferAction:
 		c.broadcastSignatureForTransfer(batch)
 	case SetStatusAction:
-		var proposedStatuses []uint8
-		for _, tx := range batch.Transactions {
-			proposedStatuses = append(proposedStatuses, tx.Status)
-		}
-		c.broadcastSignatureForFinishCurrentPendingTransaction(batch.Id, proposedStatuses)
+		c.broadcastSignatureForFinish(batch)
 	}
 
 	return "", nil
@@ -257,7 +259,23 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 
 	var transaction *types.Transaction
 
-	signatures := c.broadcaster.Signatures()
+	hash, err := c.generateHash(batch, action)
+	if err != nil {
+		return "", fmt.Errorf("ETH: %w", err)
+	}
+
+	signatures := c.broadcaster.Signatures(hash.Bytes())
+	// TODO optimize this: no need to re-fetch the quorum, can be provided by the bridge executor
+	quorum, err := c.GetQuorum(ctx)
+	if err != nil {
+		return "", fmt.Errorf("%w while getting the quorum in client.Execute", err)
+	}
+	if len(signatures) > int(quorum) {
+		c.log.Debug("reducing the size of the signatures set",
+			"quorum", quorum, "total signatures", len(signatures))
+		signatures = signatures[:quorum]
+	}
+
 	switch int64FromActionId(action) {
 	case TransferAction:
 		transaction, err = c.transfer(auth, signatures, batch)
@@ -269,10 +287,10 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 		return "", fmt.Errorf("ETH: %w", err)
 	}
 
-	hash := transaction.Hash().String()
-	c.log.Info(fmt.Sprintf("ETH: Executed batchId %v with hash %s", batchId, hash))
+	txHash := transaction.Hash().String()
+	c.log.Info(fmt.Sprintf("ETH: Executed batchId %v with hash %s", batchId, txHash))
 
-	return hash, err
+	return txHash, err
 }
 
 func (c *Client) getNonce(ctx context.Context, fromAddress common.Address) (int64, error) {
@@ -310,8 +328,15 @@ func (c *Client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bri
 	return c.bridgeContract.FinishCurrentPendingBatch(auth, batch.Id, proposedStatuses, signatures)
 }
 
-func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
-	return uint(len(c.broadcaster.Signatures()))
+func (c *Client) SignersCount(_ context.Context, batch *bridge.Batch, actionId bridge.ActionId) uint {
+	hash, err := c.generateHash(batch, actionId)
+	if err != nil {
+		c.log.Error(err.Error())
+
+		return 0
+	}
+
+	return uint(len(c.broadcaster.Signatures(hash.Bytes())))
 }
 
 // QuorumProvider implementation
@@ -342,26 +367,19 @@ func (c *Client) signHash(hash common.Hash) ([]byte, error) {
 }
 
 func (c *Client) broadcastSignatureForTransfer(batch *bridge.Batch) {
-	arguments, err := transferArgs()
+	hash, err := c.generateHashForTransfer(batch)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	pack, err := arguments.Pack(recipientsAddresses(batch.Transactions), c.tokenAddresses(batch.Transactions), amounts(batch.Transactions), new(big.Int).Set(batch.Id), "ExecuteBatchedTransfer")
-	if err != nil {
-		c.log.Error(err.Error())
-		return
-	}
-
-	hash := crypto.Keccak256Hash(pack)
 	signature, err := c.signHash(hash)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	c.broadcaster.SendSignature(signature)
+	c.broadcaster.SendSignature(signature, hash.Bytes())
 }
 
 func recipientsAddresses(transactions []*bridge.DepositTransaction) []common.Address {
@@ -395,31 +413,73 @@ func amounts(transactions []*bridge.DepositTransaction) []*big.Int {
 	return result
 }
 
-func (c *Client) broadcastSignatureForFinishCurrentPendingTransaction(batchId bridge.BatchId, statuses []uint8) {
+func (c *Client) generateHash(batch *bridge.Batch, actionId bridge.ActionId) (common.Hash, error) {
+	switch int64FromActionId(actionId) {
+	case TransferAction:
+		return c.generateHashForTransfer(batch)
+	case SetStatusAction:
+		return c.generateHashForFinish(batch)
+	}
+
+	return common.Hash{}, fmt.Errorf("Client.generateHash not implemented for action ID %v", actionId)
+}
+
+func (c *Client) generateHashForTransfer(batch *bridge.Batch) (common.Hash, error) {
+	arguments, err := transferArgs()
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	pack, err := arguments.Pack(recipientsAddresses(batch.Transactions), c.tokenAddresses(batch.Transactions), amounts(batch.Transactions), new(big.Int).Set(batch.Id), "ExecuteBatchedTransfer")
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	return crypto.Keccak256Hash(pack), nil
+}
+
+func (c *Client) generateHashForFinish(batch *bridge.Batch) (common.Hash, error) {
+	var statuses []uint8
+	for _, tx := range batch.Transactions {
+		statuses = append(statuses, tx.Status)
+	}
+
 	arguments, err := finishCurrentPendingTransactionArgs()
 	if err != nil {
-		c.log.Error(err.Error())
-		return
+		return common.Hash{}, err
 	}
 
-	pack, err := arguments.Pack(new(big.Int).Set(batchId), statuses, "CurrentPendingBatch")
+	pack, err := arguments.Pack(new(big.Int).Set(batch.Id), statuses, "CurrentPendingBatch")
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	return crypto.Keccak256Hash(pack), nil
+}
+
+func (c *Client) broadcastSignatureForFinish(batch *bridge.Batch) {
+	hash, err := c.generateHashForFinish(batch)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	hash := crypto.Keccak256Hash(pack)
 	signature, err := c.signHash(hash)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	c.broadcaster.SendSignature(signature)
+	c.broadcaster.SendSignature(signature, hash.Bytes())
 }
 
 func (c *Client) getErc20AddressFromTokenId(tokenId string) string {
 	return c.mapper.GetErc20Address(tokenId[2:])
+}
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (c *Client) IsInterfaceNil() bool {
+	return c == nil
 }
 
 // helpers

@@ -20,8 +20,14 @@ type NetMessenger interface {
 	IsInterfaceNil() bool
 }
 
-// RoleProvider defines the operations for a role provider
-type RoleProvider interface {
+// ElrondRoleProvider defines the operations for an Elrond role provider
+type ElrondRoleProvider interface {
 	IsWhitelisted(address erdgoCore.AddressHandler) bool
+	IsInterfaceNil() bool
+}
+
+// SignatureProcessor defines the operations needed to process signatures
+type SignatureProcessor interface {
+	VerifyEthSignature(signature []byte, messageHash []byte) error
 	IsInterfaceNil() bool
 }

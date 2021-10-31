@@ -4,8 +4,14 @@ package p2p
 
 // SignedMessage is the message used when communicating with other relayers
 type SignedMessage struct {
-	Payload        []byte
-	PublicKeyBytes []byte
-	Signature      []byte
-	Nonce          uint64
+	Payload        []byte `json:"payload"`
+	PublicKeyBytes []byte `json:"pk"`
+	Signature      []byte `json:"sig"`
+	Nonce          uint64 `json:"nonce"`
+}
+
+// EthereumSignature is the message used when the relayers will send an ethereum signature
+type EthereumSignature struct {
+	Signature   []byte `json:"sig"`
+	MessageHash []byte `json:"msg"`
 }

@@ -24,7 +24,6 @@ import (
 	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/roleProvider"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
-	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
@@ -47,15 +46,6 @@ const (
 	minimumDurationForStep   = time.Second
 	pollingDurationOnError   = time.Second * 5
 )
-
-type Peers []core.PeerID
-
-type Signatures map[core.PeerID][]byte
-
-type Topology struct {
-	Peers      Peers
-	Signatures Signatures
-}
 
 type Timer interface {
 	After(d time.Duration) <-chan time.Time
@@ -98,14 +88,15 @@ type Relay struct {
 	ethBridge    bridge.Bridge
 	elrondBridge bridge.Bridge
 
-	elrondRoleProvider ElrondRoleProvider
-	quorumProvider     bridge.QuorumProvider
-	stepDuration       time.Duration
-	stateMachineConfig map[string]ConfigStateMachine
-	flagsConfig        ContextFlagsConfig
-	broadcaster        Broadcaster
-	address            erdgoCore.AddressHandler
-	pollingHandlers    []io.Closer
+	elrondRoleProvider   ElrondRoleProvider
+	ethereumRoleProvider EthereumRoleProvider
+	quorumProvider       bridge.QuorumProvider
+	stepDuration         time.Duration
+	stateMachineConfig   map[string]ConfigStateMachine
+	flagsConfig          ContextFlagsConfig
+	broadcaster          Broadcaster
+	address              erdgoCore.AddressHandler
+	pollingHandlers      []io.Closer
 }
 
 func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Relay, error) {
@@ -145,11 +136,6 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	}
 	relay.elrondBridge = elrondBridge
 
-	err = relay.createRoleProviders(config)
-	if err != nil {
-		return nil, err
-	}
-
 	argsGasStation := gasManagement.ArgsGasStation{
 		RequestURL:             config.Eth.GasStation.URL,
 		RequestPollingInterval: time.Duration(config.Eth.GasStation.PollingIntervalInSeconds) * time.Second,
@@ -170,6 +156,11 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	relay.ethBridge = ethBridge
 	relay.quorumProvider = ethBridge
 
+	err = relay.createRoleProviders(config)
+	if err != nil {
+		return nil, err
+	}
+
 	marshalizer, err := factoryMarshalizer.NewMarshalizer(config.Relayer.Marshalizer.Type)
 	if err != nil {
 		return nil, err
@@ -182,12 +173,13 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	relay.messenger = messenger
 
 	argsBroadcaster := relayp2p.ArgsBroadcaster{
-		Messenger:    messenger,
-		Log:          relay.log,
-		RoleProvider: relay.elrondRoleProvider,
-		KeyGen:       keyGen,
-		SingleSigner: &singlesig.Ed25519Signer{},
-		PrivateKey:   txSignPrivKey,
+		Messenger:          messenger,
+		Log:                relay.log,
+		ElrondRoleProvider: relay.elrondRoleProvider,
+		KeyGen:             keyGen,
+		SingleSigner:       &singlesig.Ed25519Signer{},
+		PrivateKey:         txSignPrivKey,
+		SignatureProcessor: relay.ethereumRoleProvider,
 	}
 	relay.broadcaster, err = relayp2p.NewBroadcaster(argsBroadcaster)
 	if err != nil {
@@ -212,7 +204,10 @@ func (r *Relay) createRoleProviders(config Config) error {
 		return err
 	}
 
-	// TODO(next PR) create here the Ethereum role provider
+	err = r.createEthereumRoleProvider(config)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -220,7 +215,7 @@ func (r *Relay) createRoleProviders(config Config) error {
 func (r *Relay) createElrondRoleProvider(config Config) error {
 	chainInteractor, ok := r.elrondBridge.(ElrondChainInteractor)
 	if !ok {
-		return errors.New("programming error: r.ElrondBridge is not of type ElrondChainInteractor")
+		return errors.New("programming error: r.elrondBridge is not of type ElrondChainInteractor")
 	}
 
 	argsRoleProvider := roleProvider.ArgsElrondRoleProvider{
@@ -240,6 +235,41 @@ func (r *Relay) createElrondRoleProvider(config Config) error {
 		PollingInterval:  time.Duration(config.Relayer.RoleProvider.PollingIntervalInMillis) * time.Millisecond,
 		PollingWhenError: pollingDurationOnError,
 		Executor:         r.elrondRoleProvider,
+	}
+
+	pollingHandler, err := polling.NewPollingHandler(argsPollingHandler)
+	if err != nil {
+		return err
+	}
+
+	r.pollingHandlers = append(r.pollingHandlers, pollingHandler)
+
+	return pollingHandler.StartProcessingLoop()
+}
+
+func (r *Relay) createEthereumRoleProvider(config Config) error {
+	chainInteractor, ok := r.ethBridge.(EthereumChainInteractor)
+	if !ok {
+		return errors.New("programming error: r.ethBridge is not of type EthereumChainInteractor")
+	}
+
+	argsRoleProvider := roleProvider.ArgsEthereumRoleProvider{
+		EthereumChainInteractor: chainInteractor,
+		Log:                     r.log,
+	}
+
+	erp, err := roleProvider.NewEthereumRoleProvider(argsRoleProvider)
+	if err != nil {
+		return err
+	}
+	r.ethereumRoleProvider = erp
+
+	argsPollingHandler := polling.ArgsPollingHandler{
+		Log:              r.log,
+		Name:             "Ethereum role provider",
+		PollingInterval:  time.Duration(config.Relayer.RoleProvider.PollingIntervalInMillis) * time.Millisecond,
+		PollingWhenError: pollingDurationOnError,
+		Executor:         r.ethereumRoleProvider,
 	}
 
 	pollingHandler, err := polling.NewPollingHandler(argsPollingHandler)
@@ -404,13 +434,13 @@ func (r *Relay) Clean() {
 }
 
 // Signatures returns any stored signatures
-func (r *Relay) Signatures() [][]byte {
-	return r.broadcaster.Signatures()
+func (r *Relay) Signatures(messageHash []byte) [][]byte {
+	return r.broadcaster.Signatures(messageHash)
 }
 
 // SendSignature will broadcast the signature to other peers
-func (r *Relay) SendSignature(sig []byte) {
-	r.broadcaster.BroadcastSignature(sig)
+func (r *Relay) SendSignature(sig []byte, messageHash []byte) {
+	r.broadcaster.BroadcastSignature(sig, messageHash)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

@@ -4,12 +4,12 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/crypto"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	roleProvidersMock "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/p2p"
@@ -20,12 +20,13 @@ import (
 
 func createMockArgsBroadcaster() ArgsBroadcaster {
 	return ArgsBroadcaster{
-		Messenger:    &p2pMocks.MessengerStub{},
-		Log:          logger.GetOrCreate("test"),
-		RoleProvider: &roleProvidersMock.ElrondRoleProviderStub{},
-		KeyGen:       &cryptoMocks.KeyGenStub{},
-		SingleSigner: &cryptoMocks.SingleSignerStub{},
-		PrivateKey:   &cryptoMocks.PrivateKeyStub{},
+		Messenger:          &p2pMocks.MessengerStub{},
+		Log:                logger.GetOrCreate("test"),
+		ElrondRoleProvider: &roleProvidersMock.ElrondRoleProviderStub{},
+		KeyGen:             &cryptoMocks.KeyGenStub{},
+		SingleSigner:       &cryptoMocks.SingleSignerStub{},
+		PrivateKey:         &cryptoMocks.PrivateKeyStub{},
+		SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 	}
 }
 
@@ -64,13 +65,13 @@ func TestNewBroadcaster(t *testing.T) {
 		assert.True(t, check.IfNil(b))
 		assert.Equal(t, ErrNilSingleSigner, err)
 	})
-	t.Run("nil role provider should error", func(t *testing.T) {
+	t.Run("nil Elrond role provider should error", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
-		args.RoleProvider = nil
+		args.ElrondRoleProvider = nil
 
 		b, err := NewBroadcaster(args)
 		assert.True(t, check.IfNil(b))
-		assert.Equal(t, ErrNilRoleProvider, err)
+		assert.Equal(t, ErrNilElrondRoleProvider, err)
 	})
 	t.Run("nil messenger should error", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
@@ -79,6 +80,14 @@ func TestNewBroadcaster(t *testing.T) {
 		b, err := NewBroadcaster(args)
 		assert.True(t, check.IfNil(b))
 		assert.Equal(t, ErrNilMessenger, err)
+	})
+	t.Run("nil signature processor should error", func(t *testing.T) {
+		args := createMockArgsBroadcaster()
+		args.SignatureProcessor = nil
+
+		b, err := NewBroadcaster(args)
+		assert.True(t, check.IfNil(b))
+		assert.Equal(t, ErrNilSignatureProcessor, err)
 	})
 	t.Run("public key conversion fails", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
@@ -183,7 +192,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		isWhiteListedCalled := false
 		msg, buff := createSignedMessageAndMarshaledBytes()
 
-		args.RoleProvider = &roleProvidersMock.ElrondRoleProviderStub{
+		args.ElrondRoleProvider = &roleProvidersMock.ElrondRoleProviderStub{
 			IsWhitelistedCalled: func(address ergoCore.AddressHandler) bool {
 				assert.Equal(t, msg.PublicKeyBytes, address.AddressBytes())
 				isWhiteListedCalled = true
@@ -202,7 +211,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 	})
 	t.Run("joined topic should save message and send stored messages", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
-		msg1, buff1 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload1"), []byte("pk1"))
+		msg1, buff1 := createSignedMessageForEthSig([]byte("eth sig1"), []byte("eth msg1"), []byte("erd pk1"), []byte("erd sig"))
 		sendWasCalled := false
 		pid := core.PeerID("pid1")
 		args.Messenger = &p2pMocks.MessengerStub{
@@ -217,10 +226,15 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		}
 
 		b, _ := NewBroadcaster(args)
-		b.addSignedMessage(msg1)
-
-		msg2, buff2 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload2"), []byte("pk2"))
 		p2pMsg := &p2pMocks.P2PMessageMock{
+			DataField:  buff1,
+			TopicField: signTopicName,
+			PeerField:  pid,
+		}
+		_ = b.ProcessReceivedMessage(p2pMsg, "")
+
+		msg2, buff2 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload2"), []byte("pk2"), []byte("sig"))
+		p2pMsg = &p2pMocks.P2PMessageMock{
 			DataField:  buff2,
 			TopicField: joinTopicName,
 			PeerField:  pid,
@@ -232,10 +246,40 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 
 		assert.Equal(t, [][]byte{msg1.PublicKeyBytes, msg2.PublicKeyBytes}, b.SortedPublicKeys())
 	})
+	t.Run("not a valid signature as payload should not add the message", func(t *testing.T) {
+		args := createMockArgsBroadcaster()
+		_, buff1 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload1"), []byte("pk1"), []byte("sig"))
+		_, buff2 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload2"), []byte("pk2"), []byte("sig"))
+		args.Messenger = &p2pMocks.MessengerStub{}
+		args.SignatureProcessor = &testsCommon.SignatureProcessorStub{
+			VerifyEthSignatureCalled: func(signature []byte, messageHash []byte) error {
+				return errors.New("invalid signature as payload")
+			},
+		}
+
+		b, _ := NewBroadcaster(args)
+		p2pMsg := &p2pMocks.P2PMessageMock{
+			DataField:  buff2,
+			TopicField: signTopicName,
+		}
+
+		err := b.ProcessReceivedMessage(p2pMsg, "")
+		assert.Nil(t, err)
+
+		p2pMsg = &p2pMocks.P2PMessageMock{
+			DataField:  buff1,
+			TopicField: signTopicName,
+		}
+
+		err = b.ProcessReceivedMessage(p2pMsg, "")
+		assert.Nil(t, err)
+
+		assert.Equal(t, 0, len(b.SortedPublicKeys()))
+	})
 	t.Run("sign should store message", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
-		msg1, buff1 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload1"), []byte("pk1"))
-		msg2, buff2 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload2"), []byte("pk2"))
+		msg1, buff1 := createSignedMessageForEthSig([]byte("eth sig 1"), []byte("eth msg"), []byte("pk1"), []byte("sig"))
+		msg2, buff2 := createSignedMessageForEthSig([]byte("eth sig 2"), []byte("eth msg"), []byte("pk2"), []byte("sig"))
 		args.Messenger = &p2pMocks.MessengerStub{}
 
 		b, _ := NewBroadcaster(args)
@@ -263,7 +307,6 @@ func TestBroadcaster_BroadcastJoinTopic(t *testing.T) {
 	t.Parallel()
 
 	broadcastCalled := false
-	marshalizer := &marshal.JsonMarshalizer{}
 	sig := []byte("signature")
 	args := createMockArgsBroadcaster()
 	args.SingleSigner = &cryptoMocks.SingleSignerStub{
@@ -293,9 +336,9 @@ func TestBroadcaster_BroadcastSignature(t *testing.T) {
 	t.Parallel()
 
 	broadcastCalled := false
-	marshalizer := &marshal.JsonMarshalizer{}
 	sig := []byte("signature")
-	externalSignature := []byte("external signature")
+	ethSig := []byte("eth signature")
+	ethMsg := []byte("eth message")
 	args := createMockArgsBroadcaster()
 	args.SingleSigner = &cryptoMocks.SingleSignerStub{
 		SignCalled: func(private crypto.PrivateKey, msg []byte) ([]byte, error) {
@@ -311,12 +354,18 @@ func TestBroadcaster_BroadcastSignature(t *testing.T) {
 			err := marshalizer.Unmarshal(msg, buff)
 			require.Nil(t, err)
 			assert.Equal(t, sig, msg.Signature)
-			assert.Equal(t, externalSignature, msg.Payload)
+
+			ethMsgInstance := &EthereumSignature{}
+			err = marshalizer.Unmarshal(ethMsgInstance, msg.Payload)
+			require.Nil(t, err)
+
+			assert.Equal(t, ethSig, ethMsgInstance.Signature)
+			assert.Equal(t, ethMsg, ethMsgInstance.MessageHash)
 		},
 	}
 	b, _ := NewBroadcaster(args)
 
-	b.BroadcastSignature(externalSignature)
+	b.BroadcastSignature(ethSig, ethMsg)
 	assert.True(t, broadcastCalled)
 }
 

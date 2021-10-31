@@ -293,7 +293,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 			},
 		}
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
+		db.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
 			return 2
 		}
 		args.DestinationBridge = db
@@ -312,7 +312,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		}
 
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
+		db.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
 			return 3
 		}
 		args.DestinationBridge = db
@@ -331,7 +331,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		}
 
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
+		db.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
 			return 4
 		}
 		args.DestinationBridge = db
@@ -381,7 +381,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
+		sb.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
 			return 2
 		}
 		args.SourceBridge = sb
@@ -400,7 +400,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
+		sb.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
 			return 3
 		}
 		args.SourceBridge = sb
@@ -419,7 +419,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(ctx context.Context, id bridge.ActionId) uint {
+		sb.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
 			return 4
 		}
 		args.SourceBridge = sb

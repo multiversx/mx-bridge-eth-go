@@ -23,20 +23,22 @@ const (
 
 // ArgsBroadcaster is the DTO used in the broadcaster constructor
 type ArgsBroadcaster struct {
-	Messenger    NetMessenger
-	Log          logger.Logger
-	RoleProvider RoleProvider
-	KeyGen       crypto.KeyGenerator
-	SingleSigner crypto.SingleSigner
-	PrivateKey   crypto.PrivateKey
+	Messenger          NetMessenger
+	Log                logger.Logger
+	ElrondRoleProvider ElrondRoleProvider
+	SignatureProcessor SignatureProcessor
+	KeyGen             crypto.KeyGenerator
+	SingleSigner       crypto.SingleSigner
+	PrivateKey         crypto.PrivateKey
 }
 
 type broadcaster struct {
 	*relayerMessageHandler
 	*signaturesHolder
-	messenger    NetMessenger
-	log          logger.Logger
-	roleProvider RoleProvider
+	messenger          NetMessenger
+	log                logger.Logger
+	elrondRoleProvider ElrondRoleProvider
+	signatureProcessor SignatureProcessor
 }
 
 // NewBroadcaster will create a new broadcaster able to pass messages and signatures
@@ -47,10 +49,11 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 	}
 
 	b := &broadcaster{
-		messenger:        args.Messenger,
-		signaturesHolder: newSignatureHolder(),
-		log:              args.Log,
-		roleProvider:     args.RoleProvider,
+		messenger:          args.Messenger,
+		signaturesHolder:   newSignatureHolder(),
+		log:                args.Log,
+		elrondRoleProvider: args.ElrondRoleProvider,
+		signatureProcessor: args.SignatureProcessor,
 		relayerMessageHandler: &relayerMessageHandler{
 			marshalizer:  &marshal.JsonMarshalizer{},
 			keyGen:       args.KeyGen,
@@ -82,11 +85,14 @@ func checkArgs(args ArgsBroadcaster) error {
 	if check.IfNil(args.SingleSigner) {
 		return ErrNilSingleSigner
 	}
-	if check.IfNil(args.RoleProvider) {
-		return ErrNilRoleProvider
+	if check.IfNil(args.ElrondRoleProvider) {
+		return ErrNilElrondRoleProvider
 	}
 	if check.IfNil(args.Messenger) {
 		return ErrNilMessenger
+	}
+	if check.IfNil(args.SignatureProcessor) {
+		return ErrNilSignatureProcessor
 	}
 
 	return nil
@@ -122,7 +128,7 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ core.Peer
 
 	addr := data.NewAddressFromBytes(msg.PublicKeyBytes)
 	hexPkBytes := hex.EncodeToString(msg.PublicKeyBytes)
-	if !b.roleProvider.IsWhitelisted(addr) {
+	if !b.elrondRoleProvider.IsWhitelisted(addr) {
 		return fmt.Errorf("%w for peer: %s", ErrPeerNotWhitelisted, hexPkBytes)
 	}
 
@@ -131,16 +137,45 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ core.Peer
 
 	switch message.Topic() {
 	case joinTopicName:
-		b.addJoinedMessage(msg)
-		err = b.broadcastCurrentSignatures(message.Peer())
-		if err != nil {
-			b.log.Error(err.Error())
-		}
+		b.processJoinMessage(msg, message)
 	case signTopicName:
-		b.addSignedMessage(msg)
+		b.processSignMessage(msg)
 	}
 
 	return nil
+}
+
+func (b *broadcaster) processJoinMessage(msg *SignedMessage, message p2p.MessageP2P) {
+	b.addJoinedMessage(msg)
+	err := b.broadcastCurrentSignatures(message.Peer())
+	if err != nil {
+		b.log.Error(err.Error())
+	}
+}
+
+func (b *broadcaster) getEthereumSignature(msg *SignedMessage) (*EthereumSignature, error) {
+	ethSignature := &EthereumSignature{}
+	err := b.marshalizer.Unmarshal(ethSignature, msg.Payload)
+	if err != nil {
+		return nil, err
+	}
+
+	err = b.signatureProcessor.VerifyEthSignature(ethSignature.Signature, ethSignature.MessageHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return ethSignature, nil
+}
+
+func (b *broadcaster) processSignMessage(msg *SignedMessage) {
+	ethSignature, err := b.getEthereumSignature(msg)
+	if err != nil {
+		b.log.Debug("received message does not contain a valid signature", "error", err)
+		return
+	}
+
+	b.addSignedMessage(msg, ethSignature)
 }
 
 func (b *broadcaster) broadcastCurrentSignatures(peerId core.PeerID) error {
@@ -167,8 +202,18 @@ func (b *broadcaster) sendSignedMessageToPeer(msg *SignedMessage, peerId core.Pe
 
 // BroadcastSignature will send the provided signature as payload in a wrapped signed message to the other peers.
 // It will broadcast the message to all available peers
-func (b *broadcaster) BroadcastSignature(signature []byte) {
-	err := b.broadcastMessage(signature, signTopicName)
+func (b *broadcaster) BroadcastSignature(signature []byte, messageHash []byte) {
+	ethSig := &EthereumSignature{
+		Signature:   signature,
+		MessageHash: messageHash,
+	}
+
+	payload, err := b.marshalizer.Marshal(ethSig)
+	if err != nil {
+		b.log.Error("error creating signature payload", "error", err)
+	}
+
+	err = b.broadcastMessage(payload, signTopicName)
 	if err != nil {
 		b.log.Error("error sending signature", "error", err)
 	}

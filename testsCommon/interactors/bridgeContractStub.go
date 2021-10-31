@@ -21,6 +21,7 @@ type BridgeContractStub struct {
 	WasBatchFinishedCalled          func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	QuorumCalled                    func(opts *bind.CallOpts) (*big.Int, error)
 	GetStatusesAfterExecutionCalled func(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error)
+	GetRelayersCalled               func(opts *bind.CallOpts) ([]common.Address, error)
 }
 
 // GetNextPendingBatch -
@@ -84,4 +85,13 @@ func (bcs *BridgeContractStub) GetStatusesAfterExecution(opts *bind.CallOpts, ba
 	}
 
 	return make([]byte, 0), nil
+}
+
+// GetRelayers -
+func (bcs *BridgeContractStub) GetRelayers(opts *bind.CallOpts) ([]common.Address, error) {
+	if bcs.GetRelayersCalled != nil {
+		return bcs.GetRelayersCalled(opts)
+	}
+
+	return make([]common.Address, 0), nil
 }

@@ -411,7 +411,7 @@ func TestSignersCount(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	c, _ := buildTestClient(proxy)
 
-	got := c.SignersCount(context.TODO(), bridge.NewActionId(0))
+	got := c.SignersCount(context.TODO(), nil, bridge.NewActionId(0))
 
 	assert.Equal(t, uint(42), got)
 }

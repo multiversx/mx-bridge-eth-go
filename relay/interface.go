@@ -21,10 +21,10 @@ type TopologyProvider interface {
 
 // Broadcaster defines a component able to communicate with other such instances and manage signatures and other state related data
 type Broadcaster interface {
-	BroadcastSignature(signature []byte)
+	BroadcastSignature(signature []byte, messageHash []byte)
 	BroadcastJoinTopic()
 	ClearSignatures()
-	Signatures() [][]byte
+	Signatures(messageHash []byte) [][]byte
 	SortedPublicKeys() [][]byte
 	RegisterOnTopics() error
 	Close() error
@@ -35,6 +35,13 @@ type Broadcaster interface {
 type ElrondRoleProvider interface {
 	Execute(ctx context.Context) error
 	IsWhitelisted(address core.AddressHandler) bool
+	IsInterfaceNil() bool
+}
+
+// EthereumRoleProvider defines the operations for the Ethereum role provider
+type EthereumRoleProvider interface {
+	Execute(ctx context.Context) error
+	VerifyEthSignature(signature []byte, messageHash []byte) error
 	IsInterfaceNil() bool
 }
 

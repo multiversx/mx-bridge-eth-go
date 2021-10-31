@@ -173,7 +173,10 @@ func TestSignersCount(t *testing.T) {
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
-	got := client.SignersCount(context.TODO(), bridge.NewActionId(0))
+	batch := &bridge.Batch{
+		Id: bridge.NewBatchId(0),
+	}
+	got := client.SignersCount(context.TODO(), batch, bridge.NewActionId(0))
 
 	assert.Equal(t, uint(1), got)
 }
@@ -434,11 +437,11 @@ type broadcasterStub struct {
 	lastBroadcastSignature []byte
 }
 
-func (b *broadcasterStub) SendSignature(signature []byte) {
+func (b *broadcasterStub) SendSignature(signature []byte, _ []byte) {
 	b.lastBroadcastSignature = signature
 }
 
-func (b *broadcasterStub) Signatures() [][]byte {
+func (b *broadcasterStub) Signatures(_ []byte) [][]byte {
 	return [][]byte{b.lastBroadcastSignature}
 }
 

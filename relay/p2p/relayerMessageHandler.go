@@ -2,12 +2,15 @@ package p2p
 
 import (
 	"encoding/binary"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 )
+
+const absolutMaxSliceSize = 1024
 
 type relayerMessageHandler struct {
 	marshalizer    marshal.Marshalizer
@@ -22,6 +25,11 @@ type relayerMessageHandler struct {
 func (rmh *relayerMessageHandler) preProcessMessage(message p2p.MessageP2P) (*SignedMessage, error) {
 	msg := &SignedMessage{}
 	err := rmh.marshalizer.Unmarshal(msg, message.Data())
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkLengths(msg)
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +49,20 @@ func (rmh *relayerMessageHandler) preProcessMessage(message p2p.MessageP2P) (*Si
 	}
 
 	return msg, nil
+}
+
+func checkLengths(msg *SignedMessage) error {
+	if len(msg.PublicKeyBytes) > absolutMaxSliceSize {
+		return fmt.Errorf("%w for PublicKeyBytes field", ErrInvalidSize)
+	}
+	if len(msg.Signature) > absolutMaxSliceSize {
+		return fmt.Errorf("%w for Signature field", ErrInvalidSize)
+	}
+	if len(msg.Payload) > absolutMaxSliceSize {
+		return fmt.Errorf("%w for Payload field", ErrInvalidSize)
+	}
+
+	return nil
 }
 
 // createMessage will create a new message ready to be broadcast

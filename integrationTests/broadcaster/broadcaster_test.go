@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	mockRoleProviders "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
@@ -43,12 +44,13 @@ func TestNetworkOfBroadcastersShouldPassTheSignatures(t *testing.T) {
 	broadcasters := make([]Broadcaster, 0, numBroadcasters)
 	for i := 0; i < numBroadcasters; i++ {
 		args := p2p.ArgsBroadcaster{
-			Messenger:    messengers[i],
-			Log:          log,
-			RoleProvider: roleProvider,
-			KeyGen:       TestKeyGenerator,
-			SingleSigner: TestSingleSigner,
-			PrivateKey:   privateKeys[i],
+			Messenger:          messengers[i],
+			Log:                log,
+			ElrondRoleProvider: roleProvider,
+			KeyGen:             TestKeyGenerator,
+			SingleSigner:       TestSingleSigner,
+			PrivateKey:         privateKeys[i],
+			SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 		}
 
 		b, err := p2p.NewBroadcaster(args)
@@ -64,23 +66,26 @@ func TestNetworkOfBroadcastersShouldPassTheSignatures(t *testing.T) {
 
 	expectedPkInOrder := copyAndSortBytesSlices(publicKeysBytes)
 
+	messageHash := []byte("message hash")
 	joinBroadcasters(broadcasters)
 	signatures := createSignatures(numBroadcasters, "mock signature - try 1")
-	sendSignatures(broadcasters, signatures)
-	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder)
+	sendSignatures(broadcasters, signatures, messageHash)
+	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder, messageHash)
 
 	// clear test
 	clearSignatures(broadcasters)
-	checkBroadcasterState(t, broadcasters, make([][]byte, 0), expectedPkInOrder)
+	checkBroadcasterState(t, broadcasters, make([][]byte, 0), expectedPkInOrder, messageHash)
 
+	messageHash = []byte("message hash 1")
 	signatures = createSignatures(numBroadcasters, "mock signature - try 2")
-	sendSignatures(broadcasters, signatures)
-	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder)
+	sendSignatures(broadcasters, signatures, messageHash)
+	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder, messageHash)
 
 	// overwrite test
+	messageHash = []byte("message hash 2")
 	signatures = createSignatures(numBroadcasters, "mock signature - try 3")
-	sendSignatures(broadcasters, signatures)
-	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder)
+	sendSignatures(broadcasters, signatures, messageHash)
+	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder, messageHash)
 }
 
 func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenNotJoining(t *testing.T) {
@@ -112,12 +117,13 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenNotJoining(t *
 	broadcasters := make([]Broadcaster, 0, numBroadcasters)
 	for i := 0; i < numBroadcasters; i++ {
 		args := p2p.ArgsBroadcaster{
-			Messenger:    messengers[i],
-			Log:          log,
-			RoleProvider: roleProvider,
-			KeyGen:       TestKeyGenerator,
-			SingleSigner: TestSingleSigner,
-			PrivateKey:   privateKeys[i],
+			Messenger:          messengers[i],
+			Log:                log,
+			ElrondRoleProvider: roleProvider,
+			KeyGen:             TestKeyGenerator,
+			SingleSigner:       TestSingleSigner,
+			PrivateKey:         privateKeys[i],
+			SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 		}
 
 		b, err := p2p.NewBroadcaster(args)
@@ -132,15 +138,15 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenNotJoining(t *
 	time.Sleep(time.Second)
 
 	expectedPkInOrder := copyAndSortBytesSlices(publicKeysBytes[1:])
-
+	messageHash := []byte("message hash")
 	joiningBroadcasters := broadcasters[1:]
 	joinBroadcasters(joiningBroadcasters)
 	signatures := createSignatures(numBroadcasters, "mock signature - try 1")
-	sendSignatures(joiningBroadcasters, signatures[1:])
-	checkBroadcasterState(t, joiningBroadcasters, signatures[1:], expectedPkInOrder)
+	sendSignatures(joiningBroadcasters, signatures[1:], messageHash)
+	checkBroadcasterState(t, joiningBroadcasters, signatures[1:], expectedPkInOrder, messageHash)
 
 	lateBroadcasters := []Broadcaster{broadcasters[0]}
-	checkBroadcasterState(t, lateBroadcasters, signatures[1:], expectedPkInOrder)
+	checkBroadcasterState(t, lateBroadcasters, signatures[1:], expectedPkInOrder, messageHash)
 }
 
 func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting(t *testing.T) {
@@ -172,12 +178,13 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 	broadcasters := make([]Broadcaster, 0, numBroadcasters-1)
 	for i := 0; i < numBroadcasters-1; i++ {
 		args := p2p.ArgsBroadcaster{
-			Messenger:    messengers[i],
-			Log:          log,
-			RoleProvider: roleProvider,
-			KeyGen:       TestKeyGenerator,
-			SingleSigner: TestSingleSigner,
-			PrivateKey:   privateKeys[i],
+			Messenger:          messengers[i],
+			Log:                log,
+			ElrondRoleProvider: roleProvider,
+			KeyGen:             TestKeyGenerator,
+			SingleSigner:       TestSingleSigner,
+			PrivateKey:         privateKeys[i],
+			SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 		}
 
 		b, err := p2p.NewBroadcaster(args)
@@ -192,22 +199,24 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 	time.Sleep(time.Second)
 
 	expectedPkInOrder := copyAndSortBytesSlices(publicKeysBytes[:len(publicKeysBytes)-1])
+	messageHash := []byte("message hash")
 
 	joinBroadcasters(broadcasters)
 	signatures := createSignatures(numBroadcasters-1, "mock signature - try 1")
-	sendSignatures(broadcasters, signatures)
-	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder)
+	sendSignatures(broadcasters, signatures, messageHash)
+	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder, messageHash)
 
 	expectedPkInOrder = copyAndSortBytesSlices(publicKeysBytes)
 
 	log.Info("creating the late broadcaster")
 	args := p2p.ArgsBroadcaster{
-		Messenger:    messengers[len(messengers)-1],
-		Log:          log,
-		RoleProvider: roleProvider,
-		KeyGen:       TestKeyGenerator,
-		SingleSigner: TestSingleSigner,
-		PrivateKey:   privateKeys[len(privateKeys)-1],
+		Messenger:          messengers[len(messengers)-1],
+		Log:                log,
+		ElrondRoleProvider: roleProvider,
+		KeyGen:             TestKeyGenerator,
+		SingleSigner:       TestSingleSigner,
+		PrivateKey:         privateKeys[len(privateKeys)-1],
+		SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 	}
 
 	lateBroadcaster, err := p2p.NewBroadcaster(args)
@@ -221,8 +230,8 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 	time.Sleep(time.Second)
 
 	lateBroadcasters := []Broadcaster{lateBroadcaster}
-	checkBroadcasterState(t, lateBroadcasters, signatures, expectedPkInOrder)
-	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder)
+	checkBroadcasterState(t, lateBroadcasters, signatures, expectedPkInOrder, messageHash)
+	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder, messageHash)
 }
 
 func createLinkedMessengers(numMessengers int) []p2p.NetMessenger {
@@ -291,25 +300,37 @@ func createSignatures(numSignatures int, suffix string) [][]byte {
 	return signatures
 }
 
-func sendSignatures(broadcasters []Broadcaster, signatures [][]byte) {
+func sendSignatures(broadcasters []Broadcaster, signatures [][]byte, messageHash []byte) {
 	log.Info("sending signatures...")
 	for i, b := range broadcasters {
-		b.BroadcastSignature(signatures[i])
+		b.BroadcastSignature(signatures[i], messageHash)
 	}
 
 	time.Sleep(time.Second)
 }
 
-func checkBroadcasterState(t *testing.T, broadcasters []Broadcaster, expectedSigs [][]byte, expectedPublicKeys [][]byte) {
+func checkBroadcasterState(
+	t *testing.T,
+	broadcasters []Broadcaster,
+	expectedSigs [][]byte,
+	expectedPublicKeys [][]byte,
+	messageHash []byte,
+) {
 	log.Info("checking received signatures",
 		"num broadcasters", len(broadcasters), "num expected signatures", len(expectedSigs))
 	for _, b := range broadcasters {
-		checkStateOnBroadcaster(t, b, expectedSigs, expectedPublicKeys)
+		checkStateOnBroadcaster(t, b, expectedSigs, expectedPublicKeys, messageHash)
 	}
 }
 
-func checkStateOnBroadcaster(t *testing.T, b Broadcaster, expectedSigs [][]byte, expectedPublicKeys [][]byte) {
-	sigs := b.Signatures()
+func checkStateOnBroadcaster(
+	t *testing.T,
+	b Broadcaster,
+	expectedSigs [][]byte,
+	expectedPublicKeys [][]byte,
+	messageHash []byte,
+) {
+	sigs := b.Signatures(messageHash)
 	require.Equal(t, len(expectedSigs), len(sigs))
 	require.Equal(t, expectedPublicKeys, b.SortedPublicKeys())
 
