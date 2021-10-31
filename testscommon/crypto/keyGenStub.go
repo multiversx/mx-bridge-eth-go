@@ -1,4 +1,4 @@
-package mock
+package crypto
 
 import crypto "github.com/ElrondNetwork/elrond-go-crypto"
 

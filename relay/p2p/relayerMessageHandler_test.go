@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p/mock"
+	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testscommon/crypto"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +17,7 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 	t.Run("preProcess errors if unmarshal fails", func(t *testing.T) {
 		rmh := &relayerMessageHandler{
 			marshalizer:  &mock.MarshalizerMock{},
-			singleSigner: &mock.SingleSignerStub{},
+			singleSigner: &cryptoMocks.SingleSignerStub{},
 		}
 		p2pmsg := &mock.P2PMessageMock{
 			DataField: []byte("gibberish"),
@@ -30,8 +31,8 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		rmh := &relayerMessageHandler{
 			marshalizer:  &mock.MarshalizerMock{},
-			singleSigner: &mock.SingleSignerStub{},
-			keyGen: &mock.KeyGenStub{
+			singleSigner: &cryptoMocks.SingleSignerStub{},
+			keyGen: &cryptoMocks.KeyGenStub{
 				PublicKeyFromByteArrayStub: func(b []byte) (crypto.PublicKey, error) {
 					return nil, expectedErr
 				},
@@ -51,12 +52,12 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		rmh := &relayerMessageHandler{
 			marshalizer: &mock.MarshalizerMock{},
-			singleSigner: &mock.SingleSignerStub{
+			singleSigner: &cryptoMocks.SingleSignerStub{
 				VerifyCalled: func(public crypto.PublicKey, msg []byte, sig []byte) error {
 					return expectedErr
 				},
 			},
-			keyGen: &mock.KeyGenStub{},
+			keyGen: &cryptoMocks.KeyGenStub{},
 		}
 		_, buff := createSignedMessageAndMarshaledBytes()
 
@@ -77,7 +78,7 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 		verifyCalled := false
 		rmh := &relayerMessageHandler{
 			marshalizer: &mock.MarshalizerMock{},
-			singleSigner: &mock.SingleSignerStub{
+			singleSigner: &cryptoMocks.SingleSignerStub{
 				VerifyCalled: func(public crypto.PublicKey, msg []byte, sig []byte) error {
 					assert.Equal(t, msg, signedMessage)
 					assert.Equal(t, originalMsg.Signature, sig)
@@ -86,7 +87,7 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 					return nil
 				},
 			},
-			keyGen: &mock.KeyGenStub{},
+			keyGen: &cryptoMocks.KeyGenStub{},
 		}
 
 		p2pmsg := &mock.P2PMessageMock{
@@ -107,7 +108,7 @@ func TestRelayerMessageHandler_createMessage(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		rmh := &relayerMessageHandler{
 			marshalizer: &mock.MarshalizerMock{},
-			singleSigner: &mock.SingleSignerStub{
+			singleSigner: &cryptoMocks.SingleSignerStub{
 				SignCalled: func(private crypto.PrivateKey, msg []byte) ([]byte, error) {
 					return nil, expectedErr
 				},
@@ -126,7 +127,7 @@ func TestRelayerMessageHandler_createMessage(t *testing.T) {
 		rmh := &relayerMessageHandler{
 			counter:     counter,
 			marshalizer: &mock.MarshalizerMock{},
-			singleSigner: &mock.SingleSignerStub{
+			singleSigner: &cryptoMocks.SingleSignerStub{
 				SignCalled: func(private crypto.PrivateKey, msg []byte) ([]byte, error) {
 					nonceBytes := make([]byte, 8)
 					binary.BigEndian.PutUint64(nonceBytes, counter)

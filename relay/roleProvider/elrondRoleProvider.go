@@ -2,12 +2,9 @@ package roleProvider
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/ElrondNetwork/elrond-go-core/core/atomic"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
@@ -15,87 +12,57 @@ import (
 )
 
 const getAllStakedRelayersFunctionName = "getAllStakedRelayers"
-const pollingIntervalInCaseOfError = time.Second * 5
-const minimumPollingInterval = time.Second
 
 // ArgsElrondRoleProvider is the argument for the elrond role provider constructor
 type ArgsElrondRoleProvider struct {
-	ChainInteractor ChainInteractor
-	Log             logger.Logger
-	PollingInterval time.Duration
+	ElrondChainInteractor ElrondChainInteractor
+	Log                   logger.Logger
 }
 
 type elrondRoleProvider struct {
-	chainInteractor      ChainInteractor
-	log                  logger.Logger
-	whitelistedAddresses map[string]struct{}
-	cancel               func()
-	pollingInterval      time.Duration
-	pollingWhenError     time.Duration
-	mut                  sync.RWMutex
-	loopStatus           atomic.Flag
+	elrondChainInteractor ElrondChainInteractor
+	log                   logger.Logger
+	whitelistedAddresses  map[string]struct{}
+	mut                   sync.RWMutex
 }
 
 // NewElrondRoleProvider creates a new elrond role provider instance able to fetch the whitelisted addresses
 func NewElrondRoleProvider(args ArgsElrondRoleProvider) (*elrondRoleProvider, error) {
-	err := checkArgs(args)
+	err := checkElrondRoleProviderSpecificArgs(args)
 	if err != nil {
 		return nil, err
 	}
 
 	erp := &elrondRoleProvider{
-		chainInteractor:      args.ChainInteractor,
-		log:                  args.Log,
-		pollingInterval:      args.PollingInterval,
-		whitelistedAddresses: make(map[string]struct{}),
-		pollingWhenError:     pollingIntervalInCaseOfError,
+		elrondChainInteractor: args.ElrondChainInteractor,
+		log:                   args.Log,
+		whitelistedAddresses:  make(map[string]struct{}),
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	erp.cancel = cancel
-
-	go erp.requestsLoop(ctx)
 
 	return erp, nil
 }
 
-func checkArgs(args ArgsElrondRoleProvider) error {
-	if check.IfNil(args.ChainInteractor) {
-		return ErrNilChainInteractor
+func checkElrondRoleProviderSpecificArgs(args ArgsElrondRoleProvider) error {
+	if check.IfNil(args.ElrondChainInteractor) {
+		return ErrNilElrondChainInteractor
 	}
 	if check.IfNil(args.Log) {
 		return ErrNilLogger
-	}
-	if args.PollingInterval < minimumPollingInterval {
-		return fmt.Errorf("%w for PollingInterval", ErrInvalidValue)
 	}
 
 	return nil
 }
 
-func (erp *elrondRoleProvider) requestsLoop(ctx context.Context) {
-	erp.loopStatus.Set()
-	defer erp.loopStatus.Unset()
-
-	for {
-		pollingChan := time.After(erp.pollingInterval)
-
-		results, err := erp.chainInteractor.ExecuteVmQueryOnBridgeContract(getAllStakedRelayersFunctionName)
-		if err != nil {
-			erp.log.Error("error in elrondRoleProvider.requestsLoop",
-				"error", err, "retrying after", erp.pollingWhenError)
-			pollingChan = time.After(erp.pollingWhenError)
-		} else {
-			erp.processResults(results)
-		}
-
-		select {
-		case <-pollingChan:
-		case <-ctx.Done():
-			erp.log.Debug("role provider main requests loop is closing...")
-			return
-		}
+// Execute will fetch the available relayers and store them in the inner map
+func (erp *elrondRoleProvider) Execute(_ context.Context) error {
+	results, err := erp.elrondChainInteractor.ExecuteVmQueryOnBridgeContract(getAllStakedRelayersFunctionName)
+	if err != nil {
+		return err
 	}
+
+	erp.processResults(results)
+
+	return nil
 }
 
 func (erp *elrondRoleProvider) processResults(results [][]byte) {
@@ -127,13 +94,6 @@ func (erp *elrondRoleProvider) IsWhitelisted(address core.AddressHandler) bool {
 	_, exists := erp.whitelistedAddresses[string(address.AddressBytes())]
 
 	return exists
-}
-
-// Close will close any containing members and clean any go routines associated
-func (erp *elrondRoleProvider) Close() error {
-	erp.cancel()
-
-	return nil
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
