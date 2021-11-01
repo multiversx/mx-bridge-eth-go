@@ -1,8 +1,10 @@
-package broadcaster
+package integrationTests
 
 import (
+	"crypto/rand"
 	"fmt"
 
+	"github.com/ElrondNetwork/elrond-go-core/hashing/blake2b"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
@@ -12,9 +14,13 @@ import (
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/testscommon/p2pmocks"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	"github.com/ethereum/go-ethereum/common"
 )
 
-var log = logger.GetOrCreate("integrationtests/broadcaster")
+// Log -
+var Log = logger.GetOrCreate("integrationtests/broadcaster")
 var suite = ed25519.NewEd25519()
 
 // TestKeyGenerator -
@@ -22,6 +28,12 @@ var TestKeyGenerator = signing.NewKeyGenerator(suite)
 
 // TestSingleSigner -
 var TestSingleSigner = &singlesig.Ed25519Signer{}
+
+// TestMarshalizer -
+var TestMarshalizer = &marshal.JsonMarshalizer{}
+
+// TestHasher -
+var TestHasher = blake2b.NewBlake2b()
 
 // Connectable defines the operations for a struct to become connectable by other struct
 // In other words, all instances that implement this interface are able to connect with each other
@@ -76,7 +88,7 @@ func printEncounteredErrors(encounteredErrors []error) {
 		printArguments = append(printArguments, err.Error())
 	}
 
-	log.Warn("errors encountered while connecting hosts", printArguments...)
+	Log.Warn("errors encountered while connecting hosts", printArguments...)
 }
 
 // CreateMessengerWithNoDiscovery creates a new libp2p messenger with no peer discovery
@@ -87,7 +99,8 @@ func CreateMessengerWithNoDiscovery() p2p.Messenger {
 			Seed: "",
 		},
 		KadDhtPeerDiscovery: config.KadDhtPeerDiscoveryConfig{
-			Enabled: false,
+			Enabled:    false,
+			ProtocolID: "/erd/relay/1.0.0",
 		},
 		Sharding: config.ShardingConfig{
 			Type: p2p.NilListSharder,
@@ -114,7 +127,42 @@ func CreateMessengerFromConfig(p2pConfig config.P2PConfig) p2p.Messenger {
 	}
 
 	libP2PMes, err := libp2p.NewNetworkMessenger(arg)
-	log.LogIfError(err)
+	Log.LogIfError(err)
 
 	return libP2PMes
+}
+
+// CreateLinkedMessengers will create the specified number of messengers and will connect them all between them
+func CreateLinkedMessengers(numMessengers int) []p2p.Messenger {
+	connectables := make([]Connectable, 0, numMessengers)
+	messengers := make([]p2p.Messenger, 0, numMessengers)
+	for i := 0; i < numMessengers; i++ {
+		mes := CreateMessengerWithNoDiscovery()
+		messengers = append(messengers, mes)
+
+		connectable := &messengerWrapper{
+			Messenger: mes,
+		}
+		connectables = append(connectables, connectable)
+	}
+
+	ConnectNodes(connectables)
+
+	return messengers
+}
+
+// CreateRandomEthereumAddress will create a random Ethereum address
+func CreateRandomEthereumAddress() common.Address {
+	buff := make([]byte, len(common.Address{}))
+	_, _ = rand.Read(buff)
+
+	return common.BytesToAddress(buff)
+}
+
+// CreateRandomElrondAddress will create a random Elrond address
+func CreateRandomElrondAddress() core.AddressHandler {
+	buff := make([]byte, 32)
+	_, _ = rand.Read(buff)
+
+	return data.NewAddressFromBytes(buff)
 }
