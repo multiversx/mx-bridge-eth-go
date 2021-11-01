@@ -20,7 +20,7 @@ type ArgsEthElrondBridgeExecutor struct {
 	DestinationBridge bridge.Bridge
 	TopologyProvider  TopologyProvider
 	QuorumProvider    bridge.QuorumProvider
-	Timer             Timer
+	Timer             core.Timer
 	DurationsMap      map[core.StepIdentifier]time.Duration
 }
 
@@ -35,7 +35,7 @@ type ethElrondBridgeExecutor struct {
 	actionID          bridge.ActionId
 	topologyProvider  TopologyProvider
 	quorumProvider    bridge.QuorumProvider
-	timer             Timer
+	timer             core.Timer
 	durationsMap      map[core.StepIdentifier]time.Duration
 }
 

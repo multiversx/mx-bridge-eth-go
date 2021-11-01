@@ -1,6 +1,9 @@
 package core
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // StepIdentifier defines a step name
 type StepIdentifier string
@@ -17,3 +20,12 @@ type Step interface {
 
 // EthGasPriceSelector defines the ethereum gas price selector
 type EthGasPriceSelector string
+
+// Timer defines operations related to time
+type Timer interface {
+	After(d time.Duration) <-chan time.Time
+	NowUnix() int64
+	Start()
+	Close() error
+	IsInterfaceNil() bool
+}
