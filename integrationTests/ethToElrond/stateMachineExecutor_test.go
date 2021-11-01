@@ -15,16 +15,16 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
-	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
-	sourceBridge := &mock.BridgeMock{}
-	destinationBridge := &mock.BridgeMock{}
+	sourceBridge := &testsCommon.BridgeMock{}
+	destinationBridge := &testsCommon.BridgeMock{}
 
 	batchID := bridge.NewBatchId(12345)
 	sourceActionID := bridge.NewActionId(663725)
@@ -88,8 +88,8 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 
 func TestBridgeExecutorWithStateMachineFailedToProposeTransfer(t *testing.T) {
 	proposeErr := errors.New("propose error")
-	sourceBridge := &mock.BridgeMock{}
-	destinationBridge := &mock.BridgeMock{
+	sourceBridge := &testsCommon.BridgeMock{}
+	destinationBridge := &testsCommon.BridgeMock{
 		ProposeTransferCalled: func(_ context.Context, batch *bridge.Batch) (string, error) {
 			return "", proposeErr
 		},
@@ -176,16 +176,15 @@ func createAndStartBridge(
 	isLeader bool,
 	name string,
 ) (io.Closer, error) {
-	quorumProvider := &mock.QuorumProviderStub{
+	quorumProvider := &testsCommon.QuorumProviderStub{
 		GetQuorumCalled: func(ctx context.Context) (uint, error) {
 			return quorum, nil
 		},
 	}
 
-	topologyProvider := &mock.TopologyProviderStub{
-		AmITheLeaderCalled: func() bool {
-			return isLeader
-		},
+	topologyProvider := testsCommon.NewTopologyProviderStub()
+	topologyProvider.AmITheLeaderCalled = func() bool {
+		return isLeader
 	}
 
 	logExecutor := logger.GetOrCreate(name + "/executor")
@@ -196,7 +195,7 @@ func createAndStartBridge(
 		DestinationBridge: destinationBridge,
 		TopologyProvider:  topologyProvider,
 		QuorumProvider:    quorumProvider,
-		Timer:             &mock.TimerMock{},
+		Timer:             &testsCommon.TimerMock{},
 		DurationsMap:      createMockDurationsMap(),
 	}
 
@@ -217,7 +216,7 @@ func createAndStartBridge(
 		StartStateIdentifier: ethToElrond.GettingPending,
 		DurationBetweenSteps: time.Millisecond,
 		Log:                  logStateMachine,
-		Timer:                &mock.TimerMock{},
+		Timer:                &testsCommon.TimerMock{},
 	}
 
 	return stateMachine.NewStateMachine(argsStateMachine)
@@ -237,7 +236,7 @@ func createMockDurationsMap() map[core.StepIdentifier]time.Duration {
 
 func checkStatusWhenExecutedOnSource(
 	t *testing.T,
-	sourceBridge *mock.BridgeMock,
+	sourceBridge *testsCommon.BridgeMock,
 	pendingBatch *bridge.Batch,
 	sourceActionID bridge.ActionId,
 	expectedStatuses []byte,
@@ -264,7 +263,7 @@ func checkStatusWhenExecutedOnSource(
 
 func checkStatusWhenExecutedOnDestination(
 	t *testing.T,
-	destinationBridge *mock.BridgeMock,
+	destinationBridge *testsCommon.BridgeMock,
 	pendingBatch *bridge.Batch,
 	destinationActionID bridge.ActionId,
 ) {

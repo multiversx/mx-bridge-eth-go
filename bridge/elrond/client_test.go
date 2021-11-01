@@ -13,8 +13,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond/mock"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
+	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	"github.com/ElrondNetwork/elrond-go-core/data/vm"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
@@ -49,7 +48,7 @@ func createMockArguments() ClientArgs {
 			BridgeAddress:                "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
 			IntervalToResendTxsInSeconds: 1,
 		},
-		Proxy:      &mock.ElrondProxyStub{},
+		Proxy:      &mockInteractors.ElrondProxyStub{},
 		PrivateKey: sk,
 		Address:    addr,
 	}
@@ -93,8 +92,6 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestGetPending(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("when there is a current transaction", func(t *testing.T) {
 		batchId, _ := hex.DecodeString("01")
 		blockNonce1, _ := hex.DecodeString("025d43")
@@ -207,8 +204,6 @@ func TestGetPending(t *testing.T) {
 }
 
 func TestProposeTransfer(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("it will set proper function and params", func(t *testing.T) {
 		tokenId, _ := hex.DecodeString("574554482d393761323662")
 		proxy := &testProxy{
@@ -245,8 +240,6 @@ func TestProposeTransfer(t *testing.T) {
 }
 
 func TestProposeSetStatus(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("it will set proper function and params", func(t *testing.T) {
 		proxy := &testProxy{
 			transactionCost:   1024,
@@ -286,8 +279,6 @@ func TestProposeSetStatus(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	expectedTxHash := "expected hash"
 	proxy := &testProxy{transactionCost: 1024, transactionHash: expectedTxHash}
 	c, _ := buildTestClient(proxy)
@@ -323,8 +314,6 @@ func TestExecute(t *testing.T) {
 }
 
 func TestWasProposedTransfer(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("will return true when response is 1", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 		c, _ := buildTestClient(proxy)
@@ -419,8 +408,6 @@ func TestWasProposedTransfer(t *testing.T) {
 }
 
 func TestSignersCount(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	c, _ := buildTestClient(proxy)
 
@@ -430,8 +417,6 @@ func TestSignersCount(t *testing.T) {
 }
 
 func TestWasProposedSetStatus(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("will return true when response is 1", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 		c, _ := buildTestClient(proxy)
@@ -465,8 +450,6 @@ func TestWasProposedSetStatus(t *testing.T) {
 }
 
 func TestGetActionIdForProposeTransfer(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	c, _ := buildTestClient(proxy)
 
@@ -499,8 +482,6 @@ func TestGetActionIdForProposeTransfer(t *testing.T) {
 }
 
 func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(43)}}}
 	c, _ := buildTestClient(proxy)
 
@@ -525,8 +506,6 @@ func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
 }
 
 func TestWasExecuted(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 	c, _ := buildTestClient(proxy)
 
@@ -535,8 +514,6 @@ func TestWasExecuted(t *testing.T) {
 }
 
 func TestSign(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("it will set proper transaction cost", func(t *testing.T) {
 		expect := uint64(45_000_000)
 		proxy := &testProxy{}
@@ -584,7 +561,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
-		proxy := &mock.ElrondProxyStub{}
+		proxy := &mockInteractors.ElrondProxyStub{}
 		c := &client{
 			proxy: proxy,
 		}
@@ -596,7 +573,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	})
 	t.Run("proxy errors", func(t *testing.T) {
 		expectedErr := errors.New("expected error")
-		proxy := &mock.ElrondProxyStub{
+		proxy := &mockInteractors.ElrondProxyStub{
 			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				return nil, expectedErr
 			},
@@ -613,7 +590,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("no statuses returned", func(t *testing.T) {
-		proxy := &mock.ElrondProxyStub{
+		proxy := &mockInteractors.ElrondProxyStub{
 			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
@@ -637,7 +614,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		assert.True(t, errors.Is(err, ErrNoStatusForBatchID))
 	})
 	t.Run("not finished", func(t *testing.T) {
-		proxy := &mock.ElrondProxyStub{
+		proxy := &mockInteractors.ElrondProxyStub{
 			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
@@ -661,7 +638,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		assert.True(t, errors.Is(err, ErrBatchNotFinished))
 	})
 	t.Run("malformed response - no results", func(t *testing.T) {
-		proxy := &mock.ElrondProxyStub{
+		proxy := &mockInteractors.ElrondProxyStub{
 			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
@@ -686,7 +663,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		assert.True(t, strings.Contains(err.Error(), "status is finished, no results are given"))
 	})
 	t.Run("malformed response - empty response", func(t *testing.T) {
-		proxy := &mock.ElrondProxyStub{
+		proxy := &mockInteractors.ElrondProxyStub{
 			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
@@ -712,7 +689,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	})
 	t.Run("should work", func(t *testing.T) {
 		providedStatuses := [][]byte{{1}, {3}, {0, 0, 2}}
-		proxy := &mock.ElrondProxyStub{
+		proxy := &mockInteractors.ElrondProxyStub{
 			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{

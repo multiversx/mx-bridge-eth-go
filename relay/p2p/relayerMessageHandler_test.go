@@ -5,8 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p/mock"
-	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testscommon/crypto"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/crypto"
+	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,10 +17,10 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 
 	t.Run("preProcess errors if unmarshal fails", func(t *testing.T) {
 		rmh := &relayerMessageHandler{
-			marshalizer:  &mock.MarshalizerMock{},
+			marshalizer:  &testsCommon.MarshalizerMock{},
 			singleSigner: &cryptoMocks.SingleSignerStub{},
 		}
-		p2pmsg := &mock.P2PMessageMock{
+		p2pmsg := &p2pMocks.P2PMessageMock{
 			DataField: []byte("gibberish"),
 		}
 
@@ -30,7 +31,7 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 	t.Run("preProcess errors if keygen fails", func(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		rmh := &relayerMessageHandler{
-			marshalizer:  &mock.MarshalizerMock{},
+			marshalizer:  &testsCommon.MarshalizerMock{},
 			singleSigner: &cryptoMocks.SingleSignerStub{},
 			keyGen: &cryptoMocks.KeyGenStub{
 				PublicKeyFromByteArrayStub: func(b []byte) (crypto.PublicKey, error) {
@@ -40,7 +41,7 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 		}
 		_, buff := createSignedMessageAndMarshaledBytes()
 
-		p2pmsg := &mock.P2PMessageMock{
+		p2pmsg := &p2pMocks.P2PMessageMock{
 			DataField: buff,
 		}
 
@@ -51,7 +52,7 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 	t.Run("preProcess errors if verify fails", func(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		rmh := &relayerMessageHandler{
-			marshalizer: &mock.MarshalizerMock{},
+			marshalizer: &testsCommon.MarshalizerMock{},
 			singleSigner: &cryptoMocks.SingleSignerStub{
 				VerifyCalled: func(public crypto.PublicKey, msg []byte, sig []byte) error {
 					return expectedErr
@@ -61,7 +62,7 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 		}
 		_, buff := createSignedMessageAndMarshaledBytes()
 
-		p2pmsg := &mock.P2PMessageMock{
+		p2pmsg := &p2pMocks.P2PMessageMock{
 			DataField: buff,
 		}
 
@@ -77,7 +78,7 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 
 		verifyCalled := false
 		rmh := &relayerMessageHandler{
-			marshalizer: &mock.MarshalizerMock{},
+			marshalizer: &testsCommon.MarshalizerMock{},
 			singleSigner: &cryptoMocks.SingleSignerStub{
 				VerifyCalled: func(public crypto.PublicKey, msg []byte, sig []byte) error {
 					assert.Equal(t, msg, signedMessage)
@@ -90,7 +91,7 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 			keyGen: &cryptoMocks.KeyGenStub{},
 		}
 
-		p2pmsg := &mock.P2PMessageMock{
+		p2pmsg := &p2pMocks.P2PMessageMock{
 			DataField: buff,
 		}
 
@@ -107,7 +108,7 @@ func TestRelayerMessageHandler_createMessage(t *testing.T) {
 	t.Run("createMessage errors if sign fails", func(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		rmh := &relayerMessageHandler{
-			marshalizer: &mock.MarshalizerMock{},
+			marshalizer: &testsCommon.MarshalizerMock{},
 			singleSigner: &cryptoMocks.SingleSignerStub{
 				SignCalled: func(private crypto.PrivateKey, msg []byte) ([]byte, error) {
 					return nil, expectedErr
@@ -126,7 +127,7 @@ func TestRelayerMessageHandler_createMessage(t *testing.T) {
 		numSignCalled := 0
 		rmh := &relayerMessageHandler{
 			counter:     counter,
-			marshalizer: &mock.MarshalizerMock{},
+			marshalizer: &testsCommon.MarshalizerMock{},
 			singleSigner: &cryptoMocks.SingleSignerStub{
 				SignCalled: func(private crypto.PrivateKey, msg []byte) ([]byte, error) {
 					nonceBytes := make([]byte, 8)
@@ -179,7 +180,7 @@ func createSignedMessageAndMarshaledBytesWithValues(payload []byte, pk []byte) (
 		Nonce:          34,
 	}
 
-	marshalizer := &mock.MarshalizerMock{}
+	marshalizer := &testsCommon.MarshalizerMock{}
 	buff, _ := marshalizer.Marshal(msg)
 
 	return msg, buff

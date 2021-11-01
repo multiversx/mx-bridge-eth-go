@@ -1,4 +1,4 @@
-package mock
+package p2p
 
 import (
 	"github.com/ElrondNetwork/elrond-go-core/core"

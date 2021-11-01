@@ -6,7 +6,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/stateMachine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,13 +14,13 @@ import (
 func TestFlowAsLeaderWaitSigsForTransferQuorumNotReachedWithStubChecking(t *testing.T) {
 	t.Parallel()
 
-	bem := mock.NewBridgeExecutorMock()
+	bem := stateMachine.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
 	bem.IsQuorumReachedForProposeTransferCalled = falseHandlerWithContext
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
+	smm := stateMachine.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -64,7 +64,7 @@ func TestFlowAsLeaderWaitSigsForTransferQuorumNotReachedWithStubChecking(t *test
 func TestFlowAsLeaderWaitSigsTransferWasNotProposedWithStubChecking(t *testing.T) {
 	t.Parallel()
 
-	bem := mock.NewBridgeExecutorMock()
+	bem := stateMachine.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
 	bem.IsQuorumReachedForProposeTransferCalled = falseHandlerWithContext
 	counter := 0
@@ -75,7 +75,7 @@ func TestFlowAsLeaderWaitSigsTransferWasNotProposedWithStubChecking(t *testing.T
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.GettingPending)
+	smm := stateMachine.NewStateMachineMock(steps, ethToElrond.GettingPending)
 	err = smm.Initialize()
 	require.Nil(t, err)
 
@@ -110,13 +110,13 @@ func TestFlowAsLeaderWaitSigsTransferWasNotProposedWithStubChecking(t *testing.T
 func TestFlowAsLeaderWaitSigsForSetStatusQuorumNotReachedWithStubChecking(t *testing.T) {
 	t.Parallel()
 
-	bem := mock.NewBridgeExecutorMock()
+	bem := stateMachine.NewBridgeExecutorMock()
 	setAllDecisionHandlersToTrue(bem)
 	bem.IsQuorumReachedForProposeSetStatusCalled = falseHandlerWithContext
 
 	steps, err := CreateSteps(bem)
 	require.Nil(t, err)
-	smm := mock.NewStateMachineMock(steps, ethToElrond.WaitingSignaturesForProposeSetStatus)
+	smm := stateMachine.NewStateMachineMock(steps, ethToElrond.WaitingSignaturesForProposeSetStatus)
 	err = smm.Initialize()
 	require.Nil(t, err)
 

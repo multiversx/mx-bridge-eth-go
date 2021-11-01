@@ -1,4 +1,4 @@
-package mock
+package testsCommon
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-var fullPathTopologyProviderStub = "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors/mock.(*TopologyProviderStub)."
+var fullPathTopologyProviderStub = "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon.(*TopologyProviderStub)."
 
 // TopologyProviderStub -
 type TopologyProviderStub struct {
