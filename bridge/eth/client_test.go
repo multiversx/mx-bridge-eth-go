@@ -26,8 +26,8 @@ import (
 
 // verify Client implements interface
 var (
-	_ = bridge.Bridge(&Client{})
-	_ = bridge.QuorumProvider(&Client{})
+	_ = bridge.Bridge(&client{})
+	_ = bridge.QuorumProvider(&client{})
 )
 
 const TestPrivateKey = "60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d7192efab"
@@ -85,14 +85,14 @@ func TestGetPending(t *testing.T) {
 					return tt.receivedBatch, nil
 				},
 			}
-			client := Client{
+			c := client{
 				bridgeContract: bcs,
 				gasLimit:       GasLimit,
 				log:            logger.GetOrCreate("testEthClient"),
 			}
-			client.addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, client.log)
+			c.addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, c.log)
 
-			got := client.GetPending(context.TODO())
+			got := c.GetPending(context.TODO())
 
 			assert.Equal(t, tt.expectedBatch, got)
 		})
@@ -100,9 +100,9 @@ func TestGetPending(t *testing.T) {
 }
 
 func TestSign(t *testing.T) {
-	buildStubs := func() (*broadcasterStub, Client) {
+	buildStubs := func() (*broadcasterStub, client) {
 		broadcaster := &broadcasterStub{}
-		client := Client{
+		c := client{
 			bridgeContract: &mockInteractors.BridgeContractStub{},
 			privateKey:     privateKey(t),
 			broadcaster:    broadcaster,
@@ -111,7 +111,7 @@ func TestSign(t *testing.T) {
 			log:            logger.GetOrCreate("testEthClient"),
 		}
 
-		return broadcaster, client
+		return broadcaster, c
 	}
 	t.Run("will sign propose status for executed tx", func(t *testing.T) {
 		batch := &bridge.Batch{
@@ -120,9 +120,9 @@ func TestSign(t *testing.T) {
 				Status: bridge.Executed,
 			}},
 		}
-		broadcaster, client := buildStubs()
-		client.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
-		_, _ = client.Sign(context.TODO(), bridge.NewActionId(SetStatusAction), batch)
+		broadcaster, c := buildStubs()
+		c.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(setStatusAction), batch)
 
 		expectedSignature, _ := hexutil.Decode("0x524957e3081d49d98c98881abd5cf6f737722a4aa0e7915771a567e3cb45cfc625cd9fcf9ec53c86182e517c1e61dbc076722905d11b73e1ed42665ec051342701")
 
@@ -135,9 +135,9 @@ func TestSign(t *testing.T) {
 				Status: bridge.Rejected,
 			}},
 		}
-		broadcaster, client := buildStubs()
-		client.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
-		_, _ = client.Sign(context.TODO(), bridge.NewActionId(SetStatusAction), batch)
+		broadcaster, c := buildStubs()
+		c.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(setStatusAction), batch)
 
 		expectedSignature, _ := hexutil.Decode("0xd9b1ae38d7e24837e90e7aaac2ae9ca1eb53dc7a30c41774ad7f7f5fd2371c2d0ac6e69643f6aaa25bd9b000dcf0b8be567bcde7f0a5fb5aad122273999bad2500")
 
@@ -155,9 +155,9 @@ func TestSign(t *testing.T) {
 			},
 			},
 		}
-		broadcaster, client := buildStubs()
-		client.GetActionIdForProposeTransfer(context.TODO(), batch)
-		_, _ = client.Sign(context.TODO(), bridge.NewActionId(TransferAction), batch)
+		broadcaster, c := buildStubs()
+		c.GetActionIdForProposeTransfer(context.TODO(), batch)
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(transferAction), batch)
 		expectedSignature, _ := hexutil.Decode("0xab3ce0cdc229afc9fcd0447800142da85aa116f16a26e151b9cad95b361ab73d24694ded888a06a1e9b731af8a1b549a1fc5188117e40bea11d9e74af4a6d5fa01")
 
 		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
@@ -166,14 +166,17 @@ func TestSign(t *testing.T) {
 
 func TestSignersCount(t *testing.T) {
 	broadcaster := &broadcasterStub{lastBroadcastSignature: []byte("signature")}
-	client := Client{
+	c := client{
 		bridgeContract: &mockInteractors.BridgeContractStub{},
 		broadcaster:    broadcaster,
 		gasLimit:       GasLimit,
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
-	got := client.SignersCount(context.TODO(), bridge.NewActionId(0))
+	batch := &bridge.Batch{
+		Id: bridge.NewBatchId(0),
+	}
+	got := c.SignersCount(context.TODO(), batch, bridge.NewActionId(0))
 
 	assert.Equal(t, uint(1), got)
 }
@@ -185,14 +188,14 @@ func TestWasExecuted(t *testing.T) {
 				return true, nil
 			},
 		}
-		client := Client{
+		c := client{
 			bridgeContract: bcs,
 			broadcaster:    &broadcasterStub{},
 			gasLimit:       GasLimit,
 			log:            logger.GetOrCreate("testEthClient"),
 		}
 
-		got := client.WasExecuted(context.TODO(), bridge.NewActionId(SetStatusAction), bridge.NewBatchId(42))
+		got := c.WasExecuted(context.TODO(), bridge.NewActionId(setStatusAction), bridge.NewBatchId(42))
 
 		assert.Equal(t, true, got)
 	})
@@ -202,14 +205,14 @@ func TestWasExecuted(t *testing.T) {
 				return true, nil
 			},
 		}
-		client := Client{
+		c := client{
 			bridgeContract: bcs,
 			broadcaster:    &broadcasterStub{},
 			gasLimit:       GasLimit,
 			log:            logger.GetOrCreate("testEthClient"),
 		}
 
-		got := client.WasExecuted(context.TODO(), bridge.NewActionId(TransferAction), bridge.NewBatchId(42))
+		got := c.WasExecuted(context.TODO(), bridge.NewActionId(transferAction), bridge.NewBatchId(42))
 
 		assert.Equal(t, true, got)
 	})
@@ -223,7 +226,7 @@ func TestExecute(t *testing.T) {
 				return types.NewTx(&types.AccessListTx{}), nil
 			},
 		}
-		client := Client{
+		c := client{
 			bridgeContract:   bcs,
 			privateKey:       privateKey(t),
 			publicKey:        publicKey(t),
@@ -235,7 +238,7 @@ func TestExecute(t *testing.T) {
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
-		got, _ := client.Execute(context.TODO(), bridge.NewActionId(SetStatusAction), batch)
+		got, _ := c.Execute(context.TODO(), bridge.NewActionId(setStatusAction), batch)
 
 		assert.Equal(t, expected, got)
 	})
@@ -254,7 +257,7 @@ func TestExecute(t *testing.T) {
 				return types.NewTx(&types.AccessListTx{}), nil
 			},
 		}
-		client := Client{
+		c := client{
 			bridgeContract: bcs,
 			privateKey:     privateKey(t),
 			publicKey:      publicKey(t),
@@ -279,7 +282,7 @@ func TestExecute(t *testing.T) {
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
-		got, err := client.Execute(context.TODO(), bridge.NewActionId(TransferAction), batch)
+		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch)
 		require.Nil(t, err)
 		assert.Equal(t, expected, got)
 		assert.True(t, executeTransferCalled)
@@ -293,7 +296,7 @@ func TestExecute(t *testing.T) {
 			},
 		}
 		gasPriceError := fmt.Errorf("gas price error")
-		client := Client{
+		c := client{
 			bridgeContract:   bcs,
 			privateKey:       privateKey(t),
 			publicKey:        publicKey(t),
@@ -310,7 +313,7 @@ func TestExecute(t *testing.T) {
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
-		got, err := client.Execute(context.TODO(), bridge.NewActionId(TransferAction), batch)
+		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch)
 		assert.Equal(t, "", got)
 		assert.Equal(t, gasPriceError, err)
 	})
@@ -323,7 +326,7 @@ func TestExecute(t *testing.T) {
 			},
 		}
 		blockNumError := fmt.Errorf("block number error")
-		client := Client{
+		c := client{
 			bridgeContract: bcs,
 			privateKey:     privateKey(t),
 			publicKey:      publicKey(t),
@@ -340,14 +343,14 @@ func TestExecute(t *testing.T) {
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
-		got, err := client.Execute(context.TODO(), bridge.NewActionId(TransferAction), batch)
+		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch)
 		assert.Equal(t, "", got)
 		assert.True(t, errors.Is(err, blockNumError))
 	})
 }
 
 func TestGetQuorum(t *testing.T) {
-	cases := []struct {
+	tests := []struct {
 		actual   *big.Int
 		expected uint
 		error    error
@@ -356,14 +359,14 @@ func TestGetQuorum(t *testing.T) {
 		{actual: big.NewInt(math.MaxUint32 + 1), expected: 0, error: errors.New("quorum is not a uint")},
 	}
 
-	for _, c := range cases {
-		t.Run(fmt.Sprintf("When contract quorum is %v", c.actual), func(t *testing.T) {
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("When contract quorum is %v", test.actual), func(t *testing.T) {
 			bcs := &mockInteractors.BridgeContractStub{
 				QuorumCalled: func(opts *bind.CallOpts) (*big.Int, error) {
-					return c.actual, nil
+					return test.actual, nil
 				},
 			}
-			client := Client{
+			c := client{
 				bridgeContract: bcs,
 				privateKey:     privateKey(t),
 				broadcaster:    &broadcasterStub{},
@@ -372,10 +375,10 @@ func TestGetQuorum(t *testing.T) {
 				log:            logger.GetOrCreate("testEthClient"),
 			}
 
-			actual, err := client.GetQuorum(context.TODO())
+			actual, err := c.GetQuorum(context.TODO())
 
-			assert.Equal(t, c.expected, actual)
-			assert.Equal(t, c.error, err)
+			assert.Equal(t, test.expected, actual)
+			assert.Equal(t, test.error, err)
 		})
 	}
 }
@@ -391,7 +394,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 			return statuses, nil
 		},
 	}
-	client := Client{
+	c := client{
 		bridgeContract: bcs,
 		privateKey:     privateKey(t),
 		broadcaster:    &broadcasterStub{},
@@ -400,7 +403,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		log:            logger.GetOrCreate("testEthClient"),
 	}
 
-	returned, err := client.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(12))
+	returned, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(12))
 	assert.Nil(t, err)
 	assert.Equal(t, statuses, returned)
 	assert.True(t, methodCalled)
@@ -434,11 +437,11 @@ type broadcasterStub struct {
 	lastBroadcastSignature []byte
 }
 
-func (b *broadcasterStub) SendSignature(signature []byte) {
+func (b *broadcasterStub) SendSignature(signature []byte, _ []byte) {
 	b.lastBroadcastSignature = signature
 }
 
-func (b *broadcasterStub) Signatures() [][]byte {
+func (b *broadcasterStub) Signatures(_ []byte) [][]byte {
 	return [][]byte{b.lastBroadcastSignature}
 }
 

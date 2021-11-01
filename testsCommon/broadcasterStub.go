@@ -2,19 +2,19 @@ package testsCommon
 
 // BroadcasterStub -
 type BroadcasterStub struct {
-	BroadcastSignatureCalled func(signature []byte)
+	BroadcastSignatureCalled func(signature []byte, messageHash []byte)
 	BroadcastJoinTopicCalled func()
 	ClearSignaturesCalled    func()
-	SignaturesCalled         func() [][]byte
+	SignaturesCalled         func(messageHash []byte) [][]byte
 	SortedPublicKeysCalled   func() [][]byte
 	RegisterOnTopicsCalled   func() error
 	CloseCalled              func() error
 }
 
 // BroadcastSignature -
-func (bs *BroadcasterStub) BroadcastSignature(signature []byte) {
+func (bs *BroadcasterStub) BroadcastSignature(signature []byte, messageHash []byte) {
 	if bs.BroadcastSignatureCalled != nil {
-		bs.BroadcastSignatureCalled(signature)
+		bs.BroadcastSignatureCalled(signature, messageHash)
 	}
 }
 
@@ -33,9 +33,9 @@ func (bs *BroadcasterStub) ClearSignatures() {
 }
 
 // Signatures -
-func (bs *BroadcasterStub) Signatures() [][]byte {
+func (bs *BroadcasterStub) Signatures(messageHash []byte) [][]byte {
 	if bs.SignaturesCalled != nil {
-		return bs.SignaturesCalled()
+		return bs.SignaturesCalled(messageHash)
 	}
 
 	return make([][]byte, 0)

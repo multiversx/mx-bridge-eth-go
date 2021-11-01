@@ -379,7 +379,7 @@ func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bri
 }
 
 // SignersCount returns the signers count
-func (c *client) SignersCount(_ context.Context, actionId bridge.ActionId) uint {
+func (c *client) SignersCount(_ context.Context, _ *bridge.Batch, actionId bridge.ActionId) uint {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
 		Func("getActionSignerCount").
 		ActionId(actionId).

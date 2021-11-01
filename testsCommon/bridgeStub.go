@@ -27,7 +27,7 @@ type BridgeStub struct {
 	GetActionIdForSetStatusOnPendingTransferCalled func(ctx context.Context, batch *bridge.Batch) bridge.ActionId
 	SignCalled                                     func(ctx context.Context, id bridge.ActionId) (string, error)
 	ExecuteCalled                                  func(ctx context.Context, id bridge.ActionId, batch *bridge.Batch) (string, error)
-	SignersCountCalled                             func(ctx context.Context, id bridge.ActionId) uint
+	SignersCountCalled                             func(ctx context.Context, batch *bridge.Batch, id bridge.ActionId) uint
 	GetTransactionsStatusesCalled                  func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error)
 
 	ProposeTransferError error
@@ -134,10 +134,10 @@ func (b *BridgeStub) Execute(ctx context.Context, id bridge.ActionId, batch *bri
 }
 
 // SignersCount -
-func (b *BridgeStub) SignersCount(ctx context.Context, id bridge.ActionId) uint {
+func (b *BridgeStub) SignersCount(ctx context.Context, batch *bridge.Batch, id bridge.ActionId) uint {
 	b.incrementFunctionCounter()
 	if b.SignersCountCalled != nil {
-		return b.SignersCountCalled(ctx, id)
+		return b.SignersCountCalled(ctx, batch, id)
 	}
 	return 0
 }

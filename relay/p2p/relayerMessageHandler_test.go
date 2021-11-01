@@ -1,8 +1,10 @@
 package p2p
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
@@ -10,96 +12,149 @@ import (
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+var marshalizer = &testsCommon.MarshalizerMock{}
 
 func TestRelayerMessageHandler_preProcess(t *testing.T) {
 	t.Parallel()
 
-	t.Run("preProcess errors if unmarshal fails", func(t *testing.T) {
-		rmh := &relayerMessageHandler{
-			marshalizer:  &testsCommon.MarshalizerMock{},
-			singleSigner: &cryptoMocks.SingleSignerStub{},
-		}
-		p2pmsg := &p2pMocks.P2PMessageMock{
-			DataField: []byte("gibberish"),
-		}
+	t.Run("preProcess errors if unmarshal fails", preProcessUnmarshal)
+	t.Run("preProcess errors if fields lengths exceeds the limit", preProcessLimits)
+	t.Run("preProcess errors if keygen fails", preProcessKeygenFails)
+	t.Run("preProcess errors if verify fails", preProcessVerifyFails)
+	t.Run("preProcess should work", preProcessShouldWork)
+}
 
-		msg, err := rmh.preProcessMessage(p2pmsg)
-		assert.Nil(t, msg)
-		assert.NotNil(t, err)
-	})
-	t.Run("preProcess errors if keygen fails", func(t *testing.T) {
-		expectedErr := errors.New("expected error")
-		rmh := &relayerMessageHandler{
-			marshalizer:  &testsCommon.MarshalizerMock{},
-			singleSigner: &cryptoMocks.SingleSignerStub{},
-			keyGen: &cryptoMocks.KeyGenStub{
-				PublicKeyFromByteArrayStub: func(b []byte) (crypto.PublicKey, error) {
-					return nil, expectedErr
-				},
+func preProcessUnmarshal(t *testing.T) {
+	rmh := &relayerMessageHandler{
+		marshalizer:  &testsCommon.MarshalizerMock{},
+		singleSigner: &cryptoMocks.SingleSignerStub{},
+	}
+	p2pmsg := &p2pMocks.P2PMessageMock{
+		DataField: []byte("gibberish"),
+	}
+
+	msg, err := rmh.preProcessMessage(p2pmsg)
+	assert.Nil(t, msg)
+	assert.NotNil(t, err)
+}
+
+func preProcessLimits(t *testing.T) {
+	rmh := &relayerMessageHandler{
+		marshalizer:  &testsCommon.MarshalizerMock{},
+		singleSigner: &cryptoMocks.SingleSignerStub{},
+		keyGen:       &cryptoMocks.KeyGenStub{},
+	}
+
+	largeBuff := bytes.Repeat([]byte{1}, absolutMaxSliceSize+1)
+	err := preProcessMessageInvalidLimits(t, rmh, []byte("payload"), largeBuff, []byte("sig"))
+	require.NotNil(t, err)
+	assert.True(t, strings.Contains(err.Error(), "PublicKeyBytes"))
+
+	err = preProcessMessageInvalidLimits(t, rmh, largeBuff, []byte("pk"), []byte("sig"))
+	require.NotNil(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Payload"))
+
+	err = preProcessMessageInvalidLimits(t, rmh, []byte("payload"), []byte("pk"), largeBuff)
+	require.NotNil(t, err)
+	assert.True(t, strings.Contains(err.Error(), "Signature"))
+}
+
+func preProcessMessageInvalidLimits(
+	t *testing.T,
+	rmh *relayerMessageHandler,
+	payload []byte,
+	pubKey []byte,
+	sig []byte,
+) error {
+	_, buff := createSignedMessageAndMarshaledBytesWithValues(payload, pubKey, sig)
+
+	p2pmsg := &p2pMocks.P2PMessageMock{
+		DataField: buff,
+	}
+
+	msg, err := rmh.preProcessMessage(p2pmsg)
+	require.Nil(t, msg)
+	assert.True(t, errors.Is(err, ErrInvalidSize))
+
+	return err
+}
+
+func preProcessKeygenFails(t *testing.T) {
+	expectedErr := errors.New("expected error")
+	rmh := &relayerMessageHandler{
+		marshalizer:  &testsCommon.MarshalizerMock{},
+		singleSigner: &cryptoMocks.SingleSignerStub{},
+		keyGen: &cryptoMocks.KeyGenStub{
+			PublicKeyFromByteArrayStub: func(b []byte) (crypto.PublicKey, error) {
+				return nil, expectedErr
 			},
-		}
-		_, buff := createSignedMessageAndMarshaledBytes()
+		},
+	}
+	_, buff := createSignedMessageAndMarshaledBytes()
 
-		p2pmsg := &p2pMocks.P2PMessageMock{
-			DataField: buff,
-		}
+	p2pmsg := &p2pMocks.P2PMessageMock{
+		DataField: buff,
+	}
 
-		msg, err := rmh.preProcessMessage(p2pmsg)
-		assert.Nil(t, msg)
-		assert.Equal(t, expectedErr, err)
-	})
-	t.Run("preProcess errors if verify fails", func(t *testing.T) {
-		expectedErr := errors.New("expected error")
-		rmh := &relayerMessageHandler{
-			marshalizer: &testsCommon.MarshalizerMock{},
-			singleSigner: &cryptoMocks.SingleSignerStub{
-				VerifyCalled: func(public crypto.PublicKey, msg []byte, sig []byte) error {
-					return expectedErr
-				},
+	msg, err := rmh.preProcessMessage(p2pmsg)
+	assert.Nil(t, msg)
+	assert.Equal(t, expectedErr, err)
+}
+
+func preProcessVerifyFails(t *testing.T) {
+	expectedErr := errors.New("expected error")
+	rmh := &relayerMessageHandler{
+		marshalizer: &testsCommon.MarshalizerMock{},
+		singleSigner: &cryptoMocks.SingleSignerStub{
+			VerifyCalled: func(public crypto.PublicKey, msg []byte, sig []byte) error {
+				return expectedErr
 			},
-			keyGen: &cryptoMocks.KeyGenStub{},
-		}
-		_, buff := createSignedMessageAndMarshaledBytes()
+		},
+		keyGen: &cryptoMocks.KeyGenStub{},
+	}
+	_, buff := createSignedMessageAndMarshaledBytes()
 
-		p2pmsg := &p2pMocks.P2PMessageMock{
-			DataField: buff,
-		}
+	p2pmsg := &p2pMocks.P2PMessageMock{
+		DataField: buff,
+	}
 
-		msg, err := rmh.preProcessMessage(p2pmsg)
-		assert.Nil(t, msg)
-		assert.Equal(t, expectedErr, err)
-	})
-	t.Run("preProcess should work", func(t *testing.T) {
-		originalMsg, buff := createSignedMessageAndMarshaledBytes()
-		nonceBytes := make([]byte, 8)
-		binary.BigEndian.PutUint64(nonceBytes, originalMsg.Nonce)
-		signedMessage := append(originalMsg.Payload, nonceBytes...)
+	msg, err := rmh.preProcessMessage(p2pmsg)
+	assert.Nil(t, msg)
+	assert.Equal(t, expectedErr, err)
+}
 
-		verifyCalled := false
-		rmh := &relayerMessageHandler{
-			marshalizer: &testsCommon.MarshalizerMock{},
-			singleSigner: &cryptoMocks.SingleSignerStub{
-				VerifyCalled: func(public crypto.PublicKey, msg []byte, sig []byte) error {
-					assert.Equal(t, msg, signedMessage)
-					assert.Equal(t, originalMsg.Signature, sig)
-					verifyCalled = true
+func preProcessShouldWork(t *testing.T) {
+	originalMsg, buff := createSignedMessageAndMarshaledBytes()
+	nonceBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(nonceBytes, originalMsg.Nonce)
+	signedMessage := append(originalMsg.Payload, nonceBytes...)
 
-					return nil
-				},
+	verifyCalled := false
+	rmh := &relayerMessageHandler{
+		marshalizer: &testsCommon.MarshalizerMock{},
+		singleSigner: &cryptoMocks.SingleSignerStub{
+			VerifyCalled: func(public crypto.PublicKey, msg []byte, sig []byte) error {
+				assert.Equal(t, msg, signedMessage)
+				assert.Equal(t, originalMsg.Signature, sig)
+				verifyCalled = true
+
+				return nil
 			},
-			keyGen: &cryptoMocks.KeyGenStub{},
-		}
+		},
+		keyGen: &cryptoMocks.KeyGenStub{},
+	}
 
-		p2pmsg := &p2pMocks.P2PMessageMock{
-			DataField: buff,
-		}
+	p2pmsg := &p2pMocks.P2PMessageMock{
+		DataField: buff,
+	}
 
-		msg, err := rmh.preProcessMessage(p2pmsg)
-		assert.Equal(t, originalMsg, msg)
-		assert.Nil(t, err)
-		assert.True(t, verifyCalled)
-	})
+	msg, err := rmh.preProcessMessage(p2pmsg)
+	assert.Equal(t, originalMsg, msg)
+	assert.Nil(t, err)
+	assert.True(t, verifyCalled)
 }
 
 func TestRelayerMessageHandler_createMessage(t *testing.T) {
@@ -169,18 +224,35 @@ func TestRelayerMessageHandler_createMessage(t *testing.T) {
 }
 
 func createSignedMessageAndMarshaledBytes() (*SignedMessage, []byte) {
-	return createSignedMessageAndMarshaledBytesWithValues([]byte("payload"), []byte("pk"))
+	return createSignedMessageAndMarshaledBytesWithValues([]byte("payload"), []byte("pk"), []byte("sig"))
 }
 
-func createSignedMessageAndMarshaledBytesWithValues(payload []byte, pk []byte) (*SignedMessage, []byte) {
+func createSignedMessageAndMarshaledBytesWithValues(payload []byte, pk []byte, sig []byte) (*SignedMessage, []byte) {
 	msg := &SignedMessage{
 		Payload:        payload,
 		PublicKeyBytes: pk,
-		Signature:      []byte("sig"),
+		Signature:      sig,
 		Nonce:          34,
 	}
 
-	marshalizer := &testsCommon.MarshalizerMock{}
+	buff, _ := marshalizer.Marshal(msg)
+
+	return msg, buff
+}
+
+func createSignedMessageForEthSig(ethSig []byte, ethMsg []byte, elrondPk []byte, elrondSig []byte) (*SignedMessage, []byte) {
+	e := &EthereumSignature{
+		Signature:   ethSig,
+		MessageHash: ethMsg,
+	}
+	payload, _ := marshalizer.Marshal(e)
+
+	msg := &SignedMessage{
+		Payload:        payload,
+		PublicKeyBytes: elrondPk,
+		Signature:      elrondSig,
+		Nonce:          34,
+	}
 	buff, _ := marshalizer.Marshal(msg)
 
 	return msg, buff

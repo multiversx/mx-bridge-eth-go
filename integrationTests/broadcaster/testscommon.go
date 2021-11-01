@@ -33,10 +33,10 @@ type Connectable interface {
 
 // Broadcaster defines a component able to communicate with other such instances and manage signatures and other state related data
 type Broadcaster interface {
-	BroadcastSignature(signature []byte)
+	BroadcastSignature(signature []byte, messageHash []byte)
 	BroadcastJoinTopic()
 	ClearSignatures()
-	Signatures() [][]byte
+	Signatures(messageHash []byte) [][]byte
 	SortedPublicKeys() [][]byte
 	Close() error
 	IsInterfaceNil() bool

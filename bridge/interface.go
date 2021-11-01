@@ -10,8 +10,8 @@ import (
 
 // Broadcaster defines the operations for a component used for communication with other peers
 type Broadcaster interface {
-	Signatures() [][]byte
-	SendSignature(signature []byte)
+	Signatures(messageHash []byte) [][]byte
+	SendSignature(signature []byte, messageHash []byte)
 }
 
 // Mapper defines the mapping operations
@@ -37,7 +37,7 @@ type Bridge interface {
 	WasExecuted(context.Context, ActionId, BatchId) bool
 	Sign(context.Context, ActionId, *Batch) (string, error)
 	Execute(context.Context, ActionId, *Batch) (string, error)
-	SignersCount(context.Context, ActionId) uint
+	SignersCount(context.Context, *Batch, ActionId) uint
 	GetTransactionsStatuses(ctx context.Context, batchID BatchId) ([]uint8, error)
 }
 

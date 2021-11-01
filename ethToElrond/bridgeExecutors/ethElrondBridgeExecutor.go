@@ -121,7 +121,7 @@ func (executor *ethElrondBridgeExecutor) IsQuorumReachedForProposeTransfer(ctx c
 }
 
 func (executor *ethElrondBridgeExecutor) isQuorumReachedOnBridge(ctx context.Context, bridge bridge.Bridge) bool {
-	count := bridge.SignersCount(ctx, executor.actionID)
+	count := bridge.SignersCount(ctx, executor.pendingBatch, executor.actionID)
 	quorum, err := executor.quorumProvider.GetQuorum(ctx)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
