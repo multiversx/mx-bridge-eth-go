@@ -13,7 +13,6 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement/factory"
 	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -39,7 +38,6 @@ import (
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 const (
@@ -106,8 +104,8 @@ type ArgsRelayer struct {
 	FlagsConfig ContextFlagsConfig
 	Name        string
 	Proxy       bridge.ElrondProxy
-	EthClient   *ethclient.Client
-	EthInstance *contract.Bridge
+	EthClient   eth.BlockchainClient
+	EthInstance eth.BridgeContract
 }
 
 func NewRelay(args ArgsRelayer) (*Relay, error) {

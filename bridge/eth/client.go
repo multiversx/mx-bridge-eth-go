@@ -20,7 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 const (
@@ -67,8 +66,8 @@ type ArgsClient struct {
 	Broadcaster bridge.Broadcaster
 	Mapper      bridge.Mapper
 	GasHandler  bridge.GasHandler
-	EthClient   *ethclient.Client
-	EthInstance *contract.Bridge
+	EthClient   BlockchainClient
+	EthInstance BridgeContract
 }
 
 func NewClient(args ArgsClient) (*Client, error) {
