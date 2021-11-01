@@ -117,7 +117,7 @@ func TestInit(t *testing.T) {
 	defer cancel()
 	_ = relay.Start(ctx)
 
-	assert.True(t, messenger.BootstrapWasCalled)
+	assert.True(t, messenger.GetBootstrapWasCalled())
 	assert.Equal(t, 1, timer.GetFunctionCounter("Start"))
 	assert.True(t, broadcastJoinTopicCalled)
 }
@@ -141,6 +141,8 @@ func TestClean(t *testing.T) {
 
 func TestAmILeader(t *testing.T) {
 	t.Run("will return true when time matches current index", func(t *testing.T) {
+		messenger := &p2pMocks.MessengerMock{}
+		messenger.SetID("self")
 		relay := Relay{
 			broadcaster: &testsCommon.BroadcasterStub{
 				SortedPublicKeysCalled: func() [][]byte {
@@ -148,7 +150,7 @@ func TestAmILeader(t *testing.T) {
 				},
 			},
 			address:      data.NewAddressFromBytes([]byte("self")),
-			messenger:    &p2pMocks.MessengerMock{PeerID: "self"},
+			messenger:    messenger,
 			timer:        testsCommon.NewTimerStub(),
 			stepDuration: time.Second,
 		}
