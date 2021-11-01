@@ -342,14 +342,14 @@ func (c *client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bri
 
 // SignersCount will return the total signers number that sent the signatures on the required message hash
 func (c *client) SignersCount(_ context.Context, batch *bridge.Batch, actionId bridge.ActionId) uint {
-	hash, err := c.generateMsgHash(batch, actionId)
+	msgHash, err := c.generateMsgHash(batch, actionId)
 	if err != nil {
 		c.log.Error(err.Error())
 
 		return 0
 	}
 
-	return uint(len(c.broadcaster.Signatures(hash.Bytes())))
+	return uint(len(c.broadcaster.Signatures(msgHash.Bytes())))
 }
 
 // QuorumProvider implementation
@@ -380,19 +380,19 @@ func (c *client) signHash(hash common.Hash) ([]byte, error) {
 }
 
 func (c *client) broadcastSignatureForTransfer(batch *bridge.Batch) {
-	hash, err := c.generateMsgHashForTransfer(batch)
+	msgHash, err := c.generateMsgHashForTransfer(batch)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	signature, err := c.signHash(hash)
+	signature, err := c.signHash(msgHash)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	c.broadcaster.SendSignature(signature, hash.Bytes())
+	c.broadcaster.SendSignature(signature, msgHash.Bytes())
 }
 
 func recipientsAddresses(transactions []*bridge.DepositTransaction) []common.Address {
@@ -473,19 +473,19 @@ func (c *client) generateMsgHashForFinish(batch *bridge.Batch) (common.Hash, err
 }
 
 func (c *client) broadcastSignatureForFinish(batch *bridge.Batch) {
-	hash, err := c.generateMsgHashForFinish(batch)
+	msgHash, err := c.generateMsgHashForFinish(batch)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	signature, err := c.signHash(hash)
+	signature, err := c.signHash(msgHash)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	c.broadcaster.SendSignature(signature, hash.Bytes())
+	c.broadcaster.SendSignature(signature, msgHash.Bytes())
 }
 
 func (c *client) getErc20AddressFromTokenId(tokenId string) string {
