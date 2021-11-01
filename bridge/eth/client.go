@@ -71,7 +71,7 @@ type ArgsClient struct {
 	EthInstance BridgeContract
 }
 
-func NewClient(args ArgsClient) (*Client, error) {
+func NewClient(args ArgsClient) (*client, error) {
 
 	log := logger.GetOrCreate("EthClient")
 
@@ -93,8 +93,7 @@ func NewClient(args ArgsClient) (*Client, error) {
 		return nil, errors.New("error casting public key to ECDSA")
 	}
 
-
-	client := &Client{
+	c := &client{
 		bridgeContract:   args.EthInstance,
 		blockchainClient: args.EthClient,
 		gasLimit:         args.Config.GasLimit,
