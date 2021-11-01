@@ -162,6 +162,50 @@ func TestSign(t *testing.T) {
 
 		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
 	})
+	t.Run("sign transfer will generate recoverable public key", func(t *testing.T) {
+		batch := &bridge.Batch{
+			Id: bridge.NewBatchId(42),
+			Transactions: []*bridge.DepositTransaction{
+				{
+					To:           "cf95254084ab772696643f0e05ac4711ed674ac1",
+					From:         "04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3",
+					TokenAddress: "574554482d323936313238",
+					Amount:       big.NewInt(1),
+					DepositNonce: bridge.NewNonce(2),
+				},
+			},
+		}
+
+		sk, err := crypto.HexToECDSA(TestPrivateKey)
+		require.Nil(t, err)
+
+		pk := sk.Public()
+		pkECDSA, ok := pk.(*ecdsa.PublicKey)
+		require.True(t, ok)
+
+		ethAddress := crypto.PubkeyToAddress(*pkECDSA)
+		broadcaster, c := buildStubs()
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(setStatusAction), batch)
+		testPublicKey(t, broadcaster, ethAddress)
+
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(transferAction), batch)
+		testPublicKey(t, broadcaster, ethAddress)
+	})
+}
+
+func testPublicKey(t *testing.T, broadcaster *broadcasterStub, expectedAddress common.Address) {
+	sig := broadcaster.lastBroadcastSignature
+	msg := broadcaster.lastBroadcastMsgHash
+
+	pkBytesRecovered, err := crypto.Ecrecover(msg, sig)
+	require.Nil(t, err)
+
+	pkRecovered, err := crypto.UnmarshalPubkey(pkBytesRecovered)
+	require.Nil(t, err)
+
+	addressRecovered := crypto.PubkeyToAddress(*pkRecovered)
+
+	require.Equal(t, expectedAddress, addressRecovered)
 }
 
 func TestSignersCount(t *testing.T) {
@@ -435,11 +479,13 @@ func publicKey(t *testing.T) *ecdsa.PublicKey {
 
 type broadcasterStub struct {
 	lastBroadcastSignature []byte
+	lastBroadcastMsgHash   []byte
 }
 
-// SendSignature -
-func (b *broadcasterStub) SendSignature(signature []byte, _ []byte) {
+
+func (b *broadcasterStub) SendSignature(signature []byte, msgHash []byte) {
 	b.lastBroadcastSignature = signature
+	b.lastBroadcastMsgHash = msgHash
 }
 
 // Signatures -
