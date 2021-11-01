@@ -263,12 +263,12 @@ func (c *client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 
 	var transaction *types.Transaction
 
-	hash, err := c.generateHash(batch, action)
+	msgHash, err := c.generateMsgHash(batch, action)
 	if err != nil {
 		return "", fmt.Errorf("ETH: %w", err)
 	}
 
-	signatures := c.broadcaster.Signatures(hash.Bytes())
+	signatures := c.broadcaster.Signatures(msgHash.Bytes())
 	// TODO optimize this: no need to re-fetch the quorum, can be provided by the bridge executor
 	quorum, err := c.GetQuorum(ctx)
 	if err != nil {
@@ -334,14 +334,14 @@ func (c *client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bri
 
 // SignersCount will return the total signers number that sent the signatures on the required message hash
 func (c *client) SignersCount(_ context.Context, batch *bridge.Batch, actionId bridge.ActionId) uint {
-	hash, err := c.generateHash(batch, actionId)
+	msgHash, err := c.generateMsgHash(batch, actionId)
 	if err != nil {
 		c.log.Error(err.Error())
 
 		return 0
 	}
 
-	return uint(len(c.broadcaster.Signatures(hash.Bytes())))
+	return uint(len(c.broadcaster.Signatures(msgHash.Bytes())))
 }
 
 // QuorumProvider implementation
@@ -363,8 +363,7 @@ func (c *client) GetQuorum(ctx context.Context) (uint, error) {
 // utils
 
 func (c *client) signHash(hash common.Hash) ([]byte, error) {
-	valueToSign := crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...))
-	signature, err := crypto.Sign(valueToSign.Bytes(), c.privateKey)
+	signature, err := crypto.Sign(hash.Bytes(), c.privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -373,19 +372,19 @@ func (c *client) signHash(hash common.Hash) ([]byte, error) {
 }
 
 func (c *client) broadcastSignatureForTransfer(batch *bridge.Batch) {
-	hash, err := c.generateHashForTransfer(batch)
+	msgHash, err := c.generateMsgHashForTransfer(batch)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	signature, err := c.signHash(hash)
+	signature, err := c.signHash(msgHash)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	c.broadcaster.SendSignature(signature, hash.Bytes())
+	c.broadcaster.SendSignature(signature, msgHash.Bytes())
 }
 
 func recipientsAddresses(transactions []*bridge.DepositTransaction) []common.Address {
@@ -419,18 +418,18 @@ func amounts(transactions []*bridge.DepositTransaction) []*big.Int {
 	return result
 }
 
-func (c *client) generateHash(batch *bridge.Batch, actionId bridge.ActionId) (common.Hash, error) {
+func (c *client) generateMsgHash(batch *bridge.Batch, actionId bridge.ActionId) (common.Hash, error) {
 	switch int64FromActionId(actionId) {
 	case transferAction:
-		return c.generateHashForTransfer(batch)
+		return c.generateMsgHashForTransfer(batch)
 	case setStatusAction:
-		return c.generateHashForFinish(batch)
+		return c.generateMsgHashForFinish(batch)
 	}
 
-	return common.Hash{}, fmt.Errorf("Client.generateHash not implemented for action ID %v", actionId)
+	return common.Hash{}, fmt.Errorf("Client.generateMsgHash not implemented for action ID %v", actionId)
 }
 
-func (c *client) generateHashForTransfer(batch *bridge.Batch) (common.Hash, error) {
+func (c *client) generateMsgHashForTransfer(batch *bridge.Batch) (common.Hash, error) {
 	arguments, err := transferArgs()
 	if err != nil {
 		return common.Hash{}, err
@@ -441,10 +440,11 @@ func (c *client) generateHashForTransfer(batch *bridge.Batch) (common.Hash, erro
 		return common.Hash{}, err
 	}
 
-	return crypto.Keccak256Hash(pack), nil
+	hash := crypto.Keccak256Hash(pack)
+	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
 }
 
-func (c *client) generateHashForFinish(batch *bridge.Batch) (common.Hash, error) {
+func (c *client) generateMsgHashForFinish(batch *bridge.Batch) (common.Hash, error) {
 	var statuses []uint8
 	for _, tx := range batch.Transactions {
 		statuses = append(statuses, tx.Status)
@@ -460,23 +460,24 @@ func (c *client) generateHashForFinish(batch *bridge.Batch) (common.Hash, error)
 		return common.Hash{}, err
 	}
 
-	return crypto.Keccak256Hash(pack), nil
+	hash := crypto.Keccak256Hash(pack)
+	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
 }
 
 func (c *client) broadcastSignatureForFinish(batch *bridge.Batch) {
-	hash, err := c.generateHashForFinish(batch)
+	msgHash, err := c.generateMsgHashForFinish(batch)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	signature, err := c.signHash(hash)
+	signature, err := c.signHash(msgHash)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	c.broadcaster.SendSignature(signature, hash.Bytes())
+	c.broadcaster.SendSignature(signature, msgHash.Bytes())
 }
 
 func (c *client) getErc20AddressFromTokenId(tokenId string) string {
