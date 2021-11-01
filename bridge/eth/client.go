@@ -80,9 +80,6 @@ func NewClient(args ArgsClient) (*client, error) {
 
 	log := logger.GetOrCreate("EthClient")
 
-	if check.IfNil(args.GasHandler) {
-		return nil, ErrNilGasHandler
-	}
 	privateKeyBytes, err := ioutil.ReadFile(args.Config.PrivateKeyFile)
 	if err != nil {
 		return nil, err
