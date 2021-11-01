@@ -61,30 +61,24 @@ type Client struct {
 	gasHandler       bridge.GasHandler
 }
 
-func NewClient(
-	config bridge.EthereumConfig,
-	broadcaster bridge.Broadcaster,
-	mapper bridge.Mapper,
-	gasHandler bridge.GasHandler,
-) (*Client, error) {
+// ArgsClient is the DTO used in the client constructor
+type ArgsClient struct {
+	Config      bridge.EthereumConfig
+	Broadcaster bridge.Broadcaster
+	Mapper      bridge.Mapper
+	GasHandler  bridge.GasHandler
+	EthClient   *ethclient.Client
+	EthInstance *contract.Bridge
+}
+
+func NewClient(args ArgsClient) (*Client, error) {
 
 	log := logger.GetOrCreate("EthClient")
 
-	if check.IfNil(gasHandler) {
+	if check.IfNil(args.GasHandler) {
 		return nil, ErrNilGasHandler
 	}
-
-	ethClient, err := ethclient.Dial(config.NetworkAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	instance, err := contract.NewBridge(common.HexToAddress(config.BridgeAddress), ethClient)
-	if err != nil {
-		return nil, err
-	}
-
-	privateKeyBytes, err := ioutil.ReadFile(config.PrivateKeyFile)
+	privateKeyBytes, err := ioutil.ReadFile(args.Config.PrivateKeyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -100,15 +94,15 @@ func NewClient(
 	}
 
 	client := &Client{
-		bridgeContract:   instance,
-		blockchainClient: ethClient,
-		gasLimit:         config.GasLimit,
+		bridgeContract:   args.EthInstance,
+		blockchainClient: args.EthClient,
+		gasLimit:         args.Config.GasLimit,
 		privateKey:       privateKey,
 		publicKey:        publicKeyECDSA,
-		broadcaster:      broadcaster,
-		mapper:           mapper,
+		broadcaster:      args.Broadcaster,
+		mapper:           args.Mapper,
 		log:              log,
-		gasHandler:       gasHandler,
+		gasHandler:       args.GasHandler,
 	}
 	client.addressConverter, err = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {

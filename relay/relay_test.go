@@ -8,13 +8,17 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/config"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	ethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -69,7 +73,21 @@ func TestNewRelay(t *testing.T) {
 		},
 	}
 	flagsConfig := ContextFlagsConfig{}
-	r, err := NewRelay(cfg, flagsConfig, "name")
+	ethClient, err := ethclient.Dial(cfg.Eth.NetworkAddress)
+	require.Nil(t, err)
+
+	ethInstance, err := contract.NewBridge(ethCommon.HexToAddress(cfg.Eth.BridgeAddress), ethClient)
+	require.Nil(t, err)
+
+	args := ArgsRelayer{
+		Config:      cfg,
+		FlagsConfig: flagsConfig,
+		Name:        "name",
+		Proxy:       blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil),
+		EthClient:   ethClient,
+		EthInstance: ethInstance,
+	}
+	r, err := NewRelay(args)
 	require.Nil(t, err)
 	require.False(t, check.IfNil(r))
 

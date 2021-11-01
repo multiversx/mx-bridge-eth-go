@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -16,6 +17,9 @@ import (
 	"github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
+	ethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
 	_ "github.com/urfave/cli"
 )
@@ -97,7 +101,27 @@ func startRelay(ctx *cli.Context, version string) error {
 		}
 	}
 
-	ethToElrRelay, err := relay.NewRelay(*config, *flagsConfig, "EthToElrRelay")
+	proxy := blockchain.NewElrondProxy(config.Elrond.NetworkAddress, nil)
+
+	ethClient, err := ethclient.Dial(config.Eth.NetworkAddress)
+	if err != nil {
+		return err
+	}
+
+	ethInstance, err := contract.NewBridge(ethCommon.HexToAddress(config.Eth.BridgeAddress), ethClient)
+	if err != nil {
+		return err
+	}
+
+	args := relay.ArgsRelayer{
+		Config:      *config,
+		FlagsConfig: *flagsConfig,
+		Name:        "EthToElrRelay",
+		Proxy:       proxy,
+		EthClient:   ethClient,
+		EthInstance: ethInstance,
+	}
+	ethToElrRelay, err := relay.NewRelay(args)
 	if err != nil {
 		return err
 	}

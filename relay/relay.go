@@ -13,6 +13,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement/factory"
 	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -36,9 +37,9 @@ import (
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 const (
@@ -99,14 +100,24 @@ type Relay struct {
 	pollingHandlers      []io.Closer
 }
 
-func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Relay, error) {
+// ArgsRelayer is the DTO used in the relayer constructor
+type ArgsRelayer struct {
+	Config      Config
+	FlagsConfig ContextFlagsConfig
+	Name        string
+	Proxy       bridge.ElrondProxy
+	EthClient   *ethclient.Client
+	EthInstance *contract.Bridge
+}
+
+func NewRelay(args ArgsRelayer) (*Relay, error) {
 	relay := &Relay{
-		stateMachineConfig: config.StateMachine,
-		log:                logger.GetOrCreate(name),
+		stateMachineConfig: args.Config.StateMachine,
+		log:                logger.GetOrCreate(args.Name),
 	}
 
 	wallet := interactors.NewWallet()
-	privateKey, err := wallet.LoadPrivateKeyFromPemFile(config.Elrond.PrivateKeyFile)
+	privateKey, err := wallet.LoadPrivateKeyFromPemFile(args.Config.Elrond.PrivateKeyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -123,10 +134,9 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 		return nil, err
 	}
 
-	proxy := blockchain.NewElrondProxy(config.Elrond.NetworkAddress, nil)
 	clientArgs := elrond.ClientArgs{
-		Config:     config.Elrond,
-		Proxy:      proxy,
+		Config:     args.Config.Elrond,
+		Proxy:      args.Proxy,
 		PrivateKey: txSignPrivKey,
 		Address:    relay.address,
 	}
@@ -136,37 +146,46 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	}
 	relay.elrondBridge = elrondBridge
 
+	gasStationConfig := args.Config.Eth.GasStation
 	argsGasStation := gasManagement.ArgsGasStation{
-		RequestURL:             config.Eth.GasStation.URL,
-		RequestPollingInterval: time.Duration(config.Eth.GasStation.PollingIntervalInSeconds) * time.Second,
-		RequestTime:            time.Duration(config.Eth.GasStation.RequestTimeInSeconds) * time.Second,
-		MaximumGasPrice:        config.Eth.GasStation.MaximumAllowedGasPrice,
-		GasPriceSelector:       coreBridge.EthGasPriceSelector(config.Eth.GasStation.GasPriceSelector),
+		RequestURL:             gasStationConfig.URL,
+		RequestPollingInterval: time.Duration(gasStationConfig.PollingIntervalInSeconds) * time.Second,
+		RequestTime:            time.Duration(gasStationConfig.RequestTimeInSeconds) * time.Second,
+		MaximumGasPrice:        gasStationConfig.MaximumAllowedGasPrice,
+		GasPriceSelector:       coreBridge.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
 	}
 
-	gs, err := factory.CreateGasStation(argsGasStation, config.Eth.GasStation.Enabled)
+	gs, err := factory.CreateGasStation(argsGasStation, gasStationConfig.Enabled)
 	if err != nil {
 		return nil, err
 	}
 
-	ethBridge, err := eth.NewClient(config.Eth, relay, elrondBridge, gs)
+	argsClient := eth.ArgsClient{
+		Config:      args.Config.Eth,
+		Broadcaster: relay,
+		Mapper:      elrondBridge,
+		GasHandler:  gs,
+		EthClient:   args.EthClient,
+		EthInstance: args.EthInstance,
+	}
+	ethBridge, err := eth.NewClient(argsClient)
 	if err != nil {
 		return nil, err
 	}
 	relay.ethBridge = ethBridge
 	relay.quorumProvider = ethBridge
 
-	err = relay.createRoleProviders(config)
+	err = relay.createRoleProviders(args.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	marshalizer, err := factoryMarshalizer.NewMarshalizer(config.Relayer.Marshalizer.Type)
+	marshalizer, err := factoryMarshalizer.NewMarshalizer(args.Config.Relayer.Marshalizer.Type)
 	if err != nil {
 		return nil, err
 	}
 
-	messenger, err := buildNetMessenger(&config, marshalizer)
+	messenger, err := buildNetMessenger(&args.Config, marshalizer)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +206,7 @@ func NewRelay(config Config, flagsConfig ContextFlagsConfig, name string) (*Rela
 	}
 
 	relay.timer = NewDefaultTimer()
-	relay.flagsConfig = flagsConfig
+	relay.flagsConfig = args.FlagsConfig
 
 	relay.log.Debug("creating API services")
 	_, err = relay.createHttpServer()
