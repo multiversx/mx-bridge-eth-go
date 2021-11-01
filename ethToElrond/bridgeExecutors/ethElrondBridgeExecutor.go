@@ -59,23 +59,22 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 }
 
 func checkArgs(args ArgsEthElrondBridgeExecutor) error {
-	// TODO add IsInterfaceNil on all implementations
-	if check.IfNilReflect(args.SourceBridge) {
-		return fmt.Errorf("%w for the source bridge", ErrNilBridge)
-	}
-	if check.IfNilReflect(args.DestinationBridge) {
-		return fmt.Errorf("%w for the destination bridge", ErrNilBridge)
-	}
 	if check.IfNil(args.Logger) {
 		return ErrNilLogger
 	}
-	if check.IfNilReflect(args.TopologyProvider) {
+	if check.IfNil(args.SourceBridge) {
+		return fmt.Errorf("%w for the source bridge", ErrNilBridge)
+	}
+	if check.IfNil(args.DestinationBridge) {
+		return fmt.Errorf("%w for the destination bridge", ErrNilBridge)
+	}
+	if check.IfNil(args.TopologyProvider) {
 		return ErrNilTopologyProvider
 	}
-	if check.IfNilReflect(args.QuorumProvider) {
+	if check.IfNil(args.QuorumProvider) {
 		return ErrNilQuorumProvider
 	}
-	if check.IfNilReflect(args.Timer) {
+	if check.IfNil(args.Timer) {
 		return ErrNilTimer
 	}
 	if args.DurationsMap == nil {

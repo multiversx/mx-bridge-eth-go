@@ -171,3 +171,8 @@ func (b *BridgeStub) GetFunctionCounter(function string) int {
 
 	return b.functionCalledCounter[fullPathBridgeStub+function]
 }
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (b *BridgeStub) IsInterfaceNil() bool {
+	return b == nil
+}

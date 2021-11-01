@@ -6,6 +6,7 @@ import "time"
 type TopologyProvider interface {
 	AmITheLeader() bool
 	Clean()
+	IsInterfaceNil() bool
 }
 
 // Timer defines operations related to time
@@ -14,4 +15,5 @@ type Timer interface {
 	NowUnix() int64
 	Start()
 	Close() error
+	IsInterfaceNil() bool
 }

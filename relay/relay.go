@@ -79,6 +79,10 @@ func (s *defaultTimer) Close() error {
 	return s.ntpSyncTimer.Close()
 }
 
+func (s *defaultTimer) IsInterfaceNil() bool {
+	return s == nil
+}
+
 type Relay struct {
 	messenger relayp2p.NetMessenger
 	timer     Timer

@@ -192,3 +192,8 @@ func (bm *BridgeMock) GetTransactionsStatuses(ctx context.Context, batchId bridg
 
 	return make([]byte, 0), nil
 }
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (bm *BridgeMock) IsInterfaceNil() bool {
+	return bm == nil
+}
