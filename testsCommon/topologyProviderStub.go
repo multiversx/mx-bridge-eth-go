@@ -60,3 +60,8 @@ func (s *TopologyProviderStub) GetFunctionCounter(function string) int {
 
 	return s.functionCalledCounter[fullPathTopologyProviderStub+function]
 }
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (s *TopologyProviderStub) IsInterfaceNil() bool {
+	return s == nil
+}

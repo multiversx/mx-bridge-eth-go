@@ -73,11 +73,13 @@ type ArgsClient struct {
 
 func NewClient(args ArgsClient) (*client, error) {
 
+	err := checkArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
 	log := logger.GetOrCreate("EthClient")
 
-	if check.IfNil(args.GasHandler) {
-		return nil, ErrNilGasHandler
-	}
 	privateKeyBytes, err := ioutil.ReadFile(args.Config.PrivateKeyFile)
 	if err != nil {
 		return nil, err
@@ -113,6 +115,28 @@ func NewClient(args ArgsClient) (*client, error) {
 	log.Info("Ethereum: NewClient", "address", ethAddress)
 
 	return c, nil
+}
+
+func checkArgs(args ArgsClient) error {
+	if check.IfNilReflect(args.Config) {
+		return ErrNilConfig
+	}
+	if check.IfNil(args.Broadcaster) {
+		return ErrNilBroadcaster
+	}
+	if check.IfNil(args.Mapper) {
+		return ErrNilMapper
+	}
+	if check.IfNil(args.GasHandler) {
+		return ErrNilGasHandler
+	}
+	if check.IfNilReflect(args.EthClient) {
+		return ErrNilBlockchainClient
+	}
+	if check.IfNilReflect(args.EthInstance) {
+		return ErrNilBrdgeContract
+	}
+	return nil
 }
 
 // GetPending returns the pending batch in the Ethereum contract

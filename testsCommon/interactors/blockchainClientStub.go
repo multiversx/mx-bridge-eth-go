@@ -40,3 +40,8 @@ func (bcs *BlockchainClientStub) ChainID(ctx context.Context) (*big.Int, error) 
 
 	return big.NewInt(0), nil
 }
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (bcs *BlockchainClientStub) IsInterfaceNil() bool {
+	return bcs == nil
+}

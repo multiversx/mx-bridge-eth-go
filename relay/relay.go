@@ -46,13 +46,6 @@ const (
 	pollingDurationOnError   = time.Second * 5
 )
 
-type Timer interface {
-	After(d time.Duration) <-chan time.Time
-	NowUnix() int64
-	Start()
-	Close() error
-}
-
 type defaultTimer struct {
 	ntpSyncTimer ntp.SyncTimer
 }
@@ -79,9 +72,13 @@ func (s *defaultTimer) Close() error {
 	return s.ntpSyncTimer.Close()
 }
 
+func (s *defaultTimer) IsInterfaceNil() bool {
+	return s == nil
+}
+
 type Relay struct {
 	messenger relayp2p.NetMessenger
-	timer     Timer
+	timer     coreBridge.Timer
 	log       logger.Logger
 
 	ethBridge    bridge.Bridge

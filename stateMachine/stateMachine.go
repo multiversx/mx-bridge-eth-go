@@ -18,7 +18,7 @@ type ArgsStateMachine struct {
 	StartStateIdentifier core.StepIdentifier
 	DurationBetweenSteps time.Duration
 	Log                  logger.Logger
-	Timer                Timer
+	Timer                core.Timer
 }
 
 type stateMachine struct {
@@ -29,7 +29,7 @@ type stateMachine struct {
 	log                  logger.Logger
 	cancel               func()
 	loopStatus           *atomic.Flag
-	timer                Timer
+	timer                core.Timer
 }
 
 // NewStateMachine creates a state machine able to execute all provided steps
@@ -71,7 +71,7 @@ func checkArgs(args ArgsStateMachine) error {
 	if check.IfNil(args.Log) {
 		return ErrNilLogger
 	}
-	if check.IfNilReflect(args.Timer) {
+	if check.IfNil(args.Timer) {
 		return ErrNilTimer
 	}
 

@@ -85,3 +85,8 @@ func (stub *TimerStub) GetFunctionCounter(function string) int {
 
 	return stub.functionCalledCounter[fullPathTimerStub+function]
 }
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (stub *TimerStub) IsInterfaceNil() bool {
+	return stub == nil
+}

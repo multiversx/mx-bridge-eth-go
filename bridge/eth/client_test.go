@@ -482,21 +482,35 @@ type broadcasterStub struct {
 	lastBroadcastMsgHash   []byte
 }
 
+
 func (b *broadcasterStub) SendSignature(signature []byte, msgHash []byte) {
 	b.lastBroadcastSignature = signature
 	b.lastBroadcastMsgHash = msgHash
 }
 
+// Signatures -
 func (b *broadcasterStub) Signatures(_ []byte) [][]byte {
 	return [][]byte{b.lastBroadcastSignature}
 }
 
+// IsInterfaceNil returns true if there is no value under the interface
+func (b *broadcasterStub) IsInterfaceNil() bool {
+	return b == nil
+}
+
 type mapperStub struct{}
 
+// GetTokenId -
 func (m *mapperStub) GetTokenId(string) string {
 	return "tokenId"
 }
 
+// GetErc20Address -
 func (m *mapperStub) GetErc20Address(string) string {
 	return "0x30C7c97471FB5C5238c946E549c608D27f37AAb8"
+}
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (m *mapperStub) IsInterfaceNil() bool {
+	return m == nil
 }

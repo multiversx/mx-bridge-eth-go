@@ -12,17 +12,20 @@ import (
 type Broadcaster interface {
 	Signatures(messageHash []byte) [][]byte
 	SendSignature(signature []byte, messageHash []byte)
+	IsInterfaceNil() bool
 }
 
 // Mapper defines the mapping operations
 type Mapper interface {
 	GetTokenId(string) string
 	GetErc20Address(string) string
+	IsInterfaceNil() bool
 }
 
 // QuorumProvider defines the operations for a quorum provider
 type QuorumProvider interface {
 	GetQuorum(ctx context.Context) (uint, error)
+	IsInterfaceNil() bool
 }
 
 // Bridge defines the operations available for a validator operating on a bridge between 2 chains
@@ -39,6 +42,7 @@ type Bridge interface {
 	Execute(context.Context, ActionId, *Batch) (string, error)
 	SignersCount(context.Context, *Batch, ActionId) uint
 	GetTransactionsStatuses(ctx context.Context, batchID BatchId) ([]uint8, error)
+	IsInterfaceNil() bool
 }
 
 // ElrondProxy defines the behavior of a proxy able to serve Elrond blockchain requests

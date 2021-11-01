@@ -26,3 +26,8 @@ func (tm *TimerMock) Start() {
 func (tm *TimerMock) Close() error {
 	return nil
 }
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (tm *TimerMock) IsInterfaceNil() bool {
+	return tm == nil
+}
