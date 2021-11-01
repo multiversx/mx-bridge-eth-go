@@ -95,3 +95,8 @@ func (bcs *BridgeContractStub) GetRelayers(opts *bind.CallOpts) ([]common.Addres
 
 	return make([]common.Address, 0), nil
 }
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (bcs *BridgeContractStub) IsInterfaceNil() bool {
+	return bcs == nil
+}

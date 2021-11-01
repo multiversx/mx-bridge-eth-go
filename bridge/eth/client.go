@@ -72,6 +72,11 @@ type ArgsClient struct {
 
 func NewClient(args ArgsClient) (*Client, error) {
 
+	err := checkArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
 	log := logger.GetOrCreate("EthClient")
 
 	if check.IfNil(args.GasHandler) {
@@ -114,6 +119,27 @@ func NewClient(args ArgsClient) (*Client, error) {
 	return client, nil
 }
 
+func checkArgs(args ArgsClient) error {
+	if check.IfNilReflect(args.Config) {
+		return ErrNilConfig
+	}
+	if check.IfNil(args.Broadcaster) {
+		return ErrNilBroadcaster
+	}
+	if check.IfNil(args.Mapper) {
+		return ErrNilMapper
+	}
+	if check.IfNil(args.GasHandler) {
+		return ErrNilGasHandler
+	}
+	if check.IfNilReflect(args.EthClient) {
+		return ErrNilBlockchainClient
+	}
+	if check.IfNilReflect(args.EthInstance) {
+		return ErrNilBrdgeContract
+	}
+	return nil
+}
 func (c *Client) GetPending(ctx context.Context) *bridge.Batch {
 	c.log.Info("ETH: Getting pending batch")
 	batch, err := c.bridgeContract.GetNextPendingBatch(&bind.CallOpts{Context: ctx})

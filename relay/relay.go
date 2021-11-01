@@ -51,6 +51,7 @@ type Timer interface {
 	NowUnix() int64
 	Start()
 	Close() error
+	IsInterfaceNil() bool
 }
 
 type defaultTimer struct {

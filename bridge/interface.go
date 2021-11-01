@@ -12,12 +12,14 @@ import (
 type Broadcaster interface {
 	Signatures(messageHash []byte) [][]byte
 	SendSignature(signature []byte, messageHash []byte)
+	IsInterfaceNil() bool
 }
 
 // Mapper defines the mapping operations
 type Mapper interface {
 	GetTokenId(string) string
 	GetErc20Address(string) string
+	IsInterfaceNil() bool
 }
 
 // QuorumProvider defines the operations for a quorum provider
