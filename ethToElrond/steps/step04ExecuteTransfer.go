@@ -23,7 +23,7 @@ func (step *executeTransferStep) Execute(ctx context.Context) (core.StepIdentifi
 	}
 
 	if step.bridge.WasTransferExecutedOnDestination(ctx) {
-		step.bridge.CleanTopology()
+		step.bridge.CleanStoredSignatures()
 
 		return ethToElrond.ProposingSetStatus, nil
 	}

@@ -30,7 +30,7 @@ type BridgeExecutorMock struct {
 	GetPendingBatchCalled                    func(ctx context.Context)
 	ProposeTransferOnDestinationCalled       func(ctx context.Context) error
 	ProposeSetStatusOnSourceCalled           func(ctx context.Context)
-	CleanTopologyCalled                      func()
+	CleanStoredSignaturesCalled              func()
 	ExecuteTransferOnDestinationCalled       func(ctx context.Context)
 	ExecuteSetStatusOnSourceCalled           func(ctx context.Context)
 	SetStatusRejectedOnAllTransactionsCalled func(err error)
@@ -165,11 +165,11 @@ func (bem *BridgeExecutorMock) ProposeSetStatusOnSource(ctx context.Context) {
 	}
 }
 
-// CleanTopology -
-func (bem *BridgeExecutorMock) CleanTopology() {
+// CleanStoredSignatures -
+func (bem *BridgeExecutorMock) CleanStoredSignatures() {
 	bem.incrementFunctionCounter()
-	if bem.CleanTopologyCalled != nil {
-		bem.CleanTopologyCalled()
+	if bem.CleanStoredSignaturesCalled != nil {
+		bem.CleanStoredSignaturesCalled()
 	}
 }
 

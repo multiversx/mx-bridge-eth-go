@@ -209,20 +209,33 @@ func testPublicKey(t *testing.T, broadcaster *broadcasterStub, expectedAddress c
 }
 
 func TestSignersCount(t *testing.T) {
-	broadcaster := &broadcasterStub{lastBroadcastSignature: []byte("signature")}
+	broadcaster := &broadcasterStub{}
 	c := client{
 		bridgeContract: &mockInteractors.BridgeContractStub{},
 		broadcaster:    broadcaster,
 		gasLimit:       GasLimit,
 		log:            logger.GetOrCreate("testEthClient"),
 	}
-
 	batch := &bridge.Batch{
 		Id: bridge.NewBatchId(0),
 	}
-	got := c.SignersCount(context.TODO(), batch, bridge.NewActionId(0))
 
-	assert.Equal(t, uint(1), got)
+	shs := &testsCommon.SignaturesHolderStub{
+		SignaturesCalled: func(messageHash []byte) [][]byte {
+			return [][]byte{[]byte("signature")}
+		},
+	}
+
+	t.Run("should return 0 when sig holder is nil", func(t *testing.T) {
+		got := c.SignersCount(batch, bridge.NewActionId(0), nil)
+
+		assert.Equal(t, uint(0), got)
+	})
+	t.Run("should return signature", func(t *testing.T) {
+		got := c.SignersCount(batch, bridge.NewActionId(0), shs)
+
+		assert.Equal(t, uint(1), got)
+	})
 }
 
 func TestWasExecuted(t *testing.T) {
@@ -263,6 +276,24 @@ func TestWasExecuted(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
+	t.Run("when signatures holder is nil", func(t *testing.T) {
+		bcs := &mockInteractors.BridgeContractStub{}
+		c := client{
+			bridgeContract:   bcs,
+			privateKey:       privateKey(t),
+			publicKey:        publicKey(t),
+			broadcaster:      &broadcasterStub{},
+			blockchainClient: &mockInteractors.BlockchainClientStub{},
+			log:              logger.GetOrCreate("testEthClient"),
+			gasLimit:         GasLimit,
+			gasHandler:       &testsCommon.GasHandlerStub{},
+		}
+		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
+
+		got, err := c.Execute(context.TODO(), bridge.NewActionId(setStatusAction), batch, nil)
+		assert.Equal(t, ErrNilSignatureHolder, err)
+		assert.Equal(t, "", got)
+	})
 	t.Run("when action is set status", func(t *testing.T) {
 		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
 		bcs := &mockInteractors.BridgeContractStub{
@@ -282,7 +313,12 @@ func TestExecute(t *testing.T) {
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
-		got, _ := c.Execute(context.TODO(), bridge.NewActionId(setStatusAction), batch)
+		shs := &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return [][]byte{[]byte("signature")}
+			},
+		}
+		got, _ := c.Execute(context.TODO(), bridge.NewActionId(setStatusAction), batch, shs)
 
 		assert.Equal(t, expected, got)
 	})
@@ -326,7 +362,12 @@ func TestExecute(t *testing.T) {
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
-		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch)
+		shs := &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return [][]byte{[]byte("signature")}
+			},
+		}
+		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, shs)
 		require.Nil(t, err)
 		assert.Equal(t, expected, got)
 		assert.True(t, executeTransferCalled)
@@ -356,8 +397,13 @@ func TestExecute(t *testing.T) {
 			log:      logger.GetOrCreate("testEthClient"),
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
+		shs := &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return [][]byte{[]byte("signature")}
+			},
+		}
 
-		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch)
+		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, shs)
 		assert.Equal(t, "", got)
 		assert.Equal(t, gasPriceError, err)
 	})
@@ -386,8 +432,13 @@ func TestExecute(t *testing.T) {
 			log:        logger.GetOrCreate("testEthClient"),
 		}
 		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
+		shs := &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return [][]byte{[]byte("signature")}
+			},
+		}
 
-		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch)
+		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, shs)
 		assert.Equal(t, "", got)
 		assert.True(t, errors.Is(err, blockNumError))
 	})
@@ -482,15 +533,9 @@ type broadcasterStub struct {
 	lastBroadcastMsgHash   []byte
 }
 
-
 func (b *broadcasterStub) SendSignature(signature []byte, msgHash []byte) {
 	b.lastBroadcastSignature = signature
 	b.lastBroadcastMsgHash = msgHash
-}
-
-// Signatures -
-func (b *broadcasterStub) Signatures(_ []byte) [][]byte {
-	return [][]byte{b.lastBroadcastSignature}
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

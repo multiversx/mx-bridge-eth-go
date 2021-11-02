@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/crypto"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
@@ -199,7 +200,7 @@ func TestRelayerMessageHandler_createMessage(t *testing.T) {
 		counter++
 
 		msg, err := rmh.createMessage(payload)
-		expectedMsg := &SignedMessage{
+		expectedMsg := &core.SignedMessage{
 			Payload:        payload,
 			PublicKeyBytes: rmh.publicKeyBytes,
 			Signature:      sig,
@@ -211,7 +212,7 @@ func TestRelayerMessageHandler_createMessage(t *testing.T) {
 
 		counter++
 		msg, err = rmh.createMessage(payload)
-		expectedMsg = &SignedMessage{
+		expectedMsg = &core.SignedMessage{
 			Payload:        payload,
 			PublicKeyBytes: rmh.publicKeyBytes,
 			Signature:      sig,
@@ -223,12 +224,12 @@ func TestRelayerMessageHandler_createMessage(t *testing.T) {
 	})
 }
 
-func createSignedMessageAndMarshaledBytes() (*SignedMessage, []byte) {
+func createSignedMessageAndMarshaledBytes() (*core.SignedMessage, []byte) {
 	return createSignedMessageAndMarshaledBytesWithValues([]byte("payload"), []byte("pk"), []byte("sig"))
 }
 
-func createSignedMessageAndMarshaledBytesWithValues(payload []byte, pk []byte, sig []byte) (*SignedMessage, []byte) {
-	msg := &SignedMessage{
+func createSignedMessageAndMarshaledBytesWithValues(payload []byte, pk []byte, sig []byte) (*core.SignedMessage, []byte) {
+	msg := &core.SignedMessage{
 		Payload:        payload,
 		PublicKeyBytes: pk,
 		Signature:      sig,
@@ -240,14 +241,14 @@ func createSignedMessageAndMarshaledBytesWithValues(payload []byte, pk []byte, s
 	return msg, buff
 }
 
-func createSignedMessageForEthSig(ethSig []byte, ethMsg []byte, elrondPk []byte, elrondSig []byte) (*SignedMessage, []byte) {
-	e := &EthereumSignature{
+func createSignedMessageForEthSig(ethSig []byte, ethMsg []byte, elrondPk []byte, elrondSig []byte) (*core.SignedMessage, []byte) {
+	e := &core.EthereumSignature{
 		Signature:   ethSig,
 		MessageHash: ethMsg,
 	}
 	payload, _ := marshalizer.Marshal(e)
 
-	msg := &SignedMessage{
+	msg := &core.SignedMessage{
 		Payload:        payload,
 		PublicKeyBytes: elrondPk,
 		Signature:      elrondSig,

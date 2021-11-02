@@ -22,7 +22,7 @@ type BridgeExecutor interface {
 	GetPendingBatch(ctx context.Context)
 	ProposeTransferOnDestination(ctx context.Context) error
 	ProposeSetStatusOnSource(ctx context.Context)
-	CleanTopology()
+	CleanStoredSignatures()
 	ExecuteTransferOnDestination(ctx context.Context)
 	ExecuteSetStatusOnSource(ctx context.Context)
 	SetStatusRejectedOnAllTransactions(err error)

@@ -14,7 +14,6 @@ type TopologyProviderStub struct {
 	mutTopology           sync.RWMutex
 
 	AmITheLeaderCalled func() bool
-	CleanCalled        func()
 }
 
 // NewTopologyProviderStub creates a new TopologyProviderStub instance
@@ -31,14 +30,6 @@ func (s *TopologyProviderStub) AmITheLeader() bool {
 		return s.AmITheLeaderCalled()
 	}
 	return false
-}
-
-// Clean -
-func (s *TopologyProviderStub) Clean() {
-	s.incrementFunctionCounter()
-	if s.CleanCalled != nil {
-		s.CleanCalled()
-	}
 }
 
 // -------- helper functions

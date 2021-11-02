@@ -19,3 +19,6 @@ var ErrNilBlockchainClient = errors.New("nil blockchain client")
 
 // ErrNilBrdgeContract signals that a nil blockchain client was provided
 var ErrNilBrdgeContract = errors.New("nil bridge contract")
+
+// ErrNilSignatureHolder signals that a nil signature holder was provided
+var ErrNilSignatureHolder = errors.New("nil signature holder")

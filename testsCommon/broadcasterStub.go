@@ -1,13 +1,14 @@
 package testsCommon
 
+import "github.com/ElrondNetwork/elrond-eth-bridge/core"
+
 // BroadcasterStub -
 type BroadcasterStub struct {
 	BroadcastSignatureCalled func(signature []byte, messageHash []byte)
 	BroadcastJoinTopicCalled func()
-	ClearSignaturesCalled    func()
-	SignaturesCalled         func(messageHash []byte) [][]byte
 	SortedPublicKeysCalled   func() [][]byte
 	RegisterOnTopicsCalled   func() error
+	AddBroadcastClientCalled func(client core.BroadcastClient) error
 	CloseCalled              func() error
 }
 
@@ -25,22 +26,6 @@ func (bs *BroadcasterStub) BroadcastJoinTopic() {
 	}
 }
 
-// ClearSignatures -
-func (bs *BroadcasterStub) ClearSignatures() {
-	if bs.ClearSignaturesCalled != nil {
-		bs.ClearSignaturesCalled()
-	}
-}
-
-// Signatures -
-func (bs *BroadcasterStub) Signatures(messageHash []byte) [][]byte {
-	if bs.SignaturesCalled != nil {
-		return bs.SignaturesCalled(messageHash)
-	}
-
-	return make([][]byte, 0)
-}
-
 // SortedPublicKeys -
 func (bs *BroadcasterStub) SortedPublicKeys() [][]byte {
 	if bs.SortedPublicKeysCalled != nil {
@@ -54,6 +39,15 @@ func (bs *BroadcasterStub) SortedPublicKeys() [][]byte {
 func (bs *BroadcasterStub) RegisterOnTopics() error {
 	if bs.RegisterOnTopicsCalled != nil {
 		return bs.RegisterOnTopicsCalled()
+	}
+
+	return nil
+}
+
+// AddBroadcastClient -
+func (bs *BroadcasterStub) AddBroadcastClient(client core.BroadcastClient) error {
+	if bs.AddBroadcastClientCalled != nil {
+		return bs.AddBroadcastClientCalled(client)
 	}
 
 	return nil
