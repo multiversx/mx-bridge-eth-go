@@ -35,7 +35,11 @@ type Transfer struct {
 
 // ElrondPendingBatch -
 type ElrondPendingBatch struct {
-	ElrondDeposits []ElrondDeposit
+	Nonce                  *big.Int
+	Timestamp              *big.Int
+	LastUpdatedBlockNumber *big.Int
+	ElrondDeposits         []ElrondDeposit
+	Status                 uint8
 }
 
 // ElrondDeposit -
@@ -53,6 +57,7 @@ type elrondContractStateMock struct {
 	proposedTransfers                map[string]*ElrondProposedTransfer // store them uniquely by their hash
 	signedActionIDs                  map[string]map[string]struct{}
 	GetStatusesAfterExecutionHandler func() []byte
+	ProcessFinishedHandler           func()
 	relayers                         [][]byte
 	performedAction                  *big.Int
 	pendingBatch                     *ElrondPendingBatch
@@ -84,6 +89,13 @@ func (mock *elrondContractStateMock) processTransaction(tx *data.Transaction) {
 	switch funcName {
 	case "proposeEsdtSafeSetCurrentTransactionBatchStatus":
 		mock.proposeEsdtSafeSetCurrentTransactionBatchStatus(dataSplit, tx)
+		mock.setPendingBatch(&ElrondPendingBatch{
+			Nonce: big.NewInt(0),
+		})
+		integrationTests.Log.Info("process finished, set status was written")
+		if mock.ProcessFinishedHandler != nil {
+			mock.ProcessFinishedHandler()
+		}
 		return
 	case "proposeMultiTransferEsdtBatch":
 		mock.proposeMultiTransferEsdtBatch(dataSplit, tx)
@@ -350,7 +362,7 @@ func (mock *elrondContractStateMock) vmRequestGetCurrentPendingBatch(_ *data.VmV
 		return createOkVmResponse(make([][]byte, 0))
 	}
 
-	args := [][]byte{{0}} // first non-empty slice
+	args := [][]byte{mock.pendingBatch.Nonce.Bytes()} // first non-empty slice
 	for _, deposit := range mock.pendingBatch.ElrondDeposits {
 		args = append(args, make([]byte, 0)) // mocked block nonce
 		args = append(args, make([]byte, 0)) // mocked deposit nonce
@@ -359,8 +371,11 @@ func (mock *elrondContractStateMock) vmRequestGetCurrentPendingBatch(_ *data.VmV
 		args = append(args, deposit.TokenAddress.Bytes())
 		args = append(args, deposit.Amount.Bytes())
 	}
-
 	return createOkVmResponse(args)
+}
+
+func (mock *elrondContractStateMock) setPendingBatch(pendingBatch *ElrondPendingBatch) {
+	mock.pendingBatch = pendingBatch
 }
 
 func getActionIDFromString(data string) *big.Int {

@@ -54,9 +54,7 @@ func NewEthereumChainMock() *EthereumChainMock {
 // Clean -
 func (mock *EthereumChainMock) Clean() {
 	mock.mutState.Lock()
-	mock.pendingBatch = contract.Batch{
-		Nonce: big.NewInt(0),
-	}
+	mock.pendingBatch = integrationTests.NoPendingBatch
 	mock.proposedStatus = nil
 	mock.proposedTransfer = nil
 	mock.mutState.Unlock()
@@ -116,9 +114,7 @@ func (mock *EthereumChainMock) FinishCurrentPendingBatch(_ *bind.TransactOpts, b
 
 	mock.mutState.Lock()
 	mock.proposedStatus = status
-	mock.pendingBatch = contract.Batch{
-		Nonce: big.NewInt(0),
-	}
+	mock.pendingBatch = integrationTests.NoPendingBatch
 	mock.mutState.Unlock()
 
 	integrationTests.Log.Info("process finished, set status was written")
