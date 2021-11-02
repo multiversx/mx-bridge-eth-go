@@ -96,7 +96,7 @@ func (mock *elrondContractStateMock) proposeMultiTransferEsdtBatch(dataSplit []s
 }
 
 func (mock *elrondContractStateMock) createProposedStatus(dataSplit []string) (*ElrondProposedStatus, string) {
-	buff, err := hex.DecodeString(dataSplit[2])
+	buff, err := hex.DecodeString(dataSplit[1])
 	if err != nil {
 		panic(err)
 	}
@@ -123,7 +123,7 @@ func (mock *elrondContractStateMock) createProposedStatus(dataSplit []string) (*
 }
 
 func (mock *elrondContractStateMock) createProposedTransfer(dataSplit []string) (*ElrondProposedTransfer, string) {
-	buff, err := hex.DecodeString(dataSplit[2])
+	buff, err := hex.DecodeString(dataSplit[1])
 	if err != nil {
 		panic(err)
 	}
