@@ -10,7 +10,7 @@ import (
 
 // Broadcaster defines the operations for a component used for communication with other peers
 type Broadcaster interface {
-	SendSignature(signature []byte, messageHash []byte)
+	BroadcastSignature(signature []byte, messageHash []byte)
 	IsInterfaceNil() bool
 }
 

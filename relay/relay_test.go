@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
@@ -77,6 +78,9 @@ func TestNewRelay(t *testing.T) {
 		EthClient:   ethClient,
 		EthInstance: ethInstance,
 		Messenger:   &p2pMocks.MessengerStub{},
+		Erc20Contracts: map[ethCommon.Address]eth.GenericErc20Contract{
+			testsCommon.CreateRandomEthereumAddress(): &testsCommon.GenericErc20ContractStub{},
+		},
 	}
 	r, err := NewRelay(args)
 	require.Nil(t, err)

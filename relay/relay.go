@@ -94,13 +94,14 @@ type Relay struct {
 
 // ArgsRelayer is the DTO used in the relayer constructor
 type ArgsRelayer struct {
-	Config      Config
-	FlagsConfig ContextFlagsConfig
-	Name        string
-	Proxy       bridge.ElrondProxy
-	EthClient   eth.BlockchainClient
-	EthInstance eth.BridgeContract
-	Messenger   relayp2p.NetMessenger
+	Config         Config
+	FlagsConfig    ContextFlagsConfig
+	Name           string
+	Proxy          bridge.ElrondProxy
+	EthClient      eth.BlockchainClient
+	EthInstance    eth.BridgeContract
+	Messenger      relayp2p.NetMessenger
+	Erc20Contracts map[common.Address]eth.GenericErc20Contract
 }
 
 // NewRelay creates a new relayer node able to work on 2-half bridges
@@ -162,12 +163,13 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	argsClient := eth.ArgsClient{
-		Config:      args.Config.Eth,
-		Broadcaster: relay,
-		Mapper:      elrondBridge,
-		GasHandler:  gs,
-		EthClient:   args.EthClient,
-		EthInstance: args.EthInstance,
+		Config:         args.Config.Eth,
+		Broadcaster:    relay,
+		Mapper:         elrondBridge,
+		GasHandler:     gs,
+		EthClient:      args.EthClient,
+		EthInstance:    args.EthInstance,
+		Erc20Contracts: args.Erc20Contracts,
 	}
 	ethBridge, err := eth.NewClient(argsClient)
 	if err != nil {
@@ -227,6 +229,9 @@ func checkArgs(args ArgsRelayer) error {
 	}
 	if check.IfNil(args.Messenger) {
 		return ErrNilMessenger
+	}
+	if args.Erc20Contracts == nil {
+		return ErrNilErc20Contracts
 	}
 	return nil
 }
@@ -466,8 +471,8 @@ func (r *Relay) AmITheLeader() bool {
 	}
 }
 
-// SendSignature will broadcast the signature to other peers
-func (r *Relay) SendSignature(sig []byte, messageHash []byte) {
+// BroadcastSignature will broadcast the signature to other peers
+func (r *Relay) BroadcastSignature(sig []byte, messageHash []byte) {
 	r.broadcaster.BroadcastSignature(sig, messageHash)
 }
 
