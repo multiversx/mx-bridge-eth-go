@@ -106,8 +106,9 @@ type ArgsRelayer struct {
 // NewRelay creates a new relayer node able to work on 2-half bridges
 // TODO refactor even further this struct
 func NewRelay(args ArgsRelayer) (*Relay, error) {
-	if check.IfNil(args.Messenger) {
-		return nil, ErrNilMessenger
+	err := checkArgs(args)
+	if err != nil {
+		return nil, err
 	}
 
 	relay := &Relay{
@@ -206,6 +207,28 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	return relay, nil
+}
+
+func checkArgs(args ArgsRelayer) error {
+	if check.IfNilReflect(args.Config) {
+		return ErrMissingConfig
+	}
+	if check.IfNilReflect(args.FlagsConfig) {
+		return ErrMissingFlagsConfig
+	}
+	if check.IfNil(args.Proxy) {
+		return ErrNilElrondProxy
+	}
+	if check.IfNilReflect(args.EthClient) {
+		return ErrNilEthClient
+	}
+	if check.IfNilReflect(args.EthInstance) {
+		return ErrNilEthInstance
+	}
+	if check.IfNil(args.Messenger) {
+		return ErrNilMessenger
+	}
+	return nil
 }
 
 func (r *Relay) createRoleProviders(config Config) error {

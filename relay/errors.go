@@ -9,7 +9,19 @@ var ErrInvalidDurationConfig = errors.New("invalid config duration")
 var ErrMissingDurationConfig = errors.New("missing config duration")
 
 // ErrMissingConfig signals that a missing config was detected
-var ErrMissingConfig = errors.New("missing config duration")
+var ErrMissingConfig = errors.New("missing config")
+
+// ErrMissingFlagsConfig signals that a missing flags config was detected
+var ErrMissingFlagsConfig = errors.New("missing flags config")
+
+// ErrNilElrondProxy signals that a nil elrond proxy was provided
+var ErrNilElrondProxy = errors.New("nil elrond proxy")
+
+// ErrNilEthClient signals that a nil eth client was provided
+var ErrNilEthClient = errors.New("nil eth client")
+
+// ErrNilEthInstance signals that a nil eth instance was provided
+var ErrNilEthInstance = errors.New("nil eth instance")
 
 // ErrNilMessenger signals that a nil messenger was provided
 var ErrNilMessenger = errors.New("nil messenger")
