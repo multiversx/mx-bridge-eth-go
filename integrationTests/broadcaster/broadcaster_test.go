@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	mockRoleProviders "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
@@ -18,8 +19,8 @@ import (
 func TestNetworkOfBroadcastersShouldPassTheSignatures(t *testing.T) {
 	numBroadcasters := 5
 
-	log.Info("creating & linking network messengers...")
-	messengers := createLinkedMessengers(numBroadcasters)
+	integrationTests.Log.Info("creating & linking network messengers...")
+	messengers := integrationTests.CreateLinkedMessengers(numBroadcasters)
 	defer func() {
 		for _, m := range messengers {
 			_ = m.Close()
@@ -40,15 +41,15 @@ func TestNetworkOfBroadcastersShouldPassTheSignatures(t *testing.T) {
 		},
 	}
 
-	log.Info("creating broadcasters...")
-	broadcasters := make([]Broadcaster, 0, numBroadcasters)
+	integrationTests.Log.Info("creating broadcasters...")
+	broadcasters := make([]integrationTests.Broadcaster, 0, numBroadcasters)
 	for i := 0; i < numBroadcasters; i++ {
 		args := p2p.ArgsBroadcaster{
 			Messenger:          messengers[i],
-			Log:                log,
+			Log:                integrationTests.Log,
 			ElrondRoleProvider: roleProvider,
-			KeyGen:             TestKeyGenerator,
-			SingleSigner:       TestSingleSigner,
+			KeyGen:             integrationTests.TestKeyGenerator,
+			SingleSigner:       integrationTests.TestSingleSigner,
 			PrivateKey:         privateKeys[i],
 			SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 		}
@@ -91,8 +92,8 @@ func TestNetworkOfBroadcastersShouldPassTheSignatures(t *testing.T) {
 func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenNotJoining(t *testing.T) {
 	numBroadcasters := 5
 
-	log.Info("creating & linking network messengers...")
-	messengers := createLinkedMessengers(numBroadcasters)
+	integrationTests.Log.Info("creating & linking network messengers...")
+	messengers := integrationTests.CreateLinkedMessengers(numBroadcasters)
 	defer func() {
 		for _, m := range messengers {
 			_ = m.Close()
@@ -113,15 +114,15 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenNotJoining(t *
 		},
 	}
 
-	log.Info("creating broadcasters...")
-	broadcasters := make([]Broadcaster, 0, numBroadcasters)
+	integrationTests.Log.Info("creating broadcasters...")
+	broadcasters := make([]integrationTests.Broadcaster, 0, numBroadcasters)
 	for i := 0; i < numBroadcasters; i++ {
 		args := p2p.ArgsBroadcaster{
 			Messenger:          messengers[i],
-			Log:                log,
+			Log:                integrationTests.Log,
 			ElrondRoleProvider: roleProvider,
-			KeyGen:             TestKeyGenerator,
-			SingleSigner:       TestSingleSigner,
+			KeyGen:             integrationTests.TestKeyGenerator,
+			SingleSigner:       integrationTests.TestSingleSigner,
 			PrivateKey:         privateKeys[i],
 			SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 		}
@@ -145,15 +146,15 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenNotJoining(t *
 	sendSignatures(joiningBroadcasters, signatures[1:], messageHash)
 	checkBroadcasterState(t, joiningBroadcasters, signatures[1:], expectedPkInOrder, messageHash)
 
-	lateBroadcasters := []Broadcaster{broadcasters[0]}
+	lateBroadcasters := []integrationTests.Broadcaster{broadcasters[0]}
 	checkBroadcasterState(t, lateBroadcasters, signatures[1:], expectedPkInOrder, messageHash)
 }
 
 func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting(t *testing.T) {
 	numBroadcasters := 5
 
-	log.Info("creating & linking network messengers...")
-	messengers := createLinkedMessengers(numBroadcasters)
+	integrationTests.Log.Info("creating & linking network messengers...")
+	messengers := integrationTests.CreateLinkedMessengers(numBroadcasters)
 	defer func() {
 		for _, m := range messengers {
 			_ = m.Close()
@@ -174,15 +175,15 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 		},
 	}
 
-	log.Info("creating broadcasters...")
-	broadcasters := make([]Broadcaster, 0, numBroadcasters-1)
+	integrationTests.Log.Info("creating broadcasters...")
+	broadcasters := make([]integrationTests.Broadcaster, 0, numBroadcasters-1)
 	for i := 0; i < numBroadcasters-1; i++ {
 		args := p2p.ArgsBroadcaster{
 			Messenger:          messengers[i],
-			Log:                log,
+			Log:                integrationTests.Log,
 			ElrondRoleProvider: roleProvider,
-			KeyGen:             TestKeyGenerator,
-			SingleSigner:       TestSingleSigner,
+			KeyGen:             integrationTests.TestKeyGenerator,
+			SingleSigner:       integrationTests.TestSingleSigner,
 			PrivateKey:         privateKeys[i],
 			SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 		}
@@ -208,13 +209,13 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 
 	expectedPkInOrder = copyAndSortBytesSlices(publicKeysBytes)
 
-	log.Info("creating the late broadcaster")
+	integrationTests.Log.Info("creating the late broadcaster")
 	args := p2p.ArgsBroadcaster{
 		Messenger:          messengers[len(messengers)-1],
-		Log:                log,
+		Log:                integrationTests.Log,
 		ElrondRoleProvider: roleProvider,
-		KeyGen:             TestKeyGenerator,
-		SingleSigner:       TestSingleSigner,
+		KeyGen:             integrationTests.TestKeyGenerator,
+		SingleSigner:       integrationTests.TestSingleSigner,
 		PrivateKey:         privateKeys[len(privateKeys)-1],
 		SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 	}
@@ -229,34 +230,16 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 	lateBroadcaster.BroadcastJoinTopic()
 	time.Sleep(time.Second)
 
-	lateBroadcasters := []Broadcaster{lateBroadcaster}
+	lateBroadcasters := []integrationTests.Broadcaster{lateBroadcaster}
 	checkBroadcasterState(t, lateBroadcasters, signatures, expectedPkInOrder, messageHash)
 	checkBroadcasterState(t, broadcasters, signatures, expectedPkInOrder, messageHash)
-}
-
-func createLinkedMessengers(numMessengers int) []p2p.NetMessenger {
-	connectables := make([]Connectable, 0, numMessengers)
-	messengers := make([]p2p.NetMessenger, 0, numMessengers)
-	for i := 0; i < numMessengers; i++ {
-		mes := CreateMessengerWithNoDiscovery()
-		messengers = append(messengers, mes)
-
-		connectable := &messengerWrapper{
-			Messenger: mes,
-		}
-		connectables = append(connectables, connectable)
-	}
-
-	ConnectNodes(connectables)
-
-	return messengers
 }
 
 func createKeys(t *testing.T, numKeys int) ([]crypto.PrivateKey, [][]byte) {
 	privateKeys := make([]crypto.PrivateKey, 0, numKeys)
 	publicKeysBytes := make([][]byte, 0, numKeys)
 	for i := 0; i < numKeys; i++ {
-		sk, pk := TestKeyGenerator.GeneratePair()
+		sk, pk := integrationTests.TestKeyGenerator.GeneratePair()
 		pkBytes, err := pk.ToByteArray()
 		require.Nil(t, err)
 		publicKeysBytes = append(publicKeysBytes, pkBytes)
@@ -281,8 +264,8 @@ func copyAndSortBytesSlices(src [][]byte) [][]byte {
 	return dst
 }
 
-func joinBroadcasters(broadcasters []Broadcaster) {
-	log.Info("joining the broadcasters...")
+func joinBroadcasters(broadcasters []integrationTests.Broadcaster) {
+	integrationTests.Log.Info("joining the broadcasters...")
 	for _, b := range broadcasters {
 		b.BroadcastJoinTopic()
 	}
@@ -291,7 +274,7 @@ func joinBroadcasters(broadcasters []Broadcaster) {
 }
 
 func createSignatures(numSignatures int, suffix string) [][]byte {
-	log.Info("creating signatures...")
+	integrationTests.Log.Info("creating signatures...")
 	signatures := make([][]byte, 0, numSignatures)
 	for i := 0; i < numSignatures; i++ {
 		signatures = append(signatures, []byte(fmt.Sprintf("%s%d", suffix, i)))
@@ -300,8 +283,8 @@ func createSignatures(numSignatures int, suffix string) [][]byte {
 	return signatures
 }
 
-func sendSignatures(broadcasters []Broadcaster, signatures [][]byte, messageHash []byte) {
-	log.Info("sending signatures...")
+func sendSignatures(broadcasters []integrationTests.Broadcaster, signatures [][]byte, messageHash []byte) {
+	integrationTests.Log.Info("sending signatures...")
 	for i, b := range broadcasters {
 		b.BroadcastSignature(signatures[i], messageHash)
 	}
@@ -311,12 +294,12 @@ func sendSignatures(broadcasters []Broadcaster, signatures [][]byte, messageHash
 
 func checkBroadcasterState(
 	t *testing.T,
-	broadcasters []Broadcaster,
+	broadcasters []integrationTests.Broadcaster,
 	expectedSigs [][]byte,
 	expectedPublicKeys [][]byte,
 	messageHash []byte,
 ) {
-	log.Info("checking received signatures",
+	integrationTests.Log.Info("checking received signatures",
 		"num broadcasters", len(broadcasters), "num expected signatures", len(expectedSigs))
 	for _, b := range broadcasters {
 		checkStateOnBroadcaster(t, b, expectedSigs, expectedPublicKeys, messageHash)
@@ -325,7 +308,7 @@ func checkBroadcasterState(
 
 func checkStateOnBroadcaster(
 	t *testing.T,
-	b Broadcaster,
+	b integrationTests.Broadcaster,
 	expectedSigs [][]byte,
 	expectedPublicKeys [][]byte,
 	messageHash []byte,
@@ -348,8 +331,8 @@ func checkStateOnBroadcaster(
 	}
 }
 
-func clearSignatures(broadcasters []Broadcaster) {
-	log.Info("clearing signatures...")
+func clearSignatures(broadcasters []integrationTests.Broadcaster) {
+	integrationTests.Log.Info("clearing signatures...")
 	for _, b := range broadcasters {
 		b.ClearSignatures()
 	}

@@ -1,4 +1,4 @@
-package broadcaster
+package integrationTests
 
 import (
 	"fmt"
