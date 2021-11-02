@@ -153,7 +153,7 @@ func (bm *BridgeMock) SignedActionIDMap() map[string]int {
 }
 
 // Execute -
-func (bm *BridgeMock) Execute(_ context.Context, id bridge.ActionId, batch *bridge.Batch) (string, error) {
+func (bm *BridgeMock) Execute(_ context.Context, id bridge.ActionId, batch *bridge.Batch, _ bridge.SignaturesHolder) (string, error) {
 	bm.Lock()
 	defer bm.Unlock()
 
@@ -172,7 +172,7 @@ func (bm *BridgeMock) GetExecuted() (bridge.ActionId, bridge.BatchId) {
 }
 
 // SignersCount -
-func (bm *BridgeMock) SignersCount(_ context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
+func (bm *BridgeMock) SignersCount(_ *bridge.Batch, id bridge.ActionId, _ bridge.SignaturesHolder) uint {
 	bm.RLock()
 	defer bm.RUnlock()
 

@@ -28,3 +28,12 @@ var ErrInvalidSize = errors.New("invalid size")
 
 // ErrNilSignatureProcessor signals that a nil signature processor was provided
 var ErrNilSignatureProcessor = errors.New("nil signature processor")
+
+// ErrNonceTooLowInReceivedMessage signals that a too low nonce was provided in the message
+var ErrNonceTooLowInReceivedMessage = errors.New("nonce too low in received message")
+
+// ErrEmptyName signals that an empty name is not allowed
+var ErrEmptyName = errors.New("empty name")
+
+// ErrNilBroadcastClient signals that a nil broadcast client was provided
+var ErrNilBroadcastClient = errors.New("nil broadcast client")

@@ -3,7 +3,8 @@ package relay
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -23,10 +24,9 @@ type TopologyProvider interface {
 type Broadcaster interface {
 	BroadcastSignature(signature []byte, messageHash []byte)
 	BroadcastJoinTopic()
-	ClearSignatures()
-	Signatures(messageHash []byte) [][]byte
 	SortedPublicKeys() [][]byte
 	RegisterOnTopics() error
+	AddBroadcastClient(client core.BroadcastClient) error
 	Close() error
 	IsInterfaceNil() bool
 }
@@ -34,7 +34,7 @@ type Broadcaster interface {
 // ElrondRoleProvider defines the operations for the Elrond role provider
 type ElrondRoleProvider interface {
 	Execute(ctx context.Context) error
-	IsWhitelisted(address core.AddressHandler) bool
+	IsWhitelisted(address erdgoCore.AddressHandler) bool
 	IsInterfaceNil() bool
 }
 

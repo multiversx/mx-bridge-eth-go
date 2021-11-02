@@ -362,7 +362,7 @@ func (c *client) Sign(_ context.Context, actionId bridge.ActionId, _ *bridge.Bat
 }
 
 // Execute will trigger the execution of the provided action ID
-func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch) (string, error) {
+func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch, _ bridge.SignaturesHolder) (string, error) {
 	builder := newBuilder(c.log).
 		Func("performAction").
 		ActionId(actionId)
@@ -379,7 +379,7 @@ func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bri
 }
 
 // SignersCount returns the signers count
-func (c *client) SignersCount(_ context.Context, _ *bridge.Batch, actionId bridge.ActionId) uint {
+func (c *client) SignersCount(_ *bridge.Batch, actionId bridge.ActionId, _ bridge.SignaturesHolder) uint {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
 		Func("getActionSignerCount").
 		ActionId(actionId).
