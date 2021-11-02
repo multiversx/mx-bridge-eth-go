@@ -40,6 +40,7 @@ const (
 	defaultLogsPath          = "logs"
 	logFilePrefix            = "elrond-eth-bridge"
 	p2pPeerNetworkDiscoverer = "optimized"
+	nilListSharderType       = "NilListSharder"
 )
 
 var log = logger.GetOrCreate("main")
@@ -250,7 +251,7 @@ func buildNetMessenger(cfg relay.Config, marshalizer marshal.Marshalizer) (relay
 			MaxCrossShardValidators: 0,
 			MaxIntraShardObservers:  0,
 			MaxCrossShardObservers:  0,
-			Type:                    "NilListSharder",
+			Type:                    nilListSharderType,
 		},
 	}
 
