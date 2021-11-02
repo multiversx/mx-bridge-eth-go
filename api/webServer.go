@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	apiErrors "github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -59,6 +60,11 @@ func checkArgs(args ArgsNewWebServer) error {
 func (ws *webServer) StartHttpServer() error {
 	ws.Lock()
 	defer ws.Unlock()
+
+	if ws.facade.RestApiInterface() == core.WebServerOffString {
+		log.Debug("web server is turned off")
+		return nil
+	}
 
 	var engine *gin.Engine
 

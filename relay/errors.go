@@ -10,3 +10,6 @@ var ErrMissingDurationConfig = errors.New("missing config duration")
 
 // ErrMissingConfig signals that a missing config was detected
 var ErrMissingConfig = errors.New("missing config duration")
+
+// ErrNilMessenger signals that a nil messenger was provided
+var ErrNilMessenger = errors.New("nil messenger")

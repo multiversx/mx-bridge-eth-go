@@ -24,8 +24,7 @@ import (
 	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/roleProvider"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
-	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
@@ -33,17 +32,14 @@ import (
 	"github.com/ElrondNetwork/elrond-go/api/shared"
 	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/ntp"
-	"github.com/ElrondNetwork/elrond-go/p2p"
-	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
-	"github.com/ElrondNetwork/elrond-go/update/disabled"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
-	p2pPeerNetworkDiscoverer = "optimized"
-	minimumDurationForStep   = time.Second
-	pollingDurationOnError   = time.Second * 5
+	minimumDurationForStep = time.Second
+	pollingDurationOnError = time.Second * 5
 )
 
 type defaultTimer struct {
@@ -91,8 +87,9 @@ type Relay struct {
 	stateMachineConfig   map[string]ConfigStateMachine
 	flagsConfig          ContextFlagsConfig
 	broadcaster          Broadcaster
-	address              erdgoCore.AddressHandler
 	pollingHandlers      []io.Closer
+	elrondAddress        erdgoCore.AddressHandler
+	ethereumAddress      common.Address
 }
 
 // ArgsRelayer is the DTO used in the relayer constructor
@@ -103,10 +100,18 @@ type ArgsRelayer struct {
 	Proxy       bridge.ElrondProxy
 	EthClient   eth.BlockchainClient
 	EthInstance eth.BridgeContract
+	Messenger   relayp2p.NetMessenger
 }
 
+// NewRelay creates a new relayer node able to work on 2-half bridges
+// TODO refactor even further this struct
 func NewRelay(args ArgsRelayer) (*Relay, error) {
+	if check.IfNil(args.Messenger) {
+		return nil, ErrNilMessenger
+	}
+
 	relay := &Relay{
+		messenger:          args.Messenger,
 		stateMachineConfig: args.Config.StateMachine,
 		log:                logger.GetOrCreate(args.Name),
 	}
@@ -117,7 +122,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		return nil, err
 	}
 
-	relay.address, err = wallet.GetAddressFromPrivateKey(privateKey)
+	relay.elrondAddress, err = wallet.GetAddressFromPrivateKey(privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +138,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		Config:     args.Config.Elrond,
 		Proxy:      args.Proxy,
 		PrivateKey: txSignPrivKey,
-		Address:    relay.address,
+		Address:    relay.elrondAddress,
 	}
 	elrondBridge, err := elrond.NewClient(clientArgs)
 	if err != nil {
@@ -169,25 +174,15 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 	relay.ethBridge = ethBridge
 	relay.quorumProvider = ethBridge
+	relay.ethereumAddress = ethBridge.Address()
 
 	err = relay.createRoleProviders(args.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	marshalizer, err := factoryMarshalizer.NewMarshalizer(args.Config.Relayer.Marshalizer.Type)
-	if err != nil {
-		return nil, err
-	}
-
-	messenger, err := buildNetMessenger(&args.Config, marshalizer)
-	if err != nil {
-		return nil, err
-	}
-	relay.messenger = messenger
-
 	argsBroadcaster := relayp2p.ArgsBroadcaster{
-		Messenger:          messenger,
+		Messenger:          relay.messenger,
 		Log:                relay.log,
 		ElrondRoleProvider: relay.elrondRoleProvider,
 		KeyGen:             keyGen,
@@ -438,7 +433,7 @@ func (r *Relay) AmITheLeader() bool {
 		numberOfPeers := int64(len(publicKeys))
 		index := (r.timer.NowUnix() / int64(r.stepDuration.Seconds())) % numberOfPeers
 
-		return bytes.Equal(publicKeys[index], r.address.AddressBytes())
+		return bytes.Equal(publicKeys[index], r.elrondAddress.AddressBytes())
 	}
 }
 
@@ -455,6 +450,16 @@ func (r *Relay) Signatures(messageHash []byte) [][]byte {
 // SendSignature will broadcast the signature to other peers
 func (r *Relay) SendSignature(sig []byte, messageHash []byte) {
 	r.broadcaster.BroadcastSignature(sig, messageHash)
+}
+
+// ElrondAddress returns the Elrond's address associated to this relayer
+func (r *Relay) ElrondAddress() erdgoCore.AddressHandler {
+	return r.elrondAddress
+}
+
+// EthereumAddress returns the Ethereum's address associated to this relayer
+func (r *Relay) EthereumAddress() common.Address {
+	return r.ethereumAddress
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
@@ -499,51 +504,4 @@ func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) 
 	}
 
 	return httpServerWrapper, nil
-}
-
-func buildNetMessenger(cfg *Config, marshalizer marshal.Marshalizer) (relayp2p.NetMessenger, error) {
-	nodeConfig := config.NodeConfig{
-		Port:                       cfg.P2P.Port,
-		Seed:                       cfg.P2P.Seed,
-		MaximumExpectedPeerCount:   0,
-		ThresholdMinConnectedPeers: 0,
-	}
-	peerDiscoveryConfig := config.KadDhtPeerDiscoveryConfig{
-		Enabled:                          true,
-		RefreshIntervalInSec:             5,
-		ProtocolID:                       cfg.P2P.ProtocolID,
-		InitialPeerList:                  cfg.P2P.InitialPeerList,
-		BucketSize:                       0,
-		RoutingTableRefreshIntervalInSec: 300,
-		Type:                             p2pPeerNetworkDiscoverer,
-	}
-
-	p2pConfig := config.P2PConfig{
-		Node:                nodeConfig,
-		KadDhtPeerDiscovery: peerDiscoveryConfig,
-		Sharding: config.ShardingConfig{
-			TargetPeerCount:         0,
-			MaxIntraShardValidators: 0,
-			MaxCrossShardValidators: 0,
-			MaxIntraShardObservers:  0,
-			MaxCrossShardObservers:  0,
-			Type:                    "NilListSharder",
-		},
-	}
-
-	args := libp2p.ArgsNetworkMessenger{
-		Marshalizer:          marshalizer,
-		ListenAddress:        libp2p.ListenAddrWithIp4AndTcp,
-		P2pConfig:            p2pConfig,
-		SyncTimer:            &libp2p.LocalSyncTimer{},
-		PreferredPeersHolder: disabled.NewPreferredPeersHolder(),
-		NodeOperationMode:    p2p.NormalOperation,
-	}
-
-	messenger, err := libp2p.NewNetworkMessenger(args)
-	if err != nil {
-		panic(err)
-	}
-
-	return messenger, nil
 }

@@ -12,4 +12,7 @@ const (
 
 	// EthAverageGasPrice represents the average gas price value
 	EthAverageGasPrice EthGasPriceSelector = "average"
+
+	// WebServerOffString represents the constant used to switch off the web server
+	WebServerOffString = "off"
 )

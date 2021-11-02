@@ -7,12 +7,11 @@ import (
 
 // ElrondProxyStub -
 type ElrondProxyStub struct {
-	GetNetworkConfigCalled              func() (*data.NetworkConfig, error)
-	SendTransactionCalled               func(transaction *data.Transaction) (string, error)
-	SendTransactionsCalled              func(txs []*data.Transaction) ([]string, error)
-	GetTransactionInfoWithResultsCalled func(hash string) (*data.TransactionInfo, error)
-	ExecuteVMQueryCalled                func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
-	GetAccountCalled                    func(address core.AddressHandler) (*data.Account, error)
+	GetNetworkConfigCalled func() (*data.NetworkConfig, error)
+	SendTransactionCalled  func(transaction *data.Transaction) (string, error)
+	SendTransactionsCalled func(txs []*data.Transaction) ([]string, error)
+	ExecuteVMQueryCalled   func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
+	GetAccountCalled       func(address core.AddressHandler) (*data.Account, error)
 }
 
 // GetNetworkConfig -
@@ -40,15 +39,6 @@ func (eps *ElrondProxyStub) SendTransactions(txs []*data.Transaction) ([]string,
 	}
 
 	return make([]string, 0), nil
-}
-
-// GetTransactionInfoWithResults -
-func (eps *ElrondProxyStub) GetTransactionInfoWithResults(hash string) (*data.TransactionInfo, error) {
-	if eps.GetTransactionInfoWithResultsCalled != nil {
-		return eps.GetTransactionInfoWithResultsCalled(hash)
-	}
-
-	return &data.TransactionInfo{}, nil
 }
 
 // ExecuteVMQuery -

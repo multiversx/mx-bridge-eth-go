@@ -804,11 +804,6 @@ func (p *testProxy) SendTransactions(txs []*data.Transaction) ([]string, error) 
 	}
 }
 
-// GetTransactionInfoWithResults -
-func (p *testProxy) GetTransactionInfoWithResults(string) (*data.TransactionInfo, error) {
-	return nil, nil
-}
-
 // ExecuteVMQuery -
 func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 	if p.ExecuteVMQueryCalled != nil {

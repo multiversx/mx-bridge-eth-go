@@ -59,6 +59,7 @@ type client struct {
 	gasLimit         uint64
 	log              logger.Logger
 	gasHandler       bridge.GasHandler
+	address          common.Address
 }
 
 // ArgsClient is the DTO used in the client constructor
@@ -71,6 +72,7 @@ type ArgsClient struct {
 	EthInstance BridgeContract
 }
 
+// NewClient creates a new Ethereum client instance
 func NewClient(args ArgsClient) (*client, error) {
 
 	err := checkArgs(args)
@@ -111,8 +113,8 @@ func NewClient(args ArgsClient) (*client, error) {
 		return nil, err
 	}
 
-	ethAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	log.Info("Ethereum: NewClient", "address", ethAddress)
+	c.address = crypto.PubkeyToAddress(*publicKeyECDSA)
+	log.Info("Ethereum: NewClient", "address", c.address)
 
 	return c, nil
 }
@@ -506,6 +508,11 @@ func (c *client) broadcastSignatureForFinish(batch *bridge.Batch) {
 
 func (c *client) getErc20AddressFromTokenId(tokenId string) string {
 	return c.mapper.GetErc20Address(tokenId[2:])
+}
+
+// Address returns the Ethereum's address associated to this client
+func (c *client) Address() common.Address {
+	return c.address
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
