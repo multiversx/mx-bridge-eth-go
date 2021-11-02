@@ -293,7 +293,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 			},
 		}
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
+		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 2
 		}
 		args.DestinationBridge = db
@@ -312,7 +312,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		}
 
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
+		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 3
 		}
 		args.DestinationBridge = db
@@ -331,7 +331,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		}
 
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
+		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 4
 		}
 		args.DestinationBridge = db
@@ -381,7 +381,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
+		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 2
 		}
 		args.SourceBridge = sb
@@ -400,7 +400,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
+		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 3
 		}
 		args.SourceBridge = sb
@@ -419,7 +419,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId) uint {
+		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 4
 		}
 		args.SourceBridge = sb
@@ -540,12 +540,25 @@ func TestProposeSetStatusOnSource(t *testing.T) {
 func TestCleanTopology(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
-	tp := testsCommon.NewTopologyProviderStub()
-	args.TopologyProvider = tp
-	executor, err := NewEthElrondBridgeExecutor(args)
-	assert.Nil(t, err)
-	executor.CleanTopology()
-	assert.Equal(t, 1, tp.GetFunctionCounter("Clean"))
+	executor, _ := NewEthElrondBridgeExecutor(args)
+
+	msg := &core.SignedMessage{
+		Payload:        []byte("payload"),
+		PublicKeyBytes: []byte("pk"),
+		Signature:      []byte("sig"),
+		Nonce:          34,
+	}
+	ethMsg := &core.EthereumSignature{
+		Signature:   []byte("sig"),
+		MessageHash: []byte("msg"),
+	}
+
+	executor.ProcessNewMessage(msg, ethMsg)
+	assert.Equal(t, 1, len(executor.AllStoredSignatures()))
+
+	executor.CleanStoredSignatures()
+
+	assert.Equal(t, 0, len(executor.AllStoredSignatures()))
 }
 
 func TestExecuteTransferOnDestination(t *testing.T) {

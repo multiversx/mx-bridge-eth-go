@@ -190,6 +190,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		SingleSigner:       &singlesig.Ed25519Signer{},
 		PrivateKey:         txSignPrivKey,
 		SignatureProcessor: relay.ethereumRoleProvider,
+		Name:               "eth-elrond",
 	}
 	relay.broadcaster, err = relayp2p.NewBroadcaster(argsBroadcaster)
 	if err != nil {
@@ -372,6 +373,11 @@ func (r *Relay) createAndStartBridge(
 		return nil, err
 	}
 
+	err = r.broadcaster.AddBroadcastClient(bridgeExecutor)
+	if err != nil {
+		return nil, err
+	}
+
 	stepsMap, err := steps.CreateSteps(bridgeExecutor)
 	if err != nil {
 		return nil, err
@@ -458,16 +464,6 @@ func (r *Relay) AmITheLeader() bool {
 
 		return bytes.Equal(publicKeys[index], r.elrondAddress.AddressBytes())
 	}
-}
-
-// Clean will clean any stored signatures
-func (r *Relay) Clean() {
-	r.broadcaster.ClearSignatures()
-}
-
-// Signatures returns any stored signatures
-func (r *Relay) Signatures(messageHash []byte) [][]byte {
-	return r.broadcaster.Signatures(messageHash)
 }
 
 // SendSignature will broadcast the signature to other peers

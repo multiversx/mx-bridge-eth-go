@@ -23,7 +23,7 @@ func (step *waitForSignaturesForProposeSetStatusStep) Execute(ctx context.Contex
 	}
 
 	if step.bridge.WasProposeSetStatusExecutedOnSource(ctx) {
-		step.bridge.CleanTopology()
+		step.bridge.CleanStoredSignatures()
 
 		return ethToElrond.GettingPending, nil
 	}

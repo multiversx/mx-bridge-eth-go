@@ -9,6 +9,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
@@ -80,8 +81,6 @@ func TestNewRelay(t *testing.T) {
 	r, err := NewRelay(args)
 	require.Nil(t, err)
 	require.False(t, check.IfNil(r))
-
-	r.Clean()
 }
 
 func TestInit(t *testing.T) {
@@ -110,23 +109,6 @@ func TestInit(t *testing.T) {
 	assert.True(t, messenger.GetBootstrapWasCalled())
 	assert.Equal(t, 1, timer.GetFunctionCounter("Start"))
 	assert.True(t, broadcastJoinTopicCalled)
-}
-
-func TestClean(t *testing.T) {
-	t.Run("it will clean signatures", func(t *testing.T) {
-		clearCalled := false
-		relay := Relay{
-			broadcaster: &testsCommon.BroadcasterStub{
-				ClearSignaturesCalled: func() {
-					clearCalled = true
-				},
-			},
-		}
-
-		relay.Clean()
-
-		assert.True(t, clearCalled)
-	})
 }
 
 func TestAmILeader(t *testing.T) {
@@ -191,6 +173,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 				timer:              &testsCommon.TimerMock{},
 				stateMachineConfig: createMapMockDurationsMapConfig(),
 				log:                logger.GetOrCreate("test"),
+				broadcaster:        &testsCommon.BroadcasterStub{},
 			}
 			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
 			key := halfBridgeKeys[0]
@@ -208,6 +191,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 				timer:              &testsCommon.TimerMock{},
 				stateMachineConfig: createMapMockDurationsMapConfig(),
 				log:                logger.GetOrCreate("test"),
+				broadcaster:        &testsCommon.BroadcasterStub{},
 			}
 			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
 			key := halfBridgeKeys[1]
@@ -225,6 +209,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 				timer:              &testsCommon.TimerMock{},
 				stateMachineConfig: createMapMockDurationsMapConfig(),
 				log:                logger.GetOrCreate("test"),
+				broadcaster:        &testsCommon.BroadcasterStub{},
 			}
 			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
 			key := halfBridgeKeys[0]
@@ -249,6 +234,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 				timer:              &testsCommon.TimerMock{},
 				stateMachineConfig: createMapMockDurationsMapConfig(),
 				log:                logger.GetOrCreate("test"),
+				broadcaster:        &testsCommon.BroadcasterStub{},
 			}
 			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
 			key := halfBridgeKeys[0]
@@ -266,6 +252,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 				timer:              &testsCommon.TimerMock{},
 				stateMachineConfig: createMapMockDurationsMapConfig(),
 				log:                logger.GetOrCreate("test"),
+				broadcaster:        &testsCommon.BroadcasterStub{},
 			}
 			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
 			key := halfBridgeKeys[1]
@@ -283,6 +270,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 				timer:              &testsCommon.TimerMock{},
 				stateMachineConfig: createMapMockDurationsMapConfig(),
 				log:                logger.GetOrCreate("test"),
+				broadcaster:        &testsCommon.BroadcasterStub{},
 			}
 			halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
 			key := halfBridgeKeys[0]
@@ -301,11 +289,19 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 		})
 	})
 	t.Run("should work", func(t *testing.T) {
+		addedBroadcastClient := false
 		relay := &Relay{
 			quorumProvider:     &testsCommon.QuorumProviderStub{},
 			timer:              &testsCommon.TimerMock{},
 			stateMachineConfig: createMapMockDurationsMapConfig(),
 			log:                logger.GetOrCreate("test"),
+			broadcaster: &testsCommon.BroadcasterStub{
+				AddBroadcastClientCalled: func(client core.BroadcastClient) error {
+					addedBroadcastClient = true
+
+					return nil
+				},
+			},
 		}
 
 		halfBridgeKeys := getMapMockDurationsMapConfigKeys(relay.stateMachineConfig)
@@ -313,6 +309,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 		stateMachine, err := relay.createAndStartBridge(&testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, halfBridgeKeys[0])
 		require.Nil(t, err)
 		require.NotNil(t, stateMachine)
+		assert.True(t, addedBroadcastClient)
 
 		_ = stateMachine.Close()
 	})

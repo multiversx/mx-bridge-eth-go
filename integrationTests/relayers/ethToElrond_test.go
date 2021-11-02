@@ -87,6 +87,8 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 	defer cancel()
 	ethereumChainMock.ProcessFinishedHandler = func() {
+		time.Sleep(time.Second * 20)
+
 		cancel()
 	}
 

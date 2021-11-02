@@ -3,9 +3,11 @@ package p2p
 import (
 	"encoding/hex"
 	"fmt"
+	"sync"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
@@ -15,8 +17,8 @@ import (
 )
 
 const (
-	joinTopicName          = "join/1"
-	signTopicName          = "sign/1"
+	joinTopicSuffix        = "_join"
+	signTopicSuffix        = "_sign"
 	defaultTopicIdentifier = "default"
 	joinTopicMessage       = "join topic"
 )
@@ -30,15 +32,21 @@ type ArgsBroadcaster struct {
 	KeyGen             crypto.KeyGenerator
 	SingleSigner       crypto.SingleSigner
 	PrivateKey         crypto.PrivateKey
+	Name               string
 }
 
 type broadcaster struct {
 	*relayerMessageHandler
-	*signaturesHolder
+	*noncesOfPublicKeys
 	messenger          NetMessenger
 	log                logger.Logger
 	elrondRoleProvider ElrondRoleProvider
 	signatureProcessor SignatureProcessor
+	name               string
+	mutClients         sync.RWMutex
+	clients            []core.BroadcastClient
+	joinTopicName      string
+	signTopicName      string
 }
 
 // NewBroadcaster will create a new broadcaster able to pass messages and signatures
@@ -49,8 +57,9 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 	}
 
 	b := &broadcaster{
+		name:               args.Name,
 		messenger:          args.Messenger,
-		signaturesHolder:   newSignatureHolder(),
+		noncesOfPublicKeys: newNoncesOfPublicKeys(),
 		log:                args.Log,
 		elrondRoleProvider: args.ElrondRoleProvider,
 		signatureProcessor: args.SignatureProcessor,
@@ -61,6 +70,9 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 			counter:      uint64(time.Now().UnixNano()),
 			privateKey:   args.PrivateKey,
 		},
+		clients:       make([]core.BroadcastClient, 0),
+		joinTopicName: args.Name + joinTopicSuffix,
+		signTopicName: args.Name + signTopicSuffix,
 	}
 
 	pk := b.privateKey.GeneratePublic()
@@ -73,6 +85,9 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 }
 
 func checkArgs(args ArgsBroadcaster) error {
+	if len(args.Name) == 0 {
+		return ErrEmptyName
+	}
 	if check.IfNil(args.Log) {
 		return ErrNilLogger
 	}
@@ -100,7 +115,7 @@ func checkArgs(args ArgsBroadcaster) error {
 
 // RegisterOnTopics will register the messenger on all required topics
 func (b *broadcaster) RegisterOnTopics() error {
-	topics := []string{joinTopicName, signTopicName}
+	topics := []string{b.joinTopicName, b.signTopicName}
 	for _, topic := range topics {
 		err := b.messenger.CreateTopic(topic, true)
 		if err != nil {
@@ -119,7 +134,7 @@ func (b *broadcaster) RegisterOnTopics() error {
 }
 
 // ProcessReceivedMessage will be called by the network messenger whenever a new message is received
-func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ core.PeerID) error {
+func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ elrondCore.PeerID) error {
 	msg, err := b.preProcessMessage(message)
 	if err != nil {
 		b.log.Debug("got message", "topic", message.Topic(), "error", err)
@@ -135,26 +150,32 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ core.Peer
 	b.log.Debug("got message", "topic", message.Topic(),
 		"msg.Payload", msg.Payload, "msg.Nonce", msg.Nonce, "msg.PublicKey", addr.AddressAsBech32String())
 
+	err = b.processNonce(msg)
+	if err != nil {
+		// someone might try to send old, already seen by the network, messages
+		// drop the message and do not resend-it to other relayers
+		return err
+	}
+
 	switch message.Topic() {
-	case joinTopicName:
-		b.processJoinMessage(msg, message)
-	case signTopicName:
+	case b.joinTopicName:
+		b.processJoinMessage(message)
+	case b.signTopicName:
 		b.processSignMessage(msg)
 	}
 
 	return nil
 }
 
-func (b *broadcaster) processJoinMessage(msg *SignedMessage, message p2p.MessageP2P) {
-	b.addJoinedMessage(msg)
+func (b *broadcaster) processJoinMessage(message p2p.MessageP2P) {
 	err := b.broadcastCurrentSignatures(message.Peer())
 	if err != nil {
 		b.log.Error(err.Error())
 	}
 }
 
-func (b *broadcaster) getEthereumSignature(msg *SignedMessage) (*EthereumSignature, error) {
-	ethSignature := &EthereumSignature{}
+func (b *broadcaster) getEthereumSignature(msg *core.SignedMessage) (*core.EthereumSignature, error) {
+	ethSignature := &core.EthereumSignature{}
 	err := b.marshalizer.Unmarshal(ethSignature, msg.Payload)
 	if err != nil {
 		return nil, err
@@ -168,19 +189,29 @@ func (b *broadcaster) getEthereumSignature(msg *SignedMessage) (*EthereumSignatu
 	return ethSignature, nil
 }
 
-func (b *broadcaster) processSignMessage(msg *SignedMessage) {
+func (b *broadcaster) processSignMessage(msg *core.SignedMessage) {
 	ethSignature, err := b.getEthereumSignature(msg)
 	if err != nil {
 		b.log.Debug("received message does not contain a valid signature", "error", err)
 		return
 	}
 
-	b.addSignedMessage(msg, ethSignature)
+	b.notifyClients(msg, ethSignature)
 }
 
-func (b *broadcaster) broadcastCurrentSignatures(peerId core.PeerID) error {
-	signedMessages := b.storedSignedMessages()
-	for _, msg := range signedMessages {
+func (b *broadcaster) notifyClients(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+	b.mutClients.RLock()
+	defer b.mutClients.RUnlock()
+
+	for _, client := range b.clients {
+		client.ProcessNewMessage(msg, ethMsg)
+	}
+}
+
+func (b *broadcaster) broadcastCurrentSignatures(peerId elrondCore.PeerID) error {
+	allMessages := b.retrieveUniqueMessages()
+
+	for _, msg := range allMessages {
 		err := b.sendSignedMessageToPeer(msg, peerId)
 		if err != nil {
 			b.log.Debug("error sending current stored signatures",
@@ -191,19 +222,31 @@ func (b *broadcaster) broadcastCurrentSignatures(peerId core.PeerID) error {
 	return nil
 }
 
-func (b *broadcaster) sendSignedMessageToPeer(msg *SignedMessage, peerId core.PeerID) error {
+func (b *broadcaster) retrieveUniqueMessages() map[string]*core.SignedMessage {
+	allMessages := make(map[string]*core.SignedMessage)
+	for _, client := range b.clients {
+		messages := client.AllStoredSignatures()
+		for _, msg := range messages {
+			allMessages[msg.UniqueID()] = msg
+		}
+	}
+
+	return allMessages
+}
+
+func (b *broadcaster) sendSignedMessageToPeer(msg *core.SignedMessage, peerId elrondCore.PeerID) error {
 	buff, err := b.marshalizer.Marshal(msg)
 	if err != nil {
 		return err
 	}
 
-	return b.messenger.SendToConnectedPeer(signTopicName, buff, peerId)
+	return b.messenger.SendToConnectedPeer(b.signTopicName, buff, peerId)
 }
 
 // BroadcastSignature will send the provided signature as payload in a wrapped signed message to the other peers.
 // It will broadcast the message to all available peers
 func (b *broadcaster) BroadcastSignature(signature []byte, messageHash []byte) {
-	ethSig := &EthereumSignature{
+	ethSig := &core.EthereumSignature{
 		Signature:   signature,
 		MessageHash: messageHash,
 	}
@@ -213,7 +256,7 @@ func (b *broadcaster) BroadcastSignature(signature []byte, messageHash []byte) {
 		b.log.Error("error creating signature payload", "error", err)
 	}
 
-	err = b.broadcastMessage(payload, signTopicName)
+	err = b.broadcastMessage(payload, b.signTopicName)
 	if err != nil {
 		b.log.Error("error sending signature", "error", err)
 	}
@@ -222,7 +265,7 @@ func (b *broadcaster) BroadcastSignature(signature []byte, messageHash []byte) {
 // BroadcastJoinTopic will send the provided signature as payload in a wrapped signed message to the other peers.
 // It will broadcast the message to all available peers
 func (b *broadcaster) BroadcastJoinTopic() {
-	err := b.broadcastMessage([]byte(joinTopicMessage), joinTopicName)
+	err := b.broadcastMessage([]byte(joinTopicMessage), b.joinTopicName)
 	if err != nil {
 		b.log.Error("error sending signature", "error", err)
 	}
@@ -240,6 +283,20 @@ func (b *broadcaster) broadcastMessage(payload []byte, topic string) error {
 	}
 
 	b.messenger.Broadcast(topic, buff)
+
+	return nil
+}
+
+// AddBroadcastClient will add a client to the list so it can be notified of the newly received
+// messages
+func (b *broadcaster) AddBroadcastClient(client core.BroadcastClient) error {
+	if check.IfNil(client) {
+		return ErrNilBroadcastClient
+	}
+
+	b.mutClients.Lock()
+	b.clients = append(b.clients, client)
+	b.mutClients.Unlock()
 
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/hashing/blake2b"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
@@ -14,7 +15,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/testscommon/p2pmocks"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -47,9 +48,8 @@ type Connectable interface {
 type Broadcaster interface {
 	BroadcastSignature(signature []byte, messageHash []byte)
 	BroadcastJoinTopic()
-	ClearSignatures()
-	Signatures(messageHash []byte) [][]byte
 	SortedPublicKeys() [][]byte
+	AddBroadcastClient(client core.BroadcastClient) error
 	Close() error
 	IsInterfaceNil() bool
 }
@@ -160,7 +160,7 @@ func CreateRandomEthereumAddress() common.Address {
 }
 
 // CreateRandomElrondAddress will create a random Elrond address
-func CreateRandomElrondAddress() core.AddressHandler {
+func CreateRandomElrondAddress() erdgoCore.AddressHandler {
 	buff := make([]byte, 32)
 	_, _ = rand.Read(buff)
 

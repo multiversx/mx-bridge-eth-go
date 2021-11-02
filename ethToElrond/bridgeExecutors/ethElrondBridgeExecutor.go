@@ -27,6 +27,7 @@ type ArgsEthElrondBridgeExecutor struct {
 // ethElrondBridgeExecutor represents the eth-elrond bridge executor adapter
 // this implementation is not concurrent safe. Should be called from a single go routine
 type ethElrondBridgeExecutor struct {
+	*signaturesHolder
 	executorName      string
 	logger            logger.Logger
 	sourceBridge      bridge.Bridge
@@ -47,6 +48,7 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 	}
 
 	return &ethElrondBridgeExecutor{
+		signaturesHolder:  newSignatureHolder(),
 		executorName:      args.ExecutorName,
 		logger:            args.Logger,
 		sourceBridge:      args.SourceBridge,
@@ -120,7 +122,7 @@ func (executor *ethElrondBridgeExecutor) IsQuorumReachedForProposeTransfer(ctx c
 }
 
 func (executor *ethElrondBridgeExecutor) isQuorumReachedOnBridge(ctx context.Context, bridge bridge.Bridge) bool {
-	count := bridge.SignersCount(ctx, executor.pendingBatch, executor.actionID)
+	count := bridge.SignersCount(executor.pendingBatch, executor.actionID, executor)
 	quorum, err := executor.quorumProvider.GetQuorum(ctx)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
@@ -184,14 +186,15 @@ func (executor *ethElrondBridgeExecutor) ProposeSetStatusOnSource(ctx context.Co
 	executor.sourceBridge.ProposeSetStatus(ctx, executor.pendingBatch)
 }
 
-// CleanTopology will call Clean on the topology provider instance
-func (executor *ethElrondBridgeExecutor) CleanTopology() {
-	executor.topologyProvider.Clean()
+// CleanStoredSignatures will clean any stored messages & signatures
+func (executor *ethElrondBridgeExecutor) CleanStoredSignatures() {
+	executor.logger.Debug("removing stored signatures")
+	executor.ClearStoredSignatures()
 }
 
 // ExecuteTransferOnDestination will execute the action ID on the destination bridge
 func (executor *ethElrondBridgeExecutor) ExecuteTransferOnDestination(ctx context.Context) {
-	_, err := executor.destinationBridge.Execute(ctx, executor.actionID, executor.pendingBatch)
+	_, err := executor.destinationBridge.Execute(ctx, executor.actionID, executor.pendingBatch, executor)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
 	}
@@ -199,7 +202,7 @@ func (executor *ethElrondBridgeExecutor) ExecuteTransferOnDestination(ctx contex
 
 // ExecuteSetStatusOnSource will execute the action ID on the source bridge
 func (executor *ethElrondBridgeExecutor) ExecuteSetStatusOnSource(ctx context.Context) {
-	_, err := executor.sourceBridge.Execute(ctx, executor.actionID, executor.pendingBatch)
+	_, err := executor.sourceBridge.Execute(ctx, executor.actionID, executor.pendingBatch, executor)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
 	}
