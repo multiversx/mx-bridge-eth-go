@@ -14,7 +14,6 @@ import (
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	ethCommon "github.com/ethereum/go-ethereum/common"
@@ -56,17 +55,7 @@ func TestNewRelay(t *testing.T) {
 			NetworkAddress:               "http://127.0.0.1:8079",
 			BridgeAddress:                "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 		},
-		P2P: ConfigP2P{
-			Port:            "0",
-			Seed:            "",
-			InitialPeerList: nil,
-			ProtocolID:      "erd/1.1.0",
-		},
 		Relayer: ConfigRelayer{
-			Marshalizer: config.MarshalizerConfig{
-				Type:           "gogo protobuf",
-				SizeCheckDelta: 10,
-			},
 			RoleProvider: RoleProviderConfig{
 				PollingIntervalInMillis: 1000,
 			},
@@ -86,6 +75,7 @@ func TestNewRelay(t *testing.T) {
 		Proxy:       blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil),
 		EthClient:   ethClient,
 		EthInstance: ethInstance,
+		Messenger:   &p2pMocks.MessengerStub{},
 	}
 	r, err := NewRelay(args)
 	require.Nil(t, err)
@@ -149,10 +139,10 @@ func TestAmILeader(t *testing.T) {
 					return [][]byte{[]byte("self")}
 				},
 			},
-			address:      data.NewAddressFromBytes([]byte("self")),
-			messenger:    messenger,
-			timer:        testsCommon.NewTimerStub(),
-			stepDuration: time.Second,
+			elrondAddress: data.NewAddressFromBytes([]byte("self")),
+			messenger:     messenger,
+			timer:         testsCommon.NewTimerStub(),
+			stepDuration:  time.Second,
 		}
 
 		assert.True(t, relay.AmITheLeader())
@@ -170,8 +160,8 @@ func TestAmILeader(t *testing.T) {
 					return [][]byte{[]byte("self"), []byte("other")}
 				},
 			},
-			address: data.NewAddressFromBytes([]byte("self")),
-			timer:   timer,
+			elrondAddress: data.NewAddressFromBytes([]byte("self")),
+			timer:         timer,
 		}
 
 		assert.False(t, relay.AmITheLeader())

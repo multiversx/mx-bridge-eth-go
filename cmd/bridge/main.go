@@ -11,12 +11,19 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/ElrondNetwork/elrond-go-core/marshal"
+	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
+	"github.com/ElrondNetwork/elrond-go/config"
+	"github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
+	"github.com/ElrondNetwork/elrond-go/update/disabled"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -30,8 +37,10 @@ const (
 
 	filePathPlaceholder = "[path]"
 
-	defaultLogsPath = "logs"
-	logFilePrefix   = "elrond-eth-bridge"
+	defaultLogsPath          = "logs"
+	logFilePrefix            = "elrond-eth-bridge"
+	p2pPeerNetworkDiscoverer = "optimized"
+	nilListSharderType       = "NilListSharder"
 )
 
 var log = logger.GetOrCreate("main")
@@ -89,37 +98,48 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	config, err := loadConfig(flagsConfig.ConfigurationFile)
+	cfg, err := loadConfig(flagsConfig.ConfigurationFile)
 	if err != nil {
 		return err
 	}
 
 	if !check.IfNil(fileLogging) {
-		err := fileLogging.ChangeFileLifeSpan(time.Second * time.Duration(config.Logs.LogFileLifeSpanInSec))
+		err := fileLogging.ChangeFileLifeSpan(time.Second * time.Duration(cfg.Logs.LogFileLifeSpanInSec))
 		if err != nil {
 			return err
 		}
 	}
 
-	proxy := blockchain.NewElrondProxy(config.Elrond.NetworkAddress, nil)
+	proxy := blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil)
 
-	ethClient, err := ethclient.Dial(config.Eth.NetworkAddress)
+	ethClient, err := ethclient.Dial(cfg.Eth.NetworkAddress)
 	if err != nil {
 		return err
 	}
 
-	ethInstance, err := contract.NewBridge(ethCommon.HexToAddress(config.Eth.BridgeAddress), ethClient)
+	ethInstance, err := contract.NewBridge(ethCommon.HexToAddress(cfg.Eth.BridgeAddress), ethClient)
+	if err != nil {
+		return err
+	}
+
+	marshalizer, err := factoryMarshalizer.NewMarshalizer(cfg.Relayer.Marshalizer.Type)
+	if err != nil {
+		return err
+	}
+
+	messenger, err := buildNetMessenger(*cfg, marshalizer)
 	if err != nil {
 		return err
 	}
 
 	args := relay.ArgsRelayer{
-		Config:      *config,
+		Config:      *cfg,
 		FlagsConfig: *flagsConfig,
 		Name:        "EthToElrRelay",
 		Proxy:       proxy,
 		EthClient:   ethClient,
 		EthInstance: ethInstance,
+		Messenger:   messenger,
 	}
 	ethToElrRelay, err := relay.NewRelay(args)
 	if err != nil {
@@ -203,4 +223,51 @@ func attachFileLogger(log logger.Logger, flagsConfig *relay.ContextFlagsConfig) 
 	log.Trace("logger updated", "level", logLevelFlagValue, "disable ANSI color", flagsConfig.DisableAnsiColor)
 
 	return fileLogging, nil
+}
+
+func buildNetMessenger(cfg relay.Config, marshalizer marshal.Marshalizer) (relayp2p.NetMessenger, error) {
+	nodeConfig := config.NodeConfig{
+		Port:                       cfg.P2P.Port,
+		Seed:                       cfg.P2P.Seed,
+		MaximumExpectedPeerCount:   0,
+		ThresholdMinConnectedPeers: 0,
+	}
+	peerDiscoveryConfig := config.KadDhtPeerDiscoveryConfig{
+		Enabled:                          true,
+		RefreshIntervalInSec:             5,
+		ProtocolID:                       cfg.P2P.ProtocolID,
+		InitialPeerList:                  cfg.P2P.InitialPeerList,
+		BucketSize:                       0,
+		RoutingTableRefreshIntervalInSec: 300,
+		Type:                             p2pPeerNetworkDiscoverer,
+	}
+
+	p2pConfig := config.P2PConfig{
+		Node:                nodeConfig,
+		KadDhtPeerDiscovery: peerDiscoveryConfig,
+		Sharding: config.ShardingConfig{
+			TargetPeerCount:         0,
+			MaxIntraShardValidators: 0,
+			MaxCrossShardValidators: 0,
+			MaxIntraShardObservers:  0,
+			MaxCrossShardObservers:  0,
+			Type:                    nilListSharderType,
+		},
+	}
+
+	args := libp2p.ArgsNetworkMessenger{
+		Marshalizer:          marshalizer,
+		ListenAddress:        libp2p.ListenAddrWithIp4AndTcp,
+		P2pConfig:            p2pConfig,
+		SyncTimer:            &libp2p.LocalSyncTimer{},
+		PreferredPeersHolder: disabled.NewPreferredPeersHolder(),
+		NodeOperationMode:    p2p.NormalOperation,
+	}
+
+	messenger, err := libp2p.NewNetworkMessenger(args)
+	if err != nil {
+		panic(err)
+	}
+
+	return messenger, nil
 }
