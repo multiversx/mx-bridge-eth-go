@@ -10,7 +10,6 @@ import (
 
 // Broadcaster defines the operations for a component used for communication with other peers
 type Broadcaster interface {
-	Signatures(messageHash []byte) [][]byte
 	SendSignature(signature []byte, messageHash []byte)
 	IsInterfaceNil() bool
 }
@@ -39,8 +38,8 @@ type Bridge interface {
 	GetActionIdForSetStatusOnPendingTransfer(context.Context, *Batch) ActionId
 	WasExecuted(context.Context, ActionId, BatchId) bool
 	Sign(context.Context, ActionId, *Batch) (string, error)
-	Execute(context.Context, ActionId, *Batch) (string, error)
-	SignersCount(context.Context, *Batch, ActionId) uint
+	Execute(context.Context, ActionId, *Batch, SignaturesHolder) (string, error)
+	SignersCount(*Batch, ActionId, SignaturesHolder) uint
 	GetTransactionsStatuses(ctx context.Context, batchID BatchId) ([]uint8, error)
 	IsInterfaceNil() bool
 }
@@ -58,5 +57,11 @@ type ElrondProxy interface {
 // GasHandler defines the component able to fetch the current gas price
 type GasHandler interface {
 	GetCurrentGasPrice() (*big.Int, error)
+	IsInterfaceNil() bool
+}
+
+// SignaturesHolder defines the operations for a component that can hold and manage signatures
+type SignaturesHolder interface {
+	Signatures(messageHash []byte) [][]byte
 	IsInterfaceNil() bool
 }

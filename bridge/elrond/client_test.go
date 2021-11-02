@@ -304,7 +304,7 @@ func TestExecute(t *testing.T) {
 			},
 		},
 	}
-	hash, _ := c.Execute(context.TODO(), bridge.NewActionId(42), batch)
+	hash, _ := c.Execute(context.TODO(), bridge.NewActionId(42), batch, nil)
 
 	assert.Equal(t, expectedTxHash, hash)
 	assert.Equal(t, uint64(70_000_000+len(batch.Transactions)*30_000_000), proxy.lastTransaction.GasLimit)
@@ -411,7 +411,7 @@ func TestSignersCount(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	c, _ := buildTestClient(proxy)
 
-	got := c.SignersCount(context.TODO(), nil, bridge.NewActionId(0))
+	got := c.SignersCount(nil, bridge.NewActionId(0), nil)
 
 	assert.Equal(t, uint(42), got)
 }

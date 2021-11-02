@@ -257,7 +257,16 @@ func (c *client) Sign(_ context.Context, action bridge.ActionId, batch *bridge.B
 }
 
 // Execute will pack and send a transaction providing the batch data and received signatures from the other relayers
-func (c *client) Execute(ctx context.Context, action bridge.ActionId, batch *bridge.Batch) (string, error) {
+func (c *client) Execute(
+	ctx context.Context,
+	action bridge.ActionId,
+	batch *bridge.Batch,
+	sigHolder bridge.SignaturesHolder,
+) (string, error) {
+	if check.IfNil(sigHolder) {
+		return "", ErrNilSignaturesHolder
+	}
+
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
 	batchId := batch.Id
 
@@ -294,7 +303,7 @@ func (c *client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 		return "", fmt.Errorf("ETH: %w", err)
 	}
 
-	signatures := c.broadcaster.Signatures(msgHash.Bytes())
+	signatures := sigHolder.Signatures(msgHash.Bytes())
 	// TODO optimize this: no need to re-fetch the quorum, can be provided by the bridge executor
 	quorum, err := c.GetQuorum(ctx)
 	if err != nil {
@@ -359,7 +368,17 @@ func (c *client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bri
 }
 
 // SignersCount will return the total signers number that sent the signatures on the required message hash
-func (c *client) SignersCount(_ context.Context, batch *bridge.Batch, actionId bridge.ActionId) uint {
+func (c *client) SignersCount(
+	batch *bridge.Batch,
+	actionId bridge.ActionId,
+	sigHolder bridge.SignaturesHolder,
+) uint {
+	if check.IfNil(sigHolder) {
+		c.log.Error("programming error in eth client, SignersCount function",
+			"error", ErrNilSignaturesHolder.Error())
+		return 0
+	}
+
 	msgHash, err := c.generateMsgHash(batch, actionId)
 	if err != nil {
 		c.log.Error(err.Error())
@@ -367,7 +386,7 @@ func (c *client) SignersCount(_ context.Context, batch *bridge.Batch, actionId b
 		return 0
 	}
 
-	return uint(len(c.broadcaster.Signatures(msgHash.Bytes())))
+	return uint(len(sigHolder.Signatures(msgHash.Bytes())))
 }
 
 // QuorumProvider implementation

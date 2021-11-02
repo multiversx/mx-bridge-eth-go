@@ -26,8 +26,8 @@ type BridgeStub struct {
 	GetActionIdForProposeTransferCalled            func(ctx context.Context, batch *bridge.Batch) bridge.ActionId
 	GetActionIdForSetStatusOnPendingTransferCalled func(ctx context.Context, batch *bridge.Batch) bridge.ActionId
 	SignCalled                                     func(ctx context.Context, id bridge.ActionId) (string, error)
-	ExecuteCalled                                  func(ctx context.Context, id bridge.ActionId, batch *bridge.Batch) (string, error)
-	SignersCountCalled                             func(ctx context.Context, batch *bridge.Batch, id bridge.ActionId) uint
+	ExecuteCalled                                  func(ctx context.Context, id bridge.ActionId, batch *bridge.Batch, sigHolder bridge.SignaturesHolder) (string, error)
+	SignersCountCalled                             func(batch *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint
 	GetTransactionsStatusesCalled                  func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error)
 
 	ProposeTransferError error
@@ -125,19 +125,19 @@ func (b *BridgeStub) Sign(ctx context.Context, id bridge.ActionId, _ *bridge.Bat
 }
 
 // Execute -
-func (b *BridgeStub) Execute(ctx context.Context, id bridge.ActionId, batch *bridge.Batch) (string, error) {
+func (b *BridgeStub) Execute(ctx context.Context, id bridge.ActionId, batch *bridge.Batch, sigHolder bridge.SignaturesHolder) (string, error) {
 	b.incrementFunctionCounter()
 	if b.ExecuteCalled != nil {
-		return b.ExecuteCalled(ctx, id, batch)
+		return b.ExecuteCalled(ctx, id, batch, sigHolder)
 	}
 	return "execute_tx_hash", b.ExecuteError
 }
 
 // SignersCount -
-func (b *BridgeStub) SignersCount(ctx context.Context, batch *bridge.Batch, id bridge.ActionId) uint {
+func (b *BridgeStub) SignersCount(batch *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 	b.incrementFunctionCounter()
 	if b.SignersCountCalled != nil {
-		return b.SignersCountCalled(ctx, batch, id)
+		return b.SignersCountCalled(batch, id, sigHolder)
 	}
 	return 0
 }
