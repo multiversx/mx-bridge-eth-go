@@ -125,6 +125,9 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	erc20Contracts, err := createMapOfErc20Contracts(cfg.Eth.ERC20Contracts, ethClient)
+	if err != nil {
+		return err
+	}
 
 	marshalizer, err := factoryMarshalizer.NewMarshalizer(cfg.Relayer.Marshalizer.Type)
 	if err != nil {
