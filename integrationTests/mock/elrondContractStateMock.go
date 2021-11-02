@@ -9,6 +9,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/data/vm"
+	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -32,6 +33,19 @@ type Transfer struct {
 	Amount *big.Int
 }
 
+// ElrondPendingBatch -
+type ElrondPendingBatch struct {
+	ElrondDeposits []ElrondDeposit
+}
+
+// ElrondDeposit -
+type ElrondDeposit struct {
+	From         erdgoCore.AddressHandler
+	To           common.Address
+	TokenAddress common.Address
+	Amount       *big.Int
+}
+
 // elrondContractStateMock is not concurrent safe
 type elrondContractStateMock struct {
 	*tokensRegistryMock
@@ -41,6 +55,7 @@ type elrondContractStateMock struct {
 	GetStatusesAfterExecutionHandler func() []byte
 	relayers                         [][]byte
 	performedAction                  *big.Int
+	pendingBatch                     *ElrondPendingBatch
 	quorum                           int
 }
 
@@ -60,6 +75,7 @@ func (mock *elrondContractStateMock) cleanState() {
 	mock.proposedTransfers = make(map[string]*ElrondProposedTransfer)
 	mock.signedActionIDs = make(map[string]map[string]struct{})
 	mock.performedAction = nil
+	mock.pendingBatch = nil
 }
 
 func (mock *elrondContractStateMock) processTransaction(tx *data.Transaction) {
@@ -187,7 +203,7 @@ func (mock *elrondContractStateMock) processVmRequests(vmRequest *data.VmValueRe
 	case "getErc20AddressForTokenId":
 		return mock.vmRequestGetErc20AddressForTokenId(vmRequest), nil
 	case "getCurrentTxBatch":
-		return &data.VmValuesResponseData{Data: &vm.VMOutputApi{ReturnCode: "ok"}}, nil
+		return mock.vmRequestGetCurrentPendingBatch(vmRequest), nil
 	case "getAllStakedRelayers":
 		return mock.vmRequestGetAllStakedRelayers(vmRequest), nil
 	}
@@ -327,6 +343,24 @@ func (mock *elrondContractStateMock) vmRequestGetErc20AddressForTokenId(vmReques
 
 func (mock *elrondContractStateMock) vmRequestGetAllStakedRelayers(_ *data.VmValueRequest) *data.VmValuesResponseData {
 	return createOkVmResponse(mock.relayers)
+}
+
+func (mock *elrondContractStateMock) vmRequestGetCurrentPendingBatch(_ *data.VmValueRequest) *data.VmValuesResponseData {
+	if mock.pendingBatch == nil {
+		return createOkVmResponse(make([][]byte, 0))
+	}
+
+	args := [][]byte{{0}} // first non-empty slice
+	for _, deposit := range mock.pendingBatch.ElrondDeposits {
+		args = append(args, make([]byte, 0)) // mocked block nonce
+		args = append(args, make([]byte, 0)) // mocked deposit nonce
+		args = append(args, deposit.From.AddressBytes())
+		args = append(args, deposit.To.Bytes())
+		args = append(args, deposit.TokenAddress.Bytes())
+		args = append(args, deposit.Amount.Bytes())
+	}
+
+	return createOkVmResponse(args)
 }
 
 func getActionIDFromString(data string) *big.Int {
