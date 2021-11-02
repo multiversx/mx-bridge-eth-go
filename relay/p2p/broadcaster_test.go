@@ -201,7 +201,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 	t.Run("public key not whitelisted", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
 		isWhiteListedCalled := false
-		msg, buff := createSignedMessageAndMarshaledBytes()
+		msg, buff := createSignedMessageAndMarshaledBytes(0)
 
 		args.ElrondRoleProvider = &roleProvidersMock.ElrondRoleProviderStub{
 			IsWhitelistedCalled: func(address ergoCore.AddressHandler) bool {
@@ -222,7 +222,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 	})
 	t.Run("invalid nonce should error", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
-		msg, buff := createSignedMessageAndMarshaledBytes()
+		msg, buff := createSignedMessageAndMarshaledBytes(0)
 
 		args.ElrondRoleProvider = &roleProvidersMock.ElrondRoleProviderStub{}
 
@@ -241,7 +241,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 	})
 	t.Run("joined topic should send stored messages from clients", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
-		msg1, buff1 := createSignedMessageForEthSig([]byte("eth sig1"), []byte("eth msg1"), []byte("erd pk1"), []byte("erd sig"))
+		msg1, buff1 := createSignedMessageForEthSig(0)
 
 		client := &testsCommon.BroadcastClientStub{
 			AllStoredSignaturesCalled: func() []*core.SignedMessage {
@@ -272,7 +272,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		}
 		_ = b.ProcessReceivedMessage(p2pMsg, "")
 
-		msg2, buff2 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload2"), []byte("pk2"), []byte("sig"))
+		msg2, buff2 := createSignedMessageAndMarshaledBytes(1)
 		p2pMsg = &p2pMocks.P2PMessageMock{
 			DataField:  buff2,
 			TopicField: args.Name + joinTopicSuffix,
@@ -287,8 +287,8 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 	})
 	t.Run("not a valid signature as payload (unmarshalled failed) should add the message's nonce", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
-		_, buff1 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload1"), []byte("pk1"), []byte("sig"))
-		_, buff2 := createSignedMessageAndMarshaledBytesWithValues([]byte("payload2"), []byte("pk2"), []byte("sig"))
+		_, buff1 := createSignedMessageAndMarshaledBytes(0)
+		_, buff2 := createSignedMessageAndMarshaledBytes(1)
 		args.Messenger = &p2pMocks.MessengerStub{}
 		args.SignatureProcessor = &testsCommon.SignatureProcessorStub{}
 
@@ -318,7 +318,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 	})
 	t.Run("not a valid signature as payload (verify failed) should add the message's nonce", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
-		_, buff1 := createSignedMessageForEthSig([]byte("eth sig"), []byte("eth msg"), []byte("pk"), []byte("sig"))
+		_, buff1 := createSignedMessageForEthSig(0)
 		args.Messenger = &p2pMocks.MessengerStub{}
 		args.SignatureProcessor = &testsCommon.SignatureProcessorStub{
 			VerifyEthSignatureCalled: func(signature []byte, messageHash []byte) error {
@@ -344,8 +344,8 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 	})
 	t.Run("sign should store message", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
-		msg1, buff1 := createSignedMessageForEthSig([]byte("eth sig 1"), []byte("eth msg"), []byte("pk1"), []byte("sig"))
-		msg2, buff2 := createSignedMessageForEthSig([]byte("eth sig 2"), []byte("eth msg"), []byte("pk2"), []byte("sig"))
+		msg1, buff1 := createSignedMessageForEthSig(0)
+		msg2, buff2 := createSignedMessageForEthSig(1)
 		args.Messenger = &p2pMocks.MessengerStub{}
 
 		processedMessages := make([]*core.SignedMessage, 0)
@@ -473,9 +473,9 @@ func TestBroadcaster_AddBroadcastClientNilClient(t *testing.T) {
 func TestBroadcaster_ShouldFilterIdenticalMessages(t *testing.T) {
 	t.Parallel()
 
-	msg1, _ := createSignedMessageAndMarshaledBytesWithValues([]byte("payload1"), []byte("pk1"), []byte("sig1"))
-	msg2, _ := createSignedMessageAndMarshaledBytesWithValues([]byte("payload2"), []byte("pk2"), []byte("sig2"))
-	msg3, _ := createSignedMessageAndMarshaledBytesWithValues([]byte("payload3"), []byte("pk3"), []byte("sig3"))
+	msg1, _ := createSignedMessageAndMarshaledBytes(1)
+	msg2, _ := createSignedMessageAndMarshaledBytes(2)
+	msg3, _ := createSignedMessageAndMarshaledBytes(3)
 
 	client1 := &testsCommon.BroadcastClientStub{
 		AllStoredSignaturesCalled: func() []*core.SignedMessage {

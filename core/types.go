@@ -30,7 +30,7 @@ type Timer interface {
 	IsInterfaceNil() bool
 }
 
-// BroadcastClient defines a broadcast client that will get notified by te broadcaster
+// BroadcastClient defines a broadcast client that will get notified by the broadcaster
 // when new messages arrive. It also should be able to respond with any stored messages it might
 // have.
 type BroadcastClient interface {

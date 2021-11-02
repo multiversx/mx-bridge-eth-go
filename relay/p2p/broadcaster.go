@@ -37,7 +37,7 @@ type ArgsBroadcaster struct {
 
 type broadcaster struct {
 	*relayerMessageHandler
-	*noncesHolder
+	*noncesOfPublicKeys
 	messenger          NetMessenger
 	log                logger.Logger
 	elrondRoleProvider ElrondRoleProvider
@@ -45,6 +45,8 @@ type broadcaster struct {
 	name               string
 	mutClients         sync.RWMutex
 	clients            []core.BroadcastClient
+	joinTopicName      string
+	signTopicName      string
 }
 
 // NewBroadcaster will create a new broadcaster able to pass messages and signatures
@@ -57,7 +59,7 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 	b := &broadcaster{
 		name:               args.Name,
 		messenger:          args.Messenger,
-		noncesHolder:       newNoncesHolder(),
+		noncesOfPublicKeys: newNoncesOfPublicKeys(),
 		log:                args.Log,
 		elrondRoleProvider: args.ElrondRoleProvider,
 		signatureProcessor: args.SignatureProcessor,
@@ -68,7 +70,9 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 			counter:      uint64(time.Now().UnixNano()),
 			privateKey:   args.PrivateKey,
 		},
-		clients: make([]core.BroadcastClient, 0),
+		clients:       make([]core.BroadcastClient, 0),
+		joinTopicName: args.Name + joinTopicSuffix,
+		signTopicName: args.Name + signTopicSuffix,
 	}
 
 	pk := b.privateKey.GeneratePublic()
@@ -111,20 +115,19 @@ func checkArgs(args ArgsBroadcaster) error {
 
 // RegisterOnTopics will register the messenger on all required topics
 func (b *broadcaster) RegisterOnTopics() error {
-	topics := []string{joinTopicSuffix, signTopicSuffix}
+	topics := []string{b.joinTopicName, b.signTopicName}
 	for _, topic := range topics {
-		fullTopicName := b.name + topic
-		err := b.messenger.CreateTopic(fullTopicName, true)
+		err := b.messenger.CreateTopic(topic, true)
 		if err != nil {
 			return err
 		}
 
-		err = b.messenger.RegisterMessageProcessor(fullTopicName, defaultTopicIdentifier, b)
+		err = b.messenger.RegisterMessageProcessor(topic, defaultTopicIdentifier, b)
 		if err != nil {
 			return err
 		}
 
-		b.log.Info("registered", "topic", fullTopicName)
+		b.log.Info("registered", "topic", topic)
 	}
 
 	return nil
@@ -155,9 +158,9 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ elrondCor
 	}
 
 	switch message.Topic() {
-	case b.name + joinTopicSuffix:
+	case b.joinTopicName:
 		b.processJoinMessage(message)
-	case b.name + signTopicSuffix:
+	case b.signTopicName:
 		b.processSignMessage(msg)
 	}
 
@@ -223,19 +226,12 @@ func (b *broadcaster) retrieveUniqueMessages() map[string]*core.SignedMessage {
 	allMessages := make(map[string]*core.SignedMessage)
 	for _, client := range b.clients {
 		messages := client.AllStoredSignatures()
-		b.processMessages(allMessages, messages)
+		for _, msg := range messages {
+			allMessages[msg.UniqueID()] = msg
+		}
 	}
 
 	return allMessages
-}
-
-func (b *broadcaster) processMessages(
-	allMessages map[string]*core.SignedMessage,
-	clientMessages []*core.SignedMessage,
-) {
-	for _, msg := range clientMessages {
-		allMessages[msg.UniqueID()] = msg
-	}
 }
 
 func (b *broadcaster) sendSignedMessageToPeer(msg *core.SignedMessage, peerId elrondCore.PeerID) error {
@@ -244,7 +240,7 @@ func (b *broadcaster) sendSignedMessageToPeer(msg *core.SignedMessage, peerId el
 		return err
 	}
 
-	return b.messenger.SendToConnectedPeer(b.name+signTopicSuffix, buff, peerId)
+	return b.messenger.SendToConnectedPeer(b.signTopicName, buff, peerId)
 }
 
 // BroadcastSignature will send the provided signature as payload in a wrapped signed message to the other peers.
@@ -260,7 +256,7 @@ func (b *broadcaster) BroadcastSignature(signature []byte, messageHash []byte) {
 		b.log.Error("error creating signature payload", "error", err)
 	}
 
-	err = b.broadcastMessage(payload, b.name+signTopicSuffix)
+	err = b.broadcastMessage(payload, b.signTopicName)
 	if err != nil {
 		b.log.Error("error sending signature", "error", err)
 	}
@@ -269,7 +265,7 @@ func (b *broadcaster) BroadcastSignature(signature []byte, messageHash []byte) {
 // BroadcastJoinTopic will send the provided signature as payload in a wrapped signed message to the other peers.
 // It will broadcast the message to all available peers
 func (b *broadcaster) BroadcastJoinTopic() {
-	err := b.broadcastMessage([]byte(joinTopicMessage), b.name+joinTopicSuffix)
+	err := b.broadcastMessage([]byte(joinTopicMessage), b.joinTopicName)
 	if err != nil {
 		b.log.Error("error sending signature", "error", err)
 	}

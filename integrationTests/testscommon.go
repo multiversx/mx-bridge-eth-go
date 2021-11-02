@@ -15,7 +15,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/testscommon/p2pmocks"
-	ergoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -160,7 +160,7 @@ func CreateRandomEthereumAddress() common.Address {
 }
 
 // CreateRandomElrondAddress will create a random Elrond address
-func CreateRandomElrondAddress() ergoCore.AddressHandler {
+func CreateRandomElrondAddress() erdgoCore.AddressHandler {
 	buff := make([]byte, 32)
 	_, _ = rand.Read(buff)
 

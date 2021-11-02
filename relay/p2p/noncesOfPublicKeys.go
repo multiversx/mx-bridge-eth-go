@@ -8,40 +8,40 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 )
 
-type noncesHolder struct {
+type noncesOfPublicKeys struct {
 	mut    sync.RWMutex
 	nonces map[string]uint64
 }
 
-func newNoncesHolder() *noncesHolder {
-	return &noncesHolder{
+func newNoncesOfPublicKeys() *noncesOfPublicKeys {
+	return &noncesOfPublicKeys{
 		nonces: make(map[string]uint64),
 	}
 }
 
-func (nh *noncesHolder) processNonce(msg *core.SignedMessage) error {
-	nh.mut.Lock()
-	defer nh.mut.Unlock()
+func (holder *noncesOfPublicKeys) processNonce(msg *core.SignedMessage) error {
+	holder.mut.Lock()
+	defer holder.mut.Unlock()
 
-	oldNonce := nh.nonces[string(msg.PublicKeyBytes)]
+	oldNonce := holder.nonces[string(msg.PublicKeyBytes)]
 	if oldNonce >= msg.Nonce {
 		// only accept newer signatures in order to prevent replay attacks from a malicious relayer that stored old
 		// signature messages
 		return ErrNonceTooLowInReceivedMessage
 	}
 
-	nh.nonces[string(msg.PublicKeyBytes)] = msg.Nonce
+	holder.nonces[string(msg.PublicKeyBytes)] = msg.Nonce
 
 	return nil
 }
 
 // SortedPublicKeys will return all the sorted public keys contained
-func (nh *noncesHolder) SortedPublicKeys() [][]byte {
-	nh.mut.RLock()
-	defer nh.mut.RUnlock()
+func (holder *noncesOfPublicKeys) SortedPublicKeys() [][]byte {
+	holder.mut.RLock()
+	defer holder.mut.RUnlock()
 
-	publicKeys := make([][]byte, 0, len(nh.nonces))
-	for pk := range nh.nonces {
+	publicKeys := make([][]byte, 0, len(holder.nonces))
+	for pk := range holder.nonces {
 		publicKeys = append(publicKeys, []byte(pk))
 	}
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -70,7 +71,13 @@ func preProcessMessageInvalidLimits(
 	pubKey []byte,
 	sig []byte,
 ) error {
-	_, buff := createSignedMessageAndMarshaledBytesWithValues(payload, pubKey, sig)
+	msg := &core.SignedMessage{
+		Payload:        payload,
+		PublicKeyBytes: pubKey,
+		Signature:      sig,
+		Nonce:          34,
+	}
+	buff, _ := marshalizer.Marshal(msg)
 
 	p2pmsg := &p2pMocks.P2PMessageMock{
 		DataField: buff,
@@ -94,7 +101,7 @@ func preProcessKeygenFails(t *testing.T) {
 			},
 		},
 	}
-	_, buff := createSignedMessageAndMarshaledBytes()
+	_, buff := createSignedMessageAndMarshaledBytes(0)
 
 	p2pmsg := &p2pMocks.P2PMessageMock{
 		DataField: buff,
@@ -116,7 +123,7 @@ func preProcessVerifyFails(t *testing.T) {
 		},
 		keyGen: &cryptoMocks.KeyGenStub{},
 	}
-	_, buff := createSignedMessageAndMarshaledBytes()
+	_, buff := createSignedMessageAndMarshaledBytes(0)
 
 	p2pmsg := &p2pMocks.P2PMessageMock{
 		DataField: buff,
@@ -128,7 +135,7 @@ func preProcessVerifyFails(t *testing.T) {
 }
 
 func preProcessShouldWork(t *testing.T) {
-	originalMsg, buff := createSignedMessageAndMarshaledBytes()
+	originalMsg, buff := createSignedMessageAndMarshaledBytes(0)
 	nonceBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(nonceBytes, originalMsg.Nonce)
 	signedMessage := append(originalMsg.Payload, nonceBytes...)
@@ -224,15 +231,11 @@ func TestRelayerMessageHandler_createMessage(t *testing.T) {
 	})
 }
 
-func createSignedMessageAndMarshaledBytes() (*core.SignedMessage, []byte) {
-	return createSignedMessageAndMarshaledBytesWithValues([]byte("payload"), []byte("pk"), []byte("sig"))
-}
-
-func createSignedMessageAndMarshaledBytesWithValues(payload []byte, pk []byte, sig []byte) (*core.SignedMessage, []byte) {
+func createSignedMessageAndMarshaledBytes(index int) (*core.SignedMessage, []byte) {
 	msg := &core.SignedMessage{
-		Payload:        payload,
-		PublicKeyBytes: pk,
-		Signature:      sig,
+		Payload:        []byte(fmt.Sprintf("payload %d", index)),
+		PublicKeyBytes: []byte(fmt.Sprintf("pk %d", index)),
+		Signature:      []byte(fmt.Sprintf("sig %d", index)),
 		Nonce:          34,
 	}
 
@@ -241,17 +244,17 @@ func createSignedMessageAndMarshaledBytesWithValues(payload []byte, pk []byte, s
 	return msg, buff
 }
 
-func createSignedMessageForEthSig(ethSig []byte, ethMsg []byte, elrondPk []byte, elrondSig []byte) (*core.SignedMessage, []byte) {
+func createSignedMessageForEthSig(index int) (*core.SignedMessage, []byte) {
 	e := &core.EthereumSignature{
-		Signature:   ethSig,
-		MessageHash: ethMsg,
+		Signature:   []byte(fmt.Sprintf("eth sig %d", index)),
+		MessageHash: []byte("eth msg hash"),
 	}
 	payload, _ := marshalizer.Marshal(e)
 
 	msg := &core.SignedMessage{
 		Payload:        payload,
-		PublicKeyBytes: elrondPk,
-		Signature:      elrondSig,
+		PublicKeyBytes: []byte(fmt.Sprintf("pk %d", index)),
+		Signature:      []byte(fmt.Sprintf("sig %d", index)),
 		Nonce:          34,
 	}
 	buff, _ := marshalizer.Marshal(msg)

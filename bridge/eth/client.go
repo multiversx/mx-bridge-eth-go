@@ -264,7 +264,7 @@ func (c *client) Execute(
 	sigHolder bridge.SignaturesHolder,
 ) (string, error) {
 	if check.IfNil(sigHolder) {
-		return "", ErrNilSignatureHolder
+		return "", ErrNilSignaturesHolder
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
@@ -375,7 +375,7 @@ func (c *client) SignersCount(
 ) uint {
 	if check.IfNil(sigHolder) {
 		c.log.Error("programming error in eth client, SignersCount function",
-			"error", ErrNilSignatureHolder.Error())
+			"error", ErrNilSignaturesHolder.Error())
 		return 0
 	}
 

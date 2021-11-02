@@ -189,7 +189,7 @@ func (executor *ethElrondBridgeExecutor) ProposeSetStatusOnSource(ctx context.Co
 // CleanStoredSignatures will clean any stored messages & signatures
 func (executor *ethElrondBridgeExecutor) CleanStoredSignatures() {
 	executor.logger.Debug("removing stored signatures")
-	executor.clearStoredSignatures()
+	executor.ClearStoredSignatures()
 }
 
 // ExecuteTransferOnDestination will execute the action ID on the destination bridge

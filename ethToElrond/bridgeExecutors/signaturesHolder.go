@@ -46,7 +46,7 @@ func (sh *signaturesHolder) AllStoredSignatures() []*core.SignedMessage {
 	return result
 }
 
-// Signatures will provide all gathered signatures
+// Signatures will provide all gathered signatures for a given message hash
 func (sh *signaturesHolder) Signatures(msgHash []byte) [][]byte {
 	sh.mut.RLock()
 	defer sh.mut.RUnlock()
@@ -66,8 +66,8 @@ func (sh *signaturesHolder) Signatures(msgHash []byte) [][]byte {
 	return result
 }
 
-// clearStoredSignatures will clear any stored signatures
-func (sh *signaturesHolder) clearStoredSignatures() {
+// ClearStoredSignatures will clear any stored signatures
+func (sh *signaturesHolder) ClearStoredSignatures() {
 	sh.mut.Lock()
 	defer sh.mut.Unlock()
 
