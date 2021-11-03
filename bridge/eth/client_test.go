@@ -361,9 +361,11 @@ func TestExecute(t *testing.T) {
 		blockNonce := 4321
 		executeTransferCalled := false
 
+		bridgeAddress := testsCommon.CreateRandomEthereumAddress()
 		erc20Contracts := map[common.Address]GenericErc20Contract{
 			erc20Address: &testsCommon.GenericErc20ContractStub{
 				BalanceOfCalled: func(account common.Address) (*big.Int, error) {
+					require.Equal(t, account, bridgeAddress)
 					return big.NewInt(10001), nil
 				},
 			},
@@ -385,6 +387,7 @@ func TestExecute(t *testing.T) {
 			broadcaster:    &testsCommon.BroadcasterStub{},
 			mapper:         mapper,
 			erc20Contracts: erc20Contracts,
+			bridgeAddress:  bridgeAddress,
 			blockchainClient: &mockInteractors.BlockchainClientStub{
 				BlockNumberCalled: func(ctx context.Context) (uint64, error) {
 					return uint64(blockNonce), nil
@@ -458,9 +461,11 @@ func TestExecute(t *testing.T) {
 		blockNonce := 4321
 		executeTransferCalled := false
 
+		bridgeAddress := testsCommon.CreateRandomEthereumAddress()
 		erc20Contracts := map[common.Address]GenericErc20Contract{
 			erc20Address: &testsCommon.GenericErc20ContractStub{
 				BalanceOfCalled: func(account common.Address) (*big.Int, error) {
+					require.Equal(t, account, bridgeAddress)
 					return big.NewInt(10002), nil
 				},
 			},
@@ -482,6 +487,7 @@ func TestExecute(t *testing.T) {
 			broadcaster:    &testsCommon.BroadcasterStub{},
 			mapper:         mapper,
 			erc20Contracts: erc20Contracts,
+			bridgeAddress:  bridgeAddress,
 			blockchainClient: &mockInteractors.BlockchainClientStub{
 				BlockNumberCalled: func(ctx context.Context) (uint64, error) {
 					return uint64(blockNonce), nil
