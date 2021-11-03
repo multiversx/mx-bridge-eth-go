@@ -44,10 +44,10 @@ type ElrondPendingBatch struct {
 
 // ElrondDeposit -
 type ElrondDeposit struct {
-	From         erdgoCore.AddressHandler
-	To           common.Address
-	TokenAddress common.Address
-	Amount       *big.Int
+	From   erdgoCore.AddressHandler
+	To     common.Address
+	Ticker string
+	Amount *big.Int
 }
 
 // elrondContractStateMock is not concurrent safe
@@ -368,7 +368,7 @@ func (mock *elrondContractStateMock) vmRequestGetCurrentPendingBatch(_ *data.VmV
 		args = append(args, make([]byte, 0)) // mocked deposit nonce
 		args = append(args, deposit.From.AddressBytes())
 		args = append(args, deposit.To.Bytes())
-		args = append(args, deposit.TokenAddress.Bytes())
+		args = append(args, []byte(deposit.Ticker))
 		args = append(args, deposit.Amount.Bytes())
 	}
 	return createOkVmResponse(args)
