@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ethereum/go-ethereum/common"
@@ -26,17 +28,30 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 		t.Skip("this is not a short test")
 	}
 
-	token1Erc20 := integrationTests.CreateRandomEthereumAddress()
+	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
 	ticker1 := "tck-000001"
 
-	token2Erc20 := integrationTests.CreateRandomEthereumAddress()
+	token2Erc20 := testsCommon.CreateRandomEthereumAddress()
 	ticker2 := "tck-000002"
 
 	value1 := big.NewInt(111111111)
-	destination1 := integrationTests.CreateRandomElrondAddress()
+	destination1 := testsCommon.CreateRandomElrondAddress()
 
 	value2 := big.NewInt(222222222)
-	destination2 := integrationTests.CreateRandomElrondAddress()
+	destination2 := testsCommon.CreateRandomElrondAddress()
+
+	erc20Contracts := map[common.Address]eth.GenericErc20Contract{
+		token1Erc20: &testsCommon.GenericErc20ContractStub{
+			BalanceOfCalled: func(account common.Address) (*big.Int, error) {
+				return big.NewInt(111111111), nil
+			},
+		},
+		token2Erc20: &testsCommon.GenericErc20ContractStub{
+			BalanceOfCalled: func(account common.Address) (*big.Int, error) {
+				return big.NewInt(222222222), nil
+			},
+		},
+	}
 
 	batch := contract.Batch{
 		Nonce:                  big.NewInt(1),
@@ -87,13 +102,13 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 	defer cancel()
 	ethereumChainMock.ProcessFinishedHandler = func() {
-		time.Sleep(time.Second * 20)
-
+		time.Sleep(time.Second * 2)
 		cancel()
 	}
 
 	for i := 0; i < numRelayers; i++ {
 		argsRelay := createMockRelayArgs(i, messengers[i], elrondChainMock, ethereumChainMock)
+		argsRelay.Erc20Contracts = erc20Contracts
 		r, err := relay.NewRelay(argsRelay)
 		require.Nil(t, err)
 

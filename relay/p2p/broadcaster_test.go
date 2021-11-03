@@ -494,8 +494,8 @@ func TestBroadcaster_ShouldFilterIdenticalMessages(t *testing.T) {
 	_ = b.AddBroadcastClient(client1)
 	_ = b.AddBroadcastClient(client2)
 
-	m := b.retrieveUniqueMessages()
-	testSliceInMap(t, []*core.SignedMessage{msg1, msg2, msg3}, m)
+	uniqueMessages := b.retrieveUniqueMessages()
+	testSliceInMap(t, []*core.SignedMessage{msg1, msg2, msg3}, uniqueMessages)
 }
 
 func testSliceInMap(t *testing.T, slice []*core.SignedMessage, m map[string]*core.SignedMessage) {

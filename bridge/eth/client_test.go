@@ -105,13 +105,17 @@ func TestGetPending(t *testing.T) {
 }
 
 func TestSign(t *testing.T) {
-	buildStubs := func() (*broadcasterStub, client) {
-		broadcaster := &broadcasterStub{}
-		c := client{
+	mapper := testsCommon.NewMapperMock()
+	mapper.AddPair(testsCommon.CreateRandomEthereumAddress(), "tck")
+	mapper.AddPair(common.HexToAddress("30C7c97471FB5C5238c946E549c608D27f37AAb8"), "574554482d323936313238")
+
+	buildStubs := func() (*testsCommon.BroadcasterStub, *client) {
+		broadcaster := &testsCommon.BroadcasterStub{}
+		c := &client{
 			bridgeContract: &mockInteractors.BridgeContractStub{},
 			privateKey:     privateKey(t),
 			broadcaster:    broadcaster,
-			mapper:         &mapperStub{},
+			mapper:         mapper,
 			gasLimit:       GasLimit,
 			log:            logger.GetOrCreate("testEthClient"),
 		}
@@ -127,11 +131,16 @@ func TestSign(t *testing.T) {
 		}
 		broadcaster, c := buildStubs()
 		c.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
+		var lastBroadcastSignature []byte
+		broadcaster.BroadcastSignatureCalled = func(signature []byte, messageHash []byte) {
+			lastBroadcastSignature = signature
+		}
+
 		_, _ = c.Sign(context.TODO(), bridge.NewActionId(setStatusAction), batch)
 
 		expectedSignature, _ := hexutil.Decode("0x524957e3081d49d98c98881abd5cf6f737722a4aa0e7915771a567e3cb45cfc625cd9fcf9ec53c86182e517c1e61dbc076722905d11b73e1ed42665ec051342701")
 
-		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+		assert.Equal(t, expectedSignature, lastBroadcastSignature)
 	})
 	t.Run("will sign propose status for rejected tx", func(t *testing.T) {
 		batch := &bridge.Batch{
@@ -142,11 +151,16 @@ func TestSign(t *testing.T) {
 		}
 		broadcaster, c := buildStubs()
 		c.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
+		var lastBroadcastSignature []byte
+		broadcaster.BroadcastSignatureCalled = func(signature []byte, messageHash []byte) {
+			lastBroadcastSignature = signature
+		}
+
 		_, _ = c.Sign(context.TODO(), bridge.NewActionId(setStatusAction), batch)
 
 		expectedSignature, _ := hexutil.Decode("0xd9b1ae38d7e24837e90e7aaac2ae9ca1eb53dc7a30c41774ad7f7f5fd2371c2d0ac6e69643f6aaa25bd9b000dcf0b8be567bcde7f0a5fb5aad122273999bad2500")
 
-		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+		assert.Equal(t, expectedSignature, lastBroadcastSignature)
 	})
 	t.Run("will sign tx for transfer", func(t *testing.T) {
 		batch := &bridge.Batch{
@@ -162,10 +176,15 @@ func TestSign(t *testing.T) {
 		}
 		broadcaster, c := buildStubs()
 		c.GetActionIdForProposeTransfer(context.TODO(), batch)
+		var lastBroadcastSignature []byte
+		broadcaster.BroadcastSignatureCalled = func(signature []byte, messageHash []byte) {
+			lastBroadcastSignature = signature
+		}
+
 		_, _ = c.Sign(context.TODO(), bridge.NewActionId(transferAction), batch)
 		expectedSignature, _ := hexutil.Decode("0xab3ce0cdc229afc9fcd0447800142da85aa116f16a26e151b9cad95b361ab73d24694ded888a06a1e9b731af8a1b549a1fc5188117e40bea11d9e74af4a6d5fa01")
 
-		assert.Equal(t, expectedSignature, broadcaster.lastBroadcastSignature)
+		assert.Equal(t, expectedSignature, lastBroadcastSignature)
 	})
 	t.Run("sign transfer will generate recoverable public key", func(t *testing.T) {
 		batch := &bridge.Batch{
@@ -190,18 +209,20 @@ func TestSign(t *testing.T) {
 
 		ethAddress := crypto.PubkeyToAddress(*pkECDSA)
 		broadcaster, c := buildStubs()
+		var sig, msg []byte
+		broadcaster.BroadcastSignatureCalled = func(signature []byte, messageHash []byte) {
+			sig = signature
+			msg = messageHash
+		}
 		_, _ = c.Sign(context.TODO(), bridge.NewActionId(setStatusAction), batch)
-		testPublicKey(t, broadcaster, ethAddress)
+		testPublicKey(t, sig, msg, ethAddress)
 
 		_, _ = c.Sign(context.TODO(), bridge.NewActionId(transferAction), batch)
-		testPublicKey(t, broadcaster, ethAddress)
+		testPublicKey(t, sig, msg, ethAddress)
 	})
 }
 
-func testPublicKey(t *testing.T, broadcaster *broadcasterStub, expectedAddress common.Address) {
-	sig := broadcaster.lastBroadcastSignature
-	msg := broadcaster.lastBroadcastMsgHash
-
+func testPublicKey(t *testing.T, sig []byte, msg []byte, expectedAddress common.Address) {
 	pkBytesRecovered, err := crypto.Ecrecover(msg, sig)
 	require.Nil(t, err)
 
@@ -214,7 +235,7 @@ func testPublicKey(t *testing.T, broadcaster *broadcasterStub, expectedAddress c
 }
 
 func TestSignersCount(t *testing.T) {
-	broadcaster := &broadcasterStub{}
+	broadcaster := &testsCommon.BroadcasterStub{}
 	c := client{
 		bridgeContract: &mockInteractors.BridgeContractStub{},
 		broadcaster:    broadcaster,
@@ -246,7 +267,7 @@ func TestWasExecuted(t *testing.T) {
 		}
 		c := client{
 			bridgeContract: bcs,
-			broadcaster:    &broadcasterStub{},
+			broadcaster:    &testsCommon.BroadcasterStub{},
 			gasLimit:       GasLimit,
 			log:            logger.GetOrCreate("testEthClient"),
 		}
@@ -263,7 +284,7 @@ func TestWasExecuted(t *testing.T) {
 		}
 		c := client{
 			bridgeContract: bcs,
-			broadcaster:    &broadcasterStub{},
+			broadcaster:    &testsCommon.BroadcasterStub{},
 			gasLimit:       GasLimit,
 			log:            logger.GetOrCreate("testEthClient"),
 		}
@@ -275,19 +296,38 @@ func TestWasExecuted(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
+	batch := &bridge.Batch{
+		Id: bridge.NewBatchId(42),
+		Transactions: []*bridge.DepositTransaction{
+			{
+				To:           testsCommon.CreateRandomEthereumAddress().Hex(),
+				TokenAddress: "tck",
+				Amount:       big.NewInt(10000),
+			},
+			{
+				To:           testsCommon.CreateRandomEthereumAddress().Hex(),
+				TokenAddress: "tck",
+				Amount:       big.NewInt(2),
+			},
+		},
+	}
+
+	mapper := testsCommon.NewMapperMock()
+	erc20Address := testsCommon.CreateRandomEthereumAddress()
+	mapper.AddPair(erc20Address, "tck")
+
 	t.Run("when signatures holder is nil", func(t *testing.T) {
 		bcs := &mockInteractors.BridgeContractStub{}
 		c := client{
 			bridgeContract:   bcs,
 			privateKey:       privateKey(t),
 			publicKey:        publicKey(t),
-			broadcaster:      &broadcasterStub{},
+			broadcaster:      &testsCommon.BroadcasterStub{},
 			blockchainClient: &mockInteractors.BlockchainClientStub{},
 			log:              logger.GetOrCreate("testEthClient"),
 			gasLimit:         GasLimit,
 			gasHandler:       &testsCommon.GasHandlerStub{},
 		}
-		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
 		got, err := c.Execute(context.TODO(), bridge.NewActionId(setStatusAction), batch, nil)
 		assert.Equal(t, ErrNilSignaturesHolder, err)
@@ -304,24 +344,31 @@ func TestExecute(t *testing.T) {
 			bridgeContract:   bcs,
 			privateKey:       privateKey(t),
 			publicKey:        publicKey(t),
-			broadcaster:      &broadcasterStub{},
+			broadcaster:      &testsCommon.BroadcasterStub{},
 			blockchainClient: &mockInteractors.BlockchainClientStub{},
 			log:              logger.GetOrCreate("testEthClient"),
 			gasLimit:         GasLimit,
 			gasHandler:       &testsCommon.GasHandlerStub{},
 		}
-		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
 		got, _ := c.Execute(context.TODO(), bridge.NewActionId(setStatusAction), batch, sigHolderStub)
 
 		assert.Equal(t, expected, got)
 	})
-	t.Run("when action is transfer", func(t *testing.T) {
-		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
+	t.Run("not enough ERC20 balance", func(t *testing.T) {
 		gasPrice := 1000
 		nonce := 1234
 		blockNonce := 4321
 		executeTransferCalled := false
+
+		erc20Contracts := map[common.Address]GenericErc20Contract{
+			erc20Address: &testsCommon.GenericErc20ContractStub{
+				BalanceOfCalled: func(account common.Address) (*big.Int, error) {
+					return big.NewInt(10001), nil
+				},
+			},
+		}
+
 		bcs := &mockInteractors.BridgeContractStub{
 			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
 				executeTransferCalled = true
@@ -335,8 +382,9 @@ func TestExecute(t *testing.T) {
 			bridgeContract: bcs,
 			privateKey:     privateKey(t),
 			publicKey:      publicKey(t),
-			broadcaster:    &broadcasterStub{},
-			mapper:         &mapperStub{},
+			broadcaster:    &testsCommon.BroadcasterStub{},
+			mapper:         mapper,
+			erc20Contracts: erc20Contracts,
 			blockchainClient: &mockInteractors.BlockchainClientStub{
 				BlockNumberCalled: func(ctx context.Context) (uint64, error) {
 					return uint64(blockNonce), nil
@@ -354,7 +402,103 @@ func TestExecute(t *testing.T) {
 			gasLimit: GasLimit,
 			log:      logger.GetOrCreate("testEthClient"),
 		}
-		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
+
+		_, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, sigHolderStub)
+		require.True(t, errors.Is(err, ErrInsufficientErc20Balance))
+		assert.False(t, executeTransferCalled)
+	})
+	t.Run("ERC20 contract not found", func(t *testing.T) {
+		gasPrice := 1000
+		nonce := 1234
+		blockNonce := 4321
+		executeTransferCalled := false
+
+		bcs := &mockInteractors.BridgeContractStub{
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+				executeTransferCalled = true
+
+				assert.Equal(t, big.NewInt(int64(gasPrice)), opts.GasPrice)
+				assert.Equal(t, opts.Nonce, big.NewInt(int64(nonce)))
+				return types.NewTx(&types.AccessListTx{}), nil
+			},
+		}
+		c := client{
+			bridgeContract: bcs,
+			privateKey:     privateKey(t),
+			publicKey:      publicKey(t),
+			broadcaster:    &testsCommon.BroadcasterStub{},
+			mapper:         mapper,
+			erc20Contracts: make(map[common.Address]GenericErc20Contract),
+			blockchainClient: &mockInteractors.BlockchainClientStub{
+				BlockNumberCalled: func(ctx context.Context) (uint64, error) {
+					return uint64(blockNonce), nil
+				},
+				NonceAtCalled: func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
+					require.Equal(t, big.NewInt(int64(blockNonce)), blockNumber)
+					return uint64(nonce), nil
+				},
+			},
+			gasHandler: &testsCommon.GasHandlerStub{
+				GetCurrentGasPriceCalled: func() (*big.Int, error) {
+					return big.NewInt(int64(gasPrice)), nil
+				},
+			},
+			gasLimit: GasLimit,
+			log:      logger.GetOrCreate("testEthClient"),
+		}
+
+		_, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, sigHolderStub)
+		require.True(t, errors.Is(err, ErrMissingErc20ContractDefinition))
+		assert.False(t, executeTransferCalled)
+	})
+	t.Run("when action is transfer", func(t *testing.T) {
+		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
+		gasPrice := 1000
+		nonce := 1234
+		blockNonce := 4321
+		executeTransferCalled := false
+
+		erc20Contracts := map[common.Address]GenericErc20Contract{
+			erc20Address: &testsCommon.GenericErc20ContractStub{
+				BalanceOfCalled: func(account common.Address) (*big.Int, error) {
+					return big.NewInt(10002), nil
+				},
+			},
+		}
+
+		bcs := &mockInteractors.BridgeContractStub{
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+				executeTransferCalled = true
+
+				assert.Equal(t, big.NewInt(int64(gasPrice)), opts.GasPrice)
+				assert.Equal(t, opts.Nonce, big.NewInt(int64(nonce)))
+				return types.NewTx(&types.AccessListTx{}), nil
+			},
+		}
+		c := client{
+			bridgeContract: bcs,
+			privateKey:     privateKey(t),
+			publicKey:      publicKey(t),
+			broadcaster:    &testsCommon.BroadcasterStub{},
+			mapper:         mapper,
+			erc20Contracts: erc20Contracts,
+			blockchainClient: &mockInteractors.BlockchainClientStub{
+				BlockNumberCalled: func(ctx context.Context) (uint64, error) {
+					return uint64(blockNonce), nil
+				},
+				NonceAtCalled: func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
+					require.Equal(t, big.NewInt(int64(blockNonce)), blockNumber)
+					return uint64(nonce), nil
+				},
+			},
+			gasHandler: &testsCommon.GasHandlerStub{
+				GetCurrentGasPriceCalled: func() (*big.Int, error) {
+					return big.NewInt(int64(gasPrice)), nil
+				},
+			},
+			gasLimit: GasLimit,
+			log:      logger.GetOrCreate("testEthClient"),
+		}
 
 		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, sigHolderStub)
 		require.Nil(t, err)
@@ -374,8 +518,8 @@ func TestExecute(t *testing.T) {
 			bridgeContract:   bcs,
 			privateKey:       privateKey(t),
 			publicKey:        publicKey(t),
-			broadcaster:      &broadcasterStub{},
-			mapper:           &mapperStub{},
+			broadcaster:      &testsCommon.BroadcasterStub{},
+			mapper:           mapper,
 			blockchainClient: &mockInteractors.BlockchainClientStub{},
 			gasHandler: &testsCommon.GasHandlerStub{
 				GetCurrentGasPriceCalled: func() (*big.Int, error) {
@@ -385,7 +529,6 @@ func TestExecute(t *testing.T) {
 			gasLimit: GasLimit,
 			log:      logger.GetOrCreate("testEthClient"),
 		}
-		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
 		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, sigHolderStub)
 		assert.Equal(t, "", got)
@@ -404,8 +547,8 @@ func TestExecute(t *testing.T) {
 			bridgeContract: bcs,
 			privateKey:     privateKey(t),
 			publicKey:      publicKey(t),
-			broadcaster:    &broadcasterStub{},
-			mapper:         &mapperStub{},
+			broadcaster:    &testsCommon.BroadcasterStub{},
+			mapper:         mapper,
 			blockchainClient: &mockInteractors.BlockchainClientStub{
 				BlockNumberCalled: func(ctx context.Context) (uint64, error) {
 					return 0, blockNumError
@@ -415,7 +558,6 @@ func TestExecute(t *testing.T) {
 			gasLimit:   GasLimit,
 			log:        logger.GetOrCreate("testEthClient"),
 		}
-		batch := &bridge.Batch{Id: bridge.NewBatchId(42)}
 
 		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, sigHolderStub)
 		assert.Equal(t, "", got)
@@ -443,8 +585,8 @@ func TestGetQuorum(t *testing.T) {
 			c := client{
 				bridgeContract: bcs,
 				privateKey:     privateKey(t),
-				broadcaster:    &broadcasterStub{},
-				mapper:         &mapperStub{},
+				broadcaster:    &testsCommon.BroadcasterStub{},
+				mapper:         testsCommon.NewMapperMock(),
 				gasLimit:       GasLimit,
 				log:            logger.GetOrCreate("testEthClient"),
 			}
@@ -471,8 +613,8 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	c := client{
 		bridgeContract: bcs,
 		privateKey:     privateKey(t),
-		broadcaster:    &broadcasterStub{},
-		mapper:         &mapperStub{},
+		broadcaster:    &testsCommon.BroadcasterStub{},
+		mapper:         testsCommon.NewMapperMock(),
 		gasLimit:       GasLimit,
 		log:            logger.GetOrCreate("testEthClient"),
 	}
@@ -505,36 +647,4 @@ func publicKey(t *testing.T) *ecdsa.PublicKey {
 	}
 
 	return publicKeyECDSA
-}
-
-type broadcasterStub struct {
-	lastBroadcastSignature []byte
-	lastBroadcastMsgHash   []byte
-}
-
-func (b *broadcasterStub) SendSignature(signature []byte, msgHash []byte) {
-	b.lastBroadcastSignature = signature
-	b.lastBroadcastMsgHash = msgHash
-}
-
-// IsInterfaceNil returns true if there is no value under the interface
-func (b *broadcasterStub) IsInterfaceNil() bool {
-	return b == nil
-}
-
-type mapperStub struct{}
-
-// GetTokenId -
-func (m *mapperStub) GetTokenId(string) string {
-	return "tokenId"
-}
-
-// GetErc20Address -
-func (m *mapperStub) GetErc20Address(string) string {
-	return "0x30C7c97471FB5C5238c946E549c608D27f37AAb8"
-}
-
-// IsInterfaceNil returns true if there is no value under the interface
-func (m *mapperStub) IsInterfaceNil() bool {
-	return m == nil
 }

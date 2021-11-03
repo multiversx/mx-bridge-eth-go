@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
@@ -18,13 +19,14 @@ import (
 	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/cmd/node/factory"
-	"github.com/ElrondNetwork/elrond-go/common"
+	elrondCommon "github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
 	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
@@ -52,7 +54,7 @@ var log = logger.GetOrCreate("main")
 // windows:
 //            for /f %i in ('git describe --tags --long --dirty') do set VERS=%i
 //            go build -i -v -ldflags="-X main.appVersion=%VERS%"
-var appVersion = common.UnVersionedAppString
+var appVersion = elrondCommon.UnVersionedAppString
 
 func main() {
 	app := cli.NewApp()
@@ -122,6 +124,11 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	erc20Contracts, err := createMapOfErc20Contracts(cfg.Eth.ERC20Contracts, ethClient)
+	if err != nil {
+		return err
+	}
+
 	marshalizer, err := factoryMarshalizer.NewMarshalizer(cfg.Relayer.Marshalizer.Type)
 	if err != nil {
 		return err
@@ -133,13 +140,14 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	args := relay.ArgsRelayer{
-		Config:      *cfg,
-		FlagsConfig: *flagsConfig,
-		Name:        "EthToElrRelay",
-		Proxy:       proxy,
-		EthClient:   ethClient,
-		EthInstance: ethInstance,
-		Messenger:   messenger,
+		Config:         *cfg,
+		FlagsConfig:    *flagsConfig,
+		Name:           "EthToElrRelay",
+		Proxy:          proxy,
+		EthClient:      ethClient,
+		EthInstance:    ethInstance,
+		Messenger:      messenger,
+		Erc20Contracts: erc20Contracts,
 	}
 	ethToElrRelay, err := relay.NewRelay(args)
 	if err != nil {
@@ -270,4 +278,26 @@ func buildNetMessenger(cfg relay.Config, marshalizer marshal.Marshalizer) (relay
 	}
 
 	return messenger, nil
+}
+
+func createMapOfErc20Contracts(
+	erc20List []string,
+	ethClient bind.ContractBackend,
+) (map[ethCommon.Address]eth.GenericErc20Contract, error) {
+	if len(erc20List) == 0 {
+		return nil, fmt.Errorf("no ERC20 address specified in config, [Eth] section, field ERC20Contracts")
+	}
+
+	contracts := make(map[ethCommon.Address]eth.GenericErc20Contract)
+	for _, strAddress := range erc20List {
+		addr := ethCommon.HexToAddress(strAddress)
+		contractInstance, err := contract.NewGenericErc20(addr, ethClient)
+		if err != nil {
+			return nil, fmt.Errorf("%w for %s", err, addr.String())
+		}
+
+		contracts[addr] = contractInstance
+	}
+
+	return contracts, nil
 }

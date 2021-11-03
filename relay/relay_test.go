@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
@@ -77,6 +78,9 @@ func TestNewRelay(t *testing.T) {
 		EthClient:   ethClient,
 		EthInstance: ethInstance,
 		Messenger:   &p2pMocks.MessengerStub{},
+		Erc20Contracts: map[ethCommon.Address]eth.GenericErc20Contract{
+			testsCommon.CreateRandomEthereumAddress(): &testsCommon.GenericErc20ContractStub{},
+		},
 	}
 	r, err := NewRelay(args)
 	require.Nil(t, err)
@@ -352,10 +356,11 @@ func createMockDurationsMapConfig() ConfigStateMachine {
 }
 
 func createMapMockDurationsMapConfig() map[string]ConfigStateMachine {
-	m := make(map[string]ConfigStateMachine)
-	m["ElrondToEth"] = createMockDurationsMapConfig()
-	m["EthToElrond"] = createMockDurationsMapConfig()
-	return m
+	configMap := make(map[string]ConfigStateMachine)
+	configMap["ElrondToEth"] = createMockDurationsMapConfig()
+	configMap["EthToElrond"] = createMockDurationsMapConfig()
+
+	return configMap
 }
 
 func getMapMockDurationsMapConfigKeys(m map[string]ConfigStateMachine) []string {
