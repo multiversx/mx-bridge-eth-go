@@ -23,8 +23,8 @@ func TestNetworkOfBroadcastersShouldPassTheSignatures(t *testing.T) {
 	integrationTests.Log.Info("creating & linking network messengers...")
 	messengers := integrationTests.CreateLinkedMessengers(numBroadcasters)
 	defer func() {
-		for _, m := range messengers {
-			_ = m.Close()
+		for _, messenger := range messengers {
+			_ = messenger.Close()
 		}
 	}()
 
@@ -77,8 +77,8 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenNotJoining(t *
 	integrationTests.Log.Info("creating & linking network messengers...")
 	messengers := integrationTests.CreateLinkedMessengers(numBroadcasters)
 	defer func() {
-		for _, m := range messengers {
-			_ = m.Close()
+		for _, messenger := range messengers {
+			_ = messenger.Close()
 		}
 	}()
 
@@ -119,8 +119,8 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 	integrationTests.Log.Info("creating & linking network messengers...")
 	messengers := integrationTests.CreateLinkedMessengers(numBroadcasters)
 	defer func() {
-		for _, m := range messengers {
-			_ = m.Close()
+		for _, messenger := range messengers {
+			_ = messenger.Close()
 		}
 	}()
 

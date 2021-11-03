@@ -22,3 +22,15 @@ var ErrNilBrdgeContract = errors.New("nil bridge contract")
 
 // ErrNilSignaturesHolder signals that a nil signatures holder was provided
 var ErrNilSignaturesHolder = errors.New("nil signatures holder")
+
+// ErrNilErc20Contracts signals that a nil ERC20 contracts map was provided
+var ErrNilErc20Contracts = errors.New("nil ERC20 contracts")
+
+// ErrNilErc20ContractInstance signals that a nil ERC20 contract instance was provided
+var ErrNilErc20ContractInstance = errors.New("nil ERC20 contract instance")
+
+// ErrInsufficientErc20Balance signals that the ERC20 balance is insufficient
+var ErrInsufficientErc20Balance = errors.New("insufficient ERC20 balance")
+
+// ErrMissingErc20ContractDefinition signals that the ERC20 contract was not defined
+var ErrMissingErc20ContractDefinition = errors.New("missing ERC20 contract definition")

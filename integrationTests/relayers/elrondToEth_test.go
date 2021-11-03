@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
-	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,16 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	}
 
 	numTransactions := 2
-	senders, receivers, tokens, values, tickers := createTransactions(numTransactions)
+	deposits, tokensAddresses, erc20Map := createTransactions(numTransactions)
+
+	erc20Contracts := make(map[common.Address]eth.GenericErc20Contract)
+	for addr, val := range erc20Map {
+		erc20Contracts[addr] = &testsCommon.GenericErc20ContractStub{
+			BalanceOfCalled: func(account common.Address) (*big.Int, error) {
+				return val, nil
+			},
+		}
+	}
 
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.SetQuorum(3)
@@ -32,15 +42,8 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 		return expectedStatuses
 	}
 	elrondChainMock := mock.NewElrondChainMock()
-	deposits := make([]mock.ElrondDeposit, 0)
-	for i := 0; i < len(senders); i++ {
-		deposits = append(deposits, mock.ElrondDeposit{
-			From:         senders[i],
-			To:           receivers[i],
-			TokenAddress: tokens[i],
-			Amount:       values[i],
-		})
-		elrondChainMock.AddTokensPair(tokens[i], tickers[i])
+	for i := 0; i < len(deposits); i++ {
+		elrondChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker)
 	}
 	pendingBatch := mock.ElrondPendingBatch{
 		Nonce:                  big.NewInt(1),
@@ -62,7 +65,7 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 
 	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1200000)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1200)
 	defer cancel()
 	elrondChainMock.ProcessFinishedHandler = func() {
 		cancel()
@@ -70,6 +73,7 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 
 	for i := 0; i < numRelayers; i++ {
 		argsRelay := mock.CreateMockRelayArgs("elrond <-> eth", i, messengers[i], elrondChainMock, ethereumChainMock)
+		argsRelay.Erc20Contracts = erc20Contracts
 		r, err := relay.NewRelay(argsRelay)
 		require.Nil(t, err)
 
@@ -95,37 +99,42 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	transfer := ethereumChainMock.GetLastProposedTransfer()
 	require.NotNil(t, transfer)
 
-	// if ExecuteTransfer got executed -> len(transfer.Amounts) == len(transfer.Tokens) == len(transfer.Recipients)
 	require.Equal(t, numTransactions, len(transfer.Amounts))
 
 	for i := 0; i < len(transfer.Amounts); i++ {
-		assert.Equal(t, receivers[i], transfer.Recipients[i])
-		assert.Equal(t, tokens[i], transfer.Tokens[i])
-		assert.Equal(t, values[i], transfer.Amounts[i])
+		assert.Equal(t, deposits[i].To, transfer.Recipients[i])
+		assert.Equal(t, tokensAddresses[i], transfer.Tokens[i])
+		assert.Equal(t, deposits[i].Amount, transfer.Amounts[i])
 	}
 }
 
-func createTransactions(n int) ([]erdgoCore.AddressHandler, []common.Address, []common.Address, []*big.Int, []string) {
-	tokens := make([]common.Address, 0)
-	tickers := make([]string, 0)
-	values := make([]*big.Int, 0)
-	senders := make([]erdgoCore.AddressHandler, 0)
-	receivers := make([]common.Address, 0)
+func createTransactions(n int) ([]mock.ElrondDeposit, []common.Address, map[common.Address]*big.Int) {
+	tokensAddresses := make([]common.Address, 0, n)
+	deposits := make([]mock.ElrondDeposit, 0, n)
+	erc20 := make(map[common.Address]*big.Int)
 	for i := 0; i < n; i++ {
-		sender, receiver, token, value, ticker := createTransaction(i)
-		tokens = append(tokens, token)
-		tickers = append(tickers, ticker)
-		values = append(values, value)
-		senders = append(senders, sender)
-		receivers = append(receivers, receiver)
+		deposit, tokenAddress := createTransaction(i)
+		tokensAddresses = append(tokensAddresses, tokenAddress)
+		deposits = append(deposits, deposit)
+
+		val, found := erc20[tokenAddress]
+		if !found {
+			val = big.NewInt(0)
+			erc20[tokenAddress] = val
+		}
+		val.Add(val, deposit.Amount)
 	}
-	return senders, receivers, tokens, values, tickers
+
+	return deposits, tokensAddresses, erc20
 }
-func createTransaction(index int) (erdgoCore.AddressHandler, common.Address, common.Address, *big.Int, string) {
-	tokenErc20 := integrationTests.CreateRandomEthereumAddress()
-	ticker := fmt.Sprintf("tck-00000%d", index+1)
-	value := big.NewInt(int64(index))
-	from := integrationTests.CreateRandomElrondAddress()
-	dest := integrationTests.CreateRandomEthereumAddress()
-	return from, dest, tokenErc20, value, ticker
+
+func createTransaction(index int) (mock.ElrondDeposit, common.Address) {
+	tokenAddress := testsCommon.CreateRandomEthereumAddress()
+
+	return mock.ElrondDeposit{
+		From:   testsCommon.CreateRandomElrondAddress(),
+		To:     testsCommon.CreateRandomEthereumAddress(),
+		Ticker: fmt.Sprintf("tck-00000%d", index+1),
+		Amount: big.NewInt(int64(index)),
+	}, tokenAddress
 }

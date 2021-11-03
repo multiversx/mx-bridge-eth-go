@@ -25,3 +25,6 @@ var ErrNilEthInstance = errors.New("nil eth instance")
 
 // ErrNilMessenger signals that a nil messenger was provided
 var ErrNilMessenger = errors.New("nil messenger")
+
+// ErrNilErc20Contracts signals that a nil ERC20 contracts map was provided
+var ErrNilErc20Contracts = errors.New("nil ERC20 contracts")
