@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	apiErrors "github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
+	"github.com/ElrondNetwork/elrond-eth-bridge/api/groups"
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
@@ -22,13 +24,16 @@ var log = logger.GetOrCreate("api")
 
 // ArgsNewWebServer holds the arguments needed to create a new instance of webServer
 type ArgsNewWebServer struct {
-	Facade FacadeHandler
+	Facade    FacadeHandler
+	ApiConfig config.ApiRoutesConfig
 }
 
 type webServer struct {
 	sync.RWMutex
 	facade     FacadeHandler
+	apiConfig  config.ApiRoutesConfig
 	httpServer shared.HttpServerCloser
+	groups     map[string]GroupHandler
 	cancelFunc func()
 }
 
@@ -40,7 +45,8 @@ func NewWebServerHandler(args ArgsNewWebServer) (*webServer, error) {
 	}
 
 	gws := &webServer{
-		facade: args.Facade,
+		facade:    args.Facade,
+		apiConfig: args.ApiConfig,
 	}
 
 	return gws, nil
@@ -76,32 +82,65 @@ func (ws *webServer) StartHttpServer() error {
 	engine = gin.Default()
 	engine.Use(cors.Default())
 
+	err := ws.createGroups()
+	if err != nil {
+		return err
+	}
+
 	ws.registerRoutes(engine)
 
 	server := &http.Server{Addr: ws.facade.RestApiInterface(), Handler: engine}
 	log.Debug("creating gin web sever", "interface", ws.facade.RestApiInterface())
-	var err error
 	ws.httpServer, err = NewHttpServer(server)
 	if err != nil {
 		return err
 	}
 
+	log.Debug("starting web server")
 	go ws.httpServer.Start()
 
 	return nil
 }
 
+func (ws *webServer) createGroups() error {
+	groupsMap := make(map[string]GroupHandler)
+
+	nodeGroup, err := groups.NewNodeGroup(ws.facade)
+	if err != nil {
+		return err
+	}
+	groupsMap["node"] = nodeGroup
+
+	ws.groups = groupsMap
+
+	return nil
+}
+
 // UpdateFacade will update webServer facade.
-func (ws *webServer) UpdateFacade(facade shared.FacadeHandler) error {
+func (ws *webServer) UpdateFacade(facade FacadeHandler) error {
 	ws.Lock()
 	defer ws.Unlock()
 
 	ws.facade = facade
 
+	for groupName, groupHandler := range ws.groups {
+		log.Debug("upgrading facade for gin API group", "group name", groupName)
+		err := groupHandler.UpdateFacade(facade)
+		if err != nil {
+			log.Error("cannot update facade for gin API group", "group name", groupName, "error", err)
+		}
+	}
+
 	return nil
 }
 
 func (ws *webServer) registerRoutes(ginRouter *gin.Engine) {
+
+	for groupName, groupHandler := range ws.groups {
+		log.Debug("registering gin API group", "group name", groupName)
+		ginGroup := ginRouter.Group(fmt.Sprintf("/%s", groupName))
+		groupHandler.RegisterRoutes(ginGroup, ws.apiConfig)
+	}
 
 	marshalizerForLogs := &marshal.GogoProtoMarshalizer{}
 	registerLoggerWsRoute(ginRouter, marshalizerForLogs)

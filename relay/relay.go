@@ -15,6 +15,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement/factory"
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/polling"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
@@ -29,8 +30,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/api/shared"
-	"github.com/ElrondNetwork/elrond-go/config"
+	goConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/ntp"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
@@ -48,7 +48,7 @@ type defaultTimer struct {
 
 func NewDefaultTimer() *defaultTimer {
 	return &defaultTimer{
-		ntpSyncTimer: ntp.NewSyncTime(config.NTPConfig{SyncPeriodSeconds: 3600}, nil),
+		ntpSyncTimer: ntp.NewSyncTime(goConfig.NTPConfig{SyncPeriodSeconds: 3600}, nil),
 	}
 }
 
@@ -84,8 +84,7 @@ type Relay struct {
 	ethereumRoleProvider EthereumRoleProvider
 	quorumProvider       bridge.QuorumProvider
 	stepDuration         time.Duration
-	stateMachineConfig   map[string]ConfigStateMachine
-	flagsConfig          ContextFlagsConfig
+	configs              config.Configs
 	broadcaster          Broadcaster
 	pollingHandlers      []io.Closer
 	elrondAddress        erdgoCore.AddressHandler
@@ -94,8 +93,7 @@ type Relay struct {
 
 // ArgsRelayer is the DTO used in the relayer constructor
 type ArgsRelayer struct {
-	Config         Config
-	FlagsConfig    ContextFlagsConfig
+	Configs        config.Configs
 	Name           string
 	Proxy          bridge.ElrondProxy
 	EthClient      eth.BlockchainClient
@@ -113,13 +111,14 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	relay := &Relay{
-		messenger:          args.Messenger,
-		stateMachineConfig: args.Config.StateMachine,
-		log:                logger.GetOrCreate(args.Name),
+		messenger: args.Messenger,
+		log:       logger.GetOrCreate(args.Name),
+		configs:   args.Configs,
 	}
 
+	cfgs := args.Configs.GeneralConfig
 	wallet := interactors.NewWallet()
-	privateKey, err := wallet.LoadPrivateKeyFromPemFile(args.Config.Elrond.PrivateKeyFile)
+	privateKey, err := wallet.LoadPrivateKeyFromPemFile(cfgs.Elrond.PrivateKeyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +136,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	clientArgs := elrond.ClientArgs{
-		Config:     args.Config.Elrond,
+		Config:     cfgs.Elrond,
 		Proxy:      args.Proxy,
 		PrivateKey: txSignPrivKey,
 		Address:    relay.elrondAddress,
@@ -148,7 +147,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 	relay.elrondBridge = elrondBridge
 
-	gasStationConfig := args.Config.Eth.GasStation
+	gasStationConfig := cfgs.Eth.GasStation
 	argsGasStation := gasManagement.ArgsGasStation{
 		RequestURL:             gasStationConfig.URL,
 		RequestPollingInterval: time.Duration(gasStationConfig.PollingIntervalInSeconds) * time.Second,
@@ -163,7 +162,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	argsClient := eth.ArgsClient{
-		Config:         args.Config.Eth,
+		Config:         cfgs.Eth,
 		Broadcaster:    relay,
 		Mapper:         elrondBridge,
 		GasHandler:     gs,
@@ -179,7 +178,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	relay.quorumProvider = ethBridge
 	relay.ethereumAddress = ethBridge.Address()
 
-	err = relay.createRoleProviders(args.Config)
+	err = relay.createRoleProviders(*cfgs)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +199,6 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	relay.timer = NewDefaultTimer()
-	relay.flagsConfig = args.FlagsConfig
 
 	relay.log.Debug("creating API services")
 	_, err = relay.createHttpServer()
@@ -212,10 +210,16 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 }
 
 func checkArgs(args ArgsRelayer) error {
-	if check.IfNilReflect(args.Config) {
+	if check.IfNilReflect(args.Configs) {
 		return ErrMissingConfig
 	}
-	if check.IfNilReflect(args.FlagsConfig) {
+	if check.IfNilReflect(args.Configs.GeneralConfig) {
+		return ErrMissingGeneralConfig
+	}
+	if check.IfNilReflect(args.Configs.ApiRoutesConfig) {
+		return ErrMissingApiRoutesConfig
+	}
+	if check.IfNilReflect(args.Configs.FlagsConfig) {
 		return ErrMissingFlagsConfig
 	}
 	if check.IfNil(args.Proxy) {
@@ -236,7 +240,7 @@ func checkArgs(args ArgsRelayer) error {
 	return nil
 }
 
-func (r *Relay) createRoleProviders(config Config) error {
+func (r *Relay) createRoleProviders(config config.Config) error {
 	err := r.createElrondRoleProvider(config)
 	if err != nil {
 		return err
@@ -250,7 +254,7 @@ func (r *Relay) createRoleProviders(config Config) error {
 	return nil
 }
 
-func (r *Relay) createElrondRoleProvider(config Config) error {
+func (r *Relay) createElrondRoleProvider(config config.Config) error {
 	chainInteractor, ok := r.elrondBridge.(ElrondChainInteractor)
 	if !ok {
 		return errors.New("programming error: r.elrondBridge is not of type ElrondChainInteractor")
@@ -285,7 +289,7 @@ func (r *Relay) createElrondRoleProvider(config Config) error {
 	return pollingHandler.StartProcessingLoop()
 }
 
-func (r *Relay) createEthereumRoleProvider(config Config) error {
+func (r *Relay) createEthereumRoleProvider(config config.Config) error {
 	chainInteractor, ok := r.ethBridge.(EthereumChainInteractor)
 	if !ok {
 		return errors.New("programming error: r.ethBridge is not of type EthereumChainInteractor")
@@ -407,7 +411,7 @@ func (r *Relay) createAndStartBridge(
 }
 
 func (r *Relay) processStateMachineConfigDurations(name string) (map[coreBridge.StepIdentifier]time.Duration, error) {
-	cfg, exists := r.stateMachineConfig[name]
+	cfg, exists := r.configs.GeneralConfig.StateMachine[name]
 	if !exists {
 		return nil, fmt.Errorf("%w for %q", ErrMissingConfig, name)
 	}
@@ -512,9 +516,10 @@ func (r *Relay) init(ctx context.Context) error {
 	return nil
 }
 
-func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
+func (r *Relay) createHttpServer() (api.UpgradeableHttpServerHandler, error) {
 	httpServerArgs := api.ArgsNewWebServer{
-		Facade: facade.NewRelayerFacade(r.flagsConfig.RestApiInterface, r.flagsConfig.EnablePprof),
+		Facade:    facade.NewRelayerFacade(r.configs.FlagsConfig.RestApiInterface, r.configs.FlagsConfig.EnablePprof),
+		ApiConfig: *r.configs.ApiRoutesConfig,
 	}
 
 	httpServerWrapper, err := api.NewWebServerHandler(httpServerArgs)
