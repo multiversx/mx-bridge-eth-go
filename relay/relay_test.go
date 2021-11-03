@@ -356,10 +356,11 @@ func createMockDurationsMapConfig() ConfigStateMachine {
 }
 
 func createMapMockDurationsMapConfig() map[string]ConfigStateMachine {
-	m := make(map[string]ConfigStateMachine)
-	m["ElrondToEth"] = createMockDurationsMapConfig()
-	m["EthToElrond"] = createMockDurationsMapConfig()
-	return m
+	configMap := make(map[string]ConfigStateMachine)
+	configMap["ElrondToEth"] = createMockDurationsMapConfig()
+	configMap["EthToElrond"] = createMockDurationsMapConfig()
+
+	return configMap
 }
 
 func getMapMockDurationsMapConfigKeys(m map[string]ConfigStateMachine) []string {

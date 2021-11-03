@@ -168,7 +168,7 @@ func TestSign(t *testing.T) {
 			Transactions: []*bridge.DepositTransaction{{
 				To:           "cf95254084ab772696643f0e05ac4711ed674ac1",
 				From:         "04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3",
-				TokenAddress: "0x574554482d323936313238",
+				TokenAddress: "574554482d323936313238",
 				Amount:       big.NewInt(1),
 				DepositNonce: bridge.NewNonce(2),
 			},
@@ -301,12 +301,12 @@ func TestExecute(t *testing.T) {
 		Transactions: []*bridge.DepositTransaction{
 			{
 				To:           testsCommon.CreateRandomEthereumAddress().Hex(),
-				TokenAddress: "0xtck",
+				TokenAddress: "tck",
 				Amount:       big.NewInt(10000),
 			},
 			{
 				To:           testsCommon.CreateRandomEthereumAddress().Hex(),
-				TokenAddress: "0xtck",
+				TokenAddress: "tck",
 				Amount:       big.NewInt(2),
 			},
 		},

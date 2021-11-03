@@ -288,7 +288,7 @@ func createMapOfErc20Contracts(
 		return nil, fmt.Errorf("no ERC20 address specified in config, [Eth] section, field ERC20Contracts")
 	}
 
-	m := make(map[ethCommon.Address]eth.GenericErc20Contract)
+	contracts := make(map[ethCommon.Address]eth.GenericErc20Contract)
 	for _, strAddress := range erc20List {
 		addr := ethCommon.HexToAddress(strAddress)
 		contractInstance, err := contract.NewGenericErc20(addr, ethClient)
@@ -296,8 +296,8 @@ func createMapOfErc20Contracts(
 			return nil, fmt.Errorf("%w for %s", err, addr.String())
 		}
 
-		m[addr] = contractInstance
+		contracts[addr] = contractInstance
 	}
 
-	return m, nil
+	return contracts, nil
 }

@@ -524,7 +524,7 @@ func (c *client) tokenAddresses(transactions []*bridge.DepositTransaction) []com
 	var result []common.Address
 
 	for _, tx := range transactions {
-		tokenAddress := c.getErc20AddressFromTokenId(tx.TokenAddress)
+		tokenAddress := c.mapper.GetErc20Address(tx.TokenAddress)
 		result = append(result, common.HexToAddress(tokenAddress))
 	}
 
@@ -601,10 +601,6 @@ func (c *client) broadcastSignatureForFinish(batch *bridge.Batch) {
 	}
 
 	c.broadcaster.BroadcastSignature(signature, msgHash.Bytes())
-}
-
-func (c *client) getErc20AddressFromTokenId(tokenId string) string {
-	return c.mapper.GetErc20Address(tokenId[2:])
 }
 
 // Address returns the Ethereum's address associated to this client
