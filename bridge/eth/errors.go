@@ -34,3 +34,6 @@ var ErrInsufficientErc20Balance = errors.New("insufficient ERC20 balance")
 
 // ErrMissingErc20ContractDefinition signals that the ERC20 contract was not defined
 var ErrMissingErc20ContractDefinition = errors.New("missing ERC20 contract definition")
+
+// ErrEmptyBridgeAddress signals that an empty bridge address was provided
+var ErrEmptyBridgeAddress = errors.New("empty bridge address")

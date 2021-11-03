@@ -94,14 +94,15 @@ type Relay struct {
 
 // ArgsRelayer is the DTO used in the relayer constructor
 type ArgsRelayer struct {
-	Config         Config
-	FlagsConfig    ContextFlagsConfig
-	Name           string
-	Proxy          bridge.ElrondProxy
-	EthClient      eth.BlockchainClient
-	EthInstance    eth.BridgeContract
-	Messenger      relayp2p.NetMessenger
-	Erc20Contracts map[common.Address]eth.GenericErc20Contract
+	Config           Config
+	FlagsConfig      ContextFlagsConfig
+	Name             string
+	Proxy            bridge.ElrondProxy
+	EthClient        eth.BlockchainClient
+	EthInstance      eth.BridgeContract
+	Messenger        relayp2p.NetMessenger
+	Erc20Contracts   map[common.Address]eth.GenericErc20Contract
+	BridgeEthAddress common.Address
 }
 
 // NewRelay creates a new relayer node able to work on 2-half bridges
@@ -170,6 +171,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		EthClient:      args.EthClient,
 		EthInstance:    args.EthInstance,
 		Erc20Contracts: args.Erc20Contracts,
+		BridgeAddress:  args.BridgeEthAddress,
 	}
 	ethBridge, err := eth.NewClient(argsClient)
 	if err != nil {

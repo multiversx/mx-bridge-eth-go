@@ -71,13 +71,14 @@ func TestNewRelay(t *testing.T) {
 	require.Nil(t, err)
 
 	args := ArgsRelayer{
-		Config:      cfg,
-		FlagsConfig: flagsConfig,
-		Name:        "name",
-		Proxy:       blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil),
-		EthClient:   ethClient,
-		EthInstance: ethInstance,
-		Messenger:   &p2pMocks.MessengerStub{},
+		Config:           cfg,
+		FlagsConfig:      flagsConfig,
+		Name:             "name",
+		Proxy:            blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil),
+		EthClient:        ethClient,
+		EthInstance:      ethInstance,
+		Messenger:        &p2pMocks.MessengerStub{},
+		BridgeEthAddress: testsCommon.CreateRandomEthereumAddress(),
 		Erc20Contracts: map[ethCommon.Address]eth.GenericErc20Contract{
 			testsCommon.CreateRandomEthereumAddress(): &testsCommon.GenericErc20ContractStub{},
 		},
