@@ -5,15 +5,19 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond/mock"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testHelpers"
+	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
+	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	"github.com/ElrondNetwork/elrond-go-core/data/vm"
+	"github.com/ElrondNetwork/elrond-go-crypto/signing"
+	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -23,7 +27,9 @@ import (
 )
 
 var (
-	_ = bridge.Bridge(&client{})
+	_      = bridge.Bridge(&client{})
+	suite  = ed25519.NewEd25519()
+	keyGen = signing.NewKeyGenerator(suite)
 )
 
 type TransactionError string
@@ -33,13 +39,18 @@ func (e TransactionError) Error() string {
 }
 
 func createMockArguments() ClientArgs {
+	sk, pk := keyGen.GeneratePair()
+	pkBytes, _ := pk.ToByteArray()
+	addr := data.NewAddressFromBytes(pkBytes)
+
 	return ClientArgs{
-		Config: bridge.Config{
-			BridgeAddress:                "bridge address",
-			PrivateKey:                   "grace.pem",
+		Config: bridge.ElrondConfig{
+			BridgeAddress:                "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
 			IntervalToResendTxsInSeconds: 1,
 		},
-		Proxy: &mock.ElrondProxyStub{},
+		Proxy:      &mockInteractors.ElrondProxyStub{},
+		PrivateKey: sk,
+		Address:    addr,
 	}
 }
 
@@ -58,6 +69,20 @@ func TestNewClient(t *testing.T) {
 		require.Nil(t, c)
 		require.Equal(t, ErrNilProxy, err)
 	})
+	t.Run("nil private key", func(t *testing.T) {
+		args := createMockArguments()
+		args.PrivateKey = nil
+		c, err := NewClient(args)
+		require.Nil(t, c)
+		require.Equal(t, ErrNilPrivateKey, err)
+	})
+	t.Run("nil address", func(t *testing.T) {
+		args := createMockArguments()
+		args.Address = nil
+		c, err := NewClient(args)
+		require.Nil(t, c)
+		require.Equal(t, ErrNilAddressHandler, err)
+	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockArguments()
 		c, err := NewClient(args)
@@ -67,8 +92,6 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestGetPending(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("when there is a current transaction", func(t *testing.T) {
 		batchId, _ := hex.DecodeString("01")
 		blockNonce1, _ := hex.DecodeString("025d43")
@@ -108,24 +131,26 @@ func TestGetPending(t *testing.T) {
 
 		actual := c.GetPending(context.TODO())
 		tx1 := &bridge.DepositTransaction{
-			To:           "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
-			From:         "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
-			TokenAddress: "0x574554482d656366316331",
-			Amount:       big.NewInt(1),
-			DepositNonce: bridge.NewNonce(1),
-			BlockNonce:   bridge.NewNonce(154947),
-			Status:       0,
-			Error:        nil,
+			To:            "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
+			DisplayableTo: "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
+			From:          "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
+			TokenAddress:  "574554482d656366316331",
+			Amount:        big.NewInt(1),
+			DepositNonce:  bridge.NewNonce(1),
+			BlockNonce:    bridge.NewNonce(154947),
+			Status:        0,
+			Error:         nil,
 		}
 		tx2 := &bridge.DepositTransaction{
-			To:           "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
-			From:         "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
-			TokenAddress: "0x574554482d656366316331",
-			Amount:       big.NewInt(2),
-			DepositNonce: bridge.NewNonce(2),
-			BlockNonce:   bridge.NewNonce(154947),
-			Status:       0,
-			Error:        nil,
+			To:            "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
+			DisplayableTo: "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
+			From:          "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
+			TokenAddress:  "574554482d656366316331",
+			Amount:        big.NewInt(2),
+			DepositNonce:  bridge.NewNonce(2),
+			BlockNonce:    bridge.NewNonce(154947),
+			Status:        0,
+			Error:         nil,
 		}
 		expected := &bridge.Batch{
 			Id:           bridge.NewBatchId(1),
@@ -179,8 +204,6 @@ func TestGetPending(t *testing.T) {
 }
 
 func TestProposeTransfer(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("it will set proper function and params", func(t *testing.T) {
 		tokenId, _ := hex.DecodeString("574554482d393761323662")
 		proxy := &testProxy{
@@ -190,11 +213,16 @@ func TestProposeTransfer(t *testing.T) {
 		}
 		c, _ := buildTestClient(proxy)
 
+		bech32Address := "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8"
+		pkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32, c.log)
+		buff, _ := pkConv.Decode(bech32Address)
+		hexAddress := hex.EncodeToString(buff)
+
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(1),
 			Transactions: []*bridge.DepositTransaction{
 				{
-					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+					To:           string(buff),
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
@@ -204,7 +232,7 @@ func TestProposeTransfer(t *testing.T) {
 		}
 
 		_, _ = c.ProposeTransfer(context.TODO(), batch)
-		expected := "proposeMultiTransferEsdtBatch@01@b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba@574554482d393761323662@2a"
+		expected := fmt.Sprintf("proposeMultiTransferEsdtBatch@01@%s@574554482d393761323662@2a", hexAddress)
 
 		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
 		assert.Equal(t, uint64(45_000_000+len(batch.Transactions)*25_000_000), proxy.lastTransaction.GasLimit)
@@ -212,8 +240,6 @@ func TestProposeTransfer(t *testing.T) {
 }
 
 func TestProposeSetStatus(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("it will set proper function and params", func(t *testing.T) {
 		proxy := &testProxy{
 			transactionCost:   1024,
@@ -253,8 +279,6 @@ func TestProposeSetStatus(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	expectedTxHash := "expected hash"
 	proxy := &testProxy{transactionCost: 1024, transactionHash: expectedTxHash}
 	c, _ := buildTestClient(proxy)
@@ -280,7 +304,7 @@ func TestExecute(t *testing.T) {
 			},
 		},
 	}
-	hash, _ := c.Execute(context.TODO(), bridge.NewActionId(42), batch)
+	hash, _ := c.Execute(context.TODO(), bridge.NewActionId(42), batch, nil)
 
 	assert.Equal(t, expectedTxHash, hash)
 	assert.Equal(t, uint64(70_000_000+len(batch.Transactions)*30_000_000), proxy.lastTransaction.GasLimit)
@@ -290,8 +314,6 @@ func TestExecute(t *testing.T) {
 }
 
 func TestWasProposedTransfer(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("will return true when response is 1", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 		c, _ := buildTestClient(proxy)
@@ -337,11 +359,12 @@ func TestWasProposedTransfer(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 		c, _ := buildTestClient(proxy)
 
+		to := []byte("12345678901234567890123456789012")
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(41),
 			Transactions: []*bridge.DepositTransaction{
 				{
-					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+					To:           string(to),
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
@@ -356,7 +379,7 @@ func TestWasProposedTransfer(t *testing.T) {
 		// batchID
 		assert.Equal(t, "29", proxy.lastQueryArgs[0])
 		// tx to address
-		assert.Equal(t, "b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba", proxy.lastQueryArgs[1])
+		assert.Equal(t, hex.EncodeToString(to), proxy.lastQueryArgs[1])
 		// tokenId
 		assert.Equal(t, "01", proxy.lastQueryArgs[2])
 		// amount
@@ -385,19 +408,15 @@ func TestWasProposedTransfer(t *testing.T) {
 }
 
 func TestSignersCount(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	c, _ := buildTestClient(proxy)
 
-	got := c.SignersCount(context.TODO(), bridge.NewActionId(0))
+	got := c.SignersCount(nil, bridge.NewActionId(0), nil)
 
 	assert.Equal(t, uint(42), got)
 }
 
 func TestWasProposedSetStatus(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("will return true when response is 1", func(t *testing.T) {
 		proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 		c, _ := buildTestClient(proxy)
@@ -431,16 +450,15 @@ func TestWasProposedSetStatus(t *testing.T) {
 }
 
 func TestGetActionIdForProposeTransfer(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	c, _ := buildTestClient(proxy)
 
+	to := []byte("12345678901234567890123456789012")
 	batch := &bridge.Batch{
 		Id: bridge.NewBatchId(41),
 		Transactions: []*bridge.DepositTransaction{
 			{
-				To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
+				To:           string(to),
 				From:         "0x132A150926691F08a693721503a38affeD18d524",
 				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 				Amount:       big.NewInt(42),
@@ -456,7 +474,7 @@ func TestGetActionIdForProposeTransfer(t *testing.T) {
 	// batchID
 	assert.Equal(t, "29", proxy.lastQueryArgs[0])
 	// tx to address
-	assert.Equal(t, "b2a11555ce521e4944e09ab17549d85b487dcd26c84b5017a39e31a3670889ba", proxy.lastQueryArgs[1])
+	assert.Equal(t, hex.EncodeToString(to), proxy.lastQueryArgs[1])
 	// tokenId
 	assert.Equal(t, "2a", proxy.lastQueryArgs[2])
 	// amount
@@ -464,8 +482,6 @@ func TestGetActionIdForProposeTransfer(t *testing.T) {
 }
 
 func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(43)}}}
 	c, _ := buildTestClient(proxy)
 
@@ -490,8 +506,6 @@ func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
 }
 
 func TestWasExecuted(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 	c, _ := buildTestClient(proxy)
 
@@ -500,14 +514,12 @@ func TestWasExecuted(t *testing.T) {
 }
 
 func TestSign(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
 	t.Run("it will set proper transaction cost", func(t *testing.T) {
 		expect := uint64(45_000_000)
 		proxy := &testProxy{}
 		c, _ := buildTestClient(proxy)
 
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42))
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42), nil)
 
 		assert.Equal(t, expect, proxy.lastTransaction.GasLimit)
 	})
@@ -515,42 +527,9 @@ func TestSign(t *testing.T) {
 		proxy := &testProxy{transactionCost: 1024}
 		c, _ := buildTestClient(proxy)
 
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42))
+		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42), nil)
 
 		assert.Equal(t, []byte("sign@2a"), proxy.lastTransaction.Data)
-	})
-}
-
-func TestIsWhitelisted(t *testing.T) {
-	testHelpers.SetTestLogLevel()
-
-	t.Run("where role is 2 it will return true", func(t *testing.T) {
-		role, _ := hex.DecodeString("02")
-		responseData := [][]byte{role}
-		proxy := &testProxy{
-			transactionCost:   1024,
-			queryResponseCode: "ok",
-			queryResponseData: responseData,
-		}
-		c, _ := buildTestClient(proxy)
-
-		isWhitelisted := c.IsWhitelisted("some address")
-
-		assert.True(t, isWhitelisted)
-	})
-	t.Run("where role is 1 it will return false", func(t *testing.T) {
-		role, _ := hex.DecodeString("01")
-		responseData := [][]byte{role}
-		proxy := &testProxy{
-			transactionCost:   1024,
-			queryResponseCode: "ok",
-			queryResponseData: responseData,
-		}
-		c, _ := buildTestClient(proxy)
-
-		isWhitelisted := c.IsWhitelisted("some address")
-
-		assert.False(t, isWhitelisted)
 	})
 }
 
@@ -578,6 +557,163 @@ func TestParseIntFromByteSlice(t *testing.T) {
 	})
 }
 
+func TestClient_GetTransactionsStatuses(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil batch", func(t *testing.T) {
+		proxy := &mockInteractors.ElrondProxyStub{}
+		c := &client{
+			proxy: proxy,
+		}
+
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), nil)
+
+		assert.Nil(t, statuses)
+		assert.Equal(t, ErrNilBatchId, err)
+	})
+	t.Run("proxy errors", func(t *testing.T) {
+		expectedErr := errors.New("expected error")
+		proxy := &mockInteractors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return nil, expectedErr
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+
+		assert.Nil(t, statuses)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("no statuses returned", func(t *testing.T) {
+		proxy := &mockInteractors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				response := &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: make([][]byte, 0),
+						ReturnCode: "ok",
+					},
+				}
+
+				return response, nil
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+
+		assert.Nil(t, statuses)
+		assert.True(t, errors.Is(err, ErrNoStatusForBatchID))
+	})
+	t.Run("not finished", func(t *testing.T) {
+		proxy := &mockInteractors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				response := &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: [][]byte{{0}},
+						ReturnCode: "ok",
+					},
+				}
+
+				return response, nil
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+
+		assert.Nil(t, statuses)
+		assert.True(t, errors.Is(err, ErrBatchNotFinished))
+	})
+	t.Run("malformed response - no results", func(t *testing.T) {
+		proxy := &mockInteractors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				response := &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: [][]byte{{1}},
+						ReturnCode: "ok",
+					},
+				}
+
+				return response, nil
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+
+		assert.Nil(t, statuses)
+		assert.True(t, errors.Is(err, ErrMalformedBatchResponse))
+		assert.True(t, strings.Contains(err.Error(), "status is finished, no results are given"))
+	})
+	t.Run("malformed response - empty response", func(t *testing.T) {
+		proxy := &mockInteractors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				response := &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: [][]byte{{1}, {}},
+						ReturnCode: "ok",
+					},
+				}
+
+				return response, nil
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+
+		assert.Nil(t, statuses)
+		assert.True(t, errors.Is(err, ErrMalformedBatchResponse))
+		assert.True(t, strings.Contains(err.Error(), "for result index 1"))
+	})
+	t.Run("should work", func(t *testing.T) {
+		providedStatuses := [][]byte{{1}, {3}, {0, 0, 2}}
+		proxy := &mockInteractors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				response := &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnData: providedStatuses,
+						ReturnCode: "ok",
+					},
+				}
+
+				return response, nil
+			},
+		}
+		c := &client{
+			proxy:         proxy,
+			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		}
+		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+
+		assert.Nil(t, err)
+		assert.Equal(t, statuses, statuses)
+	})
+}
+
 func buildTestClient(proxy *testProxy) (*client, error) {
 	wallet := interactors.NewWallet()
 
@@ -592,6 +728,7 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 	}
 
 	nonceTxHandler, _ := interactors.NewNonceTransactionHandler(proxy, time.Minute)
+	txSignPrivKey, _ := keyGen.PrivateKeyFromByteArray(privateKey)
 
 	proxy.nonce = 42
 	c := &client{
@@ -599,14 +736,14 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 		proxy:          proxy,
 		nonceTxHandler: nonceTxHandler,
 		bridgeAddress:  "",
-		privateKey:     privateKey,
+		privateKey:     txSignPrivKey,
 		address:        address,
 	}
 
 	return c, nil
 }
 
-//TODO move this in mock package
+// TODO move this in mock package
 type testProxy struct {
 	transactionHash string
 	lastTransaction *data.Transaction
@@ -665,11 +802,6 @@ func (p *testProxy) SendTransactions(txs []*data.Transaction) ([]string, error) 
 	} else {
 		return []string{p.transactionHash}, nil
 	}
-}
-
-// GetTransactionInfoWithResults -
-func (p *testProxy) GetTransactionInfoWithResults(string) (*data.TransactionInfo, error) {
-	return nil, nil
 }
 
 // ExecuteVMQuery -

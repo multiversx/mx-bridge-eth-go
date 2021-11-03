@@ -3,8 +3,8 @@ package api
 import (
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go/api/errors"
 	"github.com/stretchr/testify/require"
 )
 

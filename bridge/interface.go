@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -9,29 +10,21 @@ import (
 
 // Broadcaster defines the operations for a component used for communication with other peers
 type Broadcaster interface {
-	Signatures() [][]byte
-	SendSignature(signature []byte)
+	BroadcastSignature(signature []byte, messageHash []byte)
+	IsInterfaceNil() bool
 }
 
 // Mapper defines the mapping operations
 type Mapper interface {
 	GetTokenId(string) string
 	GetErc20Address(string) string
-}
-
-// RoleProvider defines the operations for a role provider
-type RoleProvider interface {
-	IsWhitelisted(string) bool
-}
-
-// WalletAddressProvider defines the operations for a wallet address provider
-type WalletAddressProvider interface {
-	GetHexWalletAddress() string
+	IsInterfaceNil() bool
 }
 
 // QuorumProvider defines the operations for a quorum provider
 type QuorumProvider interface {
 	GetQuorum(ctx context.Context) (uint, error)
+	IsInterfaceNil() bool
 }
 
 // Bridge defines the operations available for a validator operating on a bridge between 2 chains
@@ -44,9 +37,11 @@ type Bridge interface {
 	WasProposedSetStatus(context.Context, *Batch) bool
 	GetActionIdForSetStatusOnPendingTransfer(context.Context, *Batch) ActionId
 	WasExecuted(context.Context, ActionId, BatchId) bool
-	Sign(context.Context, ActionId) (string, error)
-	Execute(context.Context, ActionId, *Batch) (string, error)
-	SignersCount(context.Context, ActionId) uint
+	Sign(context.Context, ActionId, *Batch) (string, error)
+	Execute(context.Context, ActionId, *Batch, SignaturesHolder) (string, error)
+	SignersCount(*Batch, ActionId, SignaturesHolder) uint
+	GetTransactionsStatuses(ctx context.Context, batchID BatchId) ([]uint8, error)
+	IsInterfaceNil() bool
 }
 
 // ElrondProxy defines the behavior of a proxy able to serve Elrond blockchain requests
@@ -54,8 +49,19 @@ type ElrondProxy interface {
 	GetNetworkConfig() (*data.NetworkConfig, error)
 	SendTransaction(*data.Transaction) (string, error)
 	SendTransactions(txs []*data.Transaction) ([]string, error)
-	GetTransactionInfoWithResults(hash string) (*data.TransactionInfo, error)
 	ExecuteVMQuery(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 	GetAccount(address core.AddressHandler) (*data.Account, error)
+	IsInterfaceNil() bool
+}
+
+// GasHandler defines the component able to fetch the current gas price
+type GasHandler interface {
+	GetCurrentGasPrice() (*big.Int, error)
+	IsInterfaceNil() bool
+}
+
+// SignaturesHolder defines the operations for a component that can hold and manage signatures
+type SignaturesHolder interface {
+	Signatures(messageHash []byte) [][]byte
 	IsInterfaceNil() bool
 }

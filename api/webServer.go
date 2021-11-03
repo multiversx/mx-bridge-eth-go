@@ -5,37 +5,66 @@ import (
 	"net/http"
 	"sync"
 
+	apiErrors "github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/api/logs"
 	"github.com/ElrondNetwork/elrond-go/api/shared"
 	"github.com/btcsuite/websocket"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 )
 
-var log = logger.GetOrCreate("api/gin")
+var log = logger.GetOrCreate("api")
+
+// ArgsNewWebServer holds the arguments needed to create a new instance of webServer
+type ArgsNewWebServer struct {
+	Facade FacadeHandler
+}
 
 type webServer struct {
 	sync.RWMutex
-	addr       string
+	facade     FacadeHandler
 	httpServer shared.HttpServerCloser
 	cancelFunc func()
 }
 
 // NewWebServerHandler returns a new instance of webServer
-func NewWebServerHandler(addr string) (*webServer, error) {
+func NewWebServerHandler(args ArgsNewWebServer) (*webServer, error) {
+	err := checkArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
 	gws := &webServer{
-		addr: addr,
+		facade: args.Facade,
 	}
 
 	return gws, nil
+}
+
+// checkArgs check the arguments of an ArgsNewWebServer
+func checkArgs(args ArgsNewWebServer) error {
+
+	if check.IfNil(args.Facade) {
+		return apiErrors.ErrNilFacade
+	}
+
+	return nil
 }
 
 // StartHttpServer will create a new instance of http.Server and populate it with all the routes
 func (ws *webServer) StartHttpServer() error {
 	ws.Lock()
 	defer ws.Unlock()
+
+	if ws.facade.RestApiInterface() == core.WebServerOffString {
+		log.Debug("web server is turned off")
+		return nil
+	}
 
 	var engine *gin.Engine
 
@@ -49,8 +78,8 @@ func (ws *webServer) StartHttpServer() error {
 
 	ws.registerRoutes(engine)
 
-	server := &http.Server{Addr: ws.addr, Handler: engine}
-	log.Debug("creating gin web sever", "interface", ws.addr)
+	server := &http.Server{Addr: ws.facade.RestApiInterface(), Handler: engine}
+	log.Debug("creating gin web sever", "interface", ws.facade.RestApiInterface())
 	var err error
 	ws.httpServer, err = NewHttpServer(server)
 	if err != nil {
@@ -63,10 +92,11 @@ func (ws *webServer) StartHttpServer() error {
 }
 
 // UpdateFacade will update webServer facade.
-// no facade for current implementation -> not used
-func (ws *webServer) UpdateFacade(_ shared.FacadeHandler) error {
+func (ws *webServer) UpdateFacade(facade shared.FacadeHandler) error {
 	ws.Lock()
 	defer ws.Unlock()
+
+	ws.facade = facade
 
 	return nil
 }
@@ -75,6 +105,10 @@ func (ws *webServer) registerRoutes(ginRouter *gin.Engine) {
 
 	marshalizerForLogs := &marshal.GogoProtoMarshalizer{}
 	registerLoggerWsRoute(ginRouter, marshalizerForLogs)
+
+	if ws.facade.PprofEnabled() {
+		pprof.Register(ginRouter)
+	}
 }
 
 // registerLoggerWsRoute will register the log route

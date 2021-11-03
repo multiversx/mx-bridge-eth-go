@@ -5,74 +5,97 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/big"
-
-	"github.com/ethereum/go-ethereum/accounts/abi"
-
-	"github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-
-	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"sync"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
-	MessagePrefix   = "\u0019Ethereum Signed Message:\n32"
-	TransferAction  = int64(0)
-	SetStatusAction = int64(1)
+	messagePrefix   = "\u0019Ethereum Signed Message:\n32"
+	transferAction  = int64(0)
+	setStatusAction = int64(1)
+	addressLength   = 32
 )
 
+// BridgeContract defines the supported Ethereum contract operations
 type BridgeContract interface {
-	GetNextPendingBatch(opts *bind.CallOpts) (Batch, error)
+	GetNextPendingBatch(opts *bind.CallOpts) (contract.Batch, error)
 	FinishCurrentPendingBatch(opts *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error)
 	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	WasBatchExecuted(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	WasBatchFinished(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	Quorum(opts *bind.CallOpts) (*big.Int, error)
+	GetStatusesAfterExecution(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error)
+	GetRelayers(opts *bind.CallOpts) ([]common.Address, error)
 }
 
+// GenericErc20Contract defines the Ethereum ERC20 contract operations
+type GenericErc20Contract interface {
+	BalanceOf(opts *bind.CallOpts, account common.Address) (*big.Int, error)
+}
+
+// BlockchainClient defines the RPC operations on the Ethereum node
 type BlockchainClient interface {
-	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
-	SuggestGasPrice(ctx context.Context) (*big.Int, error)
+	BlockNumber(ctx context.Context) (uint64, error)
+	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	ChainID(ctx context.Context) (*big.Int, error)
 }
 
-type Client struct {
-	bridgeContract   BridgeContract
-	blockchainClient BlockchainClient
-
-	privateKey   *ecdsa.PrivateKey
-	publicKey    *ecdsa.PublicKey
-	broadcaster  bridge.Broadcaster
-	mapper       bridge.Mapper
-	pendingBatch *bridge.Batch
-
-	gasLimit uint64
-
-	log logger.Logger
+type client struct {
+	bridgeContract    BridgeContract
+	blockchainClient  BlockchainClient
+	addressConverter  core.PubkeyConverter
+	privateKey        *ecdsa.PrivateKey
+	publicKey         *ecdsa.PublicKey
+	broadcaster       bridge.Broadcaster
+	mapper            bridge.Mapper
+	gasLimit          uint64
+	log               logger.Logger
+	gasHandler        bridge.GasHandler
+	address           common.Address
+	mutErc20Contracts sync.RWMutex
+	erc20Contracts    map[common.Address]GenericErc20Contract
 }
 
-func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper bridge.Mapper) (*Client, error) {
+// ArgsClient is the DTO used in the client constructor
+type ArgsClient struct {
+	Config         bridge.EthereumConfig
+	Broadcaster    bridge.Broadcaster
+	Mapper         bridge.Mapper
+	GasHandler     bridge.GasHandler
+	EthClient      BlockchainClient
+	EthInstance    BridgeContract
+	Erc20Contracts map[common.Address]GenericErc20Contract
+}
+
+// NewClient creates a new Ethereum client instance
+func NewClient(args ArgsClient) (*client, error) {
+
+	err := checkArgs(args)
+	if err != nil {
+		return nil, err
+	}
+
 	log := logger.GetOrCreate("EthClient")
 
-	ethClient, err := ethclient.Dial(config.NetworkAddress)
+	privateKeyBytes, err := ioutil.ReadFile(args.Config.PrivateKeyFile)
 	if err != nil {
 		return nil, err
 	}
-
-	instance, err := NewBridge(common.HexToAddress(config.BridgeAddress), ethClient)
-	if err != nil {
-		return nil, err
-	}
-
-	privateKey, err := crypto.HexToECDSA(config.PrivateKey)
+	privateKey, err := crypto.HexToECDSA(string(privateKeyBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -83,22 +106,62 @@ func NewClient(config bridge.Config, broadcaster bridge.Broadcaster, mapper brid
 		return nil, errors.New("error casting public key to ECDSA")
 	}
 
-	client := &Client{
-		bridgeContract:   instance,
-		blockchainClient: ethClient,
-		gasLimit:         config.GasLimit,
+	c := &client{
+		bridgeContract:   args.EthInstance,
+		blockchainClient: args.EthClient,
+		gasLimit:         args.Config.GasLimit,
 		privateKey:       privateKey,
 		publicKey:        publicKeyECDSA,
-		broadcaster:      broadcaster,
-		mapper:           mapper,
-
-		log: log,
+		broadcaster:      args.Broadcaster,
+		mapper:           args.Mapper,
+		log:              log,
+		gasHandler:       args.GasHandler,
+		erc20Contracts:   args.Erc20Contracts,
+	}
+	c.addressConverter, err = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	if err != nil {
+		return nil, err
 	}
 
-	return client, nil
+	c.address = crypto.PubkeyToAddress(*publicKeyECDSA)
+	log.Info("Ethereum: NewClient", "address", c.address)
+
+	return c, nil
 }
 
-func (c *Client) GetPending(ctx context.Context) *bridge.Batch {
+func checkArgs(args ArgsClient) error {
+	if check.IfNilReflect(args.Config) {
+		return ErrNilConfig
+	}
+	if check.IfNil(args.Broadcaster) {
+		return ErrNilBroadcaster
+	}
+	if check.IfNil(args.Mapper) {
+		return ErrNilMapper
+	}
+	if check.IfNil(args.GasHandler) {
+		return ErrNilGasHandler
+	}
+	if check.IfNilReflect(args.EthClient) {
+		return ErrNilBlockchainClient
+	}
+	if check.IfNilReflect(args.EthInstance) {
+		return ErrNilBrdgeContract
+	}
+	if args.Erc20Contracts == nil {
+		return ErrNilErc20Contracts
+	}
+	for addr, contractInstance := range args.Erc20Contracts {
+		if check.IfNilReflect(contractInstance) {
+			return fmt.Errorf("%w for %s", ErrNilErc20ContractInstance, addr.String())
+		}
+	}
+
+	return nil
+}
+
+// GetPending returns the pending batch in the Ethereum contract
+func (c *client) GetPending(ctx context.Context) *bridge.Batch {
 	c.log.Info("ETH: Getting pending batch")
 	batch, err := c.bridgeContract.GetNextPendingBatch(&bind.CallOpts{Context: ctx})
 	if err != nil {
@@ -111,12 +174,14 @@ func (c *Client) GetPending(ctx context.Context) *bridge.Batch {
 		var transactions []*bridge.DepositTransaction
 		for _, deposit := range batch.Deposits {
 			tx := &bridge.DepositTransaction{
-				To:           string(deposit.Recipient),
-				From:         deposit.Depositor.String(),
-				TokenAddress: deposit.TokenAddress.String(),
-				Amount:       deposit.Amount,
-				DepositNonce: deposit.Nonce,
+				To:            string(deposit.Recipient),
+				DisplayableTo: c.addressConverter.Encode(deposit.Recipient),
+				From:          deposit.Depositor.String(),
+				TokenAddress:  deposit.TokenAddress.String(),
+				Amount:        deposit.Amount,
+				DepositNonce:  deposit.Nonce,
 			}
+			c.log.Trace("created deposit transaction: " + tx.String())
 			transactions = append(transactions, tx)
 		}
 
@@ -129,46 +194,54 @@ func (c *Client) GetPending(ctx context.Context) *bridge.Batch {
 	return result
 }
 
-func (c *Client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
+// ProposeSetStatus will propose the status of an executed batch of transactions
+func (c *client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	// Nothing needs to get proposed, simply gather signatures
 	c.log.Info("ETH: Broadcast status signatures for for batchId", batch.Id)
 }
 
-func (c *Client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
+// ProposeTransfer will propose the transfer coming from other client
+func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	// Nothing needs to get proposed, simply gather signatures
-	c.log.Info("ETH: Broadcast transfer signatures for for batchId", batch.Id)
+	c.log.Info("ETH: Broadcast transfer signatures for batchId", batch.Id)
 
 	return "", nil
 }
 
-func (c *Client) WasProposedTransfer(context.Context, *bridge.Batch) bool {
+// WasProposedTransfer returns true
+func (c *client) WasProposedTransfer(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
-	c.pendingBatch = batch
-
-	return bridge.NewActionId(TransferAction)
+// GetActionIdForProposeTransfer returns a hardcoded value fot the transfer action ID
+func (c *client) GetActionIdForProposeTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
+	return bridge.NewActionId(transferAction)
 }
 
-func (c *Client) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
+// WasProposedSetStatus returns true
+func (c *client) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 	return true
 }
 
-func (c *Client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
-	c.pendingBatch = batch
-
-	return bridge.NewActionId(SetStatusAction)
+// GetActionIdForSetStatusOnPendingTransfer a hardcoded value fot the set status action ID
+func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
+	return bridge.NewActionId(setStatusAction)
 }
 
-func (c *Client) WasExecuted(ctx context.Context, actionId bridge.ActionId, batchId bridge.BatchId) bool {
+// GetRelayers returns the current registered relayers from the Ethereum SC
+func (c *client) GetRelayers(ctx context.Context) ([]common.Address, error) {
+	return c.bridgeContract.GetRelayers(&bind.CallOpts{Context: ctx})
+}
+
+// WasExecuted returns true if the action ID was executed
+func (c *client) WasExecuted(ctx context.Context, actionId bridge.ActionId, batchId bridge.BatchId) bool {
 	var wasExecuted bool
 	var err error = nil
 
 	switch int64FromActionId(actionId) {
-	case TransferAction:
-		wasExecuted, err = c.bridgeContract.WasBatchExecuted(&bind.CallOpts{Context: ctx}, c.pendingBatch.Id)
-	case SetStatusAction:
+	case transferAction:
+		wasExecuted, err = c.bridgeContract.WasBatchExecuted(&bind.CallOpts{Context: ctx}, batchId)
+	case setStatusAction:
 		wasExecuted, err = c.bridgeContract.WasBatchFinished(&bind.CallOpts{Context: ctx}, batchId)
 	}
 	if err != nil {
@@ -185,26 +258,38 @@ func (c *Client) WasExecuted(ctx context.Context, actionId bridge.ActionId, batc
 	return wasExecuted
 }
 
-func (c *Client) Sign(_ context.Context, action bridge.ActionId) (string, error) {
+// GetTransactionsStatuses will return the transactions statuses from the batch ID
+func (c *client) GetTransactionsStatuses(ctx context.Context, batchId bridge.BatchId) ([]uint8, error) {
+	return c.bridgeContract.GetStatusesAfterExecution(&bind.CallOpts{Context: ctx}, batchId)
+}
+
+// Sign will sign upon the provided batch and send the signatures through the broadcaster to other relayers
+func (c *client) Sign(_ context.Context, action bridge.ActionId, batch *bridge.Batch) (string, error) {
 	switch int64FromActionId(action) {
-	case TransferAction:
-		c.broadcastSignatureForTransfer(c.pendingBatch)
-	case SetStatusAction:
-		var proposedStatuses []uint8
-		for _, tx := range c.pendingBatch.Transactions {
-			proposedStatuses = append(proposedStatuses, tx.Status)
-		}
-		c.broadcastSignatureForFinishCurrentPendingTransaction(c.pendingBatch.Id, proposedStatuses)
+	case transferAction:
+		c.broadcastSignatureForTransfer(batch)
+	case setStatusAction:
+		c.broadcastSignatureForFinish(batch)
 	}
 
 	return "", nil
 }
 
-func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bridge.Batch) (string, error) {
+// Execute will pack and send a transaction providing the batch data and received signatures from the other relayers
+func (c *client) Execute(
+	ctx context.Context,
+	action bridge.ActionId,
+	batch *bridge.Batch,
+	sigHolder bridge.SignaturesHolder,
+) (string, error) {
+	if check.IfNil(sigHolder) {
+		return "", ErrNilSignaturesHolder
+	}
+
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
 	batchId := batch.Id
 
-	blockNonce, err := c.blockchainClient.PendingNonceAt(ctx, fromAddress)
+	nonce, err := c.getNonce(ctx, fromAddress)
 	if err != nil {
 		return "", err
 	}
@@ -219,54 +304,173 @@ func (c *Client) Execute(ctx context.Context, action bridge.ActionId, batch *bri
 		return "", err
 	}
 
-	auth.Nonce = big.NewInt(int64(blockNonce))
+	gasPrice, err := c.gasHandler.GetCurrentGasPrice()
+	if err != nil {
+		return "", err
+	}
+
+	auth.Nonce = big.NewInt(nonce)
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = c.gasLimit
 	auth.Context = ctx
+	auth.GasPrice = gasPrice
 
 	var transaction *types.Transaction
 
-	signatures := c.broadcaster.Signatures()
+	msgHash, err := c.generateMsgHash(batch, action)
+	if err != nil {
+		return "", fmt.Errorf("ETH: %w", err)
+	}
+
+	signatures := sigHolder.Signatures(msgHash.Bytes())
+	// TODO optimize this: no need to re-fetch the quorum, can be provided by the bridge executor
+	quorum, err := c.GetQuorum(ctx)
+	if err != nil {
+		return "", fmt.Errorf("%w while getting the quorum in client.Execute", err)
+	}
+	if len(signatures) > int(quorum) {
+		c.log.Debug("reducing the size of the signatures set",
+			"quorum", quorum, "total signatures", len(signatures))
+		signatures = signatures[:quorum]
+	}
+
 	switch int64FromActionId(action) {
-	case TransferAction:
-		transaction, err = c.transfer(auth, signatures)
-	case SetStatusAction:
-		transaction, err = c.finish(auth, signatures)
+	case transferAction:
+		transaction, err = c.transfer(ctx, auth, signatures, batch)
+	case setStatusAction:
+		transaction, err = c.finish(auth, signatures, batch)
 	}
 
 	if err != nil {
 		return "", fmt.Errorf("ETH: %w", err)
 	}
 
-	hash := transaction.Hash().String()
-	c.log.Info(fmt.Sprintf("ETH: Executed batchId %v with hash %s", batchId, hash))
+	txHash := transaction.Hash().String()
+	c.log.Info(fmt.Sprintf("ETH: Executed batchId %v with hash %s", batchId, txHash))
 
-	return hash, err
+	return txHash, err
 }
 
-func (c *Client) transfer(auth *bind.TransactOpts, signatures [][]byte) (*types.Transaction, error) {
-	batch := c.pendingBatch
+func (c *client) getNonce(ctx context.Context, fromAddress common.Address) (int64, error) {
+	blockNonce, err := c.blockchainClient.BlockNumber(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("%w in getNonce, BlockNumber call", err)
+	}
+
+	nonce, err := c.blockchainClient.NonceAt(ctx, fromAddress, big.NewInt(int64(blockNonce)))
+
+	return int64(nonce), err
+}
+
+func (c *client) transfer(
+	ctx context.Context,
+	auth *bind.TransactOpts,
+	signatures [][]byte,
+	batch *bridge.Batch,
+) (*types.Transaction, error) {
+
 	tokens := c.tokenAddresses(batch.Transactions)
 	recipients := recipientsAddresses(batch.Transactions)
-	amount := amounts(batch.Transactions)
-	return c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amount, batch.Id, signatures)
+	amountsValues := amounts(batch.Transactions)
+
+	c.log.Debug("client.transfer", "auth", transactOptsToString(auth),
+		"batchId", batch.Id, "tokens", tokens, "recipients", recipients, "amounts", amountsValues,
+		"num signatures", len(signatures))
+
+	err := c.checkAvailableTokens(ctx, tokens, amountsValues)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amountsValues, batch.Id, signatures)
 }
 
-func (c *Client) finish(auth *bind.TransactOpts, signatures [][]byte) (*types.Transaction, error) {
+func (c *client) checkAvailableTokens(ctx context.Context, tokens []common.Address, amounts []*big.Int) error {
+	transfers := c.getCumulatedTransfers(tokens, amounts)
+
+	c.mutErc20Contracts.RLock()
+	defer c.mutErc20Contracts.RUnlock()
+
+	return c.checkCumulatedTransfers(ctx, transfers)
+}
+
+func (c *client) getCumulatedTransfers(tokens []common.Address, amounts []*big.Int) map[common.Address]*big.Int {
+	transfers := make(map[common.Address]*big.Int)
+	for i, token := range tokens {
+		existing, found := transfers[token]
+		if !found {
+			existing = big.NewInt(0)
+			transfers[token] = existing
+		}
+
+		existing.Add(existing, amounts[i])
+	}
+
+	return transfers
+}
+
+func (c *client) checkCumulatedTransfers(ctx context.Context, transfers map[common.Address]*big.Int) error {
+	for addr, value := range transfers {
+		contractInstance, found := c.erc20Contracts[addr]
+		if !found {
+			return fmt.Errorf("%w for %s", ErrMissingErc20ContractDefinition, addr.String())
+		}
+
+		existingBalance, err := contractInstance.BalanceOf(&bind.CallOpts{Context: ctx}, addr)
+		if err != nil {
+			return fmt.Errorf("%w for %s", err, addr.String())
+		}
+
+		if value.Cmp(existingBalance) > 0 {
+			return fmt.Errorf("%w, existing: %s, required: %s for %s",
+				ErrInsufficientErc20Balance, existingBalance.String(), value.String(), addr.String())
+		}
+
+		c.log.Debug("checked ERC20 balance", "address", addr.String(),
+			"existing balance", existingBalance.String(), "needed", value.String())
+	}
+
+	return nil
+}
+
+func (c *client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bridge.Batch) (*types.Transaction, error) {
 	var proposedStatuses []uint8
-	for _, tx := range c.pendingBatch.Transactions {
+	for _, tx := range batch.Transactions {
 		proposedStatuses = append(proposedStatuses, tx.Status)
 	}
-	return c.bridgeContract.FinishCurrentPendingBatch(auth, c.pendingBatch.Id, proposedStatuses, signatures)
+
+	c.log.Debug("client.finish", "auth", transactOptsToString(auth),
+		"batchId", batch.Id, "proposed statuses", proposedStatuses, "num signatures", len(signatures))
+
+	return c.bridgeContract.FinishCurrentPendingBatch(auth, batch.Id, proposedStatuses, signatures)
 }
 
-func (c *Client) SignersCount(context.Context, bridge.ActionId) uint {
-	return uint(len(c.broadcaster.Signatures()))
+// SignersCount will return the total signers number that sent the signatures on the required message hash
+func (c *client) SignersCount(
+	batch *bridge.Batch,
+	actionId bridge.ActionId,
+	sigHolder bridge.SignaturesHolder,
+) uint {
+	if check.IfNil(sigHolder) {
+		c.log.Error("programming error in eth client, SignersCount function",
+			"error", ErrNilSignaturesHolder.Error())
+		return 0
+	}
+
+	msgHash, err := c.generateMsgHash(batch, actionId)
+	if err != nil {
+		c.log.Error(err.Error())
+
+		return 0
+	}
+
+	return uint(len(sigHolder.Signatures(msgHash.Bytes())))
 }
 
 // QuorumProvider implementation
 
-func (c *Client) GetQuorum(ctx context.Context) (uint, error) {
+// GetQuorum returns the Quorum value from the Ethereum SC
+func (c *client) GetQuorum(ctx context.Context) (uint, error) {
 	n, err := c.bridgeContract.Quorum(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		return 0, err
@@ -281,9 +485,8 @@ func (c *Client) GetQuorum(ctx context.Context) (uint, error) {
 
 // utils
 
-func (c *Client) signHash(hash common.Hash) ([]byte, error) {
-	valueToSign := crypto.Keccak256Hash(append([]byte(MessagePrefix), hash.Bytes()...))
-	signature, err := crypto.Sign(valueToSign.Bytes(), c.privateKey)
+func (c *client) signHash(hash common.Hash) ([]byte, error) {
+	signature, err := crypto.Sign(hash.Bytes(), c.privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -291,27 +494,20 @@ func (c *Client) signHash(hash common.Hash) ([]byte, error) {
 	return signature, nil
 }
 
-func (c *Client) broadcastSignatureForTransfer(batch *bridge.Batch) {
-	arguments, err := transferArgs()
+func (c *client) broadcastSignatureForTransfer(batch *bridge.Batch) {
+	msgHash, err := c.generateMsgHashForTransfer(batch)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	pack, err := arguments.Pack(recipientsAddresses(batch.Transactions), c.tokenAddresses(batch.Transactions), amounts(batch.Transactions), new(big.Int).Set(batch.Id), "ExecuteBatchedTransfer")
+	signature, err := c.signHash(msgHash)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	hash := crypto.Keccak256Hash(pack)
-	signature, err := c.signHash(hash)
-	if err != nil {
-		c.log.Error(err.Error())
-		return
-	}
-
-	c.broadcaster.SendSignature(signature)
+	c.broadcaster.BroadcastSignature(signature, msgHash.Bytes())
 }
 
 func recipientsAddresses(transactions []*bridge.DepositTransaction) []common.Address {
@@ -324,11 +520,11 @@ func recipientsAddresses(transactions []*bridge.DepositTransaction) []common.Add
 	return result
 }
 
-func (c *Client) tokenAddresses(transactions []*bridge.DepositTransaction) []common.Address {
+func (c *client) tokenAddresses(transactions []*bridge.DepositTransaction) []common.Address {
 	var result []common.Address
 
 	for _, tx := range transactions {
-		tokenAddress := c.getErc20AddressFromTokenId(tx.TokenAddress)
+		tokenAddress := c.mapper.GetErc20Address(tx.TokenAddress)
 		result = append(result, common.HexToAddress(tokenAddress))
 	}
 
@@ -345,31 +541,76 @@ func amounts(transactions []*bridge.DepositTransaction) []*big.Int {
 	return result
 }
 
-func (c *Client) broadcastSignatureForFinishCurrentPendingTransaction(batchId bridge.BatchId, statuses []uint8) {
-	arguments, err := finishCurrentPendingTransactionArgs()
-	if err != nil {
-		c.log.Error(err.Error())
-		return
+func (c *client) generateMsgHash(batch *bridge.Batch, actionId bridge.ActionId) (common.Hash, error) {
+	switch int64FromActionId(actionId) {
+	case transferAction:
+		return c.generateMsgHashForTransfer(batch)
+	case setStatusAction:
+		return c.generateMsgHashForFinish(batch)
 	}
 
-	pack, err := arguments.Pack(new(big.Int).Set(batchId), statuses, "CurrentPendingBatch")
+	return common.Hash{}, fmt.Errorf("Client.generateMsgHash not implemented for action ID %v", actionId)
+}
+
+func (c *client) generateMsgHashForTransfer(batch *bridge.Batch) (common.Hash, error) {
+	arguments, err := transferArgs()
 	if err != nil {
-		c.log.Error(err.Error())
-		return
+		return common.Hash{}, err
+	}
+
+	pack, err := arguments.Pack(recipientsAddresses(batch.Transactions), c.tokenAddresses(batch.Transactions), amounts(batch.Transactions), new(big.Int).Set(batch.Id), "ExecuteBatchedTransfer")
+	if err != nil {
+		return common.Hash{}, err
 	}
 
 	hash := crypto.Keccak256Hash(pack)
-	signature, err := c.signHash(hash)
+	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
+}
+
+func (c *client) generateMsgHashForFinish(batch *bridge.Batch) (common.Hash, error) {
+	var statuses []uint8
+	for _, tx := range batch.Transactions {
+		statuses = append(statuses, tx.Status)
+	}
+
+	arguments, err := finishCurrentPendingTransactionArgs()
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	pack, err := arguments.Pack(new(big.Int).Set(batch.Id), statuses, "CurrentPendingBatch")
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	hash := crypto.Keccak256Hash(pack)
+	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
+}
+
+func (c *client) broadcastSignatureForFinish(batch *bridge.Batch) {
+	msgHash, err := c.generateMsgHashForFinish(batch)
 	if err != nil {
 		c.log.Error(err.Error())
 		return
 	}
 
-	c.broadcaster.SendSignature(signature)
+	signature, err := c.signHash(msgHash)
+	if err != nil {
+		c.log.Error(err.Error())
+		return
+	}
+
+	c.broadcaster.BroadcastSignature(signature, msgHash.Bytes())
 }
 
-func (c *Client) getErc20AddressFromTokenId(tokenId string) string {
-	return c.mapper.GetErc20Address(tokenId[2:])
+// Address returns the Ethereum's address associated to this client
+func (c *client) Address() common.Address {
+	return c.address
+}
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (c *client) IsInterfaceNil() bool {
+	return c == nil
 }
 
 // helpers
@@ -430,4 +671,18 @@ func finishCurrentPendingTransactionArgs() (abi.Arguments, error) {
 
 func int64FromActionId(actionId bridge.ActionId) int64 {
 	return (*big.Int)(actionId).Int64()
+}
+
+func transactOptsToString(opts *bind.TransactOpts) string {
+	if opts == nil {
+		return "<nil>"
+	}
+
+	return fmt.Sprintf("from: %v, nonce: %v, value: %v, gas price: %v, gas limit: %v",
+		opts.From,
+		opts.Nonce,
+		opts.Value,
+		opts.GasPrice,
+		opts.GasLimit,
+	)
 }

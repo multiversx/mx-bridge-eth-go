@@ -1,8 +1,10 @@
 name: Build
 
 on:
+  push:
+    branches: [ main, feat/* ]
   pull_request:
-    branches: [ main ]
+      branches: [ main, feat/* ]
 
 jobs:
   build:
@@ -30,4 +32,4 @@ jobs:
           fi
       - name: Build
         run: |
-          cd ${GITHUB_WORKSPACE}/cmd && go build .
+          cd ${GITHUB_WORKSPACE}/cmd/bridge && go build .
