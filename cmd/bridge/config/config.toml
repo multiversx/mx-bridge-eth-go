@@ -3,6 +3,7 @@
     BridgeAddress = "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c" # the eth address for the bridge contract
     PrivateKeyFile = "config/ethereum.sk" # the path to the file containing the relayer eth private key
     GasLimit = 500000
+    ERC20Contracts = ["64a8bfab8e7ac5d5a3561d95b504542e9e29ce24", "4d75EF4411cda0E0C257383054Fe68febB993D37"]
     [Eth.GasStation]
         Enabled = true
         URL = "https://ethgasstation.info/api/ethgasAPI.json?" # gas station URL. Suggestion to provide the api-key here

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
@@ -27,6 +28,7 @@ const (
 	proposeStatusCost     = 60_000_000
 	performActionCost     = 70_000_000
 	performActionTxCost   = 30_000_000
+	hexPrefix             = "0x"
 )
 
 var txSingleSigner = &singlesig.Ed25519Signer{}
@@ -139,7 +141,7 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 			From:          addrPkConv.Encode(responseData[i+2]),
 			To:            fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
 			DisplayableTo: fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
-			TokenAddress:  fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+4])),
+			TokenAddress:  hex.EncodeToString(responseData[i+4]),
 			Amount:        amount,
 			DepositNonce:  bridge.NewNonce(depositNonce),
 			BlockNonce:    bridge.NewNonce(blockNonce),
@@ -203,7 +205,7 @@ func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 	for _, tx := range batch.Transactions {
 		builder = builder.
 			Address([]byte(tx.To)).
-			HexString(c.GetTokenId(tx.TokenAddress[2:])).
+			HexString(c.GetTokenId(tx.TokenAddress)).
 			BigInt(tx.Amount)
 	}
 
@@ -391,6 +393,10 @@ func (c *client) SignersCount(_ *bridge.Batch, actionId bridge.ActionId, _ bridg
 
 // GetTokenId returns the token ID for the erc 20 address
 func (c *client) GetTokenId(address string) string {
+	if strings.Index(address, hexPrefix) == 0 {
+		address = address[len(hexPrefix):]
+	}
+
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
 		Func("getTokenIdForErc20Address").
 		HexString(address).
@@ -662,7 +668,7 @@ func (builder *valueRequestBuilder) WithTx(batch *bridge.Batch, mapper func(stri
 	for _, tx := range batch.Transactions {
 		builder = builder.
 			Address(tx.To).
-			HexString(mapper(tx.TokenAddress[2:])).
+			HexString(mapper(tx.TokenAddress)).
 			BigInt(tx.Amount)
 	}
 

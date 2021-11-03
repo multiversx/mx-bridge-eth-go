@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math"
 	"math/big"
+	"sync"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
@@ -41,6 +42,11 @@ type BridgeContract interface {
 	GetRelayers(opts *bind.CallOpts) ([]common.Address, error)
 }
 
+// GenericErc20Contract defines the Ethereum ERC20 contract operations
+type GenericErc20Contract interface {
+	BalanceOf(opts *bind.CallOpts, account common.Address) (*big.Int, error)
+}
+
 // BlockchainClient defines the RPC operations on the Ethereum node
 type BlockchainClient interface {
 	BlockNumber(ctx context.Context) (uint64, error)
@@ -49,27 +55,30 @@ type BlockchainClient interface {
 }
 
 type client struct {
-	bridgeContract   BridgeContract
-	blockchainClient BlockchainClient
-	addressConverter core.PubkeyConverter
-	privateKey       *ecdsa.PrivateKey
-	publicKey        *ecdsa.PublicKey
-	broadcaster      bridge.Broadcaster
-	mapper           bridge.Mapper
-	gasLimit         uint64
-	log              logger.Logger
-	gasHandler       bridge.GasHandler
-	address          common.Address
+	bridgeContract    BridgeContract
+	blockchainClient  BlockchainClient
+	addressConverter  core.PubkeyConverter
+	privateKey        *ecdsa.PrivateKey
+	publicKey         *ecdsa.PublicKey
+	broadcaster       bridge.Broadcaster
+	mapper            bridge.Mapper
+	gasLimit          uint64
+	log               logger.Logger
+	gasHandler        bridge.GasHandler
+	address           common.Address
+	mutErc20Contracts sync.RWMutex
+	erc20Contracts    map[common.Address]GenericErc20Contract
 }
 
 // ArgsClient is the DTO used in the client constructor
 type ArgsClient struct {
-	Config      bridge.EthereumConfig
-	Broadcaster bridge.Broadcaster
-	Mapper      bridge.Mapper
-	GasHandler  bridge.GasHandler
-	EthClient   BlockchainClient
-	EthInstance BridgeContract
+	Config         bridge.EthereumConfig
+	Broadcaster    bridge.Broadcaster
+	Mapper         bridge.Mapper
+	GasHandler     bridge.GasHandler
+	EthClient      BlockchainClient
+	EthInstance    BridgeContract
+	Erc20Contracts map[common.Address]GenericErc20Contract
 }
 
 // NewClient creates a new Ethereum client instance
@@ -107,6 +116,7 @@ func NewClient(args ArgsClient) (*client, error) {
 		mapper:           args.Mapper,
 		log:              log,
 		gasHandler:       args.GasHandler,
+		erc20Contracts:   args.Erc20Contracts,
 	}
 	c.addressConverter, err = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
@@ -138,6 +148,15 @@ func checkArgs(args ArgsClient) error {
 	if check.IfNilReflect(args.EthInstance) {
 		return ErrNilBrdgeContract
 	}
+	if args.Erc20Contracts == nil {
+		return ErrNilErc20Contracts
+	}
+	for addr, contractInstance := range args.Erc20Contracts {
+		if check.IfNilReflect(contractInstance) {
+			return fmt.Errorf("%w for %s", ErrNilErc20ContractInstance, addr.String())
+		}
+	}
+
 	return nil
 }
 
@@ -317,7 +336,7 @@ func (c *client) Execute(
 
 	switch int64FromActionId(action) {
 	case transferAction:
-		transaction, err = c.transfer(auth, signatures, batch)
+		transaction, err = c.transfer(ctx, auth, signatures, batch)
 	case setStatusAction:
 		transaction, err = c.finish(auth, signatures, batch)
 	}
@@ -343,7 +362,13 @@ func (c *client) getNonce(ctx context.Context, fromAddress common.Address) (int6
 	return int64(nonce), err
 }
 
-func (c *client) transfer(auth *bind.TransactOpts, signatures [][]byte, batch *bridge.Batch) (*types.Transaction, error) {
+func (c *client) transfer(
+	ctx context.Context,
+	auth *bind.TransactOpts,
+	signatures [][]byte,
+	batch *bridge.Batch,
+) (*types.Transaction, error) {
+
 	tokens := c.tokenAddresses(batch.Transactions)
 	recipients := recipientsAddresses(batch.Transactions)
 	amountsValues := amounts(batch.Transactions)
@@ -352,7 +377,60 @@ func (c *client) transfer(auth *bind.TransactOpts, signatures [][]byte, batch *b
 		"batchId", batch.Id, "tokens", tokens, "recipients", recipients, "amounts", amountsValues,
 		"num signatures", len(signatures))
 
+	err := c.checkAvailableTokens(ctx, tokens, amountsValues)
+	if err != nil {
+		return nil, err
+	}
+
 	return c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amountsValues, batch.Id, signatures)
+}
+
+func (c *client) checkAvailableTokens(ctx context.Context, tokens []common.Address, amounts []*big.Int) error {
+	transfers := c.getCumulatedTransfers(tokens, amounts)
+
+	c.mutErc20Contracts.RLock()
+	defer c.mutErc20Contracts.RUnlock()
+
+	return c.checkCumulatedTransfers(ctx, transfers)
+}
+
+func (c *client) getCumulatedTransfers(tokens []common.Address, amounts []*big.Int) map[common.Address]*big.Int {
+	transfers := make(map[common.Address]*big.Int)
+	for i, token := range tokens {
+		existing, found := transfers[token]
+		if !found {
+			existing = big.NewInt(0)
+			transfers[token] = existing
+		}
+
+		existing.Add(existing, amounts[i])
+	}
+
+	return transfers
+}
+
+func (c *client) checkCumulatedTransfers(ctx context.Context, transfers map[common.Address]*big.Int) error {
+	for addr, value := range transfers {
+		contractInstance, found := c.erc20Contracts[addr]
+		if !found {
+			return fmt.Errorf("%w for %s", ErrMissingErc20ContractDefinition, addr.String())
+		}
+
+		existingBalance, err := contractInstance.BalanceOf(&bind.CallOpts{Context: ctx}, addr)
+		if err != nil {
+			return fmt.Errorf("%w for %s", err, addr.String())
+		}
+
+		if value.Cmp(existingBalance) > 0 {
+			return fmt.Errorf("%w, existing: %s, required: %s for %s",
+				ErrInsufficientErc20Balance, existingBalance.String(), value.String(), addr.String())
+		}
+
+		c.log.Debug("checked ERC20 balance", "address", addr.String(),
+			"existing balance", existingBalance.String(), "needed", value.String())
+	}
+
+	return nil
 }
 
 func (c *client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bridge.Batch) (*types.Transaction, error) {
@@ -429,7 +507,7 @@ func (c *client) broadcastSignatureForTransfer(batch *bridge.Batch) {
 		return
 	}
 
-	c.broadcaster.SendSignature(signature, msgHash.Bytes())
+	c.broadcaster.BroadcastSignature(signature, msgHash.Bytes())
 }
 
 func recipientsAddresses(transactions []*bridge.DepositTransaction) []common.Address {
@@ -446,7 +524,7 @@ func (c *client) tokenAddresses(transactions []*bridge.DepositTransaction) []com
 	var result []common.Address
 
 	for _, tx := range transactions {
-		tokenAddress := c.getErc20AddressFromTokenId(tx.TokenAddress)
+		tokenAddress := c.mapper.GetErc20Address(tx.TokenAddress)
 		result = append(result, common.HexToAddress(tokenAddress))
 	}
 
@@ -522,11 +600,7 @@ func (c *client) broadcastSignatureForFinish(batch *bridge.Batch) {
 		return
 	}
 
-	c.broadcaster.SendSignature(signature, msgHash.Bytes())
-}
-
-func (c *client) getErc20AddressFromTokenId(tokenId string) string {
-	return c.mapper.GetErc20Address(tokenId[2:])
+	c.broadcaster.BroadcastSignature(signature, msgHash.Bytes())
 }
 
 // Address returns the Ethereum's address associated to this client
