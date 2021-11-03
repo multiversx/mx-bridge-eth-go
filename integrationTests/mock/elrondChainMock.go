@@ -8,7 +8,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-go-core/core"
-	erdoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -101,7 +101,7 @@ func (mock *ElrondChainMock) ExecuteVMQuery(vmRequest *data.VmValueRequest) (*da
 }
 
 // GetAccount -
-func (mock *ElrondChainMock) GetAccount(address erdoCore.AddressHandler) (*data.Account, error) {
+func (mock *ElrondChainMock) GetAccount(address erdgoCore.AddressHandler) (*data.Account, error) {
 	mock.mutState.Lock()
 	defer mock.mutState.Unlock()
 
@@ -109,7 +109,7 @@ func (mock *ElrondChainMock) GetAccount(address erdoCore.AddressHandler) (*data.
 }
 
 // AddRelayer -
-func (mock *ElrondChainMock) AddRelayer(address erdoCore.AddressHandler) {
+func (mock *ElrondChainMock) AddRelayer(address erdgoCore.AddressHandler) {
 	mock.mutState.Lock()
 	defer mock.mutState.Unlock()
 
@@ -156,6 +156,13 @@ func (mock *ElrondChainMock) ProposedTransfer() *ElrondProposedTransfer {
 	}
 
 	return nil
+}
+
+// SetPendingBatch -
+func (mock *ElrondChainMock) SetPendingBatch(pendingBatch *ElrondPendingBatch) {
+	mock.mutState.Lock()
+	mock.setPendingBatch(pendingBatch)
+	mock.mutState.Unlock()
 }
 
 // IsInterfaceNil -

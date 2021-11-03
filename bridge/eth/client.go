@@ -203,7 +203,7 @@ func (c *client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 // ProposeTransfer will propose the transfer coming from other client
 func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	// Nothing needs to get proposed, simply gather signatures
-	c.log.Info("ETH: Broadcast transfer signatures for for batchId", batch.Id)
+	c.log.Info("ETH: Broadcast transfer signatures for batchId", batch.Id)
 
 	return "", nil
 }

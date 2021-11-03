@@ -1,6 +1,8 @@
 package mock
 
 import (
+	"encoding/hex"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -15,7 +17,9 @@ func (mock *tokensRegistryMock) addTokensPair(erc20Address common.Address, ticke
 	integrationTests.Log.Info("added tokens pair", "ticker", ticker, "erc20 address", erc20Address.String())
 
 	mock.ethToElrond[erc20Address] = ticker
-	mock.elrondToEth[ticker] = erc20Address
+
+	hexedTicker := hex.EncodeToString([]byte(ticker))
+	mock.elrondToEth[hexedTicker] = erc20Address
 }
 
 func (mock *tokensRegistryMock) clearTokens() {
