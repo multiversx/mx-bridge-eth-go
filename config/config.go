@@ -1,9 +1,16 @@
-package relay
+package config
 
 import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-go/config"
 )
+
+// Configs is a holder for the relayer configuration parameters
+type Configs struct {
+	GeneralConfig   *Config
+	ApiRoutesConfig *ApiRoutesConfig
+	FlagsConfig     *ContextFlagsConfig
+}
 
 // Config general configuration struct
 type Config struct {
@@ -43,14 +50,38 @@ type StepConfig struct {
 
 // ContextFlagsConfig the configuration for flags
 type ContextFlagsConfig struct {
-	WorkingDir        string
-	LogLevel          string
-	DisableAnsiColor  bool
-	ConfigurationFile string
-	SaveLogFile       bool
-	EnableLogName     bool
-	RestApiInterface  string
-	EnablePprof       bool
+	WorkingDir           string
+	LogLevel             string
+	DisableAnsiColor     bool
+	ConfigurationFile    string
+	ConfigurationApiFile string
+	SaveLogFile          bool
+	EnableLogName        bool
+	RestApiInterface     string
+	EnablePprof          bool
+}
+
+// ApiRoutesConfig holds the configuration related to Rest API routes
+type ApiRoutesConfig struct {
+	Logging     ApiLoggingConfig
+	APIPackages map[string]APIPackageConfig
+}
+
+// ApiLoggingConfig holds the configuration related to API requests logging
+type ApiLoggingConfig struct {
+	LoggingEnabled          bool
+	ThresholdInMicroSeconds int
+}
+
+// APIPackageConfig holds the configuration for the routes of each package
+type APIPackageConfig struct {
+	Routes []RouteConfig
+}
+
+// RouteConfig holds the configuration for a single route
+type RouteConfig struct {
+	Name string
+	Open bool
 }
 
 // LogsConfig will hold settings related to the logging sub-system

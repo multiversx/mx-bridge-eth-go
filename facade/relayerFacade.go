@@ -1,5 +1,7 @@
 package facade
 
+import "github.com/ElrondNetwork/elrond-go-core/core"
+
 type relayerFacade struct {
 	apiInterface string
 	pprofEnabled bool
@@ -23,6 +25,18 @@ func (rf *relayerFacade) RestApiInterface() string {
 // PprofEnabled returns if profiling mode should be active or not on the application
 func (rf *relayerFacade) PprofEnabled() bool {
 	return rf.pprofEnabled
+}
+
+// GetPeerInfo returns a P2PPeerInfo value holding an unknown peer value
+func (rf *relayerFacade) GetPeerInfo(pid string) ([]core.QueryP2PPeerInfo, error) {
+	// TODO implement this
+	panic("implement me")
+}
+
+// GetClientInfo returns specified client`s info
+func (rf *relayerFacade) GetClientInfo(client string) (string, error) {
+	// TODO implement this
+	panic("implement me")
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

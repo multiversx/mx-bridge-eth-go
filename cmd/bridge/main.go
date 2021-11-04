@@ -11,6 +11,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
 	"github.com/ElrondNetwork/elrond-go-core/core"
@@ -21,7 +22,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	elrondCommon "github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
-	"github.com/ElrondNetwork/elrond-go/config"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
@@ -105,6 +106,12 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	apiRoutesConfig, err := loadApiConfig(flagsConfig.ConfigurationApiFile)
+	if err != nil {
+		return err
+	}
+	log.Debug("config", "file", flagsConfig.ConfigurationApiFile)
+
 	if !check.IfNil(fileLogging) {
 		err := fileLogging.ChangeFileLifeSpan(time.Second * time.Duration(cfg.Logs.LogFileLifeSpanInSec))
 		if err != nil {
@@ -140,8 +147,11 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	args := relay.ArgsRelayer{
-		Config:         *cfg,
-		FlagsConfig:    *flagsConfig,
+		Configs: config.Configs{
+			GeneralConfig:   cfg,
+			ApiRoutesConfig: apiRoutesConfig,
+			FlagsConfig:     flagsConfig,
+		},
 		Name:           "EthToElrRelay",
 		Proxy:          proxy,
 		EthClient:      ethClient,
@@ -188,8 +198,8 @@ func mainLoop(r *relay.Relay) {
 	}
 }
 
-func loadConfig(filepath string) (*relay.Config, error) {
-	cfg := &relay.Config{}
+func loadConfig(filepath string) (*config.Config, error) {
+	cfg := &config.Config{}
 	err := core.LoadTomlFile(cfg, filepath)
 	if err != nil {
 		return nil, err
@@ -198,7 +208,18 @@ func loadConfig(filepath string) (*relay.Config, error) {
 	return cfg, nil
 }
 
-func attachFileLogger(log logger.Logger, flagsConfig *relay.ContextFlagsConfig) (factory.FileLoggingHandler, error) {
+// LoadApiConfig returns a ApiRoutesConfig by reading the config file provided
+func loadApiConfig(filepath string) (*config.ApiRoutesConfig, error) {
+	cfg := &config.ApiRoutesConfig{}
+	err := core.LoadTomlFile(cfg, filepath)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func attachFileLogger(log logger.Logger, flagsConfig *config.ContextFlagsConfig) (factory.FileLoggingHandler, error) {
 	var fileLogging factory.FileLoggingHandler
 	var err error
 	if flagsConfig.SaveLogFile {
@@ -233,14 +254,14 @@ func attachFileLogger(log logger.Logger, flagsConfig *relay.ContextFlagsConfig) 
 	return fileLogging, nil
 }
 
-func buildNetMessenger(cfg relay.Config, marshalizer marshal.Marshalizer) (relayp2p.NetMessenger, error) {
-	nodeConfig := config.NodeConfig{
+func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (relayp2p.NetMessenger, error) {
+	nodeConfig := elrondConfig.NodeConfig{
 		Port:                       cfg.P2P.Port,
 		Seed:                       cfg.P2P.Seed,
 		MaximumExpectedPeerCount:   0,
 		ThresholdMinConnectedPeers: 0,
 	}
-	peerDiscoveryConfig := config.KadDhtPeerDiscoveryConfig{
+	peerDiscoveryConfig := elrondConfig.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
 		RefreshIntervalInSec:             5,
 		ProtocolID:                       cfg.P2P.ProtocolID,
@@ -250,10 +271,10 @@ func buildNetMessenger(cfg relay.Config, marshalizer marshal.Marshalizer) (relay
 		Type:                             p2pPeerNetworkDiscoverer,
 	}
 
-	p2pConfig := config.P2PConfig{
+	p2pConfig := elrondConfig.P2PConfig{
 		Node:                nodeConfig,
 		KadDhtPeerDiscovery: peerDiscoveryConfig,
-		Sharding: config.ShardingConfig{
+		Sharding: elrondConfig.ShardingConfig{
 			TargetPeerCount:         0,
 			MaxIntraShardValidators: 0,
 			MaxCrossShardValidators: 0,
