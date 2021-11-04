@@ -93,7 +93,7 @@ type Relay struct {
 
 // ArgsRelayer is the DTO used in the relayer constructor
 type ArgsRelayer struct {
-	Config           Config
+	Configs          config.Configs
 	Name             string
 	Proxy            bridge.ElrondProxy
 	EthClient        eth.BlockchainClient
