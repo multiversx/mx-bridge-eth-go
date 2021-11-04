@@ -126,7 +126,8 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	ethInstance, err := contract.NewBridge(ethCommon.HexToAddress(cfg.Eth.BridgeAddress), ethClient)
+	bridgeEthAddress := ethCommon.HexToAddress(cfg.Eth.BridgeAddress)
+	ethInstance, err := contract.NewBridge(bridgeEthAddress, ethClient)
 	if err != nil {
 		return err
 	}
@@ -152,12 +153,13 @@ func startRelay(ctx *cli.Context, version string) error {
 			ApiRoutesConfig: apiRoutesConfig,
 			FlagsConfig:     flagsConfig,
 		},
-		Name:           "EthToElrRelay",
-		Proxy:          proxy,
-		EthClient:      ethClient,
-		EthInstance:    ethInstance,
-		Messenger:      messenger,
-		Erc20Contracts: erc20Contracts,
+		Name:             "EthToElrRelay",
+		Proxy:            proxy,
+		EthClient:        ethClient,
+		EthInstance:      ethInstance,
+		Messenger:        messenger,
+		Erc20Contracts:   erc20Contracts,
+		BridgeEthAddress: bridgeEthAddress,
 	}
 	ethToElrRelay, err := relay.NewRelay(args)
 	if err != nil {

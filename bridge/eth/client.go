@@ -68,6 +68,7 @@ type client struct {
 	address           common.Address
 	mutErc20Contracts sync.RWMutex
 	erc20Contracts    map[common.Address]GenericErc20Contract
+	bridgeAddress     common.Address
 }
 
 // ArgsClient is the DTO used in the client constructor
@@ -79,11 +80,11 @@ type ArgsClient struct {
 	EthClient      BlockchainClient
 	EthInstance    BridgeContract
 	Erc20Contracts map[common.Address]GenericErc20Contract
+	BridgeAddress  common.Address
 }
 
 // NewClient creates a new Ethereum client instance
 func NewClient(args ArgsClient) (*client, error) {
-
 	err := checkArgs(args)
 	if err != nil {
 		return nil, err
@@ -117,6 +118,7 @@ func NewClient(args ArgsClient) (*client, error) {
 		log:              log,
 		gasHandler:       args.GasHandler,
 		erc20Contracts:   args.Erc20Contracts,
+		bridgeAddress:    args.BridgeAddress,
 	}
 	c.addressConverter, err = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
@@ -124,7 +126,7 @@ func NewClient(args ArgsClient) (*client, error) {
 	}
 
 	c.address = crypto.PubkeyToAddress(*publicKeyECDSA)
-	log.Info("Ethereum: NewClient", "address", c.address)
+	log.Info("Ethereum: NewClient", "relayer address", c.address, "bridge address", c.bridgeAddress)
 
 	return c, nil
 }
@@ -155,6 +157,11 @@ func checkArgs(args ArgsClient) error {
 		if check.IfNilReflect(contractInstance) {
 			return fmt.Errorf("%w for %s", ErrNilErc20ContractInstance, addr.String())
 		}
+	}
+
+	emptyAddress := common.Address{}
+	if args.BridgeAddress == emptyAddress {
+		return ErrEmptyBridgeAddress
 	}
 
 	return nil
@@ -416,7 +423,7 @@ func (c *client) checkCumulatedTransfers(ctx context.Context, transfers map[comm
 			return fmt.Errorf("%w for %s", ErrMissingErc20ContractDefinition, addr.String())
 		}
 
-		existingBalance, err := contractInstance.BalanceOf(&bind.CallOpts{Context: ctx}, addr)
+		existingBalance, err := contractInstance.BalanceOf(&bind.CallOpts{Context: ctx}, c.bridgeAddress)
 		if err != nil {
 			return fmt.Errorf("%w for %s", err, addr.String())
 		}
