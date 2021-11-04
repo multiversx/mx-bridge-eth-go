@@ -100,6 +100,19 @@ func (ws *webServer) StartHttpServer() error {
 		return err
 	}
 
+	processors, err := ws.createMiddlewareLimiters()
+	if err != nil {
+		return err
+	}
+
+	for _, proc := range processors {
+		if check.IfNil(proc) {
+			continue
+		}
+
+		engine.Use(proc.MiddlewareHandlerFunc())
+	}
+
 	ws.registerRoutes(engine)
 
 	server := &http.Server{Addr: ws.facade.RestApiInterface(), Handler: engine}
