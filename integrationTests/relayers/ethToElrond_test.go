@@ -29,6 +29,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 		t.Skip("this is not a short test")
 	}
 
+	bridgeEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
 	ticker1 := "tck-000001"
 
@@ -41,17 +42,20 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	value2 := big.NewInt(222222222)
 	destination2 := testsCommon.CreateRandomElrondAddress()
 
-	erc20Contracts := map[common.Address]eth.GenericErc20Contract{
-		token1Erc20: &testsCommon.GenericErc20ContractStub{
+	tokens := []common.Address{token1Erc20, token2Erc20}
+	availableBalances := []*big.Int{value1, value2}
+
+	erc20Contracts := make(map[common.Address]eth.GenericErc20Contract)
+	for i, token := range tokens {
+		erc20Contracts[token] = &testsCommon.GenericErc20ContractStub{
 			BalanceOfCalled: func(account common.Address) (*big.Int, error) {
-				return big.NewInt(111111111), nil
+				if account == bridgeEthAddress {
+					return availableBalances[i], nil
+				}
+
+				return big.NewInt(0), nil
 			},
-		},
-		token2Erc20: &testsCommon.GenericErc20ContractStub{
-			BalanceOfCalled: func(account common.Address) (*big.Int, error) {
-				return big.NewInt(222222222), nil
-			},
-		},
+		}
 	}
 
 	batch := contract.Batch{
@@ -110,6 +114,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	for i := 0; i < numRelayers; i++ {
 		argsRelay := createMockRelayArgs(i, messengers[i], elrondChainMock, ethereumChainMock)
 		argsRelay.Erc20Contracts = erc20Contracts
+		argsRelay.BridgeEthAddress = bridgeEthAddress
 		r, err := relay.NewRelay(argsRelay)
 		require.Nil(t, err)
 
