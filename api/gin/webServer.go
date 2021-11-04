@@ -1,19 +1,23 @@
-package api
+package gin
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	apiErrors "github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/api/groups"
+	"github.com/ElrondNetwork/elrond-eth-bridge/api/shared"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/api/logs"
-	"github.com/ElrondNetwork/elrond-go/api/shared"
+	"github.com/ElrondNetwork/elrond-go/api/middleware"
+	elrondShared "github.com/ElrondNetwork/elrond-go/api/shared"
 	"github.com/btcsuite/websocket"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/pprof"
@@ -24,17 +28,19 @@ var log = logger.GetOrCreate("api")
 
 // ArgsNewWebServer holds the arguments needed to create a new instance of webServer
 type ArgsNewWebServer struct {
-	Facade    FacadeHandler
-	ApiConfig config.ApiRoutesConfig
+	Facade          shared.FacadeHandler
+	ApiConfig       config.ApiRoutesConfig
+	AntiFloodConfig config.WebServerAntifloodConfig
 }
 
 type webServer struct {
 	sync.RWMutex
-	facade     FacadeHandler
-	apiConfig  config.ApiRoutesConfig
-	httpServer shared.HttpServerCloser
-	groups     map[string]GroupHandler
-	cancelFunc func()
+	facade          shared.FacadeHandler
+	apiConfig       config.ApiRoutesConfig
+	antiFloodConfig config.WebServerAntifloodConfig
+	httpServer      elrondShared.HttpServerCloser
+	groups          map[string]shared.GroupHandler
+	cancelFunc      func()
 }
 
 // NewWebServerHandler returns a new instance of webServer
@@ -45,8 +51,9 @@ func NewWebServerHandler(args ArgsNewWebServer) (*webServer, error) {
 	}
 
 	gws := &webServer{
-		facade:    args.Facade,
-		apiConfig: args.ApiConfig,
+		facade:          args.Facade,
+		antiFloodConfig: args.AntiFloodConfig,
+		apiConfig:       args.ApiConfig,
 	}
 
 	return gws, nil
@@ -57,6 +64,12 @@ func checkArgs(args ArgsNewWebServer) error {
 
 	if check.IfNil(args.Facade) {
 		return apiErrors.ErrNilFacade
+	}
+	if check.IfNilReflect(args.AntiFloodConfig) {
+		return apiErrors.ErrNilAntiFloodConfig
+	}
+	if check.IfNilReflect(args.ApiConfig) {
+		return apiErrors.ErrNilApiConfig
 	}
 
 	return nil
@@ -103,7 +116,7 @@ func (ws *webServer) StartHttpServer() error {
 }
 
 func (ws *webServer) createGroups() error {
-	groupsMap := make(map[string]GroupHandler)
+	groupsMap := make(map[string]shared.GroupHandler)
 
 	nodeGroup, err := groups.NewNodeGroup(ws.facade)
 	if err != nil {
@@ -117,7 +130,7 @@ func (ws *webServer) createGroups() error {
 }
 
 // UpdateFacade will update webServer facade.
-func (ws *webServer) UpdateFacade(facade FacadeHandler) error {
+func (ws *webServer) UpdateFacade(facade shared.FacadeHandler) error {
 	ws.Lock()
 	defer ws.Unlock()
 
@@ -173,6 +186,50 @@ func registerLoggerWsRoute(ws *gin.Engine, marshalizer marshal.Marshalizer) {
 
 		ls.StartSendingBlocking()
 	})
+}
+
+func (ws *webServer) createMiddlewareLimiters() ([]elrondShared.MiddlewareProcessor, error) {
+	middlewares := make([]elrondShared.MiddlewareProcessor, 0)
+
+	if ws.apiConfig.Logging.LoggingEnabled {
+		responseLoggerMiddleware := middleware.NewResponseLoggerMiddleware(time.Duration(ws.apiConfig.Logging.ThresholdInMicroSeconds) * time.Microsecond)
+		middlewares = append(middlewares, responseLoggerMiddleware)
+	}
+
+	sourceLimiter, err := middleware.NewSourceThrottler(ws.antiFloodConfig.SameSourceRequests)
+	if err != nil {
+		return nil, err
+	}
+
+	var ctx context.Context
+	ctx, ws.cancelFunc = context.WithCancel(context.Background())
+
+	go ws.sourceLimiterReset(ctx, sourceLimiter)
+
+	middlewares = append(middlewares, sourceLimiter)
+
+	globalLimiter, err := middleware.NewGlobalThrottler(ws.antiFloodConfig.SimultaneousRequests)
+	if err != nil {
+		return nil, err
+	}
+
+	middlewares = append(middlewares, globalLimiter)
+
+	return middlewares, nil
+}
+
+func (ws *webServer) sourceLimiterReset(ctx context.Context, reset resetHandler) {
+	betweenResetDuration := time.Second * time.Duration(ws.antiFloodConfig.SameSourceResetIntervalInSec)
+	for {
+		select {
+		case <-time.After(betweenResetDuration):
+			log.Trace("calling reset on WS source limiter")
+			reset.Reset()
+		case <-ctx.Done():
+			log.Debug("closing nodeFacade.sourceLimiterReset go routine")
+			return
+		}
+	}
 }
 
 // Close will handle the closing of inner components

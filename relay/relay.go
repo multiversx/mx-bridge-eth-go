@@ -9,7 +9,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/api"
+	"github.com/ElrondNetwork/elrond-eth-bridge/api/gin"
+	"github.com/ElrondNetwork/elrond-eth-bridge/api/shared"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
@@ -518,13 +519,14 @@ func (r *Relay) init(ctx context.Context) error {
 	return nil
 }
 
-func (r *Relay) createHttpServer() (api.UpgradeableHttpServerHandler, error) {
-	httpServerArgs := api.ArgsNewWebServer{
-		Facade:    facade.NewRelayerFacade(r.configs.FlagsConfig.RestApiInterface, r.configs.FlagsConfig.EnablePprof),
-		ApiConfig: *r.configs.ApiRoutesConfig,
+func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
+	httpServerArgs := gin.ArgsNewWebServer{
+		Facade:          facade.NewRelayerFacade(r.configs.FlagsConfig.RestApiInterface, r.configs.FlagsConfig.EnablePprof),
+		ApiConfig:       *r.configs.ApiRoutesConfig,
+		AntiFloodConfig: r.configs.GeneralConfig.Antiflood.WebServer,
 	}
 
-	httpServerWrapper, err := api.NewWebServerHandler(httpServerArgs)
+	httpServerWrapper, err := gin.NewWebServerHandler(httpServerArgs)
 	if err != nil {
 		return nil, err
 	}

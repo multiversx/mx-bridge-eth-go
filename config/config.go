@@ -20,6 +20,7 @@ type Config struct {
 	StateMachine map[string]ConfigStateMachine
 	Relayer      ConfigRelayer
 	Logs         LogsConfig
+	Antiflood    AntifloodConfig
 }
 
 // ConfigP2P configuration for the P2P communication
@@ -59,6 +60,19 @@ type ContextFlagsConfig struct {
 	EnableLogName        bool
 	RestApiInterface     string
 	EnablePprof          bool
+}
+
+// WebServerAntifloodConfig will hold the anti-flooding parameters for the web server
+type WebServerAntifloodConfig struct {
+	SimultaneousRequests         uint32
+	SameSourceRequests           uint32
+	SameSourceResetIntervalInSec uint32
+}
+
+// AntifloodConfig will hold all p2p antiflood parameters
+type AntifloodConfig struct {
+	Enabled   bool
+	WebServer WebServerAntifloodConfig
 }
 
 // ApiRoutesConfig holds the configuration related to Rest API routes
