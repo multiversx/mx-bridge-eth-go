@@ -70,7 +70,8 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 		return makeMockStatuses(len(pendingBatch.Transactions)), nil
 	}
 
-	sm, err := createAndStartBridge(sourceBridge, destinationBridge, 1, true, "test")
+	statusHandler := testsCommon.NewStatusHandlerMock()
+	sm, err := createAndStartBridge(statusHandler, sourceBridge, destinationBridge, 1, true, "test")
 	require.Nil(t, err)
 
 	select {
@@ -140,7 +141,8 @@ func TestBridgeExecutorWithStateMachineFailedToProposeTransfer(t *testing.T) {
 		return nil, nil
 	}
 
-	sm, err := createAndStartBridge(sourceBridge, destinationBridge, 1, true, "test")
+	statusHandler := testsCommon.NewStatusHandlerMock()
+	sm, err := createAndStartBridge(statusHandler, sourceBridge, destinationBridge, 1, true, "test")
 	require.Nil(t, err)
 
 	select {
@@ -170,6 +172,7 @@ func makeMockStatuses(numTxs int) []byte {
 }
 
 func createAndStartBridge(
+	statusHandler core.StatusHandler,
 	sourceBridge bridge.Bridge,
 	destinationBridge bridge.Bridge,
 	quorum uint,
@@ -197,6 +200,7 @@ func createAndStartBridge(
 		QuorumProvider:    quorumProvider,
 		Timer:             &testsCommon.TimerMock{},
 		DurationsMap:      createMockDurationsMap(),
+		StatusHandler:     statusHandler,
 	}
 
 	bridgeExecutor, err := bridgeExecutors.NewEthElrondBridgeExecutor(argsExecutor)
@@ -217,6 +221,7 @@ func createAndStartBridge(
 		DurationBetweenSteps: time.Millisecond,
 		Log:                  logStateMachine,
 		Timer:                &testsCommon.TimerMock{},
+		StatusHandler:        statusHandler,
 	}
 
 	return stateMachine.NewStateMachine(argsStateMachine)

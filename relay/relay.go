@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"sync"
 
 	"fmt"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/wrappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
@@ -25,6 +27,7 @@ import (
 	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/roleProvider"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
+	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
@@ -89,18 +92,21 @@ type Relay struct {
 	pollingHandlers      []io.Closer
 	elrondAddress        erdgoCore.AddressHandler
 	ethereumAddress      common.Address
+	mutStatusHandlers    sync.RWMutex
+	statusHandlers       map[string]coreBridge.StatusHandler
 }
 
 // ArgsRelayer is the DTO used in the relayer constructor
 type ArgsRelayer struct {
-	Configs          config.Configs
-	Name             string
-	Proxy            bridge.ElrondProxy
-	EthClient        eth.BlockchainClient
-	EthInstance      eth.BridgeContract
-	Messenger        relayp2p.NetMessenger
-	Erc20Contracts   map[common.Address]eth.GenericErc20Contract
-	BridgeEthAddress common.Address
+	Configs                config.Configs
+	Name                   string
+	Proxy                  bridge.ElrondProxy
+	EthClient              wrappers.BlockchainClient
+	EthInstance            wrappers.BridgeContract
+	Messenger              relayp2p.NetMessenger
+	Erc20Contracts         map[common.Address]eth.Erc20Contract
+	BridgeEthAddress       common.Address
+	EthClientStatusHandler coreBridge.StatusHandler
 }
 
 // NewRelay creates a new relayer node able to work on 2-half bridges
@@ -112,9 +118,20 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	relay := &Relay{
-		messenger: args.Messenger,
-		log:       logger.GetOrCreate(args.Name),
-		configs:   args.Configs,
+		messenger:      args.Messenger,
+		configs:        args.Configs,
+		log:            logger.GetOrCreate(args.Name),
+		statusHandlers: make(map[string]coreBridge.StatusHandler),
+	}
+	relay.statusHandlers[coreBridge.EthClientStatusHandlerName] = args.EthClientStatusHandler
+	relay.statusHandlers[coreBridge.EthToElrondStatusHandlerName], err = status.NewStatusHandler(coreBridge.EthToElrondStatusHandlerName)
+	if err != nil {
+		return nil, err
+	}
+
+	relay.statusHandlers[coreBridge.ElrondToEthStatusHandlerName], err = status.NewStatusHandler(coreBridge.ElrondToEthStatusHandlerName)
+	if err != nil {
+		return nil, err
 	}
 
 	cfgs := args.Configs.GeneralConfig
@@ -162,13 +179,22 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		return nil, err
 	}
 
+	argsClientWrapper := wrappers.ArgsEthClientWrapper{
+		BridgeContract:   args.EthInstance,
+		BlockchainClient: args.EthClient,
+		StatusHandler:    args.EthClientStatusHandler,
+	}
+	ethClientWrapper, err := wrappers.NewEthClientWrapper(argsClientWrapper)
+	if err != nil {
+		return nil, err
+	}
+
 	argsClient := eth.ArgsClient{
 		Config:         cfgs.Eth,
 		Broadcaster:    relay,
 		Mapper:         elrondBridge,
 		GasHandler:     gs,
-		EthClient:      args.EthClient,
-		EthInstance:    args.EthInstance,
+		ClientWrapper:  ethClientWrapper,
 		Erc20Contracts: args.Erc20Contracts,
 		BridgeAddress:  args.BridgeEthAddress,
 	}
@@ -238,6 +264,9 @@ func checkArgs(args ArgsRelayer) error {
 	}
 	if args.Erc20Contracts == nil {
 		return ErrNilErc20Contracts
+	}
+	if check.IfNil(args.EthClientStatusHandler) {
+		return fmt.Errorf("%w for EthClientStatusHandler", ErrNilStatusHandler)
 	}
 	return nil
 }
@@ -326,6 +355,7 @@ func (r *Relay) createEthereumRoleProvider(config config.Config) error {
 	return pollingHandler.StartProcessingLoop()
 }
 
+// Start will create the 2-half brides and start them. The function will return when the context is done.
 func (r *Relay) Start(ctx context.Context) error {
 	err := r.init(ctx)
 	if err != nil {
@@ -335,11 +365,17 @@ func (r *Relay) Start(ctx context.Context) error {
 
 	r.timer.Start()
 
-	smEthToElrond, err := r.createAndStartBridge(r.ethBridge, r.elrondBridge, "EthToElrond")
+	r.mutStatusHandlers.RLock()
+	ethToElrondStatusHandler := r.statusHandlers[coreBridge.EthToElrondStatusHandlerName]
+	elrondToEthStatusHandler := r.statusHandlers[coreBridge.ElrondToEthStatusHandlerName]
+	r.mutStatusHandlers.RUnlock()
+
+	smEthToElrond, err := r.createAndStartBridge(ethToElrondStatusHandler, r.ethBridge, r.elrondBridge, "EthToElrond")
 	if err != nil {
 		return err
 	}
-	smElrondToEth, err := r.createAndStartBridge(r.elrondBridge, r.ethBridge, "ElrondToEth")
+
+	smElrondToEth, err := r.createAndStartBridge(elrondToEthStatusHandler, r.elrondBridge, r.ethBridge, "ElrondToEth")
 	if err != nil {
 		return err
 	}
@@ -358,6 +394,7 @@ func (r *Relay) Start(ctx context.Context) error {
 }
 
 func (r *Relay) createAndStartBridge(
+	statusHandler coreBridge.StatusHandler,
 	sourceBridge bridge.Bridge,
 	destinationBridge bridge.Bridge,
 	name string,
@@ -377,6 +414,7 @@ func (r *Relay) createAndStartBridge(
 		QuorumProvider:    r.quorumProvider,
 		Timer:             r.timer,
 		DurationsMap:      durationsMap,
+		StatusHandler:     statusHandler,
 	}
 
 	bridgeExecutor, err := bridgeExecutors.NewEthElrondBridgeExecutor(argsExecutor)
@@ -407,6 +445,7 @@ func (r *Relay) createAndStartBridge(
 		DurationBetweenSteps: r.stepDuration,
 		Log:                  logStateMachine,
 		Timer:                r.timer,
+		StatusHandler:        statusHandler,
 	}
 
 	return stateMachine.NewStateMachine(argsStateMachine)

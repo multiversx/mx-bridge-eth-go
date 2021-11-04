@@ -34,3 +34,6 @@ var ErrNilMessenger = errors.New("nil messenger")
 
 // ErrNilErc20Contracts signals that a nil ERC20 contracts map was provided
 var ErrNilErc20Contracts = errors.New("nil ERC20 contracts")
+
+// ErrNilStatusHandler signals that a nil status handler was provided
+var ErrNilStatusHandler = errors.New("nil status handler")

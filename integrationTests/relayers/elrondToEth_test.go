@@ -13,6 +13,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,10 +28,10 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	deposits, tokensAddresses, erc20Map := createTransactions(numTransactions)
 
 	bridgeEthAddress := testsCommon.CreateRandomEthereumAddress()
-	erc20Contracts := make(map[common.Address]eth.GenericErc20Contract)
+	erc20Contracts := make(map[common.Address]eth.Erc20Contract)
 	for addr, val := range erc20Map {
-		erc20Contracts[addr] = &testsCommon.GenericErc20ContractStub{
-			BalanceOfCalled: func(account common.Address) (*big.Int, error) {
+		erc20Contracts[addr] = &mockInteractors.Erc20ContractStub{
+			BalanceOfCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
 				if account == bridgeEthAddress {
 					return val, nil
 				}

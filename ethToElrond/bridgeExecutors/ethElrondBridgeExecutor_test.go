@@ -11,6 +11,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,6 +31,7 @@ func createMockArgs() ArgsEthElrondBridgeExecutor {
 		DurationsMap: map[core.StepIdentifier]time.Duration{
 			ethToElrond.GettingPending: testDuration,
 		},
+		StatusHandler: testsCommon.NewStatusHandlerMock(),
 	}
 }
 
@@ -40,7 +42,7 @@ func TestNewbridgeExecutors(t *testing.T) {
 		args.SourceBridge = nil
 		executor, err := NewEthElrondBridgeExecutor(args)
 
-		assert.Nil(t, executor)
+		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, fmt.Errorf("%w for the source bridge", ErrNilBridge), err)
 	})
 	t.Run("nil destination bridge", func(t *testing.T) {
@@ -48,7 +50,7 @@ func TestNewbridgeExecutors(t *testing.T) {
 		args.DestinationBridge = nil
 		executor, err := NewEthElrondBridgeExecutor(args)
 
-		assert.Nil(t, executor)
+		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, fmt.Errorf("%w for the destination bridge", ErrNilBridge), err)
 	})
 	t.Run("nil logger", func(t *testing.T) {
@@ -56,7 +58,7 @@ func TestNewbridgeExecutors(t *testing.T) {
 		args.Logger = nil
 		executor, err := NewEthElrondBridgeExecutor(args)
 
-		assert.Nil(t, executor)
+		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilLogger, err)
 	})
 	t.Run("nil topology provider", func(t *testing.T) {
@@ -72,7 +74,7 @@ func TestNewbridgeExecutors(t *testing.T) {
 		args.QuorumProvider = nil
 		executor, err := NewEthElrondBridgeExecutor(args)
 
-		assert.Nil(t, executor)
+		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilQuorumProvider, err)
 	})
 	t.Run("nil timer", func(t *testing.T) {
@@ -80,7 +82,7 @@ func TestNewbridgeExecutors(t *testing.T) {
 		args.Timer = nil
 		executor, err := NewEthElrondBridgeExecutor(args)
 
-		assert.Nil(t, executor)
+		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilTimer, err)
 	})
 	t.Run("nil duration map", func(t *testing.T) {
@@ -88,8 +90,23 @@ func TestNewbridgeExecutors(t *testing.T) {
 		args.DurationsMap = nil
 		executor, err := NewEthElrondBridgeExecutor(args)
 
-		assert.Nil(t, executor)
+		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilDurationsMap, err)
+	})
+	t.Run("nil status handler", func(t *testing.T) {
+		args := createMockArgs()
+		args.StatusHandler = nil
+		executor, err := NewEthElrondBridgeExecutor(args)
+
+		assert.True(t, check.IfNil(executor))
+		assert.Equal(t, ErrNilStatusHandler, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		args := createMockArgs()
+		executor, err := NewEthElrondBridgeExecutor(args)
+
+		assert.False(t, check.IfNil(executor))
+		assert.Nil(t, err)
 	})
 }
 

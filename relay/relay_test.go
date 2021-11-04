@@ -14,6 +14,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -85,9 +86,10 @@ func TestNewRelay(t *testing.T) {
 		EthInstance:      ethInstance,
 		Messenger:        &p2pMocks.MessengerStub{},
 		BridgeEthAddress: testsCommon.CreateRandomEthereumAddress(),
-		Erc20Contracts: map[ethCommon.Address]eth.GenericErc20Contract{
-			testsCommon.CreateRandomEthereumAddress(): &testsCommon.GenericErc20ContractStub{},
+		Erc20Contracts: map[ethCommon.Address]eth.Erc20Contract{
+			testsCommon.CreateRandomEthereumAddress(): &mockInteractors.Erc20ContractStub{},
 		},
+		EthClientStatusHandler: testsCommon.NewStatusHandlerMock(),
 	}
 	r, err := NewRelay(args)
 	require.Nil(t, err)
@@ -177,10 +179,11 @@ func TestAmILeader(t *testing.T) {
 
 func TestRelay_CreateAndStartBridge(t *testing.T) {
 	t.Parallel()
+	statusHandler := testsCommon.NewStatusHandlerMock()
 	t.Run("nil bridge should error", func(t *testing.T) {
 		relay := createMockRelay()
 
-		stateMachine, err := relay.createAndStartBridge(nil, &testsCommon.BridgeStub{}, "EthToElrond")
+		stateMachine, err := relay.createAndStartBridge(statusHandler, nil, &testsCommon.BridgeStub{}, "EthToElrond")
 		require.True(t, check.IfNilReflect(stateMachine))
 		require.NotNil(t, err)
 		require.True(t, strings.Contains(err.Error(), "source bridge"))
@@ -196,7 +199,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 			halfBridge.StepDurationInMillis = 999
 			stateMachineConfig[key] = halfBridge
 
-			stateMachine, err := relay.createAndStartBridge(&testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
+			stateMachine, err := relay.createAndStartBridge(statusHandler, &testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
 			require.True(t, check.IfNilReflect(stateMachine))
 			require.True(t, errors.Is(err, ErrInvalidDurationConfig))
 		})
@@ -209,7 +212,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 			halfBridge.StepDurationInMillis = 999
 			stateMachineConfig[key] = halfBridge
 
-			stateMachine, err := relay.createAndStartBridge(&testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
+			stateMachine, err := relay.createAndStartBridge(statusHandler, &testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
 			require.True(t, check.IfNilReflect(stateMachine))
 			require.True(t, errors.Is(err, ErrInvalidDurationConfig))
 		})
@@ -227,7 +230,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 			halfBridge.StepDurationInMillis = 999
 			stateMachineConfig[key] = halfBridge
 
-			stateMachine, err := relay.createAndStartBridge(&testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
+			stateMachine, err := relay.createAndStartBridge(statusHandler, &testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
 			require.True(t, check.IfNilReflect(stateMachine))
 			require.True(t, errors.Is(err, ErrInvalidDurationConfig))
 		})
@@ -242,7 +245,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 			halfBridge.Steps = halfBridge.Steps[1:]
 			stateMachineConfig[key] = halfBridge
 
-			stateMachine, err := relay.createAndStartBridge(&testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
+			stateMachine, err := relay.createAndStartBridge(statusHandler, &testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
 			require.True(t, check.IfNilReflect(stateMachine))
 			require.True(t, errors.Is(err, ErrMissingDurationConfig))
 		})
@@ -255,7 +258,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 			halfBridge.Steps = halfBridge.Steps[1:]
 			stateMachineConfig[key] = halfBridge
 
-			stateMachine, err := relay.createAndStartBridge(&testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
+			stateMachine, err := relay.createAndStartBridge(statusHandler, &testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
 			require.True(t, check.IfNilReflect(stateMachine))
 			require.True(t, errors.Is(err, ErrMissingDurationConfig))
 		})
@@ -273,7 +276,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 			halfBridge.Steps = halfBridge.Steps[1:]
 			stateMachineConfig[key] = halfBridge
 
-			stateMachine, err := relay.createAndStartBridge(&testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
+			stateMachine, err := relay.createAndStartBridge(statusHandler, &testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, key)
 			require.True(t, check.IfNilReflect(stateMachine))
 			require.True(t, errors.Is(err, ErrMissingDurationConfig))
 		})
@@ -290,7 +293,7 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 		stateMachineConfig := relay.configs.GeneralConfig.StateMachine
 		halfBridgeKeys := getMapMockDurationsMapConfigKeys(stateMachineConfig)
 
-		stateMachine, err := relay.createAndStartBridge(&testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, halfBridgeKeys[0])
+		stateMachine, err := relay.createAndStartBridge(statusHandler, &testsCommon.BridgeStub{}, &testsCommon.BridgeStub{}, halfBridgeKeys[0])
 		require.Nil(t, err)
 		require.NotNil(t, stateMachine)
 		assert.True(t, addedBroadcastClient)
