@@ -22,7 +22,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	elrondCommon "github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
-	goConfig "github.com/ElrondNetwork/elrond-go/config"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
@@ -255,13 +255,13 @@ func attachFileLogger(log logger.Logger, flagsConfig *config.ContextFlagsConfig)
 }
 
 func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (relayp2p.NetMessenger, error) {
-	nodeConfig := goConfig.NodeConfig{
+	nodeConfig := elrondConfig.NodeConfig{
 		Port:                       cfg.P2P.Port,
 		Seed:                       cfg.P2P.Seed,
 		MaximumExpectedPeerCount:   0,
 		ThresholdMinConnectedPeers: 0,
 	}
-	peerDiscoveryConfig := goConfig.KadDhtPeerDiscoveryConfig{
+	peerDiscoveryConfig := elrondConfig.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
 		RefreshIntervalInSec:             5,
 		ProtocolID:                       cfg.P2P.ProtocolID,
@@ -271,10 +271,10 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (rela
 		Type:                             p2pPeerNetworkDiscoverer,
 	}
 
-	p2pConfig := goConfig.P2PConfig{
+	p2pConfig := elrondConfig.P2PConfig{
 		Node:                nodeConfig,
 		KadDhtPeerDiscovery: peerDiscoveryConfig,
-		Sharding: goConfig.ShardingConfig{
+		Sharding: elrondConfig.ShardingConfig{
 			TargetPeerCount:         0,
 			MaxIntraShardValidators: 0,
 			MaxCrossShardValidators: 0,

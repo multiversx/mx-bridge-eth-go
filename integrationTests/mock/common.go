@@ -7,7 +7,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
-	goConfig "github.com/ElrondNetwork/elrond-go/config"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 )
 
@@ -73,7 +73,7 @@ func createMockRelayConfig(index int) *config.Config {
 			"ElrondToEth": stateMachineConfig,
 		},
 		Relayer: config.ConfigRelayer{
-			Marshalizer: goConfig.MarshalizerConfig{
+			Marshalizer: elrondConfig.MarshalizerConfig{
 				Type:           "json",
 				SizeCheckDelta: 10,
 			},

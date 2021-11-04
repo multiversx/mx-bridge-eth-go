@@ -27,11 +27,15 @@ func (rf *relayerFacade) PprofEnabled() bool {
 	return rf.pprofEnabled
 }
 
+// GetPeerInfo returns a P2PPeerInfo value holding an unknown peer value
 func (rf *relayerFacade) GetPeerInfo(pid string) ([]core.QueryP2PPeerInfo, error) {
+	// TODO implement this
 	panic("implement me")
 }
 
+// GetClientInfo returns specified client`s info
 func (rf *relayerFacade) GetClientInfo(client string) (string, error) {
+	// TODO implement this
 	panic("implement me")
 }
 

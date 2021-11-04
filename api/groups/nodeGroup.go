@@ -26,12 +26,6 @@ type nodeFacadeHandler interface {
 	IsInterfaceNil() bool
 }
 
-// QueryDebugRequest represents the structure on which user input for querying a debug info will validate against
-type QueryDebugRequest struct {
-	Name   string `form:"name" json:"name"`
-	Search string `form:"search" json:"search"`
-}
-
 type nodeGroup struct {
 	*baseGroup
 	facade    nodeFacadeHandler

@@ -30,7 +30,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	goConfig "github.com/ElrondNetwork/elrond-go/config"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/ntp"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
@@ -48,7 +48,7 @@ type defaultTimer struct {
 
 func NewDefaultTimer() *defaultTimer {
 	return &defaultTimer{
-		ntpSyncTimer: ntp.NewSyncTime(goConfig.NTPConfig{SyncPeriodSeconds: 3600}, nil),
+		ntpSyncTimer: ntp.NewSyncTime(elrondConfig.NTPConfig{SyncPeriodSeconds: 3600}, nil),
 	}
 }
 
