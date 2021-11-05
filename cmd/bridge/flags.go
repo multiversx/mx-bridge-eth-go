@@ -62,7 +62,7 @@ var (
 	// workingDirectory defines a flag for the path for the working directory.
 	workingDirectory = cli.StringFlag{
 		Name:  "working-directory",
-		Usage: "This flag specifies the `directory` where the node will store databases, logs and statistics.",
+		Usage: "This flag specifies the `directory` where the node will store databases and logs.",
 		Value: "",
 	}
 	// disableAnsiColor defines if the logger subsystem should prevent displaying ANSI colors

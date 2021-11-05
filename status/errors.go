@@ -10,3 +10,6 @@ var ErrStatusHandlerExists = errors.New("status handler exists with the same nam
 
 // ErrMissingStatusHandler signals that a missing status handler has occurred
 var ErrMissingStatusHandler = errors.New("missing status handler")
+
+// ErrNilStorer signals that a nil storer was provided
+var ErrNilStorer = errors.New("nil storer")

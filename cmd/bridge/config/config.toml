@@ -26,11 +26,22 @@
 
 [Relayer]
     [Relayer.Marshalizer]
-       Type = "gogo protobuf"
-       SizeCheckDelta = 10
+        Type = "gogo protobuf"
+        SizeCheckDelta = 10
     [Relayer.RoleProvider]
-       UsePolling = true
-       PollingIntervalInMillis = 60000 # 1 minute
+        UsePolling = true
+        PollingIntervalInMillis = 60000 # 1 minute
+    [Relayer.StatusMetricsStorage]
+        [Relayer.StatusMetricsStorage.Cache]
+            Name = "StatusMetricsStorage"
+            Capacity = 1000
+            Type = "LRU"
+        [Relayer.StatusMetricsStorage.DB]
+            FilePath = "StatusMetricsStorageDB"
+            Type = "LvlDBSerial"
+            BatchDelaySeconds = 2
+            MaxBatchSize = 100
+            MaxOpenFiles = 10
 
 [StateMachine]
     [StateMachine.EthToElrond]

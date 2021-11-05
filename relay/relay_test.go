@@ -29,7 +29,6 @@ import (
 
 // implements interface
 var (
-	_ = Startable(&Relay{})
 	_ = bridge.Broadcaster(&Relay{})
 )
 
@@ -91,6 +90,7 @@ func TestNewRelay(t *testing.T) {
 			testsCommon.CreateRandomEthereumAddress(): &mockInteractors.Erc20ContractStub{},
 		},
 		EthClientStatusHandler: testsCommon.NewStatusHandlerMock("mock"),
+		StatusStorer:           testsCommon.NewStorerMock(),
 	}
 	r, err := NewRelay(args)
 	require.Nil(t, err)

@@ -33,8 +33,9 @@ type ConfigP2P struct {
 
 // ConfigRelayer configuration for general relayer configuration
 type ConfigRelayer struct {
-	Marshalizer  config.MarshalizerConfig
-	RoleProvider RoleProviderConfig
+	Marshalizer          config.MarshalizerConfig
+	RoleProvider         RoleProviderConfig
+	StatusMetricsStorage config.StorageConfig
 }
 
 // ConfigStateMachine the configuration for the state machine

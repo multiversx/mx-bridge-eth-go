@@ -18,7 +18,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
-	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/polling"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
@@ -77,7 +77,7 @@ func (s *defaultTimer) IsInterfaceNil() bool {
 
 type Relay struct {
 	messenger relayp2p.NetMessenger
-	timer     coreBridge.Timer
+	timer     core.Timer
 	log       logger.Logger
 
 	ethBridge    bridge.Bridge
@@ -92,7 +92,8 @@ type Relay struct {
 	pollingHandlers      []io.Closer
 	elrondAddress        erdgoCore.AddressHandler
 	ethereumAddress      common.Address
-	metricsHolder        coreBridge.MetricsHolder
+	metricsHolder        core.MetricsHolder
+	statusStorer         core.Storer
 }
 
 // ArgsRelayer is the DTO used in the relayer constructor
@@ -105,7 +106,8 @@ type ArgsRelayer struct {
 	Messenger              relayp2p.NetMessenger
 	Erc20Contracts         map[common.Address]eth.Erc20Contract
 	BridgeEthAddress       common.Address
-	EthClientStatusHandler coreBridge.StatusHandler
+	EthClientStatusHandler core.StatusHandler
+	StatusStorer           core.Storer
 }
 
 // NewRelay creates a new relayer node able to work on 2-half bridges
@@ -121,6 +123,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		configs:       args.Configs,
 		log:           logger.GetOrCreate(args.Name),
 		metricsHolder: status.NewMetricsHolder(),
+		statusStorer:  args.StatusStorer,
 	}
 
 	err = relay.metricsHolder.AddStatusHandler(args.EthClientStatusHandler)
@@ -165,7 +168,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		RequestPollingInterval: time.Duration(gasStationConfig.PollingIntervalInSeconds) * time.Second,
 		RequestTime:            time.Duration(gasStationConfig.RequestTimeInSeconds) * time.Second,
 		MaximumGasPrice:        gasStationConfig.MaximumAllowedGasPrice,
-		GasPriceSelector:       coreBridge.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
+		GasPriceSelector:       core.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
 	}
 
 	gs, err := factory.CreateGasStation(argsGasStation, gasStationConfig.Enabled)
@@ -261,6 +264,9 @@ func checkArgs(args ArgsRelayer) error {
 	}
 	if check.IfNil(args.EthClientStatusHandler) {
 		return fmt.Errorf("%w for EthClientStatusHandler", ErrNilStatusHandler)
+	}
+	if check.IfNil(args.StatusStorer) {
+		return ErrNilStatusStorer
 	}
 	return nil
 }
@@ -359,7 +365,7 @@ func (r *Relay) Start(ctx context.Context) error {
 
 	r.timer.Start()
 
-	ethToElrondStatusHandler, err := status.NewStatusHandler(coreBridge.EthToElrondStatusHandlerName)
+	ethToElrondStatusHandler, err := status.NewStatusHandler(core.EthToElrondStatusHandlerName, r.statusStorer)
 	if err != nil {
 		return err
 	}
@@ -368,7 +374,7 @@ func (r *Relay) Start(ctx context.Context) error {
 		return err
 	}
 
-	elrondToEthStatusHandler, err := status.NewStatusHandler(coreBridge.ElrondToEthStatusHandlerName)
+	elrondToEthStatusHandler, err := status.NewStatusHandler(core.ElrondToEthStatusHandlerName, r.statusStorer)
 	if err != nil {
 		return err
 	}
@@ -394,14 +400,11 @@ func (r *Relay) Start(ctx context.Context) error {
 	err = smElrondToEth.Close()
 	r.log.LogIfError(err)
 
-	err = r.Stop()
-	r.log.LogIfError(err)
-
-	return nil
+	return r.Close()
 }
 
 func (r *Relay) createAndStartBridge(
-	statusHandler coreBridge.StatusHandler,
+	statusHandler core.StatusHandler,
 	sourceBridge bridge.Bridge,
 	destinationBridge bridge.Bridge,
 	name string,
@@ -458,7 +461,7 @@ func (r *Relay) createAndStartBridge(
 	return stateMachine.NewStateMachine(argsStateMachine)
 }
 
-func (r *Relay) processStateMachineConfigDurations(name string) (map[coreBridge.StepIdentifier]time.Duration, error) {
+func (r *Relay) processStateMachineConfigDurations(name string) (map[core.StepIdentifier]time.Duration, error) {
 	cfg, exists := r.configs.GeneralConfig.StateMachine[name]
 	if !exists {
 		return nil, fmt.Errorf("%w for %q", ErrMissingConfig, name)
@@ -466,10 +469,10 @@ func (r *Relay) processStateMachineConfigDurations(name string) (map[coreBridge.
 	r.stepDuration = time.Duration(cfg.StepDurationInMillis) * time.Millisecond
 	r.log.Debug("loaded state machine StepDuration from configs", "duration", r.stepDuration)
 
-	durationsMap := make(map[coreBridge.StepIdentifier]time.Duration)
+	durationsMap := make(map[core.StepIdentifier]time.Duration)
 	for _, stepCfg := range cfg.Steps {
 		d := time.Duration(stepCfg.DurationInMillis) * time.Millisecond
-		durationsMap[coreBridge.StepIdentifier(stepCfg.Name)] = d
+		durationsMap[core.StepIdentifier(stepCfg.Name)] = d
 		r.log.Debug("loaded StepDuration from configs", "step", stepCfg.Name, "duration", d)
 	}
 
@@ -477,8 +480,8 @@ func (r *Relay) processStateMachineConfigDurations(name string) (map[coreBridge.
 }
 
 func (r *Relay) checkDurations(
-	steps map[coreBridge.StepIdentifier]coreBridge.Step,
-	stepsDurations map[coreBridge.StepIdentifier]time.Duration,
+	steps map[core.StepIdentifier]core.Step,
+	stepsDurations map[core.StepIdentifier]time.Duration,
 ) error {
 	if r.stepDuration < minimumDurationForStep {
 		return fmt.Errorf("%w for config %q", ErrInvalidDurationConfig, "StepDurationInMillis")
@@ -494,18 +497,37 @@ func (r *Relay) checkDurations(
 	return nil
 }
 
-func (r *Relay) Stop() error {
+// Close will call Close on any started componeents
+func (r *Relay) Close() error {
+	var lastErrorFound error
+
 	for _, closer := range r.pollingHandlers {
 		err := closer.Close()
-		r.log.LogIfError(err)
+		if err != nil {
+			r.log.Error(err.Error())
+			lastErrorFound = err
+		}
 	}
 
 	err := r.timer.Close()
 	if err != nil {
 		r.log.Error(err.Error())
+		lastErrorFound = err
 	}
 
-	return r.broadcaster.Close()
+	err = r.statusStorer.Close()
+	if err != nil {
+		r.log.Error(err.Error())
+		lastErrorFound = err
+	}
+
+	err = r.broadcaster.Close()
+	if err != nil {
+		r.log.Error(err.Error())
+		lastErrorFound = err
+	}
+
+	return lastErrorFound
 }
 
 // AmITheLeader returns true if the current relayer is the leader in this round

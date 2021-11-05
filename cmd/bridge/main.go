@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"runtime"
 	"syscall"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/wrappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
@@ -22,7 +24,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/cmd/node/factory"
+	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	elrondCommon "github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
@@ -47,6 +49,7 @@ const (
 	logFilePrefix            = "elrond-eth-bridge"
 	p2pPeerNetworkDiscoverer = "optimized"
 	nilListSharderType       = "NilListSharder"
+	dbPath                   = "db"
 )
 
 var log = logger.GetOrCreate("main")
@@ -122,7 +125,13 @@ func startRelay(ctx *cli.Context, version string) error {
 		}
 	}
 
-	ethClientStatusHandler, err := status.NewStatusHandler(core.EthClientStatusHandlerName)
+	dbFullPath := path.Join(flagsConfig.WorkingDir, dbPath)
+	statusStorer, err := factory.CreateUnitStorer(cfg.Relayer.StatusMetricsStorage, dbFullPath)
+	if err != nil {
+		return err
+	}
+
+	ethClientStatusHandler, err := status.NewStatusHandler(core.EthClientStatusHandlerName, statusStorer)
 	if err != nil {
 		return err
 	}
@@ -169,6 +178,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		Erc20Contracts:         erc20Contracts,
 		BridgeEthAddress:       bridgeEthAddress,
 		EthClientStatusHandler: ethClientStatusHandler,
+		StatusStorer:           statusStorer,
 	}
 	ethToElrRelay, err := relay.NewRelay(args)
 	if err != nil {
@@ -203,7 +213,8 @@ func mainLoop(r *relay.Relay) {
 		os.Exit(exitCodeInterrupt)
 	}()
 
-	if err := r.Start(ctx); err != nil {
+	err := r.Start(ctx)
+	if err != nil {
 		log.Error(err.Error())
 		os.Exit(exitCodeErr)
 	}
@@ -230,8 +241,8 @@ func loadApiConfig(filepath string) (*config.ApiRoutesConfig, error) {
 	return cfg, nil
 }
 
-func attachFileLogger(log logger.Logger, flagsConfig *config.ContextFlagsConfig) (factory.FileLoggingHandler, error) {
-	var fileLogging factory.FileLoggingHandler
+func attachFileLogger(log logger.Logger, flagsConfig *config.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
+	var fileLogging elrondFactory.FileLoggingHandler
 	var err error
 	if flagsConfig.SaveLogFile {
 		fileLogging, err = logging.NewFileLogging(flagsConfig.WorkingDir, defaultLogsPath, logFilePrefix)
