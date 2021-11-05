@@ -31,7 +31,7 @@ func createMockArgs() ArgsEthElrondBridgeExecutor {
 		DurationsMap: map[core.StepIdentifier]time.Duration{
 			ethToElrond.GettingPending: testDuration,
 		},
-		StatusHandler: testsCommon.NewStatusHandlerMock(),
+		StatusHandler: testsCommon.NewStatusHandlerMock("mock"),
 	}
 }
 

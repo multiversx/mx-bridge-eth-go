@@ -44,9 +44,21 @@ type StatusHandler interface {
 	SetIntMetric(metric string, value int)
 	AddIntMetric(metric string, delta int)
 	SetStringMetric(metric string, val string)
+	GetAllMetrics() GeneralMetrics
 	Name() string
 	IsInterfaceNil() bool
 }
+
+// MetricsHolder represents the component that can hold metrics
+type MetricsHolder interface {
+	AddStatusHandler(sh StatusHandler) error
+	GetAvailableStatusHandlers() []string
+	GetAllMetrics(name string) (GeneralMetrics, error)
+	IsInterfaceNil() bool
+}
+
+// GeneralMetrics represents an objects metrics map
+type GeneralMetrics map[string]interface{}
 
 // StringMetrics represents string metrics map
 type StringMetrics map[string]string

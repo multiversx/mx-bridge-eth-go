@@ -14,7 +14,7 @@ import (
 )
 
 func createMockArgsErc20ContractWrapper() (ArgsErc20ContractWrapper, *testsCommon.StatusHandlerMock) {
-	statusHandler := testsCommon.NewStatusHandlerMock()
+	statusHandler := testsCommon.NewStatusHandlerMock("mock")
 
 	return ArgsErc20ContractWrapper{
 		Erc20Contract: &interactors.GenericErc20ContractStub{},

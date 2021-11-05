@@ -1,19 +1,25 @@
 package testsCommon
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+)
 
 // StatusHandlerMock -
 type StatusHandlerMock struct {
+	name          string
 	mutStatus     sync.RWMutex
 	intMetrics    map[string]int
 	stringMetrics map[string]string
 }
 
 // NewStatusHandlerMock -
-func NewStatusHandlerMock() *StatusHandlerMock {
+func NewStatusHandlerMock(name string) *StatusHandlerMock {
 	return &StatusHandlerMock{
 		intMetrics:    make(map[string]int),
 		stringMetrics: make(map[string]string),
+		name:          name,
 	}
 }
 
@@ -43,7 +49,7 @@ func (mock *StatusHandlerMock) SetStringMetric(metric string, val string) {
 
 // Name -
 func (mock *StatusHandlerMock) Name() string {
-	return "mock"
+	return mock.name
 }
 
 // GetIntMetric -
@@ -60,6 +66,22 @@ func (mock *StatusHandlerMock) GetStringMetric(metric string) string {
 	defer mock.mutStatus.RUnlock()
 
 	return mock.stringMetrics[metric]
+}
+
+// GetAllMetrics -
+func (mock *StatusHandlerMock) GetAllMetrics() core.GeneralMetrics {
+	mock.mutStatus.RLock()
+	defer mock.mutStatus.RUnlock()
+
+	generalMetrics := make(core.GeneralMetrics)
+	for key, val := range mock.intMetrics {
+		generalMetrics[key] = val
+	}
+	for key, val := range mock.stringMetrics {
+		generalMetrics[key] = val
+	}
+
+	return generalMetrics
 }
 
 // IsInterfaceNil -

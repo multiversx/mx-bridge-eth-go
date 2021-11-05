@@ -78,6 +78,22 @@ func (sh *statusHandler) GetIntMetrics() core.IntMetrics {
 	return metrics
 }
 
+// GetAllMetrics returns all contained metrics as objects map.
+func (sh *statusHandler) GetAllMetrics() core.GeneralMetrics {
+	sh.mutStatus.RLock()
+	defer sh.mutStatus.RUnlock()
+
+	generalMetrics := make(core.GeneralMetrics)
+	for key, val := range sh.intMetrics {
+		generalMetrics[key] = val
+	}
+	for key, val := range sh.stringMetrics {
+		generalMetrics[key] = val
+	}
+
+	return generalMetrics
+}
+
 // Name returns the status handler's name
 func (sh *statusHandler) Name() string {
 	return sh.name

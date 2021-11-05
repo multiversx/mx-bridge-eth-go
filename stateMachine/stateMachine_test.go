@@ -28,7 +28,7 @@ func createMockArgs() stateMachine.ArgsStateMachine {
 		DurationBetweenSteps: time.Millisecond,
 		Log:                  logger.GetOrCreate("test"),
 		Timer:                &testsCommon.TimerMock{},
-		StatusHandler:        testsCommon.NewStatusHandlerMock(),
+		StatusHandler:        testsCommon.NewStatusHandlerMock("mock"),
 	}
 }
 

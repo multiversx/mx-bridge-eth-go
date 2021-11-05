@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"sync"
 
 	"fmt"
 	"time"
@@ -93,8 +92,7 @@ type Relay struct {
 	pollingHandlers      []io.Closer
 	elrondAddress        erdgoCore.AddressHandler
 	ethereumAddress      common.Address
-	mutStatusHandlers    sync.RWMutex
-	statusHandlers       map[string]coreBridge.StatusHandler
+	metricsHolder        coreBridge.MetricsHolder
 }
 
 // ArgsRelayer is the DTO used in the relayer constructor
@@ -119,18 +117,13 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	relay := &Relay{
-		messenger:      args.Messenger,
-		configs:        args.Configs,
-		log:            logger.GetOrCreate(args.Name),
-		statusHandlers: make(map[string]coreBridge.StatusHandler),
-	}
-	relay.statusHandlers[coreBridge.EthClientStatusHandlerName] = args.EthClientStatusHandler
-	relay.statusHandlers[coreBridge.EthToElrondStatusHandlerName], err = status.NewStatusHandler(coreBridge.EthToElrondStatusHandlerName)
-	if err != nil {
-		return nil, err
+		messenger:     args.Messenger,
+		configs:       args.Configs,
+		log:           logger.GetOrCreate(args.Name),
+		metricsHolder: status.NewMetricsHolder(),
 	}
 
-	relay.statusHandlers[coreBridge.ElrondToEthStatusHandlerName], err = status.NewStatusHandler(coreBridge.ElrondToEthStatusHandlerName)
+	err = relay.metricsHolder.AddStatusHandler(args.EthClientStatusHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -366,10 +359,23 @@ func (r *Relay) Start(ctx context.Context) error {
 
 	r.timer.Start()
 
-	r.mutStatusHandlers.RLock()
-	ethToElrondStatusHandler := r.statusHandlers[coreBridge.EthToElrondStatusHandlerName]
-	elrondToEthStatusHandler := r.statusHandlers[coreBridge.ElrondToEthStatusHandlerName]
-	r.mutStatusHandlers.RUnlock()
+	ethToElrondStatusHandler, err := status.NewStatusHandler(coreBridge.EthToElrondStatusHandlerName)
+	if err != nil {
+		return err
+	}
+	err = r.metricsHolder.AddStatusHandler(ethToElrondStatusHandler)
+	if err != nil {
+		return err
+	}
+
+	elrondToEthStatusHandler, err := status.NewStatusHandler(coreBridge.ElrondToEthStatusHandlerName)
+	if err != nil {
+		return err
+	}
+	err = r.metricsHolder.AddStatusHandler(elrondToEthStatusHandler)
+	if err != nil {
+		return err
+	}
 
 	smEthToElrond, err := r.createAndStartBridge(ethToElrondStatusHandler, r.ethBridge, r.elrondBridge, "EthToElrond")
 	if err != nil {
@@ -559,8 +565,19 @@ func (r *Relay) init(ctx context.Context) error {
 }
 
 func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
+	argsFacade := facade.ArgsRelayerFacade{
+		MetricsHolder: r.metricsHolder,
+		ApiInterface:  r.configs.FlagsConfig.RestApiInterface,
+		PprofEnabled:  r.configs.FlagsConfig.EnablePprof,
+	}
+
+	relayerFacade, err := facade.NewRelayerFacade(argsFacade)
+	if err != nil {
+		return nil, err
+	}
+
 	httpServerArgs := gin.ArgsNewWebServer{
-		Facade:          facade.NewRelayerFacade(r.configs.FlagsConfig.RestApiInterface, r.configs.FlagsConfig.EnablePprof),
+		Facade:          relayerFacade,
 		ApiConfig:       *r.configs.ApiRoutesConfig,
 		AntiFloodConfig: r.configs.GeneralConfig.Antiflood.WebServer,
 	}
