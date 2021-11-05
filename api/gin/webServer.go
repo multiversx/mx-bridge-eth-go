@@ -100,6 +100,11 @@ func (ws *webServer) StartHttpServer() error {
 		return err
 	}
 
+	err = registerValidators()
+	if err != nil {
+		return err
+	}
+
 	processors, err := ws.createMiddlewareLimiters()
 	if err != nil {
 		return err
