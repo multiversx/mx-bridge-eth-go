@@ -16,3 +16,6 @@ var ErrNilLogger = errors.New("nil logger")
 
 // ErrNilTimer signals that a nil timer was provided
 var ErrNilTimer = errors.New("nil timer")
+
+// ErrNilStatusHandler signals that a nil status handler was provided
+var ErrNilStatusHandler = errors.New("nil status handler")

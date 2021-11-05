@@ -9,10 +9,11 @@ import (
 	"math"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
-	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -30,34 +31,9 @@ const (
 	addressLength   = 32
 )
 
-// BridgeContract defines the supported Ethereum contract operations
-type BridgeContract interface {
-	GetNextPendingBatch(opts *bind.CallOpts) (contract.Batch, error)
-	FinishCurrentPendingBatch(opts *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error)
-	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
-	WasBatchExecuted(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
-	WasBatchFinished(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
-	Quorum(opts *bind.CallOpts) (*big.Int, error)
-	GetStatusesAfterExecution(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error)
-	GetRelayers(opts *bind.CallOpts) ([]common.Address, error)
-}
-
-// GenericErc20Contract defines the Ethereum ERC20 contract operations
-type GenericErc20Contract interface {
-	BalanceOf(opts *bind.CallOpts, account common.Address) (*big.Int, error)
-}
-
-// BlockchainClient defines the RPC operations on the Ethereum node
-type BlockchainClient interface {
-	BlockNumber(ctx context.Context) (uint64, error)
-	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
-	ChainID(ctx context.Context) (*big.Int, error)
-}
-
 type client struct {
-	bridgeContract    BridgeContract
-	blockchainClient  BlockchainClient
-	addressConverter  core.PubkeyConverter
+	clientWrapper     ClientWrapper
+	addressConverter  elrondCore.PubkeyConverter
 	privateKey        *ecdsa.PrivateKey
 	publicKey         *ecdsa.PublicKey
 	broadcaster       bridge.Broadcaster
@@ -67,7 +43,7 @@ type client struct {
 	gasHandler        bridge.GasHandler
 	address           common.Address
 	mutErc20Contracts sync.RWMutex
-	erc20Contracts    map[common.Address]GenericErc20Contract
+	erc20Contracts    map[common.Address]Erc20Contract
 	bridgeAddress     common.Address
 }
 
@@ -77,9 +53,8 @@ type ArgsClient struct {
 	Broadcaster    bridge.Broadcaster
 	Mapper         bridge.Mapper
 	GasHandler     bridge.GasHandler
-	EthClient      BlockchainClient
-	EthInstance    BridgeContract
-	Erc20Contracts map[common.Address]GenericErc20Contract
+	ClientWrapper  ClientWrapper
+	Erc20Contracts map[common.Address]Erc20Contract
 	BridgeAddress  common.Address
 }
 
@@ -108,17 +83,16 @@ func NewClient(args ArgsClient) (*client, error) {
 	}
 
 	c := &client{
-		bridgeContract:   args.EthInstance,
-		blockchainClient: args.EthClient,
-		gasLimit:         args.Config.GasLimit,
-		privateKey:       privateKey,
-		publicKey:        publicKeyECDSA,
-		broadcaster:      args.Broadcaster,
-		mapper:           args.Mapper,
-		log:              log,
-		gasHandler:       args.GasHandler,
-		erc20Contracts:   args.Erc20Contracts,
-		bridgeAddress:    args.BridgeAddress,
+		clientWrapper:  args.ClientWrapper,
+		gasLimit:       args.Config.GasLimit,
+		privateKey:     privateKey,
+		publicKey:      publicKeyECDSA,
+		broadcaster:    args.Broadcaster,
+		mapper:         args.Mapper,
+		log:            log,
+		gasHandler:     args.GasHandler,
+		erc20Contracts: args.Erc20Contracts,
+		bridgeAddress:  args.BridgeAddress,
 	}
 	c.addressConverter, err = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
@@ -127,6 +101,8 @@ func NewClient(args ArgsClient) (*client, error) {
 
 	c.address = crypto.PubkeyToAddress(*publicKeyECDSA)
 	log.Info("Ethereum: NewClient", "relayer address", c.address, "bridge address", c.bridgeAddress)
+
+	c.retrieveAllCurrentErc20Balances()
 
 	return c, nil
 }
@@ -144,17 +120,14 @@ func checkArgs(args ArgsClient) error {
 	if check.IfNil(args.GasHandler) {
 		return ErrNilGasHandler
 	}
-	if check.IfNilReflect(args.EthClient) {
-		return ErrNilBlockchainClient
-	}
-	if check.IfNilReflect(args.EthInstance) {
-		return ErrNilBrdgeContract
+	if check.IfNil(args.ClientWrapper) {
+		return ErrNilClientWrapper
 	}
 	if args.Erc20Contracts == nil {
 		return ErrNilErc20Contracts
 	}
 	for addr, contractInstance := range args.Erc20Contracts {
-		if check.IfNilReflect(contractInstance) {
+		if check.IfNil(contractInstance) {
 			return fmt.Errorf("%w for %s", ErrNilErc20ContractInstance, addr.String())
 		}
 	}
@@ -167,10 +140,26 @@ func checkArgs(args ArgsClient) error {
 	return nil
 }
 
+func (c *client) retrieveAllCurrentErc20Balances() {
+	maxTimeToWaitForInitialBalanceFetch := time.Second * 10
+
+	for addr, contractInstance := range c.erc20Contracts {
+		ctx, cancel := context.WithTimeout(context.Background(), maxTimeToWaitForInitialBalanceFetch)
+		val, err := contractInstance.BalanceOf(ctx, c.bridgeAddress)
+		if err != nil {
+			c.log.Warn("failed to fetch initial ERC20 balance", "address", "err", err)
+			val = big.NewInt(0)
+		}
+
+		c.clientWrapper.SetStringMetric(fmt.Sprintf("%s for %s", core.MetricErc20Balance, addr.String()), val.String())
+		cancel()
+	}
+}
+
 // GetPending returns the pending batch in the Ethereum contract
 func (c *client) GetPending(ctx context.Context) *bridge.Batch {
 	c.log.Info("ETH: Getting pending batch")
-	batch, err := c.bridgeContract.GetNextPendingBatch(&bind.CallOpts{Context: ctx})
+	batch, err := c.clientWrapper.GetNextPendingBatch(ctx)
 	if err != nil {
 		c.log.Error(err.Error())
 		return nil
@@ -237,7 +226,7 @@ func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *
 
 // GetRelayers returns the current registered relayers from the Ethereum SC
 func (c *client) GetRelayers(ctx context.Context) ([]common.Address, error) {
-	return c.bridgeContract.GetRelayers(&bind.CallOpts{Context: ctx})
+	return c.clientWrapper.GetRelayers(ctx)
 }
 
 // WasExecuted returns true if the action ID was executed
@@ -247,9 +236,9 @@ func (c *client) WasExecuted(ctx context.Context, actionId bridge.ActionId, batc
 
 	switch int64FromActionId(actionId) {
 	case transferAction:
-		wasExecuted, err = c.bridgeContract.WasBatchExecuted(&bind.CallOpts{Context: ctx}, batchId)
+		wasExecuted, err = c.clientWrapper.WasBatchExecuted(ctx, batchId)
 	case setStatusAction:
-		wasExecuted, err = c.bridgeContract.WasBatchFinished(&bind.CallOpts{Context: ctx}, batchId)
+		wasExecuted, err = c.clientWrapper.WasBatchFinished(ctx, batchId)
 	}
 	if err != nil {
 		c.log.Error(err.Error())
@@ -267,7 +256,7 @@ func (c *client) WasExecuted(ctx context.Context, actionId bridge.ActionId, batc
 
 // GetTransactionsStatuses will return the transactions statuses from the batch ID
 func (c *client) GetTransactionsStatuses(ctx context.Context, batchId bridge.BatchId) ([]uint8, error) {
-	return c.bridgeContract.GetStatusesAfterExecution(&bind.CallOpts{Context: ctx}, batchId)
+	return c.clientWrapper.GetStatusesAfterExecution(ctx, batchId)
 }
 
 // Sign will sign upon the provided batch and send the signatures through the broadcaster to other relayers
@@ -301,7 +290,7 @@ func (c *client) Execute(
 		return "", err
 	}
 
-	chainId, err := c.blockchainClient.ChainID(ctx)
+	chainId, err := c.clientWrapper.ChainID(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -359,12 +348,12 @@ func (c *client) Execute(
 }
 
 func (c *client) getNonce(ctx context.Context, fromAddress common.Address) (int64, error) {
-	blockNonce, err := c.blockchainClient.BlockNumber(ctx)
+	blockNonce, err := c.clientWrapper.BlockNumber(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("%w in getNonce, BlockNumber call", err)
 	}
 
-	nonce, err := c.blockchainClient.NonceAt(ctx, fromAddress, big.NewInt(int64(blockNonce)))
+	nonce, err := c.clientWrapper.NonceAt(ctx, fromAddress, big.NewInt(int64(blockNonce)))
 
 	return int64(nonce), err
 }
@@ -389,7 +378,7 @@ func (c *client) transfer(
 		return nil, err
 	}
 
-	return c.bridgeContract.ExecuteTransfer(auth, tokens, recipients, amountsValues, batch.Id, signatures)
+	return c.clientWrapper.ExecuteTransfer(auth, tokens, recipients, amountsValues, batch.Id, signatures)
 }
 
 func (c *client) checkAvailableTokens(ctx context.Context, tokens []common.Address, amounts []*big.Int) error {
@@ -423,7 +412,7 @@ func (c *client) checkCumulatedTransfers(ctx context.Context, transfers map[comm
 			return fmt.Errorf("%w for %s", ErrMissingErc20ContractDefinition, addr.String())
 		}
 
-		existingBalance, err := contractInstance.BalanceOf(&bind.CallOpts{Context: ctx}, c.bridgeAddress)
+		existingBalance, err := contractInstance.BalanceOf(ctx, c.bridgeAddress)
 		if err != nil {
 			return fmt.Errorf("%w for %s", err, addr.String())
 		}
@@ -449,7 +438,7 @@ func (c *client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bri
 	c.log.Debug("client.finish", "auth", transactOptsToString(auth),
 		"batchId", batch.Id, "proposed statuses", proposedStatuses, "num signatures", len(signatures))
 
-	return c.bridgeContract.FinishCurrentPendingBatch(auth, batch.Id, proposedStatuses, signatures)
+	return c.clientWrapper.FinishCurrentPendingBatch(auth, batch.Id, proposedStatuses, signatures)
 }
 
 // SignersCount will return the total signers number that sent the signatures on the required message hash
@@ -478,7 +467,7 @@ func (c *client) SignersCount(
 
 // GetQuorum returns the Quorum value from the Ethereum SC
 func (c *client) GetQuorum(ctx context.Context) (uint, error) {
-	n, err := c.bridgeContract.Quorum(&bind.CallOpts{Context: ctx})
+	n, err := c.clientWrapper.Quorum(ctx)
 	if err != nil {
 		return 0, err
 	}

@@ -10,7 +10,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
-	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,7 +18,7 @@ import (
 func createMockArgs() stateMachine.ArgsStateMachine {
 	return stateMachine.ArgsStateMachine{
 		Steps: core.MachineStates{
-			"mock": &mock.StepMock{
+			"mock": &testsCommon.StepMock{
 				ExecuteCalled: func(ctx context.Context) (core.StepIdentifier, error) {
 					return "mock", nil
 				},
@@ -27,7 +27,8 @@ func createMockArgs() stateMachine.ArgsStateMachine {
 		StartStateIdentifier: "mock",
 		DurationBetweenSteps: time.Millisecond,
 		Log:                  logger.GetOrCreate("test"),
-		Timer:                &mock.TimerMock{},
+		Timer:                &testsCommon.TimerMock{},
+		StatusHandler:        testsCommon.NewStatusHandlerMock(),
 	}
 }
 
@@ -74,6 +75,14 @@ func TestNewStateMachine(t *testing.T) {
 		assert.Nil(t, sm)
 		assert.True(t, errors.Is(err, stateMachine.ErrNilTimer))
 	})
+	t.Run("nil status handler", func(t *testing.T) {
+		args := createMockArgs()
+		args.StatusHandler = nil
+		sm, err := stateMachine.NewStateMachine(args)
+
+		assert.Nil(t, sm)
+		assert.True(t, errors.Is(err, stateMachine.ErrNilStatusHandler))
+	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockArgs()
 		sm, err := stateMachine.NewStateMachine(args)
@@ -95,7 +104,7 @@ func TestStateMachine_CloseDoesNotCallNewExecute(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	args.Steps["mock"] = &mock.StepMock{
+	args.Steps["mock"] = &testsCommon.StepMock{
 		ExecuteCalled: func(ctx context.Context) (core.StepIdentifier, error) {
 			atomic.AddUint32(&numCalled, 1)
 
@@ -120,7 +129,7 @@ func TestStateMachine_CloseDoesNotCallNewExecute(t *testing.T) {
 func TestStateMachine_StateMachineErrors(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
-	args.Steps["mock"] = &mock.StepMock{
+	args.Steps["mock"] = &testsCommon.StepMock{
 		ExecuteCalled: func(ctx context.Context) (core.StepIdentifier, error) {
 			return "not found", nil
 		},
@@ -136,7 +145,7 @@ func TestStateMachine_StepErrorsShouldStopTheStateMachine(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
 	expectedErr := errors.New("expected error")
-	args.Steps["mock"] = &mock.StepMock{
+	args.Steps["mock"] = &testsCommon.StepMock{
 		ExecuteCalled: func(ctx context.Context) (core.StepIdentifier, error) {
 			return "mock", expectedErr
 		},

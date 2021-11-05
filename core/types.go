@@ -38,3 +38,18 @@ type BroadcastClient interface {
 	AllStoredSignatures() []*SignedMessage
 	IsInterfaceNil() bool
 }
+
+// StatusHandler is able to keep metrics
+type StatusHandler interface {
+	SetIntMetric(metric string, value int)
+	AddIntMetric(metric string, delta int)
+	SetStringMetric(metric string, val string)
+	Name() string
+	IsInterfaceNil() bool
+}
+
+// StringMetrics represents string metrics map
+type StringMetrics map[string]string
+
+// IntMetrics represents string metrics map
+type IntMetrics map[string]int

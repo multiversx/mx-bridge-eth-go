@@ -11,10 +11,13 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/wrappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
-	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/status"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
@@ -62,7 +65,7 @@ func main() {
 	app.Name = "Relay CLI app"
 	app.Usage = "This is the entry point for the bridge relay"
 	app.Flags = getFlags()
-	machineID := core.GetAnonymizedMachineID(app.Name)
+	machineID := elrondCore.GetAnonymizedMachineID(app.Name)
 	app.Version = fmt.Sprintf("%s/%s/%s-%s/%s", appVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH, machineID)
 	app.Authors = []cli.Author{
 		{
@@ -113,10 +116,15 @@ func startRelay(ctx *cli.Context, version string) error {
 	log.Debug("config", "file", flagsConfig.ConfigurationApiFile)
 
 	if !check.IfNil(fileLogging) {
-		err := fileLogging.ChangeFileLifeSpan(time.Second * time.Duration(cfg.Logs.LogFileLifeSpanInSec))
+		err = fileLogging.ChangeFileLifeSpan(time.Second * time.Duration(cfg.Logs.LogFileLifeSpanInSec))
 		if err != nil {
 			return err
 		}
+	}
+
+	ethClientStatusHandler, err := status.NewStatusHandler(core.EthClientStatusHandlerName)
+	if err != nil {
+		return err
 	}
 
 	proxy := blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil)
@@ -132,7 +140,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	erc20Contracts, err := createMapOfErc20Contracts(cfg.Eth.ERC20Contracts, ethClient)
+	erc20Contracts, err := createMapOfErc20Contracts(cfg.Eth.ERC20Contracts, ethClient, ethClientStatusHandler)
 	if err != nil {
 		return err
 	}
@@ -153,13 +161,14 @@ func startRelay(ctx *cli.Context, version string) error {
 			ApiRoutesConfig: apiRoutesConfig,
 			FlagsConfig:     flagsConfig,
 		},
-		Name:             "EthToElrRelay",
-		Proxy:            proxy,
-		EthClient:        ethClient,
-		EthInstance:      ethInstance,
-		Messenger:        messenger,
-		Erc20Contracts:   erc20Contracts,
-		BridgeEthAddress: bridgeEthAddress,
+		Name:                   "EthToElrRelay",
+		Proxy:                  proxy,
+		EthClient:              ethClient,
+		EthInstance:            ethInstance,
+		Messenger:              messenger,
+		Erc20Contracts:         erc20Contracts,
+		BridgeEthAddress:       bridgeEthAddress,
+		EthClientStatusHandler: ethClientStatusHandler,
 	}
 	ethToElrRelay, err := relay.NewRelay(args)
 	if err != nil {
@@ -202,7 +211,7 @@ func mainLoop(r *relay.Relay) {
 
 func loadConfig(filepath string) (*config.Config, error) {
 	cfg := &config.Config{}
-	err := core.LoadTomlFile(cfg, filepath)
+	err := elrondCore.LoadTomlFile(cfg, filepath)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +222,7 @@ func loadConfig(filepath string) (*config.Config, error) {
 // LoadApiConfig returns a ApiRoutesConfig by reading the config file provided
 func loadApiConfig(filepath string) (*config.ApiRoutesConfig, error) {
 	cfg := &config.ApiRoutesConfig{}
-	err := core.LoadTomlFile(cfg, filepath)
+	err := elrondCore.LoadTomlFile(cfg, filepath)
 	if err != nil {
 		return nil, err
 	}
@@ -306,12 +315,13 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (rela
 func createMapOfErc20Contracts(
 	erc20List []string,
 	ethClient bind.ContractBackend,
-) (map[ethCommon.Address]eth.GenericErc20Contract, error) {
+	ethClientStatusHandler core.StatusHandler,
+) (map[ethCommon.Address]eth.Erc20Contract, error) {
 	if len(erc20List) == 0 {
 		return nil, fmt.Errorf("no ERC20 address specified in config, [Eth] section, field ERC20Contracts")
 	}
 
-	contracts := make(map[ethCommon.Address]eth.GenericErc20Contract)
+	contracts := make(map[ethCommon.Address]eth.Erc20Contract)
 	for _, strAddress := range erc20List {
 		addr := ethCommon.HexToAddress(strAddress)
 		contractInstance, err := contract.NewGenericErc20(addr, ethClient)
@@ -319,7 +329,16 @@ func createMapOfErc20Contracts(
 			return nil, fmt.Errorf("%w for %s", err, addr.String())
 		}
 
-		contracts[addr] = contractInstance
+		args := wrappers.ArgsErc20ContractWrapper{
+			StatusHandler: ethClientStatusHandler,
+			Erc20Contract: contractInstance,
+		}
+		wrapper, err := wrappers.NewErc20ContractWrapper(args)
+		if err != nil {
+			return nil, err
+		}
+
+		contracts[addr] = wrapper
 	}
 
 	return contracts, nil
