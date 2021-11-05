@@ -14,11 +14,8 @@ var ErrNilMapper = errors.New("nil mapper")
 // ErrNilGasHandler signals that a nil gas handler was provided
 var ErrNilGasHandler = errors.New("nil gas handler")
 
-// ErrNilBlockchainClient signals that a nil blockchain client was provided
-var ErrNilBlockchainClient = errors.New("nil blockchain client")
-
-// ErrNilBrdgeContract signals that a nil blockchain client was provided
-var ErrNilBrdgeContract = errors.New("nil bridge contract")
+// ErrNilClientWrapper signals that a nil client wrapper was provided
+var ErrNilClientWrapper = errors.New("nil client wrapper")
 
 // ErrNilSignaturesHolder signals that a nil signatures holder was provided
 var ErrNilSignaturesHolder = errors.New("nil signatures holder")

@@ -22,6 +22,7 @@ type ArgsEthElrondBridgeExecutor struct {
 	QuorumProvider    bridge.QuorumProvider
 	Timer             core.Timer
 	DurationsMap      map[core.StepIdentifier]time.Duration
+	StatusHandler     core.StatusHandler
 }
 
 // ethElrondBridgeExecutor represents the eth-elrond bridge executor adapter
@@ -38,6 +39,7 @@ type ethElrondBridgeExecutor struct {
 	quorumProvider    bridge.QuorumProvider
 	timer             core.Timer
 	durationsMap      map[core.StepIdentifier]time.Duration
+	statusHandler     core.StatusHandler
 }
 
 // NewEthElrondBridgeExecutor will return a new instance of the ethElrondBridgeExecutor struct
@@ -57,6 +59,7 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 		quorumProvider:    args.QuorumProvider,
 		timer:             args.Timer,
 		durationsMap:      args.DurationsMap,
+		statusHandler:     args.StatusHandler,
 	}, nil
 }
 
@@ -81,6 +84,9 @@ func checkArgs(args ArgsEthElrondBridgeExecutor) error {
 	}
 	if args.DurationsMap == nil {
 		return ErrNilDurationsMap
+	}
+	if check.IfNil(args.StatusHandler) {
+		return ErrNilStatusHandler
 	}
 
 	return nil
@@ -159,8 +165,10 @@ func (executor *ethElrondBridgeExecutor) PrintInfo(logLevel logger.LogLevel, mes
 		executor.logger.Info(message, extras...)
 	case logger.LogWarning:
 		executor.logger.Warn(message, extras...)
+		executor.setExecutionMessageInStatusHandler(logLevel, message, extras...)
 	case logger.LogError:
 		executor.logger.Error(message, extras...)
+		executor.setExecutionMessageInStatusHandler(logLevel, message, extras...)
 	case logger.LogNone:
 	}
 }
@@ -169,8 +177,19 @@ func (executor *ethElrondBridgeExecutor) appendMessageToName(message string) str
 	return fmt.Sprintf("%s: %s", executor.executorName, message)
 }
 
+func (executor *ethElrondBridgeExecutor) setExecutionMessageInStatusHandler(level logger.LogLevel, message string, extras ...interface{}) {
+	msg := fmt.Sprintf("%s: %s", level, message)
+	for i := 0; i < len(extras)-1; i++ {
+		msg += fmt.Sprintf(" %s = %s", convertObjectToString(extras[i]), convertObjectToString(extras[i+1]))
+	}
+
+	executor.statusHandler.SetStringMetric(core.MetricLastError, msg)
+}
+
 // GetPendingBatch will fetch the pending batch from the source bridge
 func (executor *ethElrondBridgeExecutor) GetPendingBatch(ctx context.Context) {
+	executor.statusHandler.SetStringMetric(core.MetricLastError, "")
+
 	executor.pendingBatch = executor.sourceBridge.GetPending(ctx)
 }
 
@@ -232,9 +251,22 @@ func (executor *ethElrondBridgeExecutor) UpdateTransactionsStatusesIfNeeded(ctx 
 
 	for i, tx := range executor.pendingBatch.Transactions {
 		tx.Status = statuses[i]
+		executor.updateStatusInStatusHandler(tx.Status)
 	}
+	executor.statusHandler.AddIntMetric(core.MetricNumBatches, 1)
 
 	return nil
+}
+
+func (executor *ethElrondBridgeExecutor) updateStatusInStatusHandler(status byte) {
+	switch status {
+	case bridge.Executed:
+		executor.statusHandler.AddIntMetric(core.MetricNumTransactionsSucceeded, 1)
+	case bridge.Rejected:
+		executor.statusHandler.AddIntMetric(core.MetricNumTransactionsRejected, 1)
+	default:
+		executor.logger.Warn("error saving transaction metric", "unknown status", status)
+	}
 }
 
 // isStatusesCheckOnDestinationNeeded will return true if at least one transaction status is different from the Rejected value

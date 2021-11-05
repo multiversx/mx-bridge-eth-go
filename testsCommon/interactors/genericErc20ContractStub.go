@@ -1,4 +1,4 @@
-package testsCommon
+package interactors
 
 import (
 	"errors"

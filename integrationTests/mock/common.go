@@ -7,6 +7,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 )
@@ -28,11 +29,12 @@ func CreateMockRelayArgs(
 				RestApiInterface: core.WebServerOffString,
 			},
 		},
-		Name:        name,
-		Proxy:       elrondChainMock,
-		EthClient:   ethereumChainMock,
-		EthInstance: ethereumChainMock,
-		Messenger:   messenger,
+		Name:                   name,
+		Proxy:                  elrondChainMock,
+		EthClient:              ethereumChainMock,
+		EthInstance:            ethereumChainMock,
+		Messenger:              messenger,
+		EthClientStatusHandler: testsCommon.NewStatusHandlerMock(),
 	}
 }
 

@@ -17,6 +17,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ethereum/go-ethereum/common"
@@ -45,10 +46,10 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	tokens := []common.Address{token1Erc20, token2Erc20}
 	availableBalances := []*big.Int{value1, value2}
 
-	erc20Contracts := make(map[common.Address]eth.GenericErc20Contract)
+	erc20Contracts := make(map[common.Address]eth.Erc20Contract)
 	for i, token := range tokens {
-		erc20Contracts[token] = &testsCommon.GenericErc20ContractStub{
-			BalanceOfCalled: func(account common.Address) (*big.Int, error) {
+		erc20Contracts[token] = &mockInteractors.Erc20ContractStub{
+			BalanceOfCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
 				if account == bridgeEthAddress {
 					return availableBalances[i], nil
 				}
@@ -167,11 +168,12 @@ func createMockRelayArgs(
 				RestApiInterface: core.WebServerOffString,
 			},
 		},
-		Name:        "eth <-> elrond",
-		Proxy:       elrondChainMock,
-		EthClient:   ethereumChainMock,
-		EthInstance: ethereumChainMock,
-		Messenger:   messenger,
+		Name:                   "eth <-> elrond",
+		Proxy:                  elrondChainMock,
+		EthClient:              ethereumChainMock,
+		EthInstance:            ethereumChainMock,
+		Messenger:              messenger,
+		EthClientStatusHandler: testsCommon.NewStatusHandlerMock(),
 	}
 }
 
