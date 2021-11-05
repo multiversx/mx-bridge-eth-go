@@ -1,6 +1,10 @@
 package facade
 
-import "github.com/ElrondNetwork/elrond-go-core/core"
+import (
+	"errors"
+
+	"github.com/ElrondNetwork/elrond-go-core/core"
+)
 
 type relayerFacade struct {
 	apiInterface string
@@ -29,14 +33,12 @@ func (rf *relayerFacade) PprofEnabled() bool {
 
 // GetPeerInfo returns a P2PPeerInfo value holding an unknown peer value
 func (rf *relayerFacade) GetPeerInfo(pid string) ([]core.QueryP2PPeerInfo, error) {
-	// TODO implement this
-	panic("implement me")
+	return nil, errors.New("not implemented")
 }
 
 // GetClientInfo returns specified client`s info
 func (rf *relayerFacade) GetClientInfo(client string) (string, error) {
-	// TODO implement this
-	panic("implement me")
+	return "", errors.New("not implemented")
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

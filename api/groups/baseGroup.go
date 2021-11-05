@@ -37,6 +37,7 @@ func (bg *baseGroup) RegisterRoutes(
 			continue
 		}
 
+		ws.Handle(handlerData.Method, handlerData.Path, handlerData.Handler)
 	}
 }
 

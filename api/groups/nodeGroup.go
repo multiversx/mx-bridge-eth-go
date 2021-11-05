@@ -86,7 +86,7 @@ func (ng *nodeGroup) statusMetrics(c *gin.Context) {
 	c.JSON(
 		http.StatusOK,
 		shared.GenericAPIResponse{
-			Data:  gin.H{"info": info},
+			Data:  info,
 			Error: "",
 			Code:  shared.ReturnCodeSuccess,
 		},
