@@ -34,7 +34,7 @@ func CreateMockRelayArgs(
 		EthClient:              ethereumChainMock,
 		EthInstance:            ethereumChainMock,
 		Messenger:              messenger,
-		EthClientStatusHandler: testsCommon.NewStatusHandlerMock(),
+		EthClientStatusHandler: testsCommon.NewStatusHandlerMock("mock"),
 	}
 }
 

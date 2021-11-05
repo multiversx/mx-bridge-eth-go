@@ -70,7 +70,7 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 		return makeMockStatuses(len(pendingBatch.Transactions)), nil
 	}
 
-	statusHandler := testsCommon.NewStatusHandlerMock()
+	statusHandler := testsCommon.NewStatusHandlerMock("mock")
 	sm, err := createAndStartBridge(statusHandler, sourceBridge, destinationBridge, 1, true, "test")
 	require.Nil(t, err)
 
@@ -141,7 +141,7 @@ func TestBridgeExecutorWithStateMachineFailedToProposeTransfer(t *testing.T) {
 		return nil, nil
 	}
 
-	statusHandler := testsCommon.NewStatusHandlerMock()
+	statusHandler := testsCommon.NewStatusHandlerMock("mock")
 	sm, err := createAndStartBridge(statusHandler, sourceBridge, destinationBridge, 1, true, "test")
 	require.Nil(t, err)
 

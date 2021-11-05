@@ -18,7 +18,7 @@ import (
 )
 
 func createMockArgsEthClientWrapper() (ArgsEthClientWrapper, *testsCommon.StatusHandlerMock) {
-	statusHandler := testsCommon.NewStatusHandlerMock()
+	statusHandler := testsCommon.NewStatusHandlerMock("mock")
 
 	return ArgsEthClientWrapper{
 		BridgeContract:   &interactors.BridgeContractStub{},

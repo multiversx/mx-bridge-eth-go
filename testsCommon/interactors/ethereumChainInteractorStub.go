@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -12,9 +13,7 @@ import (
 
 // EthereumChainInteractorStub -
 type EthereumChainInteractorStub struct {
-	SetIntMetricCalled    func(metric string, value int)
-	AddIntMetricCalled    func(metric string, delta int)
-	SetStringMetricCalled func(metric string, val string)
+	core.StatusHandler
 
 	NameCalled                      func() string
 	GetNextPendingBatchCalled       func(ctx context.Context) (contract.Batch, error)
@@ -28,36 +27,6 @@ type EthereumChainInteractorStub struct {
 	ExecuteTransferCalled           func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	QuorumCalled                    func(ctx context.Context) (*big.Int, error)
 	GetRelayersCalled               func(ctx context.Context) ([]common.Address, error)
-}
-
-// SetIntMetric -
-func (stub *EthereumChainInteractorStub) SetIntMetric(metric string, value int) {
-	if stub.SetIntMetricCalled != nil {
-		stub.SetIntMetricCalled(metric, value)
-	}
-}
-
-// AddIntMetric -
-func (stub *EthereumChainInteractorStub) AddIntMetric(metric string, delta int) {
-	if stub != nil {
-		stub.AddIntMetricCalled(metric, delta)
-	}
-}
-
-// SetStringMetric -
-func (stub *EthereumChainInteractorStub) SetStringMetric(metric string, val string) {
-	if stub.SetStringMetricCalled != nil {
-		stub.SetStringMetricCalled(metric, val)
-	}
-}
-
-// Name -
-func (stub *EthereumChainInteractorStub) Name() string {
-	if stub.NameCalled != nil {
-		return stub.NameCalled()
-	}
-
-	return ""
 }
 
 // GetNextPendingBatch -

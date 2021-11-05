@@ -91,3 +91,22 @@ func TestStatusHandler_StringMetrics(t *testing.T) {
 	expected[metric2] = value2
 	assert.True(t, testsCommon.EqualStringMetrics(expected, sh.GetStringMetrics()))
 }
+
+func TestStatusHandler_GetAllMetrics(t *testing.T) {
+	t.Parallel()
+
+	sh, _ := NewStatusHandler("test get all metrics")
+	metric1 := "metric1"
+	value1 := "value1"
+	sh.SetStringMetric(metric1, value1)
+
+	metric2 := "metric2"
+	value2 := 4
+	sh.SetIntMetric(metric2, value2)
+
+	expectedMap := make(core.GeneralMetrics)
+	expectedMap[metric1] = value1
+	expectedMap[metric2] = value2
+
+	assert.Equal(t, expectedMap, sh.GetAllMetrics())
+}

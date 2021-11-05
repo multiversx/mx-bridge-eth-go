@@ -5,35 +5,28 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/api/shared"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go/api/errors"
-	"github.com/ElrondNetwork/elrond-go/api/shared"
+	elrondApiShared "github.com/ElrondNetwork/elrond-go/api/shared"
 	"github.com/gin-gonic/gin"
 )
 
 const (
 	pidQueryParam    = "pid"
-	clientQueryParam = "client"
+	clientQueryParam = "name"
 	peerInfoPath     = "/peerinfo"
 	statusPath       = "/status"
 )
 
-// nodeFacadeHandler defines the methods to be implemented by a facade for node requests
-type nodeFacadeHandler interface {
-	GetPeerInfo(pid string) ([]core.QueryP2PPeerInfo, error)
-	GetClientInfo(client string) (string, error)
-	IsInterfaceNil() bool
-}
-
 type nodeGroup struct {
 	*baseGroup
-	facade    nodeFacadeHandler
+	facade    shared.FacadeHandler
 	mutFacade sync.RWMutex
 }
 
 // NewNodeGroup returns a new instance of nodeGroup
-func NewNodeGroup(facade nodeFacadeHandler) (*nodeGroup, error) {
+func NewNodeGroup(facade shared.FacadeHandler) (*nodeGroup, error) {
 	if check.IfNil(facade) {
 		return nil, fmt.Errorf("%w for node group", errors.ErrNilFacadeHandler)
 	}
@@ -43,7 +36,7 @@ func NewNodeGroup(facade nodeFacadeHandler) (*nodeGroup, error) {
 		baseGroup: &baseGroup{},
 	}
 
-	endpoints := []*shared.EndpointHandlerData{
+	endpoints := []*elrondApiShared.EndpointHandlerData{
 		{
 			Path:    peerInfoPath,
 			Method:  http.MethodGet,
@@ -63,21 +56,21 @@ func NewNodeGroup(facade nodeFacadeHandler) (*nodeGroup, error) {
 // peerInfo returns the information of a provided p2p peer ID
 func (ng *nodeGroup) statusMetrics(c *gin.Context) {
 	queryVals := c.Request.URL.Query()
-	clients := queryVals[clientQueryParam]
-	client := ""
-	if len(clients) > 0 {
-		client = clients[0]
+	params := queryVals[clientQueryParam]
+	name := ""
+	if len(params) > 0 {
+		name = params[0]
 	}
 
-	info, err := ng.getFacade().GetClientInfo(client)
+	info, err := ng.getFacade().GetMetrics(name)
 
 	if err != nil {
 		c.JSON(
 			http.StatusInternalServerError,
-			shared.GenericAPIResponse{
+			elrondApiShared.GenericAPIResponse{
 				Data:  nil,
 				Error: fmt.Sprintf("%s: %s", errors.ErrGetPidInfo.Error(), err.Error()),
-				Code:  shared.ReturnCodeInternalError,
+				Code:  elrondApiShared.ReturnCodeInternalError,
 			},
 		)
 		return
@@ -85,10 +78,10 @@ func (ng *nodeGroup) statusMetrics(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		shared.GenericAPIResponse{
+		elrondApiShared.GenericAPIResponse{
 			Data:  info,
 			Error: "",
-			Code:  shared.ReturnCodeSuccess,
+			Code:  elrondApiShared.ReturnCodeSuccess,
 		},
 	)
 }
@@ -106,10 +99,10 @@ func (ng *nodeGroup) peerInfo(c *gin.Context) {
 	if err != nil {
 		c.JSON(
 			http.StatusInternalServerError,
-			shared.GenericAPIResponse{
+			elrondApiShared.GenericAPIResponse{
 				Data:  nil,
 				Error: fmt.Sprintf("%s: %s", errors.ErrGetPidInfo.Error(), err.Error()),
-				Code:  shared.ReturnCodeInternalError,
+				Code:  elrondApiShared.ReturnCodeInternalError,
 			},
 		)
 		return
@@ -117,15 +110,15 @@ func (ng *nodeGroup) peerInfo(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		shared.GenericAPIResponse{
+		elrondApiShared.GenericAPIResponse{
 			Data:  gin.H{"info": info},
 			Error: "",
-			Code:  shared.ReturnCodeSuccess,
+			Code:  elrondApiShared.ReturnCodeSuccess,
 		},
 	)
 }
 
-func (ng *nodeGroup) getFacade() nodeFacadeHandler {
+func (ng *nodeGroup) getFacade() shared.FacadeHandler {
 	ng.mutFacade.RLock()
 	defer ng.mutFacade.RUnlock()
 
@@ -133,17 +126,13 @@ func (ng *nodeGroup) getFacade() nodeFacadeHandler {
 }
 
 // UpdateFacade will update the facade
-func (ng *nodeGroup) UpdateFacade(newFacade interface{}) error {
-	if newFacade == nil {
+func (ng *nodeGroup) UpdateFacade(newFacade shared.FacadeHandler) error {
+	if check.IfNil(newFacade) {
 		return errors.ErrNilFacadeHandler
-	}
-	castFacade, ok := newFacade.(nodeFacadeHandler)
-	if !ok {
-		return errors.ErrFacadeWrongTypeAssertion
 	}
 
 	ng.mutFacade.Lock()
-	ng.facade = castFacade
+	ng.facade = newFacade
 	ng.mutFacade.Unlock()
 
 	return nil

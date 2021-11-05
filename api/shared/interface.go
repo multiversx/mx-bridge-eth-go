@@ -2,13 +2,14 @@ package shared
 
 import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
-	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/gin-gonic/gin"
 )
 
 // GroupHandler defines the actions needed to be performed by an gin API group
 type GroupHandler interface {
-	UpdateFacade(newFacade interface{}) error
+	UpdateFacade(newFacade FacadeHandler) error
 	RegisterRoutes(
 		ws *gin.RouterGroup,
 		apiConfig config.ApiRoutesConfig,
@@ -20,8 +21,8 @@ type GroupHandler interface {
 type FacadeHandler interface {
 	RestApiInterface() string
 	PprofEnabled() bool
-	GetPeerInfo(pid string) ([]core.QueryP2PPeerInfo, error)
-	GetClientInfo(client string) (string, error)
+	GetPeerInfo(pid string) ([]elrondCore.QueryP2PPeerInfo, error)
+	GetMetrics(name string) (core.GeneralMetrics, error)
 	IsInterfaceNil() bool
 }
 

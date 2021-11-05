@@ -13,6 +13,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
@@ -89,7 +90,7 @@ func TestNewRelay(t *testing.T) {
 		Erc20Contracts: map[ethCommon.Address]eth.Erc20Contract{
 			testsCommon.CreateRandomEthereumAddress(): &mockInteractors.Erc20ContractStub{},
 		},
-		EthClientStatusHandler: testsCommon.NewStatusHandlerMock(),
+		EthClientStatusHandler: testsCommon.NewStatusHandlerMock("mock"),
 	}
 	r, err := NewRelay(args)
 	require.Nil(t, err)
@@ -127,6 +128,8 @@ func TestInit(t *testing.T) {
 				broadcastJoinTopicCalled = true
 			},
 		},
+
+		metricsHolder: status.NewMetricsHolder(),
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
@@ -179,7 +182,7 @@ func TestAmILeader(t *testing.T) {
 
 func TestRelay_CreateAndStartBridge(t *testing.T) {
 	t.Parallel()
-	statusHandler := testsCommon.NewStatusHandlerMock()
+	statusHandler := testsCommon.NewStatusHandlerMock("mock")
 	t.Run("nil bridge should error", func(t *testing.T) {
 		relay := createMockRelay()
 

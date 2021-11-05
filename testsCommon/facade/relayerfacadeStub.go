@@ -1,31 +1,34 @@
 package facade
 
-import "github.com/ElrondNetwork/elrond-go-core/core"
+import (
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
+)
 
 // RelayerFacadeStub -
 type RelayerFacadeStub struct {
-	GetPeerInfoCalled      func(pid string) ([]core.QueryP2PPeerInfo, error)
-	GetClientInfoCalled    func(client string) (string, error)
+	GetPeerInfoCalled      func(pid string) ([]elrondCore.QueryP2PPeerInfo, error)
+	GetMetricsCalled       func(name string) (core.GeneralMetrics, error)
 	RestApiInterfaceCalled func() string
 	PprofEnabledCalled     func() bool
 }
 
 // GetPeerInfo -
-func (stub *RelayerFacadeStub) GetPeerInfo(pid string) ([]core.QueryP2PPeerInfo, error) {
+func (stub *RelayerFacadeStub) GetPeerInfo(pid string) ([]elrondCore.QueryP2PPeerInfo, error) {
 	if stub.GetPeerInfoCalled != nil {
 		return stub.GetPeerInfoCalled(pid)
 	}
 
-	return make([]core.QueryP2PPeerInfo, 0), nil
+	return make([]elrondCore.QueryP2PPeerInfo, 0), nil
 }
 
-// GetClientInfo -
-func (stub *RelayerFacadeStub) GetClientInfo(client string) (string, error) {
-	if stub.GetClientInfoCalled != nil {
-		return stub.GetClientInfoCalled(client)
+// GetMetrics -
+func (stub *RelayerFacadeStub) GetMetrics(name string) (core.GeneralMetrics, error) {
+	if stub.GetMetricsCalled != nil {
+		return stub.GetMetricsCalled(name)
 	}
 
-	return "", nil
+	return make(core.GeneralMetrics), nil
 }
 
 // RestApiInterface -
