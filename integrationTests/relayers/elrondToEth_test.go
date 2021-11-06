@@ -65,7 +65,7 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	relayers := make([]*relay.Relay, 0, numRelayers)
 	defer func() {
 		for _, r := range relayers {
-			_ = r.Stop()
+			_ = r.Close()
 		}
 	}()
 

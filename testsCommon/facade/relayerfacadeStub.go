@@ -9,6 +9,7 @@ import (
 type RelayerFacadeStub struct {
 	GetPeerInfoCalled      func(pid string) ([]elrondCore.QueryP2PPeerInfo, error)
 	GetMetricsCalled       func(name string) (core.GeneralMetrics, error)
+	GetMetricsListCalled   func() core.GeneralMetrics
 	RestApiInterfaceCalled func() string
 	PprofEnabledCalled     func() bool
 }
@@ -29,6 +30,15 @@ func (stub *RelayerFacadeStub) GetMetrics(name string) (core.GeneralMetrics, err
 	}
 
 	return make(core.GeneralMetrics), nil
+}
+
+// GetMetricsList -
+func (stub *RelayerFacadeStub) GetMetricsList() core.GeneralMetrics {
+	if stub.GetMetricsListCalled != nil {
+		return stub.GetMetricsListCalled()
+	}
+
+	return make(core.GeneralMetrics)
 }
 
 // RestApiInterface -

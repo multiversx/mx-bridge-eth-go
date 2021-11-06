@@ -37,3 +37,6 @@ var ErrNilErc20Contracts = errors.New("nil ERC20 contracts")
 
 // ErrNilStatusHandler signals that a nil status handler was provided
 var ErrNilStatusHandler = errors.New("nil status handler")
+
+// ErrNilStatusStorer signals that a nil status storer was provided
+var ErrNilStatusStorer = errors.New("nil status storer")

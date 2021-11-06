@@ -8,12 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// Startable defines an entity that is able to Start or Stop
-type Startable interface {
-	Start(context.Context) error
-	Stop() error
-}
-
 // TopologyProvider defines the topology provider functions
 type TopologyProvider interface {
 	AmITheLeader() bool

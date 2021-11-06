@@ -17,6 +17,7 @@ const (
 	clientQueryParam = "name"
 	peerInfoPath     = "/peerinfo"
 	statusPath       = "/status"
+	statusListPath   = "/status/list"
 )
 
 type nodeGroup struct {
@@ -47,10 +48,29 @@ func NewNodeGroup(facade shared.FacadeHandler) (*nodeGroup, error) {
 			Method:  http.MethodGet,
 			Handler: ng.statusMetrics,
 		},
+		{
+			Path:    statusListPath,
+			Method:  http.MethodGet,
+			Handler: ng.statusListMetrics,
+		},
 	}
 	ng.endpoints = endpoints
 
 	return ng, nil
+}
+
+// peerInfo returns the information of a provided p2p peer ID
+func (ng *nodeGroup) statusListMetrics(c *gin.Context) {
+	list := ng.getFacade().GetMetricsList()
+
+	c.JSON(
+		http.StatusOK,
+		elrondApiShared.GenericAPIResponse{
+			Data:  list,
+			Error: "",
+			Code:  elrondApiShared.ReturnCodeSuccess,
+		},
+	)
 }
 
 // peerInfo returns the information of a provided p2p peer ID

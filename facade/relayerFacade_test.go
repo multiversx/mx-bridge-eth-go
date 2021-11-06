@@ -73,18 +73,7 @@ func TestRelayerFacade_GetMetrics(t *testing.T) {
 	errSetup = metricHolder.AddStatusHandler(sh2)
 	require.Nil(t, errSetup)
 
-	t.Run("empty name should return the available list", func(t *testing.T) {
-		args := createMockArguments()
-		args.MetricsHolder = metricHolder
-		facade, _ := NewRelayerFacade(args)
-
-		response, err := facade.GetMetrics("")
-		require.Nil(t, err)
-		expected := make(core.GeneralMetrics)
-		expected[availableMetrics] = []string{"mock1", "mock2"}
-		assert.Equal(t, expected, response)
-	})
-	t.Run("name not found sould error", func(t *testing.T) {
+	t.Run("name not found should error", func(t *testing.T) {
 		args := createMockArguments()
 		args.MetricsHolder = metricHolder
 		facade, _ := NewRelayerFacade(args)
@@ -102,4 +91,26 @@ func TestRelayerFacade_GetMetrics(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, sh2.GetAllMetrics(), response)
 	})
+}
+
+func TestRelayerFacade_GetMetricsList(t *testing.T) {
+	t.Parallel()
+
+	sh1 := testsCommon.NewStatusHandlerMock("mock1")
+	sh2 := testsCommon.NewStatusHandlerMock("mock2")
+	sh2.SetStringMetric("metric1", "value1")
+	metricHolder := status.NewMetricsHolder()
+	errSetup := metricHolder.AddStatusHandler(sh1)
+	require.Nil(t, errSetup)
+	errSetup = metricHolder.AddStatusHandler(sh2)
+	require.Nil(t, errSetup)
+
+	args := createMockArguments()
+	args.MetricsHolder = metricHolder
+	facade, _ := NewRelayerFacade(args)
+
+	response := facade.GetMetricsList()
+	expected := make(core.GeneralMetrics)
+	expected[availableMetrics] = []string{"mock1", "mock2"}
+	assert.Equal(t, expected, response)
 }

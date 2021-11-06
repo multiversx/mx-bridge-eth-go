@@ -57,6 +57,14 @@ type MetricsHolder interface {
 	IsInterfaceNil() bool
 }
 
+// Storer defines a component able to store and load data
+type Storer interface {
+	Put(key, data []byte) error
+	Get(key []byte) ([]byte, error)
+	Close() error
+	IsInterfaceNil() bool
+}
+
 // GeneralMetrics represents an objects metrics map
 type GeneralMetrics map[string]interface{}
 

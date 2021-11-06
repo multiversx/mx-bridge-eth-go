@@ -47,6 +47,10 @@ const (
 	MetricLastQueriedEthereumBlockNumber = "ethereum last queried block number"
 )
 
+// PersistedMetrics represents the array of metrics that should be persisted
+var PersistedMetrics = []string{MetricNumTransactionsSucceeded, MetricNumTransactionsRejected, MetricNumBatches,
+	MetricNumEthClientRequests, MetricNumEthClientTransactions, MetricLastQueriedEthereumBlockNumber}
+
 const (
 	// EthClientStatusHandlerName is the ethereum client status handler name
 	EthClientStatusHandlerName = "eth-client"

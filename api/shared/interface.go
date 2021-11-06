@@ -23,6 +23,7 @@ type FacadeHandler interface {
 	PprofEnabled() bool
 	GetPeerInfo(pid string) ([]elrondCore.QueryP2PPeerInfo, error)
 	GetMetrics(name string) (core.GeneralMetrics, error)
+	GetMetricsList() core.GeneralMetrics
 	IsInterfaceNil() bool
 }
 

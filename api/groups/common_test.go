@@ -34,6 +34,7 @@ func getNodeRoutesConfig() config.ApiRoutesConfig {
 			"node": {
 				Routes: []config.RouteConfig{
 					{Name: "/status", Open: true},
+					{Name: "/status/list", Open: true},
 					{Name: "/debug", Open: true},
 					{Name: "/peerinfo", Open: true},
 				},

@@ -13,8 +13,10 @@
 
 [APIPackages.node]
     Routes = [
-        # /node/status will return all metrics stored inside a node
+        # /node/status will return the metrics info
         { Name = "/status", Open = true },
+        # /node/status/list will return the metrics list available
+        { Name = "/status/list", Open = true },
         # /node/peerinfo will return the p2p peer info of the provided pid
         { Name = "/peerinfo", Open = true }
     ]
