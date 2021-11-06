@@ -53,18 +53,18 @@ func (rf *relayerFacade) GetPeerInfo(pid string) ([]elrondCore.QueryP2PPeerInfo,
 	return nil, errors.New("not implemented")
 }
 
-// GetMetrics returns specified metric info
-// if the provided name is empty, it will return a list of all available metrics
+// GetMetrics returns specified metric info. Errors if the metric is not found
 func (rf *relayerFacade) GetMetrics(name string) (core.GeneralMetrics, error) {
-	if len(name) == 0 {
-		availableNames := rf.metricsHolder.GetAvailableStatusHandlers()
-		result := make(core.GeneralMetrics)
-		result[availableMetrics] = availableNames
-
-		return result, nil
-	}
-
 	return rf.metricsHolder.GetAllMetrics(name)
+}
+
+// GetMetricsList returns a list of all available metrics
+func (rf *relayerFacade) GetMetricsList() core.GeneralMetrics {
+	availableNames := rf.metricsHolder.GetAvailableStatusHandlers()
+	result := make(core.GeneralMetrics)
+	result[availableMetrics] = availableNames
+
+	return result
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
