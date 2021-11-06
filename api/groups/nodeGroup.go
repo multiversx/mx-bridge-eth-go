@@ -13,9 +13,7 @@ import (
 )
 
 const (
-	pidQueryParam    = "pid"
 	clientQueryParam = "name"
-	peerInfoPath     = "/peerinfo"
 	statusPath       = "/status"
 	statusListPath   = "/status/list"
 )
@@ -38,11 +36,6 @@ func NewNodeGroup(facade shared.FacadeHandler) (*nodeGroup, error) {
 	}
 
 	endpoints := []*elrondApiShared.EndpointHandlerData{
-		{
-			Path:    peerInfoPath,
-			Method:  http.MethodGet,
-			Handler: ng.peerInfo,
-		},
 		{
 			Path:    statusPath,
 			Method:  http.MethodGet,
@@ -89,7 +82,7 @@ func (ng *nodeGroup) statusMetrics(c *gin.Context) {
 			http.StatusInternalServerError,
 			elrondApiShared.GenericAPIResponse{
 				Data:  nil,
-				Error: fmt.Sprintf("%s: %s", errors.ErrGetPidInfo.Error(), err.Error()),
+				Error: fmt.Sprintf("%s: %s", ErrGettingMetrics.Error(), err.Error()),
 				Code:  elrondApiShared.ReturnCodeInternalError,
 			},
 		)
@@ -100,38 +93,6 @@ func (ng *nodeGroup) statusMetrics(c *gin.Context) {
 		http.StatusOK,
 		elrondApiShared.GenericAPIResponse{
 			Data:  info,
-			Error: "",
-			Code:  elrondApiShared.ReturnCodeSuccess,
-		},
-	)
-}
-
-// peerInfo returns the information of a provided p2p peer ID
-func (ng *nodeGroup) peerInfo(c *gin.Context) {
-	queryVals := c.Request.URL.Query()
-	pids := queryVals[pidQueryParam]
-	pid := ""
-	if len(pids) > 0 {
-		pid = pids[0]
-	}
-
-	info, err := ng.getFacade().GetPeerInfo(pid)
-	if err != nil {
-		c.JSON(
-			http.StatusInternalServerError,
-			elrondApiShared.GenericAPIResponse{
-				Data:  nil,
-				Error: fmt.Sprintf("%s: %s", errors.ErrGetPidInfo.Error(), err.Error()),
-				Code:  elrondApiShared.ReturnCodeInternalError,
-			},
-		)
-		return
-	}
-
-	c.JSON(
-		http.StatusOK,
-		elrondApiShared.GenericAPIResponse{
-			Data:  gin.H{"info": info},
 			Error: "",
 			Code:  elrondApiShared.ReturnCodeSuccess,
 		},

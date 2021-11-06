@@ -16,8 +16,8 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/factory"
+	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
-	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -28,7 +28,7 @@ import (
 	elrondCommon "github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
-	"github.com/ElrondNetwork/elrond-go/p2p"
+	elrondP2P "github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
@@ -276,7 +276,7 @@ func attachFileLogger(log logger.Logger, flagsConfig *config.ContextFlagsConfig)
 	return fileLogging, nil
 }
 
-func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (relayp2p.NetMessenger, error) {
+func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.NetMessenger, error) {
 	nodeConfig := elrondConfig.NodeConfig{
 		Port:                       cfg.P2P.Port,
 		Seed:                       cfg.P2P.Seed,
@@ -312,7 +312,7 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (rela
 		P2pConfig:            p2pConfig,
 		SyncTimer:            &libp2p.LocalSyncTimer{},
 		PreferredPeersHolder: disabled.NewPreferredPeersHolder(),
-		NodeOperationMode:    p2p.NormalOperation,
+		NodeOperationMode:    elrondP2P.NormalOperation,
 	}
 
 	messenger, err := libp2p.NewNetworkMessenger(args)

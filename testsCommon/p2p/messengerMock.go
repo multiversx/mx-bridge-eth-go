@@ -147,6 +147,11 @@ func (mock *MessengerMock) LastSendPeerID() core.PeerID {
 	return mock.lastSendPeerID
 }
 
+// ConnectedAddresses -
+func (mock *MessengerMock) ConnectedAddresses() []string {
+	return make([]string, 0)
+}
+
 // Close -
 func (mock *MessengerMock) Close() error {
 	return nil

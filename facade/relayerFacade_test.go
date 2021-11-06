@@ -50,17 +50,6 @@ func TestRelayerFacade_Getters(t *testing.T) {
 	assert.Equal(t, args.PprofEnabled, facade.PprofEnabled())
 }
 
-func TestRelayerFacade_GetPeerInfo(t *testing.T) {
-	t.Parallel()
-
-	args := createMockArguments()
-	facade, _ := NewRelayerFacade(args)
-
-	info, err := facade.GetPeerInfo("")
-	require.Nil(t, info)
-	require.NotNil(t, err)
-}
-
 func TestRelayerFacade_GetMetrics(t *testing.T) {
 	t.Parallel()
 

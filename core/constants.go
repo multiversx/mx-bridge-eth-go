@@ -45,6 +45,12 @@ const (
 	// MetricLastQueriedEthereumBlockNumber represents the metric used to store the last ethereum block number that was
 	// fetched from the ethereum client
 	MetricLastQueriedEthereumBlockNumber = "ethereum last queried block number"
+
+	// MetricRelayerP2PAddresses represents the metric used to store all the P2P addresses the messenger has bound to
+	MetricRelayerP2PAddresses = "relayer P2P addresses"
+
+	// MetricConnectedP2PAddresses represents the metric used to store all the P2P addresses the messenger has connected to
+	MetricConnectedP2PAddresses = "connected P2P addresses"
 )
 
 // PersistedMetrics represents the array of metrics that should be persisted

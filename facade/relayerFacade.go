@@ -1,10 +1,7 @@
 package facade
 
 import (
-	"errors"
-
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 )
 
@@ -46,11 +43,6 @@ func (rf *relayerFacade) RestApiInterface() string {
 // PprofEnabled returns if profiling mode should be active or not on the application
 func (rf *relayerFacade) PprofEnabled() bool {
 	return rf.pprofEnabled
-}
-
-// GetPeerInfo returns a P2PPeerInfo value holding an unknown peer value
-func (rf *relayerFacade) GetPeerInfo(pid string) ([]elrondCore.QueryP2PPeerInfo, error) {
-	return nil, errors.New("not implemented")
 }
 
 // GetMetrics returns specified metric info. Errors if the metric is not found
