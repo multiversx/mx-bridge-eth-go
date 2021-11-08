@@ -37,3 +37,6 @@ var ErrEmptyName = errors.New("empty name")
 
 // ErrNilBroadcastClient signals that a nil broadcast client was provided
 var ErrNilBroadcastClient = errors.New("nil broadcast client")
+
+// ErrNilStatusHandler signals that a nil status handler was provided
+var ErrNilStatusHandler = errors.New("nil status handler")

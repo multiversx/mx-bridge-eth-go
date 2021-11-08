@@ -24,7 +24,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/facade"
-	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
+	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/roleProvider"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
@@ -41,8 +41,9 @@ import (
 )
 
 const (
-	minimumDurationForStep = time.Second
-	pollingDurationOnError = time.Second * 5
+	minimumDurationForStep          = time.Second
+	pollingDurationOnError          = time.Second * 5
+	p2pStatusHandlerPollingInterval = time.Second * 2
 )
 
 type defaultTimer struct {
@@ -76,7 +77,7 @@ func (s *defaultTimer) IsInterfaceNil() bool {
 }
 
 type Relay struct {
-	messenger relayp2p.NetMessenger
+	messenger p2p.NetMessenger
 	timer     core.Timer
 	log       logger.Logger
 
@@ -103,7 +104,7 @@ type ArgsRelayer struct {
 	Proxy                  bridge.ElrondProxy
 	EthClient              wrappers.BlockchainClient
 	EthInstance            wrappers.BridgeContract
-	Messenger              relayp2p.NetMessenger
+	Messenger              p2p.NetMessenger
 	Erc20Contracts         map[common.Address]eth.Erc20Contract
 	BridgeEthAddress       common.Address
 	EthClientStatusHandler core.StatusHandler
@@ -208,7 +209,12 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		return nil, err
 	}
 
-	argsBroadcaster := relayp2p.ArgsBroadcaster{
+	err = relay.startP2PStatusHandler()
+	if err != nil {
+		return nil, err
+	}
+
+	argsBroadcaster := p2p.ArgsBroadcaster{
 		Messenger:          relay.messenger,
 		Log:                relay.log,
 		ElrondRoleProvider: relay.elrondRoleProvider,
@@ -218,7 +224,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		SignatureProcessor: relay.ethereumRoleProvider,
 		Name:               "eth-elrond",
 	}
-	relay.broadcaster, err = relayp2p.NewBroadcaster(argsBroadcaster)
+	relay.broadcaster, err = p2p.NewBroadcaster(argsBroadcaster)
 	if err != nil {
 		return nil, err
 	}
@@ -353,6 +359,48 @@ func (r *Relay) createEthereumRoleProvider(config config.Config) error {
 	r.pollingHandlers = append(r.pollingHandlers, pollingHandler)
 
 	return pollingHandler.StartProcessingLoop()
+}
+
+func (r *Relay) startP2PStatusHandler() error {
+	p2pStatusHandler, err := status.NewStatusHandler("p2p", r.statusStorer)
+	if err != nil {
+		return err
+	}
+
+	argsAdapter := p2p.ArgsStatusHandlerAdapter{
+		StatusHandler: p2pStatusHandler,
+		Messenger:     r.messenger,
+	}
+	adapterP2PStatusHandler, err := p2p.NewStatusHandlerAdapter(argsAdapter)
+	if err != nil {
+		return err
+	}
+
+	err = r.metricsHolder.AddStatusHandler(adapterP2PStatusHandler)
+	if err != nil {
+		return err
+	}
+
+	argsP2PStatusPolling := polling.ArgsPollingHandler{
+		Log:              r.log,
+		Name:             "p2p status handler polling",
+		PollingInterval:  p2pStatusHandlerPollingInterval,
+		PollingWhenError: p2pStatusHandlerPollingInterval,
+		Executor:         adapterP2PStatusHandler,
+	}
+	p2pStatusPolling, err := polling.NewPollingHandler(argsP2PStatusPolling)
+	if err != nil {
+		return err
+	}
+
+	err = p2pStatusPolling.StartProcessingLoop()
+	if err != nil {
+		return err
+	}
+
+	r.pollingHandlers = append(r.pollingHandlers, p2pStatusPolling)
+
+	return nil
 }
 
 // Start will create the 2-half brides and start them. The function will return when the context is done.

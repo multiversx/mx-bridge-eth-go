@@ -16,6 +16,7 @@ type NetMessenger interface {
 	CreateTopic(name string, createChannelForTopic bool) error
 	Broadcast(topic string, buff []byte)
 	SendToConnectedPeer(topic string, buff []byte, peerID elrondCore.PeerID) error
+	ConnectedAddresses() []string
 	Close() error
 	IsInterfaceNil() bool
 }

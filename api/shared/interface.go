@@ -3,7 +3,6 @@ package shared
 import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,7 +20,6 @@ type GroupHandler interface {
 type FacadeHandler interface {
 	RestApiInterface() string
 	PprofEnabled() bool
-	GetPeerInfo(pid string) ([]elrondCore.QueryP2PPeerInfo, error)
 	GetMetrics(name string) (core.GeneralMetrics, error)
 	GetMetricsList() core.GeneralMetrics
 	IsInterfaceNil() bool

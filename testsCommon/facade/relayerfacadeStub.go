@@ -2,25 +2,14 @@ package facade
 
 import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 )
 
 // RelayerFacadeStub -
 type RelayerFacadeStub struct {
-	GetPeerInfoCalled      func(pid string) ([]elrondCore.QueryP2PPeerInfo, error)
 	GetMetricsCalled       func(name string) (core.GeneralMetrics, error)
 	GetMetricsListCalled   func() core.GeneralMetrics
 	RestApiInterfaceCalled func() string
 	PprofEnabledCalled     func() bool
-}
-
-// GetPeerInfo -
-func (stub *RelayerFacadeStub) GetPeerInfo(pid string) ([]elrondCore.QueryP2PPeerInfo, error) {
-	if stub.GetPeerInfoCalled != nil {
-		return stub.GetPeerInfoCalled(pid)
-	}
-
-	return make([]elrondCore.QueryP2PPeerInfo, 0), nil
 }
 
 // GetMetrics -

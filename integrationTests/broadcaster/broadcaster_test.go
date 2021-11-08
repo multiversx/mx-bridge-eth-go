@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
-	relayP2P "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
+	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	mockRoleProviders "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
-	"github.com/ElrondNetwork/elrond-go/p2p"
+	elrondP2P "github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/stretchr/testify/require"
 )
@@ -169,7 +169,7 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 func createBroadcasters(
 	t *testing.T,
 	numBroadcasters int,
-	messengers []p2p.Messenger,
+	messengers []elrondP2P.Messenger,
 	roleProvider *mockRoleProviders.ElrondRoleProviderStub,
 	privateKeys []crypto.PrivateKey,
 ) ([]integrationTests.Broadcaster, []*testsCommon.SignaturesHolderMock) {
@@ -187,11 +187,11 @@ func createBroadcasters(
 
 func createBroadcaster(
 	t *testing.T,
-	messenger p2p.Messenger,
+	messenger elrondP2P.Messenger,
 	roleProvider *mockRoleProviders.ElrondRoleProviderStub,
 	privateKey crypto.PrivateKey,
 ) (integrationTests.Broadcaster, *testsCommon.SignaturesHolderMock) {
-	args := relayP2P.ArgsBroadcaster{
+	args := p2p.ArgsBroadcaster{
 		Messenger:          messenger,
 		Log:                integrationTests.Log,
 		ElrondRoleProvider: roleProvider,
@@ -202,7 +202,7 @@ func createBroadcaster(
 		Name:               "test",
 	}
 
-	b, err := relayP2P.NewBroadcaster(args)
+	b, err := p2p.NewBroadcaster(args)
 	require.Nil(t, err)
 
 	err = b.RegisterOnTopics()
