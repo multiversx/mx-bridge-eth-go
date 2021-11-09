@@ -5,24 +5,30 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"runtime"
 	"syscall"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/wrappers"
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/factory"
+	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
-	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
-	"github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/status"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/cmd/node/factory"
+	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	elrondCommon "github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
-	"github.com/ElrondNetwork/elrond-go/config"
-	"github.com/ElrondNetwork/elrond-go/p2p"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
+	elrondP2P "github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
@@ -43,6 +49,7 @@ const (
 	logFilePrefix            = "elrond-eth-bridge"
 	p2pPeerNetworkDiscoverer = "optimized"
 	nilListSharderType       = "NilListSharder"
+	dbPath                   = "db"
 )
 
 var log = logger.GetOrCreate("main")
@@ -61,7 +68,7 @@ func main() {
 	app.Name = "Relay CLI app"
 	app.Usage = "This is the entry point for the bridge relay"
 	app.Flags = getFlags()
-	machineID := core.GetAnonymizedMachineID(app.Name)
+	machineID := elrondCore.GetAnonymizedMachineID(app.Name)
 	app.Version = fmt.Sprintf("%s/%s/%s-%s/%s", appVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH, machineID)
 	app.Authors = []cli.Author{
 		{
@@ -105,11 +112,28 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	apiRoutesConfig, err := loadApiConfig(flagsConfig.ConfigurationApiFile)
+	if err != nil {
+		return err
+	}
+	log.Debug("config", "file", flagsConfig.ConfigurationApiFile)
+
 	if !check.IfNil(fileLogging) {
-		err := fileLogging.ChangeFileLifeSpan(time.Second * time.Duration(cfg.Logs.LogFileLifeSpanInSec))
+		err = fileLogging.ChangeFileLifeSpan(time.Second * time.Duration(cfg.Logs.LogFileLifeSpanInSec))
 		if err != nil {
 			return err
 		}
+	}
+
+	dbFullPath := path.Join(flagsConfig.WorkingDir, dbPath)
+	statusStorer, err := factory.CreateUnitStorer(cfg.Relayer.StatusMetricsStorage, dbFullPath)
+	if err != nil {
+		return err
+	}
+
+	ethClientStatusHandler, err := status.NewStatusHandler(core.EthClientStatusHandlerName, statusStorer)
+	if err != nil {
+		return err
 	}
 
 	proxy := blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil)
@@ -125,7 +149,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	erc20Contracts, err := createMapOfErc20Contracts(cfg.Eth.ERC20Contracts, ethClient)
+	erc20Contracts, err := createMapOfErc20Contracts(cfg.Eth.ERC20Contracts, ethClient, ethClientStatusHandler)
 	if err != nil {
 		return err
 	}
@@ -141,15 +165,20 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	args := relay.ArgsRelayer{
-		Config:           *cfg,
-		FlagsConfig:      *flagsConfig,
-		Name:             "EthToElrRelay",
-		Proxy:            proxy,
-		EthClient:        ethClient,
-		EthInstance:      ethInstance,
-		Messenger:        messenger,
-		Erc20Contracts:   erc20Contracts,
-		BridgeEthAddress: bridgeEthAddress,
+		Configs: config.Configs{
+			GeneralConfig:   cfg,
+			ApiRoutesConfig: apiRoutesConfig,
+			FlagsConfig:     flagsConfig,
+		},
+		Name:                   "EthToElrRelay",
+		Proxy:                  proxy,
+		EthClient:              ethClient,
+		EthInstance:            ethInstance,
+		Messenger:              messenger,
+		Erc20Contracts:         erc20Contracts,
+		BridgeEthAddress:       bridgeEthAddress,
+		EthClientStatusHandler: ethClientStatusHandler,
+		StatusStorer:           statusStorer,
 	}
 	ethToElrRelay, err := relay.NewRelay(args)
 	if err != nil {
@@ -184,15 +213,16 @@ func mainLoop(r *relay.Relay) {
 		os.Exit(exitCodeInterrupt)
 	}()
 
-	if err := r.Start(ctx); err != nil {
+	err := r.Start(ctx)
+	if err != nil {
 		log.Error(err.Error())
 		os.Exit(exitCodeErr)
 	}
 }
 
-func loadConfig(filepath string) (*relay.Config, error) {
-	cfg := &relay.Config{}
-	err := core.LoadTomlFile(cfg, filepath)
+func loadConfig(filepath string) (*config.Config, error) {
+	cfg := &config.Config{}
+	err := elrondCore.LoadTomlFile(cfg, filepath)
 	if err != nil {
 		return nil, err
 	}
@@ -200,8 +230,19 @@ func loadConfig(filepath string) (*relay.Config, error) {
 	return cfg, nil
 }
 
-func attachFileLogger(log logger.Logger, flagsConfig *relay.ContextFlagsConfig) (factory.FileLoggingHandler, error) {
-	var fileLogging factory.FileLoggingHandler
+// LoadApiConfig returns a ApiRoutesConfig by reading the config file provided
+func loadApiConfig(filepath string) (*config.ApiRoutesConfig, error) {
+	cfg := &config.ApiRoutesConfig{}
+	err := elrondCore.LoadTomlFile(cfg, filepath)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func attachFileLogger(log logger.Logger, flagsConfig *config.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
+	var fileLogging elrondFactory.FileLoggingHandler
 	var err error
 	if flagsConfig.SaveLogFile {
 		fileLogging, err = logging.NewFileLogging(flagsConfig.WorkingDir, defaultLogsPath, logFilePrefix)
@@ -235,14 +276,14 @@ func attachFileLogger(log logger.Logger, flagsConfig *relay.ContextFlagsConfig) 
 	return fileLogging, nil
 }
 
-func buildNetMessenger(cfg relay.Config, marshalizer marshal.Marshalizer) (relayp2p.NetMessenger, error) {
-	nodeConfig := config.NodeConfig{
+func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.NetMessenger, error) {
+	nodeConfig := elrondConfig.NodeConfig{
 		Port:                       cfg.P2P.Port,
 		Seed:                       cfg.P2P.Seed,
 		MaximumExpectedPeerCount:   0,
 		ThresholdMinConnectedPeers: 0,
 	}
-	peerDiscoveryConfig := config.KadDhtPeerDiscoveryConfig{
+	peerDiscoveryConfig := elrondConfig.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
 		RefreshIntervalInSec:             5,
 		ProtocolID:                       cfg.P2P.ProtocolID,
@@ -252,10 +293,10 @@ func buildNetMessenger(cfg relay.Config, marshalizer marshal.Marshalizer) (relay
 		Type:                             p2pPeerNetworkDiscoverer,
 	}
 
-	p2pConfig := config.P2PConfig{
+	p2pConfig := elrondConfig.P2PConfig{
 		Node:                nodeConfig,
 		KadDhtPeerDiscovery: peerDiscoveryConfig,
-		Sharding: config.ShardingConfig{
+		Sharding: elrondConfig.ShardingConfig{
 			TargetPeerCount:         0,
 			MaxIntraShardValidators: 0,
 			MaxCrossShardValidators: 0,
@@ -271,7 +312,7 @@ func buildNetMessenger(cfg relay.Config, marshalizer marshal.Marshalizer) (relay
 		P2pConfig:            p2pConfig,
 		SyncTimer:            &libp2p.LocalSyncTimer{},
 		PreferredPeersHolder: disabled.NewPreferredPeersHolder(),
-		NodeOperationMode:    p2p.NormalOperation,
+		NodeOperationMode:    elrondP2P.NormalOperation,
 	}
 
 	messenger, err := libp2p.NewNetworkMessenger(args)
@@ -285,12 +326,13 @@ func buildNetMessenger(cfg relay.Config, marshalizer marshal.Marshalizer) (relay
 func createMapOfErc20Contracts(
 	erc20List []string,
 	ethClient bind.ContractBackend,
-) (map[ethCommon.Address]eth.GenericErc20Contract, error) {
+	ethClientStatusHandler core.StatusHandler,
+) (map[ethCommon.Address]eth.Erc20Contract, error) {
 	if len(erc20List) == 0 {
 		return nil, fmt.Errorf("no ERC20 address specified in config, [Eth] section, field ERC20Contracts")
 	}
 
-	contracts := make(map[ethCommon.Address]eth.GenericErc20Contract)
+	contracts := make(map[ethCommon.Address]eth.Erc20Contract)
 	for _, strAddress := range erc20List {
 		addr := ethCommon.HexToAddress(strAddress)
 		contractInstance, err := contract.NewGenericErc20(addr, ethClient)
@@ -298,7 +340,16 @@ func createMapOfErc20Contracts(
 			return nil, fmt.Errorf("%w for %s", err, addr.String())
 		}
 
-		contracts[addr] = contractInstance
+		args := wrappers.ArgsErc20ContractWrapper{
+			StatusHandler: ethClientStatusHandler,
+			Erc20Contract: contractInstance,
+		}
+		wrapper, err := wrappers.NewErc20ContractWrapper(args)
+		if err != nil {
+			return nil, err
+		}
+
+		contracts[addr] = wrapper
 	}
 
 	return contracts, nil

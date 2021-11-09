@@ -25,3 +25,6 @@ var ErrNilDurationsMap = errors.New("nil durations map")
 
 // ErrDurationForStepNotFound signals that a duration for provided step was not found
 var ErrDurationForStepNotFound = errors.New("duration for step not found")
+
+// ErrNilStatusHandler signals that a nil status handler was provided
+var ErrNilStatusHandler = errors.New("nil status handler")

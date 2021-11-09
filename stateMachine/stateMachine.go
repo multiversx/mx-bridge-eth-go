@@ -11,6 +11,8 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
+const stopped = "stopped"
+
 // ArgsStateMachine represents the state machine arguments
 type ArgsStateMachine struct {
 	StateMachineName     string
@@ -19,6 +21,7 @@ type ArgsStateMachine struct {
 	DurationBetweenSteps time.Duration
 	Log                  logger.Logger
 	Timer                core.Timer
+	StatusHandler        core.StatusHandler
 }
 
 type stateMachine struct {
@@ -30,6 +33,7 @@ type stateMachine struct {
 	cancel               func()
 	loopStatus           *atomic.Flag
 	timer                core.Timer
+	statusHandler        core.StatusHandler
 }
 
 // NewStateMachine creates a state machine able to execute all provided steps
@@ -46,6 +50,7 @@ func NewStateMachine(args ArgsStateMachine) (*stateMachine, error) {
 		log:                  args.Log,
 		loopStatus:           &atomic.Flag{},
 		timer:                args.Timer,
+		statusHandler:        args.StatusHandler,
 	}
 	sm.currentStep, err = sm.getNextStep(args.StartStateIdentifier)
 	if err != nil {
@@ -74,6 +79,9 @@ func checkArgs(args ArgsStateMachine) error {
 	if check.IfNil(args.Timer) {
 		return ErrNilTimer
 	}
+	if check.IfNil(args.StatusHandler) {
+		return ErrNilStatusHandler
+	}
 
 	return nil
 }
@@ -81,6 +89,7 @@ func checkArgs(args ArgsStateMachine) error {
 func (sm *stateMachine) executeLoop(ctx context.Context) {
 	sm.loopStatus.Set()
 	defer sm.loopStatus.Unset()
+	defer sm.statusHandler.SetStringMetric(core.MetricCurrentStateMachineStep, stopped)
 
 	for {
 		select {
@@ -101,6 +110,7 @@ func (sm *stateMachine) executeLoop(ctx context.Context) {
 func (sm *stateMachine) executeStep(ctx context.Context) error {
 	sm.log.Trace(fmt.Sprintf("%s: executing step", sm.stateMachineName),
 		"step", sm.currentStep.Identifier())
+	sm.statusHandler.SetStringMetric(core.MetricCurrentStateMachineStep, string(sm.currentStep.Identifier()))
 	nextStepIdentifier, err := sm.currentStep.Execute(ctx)
 	if err != nil {
 		return err

@@ -26,11 +26,22 @@
 
 [Relayer]
     [Relayer.Marshalizer]
-       Type = "gogo protobuf"
-       SizeCheckDelta = 10
+        Type = "gogo protobuf"
+        SizeCheckDelta = 10
     [Relayer.RoleProvider]
-       UsePolling = true
-       PollingIntervalInMillis = 60000 # 1 minute
+        UsePolling = true
+        PollingIntervalInMillis = 60000 # 1 minute
+    [Relayer.StatusMetricsStorage]
+        [Relayer.StatusMetricsStorage.Cache]
+            Name = "StatusMetricsStorage"
+            Capacity = 1000
+            Type = "LRU"
+        [Relayer.StatusMetricsStorage.DB]
+            FilePath = "StatusMetricsStorageDB"
+            Type = "LvlDBSerial"
+            BatchDelaySeconds = 2
+            MaxBatchSize = 100
+            MaxOpenFiles = 10
 
 [StateMachine]
     [StateMachine.EthToElrond]
@@ -57,3 +68,15 @@
         ]
 [Logs]
     LogFileLifeSpanInSec = 86400 # 24h
+
+[Antiflood]
+    Enabled = true
+    [Antiflood.WebServer]
+            # SimultaneousRequests represents the number of concurrent requests accepted by the web server
+            # this is a global throttler that acts on all http connections regardless of the originating source
+            SimultaneousRequests = 100
+            # SameSourceRequests defines how many requests are allowed from the same source in the specified
+            # time frame (SameSourceResetIntervalInSec)
+            SameSourceRequests = 10000
+            # SameSourceResetIntervalInSec time frame between counter reset, in seconds
+            SameSourceResetIntervalInSec = 1

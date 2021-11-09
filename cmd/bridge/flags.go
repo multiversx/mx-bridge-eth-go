@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/facade"
 	"github.com/urfave/cli"
@@ -22,6 +22,13 @@ var (
 		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contain the main " +
 			"configurations such as storage setups, epoch duration and so on.",
 		Value: "config/config.toml",
+	}
+	// configurationApiFile defines a flag for the path to the api routes toml configuration file
+	configurationApiFile = cli.StringFlag{
+		Name: "config-api",
+		Usage: "The `" + filePathPlaceholder + "` for the api configuration file. This TOML file contains " +
+			"all available routes for Rest API and options to enable or disable them.",
+		Value: "config/api.toml",
 	}
 	// logFile is used when the log output needs to be logged in a file
 	logSaveFile = cli.BoolFlag{
@@ -55,7 +62,7 @@ var (
 	// workingDirectory defines a flag for the path for the working directory.
 	workingDirectory = cli.StringFlag{
 		Name:  "working-directory",
-		Usage: "This flag specifies the `directory` where the node will store databases, logs and statistics.",
+		Usage: "This flag specifies the `directory` where the node will store databases and logs.",
 		Value: "",
 	}
 	// disableAnsiColor defines if the logger subsystem should prevent displaying ANSI colors
@@ -76,19 +83,21 @@ func getFlags() []cli.Flag {
 		logLevel,
 		disableAnsiColor,
 		configurationFile,
+		configurationApiFile,
 		logSaveFile,
 		logWithLoggerName,
 		profileMode,
 		restApiInterface,
 	}
 }
-func getFlagsConfig(ctx *cli.Context) *relay.ContextFlagsConfig {
-	flagsConfig := &relay.ContextFlagsConfig{}
+func getFlagsConfig(ctx *cli.Context) *config.ContextFlagsConfig {
+	flagsConfig := &config.ContextFlagsConfig{}
 
 	flagsConfig.WorkingDir = ctx.GlobalString(workingDirectory.Name)
 	flagsConfig.LogLevel = ctx.GlobalString(logLevel.Name)
 	flagsConfig.DisableAnsiColor = ctx.GlobalBool(disableAnsiColor.Name)
 	flagsConfig.ConfigurationFile = ctx.GlobalString(configurationFile.Name)
+	flagsConfig.ConfigurationApiFile = ctx.GlobalString(configurationApiFile.Name)
 	flagsConfig.SaveLogFile = ctx.GlobalBool(logSaveFile.Name)
 	flagsConfig.EnableLogName = ctx.GlobalBool(logWithLoggerName.Name)
 	flagsConfig.EnablePprof = ctx.GlobalBool(profileMode.Name)

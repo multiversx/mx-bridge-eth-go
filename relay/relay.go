@@ -9,28 +9,31 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/api"
+	"github.com/ElrondNetwork/elrond-eth-bridge/api/gin"
+	"github.com/ElrondNetwork/elrond-eth-bridge/api/shared"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/wrappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement/factory"
-	coreBridge "github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/polling"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/facade"
-	relayp2p "github.com/ElrondNetwork/elrond-eth-bridge/relay/p2p"
+	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay/roleProvider"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
+	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/api/shared"
-	"github.com/ElrondNetwork/elrond-go/config"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/ntp"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
@@ -38,8 +41,9 @@ import (
 )
 
 const (
-	minimumDurationForStep = time.Second
-	pollingDurationOnError = time.Second * 5
+	minimumDurationForStep          = time.Second
+	pollingDurationOnError          = time.Second * 5
+	p2pStatusHandlerPollingInterval = time.Second * 2
 )
 
 type defaultTimer struct {
@@ -48,7 +52,7 @@ type defaultTimer struct {
 
 func NewDefaultTimer() *defaultTimer {
 	return &defaultTimer{
-		ntpSyncTimer: ntp.NewSyncTime(config.NTPConfig{SyncPeriodSeconds: 3600}, nil),
+		ntpSyncTimer: ntp.NewSyncTime(elrondConfig.NTPConfig{SyncPeriodSeconds: 3600}, nil),
 	}
 }
 
@@ -73,8 +77,8 @@ func (s *defaultTimer) IsInterfaceNil() bool {
 }
 
 type Relay struct {
-	messenger relayp2p.NetMessenger
-	timer     coreBridge.Timer
+	messenger p2p.NetMessenger
+	timer     core.Timer
 	log       logger.Logger
 
 	ethBridge    bridge.Bridge
@@ -84,25 +88,27 @@ type Relay struct {
 	ethereumRoleProvider EthereumRoleProvider
 	quorumProvider       bridge.QuorumProvider
 	stepDuration         time.Duration
-	stateMachineConfig   map[string]ConfigStateMachine
-	flagsConfig          ContextFlagsConfig
+	configs              config.Configs
 	broadcaster          Broadcaster
 	pollingHandlers      []io.Closer
 	elrondAddress        erdgoCore.AddressHandler
 	ethereumAddress      common.Address
+	metricsHolder        core.MetricsHolder
+	statusStorer         core.Storer
 }
 
 // ArgsRelayer is the DTO used in the relayer constructor
 type ArgsRelayer struct {
-	Config           Config
-	FlagsConfig      ContextFlagsConfig
-	Name             string
-	Proxy            bridge.ElrondProxy
-	EthClient        eth.BlockchainClient
-	EthInstance      eth.BridgeContract
-	Messenger        relayp2p.NetMessenger
-	Erc20Contracts   map[common.Address]eth.GenericErc20Contract
-	BridgeEthAddress common.Address
+	Configs                config.Configs
+	Name                   string
+	Proxy                  bridge.ElrondProxy
+	EthClient              wrappers.BlockchainClient
+	EthInstance            wrappers.BridgeContract
+	Messenger              p2p.NetMessenger
+	Erc20Contracts         map[common.Address]eth.Erc20Contract
+	BridgeEthAddress       common.Address
+	EthClientStatusHandler core.StatusHandler
+	StatusStorer           core.Storer
 }
 
 // NewRelay creates a new relayer node able to work on 2-half bridges
@@ -114,13 +120,21 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	relay := &Relay{
-		messenger:          args.Messenger,
-		stateMachineConfig: args.Config.StateMachine,
-		log:                logger.GetOrCreate(args.Name),
+		messenger:     args.Messenger,
+		configs:       args.Configs,
+		log:           logger.GetOrCreate(args.Name),
+		metricsHolder: status.NewMetricsHolder(),
+		statusStorer:  args.StatusStorer,
 	}
 
+	err = relay.metricsHolder.AddStatusHandler(args.EthClientStatusHandler)
+	if err != nil {
+		return nil, err
+	}
+
+	cfgs := args.Configs.GeneralConfig
 	wallet := interactors.NewWallet()
-	privateKey, err := wallet.LoadPrivateKeyFromPemFile(args.Config.Elrond.PrivateKeyFile)
+	privateKey, err := wallet.LoadPrivateKeyFromPemFile(cfgs.Elrond.PrivateKeyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +152,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	clientArgs := elrond.ClientArgs{
-		Config:     args.Config.Elrond,
+		Config:     cfgs.Elrond,
 		Proxy:      args.Proxy,
 		PrivateKey: txSignPrivKey,
 		Address:    relay.elrondAddress,
@@ -149,13 +163,13 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 	relay.elrondBridge = elrondBridge
 
-	gasStationConfig := args.Config.Eth.GasStation
+	gasStationConfig := cfgs.Eth.GasStation
 	argsGasStation := gasManagement.ArgsGasStation{
 		RequestURL:             gasStationConfig.URL,
 		RequestPollingInterval: time.Duration(gasStationConfig.PollingIntervalInSeconds) * time.Second,
 		RequestTime:            time.Duration(gasStationConfig.RequestTimeInSeconds) * time.Second,
 		MaximumGasPrice:        gasStationConfig.MaximumAllowedGasPrice,
-		GasPriceSelector:       coreBridge.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
+		GasPriceSelector:       core.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
 	}
 
 	gs, err := factory.CreateGasStation(argsGasStation, gasStationConfig.Enabled)
@@ -163,13 +177,22 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		return nil, err
 	}
 
+	argsClientWrapper := wrappers.ArgsEthClientWrapper{
+		BridgeContract:   args.EthInstance,
+		BlockchainClient: args.EthClient,
+		StatusHandler:    args.EthClientStatusHandler,
+	}
+	ethClientWrapper, err := wrappers.NewEthClientWrapper(argsClientWrapper)
+	if err != nil {
+		return nil, err
+	}
+
 	argsClient := eth.ArgsClient{
-		Config:         args.Config.Eth,
+		Config:         cfgs.Eth,
 		Broadcaster:    relay,
 		Mapper:         elrondBridge,
 		GasHandler:     gs,
-		EthClient:      args.EthClient,
-		EthInstance:    args.EthInstance,
+		ClientWrapper:  ethClientWrapper,
 		Erc20Contracts: args.Erc20Contracts,
 		BridgeAddress:  args.BridgeEthAddress,
 	}
@@ -181,12 +204,17 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	relay.quorumProvider = ethBridge
 	relay.ethereumAddress = ethBridge.Address()
 
-	err = relay.createRoleProviders(args.Config)
+	err = relay.createRoleProviders(*cfgs)
 	if err != nil {
 		return nil, err
 	}
 
-	argsBroadcaster := relayp2p.ArgsBroadcaster{
+	err = relay.startP2PStatusHandler()
+	if err != nil {
+		return nil, err
+	}
+
+	argsBroadcaster := p2p.ArgsBroadcaster{
 		Messenger:          relay.messenger,
 		Log:                relay.log,
 		ElrondRoleProvider: relay.elrondRoleProvider,
@@ -196,13 +224,12 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		SignatureProcessor: relay.ethereumRoleProvider,
 		Name:               "eth-elrond",
 	}
-	relay.broadcaster, err = relayp2p.NewBroadcaster(argsBroadcaster)
+	relay.broadcaster, err = p2p.NewBroadcaster(argsBroadcaster)
 	if err != nil {
 		return nil, err
 	}
 
 	relay.timer = NewDefaultTimer()
-	relay.flagsConfig = args.FlagsConfig
 
 	relay.log.Debug("creating API services")
 	_, err = relay.createHttpServer()
@@ -214,10 +241,16 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 }
 
 func checkArgs(args ArgsRelayer) error {
-	if check.IfNilReflect(args.Config) {
+	if check.IfNilReflect(args.Configs) {
 		return ErrMissingConfig
 	}
-	if check.IfNilReflect(args.FlagsConfig) {
+	if check.IfNilReflect(args.Configs.GeneralConfig) {
+		return ErrMissingGeneralConfig
+	}
+	if check.IfNilReflect(args.Configs.ApiRoutesConfig) {
+		return ErrMissingApiRoutesConfig
+	}
+	if check.IfNilReflect(args.Configs.FlagsConfig) {
 		return ErrMissingFlagsConfig
 	}
 	if check.IfNil(args.Proxy) {
@@ -235,10 +268,16 @@ func checkArgs(args ArgsRelayer) error {
 	if args.Erc20Contracts == nil {
 		return ErrNilErc20Contracts
 	}
+	if check.IfNil(args.EthClientStatusHandler) {
+		return fmt.Errorf("%w for EthClientStatusHandler", ErrNilStatusHandler)
+	}
+	if check.IfNil(args.StatusStorer) {
+		return ErrNilStatusStorer
+	}
 	return nil
 }
 
-func (r *Relay) createRoleProviders(config Config) error {
+func (r *Relay) createRoleProviders(config config.Config) error {
 	err := r.createElrondRoleProvider(config)
 	if err != nil {
 		return err
@@ -252,7 +291,7 @@ func (r *Relay) createRoleProviders(config Config) error {
 	return nil
 }
 
-func (r *Relay) createElrondRoleProvider(config Config) error {
+func (r *Relay) createElrondRoleProvider(config config.Config) error {
 	chainInteractor, ok := r.elrondBridge.(ElrondChainInteractor)
 	if !ok {
 		return errors.New("programming error: r.elrondBridge is not of type ElrondChainInteractor")
@@ -287,7 +326,7 @@ func (r *Relay) createElrondRoleProvider(config Config) error {
 	return pollingHandler.StartProcessingLoop()
 }
 
-func (r *Relay) createEthereumRoleProvider(config Config) error {
+func (r *Relay) createEthereumRoleProvider(config config.Config) error {
 	chainInteractor, ok := r.ethBridge.(EthereumChainInteractor)
 	if !ok {
 		return errors.New("programming error: r.ethBridge is not of type EthereumChainInteractor")
@@ -322,6 +361,49 @@ func (r *Relay) createEthereumRoleProvider(config Config) error {
 	return pollingHandler.StartProcessingLoop()
 }
 
+func (r *Relay) startP2PStatusHandler() error {
+	p2pStatusHandler, err := status.NewStatusHandler("p2p", r.statusStorer)
+	if err != nil {
+		return err
+	}
+
+	argsAdapter := p2p.ArgsStatusHandlerAdapter{
+		StatusHandler: p2pStatusHandler,
+		Messenger:     r.messenger,
+	}
+	adapterP2PStatusHandler, err := p2p.NewStatusHandlerAdapter(argsAdapter)
+	if err != nil {
+		return err
+	}
+
+	err = r.metricsHolder.AddStatusHandler(adapterP2PStatusHandler)
+	if err != nil {
+		return err
+	}
+
+	argsP2PStatusPolling := polling.ArgsPollingHandler{
+		Log:              r.log,
+		Name:             "p2p status handler polling",
+		PollingInterval:  p2pStatusHandlerPollingInterval,
+		PollingWhenError: p2pStatusHandlerPollingInterval,
+		Executor:         adapterP2PStatusHandler,
+	}
+	p2pStatusPolling, err := polling.NewPollingHandler(argsP2PStatusPolling)
+	if err != nil {
+		return err
+	}
+
+	err = p2pStatusPolling.StartProcessingLoop()
+	if err != nil {
+		return err
+	}
+
+	r.pollingHandlers = append(r.pollingHandlers, p2pStatusPolling)
+
+	return nil
+}
+
+// Start will create the 2-half brides and start them. The function will return when the context is done.
 func (r *Relay) Start(ctx context.Context) error {
 	err := r.init(ctx)
 	if err != nil {
@@ -331,11 +413,30 @@ func (r *Relay) Start(ctx context.Context) error {
 
 	r.timer.Start()
 
-	smEthToElrond, err := r.createAndStartBridge(r.ethBridge, r.elrondBridge, "EthToElrond")
+	ethToElrondStatusHandler, err := status.NewStatusHandler(core.EthToElrondStatusHandlerName, r.statusStorer)
 	if err != nil {
 		return err
 	}
-	smElrondToEth, err := r.createAndStartBridge(r.elrondBridge, r.ethBridge, "ElrondToEth")
+	err = r.metricsHolder.AddStatusHandler(ethToElrondStatusHandler)
+	if err != nil {
+		return err
+	}
+
+	elrondToEthStatusHandler, err := status.NewStatusHandler(core.ElrondToEthStatusHandlerName, r.statusStorer)
+	if err != nil {
+		return err
+	}
+	err = r.metricsHolder.AddStatusHandler(elrondToEthStatusHandler)
+	if err != nil {
+		return err
+	}
+
+	smEthToElrond, err := r.createAndStartBridge(ethToElrondStatusHandler, r.ethBridge, r.elrondBridge, "EthToElrond")
+	if err != nil {
+		return err
+	}
+
+	smElrondToEth, err := r.createAndStartBridge(elrondToEthStatusHandler, r.elrondBridge, r.ethBridge, "ElrondToEth")
 	if err != nil {
 		return err
 	}
@@ -347,13 +448,11 @@ func (r *Relay) Start(ctx context.Context) error {
 	err = smElrondToEth.Close()
 	r.log.LogIfError(err)
 
-	err = r.Stop()
-	r.log.LogIfError(err)
-
-	return nil
+	return r.Close()
 }
 
 func (r *Relay) createAndStartBridge(
+	statusHandler core.StatusHandler,
 	sourceBridge bridge.Bridge,
 	destinationBridge bridge.Bridge,
 	name string,
@@ -373,6 +472,7 @@ func (r *Relay) createAndStartBridge(
 		QuorumProvider:    r.quorumProvider,
 		Timer:             r.timer,
 		DurationsMap:      durationsMap,
+		StatusHandler:     statusHandler,
 	}
 
 	bridgeExecutor, err := bridgeExecutors.NewEthElrondBridgeExecutor(argsExecutor)
@@ -403,23 +503,24 @@ func (r *Relay) createAndStartBridge(
 		DurationBetweenSteps: r.stepDuration,
 		Log:                  logStateMachine,
 		Timer:                r.timer,
+		StatusHandler:        statusHandler,
 	}
 
 	return stateMachine.NewStateMachine(argsStateMachine)
 }
 
-func (r *Relay) processStateMachineConfigDurations(name string) (map[coreBridge.StepIdentifier]time.Duration, error) {
-	cfg, exists := r.stateMachineConfig[name]
+func (r *Relay) processStateMachineConfigDurations(name string) (map[core.StepIdentifier]time.Duration, error) {
+	cfg, exists := r.configs.GeneralConfig.StateMachine[name]
 	if !exists {
 		return nil, fmt.Errorf("%w for %q", ErrMissingConfig, name)
 	}
 	r.stepDuration = time.Duration(cfg.StepDurationInMillis) * time.Millisecond
 	r.log.Debug("loaded state machine StepDuration from configs", "duration", r.stepDuration)
 
-	durationsMap := make(map[coreBridge.StepIdentifier]time.Duration)
+	durationsMap := make(map[core.StepIdentifier]time.Duration)
 	for _, stepCfg := range cfg.Steps {
 		d := time.Duration(stepCfg.DurationInMillis) * time.Millisecond
-		durationsMap[coreBridge.StepIdentifier(stepCfg.Name)] = d
+		durationsMap[core.StepIdentifier(stepCfg.Name)] = d
 		r.log.Debug("loaded StepDuration from configs", "step", stepCfg.Name, "duration", d)
 	}
 
@@ -427,8 +528,8 @@ func (r *Relay) processStateMachineConfigDurations(name string) (map[coreBridge.
 }
 
 func (r *Relay) checkDurations(
-	steps map[coreBridge.StepIdentifier]coreBridge.Step,
-	stepsDurations map[coreBridge.StepIdentifier]time.Duration,
+	steps map[core.StepIdentifier]core.Step,
+	stepsDurations map[core.StepIdentifier]time.Duration,
 ) error {
 	if r.stepDuration < minimumDurationForStep {
 		return fmt.Errorf("%w for config %q", ErrInvalidDurationConfig, "StepDurationInMillis")
@@ -444,18 +545,37 @@ func (r *Relay) checkDurations(
 	return nil
 }
 
-func (r *Relay) Stop() error {
+// Close will call Close on any started componeents
+func (r *Relay) Close() error {
+	var lastErrorFound error
+
 	for _, closer := range r.pollingHandlers {
 		err := closer.Close()
-		r.log.LogIfError(err)
+		if err != nil {
+			r.log.Error(err.Error())
+			lastErrorFound = err
+		}
 	}
 
 	err := r.timer.Close()
 	if err != nil {
 		r.log.Error(err.Error())
+		lastErrorFound = err
 	}
 
-	return r.broadcaster.Close()
+	err = r.statusStorer.Close()
+	if err != nil {
+		r.log.Error(err.Error())
+		lastErrorFound = err
+	}
+
+	err = r.broadcaster.Close()
+	if err != nil {
+		r.log.Error(err.Error())
+		lastErrorFound = err
+	}
+
+	return lastErrorFound
 }
 
 // AmITheLeader returns true if the current relayer is the leader in this round
@@ -515,11 +635,24 @@ func (r *Relay) init(ctx context.Context) error {
 }
 
 func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) {
-	httpServerArgs := api.ArgsNewWebServer{
-		Facade: facade.NewRelayerFacade(r.flagsConfig.RestApiInterface, r.flagsConfig.EnablePprof),
+	argsFacade := facade.ArgsRelayerFacade{
+		MetricsHolder: r.metricsHolder,
+		ApiInterface:  r.configs.FlagsConfig.RestApiInterface,
+		PprofEnabled:  r.configs.FlagsConfig.EnablePprof,
 	}
 
-	httpServerWrapper, err := api.NewWebServerHandler(httpServerArgs)
+	relayerFacade, err := facade.NewRelayerFacade(argsFacade)
+	if err != nil {
+		return nil, err
+	}
+
+	httpServerArgs := gin.ArgsNewWebServer{
+		Facade:          relayerFacade,
+		ApiConfig:       *r.configs.ApiRoutesConfig,
+		AntiFloodConfig: r.configs.GeneralConfig.Antiflood.WebServer,
+	}
+
+	httpServerWrapper, err := gin.NewWebServerHandler(httpServerArgs)
 	if err != nil {
 		return nil, err
 	}

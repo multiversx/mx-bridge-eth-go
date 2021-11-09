@@ -15,89 +15,99 @@ type MessengerStub struct {
 	CreateTopicCalled              func(name string, createChannelForTopic bool) error
 	BroadcastCalled                func(topic string, buff []byte)
 	SendToConnectedPeerCalled      func(topic string, buff []byte, peerID core.PeerID) error
+	ConnectedAddressesCalled       func() []string
 	CloseCalled                    func() error
 }
 
 // ID -
-func (ms *MessengerStub) ID() core.PeerID {
-	if ms.IDCalled != nil {
-		return ms.IDCalled()
+func (stub *MessengerStub) ID() core.PeerID {
+	if stub.IDCalled != nil {
+		return stub.IDCalled()
 	}
 
 	return ""
 }
 
 // Bootstrap -
-func (ms *MessengerStub) Bootstrap() error {
-	if ms.BootstrapCalled != nil {
-		return ms.BootstrapCalled()
+func (stub *MessengerStub) Bootstrap() error {
+	if stub.BootstrapCalled != nil {
+		return stub.BootstrapCalled()
 	}
 
 	return nil
 }
 
 // Addresses -
-func (ms *MessengerStub) Addresses() []string {
-	if ms.AddressesCalled != nil {
-		return ms.AddressesCalled()
+func (stub *MessengerStub) Addresses() []string {
+	if stub.AddressesCalled != nil {
+		return stub.AddressesCalled()
 	}
 
 	return make([]string, 0)
 }
 
 // RegisterMessageProcessor -
-func (ms *MessengerStub) RegisterMessageProcessor(topic string, identifier string, processor p2p.MessageProcessor) error {
-	if ms.RegisterMessageProcessorCalled != nil {
-		return ms.RegisterMessageProcessorCalled(topic, identifier, processor)
+func (stub *MessengerStub) RegisterMessageProcessor(topic string, identifier string, processor p2p.MessageProcessor) error {
+	if stub.RegisterMessageProcessorCalled != nil {
+		return stub.RegisterMessageProcessorCalled(topic, identifier, processor)
 	}
 
 	return nil
 }
 
 // HasTopic -
-func (ms *MessengerStub) HasTopic(name string) bool {
-	if ms.HasTopicCalled != nil {
-		return ms.HasTopicCalled(name)
+func (stub *MessengerStub) HasTopic(name string) bool {
+	if stub.HasTopicCalled != nil {
+		return stub.HasTopicCalled(name)
 	}
 
 	return false
 }
 
 // CreateTopic -
-func (ms *MessengerStub) CreateTopic(name string, createChannelForTopic bool) error {
-	if ms.CreateTopicCalled != nil {
-		return ms.CreateTopicCalled(name, createChannelForTopic)
+func (stub *MessengerStub) CreateTopic(name string, createChannelForTopic bool) error {
+	if stub.CreateTopicCalled != nil {
+		return stub.CreateTopicCalled(name, createChannelForTopic)
 	}
 
 	return nil
 }
 
 // Broadcast -
-func (ms *MessengerStub) Broadcast(topic string, buff []byte) {
-	if ms.BroadcastCalled != nil {
-		ms.BroadcastCalled(topic, buff)
+func (stub *MessengerStub) Broadcast(topic string, buff []byte) {
+	if stub.BroadcastCalled != nil {
+		stub.BroadcastCalled(topic, buff)
 	}
 }
 
 // SendToConnectedPeer -
-func (ms *MessengerStub) SendToConnectedPeer(topic string, buff []byte, peerID core.PeerID) error {
-	if ms.SendToConnectedPeerCalled != nil {
-		return ms.SendToConnectedPeerCalled(topic, buff, peerID)
+func (stub *MessengerStub) SendToConnectedPeer(topic string, buff []byte, peerID core.PeerID) error {
+	if stub.SendToConnectedPeerCalled != nil {
+		return stub.SendToConnectedPeerCalled(topic, buff, peerID)
 	}
 
 	return nil
 }
 
+// ConnectedAddresses -
+func (stub *MessengerStub) ConnectedAddresses() []string {
+	if stub.ConnectedAddressesCalled != nil {
+		return stub.ConnectedAddressesCalled()
+	}
+
+	return make([]string, 0)
+}
+
 // Close -
-func (ms *MessengerStub) Close() error {
-	if ms.CloseCalled != nil {
-		return ms.CloseCalled()
+func (stub *MessengerStub) Close() error {
+	if stub.CloseCalled != nil {
+		return stub.CloseCalled()
 	}
 
 	return nil
 }
 
 // IsInterfaceNil -
-func (ms *MessengerStub) IsInterfaceNil() bool {
-	return ms == nil
+func (stub *MessengerStub) IsInterfaceNil() bool {
+	return stub == nil
 }

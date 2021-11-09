@@ -11,12 +11,14 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	"github.com/ElrondNetwork/elrond-go/config"
+	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
@@ -44,10 +46,10 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	tokens := []common.Address{token1Erc20, token2Erc20}
 	availableBalances := []*big.Int{value1, value2}
 
-	erc20Contracts := make(map[common.Address]eth.GenericErc20Contract)
+	erc20Contracts := make(map[common.Address]eth.Erc20Contract)
 	for i, token := range tokens {
-		erc20Contracts[token] = &testsCommon.GenericErc20ContractStub{
-			BalanceOfCalled: func(account common.Address) (*big.Int, error) {
+		erc20Contracts[token] = &mockInteractors.Erc20ContractStub{
+			BalanceOfCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
 				if account == bridgeEthAddress {
 					return availableBalances[i], nil
 				}
@@ -97,7 +99,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	relayers := make([]*relay.Relay, 0, numRelayers)
 	defer func() {
 		for _, r := range relayers {
-			_ = r.Stop()
+			_ = r.Close()
 		}
 	}()
 
@@ -157,23 +159,29 @@ func createMockRelayArgs(
 	ethereumChainMock *mock.EthereumChainMock,
 ) relay.ArgsRelayer {
 
+	generalConfigs := createMockRelayConfig(index)
 	return relay.ArgsRelayer{
-		Config: createMockRelayConfig(index),
-		FlagsConfig: relay.ContextFlagsConfig{
-			RestApiInterface: core.WebServerOffString,
+		Configs: config.Configs{
+			GeneralConfig:   &generalConfigs,
+			ApiRoutesConfig: &config.ApiRoutesConfig{},
+			FlagsConfig: &config.ContextFlagsConfig{
+				RestApiInterface: core.WebServerOffString,
+			},
 		},
-		Name:        "eth <-> elrond",
-		Proxy:       elrondChainMock,
-		EthClient:   ethereumChainMock,
-		EthInstance: ethereumChainMock,
-		Messenger:   messenger,
+		Name:                   "eth <-> elrond",
+		Proxy:                  elrondChainMock,
+		EthClient:              ethereumChainMock,
+		EthInstance:            ethereumChainMock,
+		Messenger:              messenger,
+		EthClientStatusHandler: testsCommon.NewStatusHandlerMock("mock"),
+		StatusStorer:           testsCommon.NewStorerMock(),
 	}
 }
 
-func createMockRelayConfig(index int) relay.Config {
-	stateMachineConfig := relay.ConfigStateMachine{
+func createMockRelayConfig(index int) config.Config {
+	stateMachineConfig := config.ConfigStateMachine{
 		StepDurationInMillis: 1000,
-		Steps: []relay.StepConfig{
+		Steps: []config.StepConfig{
 			{Name: "getting the pending transactions", DurationInMillis: 1000},
 			{Name: "proposing transfer", DurationInMillis: 1000},
 			{Name: "waiting signatures for propose transfer", DurationInMillis: 1000},
@@ -184,7 +192,7 @@ func createMockRelayConfig(index int) relay.Config {
 		},
 	}
 
-	return relay.Config{
+	return config.Config{
 		Eth: bridge.EthereumConfig{
 			NetworkAddress:               "mock",
 			BridgeAddress:                "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
@@ -201,17 +209,17 @@ func createMockRelayConfig(index int) relay.Config {
 			PrivateKeyFile:               fmt.Sprintf("testdata/elrond%d.pem", index),
 			IntervalToResendTxsInSeconds: 10,
 		},
-		P2P: relay.ConfigP2P{},
-		StateMachine: map[string]relay.ConfigStateMachine{
+		P2P: config.ConfigP2P{},
+		StateMachine: map[string]config.ConfigStateMachine{
 			"EthToElrond": stateMachineConfig,
 			"ElrondToEth": stateMachineConfig,
 		},
-		Relayer: relay.ConfigRelayer{
-			Marshalizer: config.MarshalizerConfig{
+		Relayer: config.ConfigRelayer{
+			Marshalizer: elrondConfig.MarshalizerConfig{
 				Type:           "json",
 				SizeCheckDelta: 10,
 			},
-			RoleProvider: relay.RoleProviderConfig{
+			RoleProvider: config.RoleProviderConfig{
 				PollingIntervalInMillis: 1000,
 			},
 		},
