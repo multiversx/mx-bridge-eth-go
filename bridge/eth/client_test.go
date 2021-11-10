@@ -11,6 +11,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
@@ -56,7 +57,7 @@ func TestGetPending(t *testing.T) {
 						TokenAddress: common.HexToAddress("0x093c0B280ba430A9Cc9C3649FF34FCBf6347bC50"),
 						Amount:       big.NewInt(42),
 						Depositor:    common.HexToAddress("0x132A150926691F08a693721503a38affeD18d524"),
-						Recipient:    buff,
+						Recipient:    core.ConvertFromByteSliceToArray(buff),
 						Status:       0,
 					},
 				},

@@ -170,8 +170,8 @@ func (c *client) GetPending(ctx context.Context) *bridge.Batch {
 		var transactions []*bridge.DepositTransaction
 		for _, deposit := range batch.Deposits {
 			tx := &bridge.DepositTransaction{
-				To:            string(deposit.Recipient),
-				DisplayableTo: c.addressConverter.Encode(deposit.Recipient),
+				To:            string(deposit.Recipient[:]),
+				DisplayableTo: c.addressConverter.Encode(deposit.Recipient[:]),
 				From:          deposit.Depositor.String(),
 				TokenAddress:  deposit.TokenAddress.String(),
 				Amount:        deposit.Amount,
