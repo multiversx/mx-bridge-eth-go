@@ -69,7 +69,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 				TokenAddress: token1Erc20,
 				Amount:       value1,
 				Depositor:    common.Address{},
-				Recipient:    destination1.AddressBytes(),
+				Recipient:    core.ConvertFromByteSliceToArray(destination1.AddressBytes()),
 				Status:       0,
 			},
 			{
@@ -77,11 +77,10 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 				TokenAddress: token2Erc20,
 				Amount:       value2,
 				Depositor:    common.Address{},
-				Recipient:    destination2.AddressBytes(),
+				Recipient:    core.ConvertFromByteSliceToArray(destination2.AddressBytes()),
 				Status:       0,
 			},
 		},
-		Status: 0,
 	}
 
 	ethereumChainMock := mock.NewEthereumChainMock()
