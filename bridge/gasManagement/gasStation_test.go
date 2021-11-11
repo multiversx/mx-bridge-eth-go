@@ -1,14 +1,13 @@
 package gasManagement
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -18,35 +17,15 @@ import (
 
 func createMockArgsGasStation() ArgsGasStation {
 	return ArgsGasStation{
-		RequestURL:             "",
-		RequestPollingInterval: time.Second,
-		RequestTime:            time.Second,
-		MaximumGasPrice:        1000,
-		GasPriceSelector:       "fast",
+		RequestURL:       "",
+		MaximumGasPrice:  1000,
+		GasPriceSelector: "fast",
 	}
 }
 
 func TestNewGasStation(t *testing.T) {
 	t.Parallel()
 
-	t.Run("invalid polling time", func(t *testing.T) {
-		args := createMockArgsGasStation()
-		args.RequestPollingInterval = time.Duration(minPollingInterval.Nanoseconds() - 1)
-
-		gs, err := NewGasStation(args)
-		assert.True(t, check.IfNil(gs))
-		assert.True(t, errors.Is(err, ErrInvalidValue))
-		assert.True(t, strings.Contains(err.Error(), "checkArgs for value RequestPollingInterval"))
-	})
-	t.Run("invalid request time", func(t *testing.T) {
-		args := createMockArgsGasStation()
-		args.RequestTime = time.Duration(minRequestTime.Nanoseconds() - 1)
-
-		gs, err := NewGasStation(args)
-		assert.True(t, check.IfNil(gs))
-		assert.True(t, errors.Is(err, ErrInvalidValue))
-		assert.True(t, strings.Contains(err.Error(), "checkArgs for value RequestTime"))
-	})
 	t.Run("invalid gas price selector", func(t *testing.T) {
 		args := createMockArgsGasStation()
 		args.GasPriceSelector = "invalid"
@@ -61,37 +40,7 @@ func TestNewGasStation(t *testing.T) {
 		gs, err := NewGasStation(args)
 		assert.False(t, check.IfNil(gs))
 		assert.Nil(t, err, ErrInvalidGasPriceSelector)
-
-		_ = gs.Close()
 	})
-}
-
-func TestGasStation_CloseWhileDoingRequest(t *testing.T) {
-	t.Parallel()
-
-	args := createMockArgsGasStation()
-	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		// simulating that the operation takes a lot of time
-
-		time.Sleep(time.Second * 3)
-
-		rw.WriteHeader(http.StatusOK)
-		_, _ = rw.Write(nil)
-	}))
-	defer httpServer.Close()
-
-	args.RequestURL = httpServer.URL
-
-	gs, err := NewGasStation(args)
-	require.Nil(t, err)
-
-	time.Sleep(time.Second)
-	assert.True(t, gs.loopStatus.IsSet())
-	_ = gs.Close()
-
-	time.Sleep(time.Millisecond * 500)
-
-	assert.False(t, gs.loopStatus.IsSet())
 }
 
 func TestGasStation_InvalidJsonResponse(t *testing.T) {
@@ -109,12 +58,9 @@ func TestGasStation_InvalidJsonResponse(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(time.Second * 2)
-	assert.True(t, gs.loopStatus.IsSet())
-	_ = gs.Close()
+	err = gs.Execute(context.Background())
+	assert.IsType(t, err, &json.SyntaxError{})
 
-	time.Sleep(time.Millisecond * 500)
-	assert.False(t, gs.loopStatus.IsSet())
 	assert.Nil(t, gs.GetLatestResponse())
 	gasPrice, err := gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
@@ -151,12 +97,9 @@ func TestGasStation_GoodResponseShouldSave(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(time.Second * 2)
-	assert.True(t, gs.loopStatus.IsSet())
-	_ = gs.Close()
+	err = gs.Execute(context.Background())
+	assert.Nil(t, err)
 
-	time.Sleep(time.Millisecond * 500)
-	assert.False(t, gs.loopStatus.IsSet())
 	assert.Equal(t, gsResponse, *gs.GetLatestResponse())
 }
 
@@ -190,9 +133,7 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(time.Second * 2)
-	assert.True(t, gs.loopStatus.IsSet())
-	_ = gs.Close()
+	_ = gs.Execute(context.Background())
 
 	gs.SetSelector(core.EthFastGasPrice)
 	price, err := gs.GetCurrentGasPrice()
@@ -244,9 +185,7 @@ func TestGasStation_GetCurrentGasPriceExceededMaximum(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(time.Second * 2)
-	assert.True(t, gs.loopStatus.IsSet())
-	_ = gs.Close()
+	_ = gs.Execute(context.Background())
 
 	price, err := gs.GetCurrentGasPrice()
 	require.True(t, errors.Is(err, ErrGasPriceIsHigherThanTheMaximumSet))

@@ -164,15 +164,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	relay.elrondBridge = elrondBridge
 
 	gasStationConfig := cfgs.Eth.GasStation
-	argsGasStation := gasManagement.ArgsGasStation{
-		RequestURL:             gasStationConfig.URL,
-		RequestPollingInterval: time.Duration(gasStationConfig.PollingIntervalInSeconds) * time.Second,
-		RequestTime:            time.Duration(gasStationConfig.RequestTimeInSeconds) * time.Second,
-		MaximumGasPrice:        gasStationConfig.MaximumAllowedGasPrice,
-		GasPriceSelector:       core.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
-	}
-
-	gs, err := factory.CreateGasStation(argsGasStation, gasStationConfig.Enabled)
+	gs, err := relay.createGasStationSubsystem(gasStationConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -275,6 +267,43 @@ func checkArgs(args ArgsRelayer) error {
 		return ErrNilStatusStorer
 	}
 	return nil
+}
+
+func (r *Relay) createGasStationSubsystem(gasStationConfig bridge.GasStationConfig) (bridge.GasHandler, error) {
+	argsGasStation := gasManagement.ArgsGasStation{
+		RequestURL:       gasStationConfig.URL,
+		MaximumGasPrice:  gasStationConfig.MaximumAllowedGasPrice,
+		GasPriceSelector: core.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
+	}
+
+	gs, err := factory.CreateGasStation(argsGasStation, gasStationConfig.Enabled)
+	if err != nil {
+		return nil, err
+	}
+
+	if !gasStationConfig.Enabled {
+		return gs, nil
+	}
+
+	argsPollingGasStation := polling.ArgsPollingHandler{
+		Log:              r.log,
+		Name:             "gas station",
+		PollingInterval:  time.Duration(gasStationConfig.PollingIntervalInSeconds) * time.Second,
+		PollingWhenError: pollingDurationOnError,
+		Executor:         gs,
+	}
+	pollingGasStation, err := polling.NewPollingHandler(argsPollingGasStation)
+	if err != nil {
+		return nil, err
+	}
+	r.pollingHandlers = append(r.pollingHandlers, pollingGasStation)
+
+	err = pollingGasStation.StartProcessingLoop()
+	if err != nil {
+		return nil, err
+	}
+
+	return gs, nil
 }
 
 func (r *Relay) createRoleProviders(config config.Config) error {

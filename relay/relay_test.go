@@ -48,7 +48,6 @@ func TestNewRelay(t *testing.T) {
 				Enabled:                  true,
 				URL:                      "",
 				PollingIntervalInSeconds: 1,
-				RequestTimeInSeconds:     1,
 				MaximumAllowedGasPrice:   1000,
 				GasPriceSelector:         "fast",
 			},

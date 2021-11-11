@@ -25,7 +25,6 @@ type GasStationConfig struct {
 	Enabled                  bool
 	URL                      string
 	PollingIntervalInSeconds int
-	RequestTimeInSeconds     int
 	MaximumAllowedGasPrice   int
 	GasPriceSelector         string
 }
