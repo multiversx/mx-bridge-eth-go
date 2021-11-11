@@ -17,9 +17,9 @@ import (
 
 func createMockArgsGasStation() ArgsGasStation {
 	return ArgsGasStation{
-		RequestURL:       "",
-		MaximumGasPrice:  1000,
-		GasPriceSelector: "fast",
+		RequestURL:                  "",
+		MaximumGasPriceInGWeiTenths: 1000,
+		GasPriceSelector:            "fast",
 	}
 }
 
@@ -62,7 +62,7 @@ func TestGasStation_InvalidJsonResponse(t *testing.T) {
 	assert.IsType(t, err, &json.SyntaxError{})
 
 	assert.Nil(t, gs.GetLatestResponse())
-	gasPrice, err := gs.GetCurrentGasPrice()
+	gasPrice, err := gs.GetCurrentGasPriceInWei()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
 }
@@ -136,31 +136,31 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	_ = gs.Execute(context.Background())
 
 	gs.SetSelector(core.EthFastGasPrice)
-	price, err := gs.GetCurrentGasPrice()
+	price, err := gs.GetCurrentGasPriceInWei()
 	require.Nil(t, err)
 	expected := big.NewInt(0).Mul(big.NewInt(int64(gsResponse.Fast)), gasPriceMultiplier)
 	assert.Equal(t, expected, price)
 
 	gs.SetSelector(core.EthFastestGasPrice)
-	price, err = gs.GetCurrentGasPrice()
+	price, err = gs.GetCurrentGasPriceInWei()
 	require.Nil(t, err)
 	expected = big.NewInt(0).Mul(big.NewInt(int64(gsResponse.Fastest)), gasPriceMultiplier)
 	assert.Equal(t, expected, price)
 
 	gs.SetSelector(core.EthAverageGasPrice)
-	price, err = gs.GetCurrentGasPrice()
+	price, err = gs.GetCurrentGasPriceInWei()
 	require.Nil(t, err)
 	expected = big.NewInt(0).Mul(big.NewInt(int64(gsResponse.Average)), gasPriceMultiplier)
 	assert.Equal(t, expected, price)
 
 	gs.SetSelector(core.EthSafeLowGasPrice)
-	price, err = gs.GetCurrentGasPrice()
+	price, err = gs.GetCurrentGasPriceInWei()
 	require.Nil(t, err)
 	expected = big.NewInt(0).Mul(big.NewInt(int64(gsResponse.SafeLow)), gasPriceMultiplier)
 	assert.Equal(t, expected, price)
 
 	gs.SetSelector("invalid")
-	price, err = gs.GetCurrentGasPrice()
+	price, err = gs.GetCurrentGasPriceInWei()
 	require.True(t, errors.Is(err, ErrInvalidGasPriceSelector))
 	assert.Equal(t, big.NewInt(0), price)
 }
@@ -187,7 +187,7 @@ func TestGasStation_GetCurrentGasPriceExceededMaximum(t *testing.T) {
 
 	_ = gs.Execute(context.Background())
 
-	price, err := gs.GetCurrentGasPrice()
+	price, err := gs.GetCurrentGasPriceInWei()
 	require.True(t, errors.Is(err, ErrGasPriceIsHigherThanTheMaximumSet))
 	assert.Equal(t, big.NewInt(0), price)
 }

@@ -56,7 +56,7 @@ type ElrondProxy interface {
 
 // GasHandler defines the component able to fetch the current gas price
 type GasHandler interface {
-	GetCurrentGasPrice() (*big.Int, error)
+	GetCurrentGasPriceInWei() (*big.Int, error)
 	Execute(ctx context.Context) error
 	IsInterfaceNil() bool
 }

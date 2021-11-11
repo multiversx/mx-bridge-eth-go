@@ -19,9 +19,9 @@ var gasPriceMultiplier = big.NewInt(100000000)
 
 // ArgsGasStation is the DTO used for the creating a new gas handler instance
 type ArgsGasStation struct {
-	RequestURL       string
-	MaximumGasPrice  int
-	GasPriceSelector core.EthGasPriceSelector
+	RequestURL                  string
+	MaximumGasPriceInGWeiTenths int
+	GasPriceSelector            core.EthGasPriceSelector
 }
 
 type gasStation struct {
@@ -44,7 +44,7 @@ func NewGasStation(args ArgsGasStation) (*gasStation, error) {
 	gs := &gasStation{
 		requestURL:       args.RequestURL,
 		httpClient:       http.DefaultClient,
-		maximumGasPrice:  args.MaximumGasPrice,
+		maximumGasPrice:  args.MaximumGasPriceInGWeiTenths,
 		gasPriceSelector: args.GasPriceSelector,
 		log:              logger.GetOrCreate(logPath),
 	}
@@ -106,10 +106,10 @@ func (gs *gasStation) doRequestReturningBytes(ctx context.Context) ([]byte, erro
 	return body, nil
 }
 
-// GetCurrentGasPrice will return the read value from the last query carried on the service provider
+// GetCurrentGasPriceInWei will return the gas price value in wei from the last query carried on the service provider
 // It errors if the gas price values were not fetched from the service provider or the fetched value
-// exceeds the maximum gas price provided
-func (gs *gasStation) GetCurrentGasPrice() (*big.Int, error) {
+// exceeds the maximum gas price provided.
+func (gs *gasStation) GetCurrentGasPriceInWei() (*big.Int, error) {
 	gs.mut.RLock()
 	defer gs.mut.RUnlock()
 

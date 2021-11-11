@@ -11,9 +11,9 @@ import (
 
 func createMockArgsGasStation() gasManagement.ArgsGasStation {
 	return gasManagement.ArgsGasStation{
-		RequestURL:       "",
-		MaximumGasPrice:  1000,
-		GasPriceSelector: "fast",
+		RequestURL:                  "",
+		MaximumGasPriceInGWeiTenths: 1000,
+		GasPriceSelector:            "fast",
 	}
 }
 

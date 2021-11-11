@@ -393,7 +393,7 @@ func TestExecute(t *testing.T) {
 			erc20Contracts: erc20Contracts,
 			bridgeAddress:  bridgeAddress,
 			gasHandler: &testsCommon.GasHandlerStub{
-				GetCurrentGasPriceCalled: func() (*big.Int, error) {
+				GetCurrentGasPriceInWeiCalled: func() (*big.Int, error) {
 					return big.NewInt(int64(gasPrice)), nil
 				},
 			},
@@ -435,7 +435,7 @@ func TestExecute(t *testing.T) {
 			mapper:         mapper,
 			erc20Contracts: make(map[common.Address]Erc20Contract),
 			gasHandler: &testsCommon.GasHandlerStub{
-				GetCurrentGasPriceCalled: func() (*big.Int, error) {
+				GetCurrentGasPriceInWeiCalled: func() (*big.Int, error) {
 					return big.NewInt(int64(gasPrice)), nil
 				},
 			},
@@ -489,7 +489,7 @@ func TestExecute(t *testing.T) {
 			erc20Contracts: erc20Contracts,
 			bridgeAddress:  bridgeAddress,
 			gasHandler: &testsCommon.GasHandlerStub{
-				GetCurrentGasPriceCalled: func() (*big.Int, error) {
+				GetCurrentGasPriceInWeiCalled: func() (*big.Int, error) {
 					return big.NewInt(int64(gasPrice)), nil
 				},
 			},
@@ -518,7 +518,7 @@ func TestExecute(t *testing.T) {
 			broadcaster:   &testsCommon.BroadcasterStub{},
 			mapper:        mapper,
 			gasHandler: &testsCommon.GasHandlerStub{
-				GetCurrentGasPriceCalled: func() (*big.Int, error) {
+				GetCurrentGasPriceInWeiCalled: func() (*big.Int, error) {
 					return big.NewInt(0), gasPriceError
 				},
 			},

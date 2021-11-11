@@ -7,8 +7,8 @@ import (
 
 // GasHandlerStub -
 type GasHandlerStub struct {
-	ExecuteCalled            func(ctx context.Context) error
-	GetCurrentGasPriceCalled func() (*big.Int, error)
+	ExecuteCalled                 func(ctx context.Context) error
+	GetCurrentGasPriceInWeiCalled func() (*big.Int, error)
 }
 
 // Execute -
@@ -20,10 +20,10 @@ func (ghs *GasHandlerStub) Execute(ctx context.Context) error {
 	return nil
 }
 
-// GetCurrentGasPrice -
-func (ghs *GasHandlerStub) GetCurrentGasPrice() (*big.Int, error) {
-	if ghs.GetCurrentGasPriceCalled != nil {
-		return ghs.GetCurrentGasPriceCalled()
+// GetCurrentGasPriceInWei -
+func (ghs *GasHandlerStub) GetCurrentGasPriceInWei() (*big.Int, error) {
+	if ghs.GetCurrentGasPriceInWeiCalled != nil {
+		return ghs.GetCurrentGasPriceInWeiCalled()
 	}
 
 	return big.NewInt(0), nil

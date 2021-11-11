@@ -12,7 +12,7 @@ func TestNewDisabledGasStation(t *testing.T) {
 
 	assert.False(t, check.IfNil(dgs))
 
-	gasPrice, err := dgs.GetCurrentGasPrice()
+	gasPrice, err := dgs.GetCurrentGasPriceInWei()
 	assert.Nil(t, gasPrice)
 	assert.Nil(t, err)
 }

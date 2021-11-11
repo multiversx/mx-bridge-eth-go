@@ -271,9 +271,9 @@ func checkArgs(args ArgsRelayer) error {
 
 func (r *Relay) createGasStationSubsystem(gasStationConfig bridge.GasStationConfig) (bridge.GasHandler, error) {
 	argsGasStation := gasManagement.ArgsGasStation{
-		RequestURL:       gasStationConfig.URL,
-		MaximumGasPrice:  gasStationConfig.MaximumAllowedGasPrice,
-		GasPriceSelector: core.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
+		RequestURL:                  gasStationConfig.URL,
+		MaximumGasPriceInGWeiTenths: gasStationConfig.MaximumAllowedGasPriceInGWeiTenths,
+		GasPriceSelector:            core.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
 	}
 
 	gs, err := factory.CreateGasStation(argsGasStation, gasStationConfig.Enabled)

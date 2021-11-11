@@ -300,7 +300,7 @@ func (c *client) Execute(
 		return "", err
 	}
 
-	gasPrice, err := c.gasHandler.GetCurrentGasPrice()
+	gasPrice, err := c.gasHandler.GetCurrentGasPriceInWei()
 	if err != nil {
 		return "", err
 	}

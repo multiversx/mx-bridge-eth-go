@@ -8,8 +8,8 @@ import (
 // DisabledGasStation implementation in case no gasStation is used
 type DisabledGasStation struct{}
 
-// GetCurrentGasPrice returns nil,nil and will cause the gas price to be determined automatically
-func (dgs *DisabledGasStation) GetCurrentGasPrice() (*big.Int, error) {
+// GetCurrentGasPriceInWei returns nil,nil and will cause the gas price to be determined automatically
+func (dgs *DisabledGasStation) GetCurrentGasPriceInWei() (*big.Int, error) {
 	return nil, nil
 }
 
