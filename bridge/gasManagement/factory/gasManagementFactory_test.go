@@ -3,7 +3,6 @@ package factory
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement/disabled"
@@ -12,11 +11,9 @@ import (
 
 func createMockArgsGasStation() gasManagement.ArgsGasStation {
 	return gasManagement.ArgsGasStation{
-		RequestURL:             "",
-		RequestPollingInterval: time.Second,
-		RequestTime:            time.Second,
-		MaximumGasPrice:        1000,
-		GasPriceSelector:       "fast",
+		RequestURL:                  "",
+		MaximumGasPriceInGWeiTenths: 1000,
+		GasPriceSelector:            "fast",
 	}
 }
 

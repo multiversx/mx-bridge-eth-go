@@ -45,12 +45,11 @@ func TestNewRelay(t *testing.T) {
 			IntervalToResendTxsInSeconds: 0,
 			GasLimit:                     0,
 			GasStation: bridge.GasStationConfig{
-				Enabled:                  true,
-				URL:                      "",
-				PollingIntervalInSeconds: 1,
-				RequestTimeInSeconds:     1,
-				MaximumAllowedGasPrice:   1000,
-				GasPriceSelector:         "fast",
+				Enabled:                            true,
+				URL:                                "",
+				PollingIntervalInSeconds:           1,
+				MaximumAllowedGasPriceInGWeiTenths: 1000,
+				GasPriceSelector:                   "fast",
 			},
 		},
 		Elrond: bridge.ElrondConfig{

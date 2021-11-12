@@ -8,41 +8,30 @@ import (
 	"math/big"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/atomic"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-const minPollingInterval = time.Second
-const minRequestTime = time.Millisecond
 const logPath = "EthClient/gasStation"
 
 var gasPriceMultiplier = big.NewInt(100000000)
 
 // ArgsGasStation is the DTO used for the creating a new gas handler instance
 type ArgsGasStation struct {
-	RequestURL             string
-	RequestPollingInterval time.Duration
-	RequestTime            time.Duration
-	MaximumGasPrice        int
-	GasPriceSelector       core.EthGasPriceSelector
+	RequestURL                  string
+	MaximumGasPriceInGWeiTenths int
+	GasPriceSelector            core.EthGasPriceSelector
 }
 
 type gasStation struct {
-	requestURL             string
-	requestTime            time.Duration
-	requestPollingInterval time.Duration
-	log                    logger.Logger
-	httpClient             HTTPClient
-	maximumGasPrice        int
-	cancel                 func()
-	gasPriceSelector       core.EthGasPriceSelector
-	loopStatus             *atomic.Flag
-
-	mut            sync.RWMutex
-	latestResponse *gasStationResponse
+	requestURL       string
+	log              logger.Logger
+	httpClient       HTTPClient
+	maximumGasPrice  int
+	gasPriceSelector core.EthGasPriceSelector
+	mut              sync.RWMutex
+	latestResponse   *gasStationResponse
 }
 
 // NewGasStation returns a new gas handler instance for the gas station service
@@ -53,30 +42,17 @@ func NewGasStation(args ArgsGasStation) (*gasStation, error) {
 	}
 
 	gs := &gasStation{
-		requestURL:             args.RequestURL,
-		requestTime:            args.RequestTime,
-		requestPollingInterval: args.RequestPollingInterval,
-		httpClient:             http.DefaultClient,
-		maximumGasPrice:        args.MaximumGasPrice,
-		gasPriceSelector:       args.GasPriceSelector,
-		loopStatus:             &atomic.Flag{},
+		requestURL:       args.RequestURL,
+		httpClient:       http.DefaultClient,
+		maximumGasPrice:  args.MaximumGasPriceInGWeiTenths,
+		gasPriceSelector: args.GasPriceSelector,
+		log:              logger.GetOrCreate(logPath),
 	}
-	gs.log = logger.GetOrCreate(logPath)
-	ctx, cancel := context.WithCancel(context.Background())
-	gs.cancel = cancel
-	go gs.processLoop(ctx)
 
 	return gs, nil
 }
 
 func checkArgs(args ArgsGasStation) error {
-	if args.RequestPollingInterval < minPollingInterval {
-		return fmt.Errorf("%w in checkArgs for value RequestPollingInterval", ErrInvalidValue)
-	}
-	if args.RequestTime < minRequestTime {
-		return fmt.Errorf("%w in checkArgs for value RequestTime", ErrInvalidValue)
-	}
-
 	switch args.GasPriceSelector {
 	case core.EthFastGasPrice, core.EthFastestGasPrice, core.EthSafeLowGasPrice, core.EthAverageGasPrice:
 	default:
@@ -86,29 +62,8 @@ func checkArgs(args ArgsGasStation) error {
 	return nil
 }
 
-func (gs *gasStation) processLoop(ctx context.Context) {
-	gs.loopStatus.Set()
-	defer gs.loopStatus.Unset()
-
-	for {
-		requestContext, cancel := context.WithTimeout(ctx, gs.requestTime)
-
-		err := gs.doRequest(requestContext)
-		if err != nil {
-			gs.log.Error("gasHandler.processLoop", "error", err.Error())
-		}
-		cancel()
-
-		select {
-		case <-ctx.Done():
-			gs.log.Debug("Ethereum's gas station fetcher main execute loop is closing...")
-			return
-		case <-time.After(gs.requestPollingInterval):
-		}
-	}
-}
-
-func (gs *gasStation) doRequest(ctx context.Context) error {
+// Execute will trigger the execution of the gas station data fetch, processing and storage
+func (gs *gasStation) Execute(ctx context.Context) error {
 	bytes, err := gs.doRequestReturningBytes(ctx)
 	if err != nil {
 		return err
@@ -151,10 +106,10 @@ func (gs *gasStation) doRequestReturningBytes(ctx context.Context) ([]byte, erro
 	return body, nil
 }
 
-// GetCurrentGasPrice will return the read value from the last query carried on the service provider
+// GetCurrentGasPriceInWei will return the gas price value in wei from the last query carried on the service provider
 // It errors if the gas price values were not fetched from the service provider or the fetched value
-// exceeds the maximum gas price provided
-func (gs *gasStation) GetCurrentGasPrice() (*big.Int, error) {
+// exceeds the maximum gas price provided.
+func (gs *gasStation) GetCurrentGasPriceInWei() (*big.Int, error) {
 	gs.mut.RLock()
 	defer gs.mut.RUnlock()
 
@@ -183,13 +138,6 @@ func (gs *gasStation) GetCurrentGasPrice() (*big.Int, error) {
 
 	result := big.NewInt(int64(gasPrice))
 	return result.Mul(result, gasPriceMultiplier), nil
-}
-
-// Close will stop any started go routines
-func (gs *gasStation) Close() error {
-	gs.cancel()
-
-	return nil
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
