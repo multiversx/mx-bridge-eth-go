@@ -20,7 +20,6 @@ type ArgsEthElrondBridgeExecutor struct {
 	DestinationBridge bridge.Bridge
 	TopologyProvider  TopologyProvider
 	QuorumProvider    bridge.QuorumProvider
-	Timer             core.Timer
 	DurationsMap      map[core.StepIdentifier]time.Duration
 	StatusHandler     core.StatusHandler
 }
@@ -37,7 +36,6 @@ type ethElrondBridgeExecutor struct {
 	actionID          bridge.ActionId
 	topologyProvider  TopologyProvider
 	quorumProvider    bridge.QuorumProvider
-	timer             core.Timer
 	durationsMap      map[core.StepIdentifier]time.Duration
 	statusHandler     core.StatusHandler
 }
@@ -57,7 +55,6 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 		destinationBridge: args.DestinationBridge,
 		topologyProvider:  args.TopologyProvider,
 		quorumProvider:    args.QuorumProvider,
-		timer:             args.Timer,
 		durationsMap:      args.DurationsMap,
 		statusHandler:     args.StatusHandler,
 	}, nil
@@ -78,9 +75,6 @@ func checkArgs(args ArgsEthElrondBridgeExecutor) error {
 	}
 	if check.IfNil(args.QuorumProvider) {
 		return ErrNilQuorumProvider
-	}
-	if check.IfNil(args.Timer) {
-		return ErrNilTimer
 	}
 	if args.DurationsMap == nil {
 		return ErrNilDurationsMap
@@ -316,8 +310,11 @@ func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step core.StepIdentifi
 	executor.logger.Info(executor.appendMessageToName("waiting for transfer proposal"),
 		"step", step, "batch ID", executor.getBatchID(), "duration", duration)
 
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
+
 	select {
-	case <-executor.timer.After(duration):
+	case <-timer.C:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

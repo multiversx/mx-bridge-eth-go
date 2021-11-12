@@ -233,9 +233,14 @@ func (ws *webServer) createMiddlewareLimiters() ([]elrondShared.MiddlewareProces
 
 func (ws *webServer) sourceLimiterReset(ctx context.Context, reset resetHandler) {
 	betweenResetDuration := time.Second * time.Duration(ws.antiFloodConfig.SameSourceResetIntervalInSec)
+	timer := time.NewTimer(betweenResetDuration)
+	defer timer.Stop()
+
 	for {
+		timer.Reset(betweenResetDuration)
+
 		select {
-		case <-time.After(betweenResetDuration):
+		case <-timer.C:
 			log.Trace("calling reset on WS source limiter")
 			reset.Reset()
 		case <-ctx.Done():

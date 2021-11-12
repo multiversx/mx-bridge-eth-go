@@ -86,25 +86,34 @@ func (ph *pollingHandler) StartProcessingLoop() error {
 func (ph *pollingHandler) processLoop(ctx context.Context) {
 	defer ph.cleanup()
 
-	for {
-		pollingChan := time.After(ph.pollingInterval)
+	timer := time.NewTimer(ph.pollingInterval)
+	defer timer.Stop()
 
-		err := ph.executor.Execute(ctx)
-		if err != nil {
-			ph.log.Error("error in pollingHandler.processLoop",
-				"name", ph.name, "error", err,
-				"retrying after", ph.pollingWhenError)
-			pollingChan = time.After(ph.pollingWhenError)
-		}
+	for {
+		ph.execute(ctx, timer)
 
 		select {
-		case <-pollingChan:
+		case <-timer.C:
 		case <-ctx.Done():
 			ph.log.Debug("pollingHandler's processing loop is closing...",
 				"name", ph.name)
 			return
 		}
 	}
+}
+
+func (ph *pollingHandler) execute(ctx context.Context, timer *time.Timer) {
+	err := ph.executor.Execute(ctx)
+	if err == nil {
+		timer.Reset(ph.pollingInterval)
+		return
+	}
+
+	ph.log.Error("error in pollingHandler.processLoop",
+		"name", ph.name, "error", err,
+		"retrying after", ph.pollingWhenError)
+
+	timer.Reset(ph.pollingWhenError)
 }
 
 func (ph *pollingHandler) cleanup() {
