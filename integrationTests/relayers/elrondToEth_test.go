@@ -27,13 +27,13 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	numTransactions := 2
 	deposits, tokensAddresses, erc20Map := createTransactions(numTransactions)
 
-	bridgeEthAddress := testsCommon.CreateRandomEthereumAddress()
+	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	erc20Contracts := make(map[common.Address]eth.Erc20Contract)
 	for addr, val := range erc20Map {
 		value := big.NewInt(0).Set(val)
 		erc20Contracts[addr] = &mockInteractors.Erc20ContractStub{
 			BalanceOfCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
-				if account == bridgeEthAddress {
+				if account == safeContractEthAddress {
 					return value, nil
 				}
 
@@ -80,8 +80,8 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 
 	for i := 0; i < numRelayers; i++ {
 		argsRelay := mock.CreateMockRelayArgs("elrond <-> eth", i, messengers[i], elrondChainMock, ethereumChainMock)
+		argsRelay.Configs.GeneralConfig.Eth.SafeContractAddress = safeContractEthAddress.Hex()
 		argsRelay.Erc20Contracts = erc20Contracts
-		argsRelay.BridgeEthAddress = bridgeEthAddress
 		r, err := relay.NewRelay(argsRelay)
 		require.Nil(t, err)
 

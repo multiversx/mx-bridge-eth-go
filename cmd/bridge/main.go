@@ -176,7 +176,6 @@ func startRelay(ctx *cli.Context, version string) error {
 		EthInstance:            ethInstance,
 		Messenger:              messenger,
 		Erc20Contracts:         erc20Contracts,
-		BridgeEthAddress:       bridgeEthAddress,
 		EthClientStatusHandler: ethClientStatusHandler,
 		StatusStorer:           statusStorer,
 	}

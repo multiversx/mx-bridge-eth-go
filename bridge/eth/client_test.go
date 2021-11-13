@@ -359,11 +359,11 @@ func TestExecute(t *testing.T) {
 		blockNonce := 4321
 		executeTransferCalled := false
 
-		bridgeAddress := testsCommon.CreateRandomEthereumAddress()
+		safeContractAddress := testsCommon.CreateRandomEthereumAddress()
 		erc20Contracts := map[common.Address]Erc20Contract{
 			erc20Address: &mockInteractors.Erc20ContractStub{
 				BalanceOfCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
-					require.Equal(t, account, bridgeAddress)
+					require.Equal(t, account, safeContractAddress)
 					return big.NewInt(10001), nil
 				},
 			},
@@ -386,13 +386,13 @@ func TestExecute(t *testing.T) {
 			},
 		}
 		c := client{
-			clientWrapper:  clientWrapper,
-			privateKey:     privateKey(t),
-			publicKey:      publicKey(t),
-			broadcaster:    &testsCommon.BroadcasterStub{},
-			mapper:         mapper,
-			erc20Contracts: erc20Contracts,
-			bridgeAddress:  bridgeAddress,
+			clientWrapper:       clientWrapper,
+			privateKey:          privateKey(t),
+			publicKey:           publicKey(t),
+			broadcaster:         &testsCommon.BroadcasterStub{},
+			mapper:              mapper,
+			erc20Contracts:      erc20Contracts,
+			safeContractAddress: safeContractAddress,
 			gasHandler: &testsCommon.GasHandlerStub{
 				GetCurrentGasPriceCalled: func() (*big.Int, error) {
 					return big.NewInt(int64(gasPrice)), nil
@@ -455,11 +455,11 @@ func TestExecute(t *testing.T) {
 		blockNonce := 4321
 		executeTransferCalled := false
 
-		bridgeAddress := testsCommon.CreateRandomEthereumAddress()
+		safeContractAddress := testsCommon.CreateRandomEthereumAddress()
 		erc20Contracts := map[common.Address]Erc20Contract{
 			erc20Address: &mockInteractors.Erc20ContractStub{
 				BalanceOfCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
-					require.Equal(t, account, bridgeAddress)
+					require.Equal(t, account, safeContractAddress)
 					return big.NewInt(10002), nil
 				},
 			},
@@ -482,13 +482,13 @@ func TestExecute(t *testing.T) {
 			},
 		}
 		c := client{
-			clientWrapper:  clientWrapper,
-			privateKey:     privateKey(t),
-			publicKey:      publicKey(t),
-			broadcaster:    &testsCommon.BroadcasterStub{},
-			mapper:         mapper,
-			erc20Contracts: erc20Contracts,
-			bridgeAddress:  bridgeAddress,
+			clientWrapper:       clientWrapper,
+			privateKey:          privateKey(t),
+			publicKey:           publicKey(t),
+			broadcaster:         &testsCommon.BroadcasterStub{},
+			mapper:              mapper,
+			erc20Contracts:      erc20Contracts,
+			safeContractAddress: safeContractAddress,
 			gasHandler: &testsCommon.GasHandlerStub{
 				GetCurrentGasPriceCalled: func() (*big.Int, error) {
 					return big.NewInt(int64(gasPrice)), nil

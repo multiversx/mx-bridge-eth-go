@@ -40,7 +40,7 @@ func TestNewRelay(t *testing.T) {
 	cfg := &config.Config{
 		Eth: bridge.EthereumConfig{
 			NetworkAddress:               "http://127.0.0.1:8545",
-			BridgeAddress:                "5DdDe022a65F8063eE9adaC54F359CBF46166068",
+			SafeContractAddress:          "5DdDe022a65F8063eE9adaC54F359CBF46166068",
 			PrivateKeyFile:               "testdata/grace.sk",
 			IntervalToResendTxsInSeconds: 0,
 			GasLimit:                     0,
@@ -80,13 +80,12 @@ func TestNewRelay(t *testing.T) {
 	require.Nil(t, err)
 
 	args := ArgsRelayer{
-		Configs:          configs,
-		Name:             "name",
-		Proxy:            blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil),
-		EthClient:        ethClient,
-		EthInstance:      ethInstance,
-		Messenger:        &p2pMocks.MessengerStub{},
-		BridgeEthAddress: testsCommon.CreateRandomEthereumAddress(),
+		Configs:     configs,
+		Name:        "name",
+		Proxy:       blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil),
+		EthClient:   ethClient,
+		EthInstance: ethInstance,
+		Messenger:   &p2pMocks.MessengerStub{},
 		Erc20Contracts: map[ethCommon.Address]eth.Erc20Contract{
 			testsCommon.CreateRandomEthereumAddress(): &mockInteractors.Erc20ContractStub{},
 		},
