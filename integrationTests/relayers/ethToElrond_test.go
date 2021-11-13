@@ -207,6 +207,7 @@ func createMockRelayConfig(index int) config.Config {
 			BridgeAddress:                "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
 			PrivateKeyFile:               fmt.Sprintf("testdata/elrond%d.pem", index),
 			IntervalToResendTxsInSeconds: 10,
+			GasMap:                       testsCommon.CreateTestElrondGasMap(),
 		},
 		P2P: config.ConfigP2P{},
 		StateMachine: map[string]config.ConfigStateMachine{

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	"github.com/ElrondNetwork/elrond-go-core/data/vm"
@@ -47,6 +48,7 @@ func createMockArguments() ClientArgs {
 		Config: bridge.ElrondConfig{
 			BridgeAddress:                "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
 			IntervalToResendTxsInSeconds: 1,
+			GasMap:                       testsCommon.CreateTestElrondGasMap(),
 		},
 		Proxy:      &mockInteractors.ElrondProxyStub{},
 		PrivateKey: sk,
@@ -82,6 +84,14 @@ func TestNewClient(t *testing.T) {
 		c, err := NewClient(args)
 		require.Nil(t, c)
 		require.Equal(t, ErrNilAddressHandler, err)
+	})
+	t.Run("invalid gas", func(t *testing.T) {
+		args := createMockArguments()
+		args.Config.GasMap.Sign = 0
+		c, err := NewClient(args)
+		require.Nil(t, c)
+		require.True(t, errors.Is(err, ErrInvalidGasValue))
+		require.True(t, strings.Contains(err.Error(), "Sign"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockArguments()
@@ -235,7 +245,9 @@ func TestProposeTransfer(t *testing.T) {
 		expected := fmt.Sprintf("proposeMultiTransferEsdtBatch@01@%s@574554482d393761323662@2a", hexAddress)
 
 		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
-		assert.Equal(t, uint64(45_000_000+len(batch.Transactions)*25_000_000), proxy.lastTransaction.GasLimit)
+		expectedGas := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Transactions))*c.gasMapConfig.ProposeTransferForEach
+		require.True(t, expectedGas > 0)
+		assert.Equal(t, expectedGas, proxy.lastTransaction.GasLimit)
 	})
 }
 
@@ -274,7 +286,9 @@ func TestProposeSetStatus(t *testing.T) {
 		expected := "proposeEsdtSafeSetCurrentTransactionBatchStatus@01@03@04"
 
 		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
-		assert.Equal(t, uint64(60_000_000), proxy.lastTransaction.GasLimit)
+		expectedGas := c.gasMapConfig.ProposeStatus
+		require.True(t, expectedGas > 0)
+		assert.Equal(t, expectedGas, proxy.lastTransaction.GasLimit)
 	})
 }
 
@@ -307,7 +321,9 @@ func TestExecute(t *testing.T) {
 	hash, _ := c.Execute(context.TODO(), bridge.NewActionId(42), batch, nil)
 
 	assert.Equal(t, expectedTxHash, hash)
-	assert.Equal(t, uint64(70_000_000+len(batch.Transactions)*30_000_000), proxy.lastTransaction.GasLimit)
+	expectedGas := c.gasMapConfig.PerformActionBase + uint64(len(batch.Transactions))*c.gasMapConfig.PerformActionForEach
+	require.True(t, expectedGas > 0)
+	assert.Equal(t, expectedGas, proxy.lastTransaction.GasLimit)
 	nextNonce, err := c.nonceTxHandler.GetNonce(c.address)
 	require.Nil(t, err)
 	assert.Equal(t, uint64(43), nextNonce)
@@ -515,13 +531,15 @@ func TestWasExecuted(t *testing.T) {
 
 func TestSign(t *testing.T) {
 	t.Run("it will set proper transaction cost", func(t *testing.T) {
-		expect := uint64(45_000_000)
 		proxy := &testProxy{}
 		c, _ := buildTestClient(proxy)
 
+		expectedGas := c.gasMapConfig.Sign
+		require.True(t, expectedGas > 0)
+
 		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42), nil)
 
-		assert.Equal(t, expect, proxy.lastTransaction.GasLimit)
+		assert.Equal(t, expectedGas, proxy.lastTransaction.GasLimit)
 	})
 	t.Run("it will set proper function and params", func(t *testing.T) {
 		proxy := &testProxy{transactionCost: 1024}
@@ -738,6 +756,7 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 		bridgeAddress:  "",
 		privateKey:     txSignPrivKey,
 		address:        address,
+		gasMapConfig:   testsCommon.CreateTestElrondGasMap(),
 	}
 
 	return c, nil

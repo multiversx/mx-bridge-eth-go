@@ -22,3 +22,6 @@ var ErrNilPrivateKey = errors.New("nil private key")
 
 // ErrNilAddressHandler signals that a nil address handler has been provided
 var ErrNilAddressHandler = errors.New("nil address handler")
+
+// ErrInvalidGasValue signals that an invalid gas value was provided
+var ErrInvalidGasValue = errors.New("invalid gas value")

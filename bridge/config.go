@@ -6,7 +6,17 @@ type ElrondConfig struct {
 	BridgeAddress                string
 	PrivateKeyFile               string
 	IntervalToResendTxsInSeconds uint64
-	GasLimit                     uint64
+	GasMap                       ElrondGasMapConfig
+}
+
+// ElrondGasMapConfig represents the gas limits for Elrond operations
+type ElrondGasMapConfig struct {
+	Sign                   uint64
+	ProposeTransferBase    uint64
+	ProposeTransferForEach uint64
+	ProposeStatus          uint64
+	PerformActionBase      uint64
+	PerformActionForEach   uint64
 }
 
 // EthereumConfig represents the Ethereum Config parameters
