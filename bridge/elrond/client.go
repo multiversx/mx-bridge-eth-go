@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -22,13 +23,7 @@ import (
 )
 
 const (
-	signCost              = 45_000_000
-	proposeTransferCost   = 45_000_000
-	proposeTransferTxCost = 25_000_000
-	proposeStatusCost     = 60_000_000
-	performActionCost     = 70_000_000
-	performActionTxCost   = 30_000_000
-	hexPrefix             = "0x"
+	hexPrefix = "0x"
 )
 
 var txSingleSigner = &singlesig.Ed25519Signer{}
@@ -55,6 +50,7 @@ type client struct {
 	address        core.AddressHandler
 	nonceTxHandler NonceTransactionsHandler
 	log            logger.Logger
+	gasMapConfig   bridge.ElrondGasMapConfig
 }
 
 // ClientArgs represents the argument for the NewClient constructor function
@@ -76,6 +72,10 @@ func NewClient(args ClientArgs) (*client, error) {
 	if check.IfNil(args.Address) {
 		return nil, ErrNilAddressHandler
 	}
+	err := checkGasMapValues(args.Config.GasMap)
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO inject this
 	nonceTxsHandler, err := interactors.NewNonceTransactionHandler(args.Proxy, time.Second*time.Duration(args.Config.IntervalToResendTxsInSeconds))
@@ -95,11 +95,26 @@ func NewClient(args ClientArgs) (*client, error) {
 		address:        args.Address,
 		log:            logger.GetOrCreate("ElrondClient"),
 		nonceTxHandler: nonceTxsHandler,
+		gasMapConfig:   args.Config.GasMap,
 	}
 
 	c.log.Info("Elrond: NewClient", "address", c.address.AddressAsBech32String())
 
 	return c, nil
+}
+
+func checkGasMapValues(gasMap bridge.ElrondGasMapConfig) error {
+	gasMapValue := reflect.ValueOf(gasMap)
+	typeOfGasMapValue := gasMapValue.Type()
+
+	for i := 0; i < gasMapValue.NumField(); i++ {
+		fieldVal := gasMapValue.Field(i).Uint()
+		if fieldVal == 0 {
+			return fmt.Errorf("%w for field %s", ErrInvalidGasValue, typeOfGasMapValue.Field(i).Name)
+		}
+	}
+
+	return nil
 }
 
 // GetPending returns the pending batch
@@ -187,7 +202,7 @@ func (c *client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 		builder = builder.Int(big.NewInt(int64(tx.Status)))
 	}
 
-	hash, err := c.sendTransaction(builder, proposeStatusCost)
+	hash, err := c.sendTransaction(builder, c.gasMapConfig.ProposeStatus)
 	if err != nil {
 		c.log.Error("Elrond: send transaction failed", "error", err.Error())
 		return
@@ -209,7 +224,8 @@ func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 			BigInt(tx.Amount)
 	}
 
-	hash, err := c.sendTransaction(builder, uint64(proposeTransferCost+len(batch.Transactions)*proposeTransferTxCost))
+	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Transactions))*c.gasMapConfig.ProposeTransferForEach
+	hash, err := c.sendTransaction(builder, gasLimit)
 
 	if err == nil {
 		c.log.Info("Elrond: Proposed transfer for batch ", batch.Id, " with hash ", hash)
@@ -352,7 +368,7 @@ func (c *client) Sign(_ context.Context, actionId bridge.ActionId, _ *bridge.Bat
 		Func("sign").
 		ActionId(actionId)
 
-	hash, err := c.sendTransaction(builder, signCost)
+	hash, err := c.sendTransaction(builder, c.gasMapConfig.Sign)
 
 	if err == nil {
 		c.log.Info("Elrond: Signed", "hash", hash)
@@ -369,7 +385,8 @@ func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bri
 		Func("performAction").
 		ActionId(actionId)
 
-	hash, err := c.sendTransaction(builder, uint64(performActionCost+len(batch.Transactions)*performActionTxCost))
+	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Transactions))*c.gasMapConfig.PerformActionForEach
+	hash, err := c.sendTransaction(builder, gasLimit)
 
 	if err == nil {
 		c.log.Info("Elrond: Executed action", "action ID", actionId, "hash", hash)

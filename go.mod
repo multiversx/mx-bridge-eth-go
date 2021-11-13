@@ -15,7 +15,6 @@ require (
 	github.com/gin-gonic/gin v1.7.4
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.22.5
-	gopkg.in/go-playground/validator.v8 v8.18.2
 )
 
 replace github.com/ElrondNetwork/arwen-wasm-vm/v1_2 v1.2.30 => github.com/ElrondNetwork/arwen-wasm-vm v1.2.30

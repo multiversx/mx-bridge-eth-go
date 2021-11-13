@@ -18,6 +18,14 @@
     BridgeAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the elrond address for the bridge contract
     PrivateKeyFile = "config/elrond.pem" # the path to the pem file containing the relayer elrond wallet
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
+    [Elrond.GasMap]
+        Sign = 8000000
+        ProposeTransferBase = 11000000
+        ProposeTransferForEach = 3000000
+        ProposeStatus = 30000000 # TODO check this
+        PerformActionBase = 25000000
+        PerformActionForEach = 2000000
+
 [P2P]
     Port = "10010"
     Seed = "seed-elrond-eth-bridge-0"

@@ -30,10 +30,11 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	bridgeEthAddress := testsCommon.CreateRandomEthereumAddress()
 	erc20Contracts := make(map[common.Address]eth.Erc20Contract)
 	for addr, val := range erc20Map {
+		value := big.NewInt(0).Set(val)
 		erc20Contracts[addr] = &mockInteractors.Erc20ContractStub{
 			BalanceOfCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
 				if account == bridgeEthAddress {
-					return val, nil
+					return value, nil
 				}
 
 				return big.NewInt(0), nil

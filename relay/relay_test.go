@@ -58,6 +58,7 @@ func TestNewRelay(t *testing.T) {
 			PrivateKeyFile:               "testdata/grace.pem",
 			NetworkAddress:               "http://127.0.0.1:8079",
 			BridgeAddress:                "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+			GasMap:                       testsCommon.CreateTestElrondGasMap(),
 		},
 		Relayer: config.ConfigRelayer{
 			RoleProvider: config.RoleProviderConfig{
