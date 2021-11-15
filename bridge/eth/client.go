@@ -32,30 +32,30 @@ const (
 )
 
 type client struct {
-	clientWrapper     ClientWrapper
-	addressConverter  elrondCore.PubkeyConverter
-	privateKey        *ecdsa.PrivateKey
-	publicKey         *ecdsa.PublicKey
-	broadcaster       bridge.Broadcaster
-	mapper            bridge.Mapper
-	gasLimit          uint64
-	log               logger.Logger
-	gasHandler        bridge.GasHandler
-	address           common.Address
-	mutErc20Contracts sync.RWMutex
-	erc20Contracts    map[common.Address]Erc20Contract
-	bridgeAddress     common.Address
+	clientWrapper       ClientWrapper
+	addressConverter    elrondCore.PubkeyConverter
+	privateKey          *ecdsa.PrivateKey
+	publicKey           *ecdsa.PublicKey
+	broadcaster         bridge.Broadcaster
+	mapper              bridge.Mapper
+	gasLimit            uint64
+	log                 logger.Logger
+	gasHandler          bridge.GasHandler
+	address             common.Address
+	mutErc20Contracts   sync.RWMutex
+	erc20Contracts      map[common.Address]Erc20Contract
+	safeContractAddress common.Address
 }
 
 // ArgsClient is the DTO used in the client constructor
 type ArgsClient struct {
-	Config         bridge.EthereumConfig
-	Broadcaster    bridge.Broadcaster
-	Mapper         bridge.Mapper
-	GasHandler     bridge.GasHandler
-	ClientWrapper  ClientWrapper
-	Erc20Contracts map[common.Address]Erc20Contract
-	BridgeAddress  common.Address
+	Config              bridge.EthereumConfig
+	Broadcaster         bridge.Broadcaster
+	Mapper              bridge.Mapper
+	GasHandler          bridge.GasHandler
+	ClientWrapper       ClientWrapper
+	Erc20Contracts      map[common.Address]Erc20Contract
+	SafeContractAddress common.Address
 }
 
 // NewClient creates a new Ethereum client instance
@@ -83,16 +83,16 @@ func NewClient(args ArgsClient) (*client, error) {
 	}
 
 	c := &client{
-		clientWrapper:  args.ClientWrapper,
-		gasLimit:       args.Config.GasLimit,
-		privateKey:     privateKey,
-		publicKey:      publicKeyECDSA,
-		broadcaster:    args.Broadcaster,
-		mapper:         args.Mapper,
-		log:            log,
-		gasHandler:     args.GasHandler,
-		erc20Contracts: args.Erc20Contracts,
-		bridgeAddress:  args.BridgeAddress,
+		clientWrapper:       args.ClientWrapper,
+		gasLimit:            args.Config.GasLimit,
+		privateKey:          privateKey,
+		publicKey:           publicKeyECDSA,
+		broadcaster:         args.Broadcaster,
+		mapper:              args.Mapper,
+		log:                 log,
+		gasHandler:          args.GasHandler,
+		erc20Contracts:      args.Erc20Contracts,
+		safeContractAddress: args.SafeContractAddress,
 	}
 	c.addressConverter, err = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
@@ -100,7 +100,9 @@ func NewClient(args ArgsClient) (*client, error) {
 	}
 
 	c.address = crypto.PubkeyToAddress(*publicKeyECDSA)
-	log.Info("Ethereum: NewClient", "relayer address", c.address, "bridge address", c.bridgeAddress)
+	log.Info("Ethereum: NewClient",
+		"relayer address", c.address.String(),
+		"safe contract address", c.safeContractAddress.String())
 
 	c.retrieveAllCurrentErc20Balances()
 
@@ -133,8 +135,8 @@ func checkArgs(args ArgsClient) error {
 	}
 
 	emptyAddress := common.Address{}
-	if args.BridgeAddress == emptyAddress {
-		return ErrEmptyBridgeAddress
+	if args.SafeContractAddress == emptyAddress {
+		return fmt.Errorf("%w for SafeContractAddress", ErrEmptyBridgeAddress)
 	}
 
 	return nil
@@ -145,9 +147,12 @@ func (c *client) retrieveAllCurrentErc20Balances() {
 
 	for addr, contractInstance := range c.erc20Contracts {
 		ctx, cancel := context.WithTimeout(context.Background(), maxTimeToWaitForInitialBalanceFetch)
-		val, err := contractInstance.BalanceOf(ctx, c.bridgeAddress)
+		val, err := contractInstance.BalanceOf(ctx, c.safeContractAddress)
 		if err != nil {
-			c.log.Warn("failed to fetch initial ERC20 balance", "address", "err", err)
+			c.log.Warn("failed to fetch initial ERC20 balance",
+				"ERC20 token", addr.String(),
+				"address", c.safeContractAddress.String(),
+				"err", err)
 			val = big.NewInt(0)
 		}
 
@@ -412,18 +417,21 @@ func (c *client) checkCumulatedTransfers(ctx context.Context, transfers map[comm
 			return fmt.Errorf("%w for %s", ErrMissingErc20ContractDefinition, addr.String())
 		}
 
-		existingBalance, err := contractInstance.BalanceOf(ctx, c.bridgeAddress)
+		existingBalance, err := contractInstance.BalanceOf(ctx, c.safeContractAddress)
 		if err != nil {
 			return fmt.Errorf("%w for %s", err, addr.String())
 		}
 
 		if value.Cmp(existingBalance) > 0 {
-			return fmt.Errorf("%w, existing: %s, required: %s for %s",
-				ErrInsufficientErc20Balance, existingBalance.String(), value.String(), addr.String())
+			return fmt.Errorf("%w, existing: %s, required: %s for ERC20 token %s and address %s",
+				ErrInsufficientErc20Balance, existingBalance.String(), value.String(), addr.String(), c.safeContractAddress.String())
 		}
 
-		c.log.Debug("checked ERC20 balance", "address", addr.String(),
-			"existing balance", existingBalance.String(), "needed", value.String())
+		c.log.Debug("checked ERC20 balance",
+			"ERC20 token", addr.String(),
+			"address", c.safeContractAddress.String(),
+			"existing balance", existingBalance.String(),
+			"needed", value.String())
 	}
 
 	return nil

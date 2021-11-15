@@ -23,6 +23,7 @@ type ElrondGasMapConfig struct {
 type EthereumConfig struct {
 	NetworkAddress               string
 	BridgeAddress                string
+	SafeContractAddress          string
 	PrivateKeyFile               string
 	IntervalToResendTxsInSeconds uint64
 	GasLimit                     uint64

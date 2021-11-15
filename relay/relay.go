@@ -106,7 +106,6 @@ type ArgsRelayer struct {
 	EthInstance            wrappers.BridgeContract
 	Messenger              p2p.NetMessenger
 	Erc20Contracts         map[common.Address]eth.Erc20Contract
-	BridgeEthAddress       common.Address
 	EthClientStatusHandler core.StatusHandler
 	StatusStorer           core.Storer
 }
@@ -187,14 +186,15 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		return nil, err
 	}
 
+	safeContractAddress := common.HexToAddress(cfgs.Eth.SafeContractAddress)
 	argsClient := eth.ArgsClient{
-		Config:         cfgs.Eth,
-		Broadcaster:    relay,
-		Mapper:         elrondBridge,
-		GasHandler:     gs,
-		ClientWrapper:  ethClientWrapper,
-		Erc20Contracts: args.Erc20Contracts,
-		BridgeAddress:  args.BridgeEthAddress,
+		Config:              cfgs.Eth,
+		Broadcaster:         relay,
+		Mapper:              elrondBridge,
+		GasHandler:          gs,
+		ClientWrapper:       ethClientWrapper,
+		Erc20Contracts:      args.Erc20Contracts,
+		SafeContractAddress: safeContractAddress,
 	}
 	ethBridge, err := eth.NewClient(argsClient)
 	if err != nil {
