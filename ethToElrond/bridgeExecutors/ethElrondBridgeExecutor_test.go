@@ -27,7 +27,6 @@ func createMockArgs() ArgsEthElrondBridgeExecutor {
 		DestinationBridge: testsCommon.NewBridgeStub(),
 		TopologyProvider:  &testsCommon.TopologyProviderStub{},
 		QuorumProvider:    &testsCommon.QuorumProviderStub{},
-		Timer:             &testsCommon.TimerMock{},
 		DurationsMap: map[core.StepIdentifier]time.Duration{
 			ethToElrond.GettingPending: testDuration,
 		},
@@ -76,14 +75,6 @@ func TestNewbridgeExecutors(t *testing.T) {
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilQuorumProvider, err)
-	})
-	t.Run("nil timer", func(t *testing.T) {
-		args := createMockArgs()
-		args.Timer = nil
-		executor, err := NewEthElrondBridgeExecutor(args)
-
-		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilTimer, err)
 	})
 	t.Run("nil duration map", func(t *testing.T) {
 		args := createMockArgs()

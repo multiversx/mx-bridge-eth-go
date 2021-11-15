@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
-	"time"
 )
 
 var fullPathTimerStub = "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon.(*TimerStub)."
@@ -14,7 +13,6 @@ type TimerStub struct {
 	functionCalledCounter map[string]int
 	mut                   sync.RWMutex
 
-	AfterCalled   func(d time.Duration) <-chan time.Time
 	NowUnixCalled func() int64
 	StartCalled   func()
 	CloseCalled   func() error
@@ -25,19 +23,6 @@ func NewTimerStub() *TimerStub {
 	return &TimerStub{
 		functionCalledCounter: make(map[string]int),
 	}
-}
-
-// After -
-func (stub *TimerStub) After(d time.Duration) <-chan time.Time {
-	stub.incrementFunctionCounter()
-	if stub.AfterCalled != nil {
-		return stub.AfterCalled(d)
-	}
-
-	ch := make(chan time.Time)
-	close(ch)
-
-	return ch
 }
 
 // NowUnix -

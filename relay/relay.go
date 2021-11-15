@@ -44,6 +44,7 @@ const (
 	minimumDurationForStep          = time.Second
 	pollingDurationOnError          = time.Second * 5
 	p2pStatusHandlerPollingInterval = time.Second * 2
+	p2pInitDuration                 = time.Second * 10
 )
 
 type defaultTimer struct {
@@ -54,10 +55,6 @@ func NewDefaultTimer() *defaultTimer {
 	return &defaultTimer{
 		ntpSyncTimer: ntp.NewSyncTime(elrondConfig.NTPConfig{SyncPeriodSeconds: 3600}, nil),
 	}
-}
-
-func (s *defaultTimer) After(d time.Duration) <-chan time.Time {
-	return time.After(d)
 }
 
 func (s *defaultTimer) NowUnix() int64 {
@@ -499,7 +496,6 @@ func (r *Relay) createAndStartBridge(
 		DestinationBridge: destinationBridge,
 		TopologyProvider:  r,
 		QuorumProvider:    r.quorumProvider,
-		Timer:             r.timer,
 		DurationsMap:      durationsMap,
 		StatusHandler:     statusHandler,
 	}
@@ -531,7 +527,6 @@ func (r *Relay) createAndStartBridge(
 		StartStateIdentifier: ethToElrond.GettingPending,
 		DurationBetweenSteps: r.stepDuration,
 		Log:                  logStateMachine,
-		Timer:                r.timer,
 		StatusHandler:        statusHandler,
 	}
 
@@ -648,8 +643,11 @@ func (r *Relay) init(ctx context.Context) error {
 		return err
 	}
 
+	timer := time.NewTimer(p2pInitDuration)
+	defer timer.Stop()
+
 	select {
-	case <-r.timer.After(10 * time.Second):
+	case <-timer.C:
 		r.log.Info(fmt.Sprint(r.messenger.Addresses()))
 
 		err = r.broadcaster.RegisterOnTopics()
