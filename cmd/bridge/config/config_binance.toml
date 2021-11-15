@@ -60,7 +60,7 @@
             { Name = "proposing transfer", DurationInMillis = 12000 },
             { Name = "waiting signatures for propose transfer", DurationInMillis = 12000 },
             { Name = "executing transfer", DurationInMillis = 12000 },
-            { Name = "proposing set status", DurationInMillis = 600000 }, # 10 minutes
+            { Name = "proposing set status", DurationInMillis = 120000 }, # 2 minutes
             { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
             { Name = "executing set status", DurationInMillis = 12000 }
         ]
@@ -70,7 +70,7 @@
             { Name = "getting the pending transactions", DurationInMillis = 12000 },
             { Name = "proposing transfer", DurationInMillis = 12000 },
             { Name = "waiting signatures for propose transfer", DurationInMillis = 12000 },
-            { Name = "executing transfer", DurationInMillis = 600000 }, # 10 minutes
+            { Name = "executing transfer", DurationInMillis = 120000 }, # 2 minutes
             { Name = "proposing set status", DurationInMillis = 12000 },
             { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
             { Name = "executing set status", DurationInMillis = 12000 }
