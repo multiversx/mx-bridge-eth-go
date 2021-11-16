@@ -33,14 +33,14 @@ type Bridge interface {
 	ProposeSetStatus(context.Context, *Batch)
 	ProposeTransfer(context.Context, *Batch) (string, error)
 	WasProposedTransfer(context.Context, *Batch) bool
-	GetActionIdForProposeTransfer(context.Context, *Batch) ActionId
+	GetActionIdForProposeTransfer(context.Context, *Batch) ActionID
 	WasProposedSetStatus(context.Context, *Batch) bool
-	GetActionIdForSetStatusOnPendingTransfer(context.Context, *Batch) ActionId
-	WasExecuted(context.Context, ActionId, BatchId) bool
-	Sign(context.Context, ActionId, *Batch) (string, error)
-	Execute(context.Context, ActionId, *Batch, SignaturesHolder) (string, error)
-	SignersCount(*Batch, ActionId, SignaturesHolder) uint
-	GetTransactionsStatuses(ctx context.Context, batchID BatchId) ([]uint8, error)
+	GetActionIdForSetStatusOnPendingTransfer(context.Context, *Batch) ActionID
+	WasExecuted(context.Context, ActionID, BatchID) bool
+	Sign(context.Context, ActionID, *Batch) (string, error)
+	Execute(context.Context, ActionID, *Batch, SignaturesHolder) (string, error)
+	SignersCount(*Batch, ActionID, SignaturesHolder) uint
+	GetTransactionsStatuses(ctx context.Context, batchID BatchID) ([]uint8, error)
 	IsInterfaceNil() bool
 }
 

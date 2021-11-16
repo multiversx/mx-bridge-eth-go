@@ -18,17 +18,17 @@ type BridgeStub struct {
 
 	WasProposedTransferCalled  func(ctx context.Context, batch *bridge.Batch) bool
 	WasProposedSetStatusCalled func(ctx context.Context, batch *bridge.Batch) bool
-	WasExecutedCalled          func(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool
+	WasExecutedCalled          func(ctx context.Context, id bridge.ActionID, id2 bridge.BatchID) bool
 
 	GetPendingCalled                               func(ctx context.Context) *bridge.Batch
 	ProposeSetStatusCalled                         func(ctx context.Context, batch *bridge.Batch)
 	ProposeTransferCalled                          func(ctx context.Context, batch *bridge.Batch) (string, error)
-	GetActionIdForProposeTransferCalled            func(ctx context.Context, batch *bridge.Batch) bridge.ActionId
-	GetActionIdForSetStatusOnPendingTransferCalled func(ctx context.Context, batch *bridge.Batch) bridge.ActionId
-	SignCalled                                     func(ctx context.Context, id bridge.ActionId) (string, error)
-	ExecuteCalled                                  func(ctx context.Context, id bridge.ActionId, batch *bridge.Batch, sigHolder bridge.SignaturesHolder) (string, error)
-	SignersCountCalled                             func(batch *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint
-	GetTransactionsStatusesCalled                  func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error)
+	GetActionIdForProposeTransferCalled            func(ctx context.Context, batch *bridge.Batch) bridge.ActionID
+	GetActionIdForSetStatusOnPendingTransferCalled func(ctx context.Context, batch *bridge.Batch) bridge.ActionID
+	SignCalled                                     func(ctx context.Context, id bridge.ActionID) (string, error)
+	ExecuteCalled                                  func(ctx context.Context, id bridge.ActionID, batch *bridge.Batch, sigHolder bridge.SignaturesHolder) (string, error)
+	SignersCountCalled                             func(batch *bridge.Batch, id bridge.ActionID, sigHolder bridge.SignaturesHolder) uint
+	GetTransactionsStatusesCalled                  func(ctx context.Context, batchID bridge.BatchID) ([]uint8, error)
 
 	ProposeTransferError error
 	SignError            error
@@ -63,7 +63,7 @@ func (b *BridgeStub) WasProposedSetStatus(ctx context.Context, batch *bridge.Bat
 }
 
 // WasExecuted -
-func (b *BridgeStub) WasExecuted(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool {
+func (b *BridgeStub) WasExecuted(ctx context.Context, id bridge.ActionID, id2 bridge.BatchID) bool {
 	b.incrementFunctionCounter()
 	if b.WasExecutedCalled != nil {
 		return b.WasExecutedCalled(ctx, id, id2)
@@ -104,19 +104,19 @@ func (b *BridgeStub) ProposeTransfer(ctx context.Context, batch *bridge.Batch) (
 }
 
 // GetActionIdForProposeTransfer -
-func (b *BridgeStub) GetActionIdForProposeTransfer(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
+func (b *BridgeStub) GetActionIdForProposeTransfer(ctx context.Context, batch *bridge.Batch) bridge.ActionID {
 	b.incrementFunctionCounter()
 	return b.GetActionIdForProposeTransferCalled(ctx, batch)
 }
 
 // GetActionIdForSetStatusOnPendingTransfer -
-func (b *BridgeStub) GetActionIdForSetStatusOnPendingTransfer(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
+func (b *BridgeStub) GetActionIdForSetStatusOnPendingTransfer(ctx context.Context, batch *bridge.Batch) bridge.ActionID {
 	b.incrementFunctionCounter()
 	return b.GetActionIdForSetStatusOnPendingTransferCalled(ctx, batch)
 }
 
 // Sign -
-func (b *BridgeStub) Sign(ctx context.Context, id bridge.ActionId, _ *bridge.Batch) (string, error) {
+func (b *BridgeStub) Sign(ctx context.Context, id bridge.ActionID, _ *bridge.Batch) (string, error) {
 	b.incrementFunctionCounter()
 	if b.SignCalled != nil {
 		return b.SignCalled(ctx, id)
@@ -125,7 +125,7 @@ func (b *BridgeStub) Sign(ctx context.Context, id bridge.ActionId, _ *bridge.Bat
 }
 
 // Execute -
-func (b *BridgeStub) Execute(ctx context.Context, id bridge.ActionId, batch *bridge.Batch, sigHolder bridge.SignaturesHolder) (string, error) {
+func (b *BridgeStub) Execute(ctx context.Context, id bridge.ActionID, batch *bridge.Batch, sigHolder bridge.SignaturesHolder) (string, error) {
 	b.incrementFunctionCounter()
 	if b.ExecuteCalled != nil {
 		return b.ExecuteCalled(ctx, id, batch, sigHolder)
@@ -134,7 +134,7 @@ func (b *BridgeStub) Execute(ctx context.Context, id bridge.ActionId, batch *bri
 }
 
 // SignersCount -
-func (b *BridgeStub) SignersCount(batch *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+func (b *BridgeStub) SignersCount(batch *bridge.Batch, id bridge.ActionID, sigHolder bridge.SignaturesHolder) uint {
 	b.incrementFunctionCounter()
 	if b.SignersCountCalled != nil {
 		return b.SignersCountCalled(batch, id, sigHolder)
@@ -143,7 +143,7 @@ func (b *BridgeStub) SignersCount(batch *bridge.Batch, id bridge.ActionId, sigHo
 }
 
 // GetTransactionsStatuses -
-func (b *BridgeStub) GetTransactionsStatuses(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+func (b *BridgeStub) GetTransactionsStatuses(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
 	b.incrementFunctionCounter()
 	if b.GetTransactionsStatusesCalled != nil {
 		return b.GetTransactionsStatusesCalled(ctx, batchID)

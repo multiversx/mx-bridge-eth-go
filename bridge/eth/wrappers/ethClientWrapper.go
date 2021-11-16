@@ -2,6 +2,7 @@ package wrappers
 
 import (
 	"context"
+	"math"
 	"math/big"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
@@ -66,21 +67,21 @@ func (wrapper *ethClientWrapper) GetRelayers(ctx context.Context) ([]common.Addr
 }
 
 // WasBatchExecuted returns true if the batch was executed
-func (wrapper *ethClientWrapper) WasBatchExecuted(ctx context.Context, batchNonce *big.Int) (bool, error) {
+func (wrapper *ethClientWrapper) WasBatchExecuted(ctx context.Context, batchNonce int64) (bool, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
-	return wrapper.bridgeContract.WasBatchExecuted(&bind.CallOpts{Context: ctx}, batchNonce)
+	return wrapper.bridgeContract.WasBatchExecuted(&bind.CallOpts{Context: ctx}, big.NewInt(batchNonce))
 }
 
 // WasBatchFinished returns true if the batch was finished
-func (wrapper *ethClientWrapper) WasBatchFinished(ctx context.Context, batchNonce *big.Int) (bool, error) {
+func (wrapper *ethClientWrapper) WasBatchFinished(ctx context.Context, batchNonce int64) (bool, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
-	return wrapper.bridgeContract.WasBatchFinished(&bind.CallOpts{Context: ctx}, batchNonce)
+	return wrapper.bridgeContract.WasBatchFinished(&bind.CallOpts{Context: ctx}, big.NewInt(batchNonce))
 }
 
 // GetStatusesAfterExecution returns the transaction statuses after execution
-func (wrapper *ethClientWrapper) GetStatusesAfterExecution(ctx context.Context, batchNonceElrondETH *big.Int) ([]uint8, error) {
+func (wrapper *ethClientWrapper) GetStatusesAfterExecution(ctx context.Context, batchNonceElrondETH int64) ([]uint8, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
-	return wrapper.bridgeContract.GetStatusesAfterExecution(&bind.CallOpts{Context: ctx}, batchNonceElrondETH)
+	return wrapper.bridgeContract.GetStatusesAfterExecution(&bind.CallOpts{Context: ctx}, big.NewInt(batchNonceElrondETH))
 }
 
 // ChainID returns the chain ID
@@ -103,27 +104,36 @@ func (wrapper *ethClientWrapper) BlockNumber(ctx context.Context) (uint64, error
 }
 
 // NonceAt returns the account's nonce at the specified block number
-func (wrapper *ethClientWrapper) NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
+func (wrapper *ethClientWrapper) NonceAt(ctx context.Context, account common.Address, blockNumber uint64) (uint64, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
-	return wrapper.blockchainClient.NonceAt(ctx, account, blockNumber)
+	return wrapper.blockchainClient.NonceAt(ctx, account, big.NewInt(0).SetUint64(blockNumber))
 }
 
 // FinishCurrentPendingBatch will send a set-status transaction on the ethereum chain
-func (wrapper *ethClientWrapper) FinishCurrentPendingBatch(opts *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error) {
+func (wrapper *ethClientWrapper) FinishCurrentPendingBatch(opts *bind.TransactOpts, batchNonce int64, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientTransactions, 1)
-	return wrapper.bridgeContract.FinishCurrentPendingBatch(opts, batchNonce, newDepositStatuses, signatures)
+	return wrapper.bridgeContract.FinishCurrentPendingBatch(opts, big.NewInt(batchNonce), newDepositStatuses, signatures)
 }
 
 // ExecuteTransfer will send an execute-transfer transaction on the ethereum chain
-func (wrapper *ethClientWrapper) ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+func (wrapper *ethClientWrapper) ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce int64, signatures [][]byte) (*types.Transaction, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientTransactions, 1)
-	return wrapper.bridgeContract.ExecuteTransfer(opts, tokens, recipients, amounts, batchNonce, signatures)
+	return wrapper.bridgeContract.ExecuteTransfer(opts, tokens, recipients, amounts, big.NewInt(batchNonce), signatures)
 }
 
 // Quorum returns the current set quorum value
-func (wrapper *ethClientWrapper) Quorum(ctx context.Context) (*big.Int, error) {
+func (wrapper *ethClientWrapper) Quorum(ctx context.Context) (uint64, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
-	return wrapper.bridgeContract.Quorum(&bind.CallOpts{Context: ctx})
+	value, err := wrapper.bridgeContract.Quorum(&bind.CallOpts{Context: ctx})
+	if err != nil {
+		return 0, err
+	}
+
+	if value.Cmp(big.NewInt(math.MaxUint32)) > 0 {
+		return 0, ErrInvalidQuorumValue
+	}
+
+	return value.Uint64(), nil
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

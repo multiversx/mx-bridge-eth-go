@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 )
 
 // BridgeMock -
@@ -14,13 +13,13 @@ type BridgeMock struct {
 	sync.RWMutex
 	pendingBatch                  *bridge.Batch
 	proposedTransferBatch         *bridge.Batch
-	actionID                      bridge.ActionId
+	actionID                      bridge.ActionID
 	signedActionIDMap             map[string]int
-	executedActionID              bridge.ActionId
-	executedBatchID               bridge.BatchId
+	executedActionID              bridge.ActionID
+	executedBatchID               bridge.BatchID
 	proposedStatusBatch           *bridge.Batch
 	GetPendingCalled              func()
-	GetTransactionsStatusesCalled func(ctx context.Context, batchId bridge.BatchId) ([]uint8, error)
+	GetTransactionsStatusesCalled func(ctx context.Context, batchID bridge.BatchID) ([]uint8, error)
 	ProposeTransferCalled         func(_ context.Context, batch *bridge.Batch) (string, error)
 }
 
@@ -41,7 +40,7 @@ func (bm *BridgeMock) SetPending(pendingBatch *bridge.Batch) {
 	bm.Lock()
 	defer bm.Unlock()
 
-	bm.pendingBatch = integrationTests.CloneBatch(pendingBatch)
+	bm.pendingBatch = pendingBatch.Clone()
 }
 
 // ProposeSetStatus -
@@ -49,7 +48,7 @@ func (bm *BridgeMock) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	bm.Lock()
 	defer bm.Unlock()
 
-	bm.proposedStatusBatch = integrationTests.CloneBatch(batch)
+	bm.proposedStatusBatch = batch.Clone()
 }
 
 // GetProposedSetStatusBatch -
@@ -69,7 +68,7 @@ func (bm *BridgeMock) ProposeTransfer(ctx context.Context, batch *bridge.Batch) 
 	bm.Lock()
 	defer bm.Unlock()
 
-	bm.proposedTransferBatch = integrationTests.CloneBatch(batch)
+	bm.proposedTransferBatch = batch.Clone()
 
 	return "", nil
 }
@@ -91,7 +90,7 @@ func (bm *BridgeMock) WasProposedTransfer(_ context.Context, batch *bridge.Batch
 }
 
 // GetActionIdForProposeTransfer -
-func (bm *BridgeMock) GetActionIdForProposeTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
+func (bm *BridgeMock) GetActionIdForProposeTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionID {
 	bm.RLock()
 	defer bm.RUnlock()
 
@@ -99,7 +98,7 @@ func (bm *BridgeMock) GetActionIdForProposeTransfer(_ context.Context, _ *bridge
 }
 
 // SetActionID -
-func (bm *BridgeMock) SetActionID(actionID bridge.ActionId) {
+func (bm *BridgeMock) SetActionID(actionID bridge.ActionID) {
 	bm.Lock()
 	defer bm.Unlock()
 
@@ -115,7 +114,7 @@ func (bm *BridgeMock) WasProposedSetStatus(_ context.Context, batch *bridge.Batc
 }
 
 // GetActionIdForSetStatusOnPendingTransfer -
-func (bm *BridgeMock) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
+func (bm *BridgeMock) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionID {
 	bm.RLock()
 	defer bm.RUnlock()
 
@@ -123,7 +122,7 @@ func (bm *BridgeMock) GetActionIdForSetStatusOnPendingTransfer(_ context.Context
 }
 
 // WasExecuted -
-func (bm *BridgeMock) WasExecuted(_ context.Context, id bridge.ActionId, id2 bridge.BatchId) bool {
+func (bm *BridgeMock) WasExecuted(_ context.Context, id bridge.ActionID, id2 bridge.BatchID) bool {
 	bm.RLock()
 	defer bm.RUnlock()
 
@@ -131,15 +130,14 @@ func (bm *BridgeMock) WasExecuted(_ context.Context, id bridge.ActionId, id2 bri
 }
 
 // Sign -
-func (bm *BridgeMock) Sign(_ context.Context, id bridge.ActionId, _ *bridge.Batch) (string, error) {
+func (bm *BridgeMock) Sign(_ context.Context, id bridge.ActionID, _ *bridge.Batch) (string, error) {
 	bm.Lock()
 	defer bm.Unlock()
 
 	if bm.signedActionIDMap == nil {
 		bm.signedActionIDMap = make(map[string]int)
 	}
-	idString := integrationTests.ActionIdToString(id)
-	bm.signedActionIDMap[idString]++
+	bm.signedActionIDMap[id.String()]++
 
 	return "", nil
 }
@@ -153,18 +151,18 @@ func (bm *BridgeMock) SignedActionIDMap() map[string]int {
 }
 
 // Execute -
-func (bm *BridgeMock) Execute(_ context.Context, id bridge.ActionId, batch *bridge.Batch, _ bridge.SignaturesHolder) (string, error) {
+func (bm *BridgeMock) Execute(_ context.Context, id bridge.ActionID, batch *bridge.Batch, _ bridge.SignaturesHolder) (string, error) {
 	bm.Lock()
 	defer bm.Unlock()
 
 	bm.executedActionID = id
-	bm.executedBatchID = batch.Id
+	bm.executedBatchID = batch.ID
 
 	return "", nil
 }
 
 // GetExecuted -
-func (bm *BridgeMock) GetExecuted() (bridge.ActionId, bridge.BatchId) {
+func (bm *BridgeMock) GetExecuted() (bridge.ActionID, bridge.BatchID) {
 	bm.RLock()
 	defer bm.RUnlock()
 
@@ -172,7 +170,7 @@ func (bm *BridgeMock) GetExecuted() (bridge.ActionId, bridge.BatchId) {
 }
 
 // SignersCount -
-func (bm *BridgeMock) SignersCount(_ *bridge.Batch, id bridge.ActionId, _ bridge.SignaturesHolder) uint {
+func (bm *BridgeMock) SignersCount(_ *bridge.Batch, id bridge.ActionID, _ bridge.SignaturesHolder) uint {
 	bm.RLock()
 	defer bm.RUnlock()
 
@@ -180,14 +178,13 @@ func (bm *BridgeMock) SignersCount(_ *bridge.Batch, id bridge.ActionId, _ bridge
 		return 0
 	}
 
-	idString := integrationTests.ActionIdToString(id)
-	return uint(bm.signedActionIDMap[idString])
+	return uint(bm.signedActionIDMap[id.String()])
 }
 
 // GetTransactionsStatuses -
-func (bm *BridgeMock) GetTransactionsStatuses(ctx context.Context, batchId bridge.BatchId) ([]uint8, error) {
+func (bm *BridgeMock) GetTransactionsStatuses(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
 	if bm.GetTransactionsStatusesCalled != nil {
-		return bm.GetTransactionsStatusesCalled(ctx, batchId)
+		return bm.GetTransactionsStatusesCalled(ctx, batchID)
 	}
 
 	return make([]byte, 0), nil

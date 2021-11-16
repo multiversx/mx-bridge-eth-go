@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"testing"
 
@@ -59,11 +58,12 @@ func TestGetPending(t *testing.T) {
 						Depositor:    common.HexToAddress("0x132A150926691F08a693721503a38affeD18d524"),
 						Recipient:    core.ConvertFromByteSliceToArray(buff),
 						Status:       0,
+						Nonce:        big.NewInt(3783),
 					},
 				},
 			},
 			expectedBatch: &bridge.Batch{
-				Id: big.NewInt(1),
+				ID: 1,
 				Transactions: []*bridge.DepositTransaction{
 					{
 						To:            string(buff),
@@ -71,6 +71,7 @@ func TestGetPending(t *testing.T) {
 						From:          "0x132A150926691F08a693721503a38affeD18d524",
 						TokenAddress:  "0x093c0B280ba430A9Cc9C3649FF34FCBf6347bC50",
 						Amount:        big.NewInt(42),
+						DepositNonce:  bridge.Nonce(3783),
 					},
 				},
 			},
@@ -125,7 +126,7 @@ func TestSign(t *testing.T) {
 	}
 	t.Run("will sign propose status for executed tx", func(t *testing.T) {
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(42),
+			ID: 42,
 			Transactions: []*bridge.DepositTransaction{{
 				Status: bridge.Executed,
 			}},
@@ -137,7 +138,7 @@ func TestSign(t *testing.T) {
 			lastBroadcastSignature = signature
 		}
 
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(setStatusAction), batch)
+		_, _ = c.Sign(context.TODO(), bridge.ActionID(setStatusAction), batch)
 
 		expectedSignature, _ := hexutil.Decode("0x524957e3081d49d98c98881abd5cf6f737722a4aa0e7915771a567e3cb45cfc625cd9fcf9ec53c86182e517c1e61dbc076722905d11b73e1ed42665ec051342701")
 
@@ -145,7 +146,7 @@ func TestSign(t *testing.T) {
 	})
 	t.Run("will sign propose status for rejected tx", func(t *testing.T) {
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(42),
+			ID: 42,
 			Transactions: []*bridge.DepositTransaction{{
 				Status: bridge.Rejected,
 			}},
@@ -157,7 +158,7 @@ func TestSign(t *testing.T) {
 			lastBroadcastSignature = signature
 		}
 
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(setStatusAction), batch)
+		_, _ = c.Sign(context.TODO(), bridge.ActionID(setStatusAction), batch)
 
 		expectedSignature, _ := hexutil.Decode("0xd9b1ae38d7e24837e90e7aaac2ae9ca1eb53dc7a30c41774ad7f7f5fd2371c2d0ac6e69643f6aaa25bd9b000dcf0b8be567bcde7f0a5fb5aad122273999bad2500")
 
@@ -165,13 +166,13 @@ func TestSign(t *testing.T) {
 	})
 	t.Run("will sign tx for transfer", func(t *testing.T) {
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(42),
+			ID: 42,
 			Transactions: []*bridge.DepositTransaction{{
 				To:           "cf95254084ab772696643f0e05ac4711ed674ac1",
 				From:         "04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3",
 				TokenAddress: "574554482d323936313238",
 				Amount:       big.NewInt(1),
-				DepositNonce: bridge.NewNonce(2),
+				DepositNonce: 2,
 			},
 			},
 		}
@@ -182,21 +183,21 @@ func TestSign(t *testing.T) {
 			lastBroadcastSignature = signature
 		}
 
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(transferAction), batch)
+		_, _ = c.Sign(context.TODO(), bridge.ActionID(transferAction), batch)
 		expectedSignature, _ := hexutil.Decode("0xab3ce0cdc229afc9fcd0447800142da85aa116f16a26e151b9cad95b361ab73d24694ded888a06a1e9b731af8a1b549a1fc5188117e40bea11d9e74af4a6d5fa01")
 
 		assert.Equal(t, expectedSignature, lastBroadcastSignature)
 	})
 	t.Run("sign transfer will generate recoverable public key", func(t *testing.T) {
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(42),
+			ID: 42,
 			Transactions: []*bridge.DepositTransaction{
 				{
 					To:           "cf95254084ab772696643f0e05ac4711ed674ac1",
 					From:         "04aa6d6029b4e136d04848f5b588c2951185666cc871982994f7ef1654282fa3",
 					TokenAddress: "574554482d323936313238",
 					Amount:       big.NewInt(1),
-					DepositNonce: bridge.NewNonce(2),
+					DepositNonce: 2,
 				},
 			},
 		}
@@ -215,10 +216,10 @@ func TestSign(t *testing.T) {
 			sig = signature
 			msg = messageHash
 		}
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(setStatusAction), batch)
+		_, _ = c.Sign(context.TODO(), bridge.ActionID(setStatusAction), batch)
 		testPublicKey(t, sig, msg, ethAddress)
 
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(transferAction), batch)
+		_, _ = c.Sign(context.TODO(), bridge.ActionID(transferAction), batch)
 		testPublicKey(t, sig, msg, ethAddress)
 	})
 }
@@ -244,16 +245,16 @@ func TestSignersCount(t *testing.T) {
 		log:           logger.GetOrCreate("testEthClient"),
 	}
 	batch := &bridge.Batch{
-		Id: bridge.NewBatchId(0),
+		ID: 0,
 	}
 
 	t.Run("should return 0 when sig holder is nil", func(t *testing.T) {
-		got := c.SignersCount(batch, bridge.NewActionId(0), nil)
+		got := c.SignersCount(batch, 0, nil)
 
 		assert.Equal(t, uint(0), got)
 	})
 	t.Run("should return signature", func(t *testing.T) {
-		got := c.SignersCount(batch, bridge.NewActionId(0), sigHolderStub)
+		got := c.SignersCount(batch, 0, sigHolderStub)
 
 		assert.Equal(t, uint(1), got)
 	})
@@ -262,7 +263,7 @@ func TestSignersCount(t *testing.T) {
 func TestWasExecuted(t *testing.T) {
 	t.Run("when action is set status", func(t *testing.T) {
 		clientWrapper := &mockInteractors.EthereumChainInteractorStub{
-			WasBatchFinishedCalled: func(ctx context.Context, batchNonce *big.Int) (bool, error) {
+			WasBatchFinishedCalled: func(ctx context.Context, batchNonce int64) (bool, error) {
 				return true, nil
 			},
 		}
@@ -273,13 +274,13 @@ func TestWasExecuted(t *testing.T) {
 			log:           logger.GetOrCreate("testEthClient"),
 		}
 
-		got := c.WasExecuted(context.TODO(), bridge.NewActionId(setStatusAction), bridge.NewBatchId(42))
+		got := c.WasExecuted(context.TODO(), bridge.ActionID(setStatusAction), 42)
 
 		assert.Equal(t, true, got)
 	})
 	t.Run("when action is transfer", func(t *testing.T) {
 		clientWrapper := &mockInteractors.EthereumChainInteractorStub{
-			WasBatchExecutedCalled: func(ctx context.Context, batchNonce *big.Int) (bool, error) {
+			WasBatchExecutedCalled: func(ctx context.Context, batchNonce int64) (bool, error) {
 				return true, nil
 			},
 		}
@@ -290,7 +291,7 @@ func TestWasExecuted(t *testing.T) {
 			log:           logger.GetOrCreate("testEthClient"),
 		}
 
-		got := c.WasExecuted(context.TODO(), bridge.NewActionId(transferAction), bridge.NewBatchId(42))
+		got := c.WasExecuted(context.TODO(), bridge.ActionID(transferAction), 42)
 
 		assert.Equal(t, true, got)
 	})
@@ -298,7 +299,7 @@ func TestWasExecuted(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	batch := &bridge.Batch{
-		Id: bridge.NewBatchId(42),
+		ID: 42,
 		Transactions: []*bridge.DepositTransaction{
 			{
 				To:           testsCommon.CreateRandomEthereumAddress().Hex(),
@@ -328,14 +329,14 @@ func TestExecute(t *testing.T) {
 			gasHandler:    &testsCommon.GasHandlerStub{},
 		}
 
-		got, err := c.Execute(context.TODO(), bridge.NewActionId(setStatusAction), batch, nil)
+		got, err := c.Execute(context.TODO(), bridge.ActionID(setStatusAction), batch, nil)
 		assert.Equal(t, ErrNilSignaturesHolder, err)
 		assert.Equal(t, "", got)
 	})
 	t.Run("when action is set status", func(t *testing.T) {
 		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
 		clientWrapper := &mockInteractors.EthereumChainInteractorStub{
-			FinishCurrentPendingBatchCalled: func(opts *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error) {
+			FinishCurrentPendingBatchCalled: func(opts *bind.TransactOpts, batchNonce int64, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error) {
 				return types.NewTx(&types.AccessListTx{}), nil
 			},
 		}
@@ -349,14 +350,14 @@ func TestExecute(t *testing.T) {
 			gasHandler:    &testsCommon.GasHandlerStub{},
 		}
 
-		got, _ := c.Execute(context.TODO(), bridge.NewActionId(setStatusAction), batch, sigHolderStub)
+		got, _ := c.Execute(context.TODO(), bridge.ActionID(setStatusAction), batch, sigHolderStub)
 
 		assert.Equal(t, expected, got)
 	})
 	t.Run("not enough ERC20 balance", func(t *testing.T) {
 		gasPrice := 1000
 		nonce := 1234
-		blockNonce := 4321
+		blockNonce := uint64(4321)
 		executeTransferCalled := false
 
 		safeContractAddress := testsCommon.CreateRandomEthereumAddress()
@@ -370,7 +371,7 @@ func TestExecute(t *testing.T) {
 		}
 
 		clientWrapper := &mockInteractors.EthereumChainInteractorStub{
-			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce int64, signatures [][]byte) (*types.Transaction, error) {
 				executeTransferCalled = true
 
 				assert.Equal(t, big.NewInt(int64(gasPrice)), opts.GasPrice)
@@ -380,8 +381,8 @@ func TestExecute(t *testing.T) {
 			BlockNumberCalled: func(ctx context.Context) (uint64, error) {
 				return uint64(blockNonce), nil
 			},
-			NonceAtCalled: func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
-				require.Equal(t, big.NewInt(int64(blockNonce)), blockNumber)
+			NonceAtCalled: func(ctx context.Context, account common.Address, blockNumber uint64) (uint64, error) {
+				require.Equal(t, blockNonce, blockNumber)
 				return uint64(nonce), nil
 			},
 		}
@@ -402,18 +403,18 @@ func TestExecute(t *testing.T) {
 			log:      logger.GetOrCreate("testEthClient"),
 		}
 
-		_, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, sigHolderStub)
+		_, err := c.Execute(context.TODO(), bridge.ActionID(transferAction), batch, sigHolderStub)
 		require.True(t, errors.Is(err, ErrInsufficientErc20Balance))
 		assert.False(t, executeTransferCalled)
 	})
 	t.Run("ERC20 contract not found", func(t *testing.T) {
 		gasPrice := 1000
 		nonce := 1234
-		blockNonce := 4321
+		blockNonce := uint64(4321)
 		executeTransferCalled := false
 
 		clientWrapper := &mockInteractors.EthereumChainInteractorStub{
-			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce int64, signatures [][]byte) (*types.Transaction, error) {
 				executeTransferCalled = true
 
 				assert.Equal(t, big.NewInt(int64(gasPrice)), opts.GasPrice)
@@ -423,8 +424,8 @@ func TestExecute(t *testing.T) {
 			BlockNumberCalled: func(ctx context.Context) (uint64, error) {
 				return uint64(blockNonce), nil
 			},
-			NonceAtCalled: func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
-				require.Equal(t, big.NewInt(int64(blockNonce)), blockNumber)
+			NonceAtCalled: func(ctx context.Context, account common.Address, blockNumber uint64) (uint64, error) {
+				require.Equal(t, blockNonce, blockNumber)
 				return uint64(nonce), nil
 			},
 		}
@@ -444,7 +445,7 @@ func TestExecute(t *testing.T) {
 			log:      logger.GetOrCreate("testEthClient"),
 		}
 
-		_, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, sigHolderStub)
+		_, err := c.Execute(context.TODO(), bridge.ActionID(transferAction), batch, sigHolderStub)
 		require.True(t, errors.Is(err, ErrMissingErc20ContractDefinition))
 		assert.False(t, executeTransferCalled)
 	})
@@ -452,7 +453,7 @@ func TestExecute(t *testing.T) {
 		expected := "0x029bc1fcae8ad9f887af3f37a9ebb223f1e535b009fc7ad7b053ba9b5ff666ae"
 		gasPrice := 1000
 		nonce := 1234
-		blockNonce := 4321
+		blockNonce := uint64(4321)
 		executeTransferCalled := false
 
 		safeContractAddress := testsCommon.CreateRandomEthereumAddress()
@@ -466,7 +467,7 @@ func TestExecute(t *testing.T) {
 		}
 
 		clientWrapper := &mockInteractors.EthereumChainInteractorStub{
-			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce int64, signatures [][]byte) (*types.Transaction, error) {
 				executeTransferCalled = true
 
 				assert.Equal(t, big.NewInt(int64(gasPrice)), opts.GasPrice)
@@ -476,8 +477,8 @@ func TestExecute(t *testing.T) {
 			BlockNumberCalled: func(ctx context.Context) (uint64, error) {
 				return uint64(blockNonce), nil
 			},
-			NonceAtCalled: func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
-				require.Equal(t, big.NewInt(int64(blockNonce)), blockNumber)
+			NonceAtCalled: func(ctx context.Context, account common.Address, blockNumber uint64) (uint64, error) {
+				require.Equal(t, blockNonce, blockNumber)
 				return uint64(nonce), nil
 			},
 		}
@@ -498,14 +499,14 @@ func TestExecute(t *testing.T) {
 			log:      logger.GetOrCreate("testEthClient"),
 		}
 
-		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, sigHolderStub)
+		got, err := c.Execute(context.TODO(), bridge.ActionID(transferAction), batch, sigHolderStub)
 		require.Nil(t, err)
 		assert.Equal(t, expected, got)
 		assert.True(t, executeTransferCalled)
 	})
 	t.Run("gas price handler errors", func(t *testing.T) {
 		clientWrapper := &mockInteractors.EthereumChainInteractorStub{
-			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce int64, signatures [][]byte) (*types.Transaction, error) {
 				require.Fail(t, "should have not been called")
 
 				return nil, nil
@@ -527,14 +528,14 @@ func TestExecute(t *testing.T) {
 			log:      logger.GetOrCreate("testEthClient"),
 		}
 
-		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, sigHolderStub)
+		got, err := c.Execute(context.TODO(), bridge.ActionID(transferAction), batch, sigHolderStub)
 		assert.Equal(t, "", got)
 		assert.Equal(t, gasPriceError, err)
 	})
 	t.Run("blockchain client errors on blockNumber", func(t *testing.T) {
 		blockNumError := fmt.Errorf("block number error")
 		clientWrapper := &mockInteractors.EthereumChainInteractorStub{
-			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce int64, signatures [][]byte) (*types.Transaction, error) {
 				require.Fail(t, "should have not been called")
 
 				return nil, nil
@@ -554,27 +555,29 @@ func TestExecute(t *testing.T) {
 			log:           logger.GetOrCreate("testEthClient"),
 		}
 
-		got, err := c.Execute(context.TODO(), bridge.NewActionId(transferAction), batch, sigHolderStub)
+		got, err := c.Execute(context.TODO(), bridge.ActionID(transferAction), batch, sigHolderStub)
 		assert.Equal(t, "", got)
 		assert.True(t, errors.Is(err, blockNumError))
 	})
 }
 
 func TestGetQuorum(t *testing.T) {
+	expectedErr := errors.New("expected error")
 	tests := []struct {
-		actual   *big.Int
-		expected uint
-		error    error
+		actual      uint64
+		expected    uint
+		error       error
+		errReturned error
 	}{
-		{actual: big.NewInt(42), expected: 42, error: nil},
-		{actual: big.NewInt(math.MaxUint32 + 1), expected: 0, error: errors.New("quorum is not a uint")},
+		{actual: 42, expected: 42, error: nil, errReturned: nil},
+		{actual: 0, errReturned: expectedErr, error: expectedErr},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("When contract quorum is %v", test.actual), func(t *testing.T) {
 			clientWrapper := &mockInteractors.EthereumChainInteractorStub{
-				QuorumCalled: func(ctx context.Context) (*big.Int, error) {
-					return test.actual, nil
+				QuorumCalled: func(ctx context.Context) (uint64, error) {
+					return test.actual, test.errReturned
 				},
 			}
 			c := client{
@@ -600,7 +603,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	methodCalled := false
 	statuses := []byte{1, 2}
 	clientWrapper := &mockInteractors.EthereumChainInteractorStub{
-		GetStatusesAfterExecutionCalled: func(ctx context.Context, batchNonceElrondETH *big.Int) ([]uint8, error) {
+		GetStatusesAfterExecutionCalled: func(ctx context.Context, batchNonceElrondETH int64) ([]uint8, error) {
 			methodCalled = true
 			return statuses, nil
 		},
@@ -614,7 +617,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		log:           logger.GetOrCreate("testEthClient"),
 	}
 
-	returned, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(12))
+	returned, err := c.GetTransactionsStatuses(context.TODO(), bridge.BatchID(12))
 	assert.Nil(t, err)
 	assert.Equal(t, statuses, returned)
 	assert.True(t, methodCalled)

@@ -13,3 +13,6 @@ var ErrNilStatusHandler = errors.New("nil status handler")
 
 // ErrNilErc20Contract signals that a nil ERC20 contract was provided
 var ErrNilErc20Contract = errors.New("nil ERC20 contract")
+
+// ErrInvalidQuorumValue signals that an invalid quorum value was received
+var ErrInvalidQuorumValue = errors.New("invalid quorum value")

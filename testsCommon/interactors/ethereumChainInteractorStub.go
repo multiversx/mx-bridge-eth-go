@@ -17,15 +17,15 @@ type EthereumChainInteractorStub struct {
 
 	NameCalled                      func() string
 	GetNextPendingBatchCalled       func(ctx context.Context) (contract.Batch, error)
-	WasBatchExecutedCalled          func(ctx context.Context, batchNonce *big.Int) (bool, error)
-	WasBatchFinishedCalled          func(ctx context.Context, batchNonce *big.Int) (bool, error)
-	GetStatusesAfterExecutionCalled func(ctx context.Context, batchNonceElrondETH *big.Int) ([]uint8, error)
+	WasBatchExecutedCalled          func(ctx context.Context, batchNonce int64) (bool, error)
+	WasBatchFinishedCalled          func(ctx context.Context, batchNonce int64) (bool, error)
+	GetStatusesAfterExecutionCalled func(ctx context.Context, batchNonceElrondETH int64) ([]uint8, error)
 	ChainIDCalled                   func(ctx context.Context) (*big.Int, error)
 	BlockNumberCalled               func(ctx context.Context) (uint64, error)
-	NonceAtCalled                   func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
-	FinishCurrentPendingBatchCalled func(opts *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error)
-	ExecuteTransferCalled           func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
-	QuorumCalled                    func(ctx context.Context) (*big.Int, error)
+	NonceAtCalled                   func(ctx context.Context, account common.Address, blockNumber uint64) (uint64, error)
+	FinishCurrentPendingBatchCalled func(opts *bind.TransactOpts, batchNonce int64, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error)
+	ExecuteTransferCalled           func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce int64, signatures [][]byte) (*types.Transaction, error)
+	QuorumCalled                    func(ctx context.Context) (uint64, error)
 	GetRelayersCalled               func(ctx context.Context) ([]common.Address, error)
 }
 
@@ -39,7 +39,7 @@ func (stub *EthereumChainInteractorStub) GetNextPendingBatch(ctx context.Context
 }
 
 // WasBatchExecuted -
-func (stub *EthereumChainInteractorStub) WasBatchExecuted(ctx context.Context, batchNonce *big.Int) (bool, error) {
+func (stub *EthereumChainInteractorStub) WasBatchExecuted(ctx context.Context, batchNonce int64) (bool, error) {
 	if stub.WasBatchExecutedCalled != nil {
 		return stub.WasBatchExecutedCalled(ctx, batchNonce)
 	}
@@ -48,7 +48,7 @@ func (stub *EthereumChainInteractorStub) WasBatchExecuted(ctx context.Context, b
 }
 
 // WasBatchFinished -
-func (stub *EthereumChainInteractorStub) WasBatchFinished(ctx context.Context, batchNonce *big.Int) (bool, error) {
+func (stub *EthereumChainInteractorStub) WasBatchFinished(ctx context.Context, batchNonce int64) (bool, error) {
 	if stub.WasBatchFinishedCalled != nil {
 		return stub.WasBatchFinishedCalled(ctx, batchNonce)
 	}
@@ -57,7 +57,7 @@ func (stub *EthereumChainInteractorStub) WasBatchFinished(ctx context.Context, b
 }
 
 // GetStatusesAfterExecution -
-func (stub *EthereumChainInteractorStub) GetStatusesAfterExecution(ctx context.Context, batchNonceElrondETH *big.Int) ([]uint8, error) {
+func (stub *EthereumChainInteractorStub) GetStatusesAfterExecution(ctx context.Context, batchNonceElrondETH int64) ([]uint8, error) {
 	if stub.GetStatusesAfterExecutionCalled != nil {
 		return stub.GetStatusesAfterExecutionCalled(ctx, batchNonceElrondETH)
 	}
@@ -84,7 +84,7 @@ func (stub *EthereumChainInteractorStub) BlockNumber(ctx context.Context) (uint6
 }
 
 // NonceAt -
-func (stub *EthereumChainInteractorStub) NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
+func (stub *EthereumChainInteractorStub) NonceAt(ctx context.Context, account common.Address, blockNumber uint64) (uint64, error) {
 	if stub.NonceAtCalled != nil {
 		return stub.NonceAtCalled(ctx, account, blockNumber)
 	}
@@ -93,7 +93,7 @@ func (stub *EthereumChainInteractorStub) NonceAt(ctx context.Context, account co
 }
 
 // FinishCurrentPendingBatch -
-func (stub *EthereumChainInteractorStub) FinishCurrentPendingBatch(opts *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error) {
+func (stub *EthereumChainInteractorStub) FinishCurrentPendingBatch(opts *bind.TransactOpts, batchNonce int64, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error) {
 	if stub.FinishCurrentPendingBatchCalled != nil {
 		return stub.FinishCurrentPendingBatchCalled(opts, batchNonce, newDepositStatuses, signatures)
 	}
@@ -102,7 +102,7 @@ func (stub *EthereumChainInteractorStub) FinishCurrentPendingBatch(opts *bind.Tr
 }
 
 // ExecuteTransfer -
-func (stub *EthereumChainInteractorStub) ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+func (stub *EthereumChainInteractorStub) ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce int64, signatures [][]byte) (*types.Transaction, error) {
 	if stub.ExecuteTransferCalled != nil {
 		return stub.ExecuteTransferCalled(opts, tokens, recipients, amounts, batchNonce, signatures)
 	}
@@ -111,12 +111,12 @@ func (stub *EthereumChainInteractorStub) ExecuteTransfer(opts *bind.TransactOpts
 }
 
 // Quorum -
-func (stub *EthereumChainInteractorStub) Quorum(ctx context.Context) (*big.Int, error) {
+func (stub *EthereumChainInteractorStub) Quorum(ctx context.Context) (uint64, error) {
 	if stub.QuorumCalled != nil {
 		return stub.QuorumCalled(ctx)
 	}
 
-	return big.NewInt(0), nil
+	return 0, nil
 }
 
 // GetRelayers -

@@ -3,7 +3,6 @@ package bridgeExecutors
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
@@ -34,7 +33,7 @@ type ethElrondBridgeExecutor struct {
 	sourceBridge      bridge.Bridge
 	destinationBridge bridge.Bridge
 	pendingBatch      *bridge.Batch
-	actionID          bridge.ActionId
+	actionID          bridge.ActionID
 	topologyProvider  TopologyProvider
 	quorumProvider    bridge.QuorumProvider
 	timer             core.Timer
@@ -97,6 +96,11 @@ func (executor *ethElrondBridgeExecutor) HasPendingBatch() bool {
 	return executor.pendingBatch != nil
 }
 
+// CurrentPendingBatch returns the current pending batch
+func (executor *ethElrondBridgeExecutor) CurrentPendingBatch() *bridge.Batch {
+	return executor.pendingBatch
+}
+
 // IsLeader returns true if the current instance is the leader in this round
 func (executor *ethElrondBridgeExecutor) IsLeader() bool {
 	return executor.topologyProvider.AmITheLeader()
@@ -114,12 +118,12 @@ func (executor *ethElrondBridgeExecutor) WasProposeSetStatusExecutedOnSource(ctx
 
 // WasTransferExecutedOnDestination returns true if the action ID was executed on the destination bridge
 func (executor *ethElrondBridgeExecutor) WasTransferExecutedOnDestination(ctx context.Context) bool {
-	return executor.destinationBridge.WasExecuted(ctx, executor.actionID, executor.pendingBatch.Id)
+	return executor.destinationBridge.WasExecuted(ctx, executor.actionID, executor.pendingBatch.ID)
 }
 
 // WasSetStatusExecutedOnSource returns true if the action ID was executed on the source bridge
 func (executor *ethElrondBridgeExecutor) WasSetStatusExecutedOnSource(ctx context.Context) bool {
-	return executor.sourceBridge.WasExecuted(ctx, executor.actionID, executor.pendingBatch.Id)
+	return executor.sourceBridge.WasExecuted(ctx, executor.actionID, executor.pendingBatch.ID)
 }
 
 // IsQuorumReachedForProposeTransfer returns true if the quorum has been reached for the propose transfer operation
@@ -239,8 +243,8 @@ func (executor *ethElrondBridgeExecutor) UpdateTransactionsStatusesIfNeeded(ctx 
 		return nil
 	}
 
-	batchId := executor.pendingBatch.Id
-	statuses, err := executor.destinationBridge.GetTransactionsStatuses(ctx, executor.pendingBatch.Id)
+	batchId := executor.pendingBatch.ID
+	statuses, err := executor.destinationBridge.GetTransactionsStatuses(ctx, executor.pendingBatch.ID)
 	if err != nil {
 		return err
 	}
@@ -287,7 +291,7 @@ func (executor *ethElrondBridgeExecutor) isStatusesCheckOnDestinationNeeded() bo
 
 // SignProposeTransferOnDestination will fetch and sign the action ID for the propose transfer operation
 func (executor *ethElrondBridgeExecutor) SignProposeTransferOnDestination(ctx context.Context) {
-	executor.logger.Info(executor.appendMessageToName("signing propose transfer"), "batch ID", executor.getBatchID())
+	executor.logger.Info(executor.appendMessageToName("signing propose transfer"), "batchID", executor.getBatchID())
 	executor.actionID = executor.destinationBridge.GetActionIdForProposeTransfer(ctx, executor.pendingBatch)
 	_, err := executor.destinationBridge.Sign(ctx, executor.actionID, executor.pendingBatch)
 	if err != nil {
@@ -297,7 +301,7 @@ func (executor *ethElrondBridgeExecutor) SignProposeTransferOnDestination(ctx co
 
 // SignProposeSetStatusOnSource will fetch and sign the batch ID for the set status operation
 func (executor *ethElrondBridgeExecutor) SignProposeSetStatusOnSource(ctx context.Context) {
-	executor.logger.Info(executor.appendMessageToName("signing set status"), "batch ID", executor.getBatchID())
+	executor.logger.Info(executor.appendMessageToName("signing set status"), "batchID", executor.getBatchID())
 	executor.actionID = executor.sourceBridge.GetActionIdForSetStatusOnPendingTransfer(ctx, executor.pendingBatch)
 	_, err := executor.sourceBridge.Sign(ctx, executor.actionID, executor.pendingBatch)
 	if err != nil {
@@ -314,7 +318,7 @@ func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step core.StepIdentifi
 	}
 
 	executor.logger.Info(executor.appendMessageToName("waiting for transfer proposal"),
-		"step", step, "batch ID", executor.getBatchID(), "duration", duration)
+		"step", step, "batchID", executor.getBatchID(), "duration", duration)
 
 	select {
 	case <-executor.timer.After(duration):
@@ -324,12 +328,12 @@ func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step core.StepIdentifi
 	}
 }
 
-func (executor *ethElrondBridgeExecutor) getBatchID() *big.Int {
+func (executor *ethElrondBridgeExecutor) getBatchID() bridge.BatchID {
 	if executor.pendingBatch == nil {
-		return nil
+		return 0
 	}
 
-	return executor.pendingBatch.Id
+	return executor.pendingBatch.ID
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

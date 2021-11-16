@@ -146,8 +146,8 @@ func TestGetPending(t *testing.T) {
 			From:          "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
 			TokenAddress:  "574554482d656366316331",
 			Amount:        big.NewInt(1),
-			DepositNonce:  bridge.NewNonce(1),
-			BlockNonce:    bridge.NewNonce(154947),
+			DepositNonce:  bridge.Nonce(1),
+			BlockNonce:    bridge.Nonce(154947),
 			Status:        0,
 			Error:         nil,
 		}
@@ -157,13 +157,13 @@ func TestGetPending(t *testing.T) {
 			From:          "erd1kjmtydml0pkem5m5262mhqu5xnu54j685qn6vmcqdxutswy42xjskgdla5",
 			TokenAddress:  "574554482d656366316331",
 			Amount:        big.NewInt(2),
-			DepositNonce:  bridge.NewNonce(2),
-			BlockNonce:    bridge.NewNonce(154947),
+			DepositNonce:  bridge.Nonce(2),
+			BlockNonce:    bridge.Nonce(154947),
 			Status:        0,
 			Error:         nil,
 		}
 		expected := &bridge.Batch{
-			Id:           bridge.NewBatchId(1),
+			ID:           bridge.BatchID(1),
 			Transactions: []*bridge.DepositTransaction{tx1, tx2},
 		}
 
@@ -229,14 +229,14 @@ func TestProposeTransfer(t *testing.T) {
 		hexAddress := hex.EncodeToString(buff)
 
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(1),
+			ID: bridge.BatchID(1),
 			Transactions: []*bridge.DepositTransaction{
 				{
 					To:           string(buff),
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
-					DepositNonce: bridge.NewNonce(1),
+					DepositNonce: bridge.Nonce(1),
 				},
 			},
 		}
@@ -244,7 +244,7 @@ func TestProposeTransfer(t *testing.T) {
 		_, _ = c.ProposeTransfer(context.TODO(), batch)
 		expected := fmt.Sprintf("proposeMultiTransferEsdtBatch@01@%s@574554482d393761323662@2a", hexAddress)
 
-		assert.Equal(t, []byte(expected), proxy.lastTransaction.Data)
+		assert.Equal(t, expected, string(proxy.lastTransaction.Data))
 		expectedGas := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Transactions))*c.gasMapConfig.ProposeTransferForEach
 		require.True(t, expectedGas > 0)
 		assert.Equal(t, expectedGas, proxy.lastTransaction.GasLimit)
@@ -261,14 +261,14 @@ func TestProposeSetStatus(t *testing.T) {
 		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(1),
+			ID: bridge.BatchID(1),
 			Transactions: []*bridge.DepositTransaction{
 				{
 					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
-					DepositNonce: bridge.NewNonce(1),
+					DepositNonce: bridge.Nonce(1),
 					Status:       bridge.Executed,
 				},
 				{
@@ -276,7 +276,7 @@ func TestProposeSetStatus(t *testing.T) {
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
-					DepositNonce: bridge.NewNonce(1),
+					DepositNonce: bridge.Nonce(1),
 					Status:       bridge.Rejected,
 				},
 			},
@@ -298,14 +298,14 @@ func TestExecute(t *testing.T) {
 	c, _ := buildTestClient(proxy)
 
 	batch := &bridge.Batch{
-		Id: bridge.NewBatchId(1),
+		ID: bridge.BatchID(1),
 		Transactions: []*bridge.DepositTransaction{
 			{
 				To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
 				From:         "0x132A150926691F08a693721503a38affeD18d524",
 				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 				Amount:       big.NewInt(42),
-				DepositNonce: bridge.NewNonce(1),
+				DepositNonce: bridge.Nonce(1),
 				Status:       bridge.Executed,
 			},
 			{
@@ -313,12 +313,12 @@ func TestExecute(t *testing.T) {
 				From:         "0x132A150926691F08a693721503a38affeD18d524",
 				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 				Amount:       big.NewInt(42),
-				DepositNonce: bridge.NewNonce(1),
+				DepositNonce: bridge.Nonce(1),
 				Status:       bridge.Rejected,
 			},
 		},
 	}
-	hash, _ := c.Execute(context.TODO(), bridge.NewActionId(42), batch, nil)
+	hash, _ := c.Execute(context.TODO(), bridge.ActionID(42), batch, nil)
 
 	assert.Equal(t, expectedTxHash, hash)
 	expectedGas := c.gasMapConfig.PerformActionBase + uint64(len(batch.Transactions))*c.gasMapConfig.PerformActionForEach
@@ -335,14 +335,14 @@ func TestWasProposedTransfer(t *testing.T) {
 		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(12),
+			ID: bridge.BatchID(12),
 			Transactions: []*bridge.DepositTransaction{
 				{
 					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
-					DepositNonce: bridge.NewNonce(1),
+					DepositNonce: bridge.Nonce(1),
 					Status:       bridge.Executed,
 				},
 			},
@@ -356,14 +356,14 @@ func TestWasProposedTransfer(t *testing.T) {
 		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(41),
+			ID: bridge.BatchID(41),
 			Transactions: []*bridge.DepositTransaction{
 				{
 					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
-					DepositNonce: bridge.NewNonce(1),
+					DepositNonce: bridge.Nonce(1),
 				},
 			},
 		}
@@ -377,14 +377,14 @@ func TestWasProposedTransfer(t *testing.T) {
 
 		to := []byte("12345678901234567890123456789012")
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(41),
+			ID: bridge.BatchID(41),
 			Transactions: []*bridge.DepositTransaction{
 				{
 					To:           string(to),
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
-					DepositNonce: bridge.NewNonce(1),
+					DepositNonce: bridge.Nonce(1),
 				},
 			},
 		}
@@ -406,14 +406,14 @@ func TestWasProposedTransfer(t *testing.T) {
 		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(41),
+			ID: bridge.BatchID(41),
 			Transactions: []*bridge.DepositTransaction{
 				{
 					To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
 					From:         "0x132A150926691F08a693721503a38affeD18d524",
 					TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 					Amount:       big.NewInt(42),
-					DepositNonce: bridge.NewNonce(1),
+					DepositNonce: bridge.Nonce(1),
 				},
 			},
 		}
@@ -427,7 +427,7 @@ func TestSignersCount(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(42)}}}
 	c, _ := buildTestClient(proxy)
 
-	got := c.SignersCount(nil, bridge.NewActionId(0), nil)
+	got := c.SignersCount(nil, bridge.ActionID(0), nil)
 
 	assert.Equal(t, uint(42), got)
 }
@@ -438,7 +438,7 @@ func TestWasProposedSetStatus(t *testing.T) {
 		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
-			Id: bridge.NewBatchId(1),
+			ID: bridge.BatchID(1),
 			Transactions: []*bridge.DepositTransaction{
 				{
 					Status: bridge.Rejected,
@@ -456,7 +456,7 @@ func TestWasProposedSetStatus(t *testing.T) {
 		c, _ := buildTestClient(proxy)
 
 		batch := &bridge.Batch{
-			Id:           bridge.NewBatchId(0),
+			ID:           bridge.BatchID(0),
 			Transactions: []*bridge.DepositTransaction{},
 		}
 		got := c.WasProposedSetStatus(context.TODO(), batch)
@@ -471,21 +471,21 @@ func TestGetActionIdForProposeTransfer(t *testing.T) {
 
 	to := []byte("12345678901234567890123456789012")
 	batch := &bridge.Batch{
-		Id: bridge.NewBatchId(41),
+		ID: bridge.BatchID(41),
 		Transactions: []*bridge.DepositTransaction{
 			{
 				To:           string(to),
 				From:         "0x132A150926691F08a693721503a38affeD18d524",
 				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 				Amount:       big.NewInt(42),
-				DepositNonce: bridge.NewNonce(1),
+				DepositNonce: bridge.Nonce(1),
 			},
 		},
 	}
 
 	got := c.GetActionIdForProposeTransfer(context.TODO(), batch)
 
-	assert.Equal(t, bridge.NewActionId(42), got)
+	assert.Equal(t, bridge.ActionID(42), got)
 	assert.Equal(t, 4, len(proxy.lastQueryArgs))
 	// batchID
 	assert.Equal(t, "29", proxy.lastQueryArgs[0])
@@ -502,21 +502,21 @@ func TestGetActionIdForSetStatusOnPendingTransfer(t *testing.T) {
 	c, _ := buildTestClient(proxy)
 
 	batch := &bridge.Batch{
-		Id: bridge.NewBatchId(12),
+		ID: bridge.BatchID(12),
 		Transactions: []*bridge.DepositTransaction{
 			{
 				To:           "erd1k2s324ww2g0yj38qn2ch2jwctdy8mnfxep94q9arncc6xecg3xaq6mjse8",
 				From:         "0x132A150926691F08a693721503a38affeD18d524",
 				TokenAddress: "0x3a41ed2dD119E44B802c87E84840F7C85206f4f1",
 				Amount:       big.NewInt(42),
-				DepositNonce: bridge.NewNonce(1),
+				DepositNonce: bridge.Nonce(1),
 				Status:       bridge.Executed,
 			},
 		},
 	}
 
 	got := c.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
-	assert.Equal(t, got, bridge.NewActionId(43))
+	assert.Equal(t, got, bridge.ActionID(43))
 	assert.Equal(t, "0c", proxy.lastQueryArgs[0])
 	assert.Equal(t, "03", proxy.lastQueryArgs[1])
 }
@@ -525,7 +525,7 @@ func TestWasExecuted(t *testing.T) {
 	proxy := &testProxy{queryResponseCode: "ok", queryResponseData: [][]byte{{byte(1)}}}
 	c, _ := buildTestClient(proxy)
 
-	got := c.WasExecuted(context.TODO(), bridge.NewActionId(42), bridge.NewBatchId(0))
+	got := c.WasExecuted(context.TODO(), bridge.ActionID(42), bridge.BatchID(0))
 	assert.True(t, got)
 }
 
@@ -537,7 +537,7 @@ func TestSign(t *testing.T) {
 		expectedGas := c.gasMapConfig.Sign
 		require.True(t, expectedGas > 0)
 
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42), nil)
+		_, _ = c.Sign(context.TODO(), bridge.ActionID(42), nil)
 
 		assert.Equal(t, expectedGas, proxy.lastTransaction.GasLimit)
 	})
@@ -545,7 +545,7 @@ func TestSign(t *testing.T) {
 		proxy := &testProxy{transactionCost: 1024}
 		c, _ := buildTestClient(proxy)
 
-		_, _ = c.Sign(context.TODO(), bridge.NewActionId(42), nil)
+		_, _ = c.Sign(context.TODO(), bridge.ActionID(42), nil)
 
 		assert.Equal(t, []byte("sign@2a"), proxy.lastTransaction.Data)
 	})
@@ -578,17 +578,9 @@ func TestParseIntFromByteSlice(t *testing.T) {
 func TestClient_GetTransactionsStatuses(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil batch", func(t *testing.T) {
-		proxy := &mockInteractors.ElrondProxyStub{}
-		c := &client{
-			proxy: proxy,
-		}
+	bridgeAddress, err := data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
+	require.Nil(t, err)
 
-		statuses, err := c.GetTransactionsStatuses(context.TODO(), nil)
-
-		assert.Nil(t, statuses)
-		assert.Equal(t, ErrNilBatchId, err)
-	})
 	t.Run("proxy errors", func(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		proxy := &mockInteractors.ElrondProxyStub{
@@ -598,11 +590,12 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c := &client{
 			proxy:         proxy,
-			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+			bridgeAddress: bridgeAddress,
+			log:           logger.GetOrCreate("test"),
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.BatchID(1))
 
 		assert.Nil(t, statuses)
 		assert.Equal(t, expectedErr, err)
@@ -622,11 +615,12 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c := &client{
 			proxy:         proxy,
-			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+			bridgeAddress: bridgeAddress,
+			log:           logger.GetOrCreate("test"),
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.BatchID(1))
 
 		assert.Nil(t, statuses)
 		assert.True(t, errors.Is(err, ErrNoStatusForBatchID))
@@ -646,11 +640,12 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c := &client{
 			proxy:         proxy,
-			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+			bridgeAddress: bridgeAddress,
+			log:           logger.GetOrCreate("test"),
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.BatchID(1))
 
 		assert.Nil(t, statuses)
 		assert.True(t, errors.Is(err, ErrBatchNotFinished))
@@ -670,11 +665,12 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c := &client{
 			proxy:         proxy,
-			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+			bridgeAddress: bridgeAddress,
+			log:           logger.GetOrCreate("test"),
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.BatchID(1))
 
 		assert.Nil(t, statuses)
 		assert.True(t, errors.Is(err, ErrMalformedBatchResponse))
@@ -695,11 +691,12 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c := &client{
 			proxy:         proxy,
-			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+			bridgeAddress: bridgeAddress,
+			log:           logger.GetOrCreate("test"),
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.BatchID(1))
 
 		assert.Nil(t, statuses)
 		assert.True(t, errors.Is(err, ErrMalformedBatchResponse))
@@ -721,11 +718,12 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		}
 		c := &client{
 			proxy:         proxy,
-			bridgeAddress: "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+			bridgeAddress: bridgeAddress,
+			log:           logger.GetOrCreate("test"),
 		}
 		c.address, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
-		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.NewBatchId(1))
+		statuses, err := c.GetTransactionsStatuses(context.TODO(), bridge.BatchID(1))
 
 		assert.Nil(t, err)
 		assert.Equal(t, statuses, statuses)
@@ -748,12 +746,13 @@ func buildTestClient(proxy *testProxy) (*client, error) {
 	nonceTxHandler, _ := interactors.NewNonceTransactionHandler(proxy, time.Minute)
 	txSignPrivKey, _ := keyGen.PrivateKeyFromByteArray(privateKey)
 
+	bridgeAddress, _ := data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 	proxy.nonce = 42
 	c := &client{
 		log:            logger.GetOrCreate("testHelpers"),
 		proxy:          proxy,
 		nonceTxHandler: nonceTxHandler,
-		bridgeAddress:  "",
+		bridgeAddress:  bridgeAddress,
 		privateKey:     txSignPrivKey,
 		address:        address,
 		gasMapConfig:   testsCommon.CreateTestElrondGasMap(),

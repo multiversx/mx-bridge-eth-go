@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"math/big"
 	"sync"
 	"time"
@@ -180,14 +179,14 @@ func (c *client) GetPending(ctx context.Context) *bridge.Batch {
 				From:          deposit.Depositor.String(),
 				TokenAddress:  deposit.TokenAddress.String(),
 				Amount:        deposit.Amount,
-				DepositNonce:  deposit.Nonce,
+				DepositNonce:  bridge.Nonce(deposit.Nonce.Int64()),
 			}
 			c.log.Trace("created deposit transaction: " + tx.String())
 			transactions = append(transactions, tx)
 		}
 
 		result = &bridge.Batch{
-			Id:           batch.Nonce,
+			ID:           bridge.BatchID(batch.Nonce.Int64()),
 			Transactions: transactions,
 		}
 	}
@@ -198,13 +197,13 @@ func (c *client) GetPending(ctx context.Context) *bridge.Batch {
 // ProposeSetStatus will propose the status of an executed batch of transactions
 func (c *client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 	// Nothing needs to get proposed, simply gather signatures
-	c.log.Info("ETH: Broadcast status signatures for for batchId", batch.Id)
+	c.log.Info("ETH: Broadcast status signatures for for batchID", batch.ID)
 }
 
 // ProposeTransfer will propose the transfer coming from other client
 func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
 	// Nothing needs to get proposed, simply gather signatures
-	c.log.Info("ETH: Broadcast transfer signatures for batchId", batch.Id)
+	c.log.Info("ETH: Broadcast transfer signatures for batchID", batch.ID)
 
 	return "", nil
 }
@@ -215,8 +214,8 @@ func (c *client) WasProposedTransfer(context.Context, *bridge.Batch) bool {
 }
 
 // GetActionIdForProposeTransfer returns a hardcoded value fot the transfer action ID
-func (c *client) GetActionIdForProposeTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
-	return bridge.NewActionId(transferAction)
+func (c *client) GetActionIdForProposeTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionID {
+	return bridge.ActionID(transferAction)
 }
 
 // WasProposedSetStatus returns true
@@ -225,8 +224,8 @@ func (c *client) WasProposedSetStatus(context.Context, *bridge.Batch) bool {
 }
 
 // GetActionIdForSetStatusOnPendingTransfer a hardcoded value fot the set status action ID
-func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionId {
-	return bridge.NewActionId(setStatusAction)
+func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, _ *bridge.Batch) bridge.ActionID {
+	return bridge.ActionID(setStatusAction)
 }
 
 // GetRelayers returns the current registered relayers from the Ethereum SC
@@ -235,15 +234,15 @@ func (c *client) GetRelayers(ctx context.Context) ([]common.Address, error) {
 }
 
 // WasExecuted returns true if the action ID was executed
-func (c *client) WasExecuted(ctx context.Context, actionId bridge.ActionId, batchId bridge.BatchId) bool {
+func (c *client) WasExecuted(ctx context.Context, actionID bridge.ActionID, batchID bridge.BatchID) bool {
 	var wasExecuted bool
 	var err error = nil
 
-	switch int64FromActionId(actionId) {
+	switch actionID.Int64() {
 	case transferAction:
-		wasExecuted, err = c.clientWrapper.WasBatchExecuted(ctx, batchId)
+		wasExecuted, err = c.clientWrapper.WasBatchExecuted(ctx, batchID.Int64())
 	case setStatusAction:
-		wasExecuted, err = c.clientWrapper.WasBatchFinished(ctx, batchId)
+		wasExecuted, err = c.clientWrapper.WasBatchFinished(ctx, batchID.Int64())
 	}
 	if err != nil {
 		c.log.Error(err.Error())
@@ -251,22 +250,22 @@ func (c *client) WasExecuted(ctx context.Context, actionId bridge.ActionId, batc
 	}
 
 	if wasExecuted {
-		c.log.Info(fmt.Sprintf("ETH: BatchID %v was executed", batchId))
+		c.log.Info(fmt.Sprintf("ETH: BatchID %v was executed", batchID))
 	} else {
-		c.log.Info(fmt.Sprintf("ETH: BatchID %v was not executed", batchId))
+		c.log.Info(fmt.Sprintf("ETH: BatchID %v was not executed", batchID))
 	}
 
 	return wasExecuted
 }
 
 // GetTransactionsStatuses will return the transactions statuses from the batch ID
-func (c *client) GetTransactionsStatuses(ctx context.Context, batchId bridge.BatchId) ([]uint8, error) {
-	return c.clientWrapper.GetStatusesAfterExecution(ctx, batchId)
+func (c *client) GetTransactionsStatuses(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
+	return c.clientWrapper.GetStatusesAfterExecution(ctx, batchID.Int64())
 }
 
 // Sign will sign upon the provided batch and send the signatures through the broadcaster to other relayers
-func (c *client) Sign(_ context.Context, action bridge.ActionId, batch *bridge.Batch) (string, error) {
-	switch int64FromActionId(action) {
+func (c *client) Sign(_ context.Context, actionID bridge.ActionID, batch *bridge.Batch) (string, error) {
+	switch actionID.Int64() {
 	case transferAction:
 		c.broadcastSignatureForTransfer(batch)
 	case setStatusAction:
@@ -279,7 +278,7 @@ func (c *client) Sign(_ context.Context, action bridge.ActionId, batch *bridge.B
 // Execute will pack and send a transaction providing the batch data and received signatures from the other relayers
 func (c *client) Execute(
 	ctx context.Context,
-	action bridge.ActionId,
+	actionID bridge.ActionID,
 	batch *bridge.Batch,
 	sigHolder bridge.SignaturesHolder,
 ) (string, error) {
@@ -288,7 +287,7 @@ func (c *client) Execute(
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
-	batchId := batch.Id
+	batchID := batch.ID
 
 	nonce, err := c.getNonce(ctx, fromAddress)
 	if err != nil {
@@ -318,7 +317,7 @@ func (c *client) Execute(
 
 	var transaction *types.Transaction
 
-	msgHash, err := c.generateMsgHash(batch, action)
+	msgHash, err := c.generateMsgHash(batch, actionID)
 	if err != nil {
 		return "", fmt.Errorf("ETH: %w", err)
 	}
@@ -335,7 +334,7 @@ func (c *client) Execute(
 		signatures = signatures[:quorum]
 	}
 
-	switch int64FromActionId(action) {
+	switch actionID.Int64() {
 	case transferAction:
 		transaction, err = c.transfer(ctx, auth, signatures, batch)
 	case setStatusAction:
@@ -347,7 +346,7 @@ func (c *client) Execute(
 	}
 
 	txHash := transaction.Hash().String()
-	c.log.Info(fmt.Sprintf("ETH: Executed batchId %v with hash %s", batchId, txHash))
+	c.log.Info(fmt.Sprintf("ETH: Executed batchId %v with hash %s", batchID, txHash))
 
 	return txHash, err
 }
@@ -358,7 +357,7 @@ func (c *client) getNonce(ctx context.Context, fromAddress common.Address) (int6
 		return 0, fmt.Errorf("%w in getNonce, BlockNumber call", err)
 	}
 
-	nonce, err := c.clientWrapper.NonceAt(ctx, fromAddress, big.NewInt(int64(blockNonce)))
+	nonce, err := c.clientWrapper.NonceAt(ctx, fromAddress, blockNonce)
 
 	return int64(nonce), err
 }
@@ -375,7 +374,7 @@ func (c *client) transfer(
 	amountsValues := amounts(batch.Transactions)
 
 	c.log.Debug("client.transfer", "auth", transactOptsToString(auth),
-		"batchId", batch.Id, "tokens", tokens, "recipients", recipients, "amounts", amountsValues,
+		"batchID", batch.ID, "tokens", tokens, "recipients", recipients, "amounts", amountsValues,
 		"num signatures", len(signatures))
 
 	err := c.checkAvailableTokens(ctx, tokens, amountsValues)
@@ -383,7 +382,7 @@ func (c *client) transfer(
 		return nil, err
 	}
 
-	return c.clientWrapper.ExecuteTransfer(auth, tokens, recipients, amountsValues, batch.Id, signatures)
+	return c.clientWrapper.ExecuteTransfer(auth, tokens, recipients, amountsValues, batch.ID.Int64(), signatures)
 }
 
 func (c *client) checkAvailableTokens(ctx context.Context, tokens []common.Address, amounts []*big.Int) error {
@@ -444,15 +443,15 @@ func (c *client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bri
 	}
 
 	c.log.Debug("client.finish", "auth", transactOptsToString(auth),
-		"batchId", batch.Id, "proposed statuses", proposedStatuses, "num signatures", len(signatures))
+		"batchID", batch.ID, "proposed statuses", proposedStatuses, "num signatures", len(signatures))
 
-	return c.clientWrapper.FinishCurrentPendingBatch(auth, batch.Id, proposedStatuses, signatures)
+	return c.clientWrapper.FinishCurrentPendingBatch(auth, batch.ID.Int64(), proposedStatuses, signatures)
 }
 
 // SignersCount will return the total signers number that sent the signatures on the required message hash
 func (c *client) SignersCount(
 	batch *bridge.Batch,
-	actionId bridge.ActionId,
+	actionID bridge.ActionID,
 	sigHolder bridge.SignaturesHolder,
 ) uint {
 	if check.IfNil(sigHolder) {
@@ -461,7 +460,7 @@ func (c *client) SignersCount(
 		return 0
 	}
 
-	msgHash, err := c.generateMsgHash(batch, actionId)
+	msgHash, err := c.generateMsgHash(batch, actionID)
 	if err != nil {
 		c.log.Error(err.Error())
 
@@ -480,11 +479,7 @@ func (c *client) GetQuorum(ctx context.Context) (uint, error) {
 		return 0, err
 	}
 
-	if n.Cmp(big.NewInt(math.MaxUint32)) > 0 {
-		return 0, errors.New("quorum is not a uint")
-	}
-
-	return uint(n.Uint64()), nil
+	return uint(n), nil
 }
 
 // utils
@@ -545,15 +540,15 @@ func amounts(transactions []*bridge.DepositTransaction) []*big.Int {
 	return result
 }
 
-func (c *client) generateMsgHash(batch *bridge.Batch, actionId bridge.ActionId) (common.Hash, error) {
-	switch int64FromActionId(actionId) {
+func (c *client) generateMsgHash(batch *bridge.Batch, actionID bridge.ActionID) (common.Hash, error) {
+	switch actionID.Int64() {
 	case transferAction:
 		return c.generateMsgHashForTransfer(batch)
 	case setStatusAction:
 		return c.generateMsgHashForFinish(batch)
 	}
 
-	return common.Hash{}, fmt.Errorf("Client.generateMsgHash not implemented for action ID %v", actionId)
+	return common.Hash{}, fmt.Errorf("Client.generateMsgHash not implemented for actionID %v", actionID)
 }
 
 func (c *client) generateMsgHashForTransfer(batch *bridge.Batch) (common.Hash, error) {
@@ -562,7 +557,8 @@ func (c *client) generateMsgHashForTransfer(batch *bridge.Batch) (common.Hash, e
 		return common.Hash{}, err
 	}
 
-	pack, err := arguments.Pack(recipientsAddresses(batch.Transactions), c.tokenAddresses(batch.Transactions), amounts(batch.Transactions), new(big.Int).Set(batch.Id), "ExecuteBatchedTransfer")
+	batchID := big.NewInt(batch.ID.Int64())
+	pack, err := arguments.Pack(recipientsAddresses(batch.Transactions), c.tokenAddresses(batch.Transactions), amounts(batch.Transactions), batchID, "ExecuteBatchedTransfer")
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -582,7 +578,7 @@ func (c *client) generateMsgHashForFinish(batch *bridge.Batch) (common.Hash, err
 		return common.Hash{}, err
 	}
 
-	pack, err := arguments.Pack(new(big.Int).Set(batch.Id), statuses, "CurrentPendingBatch")
+	pack, err := arguments.Pack(big.NewInt(batch.ID.Int64()), statuses, "CurrentPendingBatch")
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -671,10 +667,6 @@ func finishCurrentPendingTransactionArgs() (abi.Arguments, error) {
 		abi.Argument{Name: "newDepositStatus", Type: uint8Type},
 		abi.Argument{Name: "currentPendingTransaction", Type: stringType},
 	}, nil
-}
-
-func int64FromActionId(actionId bridge.ActionId) int64 {
-	return (*big.Int)(actionId).Int64()
 }
 
 func transactOptsToString(opts *bind.TransactOpts) string {

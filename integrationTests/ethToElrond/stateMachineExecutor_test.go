@@ -14,7 +14,6 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/bridgeExecutors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/steps"
-	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -26,18 +25,18 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 	sourceBridge := &testsCommon.BridgeMock{}
 	destinationBridge := &testsCommon.BridgeMock{}
 
-	batchID := bridge.NewBatchId(12345)
-	sourceActionID := bridge.NewActionId(663725)
+	batchID := bridge.BatchID(12345)
+	sourceActionID := bridge.ActionID(663725)
 	pendingBatch := &bridge.Batch{
-		Id: batchID,
+		ID: batchID,
 		Transactions: []*bridge.DepositTransaction{
 			{
 				To:           "to1",
 				From:         "from1",
 				TokenAddress: "token address 1",
 				Amount:       big.NewInt(1000),
-				DepositNonce: big.NewInt(2),
-				BlockNonce:   big.NewInt(2000000),
+				DepositNonce: 2,
+				BlockNonce:   2000000,
 				Status:       0,
 				Error:        nil,
 			},
@@ -46,8 +45,8 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 				From:         "from2",
 				TokenAddress: "token address 2",
 				Amount:       big.NewInt(1001),
-				DepositNonce: big.NewInt(3),
-				BlockNonce:   big.NewInt(2000001),
+				DepositNonce: 3,
+				BlockNonce:   2000001,
 				Status:       0,
 				Error:        nil,
 			},
@@ -64,9 +63,9 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 		}
 	}
 
-	destinationActionID := bridge.NewActionId(343553)
+	destinationActionID := bridge.ActionID(343553)
 	destinationBridge.SetActionID(destinationActionID)
-	destinationBridge.GetTransactionsStatusesCalled = func(ctx context.Context, batchId bridge.BatchId) ([]uint8, error) {
+	destinationBridge.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
 		return makeMockStatuses(len(pendingBatch.Transactions)), nil
 	}
 
@@ -96,18 +95,18 @@ func TestBridgeExecutorWithStateMachineFailedToProposeTransfer(t *testing.T) {
 		},
 	}
 
-	batchID := bridge.NewBatchId(12345)
-	sourceActionID := bridge.NewActionId(663725)
+	batchID := bridge.BatchID(12345)
+	sourceActionID := bridge.ActionID(663725)
 	pendingBatch := &bridge.Batch{
-		Id: batchID,
+		ID: batchID,
 		Transactions: []*bridge.DepositTransaction{
 			{
 				To:           "to1",
 				From:         "from1",
 				TokenAddress: "token address 1",
 				Amount:       big.NewInt(1000),
-				DepositNonce: big.NewInt(2),
-				BlockNonce:   big.NewInt(2000000),
+				DepositNonce: 2,
+				BlockNonce:   2000000,
 				Status:       0,
 				Error:        nil,
 			},
@@ -116,8 +115,8 @@ func TestBridgeExecutorWithStateMachineFailedToProposeTransfer(t *testing.T) {
 				From:         "from2",
 				TokenAddress: "token address 2",
 				Amount:       big.NewInt(1001),
-				DepositNonce: big.NewInt(3),
-				BlockNonce:   big.NewInt(2000001),
+				DepositNonce: 3,
+				BlockNonce:   2000001,
 				Status:       0,
 				Error:        nil,
 			},
@@ -134,9 +133,9 @@ func TestBridgeExecutorWithStateMachineFailedToProposeTransfer(t *testing.T) {
 		}
 	}
 
-	destinationActionID := bridge.NewActionId(343553)
+	destinationActionID := bridge.ActionID(343553)
 	destinationBridge.SetActionID(destinationActionID)
-	destinationBridge.GetTransactionsStatusesCalled = func(ctx context.Context, batchId bridge.BatchId) ([]uint8, error) {
+	destinationBridge.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
 		require.Fail(t, "should have not checked the destination bridge for transactions statuses")
 		return nil, nil
 	}
@@ -243,19 +242,19 @@ func checkStatusWhenExecutedOnSource(
 	t *testing.T,
 	sourceBridge *testsCommon.BridgeMock,
 	pendingBatch *bridge.Batch,
-	sourceActionID bridge.ActionId,
+	sourceActionID bridge.ActionID,
 	expectedStatuses []byte,
 ) {
 	assert.Nil(t, sourceBridge.GetProposedTransferBatch())
 
 	expectedSignedMapOnSource := map[string]int{
-		integrationTests.ActionIdToString(sourceActionID): 1,
+		sourceActionID.String(): 1,
 	}
 	assert.Equal(t, expectedSignedMapOnSource, sourceBridge.SignedActionIDMap())
 
 	executedActionID, executedBatchID := sourceBridge.GetExecuted()
 	assert.Equal(t, sourceActionID, executedActionID)
-	assert.Equal(t, pendingBatch.Id, executedBatchID)
+	assert.Equal(t, pendingBatch.ID, executedBatchID)
 
 	proposedStatusBatch := sourceBridge.GetProposedSetStatusBatch()
 	require.Equal(t, len(pendingBatch.Transactions), len(proposedStatusBatch.Transactions))
@@ -270,13 +269,13 @@ func checkStatusWhenExecutedOnDestination(
 	t *testing.T,
 	destinationBridge *testsCommon.BridgeMock,
 	pendingBatch *bridge.Batch,
-	destinationActionID bridge.ActionId,
+	destinationActionID bridge.ActionID,
 ) {
-	proposedBatch := integrationTests.CloneBatch(pendingBatch)
+	proposedBatch := pendingBatch.Clone()
 	assert.Equal(t, proposedBatch, destinationBridge.GetProposedTransferBatch())
 
 	expectedSignedMapOnSource := map[string]int{
-		integrationTests.ActionIdToString(destinationActionID): 1,
+		destinationActionID.String(): 1,
 	}
 	if pendingBatch == nil {
 		expectedSignedMapOnSource = nil
@@ -286,7 +285,7 @@ func checkStatusWhenExecutedOnDestination(
 	executedActionID, executedBatchID := destinationBridge.GetExecuted()
 	if pendingBatch != nil {
 		assert.Equal(t, destinationActionID, executedActionID)
-		assert.Equal(t, pendingBatch.Id, executedBatchID)
+		assert.Equal(t, pendingBatch.ID, executedBatchID)
 	}
 
 	assert.Nil(t, destinationBridge.GetProposedSetStatusBatch())

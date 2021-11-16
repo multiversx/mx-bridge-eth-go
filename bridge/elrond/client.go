@@ -17,6 +17,7 @@ import (
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
@@ -45,7 +46,7 @@ func (e QueryResponseErr) Error() string {
 // client represents the Elrond Client implementation
 type client struct {
 	proxy          bridge.ElrondProxy
-	bridgeAddress  string
+	bridgeAddress  core.AddressHandler
 	privateKey     crypto.PrivateKey
 	address        core.AddressHandler
 	nonceTxHandler NonceTransactionsHandler
@@ -83,14 +84,14 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	_, err = data.NewAddressFromBech32String(args.Config.BridgeAddress)
+	bridgeAddress, err := data.NewAddressFromBech32String(args.Config.BridgeAddress)
 	if err != nil {
 		return nil, fmt.Errorf("%w for args.Config.BridgeAddress", err)
 	}
 
 	c := &client{
 		proxy:          args.Proxy,
-		bridgeAddress:  args.Config.BridgeAddress,
+		bridgeAddress:  bridgeAddress,
 		privateKey:     args.PrivateKey,
 		address:        args.Address,
 		log:            logger.GetOrCreate("ElrondClient"),
@@ -152,14 +153,15 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 			return nil
 		}
 
+		to := fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3]))
 		tx := &bridge.DepositTransaction{
 			From:          addrPkConv.Encode(responseData[i+2]),
-			To:            fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
-			DisplayableTo: fmt.Sprintf("0x%s", hex.EncodeToString(responseData[i+3])),
+			To:            to,
+			DisplayableTo: to,
 			TokenAddress:  hex.EncodeToString(responseData[i+4]),
 			Amount:        amount,
-			DepositNonce:  bridge.NewNonce(depositNonce),
-			BlockNonce:    bridge.NewNonce(blockNonce),
+			DepositNonce:  bridge.Nonce(depositNonce),
+			BlockNonce:    bridge.Nonce(blockNonce),
 			Status:        0,
 			Error:         nil,
 		}
@@ -167,14 +169,14 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 		transactions = append(transactions, tx)
 	}
 
-	batchId, err := parseIntFromByteSlice(responseData[0])
+	batchID, err := parseIntFromByteSlice(responseData[0])
 	if err != nil {
 		c.log.Error("Elrond: parse error", "error", err.Error())
 		return nil
 	}
 
 	return &bridge.Batch{
-		Id:           bridge.NewBatchId(batchId),
+		ID:           bridge.BatchID(batchID),
 		Transactions: transactions,
 	}
 }
@@ -194,12 +196,12 @@ func parseIntFromByteSlice(buff []byte) (int64, error) {
 
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
 func (c *client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
-	builder := newBuilder(c.log).
-		Func("proposeEsdtSafeSetCurrentTransactionBatchStatus").
-		BatchId(batch.Id)
+	builder := builders.NewTxDataBuilder(c.log).
+		Function("proposeEsdtSafeSetCurrentTransactionBatchStatus").
+		ArgInt64(batch.ID.Int64())
 
 	for _, tx := range batch.Transactions {
-		builder = builder.Int(big.NewInt(int64(tx.Status)))
+		builder = builder.ArgBigInt(big.NewInt(int64(tx.Status)))
 	}
 
 	hash, err := c.sendTransaction(builder, c.gasMapConfig.ProposeStatus)
@@ -213,22 +215,22 @@ func (c *client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
 
 // ProposeTransfer will trigger the propose transfer operation
 func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
-	builder := newBuilder(c.log).
-		Func("proposeMultiTransferEsdtBatch").
-		BatchId(batch.Id)
+	builder := builders.NewTxDataBuilder(c.log).
+		Function("proposeMultiTransferEsdtBatch").
+		ArgInt64(batch.ID.Int64())
 
 	for _, tx := range batch.Transactions {
 		builder = builder.
-			Address([]byte(tx.To)).
-			HexString(c.GetTokenId(tx.TokenAddress)).
-			BigInt(tx.Amount)
+			ArgAddress(data.NewAddressFromBytes([]byte(tx.To))).
+			ArgHexString(c.GetTokenId(tx.TokenAddress)).
+			ArgBigInt(tx.Amount)
 	}
 
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Transactions))*c.gasMapConfig.ProposeTransferForEach
 	hash, err := c.sendTransaction(builder, gasLimit)
 
 	if err == nil {
-		c.log.Info("Elrond: Proposed transfer for batch ", batch.Id, " with hash ", hash)
+		c.log.Info("Elrond: Proposed transfer for batchID ", batch.ID, " with hash ", hash)
 	} else {
 		c.log.Error("Elrond: Propose transfer errored", "error", err.Error())
 	}
@@ -238,70 +240,97 @@ func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 
 // WasProposedTransfer returns true if the transfer action proposed was triggered
 func (c *client) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("wasTransferActionProposed").
-		BatchId(batch.Id).
-		WithTx(batch, c.GetTokenId).
-		Build()
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function("wasTransferActionProposed").
+		ArgInt64(batch.ID.Int64())
+
+	withTx(builder, batch, c.GetTokenId)
+
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		c.log.Error("error in client.WasProposedTransfer builder error", "error", err)
+		return false
+	}
 
 	return c.executeBoolQuery(valueRequest)
 }
 
 // GetActionIdForProposeTransfer returns the action ID for the propose transfer operation
-func (c *client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("getActionIdForTransferBatch").
-		BatchId(batch.Id).
-		WithTx(batch, c.GetTokenId).
-		Build()
+func (c *client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionID {
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function("getActionIdForTransferBatch").
+		ArgInt64(batch.ID.Int64())
+
+	withTx(builder, batch, c.GetTokenId)
+
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		c.log.Error("error in client.GetActionIdForProposeTransfer builder error", "error", err)
+		return 0
+	}
 
 	response, err := c.executeUintQuery(valueRequest)
 	if err != nil {
 		c.log.Error(err.Error())
-		return bridge.NewActionId(0)
+		return 0
 	}
 
-	actionId := bridge.NewActionId(int64(response))
+	actionID := bridge.ActionID(response)
 
-	c.log.Info("Elrond: fetched actionId for transfer batch", "actionId", actionId, "batch", batch.Id)
+	c.log.Info("Elrond: fetched actionId for transfer batch", "actionID", actionID, "batchID", batch.ID)
 
-	return actionId
+	return actionID
 }
 
 // WasProposedSetStatus returns true if the proposed set status was triggered
 func (c *client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bool {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("wasSetCurrentTransactionBatchStatusActionProposed").
-		BatchId(batch.Id)
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function("wasSetCurrentTransactionBatchStatusActionProposed").
+		ArgInt64(batch.ID.Int64())
 
 	for _, tx := range batch.Transactions {
-		valueRequest = valueRequest.BigInt(big.NewInt(int64(tx.Status)))
+		builder = builder.ArgBigInt(big.NewInt(int64(tx.Status)))
 	}
 
-	return c.executeBoolQuery(valueRequest.Build())
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		c.log.Error("error in client.WasProposedSetStatus builder error", "error", err)
+		return false
+	}
+
+	return c.executeBoolQuery(valueRequest)
 }
 
 // GetTransactionsStatuses will return the transactions statuses from the batch ID
-func (c *client) GetTransactionsStatuses(_ context.Context, batchId bridge.BatchId) ([]uint8, error) {
-	if batchId == nil {
-		return nil, ErrNilBatchId
+func (c *client) GetTransactionsStatuses(_ context.Context, batchID bridge.BatchID) ([]uint8, error) {
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function("getStatusesAfterExecution").
+		ArgInt64(batchID.Int64())
+
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		return nil, err
 	}
 
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("getStatusesAfterExecution").
-		BatchId(batchId)
-
-	values, err := c.executeQuery(valueRequest.Build())
+	values, err := c.executeQuery(valueRequest)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(values) == 0 {
-		return nil, fmt.Errorf("%w for batch ID %v", ErrNoStatusForBatchID, batchId)
+		return nil, fmt.Errorf("%w for batchID %v", ErrNoStatusForBatchID, batchID)
 	}
 	isFinished := c.convertToBool(values[0])
 	if !isFinished {
-		return nil, fmt.Errorf("%w for batch ID %v", ErrBatchNotFinished, batchId)
+		return nil, fmt.Errorf("%w for batchID %v", ErrBatchNotFinished, batchID)
 	}
 
 	results := make([]byte, len(values)-1)
@@ -328,45 +357,60 @@ func getStatusFromBuff(buff []byte) (byte, error) {
 }
 
 // GetActionIdForSetStatusOnPendingTransfer returns the action ID for setting the status on the pending transfer batch
-func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("getActionIdForSetCurrentTransactionBatchStatus").
-		BatchId(batch.Id)
+func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionID {
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function("getActionIdForSetCurrentTransactionBatchStatus").
+		ArgInt64(batch.ID.Int64())
 
 	for _, tx := range batch.Transactions {
-		valueRequest = valueRequest.BigInt(big.NewInt(int64(tx.Status)))
+		builder = builder.ArgBigInt(big.NewInt(int64(tx.Status)))
 	}
 
-	response, err := c.executeUintQuery(valueRequest.Build())
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		c.log.Error("error in client.GetActionIdForSetStatusOnPendingTransfer builder error", "error", err)
+		return 0
+	}
+
+	response, err := c.executeUintQuery(valueRequest)
 	if err != nil {
 		c.log.Error(err.Error())
-		return bridge.NewActionId(0)
+		return 0
 	}
 
-	return bridge.NewActionId(int64(response))
+	return bridge.ActionID(response)
 }
 
 // WasExecuted returns true if the provided actionId was executed or not
-func (c *client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) bool {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("wasActionExecuted").
-		ActionId(actionId).
-		Build()
+func (c *client) WasExecuted(_ context.Context, actionID bridge.ActionID, _ bridge.BatchID) bool {
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function("wasActionExecuted").
+		ArgInt64(actionID.Int64())
+
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		c.log.Error("error in client.WasExecuted builder error", "error", err)
+		return false
+	}
 
 	result := c.executeBoolQuery(valueRequest)
 
 	if result {
-		c.log.Info(fmt.Sprintf("Elrond: ActionId %v was executed", actionId))
+		c.log.Info(fmt.Sprintf("Elrond: ActionID %v was executed", actionID))
 	}
 
 	return result
 }
 
 // Sign will trigger the execution of a sign operation
-func (c *client) Sign(_ context.Context, actionId bridge.ActionId, _ *bridge.Batch) (string, error) {
-	builder := newBuilder(c.log).
-		Func("sign").
-		ActionId(actionId)
+func (c *client) Sign(_ context.Context, actionID bridge.ActionID, _ *bridge.Batch) (string, error) {
+	builder := builders.NewTxDataBuilder(c.log).
+		Function("sign").
+		ArgInt64(actionID.Int64())
 
 	hash, err := c.sendTransaction(builder, c.gasMapConfig.Sign)
 
@@ -380,29 +424,36 @@ func (c *client) Sign(_ context.Context, actionId bridge.ActionId, _ *bridge.Bat
 }
 
 // Execute will trigger the execution of the provided action ID
-func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch, _ bridge.SignaturesHolder) (string, error) {
-	builder := newBuilder(c.log).
-		Func("performAction").
-		ActionId(actionId)
+func (c *client) Execute(_ context.Context, actionID bridge.ActionID, batch *bridge.Batch, _ bridge.SignaturesHolder) (string, error) {
+	builder := builders.NewTxDataBuilder(c.log).
+		Function("performAction").
+		ArgInt64(actionID.Int64())
 
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Transactions))*c.gasMapConfig.PerformActionForEach
 	hash, err := c.sendTransaction(builder, gasLimit)
 
 	if err == nil {
-		c.log.Info("Elrond: Executed action", "action ID", actionId, "hash", hash)
+		c.log.Info("Elrond: Executed action", "actionID", actionID, "hash", hash)
 	} else {
-		c.log.Info("Elrond: Execution failed for action", "action ID", actionId, "hash", hash, "error", err.Error())
+		c.log.Info("Elrond: Execution failed for action", "actionID", actionID, "hash", hash, "error", err.Error())
 	}
 
 	return hash, err
 }
 
 // SignersCount returns the signers count
-func (c *client) SignersCount(_ *bridge.Batch, actionId bridge.ActionId, _ bridge.SignaturesHolder) uint {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("getActionSignerCount").
-		ActionId(actionId).
-		Build()
+func (c *client) SignersCount(_ *bridge.Batch, actionID bridge.ActionID, _ bridge.SignaturesHolder) uint {
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function("getActionSignerCount").
+		ArgInt64(actionID.Int64())
+
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		c.log.Error("error in client.SignersCount builder error", "error", err)
+		return 0
+	}
 
 	count, _ := c.executeUintQuery(valueRequest)
 	return uint(count)
@@ -414,10 +465,17 @@ func (c *client) GetTokenId(address string) string {
 		address = address[len(hexPrefix):]
 	}
 
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("getTokenIdForErc20Address").
-		HexString(address).
-		Build()
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function("getTokenIdForErc20Address").
+		ArgHexString(address)
+
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		c.log.Error("error in client.GetTokenId builder error", "error", err)
+		return ""
+	}
 
 	tokenId, err := c.executeStringQuery(valueRequest)
 	if err != nil {
@@ -429,14 +487,21 @@ func (c *client) GetTokenId(address string) string {
 
 // GetErc20Address returns the corresponding ERC20 address
 func (c *client) GetErc20Address(tokenId string) string {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("getErc20AddressForTokenId").
-		HexString(tokenId).
-		Build()
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function("getErc20AddressForTokenId").
+		ArgHexString(tokenId)
+
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		c.log.Error("error in client.GetErc20Address builder error", "error", err)
+		return ""
+	}
 
 	address, err := c.executeStringQuery(valueRequest)
 	if err != nil {
-		c.log.Error(err.Error())
+		c.log.Error("error in client.GetErc20Address", "error", err)
 	}
 
 	return address
@@ -525,7 +590,7 @@ func (c *client) executeStringQuery(valueRequest *data.VmValueRequest) (string, 
 	return fmt.Sprintf("%x", responseData[0]), nil
 }
 
-func (c *client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Transaction, error) {
+func (c *client) signTransaction(builder builders.TxDataBuilder, cost uint64) (*data.Transaction, error) {
 	networkConfig, err := c.proxy.GetNetworkConfig()
 	if err != nil {
 		return nil, err
@@ -536,15 +601,20 @@ func (c *client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Tra
 		return nil, err
 	}
 
+	dataBytes, err := builder.ToDataBytes()
+	if err != nil {
+		return nil, err
+	}
+
 	tx := &data.Transaction{
 		ChainID:  networkConfig.ChainID,
 		Version:  networkConfig.MinTransactionVersion,
 		GasLimit: cost,
 		GasPrice: networkConfig.MinGasPrice,
 		Nonce:    nonce,
-		Data:     builder.ToBytes(),
+		Data:     dataBytes,
 		SndAddr:  c.address.AddressAsBech32String(),
-		RcvAddr:  c.bridgeAddress,
+		RcvAddr:  c.bridgeAddress.AddressAsBech32String(),
 		Value:    "0",
 	}
 
@@ -573,7 +643,7 @@ func (c *client) signTransactionWithPrivateKey(tx *data.Transaction) error {
 	return nil
 }
 
-func (c *client) sendTransaction(builder *txDataBuilder, cost uint64) (string, error) {
+func (c *client) sendTransaction(builder builders.TxDataBuilder, cost uint64) (string, error) {
 	tx, err := c.signTransaction(builder, cost)
 	if err != nil {
 		return "", err
@@ -583,24 +653,45 @@ func (c *client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 }
 
 func (c *client) getCurrentBatch() ([][]byte, error) {
-	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func("getCurrentTxBatch").
-		Build()
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function("getCurrentTxBatch")
+
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		return nil, err
+	}
 
 	return c.executeQuery(valueRequest)
 }
 
 // ExecuteVmQueryOnBridgeContract is able to execute queries on the defined bridge contract
 func (c *client) ExecuteVmQueryOnBridgeContract(function string, params ...[]byte) ([][]byte, error) {
-	valueRequestBuilderInstance := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-		Func(function)
+	builder := builders.NewTxDataBuilder(c.log).
+		Address(c.bridgeAddress).
+		CallerAddress(c.address).
+		Function(function)
+
 	for _, param := range params {
-		valueRequestBuilderInstance.HexString(hex.EncodeToString(param))
+		builder.ArgHexString(hex.EncodeToString(param))
 	}
 
-	valueRequest := valueRequestBuilderInstance.Build()
+	valueRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		return nil, err
+	}
 
 	return c.executeQuery(valueRequest)
+}
+
+func withTx(builder builders.TxDataBuilder, batch *bridge.Batch, mapper func(string) string) {
+	for _, tx := range batch.Transactions {
+		builder = builder.
+			ArgAddress(data.NewAddressFromBytes([]byte(tx.To))).
+			ArgHexString(mapper(tx.TokenAddress)).
+			ArgBigInt(tx.Amount)
+	}
 }
 
 // Close will close any started go routines. It returns nil.
@@ -615,154 +706,4 @@ func (c *client) IsInterfaceNil() bool {
 
 func emptyResponse(response [][]byte) bool {
 	return len(response) == 0 || (len(response) == 1 && len(response[0]) == 0)
-}
-
-// Builders
-
-type valueRequestBuilder struct {
-	address    string
-	funcName   string
-	callerAddr string
-	args       []string
-	log        logger.Logger
-}
-
-func newValueBuilder(address, callerAddr string, log logger.Logger) *valueRequestBuilder {
-	return &valueRequestBuilder{
-		address:    address,
-		callerAddr: callerAddr,
-		args:       []string{},
-		log:        log,
-	}
-}
-
-func (builder *valueRequestBuilder) Build() *data.VmValueRequest {
-	return &data.VmValueRequest{
-		Address:    builder.address,
-		FuncName:   builder.funcName,
-		CallerAddr: builder.callerAddr,
-		Args:       builder.args,
-	}
-}
-
-func (builder *valueRequestBuilder) Func(functionName string) *valueRequestBuilder {
-	builder.funcName = functionName
-
-	return builder
-}
-
-func (builder *valueRequestBuilder) Nonce(nonce bridge.Nonce) *valueRequestBuilder {
-	return builder.BigInt(nonce)
-}
-
-func (builder *valueRequestBuilder) BatchId(batchId bridge.BatchId) *valueRequestBuilder {
-	return builder.BigInt(batchId)
-}
-
-func (builder *valueRequestBuilder) ActionId(actionId bridge.ActionId) *valueRequestBuilder {
-	return builder.BigInt(actionId)
-}
-
-func (builder *valueRequestBuilder) BigInt(value *big.Int) *valueRequestBuilder {
-	builder.args = append(builder.args, intToHex(value))
-
-	return builder
-}
-
-func (builder *valueRequestBuilder) HexString(value string) *valueRequestBuilder {
-	builder.args = append(builder.args, value)
-
-	return builder
-}
-
-func (builder *valueRequestBuilder) Address(value string) *valueRequestBuilder {
-	builder.args = append(builder.args, hex.EncodeToString([]byte(value)))
-
-	return builder
-}
-
-func (builder *valueRequestBuilder) WithTx(batch *bridge.Batch, mapper func(string) string) *valueRequestBuilder {
-	for _, tx := range batch.Transactions {
-		builder = builder.
-			Address(tx.To).
-			HexString(mapper(tx.TokenAddress)).
-			BigInt(tx.Amount)
-	}
-
-	return builder
-}
-
-type txDataBuilder struct {
-	function  string
-	elements  []string
-	separator string
-	log       logger.Logger
-}
-
-func newBuilder(log logger.Logger) *txDataBuilder {
-	return &txDataBuilder{
-		function:  "",
-		elements:  make([]string, 0),
-		separator: "@",
-		log:       log,
-	}
-}
-
-func (builder *txDataBuilder) Func(function string) *txDataBuilder {
-	builder.function = function
-
-	return builder
-}
-
-func (builder *txDataBuilder) ActionId(value bridge.ActionId) *txDataBuilder {
-	return builder.Int(value)
-}
-
-func (builder *txDataBuilder) BatchId(value bridge.BatchId) *txDataBuilder {
-	return builder.Int(value)
-}
-
-func (builder *txDataBuilder) Nonce(nonce bridge.Nonce) *txDataBuilder {
-	return builder.Int(nonce)
-}
-
-func (builder *txDataBuilder) Int(value *big.Int) *txDataBuilder {
-	builder.elements = append(builder.elements, intToHex(value))
-
-	return builder
-}
-
-func (builder *txDataBuilder) BigInt(value *big.Int) *txDataBuilder {
-	builder.elements = append(builder.elements, hex.EncodeToString(value.Bytes()))
-
-	return builder
-}
-
-func (builder *txDataBuilder) Address(bytes []byte) *txDataBuilder {
-	builder.elements = append(builder.elements, hex.EncodeToString(bytes))
-
-	return builder
-}
-
-func (builder *txDataBuilder) HexString(value string) *txDataBuilder {
-	builder.elements = append(builder.elements, value)
-
-	return builder
-}
-
-func (builder *txDataBuilder) ToString() string {
-	result := builder.function
-	for _, element := range builder.elements {
-		result = result + builder.separator + element
-	}
-
-	return result
-}
-
-func (builder *txDataBuilder) ToBytes() []byte {
-	return []byte(builder.ToString())
-}
-
-func intToHex(value *big.Int) string {
-	return hex.EncodeToString(value.Bytes())
 }

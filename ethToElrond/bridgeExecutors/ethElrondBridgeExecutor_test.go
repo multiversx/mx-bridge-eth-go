@@ -126,8 +126,8 @@ func TestGetPending(t *testing.T) {
 	})
 	t.Run("it will get the next pending transaction", func(t *testing.T) {
 		expected := &bridge.Batch{
-			Id:           bridge.NewBatchId(1),
-			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+			ID:           1,
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}},
 		}
 		args := createMockArgs()
 		sb := testsCommon.NewBridgeStub()
@@ -178,8 +178,8 @@ func TestWasProposeTransferExecutedOnDestination(t *testing.T) {
 	t.Parallel()
 	t.Run("proposed transfer has been proposed", func(t *testing.T) {
 		expected := &bridge.Batch{
-			Id:           bridge.NewBatchId(1),
-			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+			ID:           1,
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}},
 		}
 		args := createMockArgs()
 		sb := testsCommon.NewBridgeStub()
@@ -205,8 +205,8 @@ func TestWasProposeSetStatusExecutedOnSource(t *testing.T) {
 	t.Parallel()
 	t.Run("", func(t *testing.T) {
 		expected := &bridge.Batch{
-			Id:           bridge.NewBatchId(1),
-			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+			ID:           1,
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}},
 		}
 		args := createMockArgs()
 		sb := testsCommon.NewBridgeStub()
@@ -230,8 +230,8 @@ func TestWasExecuted(t *testing.T) {
 	t.Parallel()
 	t.Run("OnDestination", func(t *testing.T) {
 		expected := &bridge.Batch{
-			Id:           bridge.NewBatchId(1),
-			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+			ID:           1,
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}},
 		}
 		args := createMockArgs()
 		sb := testsCommon.NewBridgeStub()
@@ -240,7 +240,7 @@ func TestWasExecuted(t *testing.T) {
 		}
 		args.SourceBridge = sb
 		db := testsCommon.NewBridgeStub()
-		db.WasExecutedCalled = func(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool {
+		db.WasExecutedCalled = func(ctx context.Context, id bridge.ActionID, id2 bridge.BatchID) bool {
 			return true
 		}
 		args.DestinationBridge = db
@@ -253,15 +253,15 @@ func TestWasExecuted(t *testing.T) {
 	})
 	t.Run("OnDestination", func(t *testing.T) {
 		expected := &bridge.Batch{
-			Id:           bridge.NewBatchId(1),
-			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+			ID:           1,
+			Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}},
 		}
 		args := createMockArgs()
 		sb := testsCommon.NewBridgeStub()
 		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
 			return expected
 		}
-		sb.WasExecutedCalled = func(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool {
+		sb.WasExecutedCalled = func(ctx context.Context, id bridge.ActionID, id2 bridge.BatchID) bool {
 			return true
 		}
 		args.SourceBridge = sb
@@ -310,7 +310,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 			},
 		}
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionID, sigHolder bridge.SignaturesHolder) uint {
 			return 2
 		}
 		args.DestinationBridge = db
@@ -329,7 +329,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		}
 
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionID, sigHolder bridge.SignaturesHolder) uint {
 			return 3
 		}
 		args.DestinationBridge = db
@@ -348,7 +348,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		}
 
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionID, sigHolder bridge.SignaturesHolder) uint {
 			return 4
 		}
 		args.DestinationBridge = db
@@ -398,7 +398,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionID, sigHolder bridge.SignaturesHolder) uint {
 			return 2
 		}
 		args.SourceBridge = sb
@@ -417,7 +417,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionID, sigHolder bridge.SignaturesHolder) uint {
 			return 3
 		}
 		args.SourceBridge = sb
@@ -436,7 +436,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionID, sigHolder bridge.SignaturesHolder) uint {
 			return 4
 		}
 		args.SourceBridge = sb
@@ -631,11 +631,11 @@ func TestExecuteSetStatusOnSourceReturnsError(t *testing.T) {
 func TestSetStatusRejectedOnAllTransactions(t *testing.T) {
 	t.Parallel()
 	expected := &bridge.Batch{
-		Id: bridge.NewBatchId(1),
+		ID: 1,
 		Transactions: []*bridge.DepositTransaction{
-			{To: "address1", DepositNonce: bridge.NewNonce(0)},
-			{To: "address2", DepositNonce: bridge.NewNonce(1)},
-			{To: "address3", DepositNonce: bridge.NewNonce(2)},
+			{To: "address1", DepositNonce: 0},
+			{To: "address2", DepositNonce: 1},
+			{To: "address3", DepositNonce: 2},
 		},
 	}
 	expectedError := errors.New("some error")
@@ -663,11 +663,11 @@ func TestSignProposeTransferOnDestination(t *testing.T) {
 	t.Parallel()
 	args := createMockArgs()
 	db := testsCommon.NewBridgeStub()
-	db.SignCalled = func(ctx context.Context, id bridge.ActionId) (string, error) {
+	db.SignCalled = func(ctx context.Context, id bridge.ActionID) (string, error) {
 		return "sign-tx-has", nil
 	}
-	db.GetActionIdForProposeTransferCalled = func(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
-		return bridge.NewActionId(1)
+	db.GetActionIdForProposeTransferCalled = func(ctx context.Context, batch *bridge.Batch) bridge.ActionID {
+		return 1
 	}
 	args.DestinationBridge = db
 	executor, err := NewEthElrondBridgeExecutor(args)
@@ -688,8 +688,8 @@ func TestSignProposeTransferOnDestinationReturnsError(t *testing.T) {
 	args := createMockArgs()
 	db := testsCommon.NewBridgeStub()
 	db.SignError = errors.New("some error")
-	db.GetActionIdForProposeTransferCalled = func(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
-		return bridge.NewActionId(1)
+	db.GetActionIdForProposeTransferCalled = func(ctx context.Context, batch *bridge.Batch) bridge.ActionID {
+		return 1
 	}
 	args.DestinationBridge = db
 
@@ -709,19 +709,19 @@ func TestSignProposeTransferOnDestinationReturnsError(t *testing.T) {
 func TestSignProposeSetStatusOnSource(t *testing.T) {
 	t.Parallel()
 	expected := &bridge.Batch{
-		Id:           bridge.NewBatchId(1),
-		Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		ID:           1,
+		Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}},
 	}
 	args := createMockArgs()
 	sb := testsCommon.NewBridgeStub()
 	sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
 		return expected
 	}
-	sb.SignCalled = func(ctx context.Context, id bridge.ActionId) (string, error) {
+	sb.SignCalled = func(ctx context.Context, id bridge.ActionID) (string, error) {
 		return "sign-tx-has", nil
 	}
-	sb.GetActionIdForSetStatusOnPendingTransferCalled = func(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
-		return bridge.NewActionId(1)
+	sb.GetActionIdForSetStatusOnPendingTransferCalled = func(ctx context.Context, batch *bridge.Batch) bridge.ActionID {
+		return 1
 	}
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
@@ -740,8 +740,8 @@ func TestSignProposeSetStatusOnSource(t *testing.T) {
 func TestSignProposeSetStatusOnSourceReturnsError(t *testing.T) {
 	t.Parallel()
 	expected := &bridge.Batch{
-		Id:           bridge.NewBatchId(1),
-		Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: bridge.NewNonce(0)}},
+		ID:           1,
+		Transactions: []*bridge.DepositTransaction{{To: "address", DepositNonce: 0}},
 	}
 	args := createMockArgs()
 	sb := testsCommon.NewBridgeStub()
@@ -749,8 +749,8 @@ func TestSignProposeSetStatusOnSourceReturnsError(t *testing.T) {
 		return expected
 	}
 	sb.SignError = errors.New("some error")
-	sb.GetActionIdForSetStatusOnPendingTransferCalled = func(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
-		return bridge.NewActionId(1)
+	sb.GetActionIdForSetStatusOnPendingTransferCalled = func(ctx context.Context, batch *bridge.Batch) bridge.ActionID {
+		return 1
 	}
 	args.SourceBridge = sb
 
@@ -810,7 +810,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 		args := createMockArgs()
 		db := testsCommon.NewBridgeStub()
 		expectedErr := errors.New("expected error")
-		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
 			return nil, expectedErr
 		}
 		args.DestinationBridge = db
@@ -831,7 +831,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 	t.Run("destinationBridge.GetTransactionsStatuses empty response", func(t *testing.T) {
 		args := createMockArgs()
 		db := testsCommon.NewBridgeStub()
-		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
 			return make([]byte, 0), nil
 		}
 		args.DestinationBridge = db
@@ -856,7 +856,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 			statuses[i] = byte(i)
 		}
 
-		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
 			return statuses, nil
 		}
 		args.DestinationBridge = db
@@ -886,7 +886,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 			statuses[i] = byte(i)
 		}
 
-		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
 			require.Fail(t, "should have not called the destination bridge")
 			return nil, nil
 		}
@@ -914,7 +914,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 	t.Run("destinationBridge.GetTransactionsStatuses nil pending batch should not call destination bridge", func(t *testing.T) {
 		args := createMockArgs()
 		db := testsCommon.NewBridgeStub()
-		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
 			require.Fail(t, "should have not called the destination bridge")
 			return nil, nil
 		}
@@ -934,7 +934,7 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 			statuses[i] = byte(i)
 		}
 
-		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchID) ([]uint8, error) {
 			return statuses, nil
 		}
 		args.DestinationBridge = db

@@ -1,6 +1,7 @@
 package wrappers
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"math/big"
@@ -113,7 +114,7 @@ func TestEthClientWrapper_WasBatchExecuted(t *testing.T) {
 		},
 	}
 	wrapper, _ := NewEthClientWrapper(args)
-	executed, err := wrapper.WasBatchExecuted(context.TODO(), nil)
+	executed, err := wrapper.WasBatchExecuted(context.TODO(), 0)
 	assert.Nil(t, err)
 	assert.False(t, executed)
 	assert.True(t, handlerCalled)
@@ -132,7 +133,7 @@ func TestEthClientWrapper_WasBatchFinished(t *testing.T) {
 		},
 	}
 	wrapper, _ := NewEthClientWrapper(args)
-	executed, err := wrapper.WasBatchFinished(context.TODO(), nil)
+	executed, err := wrapper.WasBatchFinished(context.TODO(), 0)
 	assert.Nil(t, err)
 	assert.False(t, executed)
 	assert.True(t, handlerCalled)
@@ -151,7 +152,7 @@ func TestEthClientWrapper_GetStatusesAfterExecution(t *testing.T) {
 		},
 	}
 	wrapper, _ := NewEthClientWrapper(args)
-	statuses, err := wrapper.GetStatusesAfterExecution(context.TODO(), nil)
+	statuses, err := wrapper.GetStatusesAfterExecution(context.TODO(), 0)
 	assert.Nil(t, err)
 	assert.Nil(t, statuses)
 	assert.True(t, handlerCalled)
@@ -236,7 +237,7 @@ func TestEthClientWrapper_NonceAt(t *testing.T) {
 		},
 	}
 	wrapper, _ := NewEthClientWrapper(args)
-	nonce, err := wrapper.NonceAt(context.TODO(), common.Address{}, nil)
+	nonce, err := wrapper.NonceAt(context.TODO(), common.Address{}, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(0), nonce)
 	assert.True(t, handlerCalled)
@@ -255,7 +256,7 @@ func TestEthClientWrapper_FinishCurrentPendingBatch(t *testing.T) {
 		},
 	}
 	wrapper, _ := NewEthClientWrapper(args)
-	tx, err := wrapper.FinishCurrentPendingBatch(nil, nil, nil, nil)
+	tx, err := wrapper.FinishCurrentPendingBatch(nil, 0, nil, nil)
 	assert.Nil(t, err)
 	assert.Nil(t, tx)
 	assert.True(t, handlerCalled)
@@ -274,7 +275,7 @@ func TestEthClientWrapper_ExecuteTransfer(t *testing.T) {
 		},
 	}
 	wrapper, _ := NewEthClientWrapper(args)
-	tx, err := wrapper.ExecuteTransfer(nil, nil, nil, nil, nil, nil)
+	tx, err := wrapper.ExecuteTransfer(nil, nil, nil, nil, 0, nil)
 	assert.Nil(t, err)
 	assert.Nil(t, tx)
 	assert.True(t, handlerCalled)
@@ -289,13 +290,32 @@ func TestEthClientWrapper_Quorum(t *testing.T) {
 	args.BridgeContract = &interactors.BridgeContractStub{
 		QuorumCalled: func(opts *bind.CallOpts) (*big.Int, error) {
 			handlerCalled = true
-			return nil, nil
+			return big.NewInt(0), nil
 		},
 	}
 	wrapper, _ := NewEthClientWrapper(args)
-	tx, err := wrapper.Quorum(context.TODO())
+	q, err := wrapper.Quorum(context.TODO())
 	assert.Nil(t, err)
-	assert.Nil(t, tx)
+	assert.Equal(t, uint64(0), q)
+	assert.True(t, handlerCalled)
+	assert.Equal(t, 1, statusHandler.GetIntMetric(core.MetricNumEthClientRequests))
+}
+
+func TestEthClientWrapper_WrongQuorumValue(t *testing.T) {
+	t.Parallel()
+
+	args, statusHandler := createMockArgsEthClientWrapper()
+	handlerCalled := false
+	args.BridgeContract = &interactors.BridgeContractStub{
+		QuorumCalled: func(opts *bind.CallOpts) (*big.Int, error) {
+			handlerCalled = true
+			return big.NewInt(0).SetBytes(bytes.Repeat([]byte{1}, 32)), nil
+		},
+	}
+	wrapper, _ := NewEthClientWrapper(args)
+	q, err := wrapper.Quorum(context.TODO())
+	assert.Equal(t, ErrInvalidQuorumValue, err)
+	assert.Equal(t, uint64(0), q)
 	assert.True(t, handlerCalled)
 	assert.Equal(t, 1, statusHandler.GetIntMetric(core.MetricNumEthClientRequests))
 }
