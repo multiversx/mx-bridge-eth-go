@@ -6,7 +6,7 @@
     GasLimit = 500000
     ERC20Contracts = ["d1135C0307CEB01FD4728db8e5B8D38fbf984F9a"]
     [Eth.GasStation]
-        Enabled = true
+        Enabled = false
         URL = "https://ethgasstation.info/api/ethgasAPI.json?" # gas station URL. Suggestion to provide the api-key here
         PollingIntervalInSeconds = 60 # number of seconds between gas price polling
         RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the gas price request
@@ -31,7 +31,7 @@
     Port = "10010"
     Seed = ""
     InitialPeerList = []
-    ProtocolID = "/erd/relay/1.0.0"
+    ProtocolID = "/erd/relay/2.0.0"
 
 [Relayer]
     [Relayer.Marshalizer]
@@ -60,7 +60,7 @@
             { Name = "proposing transfer", DurationInMillis = 12000 },
             { Name = "waiting signatures for propose transfer", DurationInMillis = 12000 },
             { Name = "executing transfer", DurationInMillis = 12000 },
-            { Name = "proposing set status", DurationInMillis = 600000 }, # 10 minutes
+            { Name = "proposing set status", DurationInMillis = 120000 }, # 2 minutes
             { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
             { Name = "executing set status", DurationInMillis = 12000 }
         ]
@@ -70,7 +70,7 @@
             { Name = "getting the pending transactions", DurationInMillis = 12000 },
             { Name = "proposing transfer", DurationInMillis = 12000 },
             { Name = "waiting signatures for propose transfer", DurationInMillis = 12000 },
-            { Name = "executing transfer", DurationInMillis = 600000 }, # 10 minutes
+            { Name = "executing transfer", DurationInMillis = 120000 }, # 2 minutes
             { Name = "proposing set status", DurationInMillis = 12000 },
             { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
             { Name = "executing set status", DurationInMillis = 12000 }
