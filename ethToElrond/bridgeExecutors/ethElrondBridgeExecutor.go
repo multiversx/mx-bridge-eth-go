@@ -187,10 +187,27 @@ func (executor *ethElrondBridgeExecutor) setExecutionMessageInStatusHandler(leve
 }
 
 // GetPendingBatch will fetch the pending batch from the source bridge
-func (executor *ethElrondBridgeExecutor) GetPendingBatch(ctx context.Context) {
+func (executor *ethElrondBridgeExecutor) GetPendingBatch(ctx context.Context) error {
 	executor.statusHandler.SetStringMetric(core.MetricLastError, "")
 
-	executor.pendingBatch = executor.sourceBridge.GetPending(ctx)
+	pendingBatch, err := executor.sourceBridge.GetPending(ctx)
+	if err != nil {
+		return err
+	}
+
+	executor.pendingBatch = pendingBatch
+
+	return nil
+}
+
+// IsPendingBatchReady returns true if a pending batch is ready
+func (executor *ethElrondBridgeExecutor) IsPendingBatchReady(ctx context.Context) (bool, error) {
+	pendingBatch, err := executor.sourceBridge.GetPending(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return pendingBatch != nil, nil
 }
 
 // ProposeTransferOnDestination will propose the transfer for the existing pending batch on the destination bridge

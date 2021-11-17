@@ -47,7 +47,6 @@ func TestFlowAsLeaderProposeTransferOnDestinationErrorsWithStubChecking(t *testi
 	assert.Equal(t, 2, bem.GetFunctionCounter(hasPendingBatch))
 	assert.Equal(t, 3, bem.GetFunctionCounter(isLeader))
 	assert.Equal(t, 1, bem.GetFunctionCounter(proposeTransferOnDestination))
-	assert.Equal(t, 1, bem.GetFunctionCounter(printDebugInfo))
 	assert.Equal(t, 1, bem.GetFunctionCounter(setStatusRejectedOnAllTransactions))
 	assert.Equal(t, 3, bem.GetFunctionCounter(waitStepToFinish))
 	assert.Equal(t, 0, bem.GetFunctionCounter(wasProposeTransferExecutedOnDestination))

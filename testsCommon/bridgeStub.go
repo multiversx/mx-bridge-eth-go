@@ -20,7 +20,7 @@ type BridgeStub struct {
 	WasProposedSetStatusCalled func(ctx context.Context, batch *bridge.Batch) bool
 	WasExecutedCalled          func(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool
 
-	GetPendingCalled                               func(ctx context.Context) *bridge.Batch
+	GetPendingCalled                               func(ctx context.Context) (*bridge.Batch, error)
 	ProposeSetStatusCalled                         func(ctx context.Context, batch *bridge.Batch)
 	ProposeTransferCalled                          func(ctx context.Context, batch *bridge.Batch) (string, error)
 	GetActionIdForProposeTransferCalled            func(ctx context.Context, batch *bridge.Batch) bridge.ActionId
@@ -74,12 +74,13 @@ func (b *BridgeStub) WasExecuted(ctx context.Context, id bridge.ActionId, id2 br
 // -------- action functions
 
 // GetPending -
-func (b *BridgeStub) GetPending(ctx context.Context) *bridge.Batch {
+func (b *BridgeStub) GetPending(ctx context.Context) (*bridge.Batch, error) {
 	b.incrementFunctionCounter()
 	if b.GetPendingCalled != nil {
 		return b.GetPendingCalled(ctx)
 	}
-	return nil
+
+	return nil, nil
 }
 
 // ProposeSetStatus -

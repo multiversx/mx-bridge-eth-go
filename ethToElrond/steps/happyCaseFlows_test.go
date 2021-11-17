@@ -16,7 +16,6 @@ const (
 	hasPendingBatch                         = "HasPendingBatch"
 	isLeader                                = "IsLeader"
 	proposeTransferOnDestination            = "ProposeTransferOnDestination"
-	printDebugInfo                          = "PrintInfo"
 	setStatusRejectedOnAllTransactions      = "SetStatusRejectedOnAllTransactions"
 	waitStepToFinish                        = "WaitStepToFinish"
 	wasProposeTransferExecutedOnDestination = "WasProposeTransferExecutedOnDestination"
@@ -41,6 +40,9 @@ var falseHandlerWithContext = func(_ context.Context) bool { return false }
 
 func setAllDecisionHandlersToTrue(bem *stateMachine.BridgeExecutorMock) {
 	bem.HasPendingBatchCalled = trueHandler
+	bem.IsPendingBatchReadyCalled = func(ctx context.Context) (bool, error) {
+		return true, nil
+	}
 	bem.IsLeaderCalled = trueHandler
 	bem.WasProposeTransferExecutedOnDestinationCalled = trueHandlerWithContext
 	bem.WasProposeSetStatusExecutedOnSourceCalled = trueHandlerWithContext

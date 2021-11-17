@@ -25,7 +25,7 @@ type BridgeMock struct {
 }
 
 // GetPending -
-func (bm *BridgeMock) GetPending(_ context.Context) *bridge.Batch {
+func (bm *BridgeMock) GetPending(_ context.Context) (*bridge.Batch, error) {
 	if bm.GetPendingCalled != nil {
 		bm.GetPendingCalled()
 	}
@@ -33,7 +33,7 @@ func (bm *BridgeMock) GetPending(_ context.Context) *bridge.Batch {
 	bm.RLock()
 	defer bm.RUnlock()
 
-	return bm.pendingBatch
+	return bm.pendingBatch, nil
 }
 
 // SetPending -

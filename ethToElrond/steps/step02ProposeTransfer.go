@@ -15,6 +15,8 @@ type proposeTransferStep struct {
 // Execute will execute this step returning the next step to be executed
 func (step *proposeTransferStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	if step.bridge.IsLeader() {
+		step.bridge.PrintInfo(logger.LogDebug, "propose transfer (my turn)")
+
 		err := step.bridge.ProposeTransferOnDestination(ctx)
 		if err != nil {
 			step.bridge.PrintInfo(logger.LogError, "bridge.ProposeTransfer", "error", err)
@@ -24,17 +26,19 @@ func (step *proposeTransferStep) Execute(ctx context.Context) (core.StepIdentifi
 		}
 	}
 
+	step.bridge.PrintInfo(logger.LogDebug, "waiting propose transfer step to finish")
 	err := step.bridge.WaitStepToFinish(step.Identifier(), ctx)
 	if err != nil {
 		return step.Identifier(), err
 	}
 
 	if !step.bridge.WasProposeTransferExecutedOnDestination(ctx) {
-		// remain in this step
+		step.bridge.PrintInfo(logger.LogDebug, "waiting propose transfer: was not proposed, will remain in this step")
 		return step.Identifier(), nil
 	}
 
 	step.bridge.SignProposeTransferOnDestination(ctx)
+	step.bridge.PrintInfo(logger.LogDebug, "signed propose transfer on destination")
 
 	return ethToElrond.WaitingSignaturesForProposeTransfer, nil
 }

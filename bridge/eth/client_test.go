@@ -98,9 +98,10 @@ func TestGetPending(t *testing.T) {
 			}
 			c.addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, c.log)
 
-			got := c.GetPending(context.TODO())
+			got, err := c.GetPending(context.TODO())
 
 			assert.Equal(t, tt.expectedBatch, got)
+			assert.Nil(t, err)
 		})
 	}
 }

@@ -139,7 +139,8 @@ func TestGetPending(t *testing.T) {
 		}
 		c, _ := buildTestClient(proxy)
 
-		actual := c.GetPending(context.TODO())
+		actual, err := c.GetPending(context.TODO())
+		assert.Nil(t, err)
 		tx1 := &bridge.DepositTransaction{
 			To:            "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
 			DisplayableTo: "0x264eeffe37aa569bec16a951c51ba25a98e07dab",
@@ -195,9 +196,10 @@ func TestGetPending(t *testing.T) {
 		}
 
 		c, _ := buildTestClient(proxy)
-		actual := c.GetPending(context.TODO())
+		actual, err := c.GetPending(context.TODO())
 
 		assert.Nil(t, actual)
+		assert.Nil(t, err)
 	})
 	t.Run("where there is no pending transaction it will return nil", func(t *testing.T) {
 		proxy := &testProxy{
@@ -207,9 +209,10 @@ func TestGetPending(t *testing.T) {
 		}
 
 		c, _ := buildTestClient(proxy)
-		actual := c.GetPending(context.TODO())
+		actual, err := c.GetPending(context.TODO())
 
 		assert.Nil(t, actual)
+		assert.Nil(t, err)
 	})
 }
 

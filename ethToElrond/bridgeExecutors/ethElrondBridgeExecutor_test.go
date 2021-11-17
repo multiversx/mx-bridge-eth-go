@@ -119,8 +119,8 @@ func TestGetPending(t *testing.T) {
 		assert.False(t, executor.IsInterfaceNil())
 		assert.False(t, executor.HasPendingBatch())
 
-		executor.GetPendingBatch(context.TODO())
-
+		err = executor.GetPendingBatch(context.TODO())
+		assert.Nil(t, err)
 		assert.False(t, executor.HasPendingBatch())
 		assert.Nil(t, executor.pendingBatch)
 	})
@@ -131,18 +131,77 @@ func TestGetPending(t *testing.T) {
 		}
 		args := createMockArgs()
 		sb := testsCommon.NewBridgeStub()
-		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
-			return expected
+		sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+			return expected, nil
 		}
 		args.SourceBridge = sb
 		executor, err := NewEthElrondBridgeExecutor(args)
 		assert.Nil(t, err)
 		assert.False(t, executor.IsInterfaceNil())
 		assert.False(t, executor.HasPendingBatch())
-		executor.GetPendingBatch(context.TODO())
+		err = executor.GetPendingBatch(context.TODO())
 
+		assert.Nil(t, err)
 		assert.True(t, executor.HasPendingBatch())
 		assert.Equal(t, expected, executor.pendingBatch)
+	})
+	t.Run("get next pending batch errors", func(t *testing.T) {
+		expectedErr := errors.New("expected error")
+		args := createMockArgs()
+		sb := testsCommon.NewBridgeStub()
+		sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+			return nil, expectedErr
+		}
+		args.SourceBridge = sb
+		executor, err := NewEthElrondBridgeExecutor(args)
+		assert.Nil(t, err)
+		assert.False(t, executor.IsInterfaceNil())
+		assert.False(t, executor.HasPendingBatch())
+		err = executor.GetPendingBatch(context.TODO())
+
+		assert.Equal(t, expectedErr, err)
+		assert.False(t, executor.HasPendingBatch())
+		assert.Nil(t, executor.pendingBatch)
+	})
+}
+
+func TestIsPendingBatchReady(t *testing.T) {
+	t.Parallel()
+	t.Run("no pending batch", func(t *testing.T) {
+		args := createMockArgs()
+		executor, _ := NewEthElrondBridgeExecutor(args)
+
+		isPending, err := executor.IsPendingBatchReady(context.TODO())
+		assert.Nil(t, err)
+		assert.False(t, isPending)
+	})
+	t.Run("pending batch exists", func(t *testing.T) {
+		batch := &bridge.Batch{}
+		args := createMockArgs()
+		sb := testsCommon.NewBridgeStub()
+		sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+			return batch, nil
+		}
+		args.SourceBridge = sb
+		executor, _ := NewEthElrondBridgeExecutor(args)
+
+		isPending, err := executor.IsPendingBatchReady(context.TODO())
+		assert.Nil(t, err)
+		assert.True(t, isPending)
+	})
+	t.Run("get pending batch errors", func(t *testing.T) {
+		expectedErr := errors.New("expected error")
+		args := createMockArgs()
+		sb := testsCommon.NewBridgeStub()
+		sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+			return nil, expectedErr
+		}
+		args.SourceBridge = sb
+		executor, _ := NewEthElrondBridgeExecutor(args)
+
+		isPending, err := executor.IsPendingBatchReady(context.TODO())
+		assert.Equal(t, expectedErr, err)
+		assert.False(t, isPending)
 	})
 }
 
@@ -183,8 +242,8 @@ func TestWasProposeTransferExecutedOnDestination(t *testing.T) {
 		}
 		args := createMockArgs()
 		sb := testsCommon.NewBridgeStub()
-		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
-			return expected
+		sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+			return expected, nil
 		}
 		args.SourceBridge = sb
 		db := testsCommon.NewBridgeStub()
@@ -196,7 +255,7 @@ func TestWasProposeTransferExecutedOnDestination(t *testing.T) {
 		assert.Nil(t, err)
 		assert.False(t, executor.IsInterfaceNil())
 
-		executor.GetPendingBatch(context.TODO())
+		_ = executor.GetPendingBatch(context.TODO())
 		assert.True(t, executor.WasProposeTransferExecutedOnDestination(context.TODO()))
 	})
 }
@@ -210,8 +269,8 @@ func TestWasProposeSetStatusExecutedOnSource(t *testing.T) {
 		}
 		args := createMockArgs()
 		sb := testsCommon.NewBridgeStub()
-		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
-			return expected
+		sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+			return expected, nil
 		}
 		sb.WasProposedSetStatusCalled = func(ctx context.Context, batch *bridge.Batch) bool {
 			return true
@@ -221,7 +280,7 @@ func TestWasProposeSetStatusExecutedOnSource(t *testing.T) {
 		assert.Nil(t, err)
 		assert.False(t, executor.IsInterfaceNil())
 
-		executor.GetPendingBatch(context.TODO())
+		_ = executor.GetPendingBatch(context.TODO())
 		assert.True(t, executor.WasProposeSetStatusExecutedOnSource(context.TODO()))
 	})
 }
@@ -235,8 +294,8 @@ func TestWasExecuted(t *testing.T) {
 		}
 		args := createMockArgs()
 		sb := testsCommon.NewBridgeStub()
-		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
-			return expected
+		sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+			return expected, nil
 		}
 		args.SourceBridge = sb
 		db := testsCommon.NewBridgeStub()
@@ -248,7 +307,7 @@ func TestWasExecuted(t *testing.T) {
 		assert.Nil(t, err)
 		assert.False(t, executor.IsInterfaceNil())
 
-		executor.GetPendingBatch(context.TODO())
+		_ = executor.GetPendingBatch(context.TODO())
 		assert.True(t, executor.WasTransferExecutedOnDestination(context.TODO()))
 	})
 	t.Run("OnDestination", func(t *testing.T) {
@@ -258,8 +317,8 @@ func TestWasExecuted(t *testing.T) {
 		}
 		args := createMockArgs()
 		sb := testsCommon.NewBridgeStub()
-		sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
-			return expected
+		sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+			return expected, nil
 		}
 		sb.WasExecutedCalled = func(ctx context.Context, id bridge.ActionId, id2 bridge.BatchId) bool {
 			return true
@@ -269,7 +328,7 @@ func TestWasExecuted(t *testing.T) {
 		assert.Nil(t, err)
 		assert.False(t, executor.IsInterfaceNil())
 
-		executor.GetPendingBatch(context.TODO())
+		_ = executor.GetPendingBatch(context.TODO())
 		assert.True(t, executor.WasSetStatusExecutedOnSource(context.TODO()))
 	})
 }
@@ -641,15 +700,15 @@ func TestSetStatusRejectedOnAllTransactions(t *testing.T) {
 	expectedError := errors.New("some error")
 	args := createMockArgs()
 	sb := testsCommon.NewBridgeStub()
-	sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
-		return expected
+	sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+		return expected, nil
 	}
 	args.SourceBridge = sb
 	executor, err := NewEthElrondBridgeExecutor(args)
 	assert.Nil(t, err)
 	assert.False(t, executor.IsInterfaceNil())
 	assert.False(t, executor.HasPendingBatch())
-	executor.GetPendingBatch(context.TODO())
+	_ = executor.GetPendingBatch(context.TODO())
 
 	assert.True(t, executor.HasPendingBatch())
 	executor.SetStatusRejectedOnAllTransactions(expectedError)
@@ -675,7 +734,7 @@ func TestSignProposeTransferOnDestination(t *testing.T) {
 	assert.False(t, executor.IsInterfaceNil())
 	assert.False(t, executor.HasPendingBatch())
 
-	executor.GetPendingBatch(context.TODO())
+	_ = executor.GetPendingBatch(context.TODO())
 
 	assert.False(t, executor.HasPendingBatch())
 	executor.SignProposeTransferOnDestination(context.TODO())
@@ -698,7 +757,7 @@ func TestSignProposeTransferOnDestinationReturnsError(t *testing.T) {
 	assert.False(t, executor.IsInterfaceNil())
 	assert.False(t, executor.HasPendingBatch())
 
-	executor.GetPendingBatch(context.TODO())
+	_ = executor.GetPendingBatch(context.TODO())
 
 	assert.False(t, executor.HasPendingBatch())
 	executor.SignProposeTransferOnDestination(context.TODO())
@@ -714,8 +773,8 @@ func TestSignProposeSetStatusOnSource(t *testing.T) {
 	}
 	args := createMockArgs()
 	sb := testsCommon.NewBridgeStub()
-	sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
-		return expected
+	sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+		return expected, nil
 	}
 	sb.SignCalled = func(ctx context.Context, id bridge.ActionId) (string, error) {
 		return "sign-tx-has", nil
@@ -729,7 +788,7 @@ func TestSignProposeSetStatusOnSource(t *testing.T) {
 	assert.False(t, executor.IsInterfaceNil())
 	assert.False(t, executor.HasPendingBatch())
 
-	executor.GetPendingBatch(context.TODO())
+	_ = executor.GetPendingBatch(context.TODO())
 
 	assert.True(t, executor.HasPendingBatch())
 	executor.SignProposeSetStatusOnSource(context.TODO())
@@ -745,8 +804,8 @@ func TestSignProposeSetStatusOnSourceReturnsError(t *testing.T) {
 	}
 	args := createMockArgs()
 	sb := testsCommon.NewBridgeStub()
-	sb.GetPendingCalled = func(ctx context.Context) *bridge.Batch {
-		return expected
+	sb.GetPendingCalled = func(ctx context.Context) (*bridge.Batch, error) {
+		return expected, nil
 	}
 	sb.SignError = errors.New("some error")
 	sb.GetActionIdForSetStatusOnPendingTransferCalled = func(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
@@ -759,7 +818,7 @@ func TestSignProposeSetStatusOnSourceReturnsError(t *testing.T) {
 	assert.False(t, executor.IsInterfaceNil())
 	assert.False(t, executor.HasPendingBatch())
 
-	executor.GetPendingBatch(context.TODO())
+	_ = executor.GetPendingBatch(context.TODO())
 
 	assert.True(t, executor.HasPendingBatch())
 	executor.SignProposeSetStatusOnSource(context.TODO())

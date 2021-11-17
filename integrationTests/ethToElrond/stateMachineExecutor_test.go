@@ -59,7 +59,7 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 	chDone := make(chan struct{})
 	sourceBridge.GetPendingCalled = func() {
 		numGetPendingCalled++
-		if numGetPendingCalled == 2 {
+		if numGetPendingCalled == 3 {
 			close(chDone)
 		}
 	}
@@ -129,7 +129,7 @@ func TestBridgeExecutorWithStateMachineFailedToProposeTransfer(t *testing.T) {
 	chDone := make(chan struct{})
 	sourceBridge.GetPendingCalled = func() {
 		numGetPendingCalled++
-		if numGetPendingCalled == 2 {
+		if numGetPendingCalled == 3 {
 			close(chDone)
 		}
 	}

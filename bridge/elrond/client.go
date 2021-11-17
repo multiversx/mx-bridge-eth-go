@@ -118,16 +118,15 @@ func checkGasMapValues(gasMap bridge.ElrondGasMapConfig) error {
 }
 
 // GetPending returns the pending batch
-func (c *client) GetPending(_ context.Context) *bridge.Batch {
+func (c *client) GetPending(_ context.Context) (*bridge.Batch, error) {
 	c.log.Info("Elrond: Getting pending batch")
 	responseData, err := c.getCurrentBatch()
 	if err != nil {
-		c.log.Error("Elrond: Failed to get the current batch", "error", err.Error())
-		return nil
+		return nil, err
 	}
 
 	if emptyResponse(responseData) {
-		return nil
+		return nil, nil
 	}
 
 	addrPkConv, _ := pubkeyConverter.NewBech32PubkeyConverter(32, c.log)
@@ -143,13 +142,11 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 		amount := new(big.Int).SetBytes(responseData[i+idxAmount])
 		blockNonce, errParse := parseIntFromByteSlice(responseData[i])
 		if errParse != nil {
-			c.log.Error("Elrond: parse error", "error", errParse.Error())
-			return nil
+			return nil, fmt.Errorf("%w in client.GetPending, parseIntFromByteSlice(responseData[i])", err)
 		}
 		depositNonce, errParse := parseIntFromByteSlice(responseData[i+1])
 		if errParse != nil {
-			c.log.Error("Elrond: parse error", "error", errParse.Error())
-			return nil
+			return nil, fmt.Errorf("%w in client.GetPending, parseIntFromByteSlice(responseData[i+1])", err)
 		}
 
 		tx := &bridge.DepositTransaction{
@@ -169,14 +166,13 @@ func (c *client) GetPending(_ context.Context) *bridge.Batch {
 
 	batchId, err := parseIntFromByteSlice(responseData[0])
 	if err != nil {
-		c.log.Error("Elrond: parse error", "error", err.Error())
-		return nil
+		return nil, fmt.Errorf("%w in client.GetPending, parseIntFromByteSlice(responseData[0])", err)
 	}
 
 	return &bridge.Batch{
 		Id:           bridge.NewBatchId(batchId),
 		Transactions: transactions,
-	}
+	}, nil
 }
 
 func parseIntFromByteSlice(buff []byte) (int64, error) {

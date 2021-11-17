@@ -5,6 +5,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
 type getPendingStep struct {
@@ -13,8 +14,15 @@ type getPendingStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	step.bridge.GetPendingBatch(ctx)
+	err := step.bridge.GetPendingBatch(ctx)
+	if err != nil {
+		step.bridge.PrintInfo(logger.LogError, "error while getting the batch", "error", err)
+		return step.Identifier(), nil
+	}
+
 	if step.bridge.HasPendingBatch() {
+		step.bridge.PrintInfo(logger.LogDebug, "found pending batch")
+
 		return ethToElrond.ProposingTransfer, nil
 	}
 
