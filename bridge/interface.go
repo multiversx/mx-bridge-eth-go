@@ -29,7 +29,7 @@ type QuorumProvider interface {
 
 // Bridge defines the operations available for a validator operating on a bridge between 2 chains
 type Bridge interface {
-	GetPending(context.Context) *Batch
+	GetPending(context.Context) (*Batch, error)
 	ProposeSetStatus(context.Context, *Batch)
 	ProposeTransfer(context.Context, *Batch) (string, error)
 	WasProposedTransfer(context.Context, *Batch) bool

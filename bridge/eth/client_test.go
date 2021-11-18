@@ -36,7 +36,7 @@ var (
 	}
 )
 
-const TestPrivateKey = "60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d7192efab"
+const TestPrivateKey = " 60f3849d7c8d93dfce1947d17c34be3e4ea974e74e15ce877f0df34d7192efab\n\t "
 const GasLimit = uint64(400000)
 
 func TestGetPending(t *testing.T) {
@@ -98,9 +98,10 @@ func TestGetPending(t *testing.T) {
 			}
 			c.addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, c.log)
 
-			got := c.GetPending(context.TODO())
+			got, err := c.GetPending(context.TODO())
 
 			assert.Equal(t, tt.expectedBatch, got)
+			assert.Nil(t, err)
 		})
 	}
 }
@@ -201,7 +202,7 @@ func TestSign(t *testing.T) {
 			},
 		}
 
-		sk, err := crypto.HexToECDSA(TestPrivateKey)
+		sk, err := crypto.HexToECDSA(core.TrimWhiteSpaceCharacters(TestPrivateKey))
 		require.Nil(t, err)
 
 		pk := sk.Public()
@@ -623,7 +624,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 func privateKey(t *testing.T) *ecdsa.PrivateKey {
 	t.Helper()
 
-	sk, err := crypto.HexToECDSA(TestPrivateKey)
+	sk, err := crypto.HexToECDSA(core.TrimWhiteSpaceCharacters(TestPrivateKey))
 	if err != nil {
 		t.Fatal(err)
 		return nil

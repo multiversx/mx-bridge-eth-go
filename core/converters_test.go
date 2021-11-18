@@ -14,3 +14,21 @@ func TestConvertFromByteSliceToArray(t *testing.T) {
 	result := ConvertFromByteSliceToArray(buff)
 	assert.Equal(t, buff, result[:])
 }
+
+func TestTrimWhiteSpaceCharacters(t *testing.T) {
+	t.Parallel()
+
+	data := "aaII139HSAh32q782!$#*$(nc"
+
+	input := " " + data
+	assert.Equal(t, data, TrimWhiteSpaceCharacters(input))
+
+	input = "\t " + data
+	assert.Equal(t, data, TrimWhiteSpaceCharacters(input))
+
+	input = "\t " + data + "\n"
+	assert.Equal(t, data, TrimWhiteSpaceCharacters(input))
+
+	input = "\t\n " + data + "\n\n\n\n\t"
+	assert.Equal(t, data, TrimWhiteSpaceCharacters(input))
+}

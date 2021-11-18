@@ -27,7 +27,8 @@ type BridgeExecutorMock struct {
 	IsQuorumReachedForProposeSetStatusCalled      func(ctx context.Context) bool
 
 	PrintInfoCalled                          func(logLevel logger.LogLevel, message string, extras ...interface{})
-	GetPendingBatchCalled                    func(ctx context.Context)
+	GetPendingBatchCalled                    func(ctx context.Context) error
+	IsPendingBatchReadyCalled                func(ctx context.Context) (bool, error)
 	ProposeTransferOnDestinationCalled       func(ctx context.Context) error
 	ProposeSetStatusOnSourceCalled           func(ctx context.Context)
 	CleanStoredSignaturesCalled              func()
@@ -140,11 +141,22 @@ func (bem *BridgeExecutorMock) PrintInfo(logLevel logger.LogLevel, message strin
 }
 
 // GetPendingBatch -
-func (bem *BridgeExecutorMock) GetPendingBatch(ctx context.Context) {
+func (bem *BridgeExecutorMock) GetPendingBatch(ctx context.Context) error {
 	bem.incrementFunctionCounter()
 	if bem.GetPendingBatchCalled != nil {
-		bem.GetPendingBatchCalled(ctx)
+		return bem.GetPendingBatchCalled(ctx)
 	}
+
+	return nil
+}
+
+// IsPendingBatchReady -
+func (bem *BridgeExecutorMock) IsPendingBatchReady(ctx context.Context) (bool, error) {
+	if bem.IsPendingBatchReadyCalled != nil {
+		return bem.IsPendingBatchReadyCalled(ctx)
+	}
+
+	return false, nil
 }
 
 // ProposeTransferOnDestination -

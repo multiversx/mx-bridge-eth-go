@@ -19,7 +19,8 @@ type BridgeExecutor interface {
 	IsQuorumReachedForProposeSetStatus(ctx context.Context) bool
 
 	PrintInfo(logLevel logger.LogLevel, message string, extras ...interface{})
-	GetPendingBatch(ctx context.Context)
+	GetPendingBatch(ctx context.Context) error
+	IsPendingBatchReady(ctx context.Context) (bool, error)
 	ProposeTransferOnDestination(ctx context.Context) error
 	ProposeSetStatusOnSource(ctx context.Context)
 	CleanStoredSignatures()

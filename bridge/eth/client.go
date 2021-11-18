@@ -71,7 +71,8 @@ func NewClient(args ArgsClient) (*client, error) {
 	if err != nil {
 		return nil, err
 	}
-	privateKey, err := crypto.HexToECDSA(string(privateKeyBytes))
+	privateKeyString := core.TrimWhiteSpaceCharacters(string(privateKeyBytes))
+	privateKey, err := crypto.HexToECDSA(privateKeyString)
 	if err != nil {
 		return nil, err
 	}
@@ -162,12 +163,11 @@ func (c *client) retrieveAllCurrentErc20Balances() {
 }
 
 // GetPending returns the pending batch in the Ethereum contract
-func (c *client) GetPending(ctx context.Context) *bridge.Batch {
+func (c *client) GetPending(ctx context.Context) (*bridge.Batch, error) {
 	c.log.Info("ETH: Getting pending batch")
 	batch, err := c.clientWrapper.GetNextPendingBatch(ctx)
 	if err != nil {
-		c.log.Error(err.Error())
-		return nil
+		return nil, err
 	}
 
 	var result *bridge.Batch
@@ -192,7 +192,7 @@ func (c *client) GetPending(ctx context.Context) *bridge.Batch {
 		}
 	}
 
-	return result
+	return result, nil
 }
 
 // ProposeSetStatus will propose the status of an executed batch of transactions
