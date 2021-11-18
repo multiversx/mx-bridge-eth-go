@@ -160,7 +160,7 @@ func (c *client) GetPending(_ context.Context) (*bridge.Batch, error) {
 			Status:        0,
 			Error:         nil,
 		}
-		c.log.Trace("created deposit transaction: " + tx.String())
+		c.log.Debug("Elrond: created deposit transaction: " + tx.String())
 		transactions = append(transactions, tx)
 	}
 
@@ -168,6 +168,8 @@ func (c *client) GetPending(_ context.Context) (*bridge.Batch, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w in client.GetPending, parseIntFromByteSlice(responseData[0])", err)
 	}
+
+	c.log.Debug("Elrond: created batch", "batchID", batchId, "num transactions", len(transactions))
 
 	return &bridge.Batch{
 		Id:           bridge.NewBatchId(batchId),
@@ -223,10 +225,15 @@ func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Transactions))*c.gasMapConfig.ProposeTransferForEach
 	hash, err := c.sendTransaction(builder, gasLimit)
 
+	batchData, err := json.Marshal(batch)
+	if err != nil {
+		c.log.Warn("Elrond: error not critical while serializing transaction", "error", err)
+	}
+
 	if err == nil {
-		c.log.Info("Elrond: Proposed transfer for batch ", batch.Id, " with hash ", hash)
+		c.log.Info("Elrond: Proposed transfer for batch ", batch.Id, "with hash", hash, "batch data", batchData)
 	} else {
-		c.log.Error("Elrond: Propose transfer errored", "error", err.Error())
+		c.log.Error("Elrond: Propose transfer errored", "batch data", batchData, "error", err.Error())
 	}
 
 	return hash, err
@@ -312,6 +319,8 @@ func (c *client) GetTransactionsStatuses(_ context.Context, batchId bridge.Batch
 		return nil, fmt.Errorf("%w status is finished, no results are given", ErrMalformedBatchResponse)
 	}
 
+	c.log.Debug("Elrond: got transaction status", "batchID", batchId, "status", results)
+
 	return results, nil
 }
 
@@ -339,6 +348,8 @@ func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, bat
 		return bridge.NewActionId(0)
 	}
 
+	c.log.Debug("Elrond: got actionID", "actionID", response)
+
 	return bridge.NewActionId(int64(response))
 }
 
@@ -359,17 +370,22 @@ func (c *client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ brid
 }
 
 // Sign will trigger the execution of a sign operation
-func (c *client) Sign(_ context.Context, actionId bridge.ActionId, _ *bridge.Batch) (string, error) {
+func (c *client) Sign(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch) (string, error) {
 	builder := newBuilder(c.log).
 		Func("sign").
 		ActionId(actionId)
 
 	hash, err := c.sendTransaction(builder, c.gasMapConfig.Sign)
 
+	batchData, err := json.Marshal(batch)
+	if err != nil {
+		c.log.Warn("Elrond: error not critical while serializing transaction", "error", err)
+	}
+
 	if err == nil {
-		c.log.Info("Elrond: Signed", "hash", hash)
+		c.log.Info("Elrond: Signed", "hash", hash, "batch data", batchData)
 	} else {
-		c.log.Error("Elrond: Sign failed", "error", err.Error())
+		c.log.Error("Elrond: Sign failed", "batch data", batchData, "error", err.Error())
 	}
 
 	return hash, err
@@ -384,10 +400,19 @@ func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bri
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Transactions))*c.gasMapConfig.PerformActionForEach
 	hash, err := c.sendTransaction(builder, gasLimit)
 
+	batchData, err := json.Marshal(batch)
+	if err != nil {
+		c.log.Warn("Elrond: error not critical while serializing transaction", "error", err)
+	}
+
 	if err == nil {
-		c.log.Info("Elrond: Executed action", "action ID", actionId, "hash", hash)
+		c.log.Info("Elrond: Executed action", "actionID", actionId, "batch data", batchData, "hash", hash)
 	} else {
-		c.log.Info("Elrond: Execution failed for action", "action ID", actionId, "hash", hash, "error", err.Error())
+		c.log.Info("Elrond: Execution failed for action",
+			"actionID", actionId,
+			"batch data", batchData,
+			"hash", hash,
+			"error", err.Error())
 	}
 
 	return hash, err
@@ -420,6 +445,8 @@ func (c *client) GetTokenId(address string) string {
 		c.log.Error(err.Error())
 	}
 
+	c.log.Debug("Elrond: get token ID", "address", address, "tokenID", tokenId)
+
 	return tokenId
 }
 
@@ -434,6 +461,8 @@ func (c *client) GetErc20Address(tokenId string) string {
 	if err != nil {
 		c.log.Error(err.Error())
 	}
+
+	c.log.Debug("Elrond: get erc20 address", "tokenID", tokenId, "address", address)
 
 	return address
 }
