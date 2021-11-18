@@ -71,7 +71,8 @@ func NewClient(args ArgsClient) (*client, error) {
 	if err != nil {
 		return nil, err
 	}
-	privateKey, err := crypto.HexToECDSA(string(privateKeyBytes))
+	privateKeyString := core.TrimWhiteSpaceCharacters(string(privateKeyBytes))
+	privateKey, err := crypto.HexToECDSA(privateKeyString)
 	if err != nil {
 		return nil, err
 	}
