@@ -3,10 +3,16 @@ package bridge
 import (
 	"fmt"
 	"math/big"
+
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
+var log = logger.GetOrCreate("bridgemodels")
+
 const (
+	// Executed is the Executed with success status value
 	Executed = uint8(3)
+	// Rejected is the Rejected status value
 	Rejected = uint8(4)
 )
 
@@ -26,6 +32,7 @@ func NewActionId(value int64) ActionId {
 	return big.NewInt(value)
 }
 
+// DepositTransaction represents a deposit transaction ready to be executed on the other chain
 type DepositTransaction struct {
 	To            string
 	DisplayableTo string
@@ -34,24 +41,49 @@ type DepositTransaction struct {
 	Amount        *big.Int
 	DepositNonce  Nonce
 	BlockNonce    Nonce
-	Status        uint8
 	Error         error
 }
 
 // String will convert the deposit transaction to a string
 func (dt *DepositTransaction) String() string {
 	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %v, block nonce: %v, "+
-		"status: %d, error: %v", dt.DisplayableTo, dt.From, dt.TokenAddress, dt.Amount, dt.DepositNonce, dt.BlockNonce, dt.Status, dt.Error)
+		"error: %v", dt.DisplayableTo, dt.From, dt.TokenAddress, dt.Amount, dt.DepositNonce, dt.BlockNonce, dt.Error)
 }
 
+// Batch represents the transactions batch to be executed
 type Batch struct {
 	Id           BatchId
 	Transactions []*DepositTransaction
+	Statuses     []byte
 }
 
-func (batch *Batch) SetStatusOnAllTransactions(status uint8, err error) {
+// SetStatusOnAllTransactions will set the provided status on all existing transactions
+func (batch *Batch) SetStatusOnAllTransactions(status byte, err error) {
 	for _, tx := range batch.Transactions {
-		tx.Status = status
 		tx.Error = err
 	}
+
+	for i := 0; i < len(batch.Statuses); i++ {
+		batch.Statuses[i] = status
+	}
+}
+
+// ResolveNewDeposits will add new statuses as rejected if the newNumDeposits exceeds the number of the deposits
+func (batch *Batch) ResolveNewDeposits(newNumDeposits int) {
+	oldLen := len(batch.Statuses)
+	if newNumDeposits == len(batch.Statuses) {
+		log.Debug("num statuses ok", "len statuses", oldLen)
+		return
+	}
+
+	if newNumDeposits < len(batch.Statuses) {
+		log.Error("num statuses unrecoverable", "len statuses", oldLen, "new num deposits", newNumDeposits)
+		return
+	}
+
+	for newNumDeposits > len(batch.Statuses) {
+		batch.Statuses = append(batch.Statuses, Rejected)
+	}
+
+	log.Warn("recovered num statuses", "len statuses", oldLen, "new num deposits", newNumDeposits)
 }

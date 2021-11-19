@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"sync"
 	"testing"
 	"time"
 
@@ -136,6 +137,153 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	require.NotNil(t, setStatus)
 	assert.Equal(t, 3, len(setStatus.Signatures))
 	assert.Equal(t, []byte{bridge.Executed, bridge.Rejected}, setStatus.NewDepositStatuses)
+
+	assert.NotNil(t, elrondChainMock.PerformedActionID())
+	transfer := elrondChainMock.ProposedTransfer()
+	require.NotNil(t, transfer)
+	require.Equal(t, 2, len(transfer.Transfers))
+
+	assert.Equal(t, destination1.AddressBytes(), transfer.Transfers[0].To)
+	assert.Equal(t, hex.EncodeToString([]byte(ticker1)), transfer.Transfers[0].Token)
+	assert.Equal(t, value1, transfer.Transfers[0].Amount)
+
+	assert.Equal(t, destination2.AddressBytes(), transfer.Transfers[1].To)
+	assert.Equal(t, hex.EncodeToString([]byte(ticker2)), transfer.Transfers[1].Token)
+	assert.Equal(t, value2, transfer.Transfers[1].Amount)
+}
+
+func TestRelayersShouldExecuteTransferFromEthToElrondIfTransactionsAppearInBatch(t *testing.T) {
+	if testing.Short() {
+		t.Skip("this is not a short test")
+	}
+
+	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
+	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
+	ticker1 := "tck-000001"
+
+	token2Erc20 := testsCommon.CreateRandomEthereumAddress()
+	ticker2 := "tck-000002"
+
+	value1 := big.NewInt(111111111)
+	destination1 := testsCommon.CreateRandomElrondAddress()
+
+	value2 := big.NewInt(222222222)
+	destination2 := testsCommon.CreateRandomElrondAddress()
+
+	tokens := []common.Address{token1Erc20, token2Erc20}
+	availableBalances := []*big.Int{value1, value2}
+
+	erc20Contracts := make(map[common.Address]eth.Erc20Contract)
+	for i, token := range tokens {
+		erc20Contracts[token] = &mockInteractors.Erc20ContractStub{
+			BalanceOfCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
+				if account == safeContractEthAddress {
+					return availableBalances[i], nil
+				}
+
+				return big.NewInt(0), nil
+			},
+		}
+	}
+
+	batch := contract.Batch{
+		Nonce:                  big.NewInt(1),
+		Timestamp:              big.NewInt(0),
+		LastUpdatedBlockNumber: big.NewInt(0),
+		Deposits: []contract.Deposit{
+			{
+				Nonce:        big.NewInt(0),
+				TokenAddress: token1Erc20,
+				Amount:       value1,
+				Depositor:    common.Address{},
+				Recipient:    core.ConvertFromByteSliceToArray(destination1.AddressBytes()),
+				Status:       0,
+			},
+			{
+				Nonce:        big.NewInt(0),
+				TokenAddress: token2Erc20,
+				Amount:       value2,
+				Depositor:    common.Address{},
+				Recipient:    core.ConvertFromByteSliceToArray(destination2.AddressBytes()),
+				Status:       0,
+			},
+		},
+	}
+
+	ethereumChainMock := mock.NewEthereumChainMock()
+	ethereumChainMock.SetPendingBatch(batch)
+	ethereumChainMock.SetQuorum(3)
+
+	elrondChainMock := mock.NewElrondChainMock()
+	elrondChainMock.AddTokensPair(token1Erc20, ticker1)
+	elrondChainMock.AddTokensPair(token2Erc20, ticker2)
+	elrondChainMock.GetStatusesAfterExecutionHandler = func() []byte {
+		return []byte{bridge.Executed, bridge.Rejected}
+	}
+
+	newDeposit := contract.Deposit{
+		Nonce:        big.NewInt(9999),
+		TokenAddress: token1Erc20,
+		Amount:       big.NewInt(9999),
+		Depositor:    common.Address{},
+		Recipient:    core.ConvertFromByteSliceToArray(destination1.AddressBytes()),
+	}
+	mutFirstTimeProposeCalled := sync.Mutex{}
+	firstTimeProposeCalled := true
+	elrondChainMock.ProposeMultiTransferEsdtBatchCalled = func() {
+		mutFirstTimeProposeCalled.Lock()
+		defer mutFirstTimeProposeCalled.Unlock()
+
+		if !firstTimeProposeCalled {
+			return
+		}
+		firstTimeProposeCalled = false
+
+		ethereumChainMock.AddDepositToCurrentBatch(newDeposit)
+	}
+
+	numRelayers := 3
+	relayers := make([]*relay.Relay, 0, numRelayers)
+	defer func() {
+		for _, r := range relayers {
+			_ = r.Close()
+		}
+	}()
+
+	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
+	defer cancel()
+	ethereumChainMock.ProcessFinishedHandler = func() {
+		time.Sleep(time.Second * 2)
+		cancel()
+	}
+
+	for i := 0; i < numRelayers; i++ {
+		argsRelay := createMockRelayArgs(i, messengers[i], elrondChainMock, ethereumChainMock)
+		argsRelay.Configs.GeneralConfig.Eth.SafeContractAddress = safeContractEthAddress.Hex()
+		argsRelay.Erc20Contracts = erc20Contracts
+		r, err := relay.NewRelay(argsRelay)
+		require.Nil(t, err)
+
+		elrondChainMock.AddRelayer(r.ElrondAddress())
+		ethereumChainMock.AddRelayer(r.EthereumAddress())
+
+		go func() {
+			err = r.Start(ctx)
+			integrationTests.Log.LogIfError(err)
+			require.Nil(t, err)
+		}()
+
+		relayers = append(relayers, r)
+	}
+
+	<-ctx.Done()
+
+	setStatus := ethereumChainMock.GetLastProposedStatus()
+	require.NotNil(t, setStatus)
+	assert.Equal(t, 3, len(setStatus.Signatures))
+	assert.Equal(t, []byte{bridge.Executed, bridge.Rejected, bridge.Rejected}, setStatus.NewDepositStatuses)
 
 	assert.NotNil(t, elrondChainMock.PerformedActionID())
 	transfer := elrondChainMock.ProposedTransfer()

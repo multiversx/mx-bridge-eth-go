@@ -73,6 +73,7 @@ func TestGetPending(t *testing.T) {
 						Amount:        big.NewInt(42),
 					},
 				},
+				Statuses: make([]byte, 1),
 			},
 		},
 		{
@@ -127,9 +128,10 @@ func TestSign(t *testing.T) {
 	t.Run("will sign propose status for executed tx", func(t *testing.T) {
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(42),
-			Transactions: []*bridge.DepositTransaction{{
-				Status: bridge.Executed,
-			}},
+			Transactions: []*bridge.DepositTransaction{
+				{},
+			},
+			Statuses: []byte{bridge.Executed},
 		}
 		broadcaster, c := buildStubs()
 		c.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
@@ -147,9 +149,10 @@ func TestSign(t *testing.T) {
 	t.Run("will sign propose status for rejected tx", func(t *testing.T) {
 		batch := &bridge.Batch{
 			Id: bridge.NewBatchId(42),
-			Transactions: []*bridge.DepositTransaction{{
-				Status: bridge.Rejected,
-			}},
+			Transactions: []*bridge.DepositTransaction{
+				{},
+			},
+			Statuses: []byte{bridge.Rejected},
 		}
 		broadcaster, c := buildStubs()
 		c.GetActionIdForSetStatusOnPendingTransfer(context.TODO(), batch)
@@ -249,12 +252,12 @@ func TestSignersCount(t *testing.T) {
 	}
 
 	t.Run("should return 0 when sig holder is nil", func(t *testing.T) {
-		got := c.SignersCount(batch, bridge.NewActionId(0), nil)
+		got := c.SignersCount(context.TODO(), batch, bridge.NewActionId(0), nil)
 
 		assert.Equal(t, uint(0), got)
 	})
 	t.Run("should return signature", func(t *testing.T) {
-		got := c.SignersCount(batch, bridge.NewActionId(0), sigHolderStub)
+		got := c.SignersCount(context.TODO(), batch, bridge.NewActionId(0), sigHolderStub)
 
 		assert.Equal(t, uint(1), got)
 	})

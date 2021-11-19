@@ -35,7 +35,9 @@ func (stub *EthereumChainInteractorStub) GetNextPendingBatch(ctx context.Context
 		return stub.GetNextPendingBatchCalled(ctx)
 	}
 
-	return contract.Batch{}, nil
+	return contract.Batch{
+		Nonce: big.NewInt(1),
+	}, nil
 }
 
 // WasBatchExecuted -
