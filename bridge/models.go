@@ -7,7 +7,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-var log = logger.GetOrCreate("bridgemodels")
+var log = logger.GetOrCreate("bridge/models")
 
 const (
 	// Executed is the Executed with success status value
@@ -71,12 +71,12 @@ func (batch *Batch) SetStatusOnAllTransactions(status byte, err error) {
 // ResolveNewDeposits will add new statuses as rejected if the newNumDeposits exceeds the number of the deposits
 func (batch *Batch) ResolveNewDeposits(newNumDeposits int) {
 	oldLen := len(batch.Statuses)
-	if newNumDeposits == len(batch.Statuses) {
+	if newNumDeposits == oldLen {
 		log.Debug("num statuses ok", "len statuses", oldLen)
 		return
 	}
 
-	if newNumDeposits < len(batch.Statuses) {
+	if newNumDeposits < oldLen {
 		log.Error("num statuses unrecoverable", "len statuses", oldLen, "new num deposits", newNumDeposits)
 		return
 	}

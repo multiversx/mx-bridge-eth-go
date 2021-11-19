@@ -197,7 +197,7 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *bridge.Batch) {
 
 	newBatch, err := c.GetPending(ctx)
 	if err != nil {
-		c.log.Error("Elrond: get pending batch failed in ProposeSetStatus", "error", err.Error())
+		c.log.Error("Elrond: get pending batch failed in ProposeSetStatus", "error", err)
 		return
 	}
 
@@ -209,7 +209,7 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *bridge.Batch) {
 
 	hash, err := c.sendTransaction(builder, c.gasMapConfig.ProposeStatus)
 	if err != nil {
-		c.log.Error("Elrond: send transaction failed", "error", err.Error())
+		c.log.Error("Elrond: send transaction failed", "error", err)
 		return
 	}
 
@@ -239,7 +239,7 @@ func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 	if err == nil {
 		c.log.Info("Elrond: Proposed transfer for batch ", batch.Id, "with hash", hash, "batch data", string(batchData))
 	} else {
-		c.log.Error("Elrond: Propose transfer errored", "batch data", string(batchData), "error", err.Error())
+		c.log.Error("Elrond: Propose transfer errored", "batch data", string(batchData), "error", err)
 	}
 
 	return hash, err
@@ -285,7 +285,7 @@ func (c *client) WasProposedSetStatus(ctx context.Context, batch *bridge.Batch) 
 
 	newBatch, err := c.GetPending(ctx)
 	if err != nil {
-		c.log.Error("Elrond: get pending batch failed in WasProposedSetStatus", "error", err.Error())
+		c.log.Error("Elrond: get pending batch failed in WasProposedSetStatus", "error", err)
 		return false
 	}
 	batch.ResolveNewDeposits(len(newBatch.Statuses))
@@ -353,7 +353,7 @@ func (c *client) GetActionIdForSetStatusOnPendingTransfer(ctx context.Context, b
 
 	newBatch, err := c.GetPending(ctx)
 	if err != nil {
-		c.log.Error("Elrond: get pending batch failed in WasProposedSetStatus", "error", err.Error())
+		c.log.Error("Elrond: get pending batch failed in WasProposedSetStatus", "error", err)
 		return bridge.NewActionId(0)
 	}
 	batch.ResolveNewDeposits(len(newBatch.Statuses))
@@ -405,7 +405,7 @@ func (c *client) Sign(_ context.Context, actionId bridge.ActionId, batch *bridge
 	if err == nil {
 		c.log.Info("Elrond: Signed", "hash", hash, "batch data", string(batchData))
 	} else {
-		c.log.Error("Elrond: Sign failed", "batch data", string(batchData), "error", err.Error())
+		c.log.Error("Elrond: Sign failed", "batch data", string(batchData), "error", err)
 	}
 
 	return hash, err
@@ -432,7 +432,7 @@ func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bri
 			"actionID", actionId,
 			"batch data", string(batchData),
 			"hash", hash,
-			"error", err.Error())
+			"error", err)
 	}
 
 	return hash, err
