@@ -34,7 +34,7 @@ var TestMarshalizer = &marshal.JsonMarshalizer{}
 // TestHasher -
 var TestHasher = blake2b.NewBlake2b()
 
-// EthNoPendingBatch -
+// NoPendingBatch -
 var NoPendingBatch = contract.Batch{
 	Nonce: big.NewInt(0),
 }

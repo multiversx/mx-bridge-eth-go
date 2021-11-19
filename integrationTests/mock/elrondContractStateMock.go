@@ -62,6 +62,8 @@ type elrondContractStateMock struct {
 	performedAction                  *big.Int
 	pendingBatch                     *ElrondPendingBatch
 	quorum                           int
+
+	ProposeMultiTransferEsdtBatchCalled func()
 }
 
 func newElrondContractStateMock() *elrondContractStateMock {
@@ -121,6 +123,10 @@ func (mock *elrondContractStateMock) proposeMultiTransferEsdtBatch(dataSplit []s
 	transfer, hash := mock.createProposedTransfer(dataSplit)
 
 	mock.proposedTransfers[hash] = transfer
+
+	if mock.ProposeMultiTransferEsdtBatchCalled != nil {
+		mock.ProposeMultiTransferEsdtBatchCalled()
+	}
 }
 
 func (mock *elrondContractStateMock) createProposedStatus(dataSplit []string) (*ElrondProposedStatus, string) {
@@ -140,6 +146,10 @@ func (mock *elrondContractStateMock) createProposedStatus(dataSplit []string) (*
 		}
 
 		status.Statuses = append(status.Statuses, stat[0])
+	}
+
+	if len(status.Statuses) != len(mock.pendingBatch.ElrondDeposits) {
+		panic("different number of statuses fetched while creating proposed status")
 	}
 
 	hash, err := core.CalculateHash(integrationTests.TestMarshalizer, integrationTests.TestHasher, status)

@@ -165,6 +165,13 @@ func (mock *ElrondChainMock) SetPendingBatch(pendingBatch *ElrondPendingBatch) {
 	mock.mutState.Unlock()
 }
 
+// AddDepositToCurrentBatch -
+func (mock *ElrondChainMock) AddDepositToCurrentBatch(deposit ElrondDeposit) {
+	mock.mutState.Lock()
+	mock.pendingBatch.ElrondDeposits = append(mock.pendingBatch.ElrondDeposits, deposit)
+	mock.mutState.Unlock()
+}
+
 // IsInterfaceNil -
 func (mock *ElrondChainMock) IsInterfaceNil() bool {
 	return mock == nil

@@ -39,7 +39,7 @@ type Bridge interface {
 	WasExecuted(context.Context, ActionId, BatchId) bool
 	Sign(context.Context, ActionId, *Batch) (string, error)
 	Execute(context.Context, ActionId, *Batch, SignaturesHolder) (string, error)
-	SignersCount(*Batch, ActionId, SignaturesHolder) uint
+	SignersCount(context.Context, *Batch, ActionId, SignaturesHolder) uint
 	GetTransactionsStatuses(ctx context.Context, batchID BatchId) ([]uint8, error)
 	IsInterfaceNil() bool
 }

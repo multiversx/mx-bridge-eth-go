@@ -189,6 +189,7 @@ func (c *client) GetPending(ctx context.Context) (*bridge.Batch, error) {
 		result = &bridge.Batch{
 			Id:           batch.Nonce,
 			Transactions: transactions,
+			Statuses:     make([]byte, len(transactions)),
 		}
 	}
 
@@ -265,12 +266,12 @@ func (c *client) GetTransactionsStatuses(ctx context.Context, batchId bridge.Bat
 }
 
 // Sign will sign upon the provided batch and send the signatures through the broadcaster to other relayers
-func (c *client) Sign(_ context.Context, action bridge.ActionId, batch *bridge.Batch) (string, error) {
+func (c *client) Sign(ctx context.Context, action bridge.ActionId, batch *bridge.Batch) (string, error) {
 	switch int64FromActionId(action) {
 	case transferAction:
 		c.broadcastSignatureForTransfer(batch)
 	case setStatusAction:
-		c.broadcastSignatureForFinish(batch)
+		c.broadcastSignatureForFinish(ctx, batch)
 	}
 
 	return "", nil
@@ -318,7 +319,7 @@ func (c *client) Execute(
 
 	var transaction *types.Transaction
 
-	msgHash, err := c.generateMsgHash(batch, action)
+	msgHash, err := c.generateMsgHash(ctx, batch, action)
 	if err != nil {
 		return "", fmt.Errorf("ETH: %w", err)
 	}
@@ -339,7 +340,7 @@ func (c *client) Execute(
 	case transferAction:
 		transaction, err = c.transfer(ctx, auth, signatures, batch)
 	case setStatusAction:
-		transaction, err = c.finish(auth, signatures, batch)
+		transaction, err = c.finish(ctx, auth, signatures, batch)
 	}
 
 	if err != nil {
@@ -437,10 +438,10 @@ func (c *client) checkCumulatedTransfers(ctx context.Context, transfers map[comm
 	return nil
 }
 
-func (c *client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bridge.Batch) (*types.Transaction, error) {
-	var proposedStatuses []uint8
-	for _, tx := range batch.Transactions {
-		proposedStatuses = append(proposedStatuses, tx.Status)
+func (c *client) finish(ctx context.Context, auth *bind.TransactOpts, signatures [][]byte, batch *bridge.Batch) (*types.Transaction, error) {
+	proposedStatuses, err := c.fixStatuses(ctx, batch)
+	if err != nil {
+		return nil, err
 	}
 
 	c.log.Debug("client.finish", "auth", transactOptsToString(auth),
@@ -451,6 +452,7 @@ func (c *client) finish(auth *bind.TransactOpts, signatures [][]byte, batch *bri
 
 // SignersCount will return the total signers number that sent the signatures on the required message hash
 func (c *client) SignersCount(
+	ctx context.Context,
 	batch *bridge.Batch,
 	actionId bridge.ActionId,
 	sigHolder bridge.SignaturesHolder,
@@ -461,7 +463,7 @@ func (c *client) SignersCount(
 		return 0
 	}
 
-	msgHash, err := c.generateMsgHash(batch, actionId)
+	msgHash, err := c.generateMsgHash(ctx, batch, actionId)
 	if err != nil {
 		c.log.Error(err.Error())
 
@@ -545,12 +547,12 @@ func amounts(transactions []*bridge.DepositTransaction) []*big.Int {
 	return result
 }
 
-func (c *client) generateMsgHash(batch *bridge.Batch, actionId bridge.ActionId) (common.Hash, error) {
+func (c *client) generateMsgHash(ctx context.Context, batch *bridge.Batch, actionId bridge.ActionId) (common.Hash, error) {
 	switch int64FromActionId(actionId) {
 	case transferAction:
 		return c.generateMsgHashForTransfer(batch)
 	case setStatusAction:
-		return c.generateMsgHashForFinish(batch)
+		return c.generateMsgHashForFinish(ctx, batch)
 	}
 
 	return common.Hash{}, fmt.Errorf("Client.generateMsgHash not implemented for action ID %v", actionId)
@@ -571,10 +573,23 @@ func (c *client) generateMsgHashForTransfer(batch *bridge.Batch) (common.Hash, e
 	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
 }
 
-func (c *client) generateMsgHashForFinish(batch *bridge.Batch) (common.Hash, error) {
-	var statuses []uint8
-	for _, tx := range batch.Transactions {
-		statuses = append(statuses, tx.Status)
+func (c *client) fixStatuses(ctx context.Context, batch *bridge.Batch) ([]byte, error) {
+	newBatch, err := c.GetPending(ctx)
+	if err != nil {
+		return nil, err
+	}
+	batch.ResolveNewDeposits(len(newBatch.Statuses))
+
+	clonedStatuses := make([]byte, len(batch.Statuses))
+	copy(clonedStatuses, batch.Statuses)
+
+	return clonedStatuses, nil
+}
+
+func (c *client) generateMsgHashForFinish(ctx context.Context, batch *bridge.Batch) (common.Hash, error) {
+	statuses, err := c.fixStatuses(ctx, batch)
+	if err != nil {
+		return common.Hash{}, err
 	}
 
 	arguments, err := finishCurrentPendingTransactionArgs()
@@ -591,8 +606,8 @@ func (c *client) generateMsgHashForFinish(batch *bridge.Batch) (common.Hash, err
 	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
 }
 
-func (c *client) broadcastSignatureForFinish(batch *bridge.Batch) {
-	msgHash, err := c.generateMsgHashForFinish(batch)
+func (c *client) broadcastSignatureForFinish(ctx context.Context, batch *bridge.Batch) {
+	msgHash, err := c.generateMsgHashForFinish(ctx, batch)
 	if err != nil {
 		c.log.Error(err.Error())
 		return

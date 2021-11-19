@@ -24,11 +24,15 @@ func CloneBatch(batch *bridge.Batch) *bridge.Batch {
 	}
 
 	newBatch := &bridge.Batch{
-		Id: CloneBatchID(batch.Id),
+		Id:       CloneBatchID(batch.Id),
+		Statuses: make([]byte, len(batch.Statuses)),
 	}
 
 	for _, tx := range batch.Transactions {
 		newBatch.Transactions = append(newBatch.Transactions, CloneDepositTransaction(tx))
+	}
+	for i, stat := range batch.Statuses {
+		newBatch.Statuses[i] = stat
 	}
 
 	return newBatch
@@ -65,7 +69,6 @@ func CloneDepositTransaction(tx *bridge.DepositTransaction) *bridge.DepositTrans
 		Amount:       big.NewInt(0).Set(tx.Amount),
 		DepositNonce: CloneNonce(tx.DepositNonce),
 		BlockNonce:   CloneNonce(tx.BlockNonce),
-		Status:       tx.Status,
 		Error:        tx.Error,
 	}
 }

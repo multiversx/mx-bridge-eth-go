@@ -128,7 +128,7 @@ func (executor *ethElrondBridgeExecutor) IsQuorumReachedForProposeTransfer(ctx c
 }
 
 func (executor *ethElrondBridgeExecutor) isQuorumReachedOnBridge(ctx context.Context, bridge bridge.Bridge) bool {
-	count := bridge.SignersCount(executor.pendingBatch, executor.actionID, executor)
+	count := bridge.SignersCount(ctx, executor.pendingBatch, executor.actionID, executor)
 	quorum, err := executor.quorumProvider.GetQuorum(ctx)
 	if err != nil {
 		executor.logger.Error(executor.appendMessageToName(err.Error()))
@@ -263,12 +263,18 @@ func (executor *ethElrondBridgeExecutor) UpdateTransactionsStatusesIfNeeded(ctx 
 	}
 
 	if len(statuses) != len(executor.pendingBatch.Transactions) {
-		return fmt.Errorf("%w for batch ID %v", ErrBatchIDStatusMismatch, batchId)
+		executor.logger.Warn("pending transaction len mismatch in UpdateTransactionsStatusesIfNeeded",
+			"batchID", batchId, "statuses", len(statuses),
+			"num pending batch transactions", len(executor.pendingBatch.Transactions))
 	}
 
-	for i, tx := range executor.pendingBatch.Transactions {
-		tx.Status = statuses[i]
-		executor.updateStatusInStatusHandler(tx.Status)
+	for i := 0; i < len(executor.pendingBatch.Transactions) && i < len(statuses); i++ {
+		executor.pendingBatch.Statuses[i] = statuses[i]
+		executor.updateStatusInStatusHandler(statuses[i])
+	}
+	for i := len(statuses); i < len(executor.pendingBatch.Statuses); i++ {
+		executor.pendingBatch.Statuses[i] = bridge.Rejected
+		executor.updateStatusInStatusHandler(bridge.Rejected)
 	}
 	executor.statusHandler.AddIntMetric(core.MetricNumBatches, 1)
 
@@ -293,8 +299,8 @@ func (executor *ethElrondBridgeExecutor) isStatusesCheckOnDestinationNeeded() bo
 		return false
 	}
 	// if all statuses are rejected, there was an error, so we do not need to check the statuses on destination
-	for _, tx := range executor.pendingBatch.Transactions {
-		if tx.Status != bridge.Rejected {
+	for _, stat := range executor.pendingBatch.Statuses {
+		if stat != bridge.Rejected {
 			return true
 		}
 	}

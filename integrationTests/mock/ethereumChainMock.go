@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"sync"
 
@@ -39,6 +40,8 @@ type EthereumChainMock struct {
 	ProcessFinishedHandler           func()
 	quorum                           int
 	relayers                         []common.Address
+
+	ProposeMultiTransferEsdtBatchCalled func()
 }
 
 // NewEthereumChainMock -
@@ -93,6 +96,13 @@ func (mock *EthereumChainMock) SetPendingBatch(batch contract.Batch) {
 	mock.mutState.Unlock()
 }
 
+// AddDepositToCurrentBatch -
+func (mock *EthereumChainMock) AddDepositToCurrentBatch(deposit contract.Deposit) {
+	mock.mutState.Lock()
+	mock.pendingBatch.Deposits = append(mock.pendingBatch.Deposits, deposit)
+	mock.mutState.Unlock()
+}
+
 // FinishCurrentPendingBatch -
 func (mock *EthereumChainMock) FinishCurrentPendingBatch(_ *bind.TransactOpts, batchNonce *big.Int, newDepositStatuses []uint8, signatures [][]byte) (*types.Transaction, error) {
 	status := &EthereumProposedStatus{
@@ -113,6 +123,11 @@ func (mock *EthereumChainMock) FinishCurrentPendingBatch(_ *bind.TransactOpts, b
 	tx := types.NewTx(txData)
 
 	mock.mutState.Lock()
+	if len(newDepositStatuses) != len(mock.pendingBatch.Deposits) {
+		mock.mutState.Unlock()
+		return nil, errors.New("status length mismatch")
+	}
+
 	mock.proposedStatus = status
 	mock.pendingBatch = integrationTests.NoPendingBatch
 	mock.mutState.Unlock()
@@ -167,6 +182,10 @@ func (mock *EthereumChainMock) ExecuteTransfer(_ *bind.TransactOpts, tokens []co
 	mock.mutState.Lock()
 	mock.proposedTransfer = proposedTransfer
 	mock.mutState.Unlock()
+
+	if mock.ProposeMultiTransferEsdtBatchCalled != nil {
+		mock.ProposeMultiTransferEsdtBatchCalled()
+	}
 
 	return tx, nil
 }

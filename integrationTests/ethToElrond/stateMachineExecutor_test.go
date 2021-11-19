@@ -38,7 +38,6 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 				Amount:       big.NewInt(1000),
 				DepositNonce: big.NewInt(2),
 				BlockNonce:   big.NewInt(2000000),
-				Status:       0,
 				Error:        nil,
 			},
 			{
@@ -48,10 +47,10 @@ func TestBridgeExecutorWithStateMachineOnCompleteExecutionFlow(t *testing.T) {
 				Amount:       big.NewInt(1001),
 				DepositNonce: big.NewInt(3),
 				BlockNonce:   big.NewInt(2000001),
-				Status:       0,
 				Error:        nil,
 			},
 		},
+		Statuses: make([]byte, 2),
 	}
 	sourceBridge.SetPending(pendingBatch)
 	sourceBridge.SetActionID(sourceActionID)
@@ -108,7 +107,6 @@ func TestBridgeExecutorWithStateMachineFailedToProposeTransfer(t *testing.T) {
 				Amount:       big.NewInt(1000),
 				DepositNonce: big.NewInt(2),
 				BlockNonce:   big.NewInt(2000000),
-				Status:       0,
 				Error:        nil,
 			},
 			{
@@ -118,10 +116,10 @@ func TestBridgeExecutorWithStateMachineFailedToProposeTransfer(t *testing.T) {
 				Amount:       big.NewInt(1001),
 				DepositNonce: big.NewInt(3),
 				BlockNonce:   big.NewInt(2000001),
-				Status:       0,
 				Error:        nil,
 			},
 		},
+		Statuses: make([]byte, 2),
 	}
 	sourceBridge.SetPending(pendingBatch)
 	sourceBridge.SetActionID(sourceActionID)
@@ -259,8 +257,8 @@ func checkStatusWhenExecutedOnSource(
 
 	proposedStatusBatch := sourceBridge.GetProposedSetStatusBatch()
 	require.Equal(t, len(pendingBatch.Transactions), len(proposedStatusBatch.Transactions))
-	for i, tx := range proposedStatusBatch.Transactions {
-		assert.Equal(t, expectedStatuses[i], tx.Status)
+	for i, stat := range proposedStatusBatch.Statuses {
+		assert.Equal(t, expectedStatuses[i], stat)
 	}
 
 	assert.Nil(t, sourceBridge.GetProposedTransferBatch())

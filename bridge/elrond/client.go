@@ -135,8 +135,7 @@ func (c *client) GetPending(_ context.Context) (*bridge.Batch, error) {
 	var transactions []*bridge.DepositTransaction
 	for i := 1; i < len(responseData); i += numArgs {
 		if len(responseData) < i+idxAmount {
-			c.log.Warn("Elrond: got an unexpected number of arguments", "index", i, "total args", len(responseData))
-			break
+			return nil, fmt.Errorf("Elrond: got an unexpected number of arguments, index %d, total args: %d", i, len(responseData))
 		}
 
 		amount := new(big.Int).SetBytes(responseData[i+idxAmount])
@@ -157,10 +156,9 @@ func (c *client) GetPending(_ context.Context) (*bridge.Batch, error) {
 			Amount:        amount,
 			DepositNonce:  bridge.NewNonce(depositNonce),
 			BlockNonce:    bridge.NewNonce(blockNonce),
-			Status:        0,
 			Error:         nil,
 		}
-		c.log.Trace("created deposit transaction: " + tx.String())
+		c.log.Debug("Elrond: created deposit transaction: " + tx.String())
 		transactions = append(transactions, tx)
 	}
 
@@ -169,9 +167,12 @@ func (c *client) GetPending(_ context.Context) (*bridge.Batch, error) {
 		return nil, fmt.Errorf("%w in client.GetPending, parseIntFromByteSlice(responseData[0])", err)
 	}
 
+	c.log.Debug("Elrond: created batch", "batchID", batchId, "num transactions", len(transactions))
+
 	return &bridge.Batch{
 		Id:           bridge.NewBatchId(batchId),
 		Transactions: transactions,
+		Statuses:     make([]byte, len(transactions)),
 	}, nil
 }
 
@@ -189,18 +190,26 @@ func parseIntFromByteSlice(buff []byte) (int64, error) {
 }
 
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
-func (c *client) ProposeSetStatus(_ context.Context, batch *bridge.Batch) {
+func (c *client) ProposeSetStatus(ctx context.Context, batch *bridge.Batch) {
 	builder := newBuilder(c.log).
 		Func("proposeEsdtSafeSetCurrentTransactionBatchStatus").
 		BatchId(batch.Id)
 
-	for _, tx := range batch.Transactions {
-		builder = builder.Int(big.NewInt(int64(tx.Status)))
+	newBatch, err := c.GetPending(ctx)
+	if err != nil {
+		c.log.Error("Elrond: get pending batch failed in ProposeSetStatus", "error", err)
+		return
+	}
+
+	batch.ResolveNewDeposits(len(newBatch.Statuses))
+
+	for _, stat := range batch.Statuses {
+		builder = builder.Int(big.NewInt(int64(stat)))
 	}
 
 	hash, err := c.sendTransaction(builder, c.gasMapConfig.ProposeStatus)
 	if err != nil {
-		c.log.Error("Elrond: send transaction failed", "error", err.Error())
+		c.log.Error("Elrond: send transaction failed", "error", err)
 		return
 	}
 
@@ -220,13 +229,17 @@ func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string
 			BigInt(tx.Amount)
 	}
 
+	batchData, errMarshal := json.Marshal(batch)
+	if errMarshal != nil {
+		c.log.Warn("Elrond: error not critical while serializing transaction", "error", errMarshal)
+	}
+
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Transactions))*c.gasMapConfig.ProposeTransferForEach
 	hash, err := c.sendTransaction(builder, gasLimit)
-
 	if err == nil {
-		c.log.Info("Elrond: Proposed transfer for batch ", batch.Id, " with hash ", hash)
+		c.log.Info("Elrond: Proposed transfer for batch ", batch.Id, "with hash", hash, "batch data", string(batchData))
 	} else {
-		c.log.Error("Elrond: Propose transfer errored", "error", err.Error())
+		c.log.Error("Elrond: Propose transfer errored", "batch data", string(batchData), "error", err)
 	}
 
 	return hash, err
@@ -265,13 +278,20 @@ func (c *client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.
 }
 
 // WasProposedSetStatus returns true if the proposed set status was triggered
-func (c *client) WasProposedSetStatus(_ context.Context, batch *bridge.Batch) bool {
+func (c *client) WasProposedSetStatus(ctx context.Context, batch *bridge.Batch) bool {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
 		Func("wasSetCurrentTransactionBatchStatusActionProposed").
 		BatchId(batch.Id)
 
-	for _, tx := range batch.Transactions {
-		valueRequest = valueRequest.BigInt(big.NewInt(int64(tx.Status)))
+	newBatch, err := c.GetPending(ctx)
+	if err != nil {
+		c.log.Error("Elrond: get pending batch failed in WasProposedSetStatus", "error", err)
+		return false
+	}
+	batch.ResolveNewDeposits(len(newBatch.Statuses))
+
+	for _, stat := range batch.Statuses {
+		valueRequest = valueRequest.BigInt(big.NewInt(int64(stat)))
 	}
 
 	return c.executeBoolQuery(valueRequest.Build())
@@ -312,6 +332,8 @@ func (c *client) GetTransactionsStatuses(_ context.Context, batchId bridge.Batch
 		return nil, fmt.Errorf("%w status is finished, no results are given", ErrMalformedBatchResponse)
 	}
 
+	c.log.Debug("Elrond: got transaction status", "batchID", batchId, "status", results)
+
 	return results, nil
 }
 
@@ -324,13 +346,20 @@ func getStatusFromBuff(buff []byte) (byte, error) {
 }
 
 // GetActionIdForSetStatusOnPendingTransfer returns the action ID for setting the status on the pending transfer batch
-func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
+func (c *client) GetActionIdForSetStatusOnPendingTransfer(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
 		Func("getActionIdForSetCurrentTransactionBatchStatus").
 		BatchId(batch.Id)
 
-	for _, tx := range batch.Transactions {
-		valueRequest = valueRequest.BigInt(big.NewInt(int64(tx.Status)))
+	newBatch, err := c.GetPending(ctx)
+	if err != nil {
+		c.log.Error("Elrond: get pending batch failed in WasProposedSetStatus", "error", err)
+		return bridge.NewActionId(0)
+	}
+	batch.ResolveNewDeposits(len(newBatch.Statuses))
+
+	for _, stat := range batch.Statuses {
+		valueRequest = valueRequest.BigInt(big.NewInt(int64(stat)))
 	}
 
 	response, err := c.executeUintQuery(valueRequest.Build())
@@ -338,6 +367,8 @@ func (c *client) GetActionIdForSetStatusOnPendingTransfer(_ context.Context, bat
 		c.log.Error(err.Error())
 		return bridge.NewActionId(0)
 	}
+
+	c.log.Debug("Elrond: got actionID", "actionID", response)
 
 	return bridge.NewActionId(int64(response))
 }
@@ -359,17 +390,22 @@ func (c *client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ brid
 }
 
 // Sign will trigger the execution of a sign operation
-func (c *client) Sign(_ context.Context, actionId bridge.ActionId, _ *bridge.Batch) (string, error) {
+func (c *client) Sign(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch) (string, error) {
 	builder := newBuilder(c.log).
 		Func("sign").
 		ActionId(actionId)
 
 	hash, err := c.sendTransaction(builder, c.gasMapConfig.Sign)
 
+	batchData, err := json.Marshal(batch)
+	if err != nil {
+		c.log.Warn("Elrond: error not critical while serializing transaction", "error", err)
+	}
+
 	if err == nil {
-		c.log.Info("Elrond: Signed", "hash", hash)
+		c.log.Info("Elrond: Signed", "hash", hash, "batch data", string(batchData))
 	} else {
-		c.log.Error("Elrond: Sign failed", "error", err.Error())
+		c.log.Error("Elrond: Sign failed", "batch data", string(batchData), "error", err)
 	}
 
 	return hash, err
@@ -384,17 +420,26 @@ func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bri
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Transactions))*c.gasMapConfig.PerformActionForEach
 	hash, err := c.sendTransaction(builder, gasLimit)
 
+	batchData, err := json.Marshal(batch)
+	if err != nil {
+		c.log.Warn("Elrond: error not critical while serializing transaction", "error", err)
+	}
+
 	if err == nil {
-		c.log.Info("Elrond: Executed action", "action ID", actionId, "hash", hash)
+		c.log.Info("Elrond: Executed action", "actionID", actionId, "batch data", string(batchData), "hash", hash)
 	} else {
-		c.log.Info("Elrond: Execution failed for action", "action ID", actionId, "hash", hash, "error", err.Error())
+		c.log.Info("Elrond: Execution failed for action",
+			"actionID", actionId,
+			"batch data", string(batchData),
+			"hash", hash,
+			"error", err)
 	}
 
 	return hash, err
 }
 
 // SignersCount returns the signers count
-func (c *client) SignersCount(_ *bridge.Batch, actionId bridge.ActionId, _ bridge.SignaturesHolder) uint {
+func (c *client) SignersCount(_ context.Context, _ *bridge.Batch, actionId bridge.ActionId, _ bridge.SignaturesHolder) uint {
 	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
 		Func("getActionSignerCount").
 		ActionId(actionId).
@@ -420,6 +465,8 @@ func (c *client) GetTokenId(address string) string {
 		c.log.Error(err.Error())
 	}
 
+	c.log.Debug("Elrond: get token ID", "address", address, "tokenID", tokenId)
+
 	return tokenId
 }
 
@@ -434,6 +481,8 @@ func (c *client) GetErc20Address(tokenId string) string {
 	if err != nil {
 		c.log.Error(err.Error())
 	}
+
+	c.log.Debug("Elrond: get erc20 address", "tokenID", tokenId, "address", address)
 
 	return address
 }

@@ -369,7 +369,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 			},
 		}
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		db.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 2
 		}
 		args.DestinationBridge = db
@@ -388,7 +388,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		}
 
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		db.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 3
 		}
 		args.DestinationBridge = db
@@ -407,7 +407,7 @@ func TestIsQuorumReachedForProposeTransfer(t *testing.T) {
 		}
 
 		db := testsCommon.NewBridgeStub()
-		db.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		db.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 4
 		}
 		args.DestinationBridge = db
@@ -457,7 +457,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		sb.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 2
 		}
 		args.SourceBridge = sb
@@ -476,7 +476,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		sb.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 3
 		}
 		args.SourceBridge = sb
@@ -495,7 +495,7 @@ func TestIsQuorumReachedForProposeSetStatus(t *testing.T) {
 		}
 
 		sb := testsCommon.NewBridgeStub()
-		sb.SignersCountCalled = func(_ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
+		sb.SignersCountCalled = func(ctx context.Context, _ *bridge.Batch, id bridge.ActionId, sigHolder bridge.SignaturesHolder) uint {
 			return 4
 		}
 		args.SourceBridge = sb
@@ -696,6 +696,7 @@ func TestSetStatusRejectedOnAllTransactions(t *testing.T) {
 			{To: "address2", DepositNonce: bridge.NewNonce(1)},
 			{To: "address3", DepositNonce: bridge.NewNonce(2)},
 		},
+		Statuses: make([]byte, 3),
 	}
 	expectedError := errors.New("some error")
 	args := createMockArgs()
@@ -713,9 +714,12 @@ func TestSetStatusRejectedOnAllTransactions(t *testing.T) {
 	assert.True(t, executor.HasPendingBatch())
 	executor.SetStatusRejectedOnAllTransactions(expectedError)
 	for _, transaction := range executor.pendingBatch.Transactions {
-		assert.Equal(t, bridge.Rejected, transaction.Status)
 		assert.Equal(t, expectedError, transaction.Error)
 	}
+	for _, stat := range executor.pendingBatch.Statuses {
+		assert.Equal(t, bridge.Rejected, stat)
+	}
+	assert.Equal(t, len(executor.pendingBatch.Transactions), len(executor.pendingBatch.Statuses))
 }
 
 func TestSignProposeTransferOnDestination(t *testing.T) {
@@ -877,10 +881,9 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 		require.Nil(t, err)
 		batch := &bridge.Batch{
 			Transactions: []*bridge.DepositTransaction{
-				{
-					Status: 0,
-				},
+				{},
 			},
+			Statuses: make([]byte, 1),
 		}
 		executor.SetPendingBatch(batch)
 
@@ -900,11 +903,14 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 			Transactions: []*bridge.DepositTransaction{
 				{},
 			},
+			Statuses: make([]byte, 1),
 		}
 		executor.SetPendingBatch(batch)
 
 		err = executor.UpdateTransactionsStatusesIfNeeded(context.TODO())
-		assert.True(t, errors.Is(err, ErrBatchIDStatusMismatch))
+		assert.Nil(t, err)
+		assert.Equal(t, 1, len(batch.Statuses))
+		assert.Equal(t, bridge.Rejected, batch.Statuses[0])
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses sets the status", func(t *testing.T) {
 		args := createMockArgs()
@@ -922,7 +928,9 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 		executor, err := NewEthElrondBridgeExecutor(args)
 		require.Nil(t, err)
 
-		batch := &bridge.Batch{}
+		batch := &bridge.Batch{
+			Statuses: make([]byte, numTxs),
+		}
 		for i := 0; i < numTxs; i++ {
 			batch.Transactions = append(batch.Transactions, &bridge.DepositTransaction{})
 		}
@@ -932,8 +940,9 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Equal(t, numTxs, len(batch.Transactions)) // extra-protection that the number of txs was not modified
+		assert.Equal(t, numTxs, len(batch.Statuses))
 		for i := 0; i < numTxs; i++ {
-			assert.Equal(t, byte(i), batch.Transactions[i].Status)
+			assert.Equal(t, byte(i), batch.Statuses[i])
 		}
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses rejected transactions should not call destination bridge", func(t *testing.T) {
@@ -955,10 +964,9 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 
 		batch := &bridge.Batch{}
 		for i := 0; i < numTxs; i++ {
-			tx := &bridge.DepositTransaction{
-				Status: bridge.Rejected,
-			}
+			tx := &bridge.DepositTransaction{}
 			batch.Transactions = append(batch.Transactions, tx)
+			batch.Statuses = append(batch.Statuses, bridge.Rejected)
 		}
 		executor.SetPendingBatch(batch)
 
@@ -966,8 +974,9 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Equal(t, numTxs, len(batch.Transactions)) // extra-protection that the number of txs was not modified
+		assert.Equal(t, numTxs, len(batch.Statuses))
 		for i := 0; i < numTxs; i++ {
-			assert.Equal(t, bridge.Rejected, batch.Transactions[i].Status)
+			assert.Equal(t, bridge.Rejected, batch.Statuses[i])
 		}
 	})
 	t.Run("destinationBridge.GetTransactionsStatuses nil pending batch should not call destination bridge", func(t *testing.T) {
@@ -1002,13 +1011,14 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 
 		batch := &bridge.Batch{}
 		for i := 0; i < numTxs; i++ {
-			tx := &bridge.DepositTransaction{
-				Status: bridge.Rejected,
-			}
+			tx := &bridge.DepositTransaction{}
+			stat := bridge.Rejected
 			if i == numTxs-1 {
-				tx.Status = bridge.Executed
+				stat = bridge.Executed
 			}
+
 			batch.Transactions = append(batch.Transactions, tx)
+			batch.Statuses = append(batch.Statuses, stat)
 		}
 		executor.SetPendingBatch(batch)
 
@@ -1016,8 +1026,58 @@ func TestUpdateTransactionsStatusesAccordingToDestination(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Equal(t, numTxs, len(batch.Transactions)) // extra-protection that the number of txs was not modified
+		assert.Equal(t, numTxs, len(batch.Statuses))
 		for i := 0; i < numTxs; i++ {
-			assert.Equal(t, statuses[i], batch.Transactions[i].Status)
+			assert.Equal(t, statuses[i], batch.Statuses[i])
 		}
+	})
+	t.Run("destinationBridge.GetTransactionsStatuses more statuses received should ignore extra statuses", func(t *testing.T) {
+		args := createMockArgs()
+		db := testsCommon.NewBridgeStub()
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+			return []byte{bridge.Executed, bridge.Executed, bridge.Rejected}, nil
+		}
+		args.DestinationBridge = db
+		executor, err := NewEthElrondBridgeExecutor(args)
+		require.Nil(t, err)
+		batch := &bridge.Batch{
+			Transactions: []*bridge.DepositTransaction{
+				{},
+				{},
+			},
+			Statuses: make([]byte, 2),
+		}
+		executor.SetPendingBatch(batch)
+
+		err = executor.UpdateTransactionsStatusesIfNeeded(context.TODO())
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(batch.Statuses))
+		expectedStatuses := []byte{bridge.Executed, bridge.Executed}
+		assert.Equal(t, expectedStatuses, batch.Statuses)
+	})
+	t.Run("destinationBridge.GetTransactionsStatuses less statuses received should put reject on extra", func(t *testing.T) {
+		args := createMockArgs()
+		db := testsCommon.NewBridgeStub()
+		db.GetTransactionsStatusesCalled = func(ctx context.Context, batchID bridge.BatchId) ([]uint8, error) {
+			return []byte{bridge.Executed, bridge.Rejected}, nil
+		}
+		args.DestinationBridge = db
+		executor, err := NewEthElrondBridgeExecutor(args)
+		require.Nil(t, err)
+		batch := &bridge.Batch{
+			Transactions: []*bridge.DepositTransaction{
+				{},
+				{},
+				{},
+			},
+			Statuses: make([]byte, 3),
+		}
+		executor.SetPendingBatch(batch)
+
+		err = executor.UpdateTransactionsStatusesIfNeeded(context.TODO())
+		assert.Nil(t, err)
+		assert.Equal(t, 3, len(batch.Statuses))
+		expectedStatuses := []byte{bridge.Executed, bridge.Rejected, bridge.Rejected}
+		assert.Equal(t, expectedStatuses, batch.Statuses)
 	})
 }
