@@ -1,5 +1,8 @@
 package core
 
+// ElrondAddressLength is the Elrond's address length
+const ElrondAddressLength = 32
+
 const (
 	// EthFastGasPrice represents the fast gas price value
 	EthFastGasPrice EthGasPriceSelector = "fast"

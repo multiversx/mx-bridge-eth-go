@@ -8,7 +8,7 @@ var (
 	errPublicKeyCast            = errors.New("error casting public key to ECDSA")
 	errNilClientWrapper         = errors.New("nil client wrapper")
 	errNilERC20ContractsHandler = errors.New("nil ERC20 contracts handler")
-	errNilMapper                = errors.New("nil mapper")
+	errNilTokensMapper          = errors.New("nil tokens mapper")
 	errNilLogger                = errors.New("nil logger")
 	errNilAddressConverter      = errors.New("nil address converter")
 	errNilBroadcaster           = errors.New("nil broadcaster")

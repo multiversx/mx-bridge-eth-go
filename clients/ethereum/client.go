@@ -32,8 +32,7 @@ type ArgsEthereumClient struct {
 	AddressConverter      core.AddressConverter
 	Broadcaster           Broadcaster
 	PrivateKey            *ecdsa.PrivateKey
-	PublicKey             *ecdsa.PublicKey
-	Mapper                TokenMapper
+	TokensMapper          TokensMapper
 	SignatureHolder       SignaturesHolder
 	SafeContractAddress   common.Address
 	GasHandler            GasHandler
@@ -48,7 +47,7 @@ type client struct {
 	broadcaster           Broadcaster
 	privateKey            *ecdsa.PrivateKey
 	publicKey             *ecdsa.PublicKey
-	mapper                TokenMapper
+	tokensMapper          TokensMapper
 	signatureHolder       SignaturesHolder
 	safeContractAddress   common.Address
 	gasHandler            GasHandler
@@ -76,7 +75,7 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 		broadcaster:           args.Broadcaster,
 		privateKey:            args.PrivateKey,
 		publicKey:             publicKeyECDSA,
-		mapper:                args.Mapper,
+		tokensMapper:          args.TokensMapper,
 		signatureHolder:       args.SignatureHolder,
 		safeContractAddress:   args.SafeContractAddress,
 		gasHandler:            args.GasHandler,
@@ -109,8 +108,8 @@ func checkArgs(args ArgsEthereumClient) error {
 	if args.PrivateKey == nil {
 		return errNilPrivateKey
 	}
-	if check.IfNil(args.Mapper) {
-		return errNilMapper
+	if check.IfNil(args.TokensMapper) {
+		return errNilTokensMapper
 	}
 	if check.IfNil(args.SignatureHolder) {
 		return errNilSignaturesHolder
@@ -137,16 +136,17 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) *clients.TransferBa
 	}
 
 	transferBatch := &clients.TransferBatch{
-		ID:       nonce,
-		Deposits: make([]clients.DepositTransfer, 0, len(batch.Deposits)),
+		ID:       batch.Nonce.Uint64(),
+		Deposits: make([]*clients.DepositTransfer, 0, len(batch.Deposits)),
 	}
 
-	for _, deposit := range batch.Deposits {
+	for i := range batch.Deposits {
+		deposit := batch.Deposits[i]
 		toBytes := deposit.Recipient[:]
 		fromBytes := deposit.Depositor[:]
 		tokenBytes := deposit.TokenAddress[:]
 
-		depositTransfer := clients.DepositTransfer{
+		depositTransfer := &clients.DepositTransfer{
 			Nonce:            deposit.Nonce.Uint64(),
 			ToBytes:          toBytes,
 			DisplayableTo:    c.addressConverter.ToBech32String(toBytes),
@@ -170,22 +170,13 @@ func (c *client) WasExecuted(ctx context.Context, batchID uint64) (bool, error) 
 
 // BroadcastSignatureForMessageHash will send the signature for the provided message hash
 func (c *client) BroadcastSignatureForMessageHash(msgHash common.Hash) {
-	signature, err := c.signHash(msgHash)
+	signature, err := crypto.Sign(msgHash.Bytes(), c.privateKey)
 	if err != nil {
 		c.log.Error("error generating signature", "msh hash", msgHash, "error", err)
 		return
 	}
 
 	c.broadcaster.BroadcastSignature(signature, msgHash.Bytes())
-}
-
-func (c *client) signHash(hash common.Hash) ([]byte, error) {
-	signature, err := crypto.Sign(hash.Bytes(), c.privateKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return signature, nil
 }
 
 // GenerateMessageHash will generate the message hash based on the provided batch
@@ -251,7 +242,7 @@ func (c *client) extractList(ctx context.Context, batch *clients.TransferBatch) 
 		recipient := common.BytesToAddress(dt.ToBytes)
 		arg.recipients = append(arg.recipients, recipient)
 
-		erc20TokenBytes, err := c.mapper.ConvertToken(ctx, dt.TokenBytes)
+		erc20TokenBytes, err := c.tokensMapper.ConvertToken(ctx, dt.TokenBytes)
 		if err != nil {
 			return argListsBatch{}, err
 		}
@@ -365,13 +356,7 @@ func (c *client) getCumulatedTransfers(tokens []common.Address, amounts []*big.I
 
 func (c *client) checkCumulatedTransfers(ctx context.Context, transfers map[common.Address]*big.Int) error {
 	for erc20Address, value := range transfers {
-		arg := ArgsBalanceOf{
-			Context:      ctx,
-			Address:      c.safeContractAddress,
-			ERC20Address: erc20Address,
-		}
-
-		existingBalance, err := c.erc20ContractsHandler.BalanceOf(arg)
+		existingBalance, err := c.erc20ContractsHandler.BalanceOf(ctx, erc20Address, c.safeContractAddress)
 		if err != nil {
 			return fmt.Errorf("%w for address %s for ERC20 token %s", err, c.safeContractAddress.String(), erc20Address.String())
 		}
@@ -400,4 +385,9 @@ func (c *client) getNonce(ctx context.Context, fromAddress common.Address) (int6
 	nonce, err := c.clientWrapper.NonceAt(ctx, fromAddress, big.NewInt(int64(blockNonce)))
 
 	return int64(nonce), err
+}
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (c *client) IsInterfaceNil() bool {
+	return c == nil
 }

@@ -16,7 +16,6 @@ type ClientWrapper interface {
 	GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, error)
 	GetRelayers(ctx context.Context) ([]common.Address, error)
 	WasBatchExecuted(ctx context.Context, batchNonce *big.Int) (bool, error)
-	GetStatusesAfterExecution(ctx context.Context, batchNonce *big.Int) ([]uint8, error)
 	ChainID(ctx context.Context) (*big.Int, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
@@ -26,16 +25,9 @@ type ClientWrapper interface {
 	Quorum(ctx context.Context) (*big.Int, error)
 }
 
-// ArgsBalanceOf is the argument DTO for Erc20ContractHolder.BalanceOf function
-type ArgsBalanceOf struct {
-	Context      context.Context
-	Address      common.Address
-	ERC20Address common.Address
-}
-
 // Erc20ContractsHolder defines the Ethereum ERC20 contract operations
 type Erc20ContractsHolder interface {
-	BalanceOf(args ArgsBalanceOf) (*big.Int, error)
+	BalanceOf(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error)
 	IsInterfaceNil() bool
 }
 
@@ -45,8 +37,8 @@ type Broadcaster interface {
 	IsInterfaceNil() bool
 }
 
-// TokenMapper can convert a token bytes from one chain to another
-type TokenMapper interface {
+// TokensMapper can convert a token bytes from one chain to another
+type TokensMapper interface {
 	ConvertToken(ctx context.Context, sourceBytes []byte) ([]byte, error)
 	IsInterfaceNil() bool
 }
