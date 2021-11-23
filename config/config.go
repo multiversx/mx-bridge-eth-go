@@ -23,6 +23,28 @@ type Config struct {
 	Antiflood    AntifloodConfig
 }
 
+// EthereumConfig represents the Ethereum Config parameters
+type EthereumConfig struct {
+	NetworkAddress               string
+	BridgeAddress                string
+	SafeContractAddress          string
+	PrivateKeyFile               string
+	IntervalToResendTxsInSeconds uint64
+	GasLimit                     uint64
+	ERC20Contracts               []string
+	GasStation                   GasStationConfig
+}
+
+// GasStationConfig represents the configuration for the gas station handler
+type GasStationConfig struct {
+	Enabled                  bool
+	URL                      string
+	PollingIntervalInSeconds int
+	RequestTimeInSeconds     int
+	MaximumAllowedGasPrice   int
+	GasPriceSelector         string
+}
+
 // ConfigP2P configuration for the P2P communication
 type ConfigP2P struct {
 	Port            string
