@@ -30,6 +30,13 @@ type Timer interface {
 	IsInterfaceNil() bool
 }
 
+// AddressConverter can convert a provided address bytes to its string representation
+type AddressConverter interface {
+	ToHexString(addressBytes []byte) string
+	ToBech32String(addressBytes []byte) string
+	IsInterfaceNil() bool
+}
+
 // BroadcastClient defines a broadcast client that will get notified by the broadcaster
 // when new messages arrive. It also should be able to respond with any stored messages it might
 // have.
