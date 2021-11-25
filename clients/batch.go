@@ -8,18 +8,18 @@ import (
 // TransferBatch is the transfer batch structure agnostic of any chain implementation
 type TransferBatch struct {
 	ID       uint64
-	Deposits []DepositTransfer
+	Deposits []*DepositTransfer
 }
 
 // Clone will deep clone the current TransferBatch instance
 func (tb *TransferBatch) Clone() *TransferBatch {
 	cloned := &TransferBatch{
 		ID:       tb.ID,
-		Deposits: make([]DepositTransfer, 0, len(tb.Deposits)),
+		Deposits: make([]*DepositTransfer, 0, len(tb.Deposits)),
 	}
 
 	for _, dt := range tb.Deposits {
-		cloned.Deposits = append(cloned.Deposits, *dt.Clone())
+		cloned.Deposits = append(cloned.Deposits, dt.Clone())
 	}
 
 	return cloned
