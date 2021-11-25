@@ -46,11 +46,11 @@ type Bridge interface {
 
 // ElrondProxy defines the behavior of a proxy able to serve Elrond blockchain requests
 type ElrondProxy interface {
-	GetNetworkConfig() (*data.NetworkConfig, error)
-	SendTransaction(*data.Transaction) (string, error)
-	SendTransactions(txs []*data.Transaction) ([]string, error)
-	ExecuteVMQuery(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
-	GetAccount(address core.AddressHandler) (*data.Account, error)
+	GetNetworkConfig(ctx context.Context) (*data.NetworkConfig, error)
+	SendTransaction(ctx context.Context, tx *data.Transaction) (string, error)
+	SendTransactions(ctx context.Context, txs []*data.Transaction) ([]string, error)
+	ExecuteVMQuery(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
+	GetAccount(ctx context.Context, address core.AddressHandler) (*data.Account, error)
 	IsInterfaceNil() bool
 }
 

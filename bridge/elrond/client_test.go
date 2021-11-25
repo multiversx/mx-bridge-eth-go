@@ -324,7 +324,7 @@ func TestExecute(t *testing.T) {
 	expectedGas := c.gasMapConfig.PerformActionBase + uint64(len(batch.Transactions))*c.gasMapConfig.PerformActionForEach
 	require.True(t, expectedGas > 0)
 	assert.Equal(t, expectedGas, proxy.lastTransaction.GasLimit)
-	nextNonce, err := c.nonceTxHandler.GetNonce(c.address)
+	nextNonce, err := c.nonceTxHandler.GetNonce(context.Background(), c.address)
 	require.Nil(t, err)
 	assert.Equal(t, uint64(43), nextNonce)
 }
@@ -596,7 +596,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	t.Run("proxy errors", func(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		proxy := &mockInteractors.ElrondProxyStub{
-			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				return nil, expectedErr
 			},
 		}
@@ -613,7 +613,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	})
 	t.Run("no statuses returned", func(t *testing.T) {
 		proxy := &mockInteractors.ElrondProxyStub{
-			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
 						ReturnData: make([][]byte, 0),
@@ -637,7 +637,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	})
 	t.Run("not finished", func(t *testing.T) {
 		proxy := &mockInteractors.ElrondProxyStub{
-			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
 						ReturnData: [][]byte{{0}},
@@ -661,7 +661,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	})
 	t.Run("malformed response - no results", func(t *testing.T) {
 		proxy := &mockInteractors.ElrondProxyStub{
-			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
 						ReturnData: [][]byte{{1}},
@@ -686,7 +686,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	})
 	t.Run("malformed response - empty response", func(t *testing.T) {
 		proxy := &mockInteractors.ElrondProxyStub{
-			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
 						ReturnData: [][]byte{{1}, {}},
@@ -712,7 +712,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		providedStatuses := [][]byte{{1}, {3}, {0, 0, 2}}
 		proxy := &mockInteractors.ElrondProxyStub{
-			ExecuteVMQueryCalled: func(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				response := &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
 						ReturnData: providedStatuses,
@@ -785,7 +785,7 @@ type testProxy struct {
 }
 
 // GetNetworkConfig -
-func (p *testProxy) GetNetworkConfig() (*data.NetworkConfig, error) {
+func (p *testProxy) GetNetworkConfig(_ context.Context) (*data.NetworkConfig, error) {
 	return &data.NetworkConfig{
 		ChainID:                  "testHelpers-chain",
 		Denomination:             0,
@@ -805,7 +805,7 @@ func (p *testProxy) GetNetworkConfig() (*data.NetworkConfig, error) {
 }
 
 // SendTransaction -
-func (p *testProxy) SendTransaction(tx *data.Transaction) (string, error) {
+func (p *testProxy) SendTransaction(_ context.Context, tx *data.Transaction) (string, error) {
 	p.lastTransaction = tx
 	p.queryResponseData = p.afterTransactionQueryResponseData
 
@@ -817,7 +817,7 @@ func (p *testProxy) SendTransaction(tx *data.Transaction) (string, error) {
 }
 
 // SendTransactions -
-func (p *testProxy) SendTransactions(txs []*data.Transaction) ([]string, error) {
+func (p *testProxy) SendTransactions(_ context.Context, txs []*data.Transaction) ([]string, error) {
 	p.lastTransaction = txs[len(txs)-1]
 	p.queryResponseData = p.afterTransactionQueryResponseData
 
@@ -829,7 +829,7 @@ func (p *testProxy) SendTransactions(txs []*data.Transaction) ([]string, error) 
 }
 
 // ExecuteVMQuery -
-func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+func (p *testProxy) ExecuteVMQuery(_ context.Context, valueRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 	if p.ExecuteVMQueryCalled != nil {
 		return p.ExecuteVMQueryCalled(valueRequest)
 	}
@@ -839,7 +839,7 @@ func (p *testProxy) ExecuteVMQuery(valueRequest *data.VmValueRequest) (*data.VmV
 }
 
 // GetAccount -
-func (p *testProxy) GetAccount(_ core.AddressHandler) (*data.Account, error) {
+func (p *testProxy) GetAccount(_ context.Context, _ core.AddressHandler) (*data.Account, error) {
 	return &data.Account{
 		Nonce: p.nonce,
 	}, nil

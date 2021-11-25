@@ -493,7 +493,7 @@ func (c *client) GetHexWalletAddress() string {
 }
 
 func (c *client) executeQuery(valueRequest *data.VmValueRequest) ([][]byte, error) {
-	response, err := c.proxy.ExecuteVMQuery(valueRequest)
+	response, err := c.proxy.ExecuteVMQuery(context.Background(), valueRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -571,12 +571,12 @@ func (c *client) executeStringQuery(valueRequest *data.VmValueRequest) (string, 
 }
 
 func (c *client) signTransaction(builder *txDataBuilder, cost uint64) (*data.Transaction, error) {
-	networkConfig, err := c.proxy.GetNetworkConfig()
+	networkConfig, err := c.proxy.GetNetworkConfig(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	nonce, err := c.nonceTxHandler.GetNonce(c.address)
+	nonce, err := c.nonceTxHandler.GetNonce(context.Background(), c.address)
 	if err != nil {
 		return nil, err
 	}
@@ -624,7 +624,7 @@ func (c *client) sendTransaction(builder *txDataBuilder, cost uint64) (string, e
 		return "", err
 	}
 
-	return c.nonceTxHandler.SendTransaction(tx)
+	return c.nonceTxHandler.SendTransaction(context.Background(), tx)
 }
 
 func (c *client) getCurrentBatch() ([][]byte, error) {
