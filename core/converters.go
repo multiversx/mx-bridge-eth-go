@@ -5,6 +5,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ type addressConverter struct {
 func NewAddressConverter() *addressConverter {
 	var err error
 	ac := &addressConverter{}
-	ac.converter, err = pubkeyConverter.NewBech32PubkeyConverter(ElrondAddressLength, log)
+	ac.converter, err = pubkeyConverter.NewBech32PubkeyConverter(erdgoCore.AddressLen, log)
 	if err != nil {
 		log.Error("error while creating and addressConverter", "error", err)
 		return nil
