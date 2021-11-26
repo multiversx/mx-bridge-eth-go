@@ -396,6 +396,9 @@ func (c *client) Sign(_ context.Context, actionId bridge.ActionId, batch *bridge
 		ActionId(actionId)
 
 	hash, err := c.sendTransaction(builder, c.gasMapConfig.Sign)
+	if err != nil {
+		return "", err
+	}
 
 	batchData, err := json.Marshal(batch)
 	if err != nil {
@@ -419,6 +422,9 @@ func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bri
 
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Transactions))*c.gasMapConfig.PerformActionForEach
 	hash, err := c.sendTransaction(builder, gasLimit)
+	if err != nil {
+		return "", err
+	}
 
 	batchData, err := json.Marshal(batch)
 	if err != nil {

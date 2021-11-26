@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	elrond2 "github.com/ElrondNetwork/elrond-eth-bridge/clients/elrond"
-	"io"
-
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/api/gin"
@@ -188,7 +186,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	}
 
 	safeContractAddress := common.HexToAddress(cfgs.Eth.SafeContractAddress)
-	argsClient := elrond2.ArgsClient{
+	argsClient := eth.ArgsClient{
 		Config:              cfgs.Eth,
 		Broadcaster:         relay,
 		Mapper:              elrondBridge,
@@ -197,7 +195,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 		Erc20Contracts:      args.Erc20Contracts,
 		SafeContractAddress: safeContractAddress,
 	}
-	ethBridge, err := elrond2.NewClient(argsClient)
+	ethBridge, err := eth.NewClient(argsClient)
 	if err != nil {
 		return nil, err
 	}
