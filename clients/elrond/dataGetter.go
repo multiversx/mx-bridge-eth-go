@@ -51,8 +51,12 @@ func NewDataGetter(args ArgsDataGetter) (*dataGetter, error) {
 }
 
 // ExecuteQueryReturningBytes will try to execute the provided query and return the result as slice of byte slices
-func (dg *dataGetter) ExecuteQueryReturningBytes(ctx context.Context, valueRequest *data.VmValueRequest) ([][]byte, error) {
-	response, err := dg.proxy.ExecuteVMQuery(ctx, valueRequest)
+func (dg *dataGetter) ExecuteQueryReturningBytes(ctx context.Context, request *data.VmValueRequest) ([][]byte, error) {
+	if request == nil {
+		return nil, errNilRequest
+	}
+
+	response, err := dg.proxy.ExecuteVMQuery(ctx, request)
 	if err != nil {
 		return nil, err
 	}
@@ -61,9 +65,9 @@ func (dg *dataGetter) ExecuteQueryReturningBytes(ctx context.Context, valueReque
 		return nil, NewQueryResponseError(
 			response.Data.ReturnCode,
 			response.Data.ReturnMessage,
-			valueRequest.FuncName,
-			valueRequest.Address,
-			valueRequest.Args...,
+			request.FuncName,
+			request.Address,
+			request.Args...,
 		)
 	}
 
@@ -71,8 +75,8 @@ func (dg *dataGetter) ExecuteQueryReturningBytes(ctx context.Context, valueReque
 }
 
 // ExecuteQueryReturningBool will try to execute the provided query and return the result as bool
-func (dg *dataGetter) ExecuteQueryReturningBool(ctx context.Context, valueRequest *data.VmValueRequest) (bool, error) {
-	response, err := dg.ExecuteQueryReturningBytes(ctx, valueRequest)
+func (dg *dataGetter) ExecuteQueryReturningBool(ctx context.Context, request *data.VmValueRequest) (bool, error) {
+	response, err := dg.ExecuteQueryReturningBytes(ctx, request)
 	if err != nil {
 		return false, err
 	}
@@ -84,14 +88,14 @@ func (dg *dataGetter) ExecuteQueryReturningBool(ctx context.Context, valueReques
 		return false, nil
 	}
 
-	result, err := strconv.ParseBool(fmt.Sprintf("%d", response[0]))
+	result, err := strconv.ParseBool(fmt.Sprintf("%d", response[0][0]))
 	if err != nil {
 		return false, NewQueryResponseError(
 			internalError,
 			fmt.Sprintf("error converting the received bytes to bool, %s", err.Error()),
-			valueRequest.FuncName,
-			valueRequest.Address,
-			valueRequest.Args...,
+			request.FuncName,
+			request.Address,
+			request.Args...,
 		)
 	}
 
@@ -99,8 +103,8 @@ func (dg *dataGetter) ExecuteQueryReturningBool(ctx context.Context, valueReques
 }
 
 // ExecuteQueryReturningUint64 will try to execute the provided query and return the result as uint64
-func (dg *dataGetter) ExecuteQueryReturningUint64(ctx context.Context, valueRequest *data.VmValueRequest) (uint64, error) {
-	response, err := dg.ExecuteQueryReturningBytes(ctx, valueRequest)
+func (dg *dataGetter) ExecuteQueryReturningUint64(ctx context.Context, request *data.VmValueRequest) (uint64, error) {
+	response, err := dg.ExecuteQueryReturningBytes(ctx, request)
 	if err != nil {
 		return 0, err
 	}
@@ -117,9 +121,9 @@ func (dg *dataGetter) ExecuteQueryReturningUint64(ctx context.Context, valueRequ
 		return 0, NewQueryResponseError(
 			internalError,
 			"error converting the received bytes to uint64",
-			valueRequest.FuncName,
-			valueRequest.Address,
-			valueRequest.Args...,
+			request.FuncName,
+			request.Address,
+			request.Args...,
 		)
 	}
 
@@ -141,4 +145,9 @@ func (dg *dataGetter) GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte,
 	builder.Function(getCurrentTxBatchFuncName)
 
 	return dg.executeQueryFromBuilder(ctx, builder)
+}
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (dg *dataGetter) IsInterfaceNil() bool {
+	return dg == nil
 }
