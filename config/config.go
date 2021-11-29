@@ -131,6 +131,15 @@ type RoleProviderConfig struct {
 	PollingIntervalInMillis uint64
 }
 
+// ElrondConfig represents the Elrond Config parameters
+type ElrondConfig struct {
+	NetworkAddress               string
+	BridgeAddress                string
+	PrivateKeyFile               string
+	IntervalToResendTxsInSeconds uint64
+	GasMap                       ElrondGasMapConfig
+}
+
 // ElrondGasMapConfig represents the gas limits for Elrond operations
 type ElrondGasMapConfig struct {
 	Sign                   uint64

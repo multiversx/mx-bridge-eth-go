@@ -26,7 +26,7 @@ func createMockArgsDataGetter() ArgsDataGetter {
 		Proxy: &interactors.ElrondProxyStub{},
 	}
 
-	args.BridgeAddress, _ = data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
+	args.MultisigContractAddress, _ = data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
 	args.RelayerAddress, _ = data.NewAddressFromBech32String("erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede")
 
 	return args
@@ -56,13 +56,13 @@ func TestNewDataGetter(t *testing.T) {
 		assert.Equal(t, errNilProxy, err)
 		assert.True(t, check.IfNil(dg))
 	})
-	t.Run("nil bridge address", func(t *testing.T) {
+	t.Run("nil multisig contact address", func(t *testing.T) {
 		args := createMockArgsDataGetter()
-		args.BridgeAddress = nil
+		args.MultisigContractAddress = nil
 
 		dg, err := NewDataGetter(args)
 		assert.True(t, errors.Is(err, errNilAddressHandler))
-		assert.True(t, strings.Contains(err.Error(), "BridgeAddress"))
+		assert.True(t, strings.Contains(err.Error(), "MultisigContractAddress"))
 		assert.True(t, check.IfNil(dg))
 	})
 	t.Run("nil relayer address", func(t *testing.T) {
@@ -110,7 +110,7 @@ func TestDataGetter_ExecuteQueryReturningBytes(t *testing.T) {
 	t.Run("return code not ok", func(t *testing.T) {
 		dg, _ := NewDataGetter(args)
 
-		expectedErr := NewQueryResponseError(returnCode, returnMessage, calledFunction, dg.bridgeAddress.AddressAsBech32String(), calledArgs...)
+		expectedErr := NewQueryResponseError(returnCode, returnMessage, calledFunction, dg.multisigContractAddress.AddressAsBech32String(), calledArgs...)
 		dg.proxy = &interactors.ElrondProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				return &data.VmValuesResponseData{
@@ -130,7 +130,7 @@ func TestDataGetter_ExecuteQueryReturningBytes(t *testing.T) {
 		}
 
 		request := &data.VmValueRequest{
-			Address:    dg.bridgeAddress.AddressAsBech32String(),
+			Address:    dg.multisigContractAddress.AddressAsBech32String(),
 			FuncName:   calledFunction,
 			CallerAddr: dg.relayerAddress.AddressAsBech32String(),
 			CallValue:  "0",
@@ -164,7 +164,7 @@ func TestDataGetter_ExecuteQueryReturningBytes(t *testing.T) {
 		}
 
 		request := &data.VmValueRequest{
-			Address:    dg.bridgeAddress.AddressAsBech32String(),
+			Address:    dg.multisigContractAddress.AddressAsBech32String(),
 			FuncName:   calledFunction,
 			CallerAddr: dg.relayerAddress.AddressAsBech32String(),
 			CallValue:  "0",
@@ -268,7 +268,7 @@ func TestDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
 
 		expectedError := NewQueryResponseError(
 			internalError,
-			`error converting the received bytes to uint64`,
+			errNotUint64Bytes.Error(),
 			"",
 			"",
 		)
@@ -300,7 +300,7 @@ func TestDataGetter_GetCurrentBatchAsDataBytes(t *testing.T) {
 	returningBytes := [][]byte{[]byte("buff0"), []byte("buff1"), []byte("buff2")}
 	args.Proxy = &interactors.ElrondProxyStub{
 		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-			assert.Equal(t, args.BridgeAddress.AddressAsBech32String(), vmRequest.Address)
+			assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
 			assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
 			assert.Equal(t, 0, len(vmRequest.CallValue))
 			assert.Equal(t, getCurrentTxBatchFuncName, vmRequest.FuncName)
