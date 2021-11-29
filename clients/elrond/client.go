@@ -92,6 +92,9 @@ func NewClient(args ClientArgs) (*client, error) {
 	}
 
 	addressPubKeyConverter, err := pubkeyConverter.NewBech32PubkeyConverter(core.AddressBytesLen, args.Log)
+	if err != nil {
+		return nil, err
+	}
 
 	c := &client{
 		dataGetter:                getter,
