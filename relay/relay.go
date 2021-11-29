@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io"
-
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/api/gin"
