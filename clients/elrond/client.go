@@ -36,7 +36,7 @@ type ClientArgs struct {
 
 // client represents the Elrond Client implementation
 type client struct {
-	dataGetter                *dataGetter
+	dataGetter                *elrondClientDataGetter
 	proxy                     ElrondProxy
 	relayerPrivateKey         crypto.PrivateKey
 	relayerPublicKey          crypto.PublicKey

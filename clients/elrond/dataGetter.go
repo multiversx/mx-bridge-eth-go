@@ -13,9 +13,11 @@ import (
 )
 
 const (
-	okCodeAfterExecution      = "ok"
-	internalError             = "internal error"
-	getCurrentTxBatchFuncName = "getCurrentTxBatch"
+	okCodeAfterExecution              = "ok"
+	internalError                     = "internal error"
+	getCurrentTxBatchFuncName         = "getCurrentTxBatch"
+	getTokenIdForErc20AddressFuncName = "getTokenIdForErc20Address"
+	getErc20AddressForTokenIdFuncName = "getErc20AddressForTokenId"
 )
 
 // ArgsDataGetter is the arguments DTO used in the NewDataGetter constructor
@@ -25,14 +27,14 @@ type ArgsDataGetter struct {
 	Proxy                   ElrondProxy
 }
 
-type dataGetter struct {
+type elrondClientDataGetter struct {
 	multisigContractAddress core.AddressHandler
 	relayerAddress          core.AddressHandler
 	proxy                   ElrondProxy
 }
 
 // NewDataGetter creates a new instance of the dataGetter type
-func NewDataGetter(args ArgsDataGetter) (*dataGetter, error) {
+func NewDataGetter(args ArgsDataGetter) (*elrondClientDataGetter, error) {
 	if check.IfNil(args.Proxy) {
 		return nil, errNilProxy
 	}
@@ -43,7 +45,7 @@ func NewDataGetter(args ArgsDataGetter) (*dataGetter, error) {
 		return nil, fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
 	}
 
-	return &dataGetter{
+	return &elrondClientDataGetter{
 		multisigContractAddress: args.MultisigContractAddress,
 		relayerAddress:          args.RelayerAddress,
 		proxy:                   args.Proxy,
@@ -51,7 +53,7 @@ func NewDataGetter(args ArgsDataGetter) (*dataGetter, error) {
 }
 
 // ExecuteQueryReturningBytes will try to execute the provided query and return the result as slice of byte slices
-func (dg *dataGetter) ExecuteQueryReturningBytes(ctx context.Context, request *data.VmValueRequest) ([][]byte, error) {
+func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context, request *data.VmValueRequest) ([][]byte, error) {
 	if request == nil {
 		return nil, errNilRequest
 	}
@@ -75,7 +77,7 @@ func (dg *dataGetter) ExecuteQueryReturningBytes(ctx context.Context, request *d
 }
 
 // ExecuteQueryReturningBool will try to execute the provided query and return the result as bool
-func (dg *dataGetter) ExecuteQueryReturningBool(ctx context.Context, request *data.VmValueRequest) (bool, error) {
+func (dg *elrondClientDataGetter) ExecuteQueryReturningBool(ctx context.Context, request *data.VmValueRequest) (bool, error) {
 	response, err := dg.ExecuteQueryReturningBytes(ctx, request)
 	if err != nil {
 		return false, err
@@ -103,7 +105,7 @@ func (dg *dataGetter) ExecuteQueryReturningBool(ctx context.Context, request *da
 }
 
 // ExecuteQueryReturningUint64 will try to execute the provided query and return the result as uint64
-func (dg *dataGetter) ExecuteQueryReturningUint64(ctx context.Context, request *data.VmValueRequest) (uint64, error) {
+func (dg *elrondClientDataGetter) ExecuteQueryReturningUint64(ctx context.Context, request *data.VmValueRequest) (uint64, error) {
 	response, err := dg.ExecuteQueryReturningBytes(ctx, request)
 	if err != nil {
 		return 0, err
@@ -139,7 +141,7 @@ func parseUInt64FromByteSlice(bytes []byte) (uint64, error) {
 	return num.Uint64(), nil
 }
 
-func (dg *dataGetter) executeQueryFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) ([][]byte, error) {
+func (dg *elrondClientDataGetter) executeQueryFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) ([][]byte, error) {
 	vmValuesRequest, err := builder.ToVmValueRequest()
 	if err != nil {
 		return nil, err
@@ -149,14 +151,31 @@ func (dg *dataGetter) executeQueryFromBuilder(ctx context.Context, builder build
 }
 
 // GetCurrentBatchAsDataBytes will assemble a builder and query the proxy for the current pending batch
-func (dg *dataGetter) GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error) {
+func (dg *elrondClientDataGetter) GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error) {
 	builder := builders.NewVMQueryBuilder().Address(dg.multisigContractAddress).CallerAddress(dg.relayerAddress)
 	builder.Function(getCurrentTxBatchFuncName)
 
 	return dg.executeQueryFromBuilder(ctx, builder)
 }
 
+// GetCurrentBatchAsDataBytes will assemble a builder and query the proxy for a token id given a specific erc20 address
+func (dg *elrondClientDataGetter) GetTokenIdForErc20Address(ctx context.Context, erc20Address []byte) ([][]byte, error) {
+	builder := builders.NewVMQueryBuilder().Address(dg.multisigContractAddress).CallerAddress(dg.relayerAddress)
+	builder.Function(getTokenIdForErc20AddressFuncName)
+	builder.ArgBytes(erc20Address)
+
+	return dg.executeQueryFromBuilder(ctx, builder)
+}
+
+// GetCurrentBatchAsDataBytes will assemble a builder and query the proxy for an erc20 address given a specific token id
+func (dg *elrondClientDataGetter) GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
+	builder := builders.NewVMQueryBuilder().Address(dg.multisigContractAddress).CallerAddress(dg.relayerAddress)
+	builder.Function(getErc20AddressForTokenIdFuncName)
+	builder.ArgBytes(tokenId)
+	return dg.executeQueryFromBuilder(ctx, builder)
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
-func (dg *dataGetter) IsInterfaceNil() bool {
+func (dg *elrondClientDataGetter) IsInterfaceNil() bool {
 	return dg == nil
 }
