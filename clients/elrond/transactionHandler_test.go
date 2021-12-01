@@ -39,7 +39,7 @@ func createTransactionHandlerWithMockComponents() *transactionHandler {
 	}
 }
 
-func TestTransactionHandler_sendTransactionReturningHash(t *testing.T) {
+func TestTransactionHandler_sendTransactionReturnHash(t *testing.T) {
 	t.Parallel()
 
 	builder := builders.NewTxDataBuilder().Function("function").ArgBytes([]byte("buff")).ArgInt64(22)
@@ -54,7 +54,7 @@ func TestTransactionHandler_sendTransactionReturningHash(t *testing.T) {
 			},
 		}
 
-		hash, err := txHandler.sendTransactionReturningHash(context.Background(), builder, gasLimit)
+		hash, err := txHandler.sendTransactionReturnHash(context.Background(), builder, gasLimit)
 		assert.Empty(t, hash)
 		assert.Equal(t, expectedErr, err)
 	})
@@ -67,7 +67,7 @@ func TestTransactionHandler_sendTransactionReturningHash(t *testing.T) {
 			},
 		}
 
-		hash, err := txHandler.sendTransactionReturningHash(context.Background(), builder, gasLimit)
+		hash, err := txHandler.sendTransactionReturnHash(context.Background(), builder, gasLimit)
 		assert.Empty(t, hash)
 		assert.Equal(t, expectedErr, err)
 	})
@@ -75,7 +75,7 @@ func TestTransactionHandler_sendTransactionReturningHash(t *testing.T) {
 		txHandler := createTransactionHandlerWithMockComponents()
 		erroredBuilder := builders.NewTxDataBuilder().ArgAddress(nil)
 
-		hash, err := txHandler.sendTransactionReturningHash(context.Background(), erroredBuilder, gasLimit)
+		hash, err := txHandler.sendTransactionReturnHash(context.Background(), erroredBuilder, gasLimit)
 		assert.Empty(t, hash)
 		assert.NotNil(t, err)
 		assert.Equal(t, "nil address handler in builder.checkAddress", err.Error())
@@ -89,7 +89,7 @@ func TestTransactionHandler_sendTransactionReturningHash(t *testing.T) {
 			},
 		}
 
-		hash, err := txHandler.sendTransactionReturningHash(context.Background(), builder, gasLimit)
+		hash, err := txHandler.sendTransactionReturnHash(context.Background(), builder, gasLimit)
 		assert.Empty(t, hash)
 		assert.Equal(t, expectedErr, err)
 	})
@@ -138,7 +138,7 @@ func TestTransactionHandler_sendTransactionReturningHash(t *testing.T) {
 			},
 		}
 
-		hash, err := txHandler.sendTransactionReturningHash(context.Background(), builder, gasLimit)
+		hash, err := txHandler.sendTransactionReturnHash(context.Background(), builder, gasLimit)
 
 		assert.Nil(t, err)
 		assert.Equal(t, txHash, hash)
