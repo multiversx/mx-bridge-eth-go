@@ -21,8 +21,8 @@ type transactionHandler struct {
 }
 
 // sendTransactionReturningHash will try to assemble a transaction, sign it, send it and, if everything is OK, returns the transaction's hash
-func (txHandler *transactionHandler) sendTransactionReturningHash(ctx context.Context, builder builders.TxDataBuilder, cost uint64) (string, error) {
-	tx, err := txHandler.signTransaction(ctx, builder, cost)
+func (txHandler *transactionHandler) sendTransactionReturningHash(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+	tx, err := txHandler.signTransaction(ctx, builder, gasLimit)
 	if err != nil {
 		return "", err
 	}
@@ -30,7 +30,7 @@ func (txHandler *transactionHandler) sendTransactionReturningHash(ctx context.Co
 	return txHandler.nonceTxHandler.SendTransaction(context.Background(), tx)
 }
 
-func (txHandler *transactionHandler) signTransaction(ctx context.Context, builder builders.TxDataBuilder, cost uint64) (*data.Transaction, error) {
+func (txHandler *transactionHandler) signTransaction(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (*data.Transaction, error) {
 	// TODO use a smart cache here (request the configs only from time to time)
 	networkConfig, err := txHandler.proxy.GetNetworkConfig(ctx)
 	if err != nil {
@@ -50,7 +50,7 @@ func (txHandler *transactionHandler) signTransaction(ctx context.Context, builde
 	tx := &data.Transaction{
 		ChainID:  networkConfig.ChainID,
 		Version:  networkConfig.MinTransactionVersion,
-		GasLimit: cost,
+		GasLimit: gasLimit,
 		GasPrice: networkConfig.MinGasPrice,
 		Nonce:    nonce,
 		Data:     dataBytes,
@@ -83,4 +83,8 @@ func (txHandler *transactionHandler) signTransactionWithPrivateKey(tx *data.Tran
 	tx.Signature = hex.EncodeToString(signature)
 
 	return nil
+}
+
+func (txHandler *transactionHandler) close() error {
+	return txHandler.nonceTxHandler.Close()
 }

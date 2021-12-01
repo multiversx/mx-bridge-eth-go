@@ -22,3 +22,9 @@ type NonceTransactionsHandler interface {
 	SendTransaction(ctx context.Context, tx *data.Transaction) (string, error)
 	Close() error
 }
+
+// TokensMapper can convert a token bytes from one chain to another
+type TokensMapper interface {
+	ConvertToken(ctx context.Context, sourceBytes []byte) ([]byte, error)
+	IsInterfaceNil() bool
+}

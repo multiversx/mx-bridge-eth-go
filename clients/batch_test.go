@@ -1,9 +1,10 @@
 package clients
 
 import (
-	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDepositTransfer_Clone(t *testing.T) {
@@ -71,6 +72,7 @@ func TestTransferBatch_Clone(t *testing.T) {
 				Amount:           big.NewInt(5566),
 			},
 		},
+		Statuses: []byte{Executed, Rejected},
 	}
 
 	cloned := tb.Clone()
@@ -106,10 +108,38 @@ func TestTransferBatch_String(t *testing.T) {
 				Amount:           big.NewInt(5566),
 			},
 		},
+		Statuses: []byte{Executed, Rejected},
 	}
 
 	expectedString := `Batch id 2243:
   to: to1, from: from1, token address: token1, amount: 3344, deposit nonce: 1
-  to: to2, from: from2, token address: token2, amount: 5566, deposit nonce: 2`
+  to: to2, from: from2, token address: token2, amount: 5566, deposit nonce: 2
+Statuses: 0304`
 	assert.Equal(t, expectedString, tb.String())
+}
+
+func TestTransferBatch_ResolveNewDeposits(t *testing.T) {
+	t.Parallel()
+
+	batch := &TransferBatch{
+		Deposits: []*DepositTransfer{
+			{
+				DisplayableTo: "to1",
+			},
+			{
+				DisplayableTo: "to2",
+			},
+		},
+		Statuses: make([]byte, 2),
+	}
+
+	for i := 0; i < 3; i++ {
+		batch.ResolveNewDeposits(i)
+		assert.Equal(t, 2, len(batch.Statuses))
+	}
+
+	batch.ResolveNewDeposits(3)
+	assert.Equal(t, 3, len(batch.Statuses))
+	assert.Equal(t, Rejected, batch.Statuses[2])
+	assert.Equal(t, byte(0), batch.Statuses[0]+batch.Statuses[1])
 }
