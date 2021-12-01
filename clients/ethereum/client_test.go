@@ -54,26 +54,29 @@ func createMockTransferBatch() *clients.TransferBatch {
 		ID: 332,
 		Deposits: []*clients.DepositTransfer{
 			{
-				Nonce:            10,
-				ToBytes:          []byte("to1"),
-				DisplayableTo:    "to1",
-				FromBytes:        []byte("from1"),
-				DisplayableFrom:  "from1",
-				TokenBytes:       []byte("token1"),
-				DisplayableToken: "token1",
-				Amount:           big.NewInt(20),
+				Nonce:               10,
+				ToBytes:             []byte("to1"),
+				DisplayableTo:       "to1",
+				FromBytes:           []byte("from1"),
+				DisplayableFrom:     "from1",
+				TokenBytes:          []byte("token1"),
+				DisplayableToken:    "token1",
+				Amount:              big.NewInt(20),
+				ConvertedTokenBytes: []byte("ERC20token1"),
 			},
 			{
-				Nonce:            30,
-				ToBytes:          []byte("to2"),
-				DisplayableTo:    "to2",
-				FromBytes:        []byte("from2"),
-				DisplayableFrom:  "from2",
-				TokenBytes:       []byte("token2"),
-				DisplayableToken: "token2",
-				Amount:           big.NewInt(40),
+				Nonce:               30,
+				ToBytes:             []byte("to2"),
+				DisplayableTo:       "to2",
+				FromBytes:           []byte("from2"),
+				DisplayableFrom:     "from2",
+				TokenBytes:          []byte("token2"),
+				DisplayableToken:    "token2",
+				Amount:              big.NewInt(40),
+				ConvertedTokenBytes: []byte("ERC20token2"),
 			},
 		},
+		Statuses: make([]byte, 2),
 	}
 }
 
@@ -176,13 +179,15 @@ func TestClient_GetBatch(t *testing.T) {
 	c, _ := NewEthereumClient(args)
 
 	t.Run("error while getting batch", func(t *testing.T) {
+		expectedErr := errors.New("expected error")
 		c.clientWrapper = &bridgeV2.EthereumClientWrapperStub{
 			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
-				return contract.Batch{}, errors.New("expected error")
+				return contract.Batch{}, expectedErr
 			},
 		}
-		batch := c.GetBatch(context.Background(), 1)
+		batch, err := c.GetBatch(context.Background(), 1)
 		assert.Nil(t, batch)
+		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("returns batch should work", func(t *testing.T) {
 		from1 := testsCommon.CreateRandomEthereumAddress()
@@ -223,30 +228,34 @@ func TestClient_GetBatch(t *testing.T) {
 			ID: 112243,
 			Deposits: []*clients.DepositTransfer{
 				{
-					Nonce:            10,
-					ToBytes:          recipient1,
-					DisplayableTo:    c.addressConverter.ToBech32String(recipient1),
-					FromBytes:        from1[:],
-					DisplayableFrom:  hex.EncodeToString(from1[:]),
-					TokenBytes:       token1[:],
-					DisplayableToken: hex.EncodeToString(token1[:]),
-					Amount:           big.NewInt(20),
+					Nonce:               10,
+					ToBytes:             recipient1,
+					DisplayableTo:       c.addressConverter.ToBech32String(recipient1),
+					FromBytes:           from1[:],
+					DisplayableFrom:     hex.EncodeToString(from1[:]),
+					TokenBytes:          token1[:],
+					DisplayableToken:    hex.EncodeToString(token1[:]),
+					Amount:              big.NewInt(20),
+					ConvertedTokenBytes: append([]byte("ERC20"), token1[:]...),
 				},
 				{
-					Nonce:            30,
-					ToBytes:          recipient2,
-					DisplayableTo:    c.addressConverter.ToBech32String(recipient2),
-					FromBytes:        from2[:],
-					DisplayableFrom:  hex.EncodeToString(from2[:]),
-					TokenBytes:       token2[:],
-					DisplayableToken: hex.EncodeToString(token2[:]),
-					Amount:           big.NewInt(40),
+					Nonce:               30,
+					ToBytes:             recipient2,
+					DisplayableTo:       c.addressConverter.ToBech32String(recipient2),
+					FromBytes:           from2[:],
+					DisplayableFrom:     hex.EncodeToString(from2[:]),
+					TokenBytes:          token2[:],
+					DisplayableToken:    hex.EncodeToString(token2[:]),
+					Amount:              big.NewInt(40),
+					ConvertedTokenBytes: append([]byte("ERC20"), token2[:]...),
 				},
 			},
+			Statuses: make([]byte, 2),
 		}
 
-		batch := c.GetBatch(context.Background(), 1)
+		batch, err := c.GetBatch(context.Background(), 1)
 		assert.Equal(t, expectedBatch, batch)
+		assert.Nil(t, err)
 	})
 
 }
@@ -259,33 +268,20 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 
 	t.Run("nil batch should error", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)
-		h, err := c.GenerateMessageHash(context.Background(), nil)
+		h, err := c.GenerateMessageHash(nil)
 
 		assert.Equal(t, common.Hash{}, h)
 		assert.True(t, errors.Is(err, errNilBatch))
 	})
-	t.Run("convert token errors should error", func(t *testing.T) {
-		expectedError := errors.New("expected error")
-		c, _ := NewEthereumClient(args)
-		c.tokensMapper = &bridgeV2.TokensMapperStub{
-			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
-				return nil, expectedError
-			},
-		}
-		h, err := c.GenerateMessageHash(context.Background(), batch)
-
-		assert.Equal(t, common.Hash{}, h)
-		assert.True(t, errors.Is(err, expectedError))
-	})
 	t.Run("should work", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)
-		argLists, _ := c.extractList(context.Background(), batch)
+		argLists, _ := c.extractList(batch)
 		assert.Equal(t, expectedAmounts, argLists.amounts)
 		assert.Equal(t, expectedTokens, argLists.tokens)
 		assert.Equal(t, expectedRecipients, argLists.recipients)
 		assert.Equal(t, expectedNonces, argLists.nonces)
 
-		h, err := c.GenerateMessageHash(context.Background(), batch)
+		h, err := c.GenerateMessageHash(batch)
 		assert.Nil(t, err)
 		assert.Equal(t, "f48899888719fcb70b37510cf226912dca18def7154c2b2810401b85581f5859", hex.EncodeToString(h.Bytes()))
 	})
@@ -429,14 +425,15 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 
 		newBatch := batch.Clone()
 		newBatch.Deposits = append(newBatch.Deposits, &clients.DepositTransfer{
-			Nonce:            40,
-			ToBytes:          []byte("to3"),
-			DisplayableTo:    "to3",
-			FromBytes:        []byte("from3"),
-			DisplayableFrom:  "from3",
-			TokenBytes:       []byte("token1"),
-			DisplayableToken: "token1",
-			Amount:           big.NewInt(80),
+			Nonce:               40,
+			ToBytes:             []byte("to3"),
+			DisplayableTo:       "to3",
+			FromBytes:           []byte("from3"),
+			DisplayableFrom:     "from3",
+			TokenBytes:          []byte("token1"),
+			DisplayableToken:    "token1",
+			Amount:              big.NewInt(80),
+			ConvertedTokenBytes: []byte("ERC20token1"),
 		})
 
 		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, newBatch, 9)
