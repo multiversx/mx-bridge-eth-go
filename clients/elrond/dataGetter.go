@@ -133,7 +133,7 @@ func (dg *dataGetter) ExecuteQueryReturningUint64(ctx context.Context, request *
 	if err != nil {
 		return 0, NewQueryResponseError(
 			internalError,
-			errNotUint64Bytes.Error(),
+			err.Error(),
 			request.FuncName,
 			request.Address,
 			request.Args...,
