@@ -286,6 +286,7 @@ func TestClient_GetPending(t *testing.T) {
 
 		c, _ := NewClient(args)
 		batch, err := c.GetPending(context.Background())
+		assert.Nil(t, err)
 
 		args.Log.Info("expected batch\n" + expectedBatch.String())
 		args.Log.Info("batch\n" + batch.String())
@@ -314,7 +315,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		c, _ := NewClient(args)
 		sendWasCalled := false
 		c.txHandler = &txHandlerStub{
-			sendTransactionReturningHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+			sendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
 				dataField, err := builder.ToDataString()
@@ -390,7 +391,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		batch := createMockBatch()
 
 		c.txHandler = &txHandlerStub{
-			sendTransactionReturningHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+			sendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
 				dataField, err := builder.ToDataString()
@@ -444,7 +445,7 @@ func TestClient_Sign(t *testing.T) {
 	actionID := uint64(662528)
 
 	c.txHandler = &txHandlerStub{
-		sendTransactionReturningHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+		sendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 			sendWasCalled = true
 
 			dataField, err := builder.ToDataString()
@@ -485,7 +486,7 @@ func TestClient_PerformAction(t *testing.T) {
 		batch := createMockBatch()
 
 		c.txHandler = &txHandlerStub{
-			sendTransactionReturningHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+			sendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
 				dataField, err := builder.ToDataString()

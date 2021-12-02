@@ -42,7 +42,7 @@ type ClientArgs struct {
 }
 
 type txHandler interface {
-	sendTransactionReturningHash(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error)
+	sendTransactionReturnHash(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error)
 	close() error
 }
 
@@ -232,7 +232,7 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 	txBuilder := builders.NewTxDataBuilder().Function(proposeSetStatusFuncName).ArgInt64(int64(batch.ID))
 	txBuilder.ArgBytes(batch.Statuses)
 
-	hash, err := c.sendTransactionReturningHash(ctx, txBuilder, c.gasMapConfig.ProposeStatus)
+	hash, err := c.sendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.ProposeStatus)
 	if err == nil {
 		c.log.Info("proposed set statuses"+batch.String(), "transaction hash", hash)
 	}
@@ -273,7 +273,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 	}
 
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
-	hash, err := c.sendTransactionReturningHash(ctx, txBuilder, gasLimit)
+	hash, err := c.sendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
 		c.log.Info("proposed transfer"+batch.String(), "transaction hash", hash)
 	}
@@ -285,7 +285,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
 	txBuilder := builders.NewTxDataBuilder().Function(signFuncName).ArgInt64(int64(actionID))
 
-	hash, err := c.sendTransactionReturningHash(ctx, txBuilder, c.gasMapConfig.Sign)
+	hash, err := c.sendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.Sign)
 	if err == nil {
 		c.log.Info("signed", "action ID", actionID, "transaction hash", hash)
 	}
@@ -302,7 +302,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	txBuilder := builders.NewTxDataBuilder().Function(performActionFuncName).ArgInt64(int64(actionID))
 
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
-	hash, err := c.sendTransactionReturningHash(ctx, txBuilder, gasLimit)
+	hash, err := c.sendTransactionReturnHash(ctx, txBuilder, gasLimit)
 
 	if err == nil {
 		c.log.Info("performed action", "actionID", actionID, "transaction hash", hash)

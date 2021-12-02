@@ -7,13 +7,13 @@ import (
 )
 
 type txHandlerStub struct {
-	sendTransactionReturningHashCalled func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error)
-	closeCalled                        func() error
+	sendTransactionReturnHashCalled func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error)
+	closeCalled                     func() error
 }
 
-func (stub *txHandlerStub) sendTransactionReturningHash(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
-	if stub.sendTransactionReturningHashCalled != nil {
-		return stub.sendTransactionReturningHashCalled(ctx, builder, gasLimit)
+func (stub *txHandlerStub) sendTransactionReturnHash(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+	if stub.sendTransactionReturnHashCalled != nil {
+		return stub.sendTransactionReturnHashCalled(ctx, builder, gasLimit)
 	}
 
 	return "", nil
