@@ -11,7 +11,6 @@ var (
 	errInvalidGasValue          = errors.New("invalid gas value")
 	errNilLogger                = errors.New("nil logger")
 	errNilPrivateKey            = errors.New("nil private key")
-
 	// ErrNoPendingBatchAvailable signals that no pending batch is available
 	ErrNoPendingBatchAvailable = errors.New("no pending batch available")
 )

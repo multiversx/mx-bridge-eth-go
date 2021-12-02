@@ -2,12 +2,13 @@ package ethereum
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"math/big"
 )
 
 // ClientWrapper represents the Ethereum client wrapper that the ethereum client can rely on
