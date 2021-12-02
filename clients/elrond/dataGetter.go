@@ -20,15 +20,15 @@ const (
 
 // ArgsDataGetter is the arguments DTO used in the NewDataGetter constructor
 type ArgsDataGetter struct {
-	BridgeAddress  core.AddressHandler
-	RelayerAddress core.AddressHandler
-	Proxy          ElrondProxy
+	MultisigContractAddress core.AddressHandler
+	RelayerAddress          core.AddressHandler
+	Proxy                   ElrondProxy
 }
 
 type dataGetter struct {
-	bridgeAddress  core.AddressHandler
-	relayerAddress core.AddressHandler
-	proxy          ElrondProxy
+	multisigContractAddress core.AddressHandler
+	relayerAddress          core.AddressHandler
+	proxy                   ElrondProxy
 }
 
 // NewDataGetter creates a new instance of the dataGetter type
@@ -39,14 +39,14 @@ func NewDataGetter(args ArgsDataGetter) (*dataGetter, error) {
 	if check.IfNil(args.RelayerAddress) {
 		return nil, fmt.Errorf("%w for the RelayerAddress argument", errNilAddressHandler)
 	}
-	if check.IfNil(args.BridgeAddress) {
-		return nil, fmt.Errorf("%w for the BridgeAddress argument", errNilAddressHandler)
+	if check.IfNil(args.MultisigContractAddress) {
+		return nil, fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
 	}
 
 	return &dataGetter{
-		bridgeAddress:  args.BridgeAddress,
-		relayerAddress: args.RelayerAddress,
-		proxy:          args.Proxy,
+		multisigContractAddress: args.MultisigContractAddress,
+		relayerAddress:          args.RelayerAddress,
+		proxy:                   args.Proxy,
 	}, nil
 }
 
@@ -116,15 +116,24 @@ func (dg *dataGetter) ExecuteQueryReturningUint64(ctx context.Context, request *
 		return 0, nil
 	}
 
-	num := big.NewInt(0).SetBytes(response[0])
-	if !num.IsUint64() {
+	num, err := parseUInt64FromByteSlice(response[0])
+	if err != nil {
 		return 0, NewQueryResponseError(
 			internalError,
-			"error converting the received bytes to uint64",
+			err.Error(),
 			request.FuncName,
 			request.Address,
 			request.Args...,
 		)
+	}
+
+	return num, nil
+}
+
+func parseUInt64FromByteSlice(bytes []byte) (uint64, error) {
+	num := big.NewInt(0).SetBytes(bytes)
+	if !num.IsUint64() {
+		return 0, errNotUint64Bytes
 	}
 
 	return num.Uint64(), nil
@@ -141,7 +150,7 @@ func (dg *dataGetter) executeQueryFromBuilder(ctx context.Context, builder build
 
 // GetCurrentBatchAsDataBytes will assemble a builder and query the proxy for the current pending batch
 func (dg *dataGetter) GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error) {
-	builder := builders.NewVMQueryBuilder().Address(dg.bridgeAddress).CallerAddress(dg.relayerAddress)
+	builder := builders.NewVMQueryBuilder().Address(dg.multisigContractAddress).CallerAddress(dg.relayerAddress)
 	builder.Function(getCurrentTxBatchFuncName)
 
 	return dg.executeQueryFromBuilder(ctx, builder)
