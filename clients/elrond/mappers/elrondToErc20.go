@@ -12,6 +12,7 @@ type elrondToErc20 struct {
 	dg DataGetter
 }
 
+// NewErc20ToElrondMapper returns a new instance of erc20ToElrond
 func NewElrondToErc20Mapper(dg DataGetter) (*elrondToErc20, error) {
 	if check.IfNil(dg) {
 		return nil, errNilDataGetter
@@ -22,6 +23,7 @@ func NewElrondToErc20Mapper(dg DataGetter) (*elrondToErc20, error) {
 	}, nil
 }
 
+// ConvertToken will return erd token id given a specific erc20 address
 func (mapper *elrondToErc20) ConvertToken(ctx context.Context, sourceBytes []byte) ([]byte, error) {
 
 	response, err := mapper.dg.GetERC20AddressForTokenId(ctx, sourceBytes)
