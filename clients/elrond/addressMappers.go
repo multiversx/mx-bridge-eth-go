@@ -2,7 +2,6 @@ package elrond
 
 import (
 	"context"
-	"strings"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 )
@@ -22,10 +21,6 @@ func NewErc20ToElrondMapper(dg DataGetter) (*Erc20ToElrond, error) {
 }
 
 func (mapper *Erc20ToElrond) ConvertToken(ctx context.Context, sourceBytes []byte) ([]byte, error) {
-	erc20Address := string(sourceBytes)
-	if strings.Index(erc20Address, hexPrefix) == 0 {
-		erc20Address = erc20Address[len(hexPrefix):]
-	}
 
 	response, err := mapper.dg.GetTokenIdForErc20Address(ctx, sourceBytes)
 	if err != nil {
@@ -49,12 +44,12 @@ type ElrondToErc20 struct {
 	dg DataGetter
 }
 
-func NewElrondToErc20Mapper(dg DataGetter) (*Erc20ToElrond, error) {
+func NewElrondToErc20Mapper(dg DataGetter) (*ElrondToErc20, error) {
 	if check.IfNil(dg) {
 		return nil, errNilDataGetter
 	}
 
-	return &Erc20ToElrond{
+	return &ElrondToErc20{
 		dg: dg,
 	}, nil
 }
