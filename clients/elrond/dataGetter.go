@@ -158,7 +158,7 @@ func (dg *elrondClientDataGetter) GetCurrentBatchAsDataBytes(ctx context.Context
 	return dg.executeQueryFromBuilder(ctx, builder)
 }
 
-// GetCurrentBatchAsDataBytes will assemble a builder and query the proxy for a token id given a specific erc20 address
+// GetTokenIdForErc20Address will assemble a builder and query the proxy for a token id given a specific erc20 address
 func (dg *elrondClientDataGetter) GetTokenIdForErc20Address(ctx context.Context, erc20Address []byte) ([][]byte, error) {
 	builder := builders.NewVMQueryBuilder().Address(dg.multisigContractAddress).CallerAddress(dg.relayerAddress)
 	builder.Function(getTokenIdForErc20AddressFuncName)
@@ -167,7 +167,7 @@ func (dg *elrondClientDataGetter) GetTokenIdForErc20Address(ctx context.Context,
 	return dg.executeQueryFromBuilder(ctx, builder)
 }
 
-// GetCurrentBatchAsDataBytes will assemble a builder and query the proxy for an erc20 address given a specific token id
+// GetERC20AddressForTokenId will assemble a builder and query the proxy for an erc20 address given a specific token id
 func (dg *elrondClientDataGetter) GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
 	builder := builders.NewVMQueryBuilder().Address(dg.multisigContractAddress).CallerAddress(dg.relayerAddress)
 	builder.Function(getErc20AddressForTokenIdFuncName)
