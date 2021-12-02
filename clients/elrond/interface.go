@@ -23,14 +23,3 @@ type NonceTransactionsHandler interface {
 	SendTransaction(ctx context.Context, tx *data.Transaction) (string, error)
 	Close() error
 }
-
-// elrondClientDataGetter defines the interface able to handle get requests for Elrond blockchain
-type DataGetter interface {
-	ExecuteQueryReturningBytes(ctx context.Context, request *data.VmValueRequest) ([][]byte, error)
-	ExecuteQueryReturningBool(ctx context.Context, request *data.VmValueRequest) (bool, error)
-	ExecuteQueryReturningUint64(ctx context.Context, request *data.VmValueRequest) (uint64, error)
-	GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error)
-	GetTokenIdForErc20Address(ctx context.Context, erc20Address []byte) ([][]byte, error)
-	GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error)
-	IsInterfaceNil() bool
-}

@@ -122,7 +122,7 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningUint64(ctx context.Contex
 	if err != nil {
 		return 0, NewQueryResponseError(
 			internalError,
-			errNotUint64Bytes.Error(),
+			err.Error(),
 			request.FuncName,
 			request.Address,
 			request.Args...,

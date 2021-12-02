@@ -321,6 +321,7 @@ func TestDataGetter_GetCurrentBatchAsDataBytes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, returningBytes, result)
 }
+
 func TestExecuteQueryFromBuilderReturnErr(t *testing.T) {
 	t.Parallel()
 
