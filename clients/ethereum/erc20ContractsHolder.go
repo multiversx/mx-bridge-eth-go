@@ -14,8 +14,8 @@ import (
 )
 
 type ArgsErc20SafeContractsHolder struct {
-	ethClient              bind.ContractBackend
-	ethClientStatusHandler core.StatusHandler
+	EthClient              bind.ContractBackend
+	EthClientStatusHandler core.StatusHandler
 }
 
 // erc20SafeContractsHolder represents the Erc20ContractsHolder implementation
@@ -28,16 +28,16 @@ type erc20SafeContractsHolder struct {
 
 // NewErc20SafeContractsHolder returns a new erc20SafeContractsHolder instance
 func NewErc20SafeContractsHolder(args ArgsErc20SafeContractsHolder) (*erc20SafeContractsHolder, error) {
-	if check.IfNilReflect(args.ethClient) {
+	if check.IfNilReflect(args.EthClient) {
 		return nil, errNilEthClient
 	}
-	if check.IfNil(args.ethClientStatusHandler) {
+	if check.IfNil(args.EthClientStatusHandler) {
 		return nil, errNilStatusHandler
 	}
 	return &erc20SafeContractsHolder{
 		contracts:              make(map[ethCommon.Address]*erc20ContractWrapper),
-		ethClient:              args.ethClient,
-		ethClientStatusHandler: args.ethClientStatusHandler,
+		ethClient:              args.EthClient,
+		ethClientStatusHandler: args.EthClientStatusHandler,
 	}, nil
 }
 
