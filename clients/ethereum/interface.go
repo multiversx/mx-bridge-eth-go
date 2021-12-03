@@ -55,3 +55,8 @@ type SignaturesHolder interface {
 	Signatures(messageHash []byte) [][]byte
 	IsInterfaceNil() bool
 }
+
+// GenericErc20Contract defines the Ethereum ERC20 contract operations
+type GenericErc20Contract interface {
+	BalanceOf(opts *bind.CallOpts, account common.Address) (*big.Int, error)
+}

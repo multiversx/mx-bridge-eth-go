@@ -17,4 +17,7 @@ var (
 	errNilSignaturesHolder      = errors.New("nil signatures holder")
 	errNilGasHandler            = errors.New("nil gas handler")
 	errInvalidGasLimit          = errors.New("invalid gas limit")
+	errNilErc20Contract         = errors.New("nil ERC20 contract")
+	errNilStatusHandler         = errors.New("nil status handler")
+	errNilEthClient             = errors.New("nil eth client")
 )
