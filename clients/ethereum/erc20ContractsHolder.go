@@ -18,23 +18,23 @@ type ArgsErc20SafeContractsHolder struct {
 	ethClientStatusHandler core.StatusHandler
 }
 
-// Erc20SafeContractsHolder represents the Erc20ContractsHolder implementation
-type Erc20SafeContractsHolder struct {
+// erc20SafeContractsHolder represents the Erc20ContractsHolder implementation
+type erc20SafeContractsHolder struct {
 	mut                    sync.RWMutex
 	contracts              map[ethCommon.Address]*erc20ContractWrapper
 	ethClient              bind.ContractBackend
 	ethClientStatusHandler core.StatusHandler
 }
 
-// NewErc20SafeContractsHolder returns a new Erc20SafeContractsHolder instance
-func NewErc20SafeContractsHolder(args ArgsErc20SafeContractsHolder) (*Erc20SafeContractsHolder, error) {
+// NewErc20SafeContractsHolder returns a new erc20SafeContractsHolder instance
+func NewErc20SafeContractsHolder(args ArgsErc20SafeContractsHolder) (*erc20SafeContractsHolder, error) {
 	if check.IfNilReflect(args.ethClient) {
 		return nil, errNilEthClient
 	}
 	if check.IfNil(args.ethClientStatusHandler) {
 		return nil, errNilStatusHandler
 	}
-	return &Erc20SafeContractsHolder{
+	return &erc20SafeContractsHolder{
 		contracts:              make(map[ethCommon.Address]*erc20ContractWrapper),
 		ethClient:              args.ethClient,
 		ethClientStatusHandler: args.ethClientStatusHandler,
@@ -43,12 +43,12 @@ func NewErc20SafeContractsHolder(args ArgsErc20SafeContractsHolder) (*Erc20SafeC
 
 // BalanceOf returns the ERC20 balance of the provided address
 // if the ERC20 contract does not exists in the map of contract wrappers, it will create and add it first
-func (h *Erc20SafeContractsHolder) BalanceOf(ctx context.Context, erc20Address ethCommon.Address, address ethCommon.Address) (*big.Int, error) {
+func (h *erc20SafeContractsHolder) BalanceOf(ctx context.Context, erc20Address ethCommon.Address, address ethCommon.Address) (*big.Int, error) {
 	h.mut.Lock()
 	defer h.mut.Unlock()
 
-	var wrapper *erc20ContractWrapper
-	if wrapper, exists := h.contracts[erc20Address]; !exists {
+	wrapper, exists := h.contracts[erc20Address]
+	if !exists {
 		contractInstance, err := contract.NewGenericErc20(erc20Address, h.ethClient)
 		if err != nil {
 			return nil, fmt.Errorf("%w for %s", err, erc20Address.String())
@@ -64,11 +64,11 @@ func (h *Erc20SafeContractsHolder) BalanceOf(ctx context.Context, erc20Address e
 
 		h.contracts[erc20Address] = wrapper
 	}
-	h.ethClientStatusHandler.AddIntMetric(core.MetricNumEthClientRequests, 1)
+
 	return wrapper.erc20Contract.BalanceOf(&bind.CallOpts{Context: ctx}, address)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
-func (h *Erc20SafeContractsHolder) IsInterfaceNil() bool {
+func (h *erc20SafeContractsHolder) IsInterfaceNil() bool {
 	return h == nil
 }
