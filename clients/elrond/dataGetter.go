@@ -24,6 +24,8 @@ const (
 	wasSetCurrentTransactionBatchStatusActionProposedFuncName = "wasSetCurrentTransactionBatchStatusActionProposed"
 	getStatusesAfterExecutionFuncName                         = "getStatusesAfterExecution"
 	getActionIdForSetCurrentTransactionBatchStatusFuncName    = "getActionIdForSetCurrentTransactionBatchStatus"
+	getTokenIdForErc20AddressFuncName                         = "getTokenIdForErc20Address"
+	getErc20AddressForTokenIdFuncName                         = "getErc20AddressForTokenId"
 )
 
 // ArgsDataGetter is the arguments DTO used in the NewDataGetter constructor
@@ -33,14 +35,14 @@ type ArgsDataGetter struct {
 	Proxy                   ElrondProxy
 }
 
-type dataGetter struct {
+type elrondClientDataGetter struct {
 	multisigContractAddress core.AddressHandler
 	relayerAddress          core.AddressHandler
 	proxy                   ElrondProxy
 }
 
 // NewDataGetter creates a new instance of the dataGetter type
-func NewDataGetter(args ArgsDataGetter) (*dataGetter, error) {
+func NewDataGetter(args ArgsDataGetter) (*elrondClientDataGetter, error) {
 	if check.IfNil(args.Proxy) {
 		return nil, errNilProxy
 	}
@@ -51,7 +53,7 @@ func NewDataGetter(args ArgsDataGetter) (*dataGetter, error) {
 		return nil, fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
 	}
 
-	return &dataGetter{
+	return &elrondClientDataGetter{
 		multisigContractAddress: args.MultisigContractAddress,
 		relayerAddress:          args.RelayerAddress,
 		proxy:                   args.Proxy,
@@ -59,7 +61,7 @@ func NewDataGetter(args ArgsDataGetter) (*dataGetter, error) {
 }
 
 // ExecuteQueryReturningBytes will try to execute the provided query and return the result as slice of byte slices
-func (dg *dataGetter) ExecuteQueryReturningBytes(ctx context.Context, request *data.VmValueRequest) ([][]byte, error) {
+func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context, request *data.VmValueRequest) ([][]byte, error) {
 	if request == nil {
 		return nil, errNilRequest
 	}
@@ -83,7 +85,7 @@ func (dg *dataGetter) ExecuteQueryReturningBytes(ctx context.Context, request *d
 }
 
 // ExecuteQueryReturningBool will try to execute the provided query and return the result as bool
-func (dg *dataGetter) ExecuteQueryReturningBool(ctx context.Context, request *data.VmValueRequest) (bool, error) {
+func (dg *elrondClientDataGetter) ExecuteQueryReturningBool(ctx context.Context, request *data.VmValueRequest) (bool, error) {
 	response, err := dg.ExecuteQueryReturningBytes(ctx, request)
 	if err != nil {
 		return false, err
@@ -96,7 +98,7 @@ func (dg *dataGetter) ExecuteQueryReturningBool(ctx context.Context, request *da
 	return dg.parseBool(response[0], request.FuncName, request.Address, request.Args...)
 }
 
-func (dg *dataGetter) parseBool(buff []byte, funcName string, address string, args ...string) (bool, error) {
+func (dg *elrondClientDataGetter) parseBool(buff []byte, funcName string, address string, args ...string) (bool, error) {
 	if len(buff) == 0 {
 		return false, nil
 	}
@@ -116,7 +118,7 @@ func (dg *dataGetter) parseBool(buff []byte, funcName string, address string, ar
 }
 
 // ExecuteQueryReturningUint64 will try to execute the provided query and return the result as uint64
-func (dg *dataGetter) ExecuteQueryReturningUint64(ctx context.Context, request *data.VmValueRequest) (uint64, error) {
+func (dg *elrondClientDataGetter) ExecuteQueryReturningUint64(ctx context.Context, request *data.VmValueRequest) (uint64, error) {
 	response, err := dg.ExecuteQueryReturningBytes(ctx, request)
 	if err != nil {
 		return 0, err
@@ -152,7 +154,7 @@ func parseUInt64FromByteSlice(bytes []byte) (uint64, error) {
 	return num.Uint64(), nil
 }
 
-func (dg *dataGetter) executeQueryFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) ([][]byte, error) {
+func (dg *elrondClientDataGetter) executeQueryFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) ([][]byte, error) {
 	vmValuesRequest, err := builder.ToVmValueRequest()
 	if err != nil {
 		return nil, err
@@ -161,7 +163,7 @@ func (dg *dataGetter) executeQueryFromBuilder(ctx context.Context, builder build
 	return dg.ExecuteQueryReturningBytes(ctx, vmValuesRequest)
 }
 
-func (dg *dataGetter) executeQueryUint64FromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (uint64, error) {
+func (dg *elrondClientDataGetter) executeQueryUint64FromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (uint64, error) {
 	vmValuesRequest, err := builder.ToVmValueRequest()
 	if err != nil {
 		return 0, err
@@ -170,7 +172,7 @@ func (dg *dataGetter) executeQueryUint64FromBuilder(ctx context.Context, builder
 	return dg.ExecuteQueryReturningUint64(ctx, vmValuesRequest)
 }
 
-func (dg *dataGetter) executeQueryBoolFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (bool, error) {
+func (dg *elrondClientDataGetter) executeQueryBoolFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (bool, error) {
 	vmValuesRequest, err := builder.ToVmValueRequest()
 	if err != nil {
 		return false, err
@@ -179,20 +181,37 @@ func (dg *dataGetter) executeQueryBoolFromBuilder(ctx context.Context, builder b
 	return dg.ExecuteQueryReturningBool(ctx, vmValuesRequest)
 }
 
-func (dg *dataGetter) createDefaultVmQueryBuilder() builders.VMQueryBuilder {
+func (dg *elrondClientDataGetter) createDefaultVmQueryBuilder() builders.VMQueryBuilder {
 	return builders.NewVMQueryBuilder().Address(dg.multisigContractAddress).CallerAddress(dg.relayerAddress)
 }
 
 // GetCurrentBatchAsDataBytes will assemble a builder and query the proxy for the current pending batch
-func (dg *dataGetter) GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error) {
+func (dg *elrondClientDataGetter) GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error) {
 	builder := dg.createDefaultVmQueryBuilder()
 	builder.Function(getCurrentTxBatchFuncName)
 
 	return dg.executeQueryFromBuilder(ctx, builder)
 }
 
+// GetTokenIdForErc20Address will assemble a builder and query the proxy for a token id given a specific erc20 address
+func (dg *elrondClientDataGetter) GetTokenIdForErc20Address(ctx context.Context, erc20Address []byte) ([][]byte, error) {
+	builder := dg.createDefaultVmQueryBuilder()
+	builder.Function(getTokenIdForErc20AddressFuncName)
+	builder.ArgBytes(erc20Address)
+
+	return dg.executeQueryFromBuilder(ctx, builder)
+}
+
+// GetERC20AddressForTokenId will assemble a builder and query the proxy for an erc20 address given a specific token id
+func (dg *elrondClientDataGetter) GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
+	builder := dg.createDefaultVmQueryBuilder()
+	builder.Function(getErc20AddressForTokenIdFuncName)
+	builder.ArgBytes(tokenId)
+	return dg.executeQueryFromBuilder(ctx, builder)
+}
+
 // WasProposedTransfer returns true if the transfer action proposed was triggered
-func (dg *dataGetter) WasProposedTransfer(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+func (dg *elrondClientDataGetter) WasProposedTransfer(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	if batch == nil {
 		return false, errNilBatch
 	}
@@ -205,7 +224,7 @@ func (dg *dataGetter) WasProposedTransfer(ctx context.Context, batch *clients.Tr
 }
 
 // SignersCount returns the signers count
-func (dg *dataGetter) SignersCount(ctx context.Context, actionID uint64) (uint64, error) {
+func (dg *elrondClientDataGetter) SignersCount(ctx context.Context, actionID uint64) (uint64, error) {
 	builder := dg.createDefaultVmQueryBuilder()
 	builder.Function(getActionSignerCountFuncName).ArgInt64(int64(actionID))
 
@@ -213,7 +232,7 @@ func (dg *dataGetter) SignersCount(ctx context.Context, actionID uint64) (uint64
 }
 
 // WasExecuted returns true if the provided actionID was executed or not
-func (dg *dataGetter) WasExecuted(ctx context.Context, actionID uint64) (bool, error) {
+func (dg *elrondClientDataGetter) WasExecuted(ctx context.Context, actionID uint64) (bool, error) {
 	builder := dg.createDefaultVmQueryBuilder()
 	builder.Function(wasActionExecutedFuncName).ArgInt64(int64(actionID))
 
@@ -221,7 +240,7 @@ func (dg *dataGetter) WasExecuted(ctx context.Context, actionID uint64) (bool, e
 }
 
 // GetActionIDForProposeTransfer returns the action ID for the propose transfer operation
-func (dg *dataGetter) GetActionIDForProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
+func (dg *elrondClientDataGetter) GetActionIDForProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
 	if batch == nil {
 		return 0, errNilBatch
 	}
@@ -234,7 +253,7 @@ func (dg *dataGetter) GetActionIDForProposeTransfer(ctx context.Context, batch *
 }
 
 // WasProposedSetStatus returns true if the proposed set status was triggered
-func (dg *dataGetter) WasProposedSetStatus(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+func (dg *elrondClientDataGetter) WasProposedSetStatus(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	if batch == nil {
 		return false, errNilBatch
 	}
@@ -247,7 +266,7 @@ func (dg *dataGetter) WasProposedSetStatus(ctx context.Context, batch *clients.T
 }
 
 // GetTransactionsStatuses will return the transactions statuses from the batch ID
-func (dg *dataGetter) GetTransactionsStatuses(ctx context.Context, batchID uint64) ([]byte, error) {
+func (dg *elrondClientDataGetter) GetTransactionsStatuses(ctx context.Context, batchID uint64) ([]byte, error) {
 	builder := dg.createDefaultVmQueryBuilder()
 	builder.Function(getStatusesAfterExecutionFuncName).ArgInt64(int64(batchID))
 
@@ -283,7 +302,7 @@ func (dg *dataGetter) GetTransactionsStatuses(ctx context.Context, batchID uint6
 }
 
 // GetActionIDForSetStatusOnPendingTransfer returns the action ID for setting the status on the pending transfer batch
-func (dg *dataGetter) GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
+func (dg *elrondClientDataGetter) GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
 	if batch == nil {
 		return 0, errNilBatch
 	}
@@ -314,6 +333,6 @@ func addBatchInfo(builder builders.VMQueryBuilder, batch *clients.TransferBatch)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
-func (dg *dataGetter) IsInterfaceNil() bool {
+func (dg *elrondClientDataGetter) IsInterfaceNil() bool {
 	return dg == nil
 }

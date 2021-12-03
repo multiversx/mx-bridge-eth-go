@@ -49,7 +49,7 @@ type txHandler interface {
 // client represents the Elrond Client implementation
 type client struct {
 	txHandler
-	*dataGetter
+	*elrondClientDataGetter
 	tokensMapper              TokensMapper
 	relayerPublicKey          crypto.PublicKey
 	relayerAddress            core.AddressHandler
@@ -119,7 +119,7 @@ func NewClient(args ClientArgs) (*client, error) {
 			relayerPrivateKey:       args.RelayerPrivateKey,
 			singleSigner:            &singlesig.Ed25519Signer{},
 		},
-		dataGetter:                getter,
+		elrondClientDataGetter:    getter,
 		relayerPublicKey:          publicKey,
 		relayerAddress:            relayerAddress,
 		multisigContractAddress:   args.MultisigContractAddress,
