@@ -314,8 +314,8 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		expectedHash := "expected hash"
 		c, _ := NewClient(args)
 		sendWasCalled := false
-		c.txHandler = &txHandlerStub{
-			sendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+		c.txHandler = &bridgeV2.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
 				dataField, err := builder.ToDataString()
@@ -390,8 +390,8 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		sendWasCalled := false
 		batch := createMockBatch()
 
-		c.txHandler = &txHandlerStub{
-			sendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+		c.txHandler = &bridgeV2.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
 				dataField, err := builder.ToDataString()
@@ -444,8 +444,8 @@ func TestClient_Sign(t *testing.T) {
 	sendWasCalled := false
 	actionID := uint64(662528)
 
-	c.txHandler = &txHandlerStub{
-		sendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+	c.txHandler = &bridgeV2.TxHandlerStub{
+		SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 			sendWasCalled = true
 
 			dataField, err := builder.ToDataString()
@@ -485,8 +485,8 @@ func TestClient_PerformAction(t *testing.T) {
 		sendWasCalled := false
 		batch := createMockBatch()
 
-		c.txHandler = &txHandlerStub{
-			sendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+		c.txHandler = &bridgeV2.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
 				dataField, err := builder.ToDataString()
@@ -519,8 +519,8 @@ func TestClient_Close(t *testing.T) {
 	c, _ := NewClient(args)
 
 	closeCalled := false
-	c.txHandler = &txHandlerStub{
-		closeCalled: func() error {
+	c.txHandler = &bridgeV2.TxHandlerStub{
+		CloseCalled: func() error {
 			closeCalled = true
 			return nil
 		},

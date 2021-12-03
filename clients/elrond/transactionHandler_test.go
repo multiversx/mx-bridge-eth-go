@@ -39,7 +39,7 @@ func createTransactionHandlerWithMockComponents() *transactionHandler {
 	}
 }
 
-func TestTransactionHandler_sendTransactionReturnHash(t *testing.T) {
+func TestTransactionHandler_SendTransactionReturnHash(t *testing.T) {
 	t.Parallel()
 
 	builder := builders.NewTxDataBuilder().Function("function").ArgBytes([]byte("buff")).ArgInt64(22)
@@ -47,55 +47,55 @@ func TestTransactionHandler_sendTransactionReturnHash(t *testing.T) {
 
 	t.Run("get network configs errors", func(t *testing.T) {
 		expectedErr := errors.New("expected error in get network configs")
-		txHandler := createTransactionHandlerWithMockComponents()
-		txHandler.proxy = &interactors.ElrondProxyStub{
+		txHandlerInstance := createTransactionHandlerWithMockComponents()
+		txHandlerInstance.proxy = &interactors.ElrondProxyStub{
 			GetNetworkConfigCalled: func(ctx context.Context) (*data.NetworkConfig, error) {
 				return nil, expectedErr
 			},
 		}
 
-		hash, err := txHandler.sendTransactionReturnHash(context.Background(), builder, gasLimit)
+		hash, err := txHandlerInstance.SendTransactionReturnHash(context.Background(), builder, gasLimit)
 		assert.Empty(t, hash)
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("get nonce errors", func(t *testing.T) {
 		expectedErr := errors.New("expected error in get nonce")
-		txHandler := createTransactionHandlerWithMockComponents()
-		txHandler.nonceTxHandler = &bridgeV2.NonceTransactionsHandlerStub{
+		txHandlerInstance := createTransactionHandlerWithMockComponents()
+		txHandlerInstance.nonceTxHandler = &bridgeV2.NonceTransactionsHandlerStub{
 			GetNonceCalled: func(ctx context.Context, address core.AddressHandler) (uint64, error) {
 				return 0, expectedErr
 			},
 		}
 
-		hash, err := txHandler.sendTransactionReturnHash(context.Background(), builder, gasLimit)
+		hash, err := txHandlerInstance.SendTransactionReturnHash(context.Background(), builder, gasLimit)
 		assert.Empty(t, hash)
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("builder errors", func(t *testing.T) {
-		txHandler := createTransactionHandlerWithMockComponents()
+		txHandlerInstance := createTransactionHandlerWithMockComponents()
 		erroredBuilder := builders.NewTxDataBuilder().ArgAddress(nil)
 
-		hash, err := txHandler.sendTransactionReturnHash(context.Background(), erroredBuilder, gasLimit)
+		hash, err := txHandlerInstance.SendTransactionReturnHash(context.Background(), erroredBuilder, gasLimit)
 		assert.Empty(t, hash)
 		assert.NotNil(t, err)
 		assert.Equal(t, "nil address handler in builder.checkAddress", err.Error())
 	})
 	t.Run("signer errors", func(t *testing.T) {
-		txHandler := createTransactionHandlerWithMockComponents()
+		txHandlerInstance := createTransactionHandlerWithMockComponents()
 		expectedErr := errors.New("expected error in single signer")
-		txHandler.singleSigner = &cryptoMock.SingleSignerStub{
+		txHandlerInstance.singleSigner = &cryptoMock.SingleSignerStub{
 			SignCalled: func(private crypto.PrivateKey, msg []byte) ([]byte, error) {
 				return nil, expectedErr
 			},
 		}
 
-		hash, err := txHandler.sendTransactionReturnHash(context.Background(), builder, gasLimit)
+		hash, err := txHandlerInstance.SendTransactionReturnHash(context.Background(), builder, gasLimit)
 		assert.Empty(t, hash)
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		nonce := uint64(55273)
-		txHandler := createTransactionHandlerWithMockComponents()
+		txHandlerInstance := createTransactionHandlerWithMockComponents()
 		txHash := "tx hash"
 		sendWasCalled := false
 
@@ -103,7 +103,7 @@ func TestTransactionHandler_sendTransactionReturnHash(t *testing.T) {
 		minGasPrice := uint64(12234)
 		minTxVersion := uint32(122)
 
-		txHandler.proxy = &interactors.ElrondProxyStub{
+		txHandlerInstance.proxy = &interactors.ElrondProxyStub{
 			GetNetworkConfigCalled: func(ctx context.Context) (*data.NetworkConfig, error) {
 				return &data.NetworkConfig{
 					ChainID:               chainID,
@@ -113,7 +113,7 @@ func TestTransactionHandler_sendTransactionReturnHash(t *testing.T) {
 			},
 		}
 
-		txHandler.nonceTxHandler = &bridgeV2.NonceTransactionsHandlerStub{
+		txHandlerInstance.nonceTxHandler = &bridgeV2.NonceTransactionsHandlerStub{
 			GetNonceCalled: func(ctx context.Context, address core.AddressHandler) (uint64, error) {
 				if address.AddressAsBech32String() == relayerAddress {
 					return nonce, nil
@@ -138,7 +138,7 @@ func TestTransactionHandler_sendTransactionReturnHash(t *testing.T) {
 			},
 		}
 
-		hash, err := txHandler.sendTransactionReturnHash(context.Background(), builder, gasLimit)
+		hash, err := txHandlerInstance.SendTransactionReturnHash(context.Background(), builder, gasLimit)
 
 		assert.Nil(t, err)
 		assert.Equal(t, txHash, hash)
