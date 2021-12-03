@@ -41,15 +41,10 @@ type ClientArgs struct {
 	TokensMapper                 TokensMapper
 }
 
-type txHandler interface {
-	sendTransactionReturningHash(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error)
-	close() error
-}
-
 // client represents the Elrond Client implementation
 type client struct {
-	txHandler
-	*dataGetter
+	*elrondClientDataGetter
+	txHandler                 txHandler
 	tokensMapper              TokensMapper
 	relayerPublicKey          crypto.PublicKey
 	relayerAddress            core.AddressHandler
@@ -106,6 +101,9 @@ func NewClient(args ClientArgs) (*client, error) {
 	}
 
 	addressPubKeyConverter, err := pubkeyConverter.NewBech32PubkeyConverter(core.AddressBytesLen, args.Log)
+	if err != nil {
+		return nil, err
+	}
 
 	c := &client{
 		txHandler: &transactionHandler{
@@ -116,7 +114,7 @@ func NewClient(args ClientArgs) (*client, error) {
 			relayerPrivateKey:       args.RelayerPrivateKey,
 			singleSigner:            &singlesig.Ed25519Signer{},
 		},
-		dataGetter:                getter,
+		elrondClientDataGetter:    getter,
 		relayerPublicKey:          publicKey,
 		relayerAddress:            relayerAddress,
 		multisigContractAddress:   args.MultisigContractAddress,
@@ -220,16 +218,20 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 	return batch, nil
 }
 
+func (c *client) createCommonTxDataBuilder(funcName string, id int64) builders.TxDataBuilder {
+	return builders.NewTxDataBuilder().Function(funcName).ArgInt64(id)
+}
+
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
 func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", errNilBatch
 	}
 
-	txBuilder := builders.NewTxDataBuilder().Function(proposeSetStatusFuncName).ArgInt64(int64(batch.ID))
+	txBuilder := c.createCommonTxDataBuilder(proposeSetStatusFuncName, int64(batch.ID))
 	txBuilder.ArgBytes(batch.Statuses)
 
-	hash, err := c.sendTransactionReturningHash(ctx, txBuilder, c.gasMapConfig.ProposeStatus)
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.ProposeStatus)
 	if err == nil {
 		c.log.Info("proposed set statuses"+batch.String(), "transaction hash", hash)
 	}
@@ -259,7 +261,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 		return "", errNilBatch
 	}
 
-	txBuilder := builders.NewTxDataBuilder().Function(proposeTransferFuncName).ArgInt64(int64(batch.ID))
+	txBuilder := c.createCommonTxDataBuilder(proposeTransferFuncName, int64(batch.ID))
 
 	for _, dt := range batch.Deposits {
 		txBuilder.ArgBytes(dt.FromBytes).
@@ -270,7 +272,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 	}
 
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
-	hash, err := c.sendTransactionReturningHash(ctx, txBuilder, gasLimit)
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
 		c.log.Info("proposed transfer"+batch.String(), "transaction hash", hash)
 	}
@@ -280,9 +282,9 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 
 // Sign will trigger the execution of a sign operation
 func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
-	txBuilder := builders.NewTxDataBuilder().Function(signFuncName).ArgInt64(int64(actionID))
+	txBuilder := c.createCommonTxDataBuilder(signFuncName, int64(actionID))
 
-	hash, err := c.sendTransactionReturningHash(ctx, txBuilder, c.gasMapConfig.Sign)
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.Sign)
 	if err == nil {
 		c.log.Info("signed", "action ID", actionID, "transaction hash", hash)
 	}
@@ -296,10 +298,10 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 		return "", errNilBatch
 	}
 
-	txBuilder := builders.NewTxDataBuilder().Function(performActionFuncName).ArgInt64(int64(actionID))
+	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))
 
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
-	hash, err := c.sendTransactionReturningHash(ctx, txBuilder, gasLimit)
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 
 	if err == nil {
 		c.log.Info("performed action", "actionID", actionID, "transaction hash", hash)
@@ -310,7 +312,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 
 // Close will close any started go routines. It returns nil.
 func (c *client) Close() error {
-	return c.txHandler.close()
+	return c.txHandler.Close()
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

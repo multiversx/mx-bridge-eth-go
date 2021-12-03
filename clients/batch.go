@@ -22,14 +22,13 @@ func (tb *TransferBatch) Clone() *TransferBatch {
 	cloned := &TransferBatch{
 		ID:       tb.ID,
 		Deposits: make([]*DepositTransfer, 0, len(tb.Deposits)),
+		Statuses: make([]byte, len(tb.Statuses)),
 	}
 
 	for _, dt := range tb.Deposits {
 		cloned.Deposits = append(cloned.Deposits, dt.Clone())
 	}
-	for _, stat := range tb.Statuses {
-		cloned.Statuses = append(cloned.Statuses, stat)
-	}
+	copy(cloned.Statuses, tb.Statuses)
 
 	return cloned
 }

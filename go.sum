@@ -67,8 +67,6 @@ github.com/ElrondNetwork/elrond-go-crypto v1.0.1/go.mod h1:uunsvweBrrhVojL8uiQSa
 github.com/ElrondNetwork/elrond-go-logger v1.0.4/go.mod h1:e5D+c97lKUfFdAzFX7rrI2Igl/z4Y0RkKYKWyzprTGk=
 github.com/ElrondNetwork/elrond-go-logger v1.0.5 h1:tB/HBvV9IVeCaSrGakX+GLGu7K5UPLv8gA0TNKPOTOU=
 github.com/ElrondNetwork/elrond-go-logger v1.0.5/go.mod h1:cBfgx0ST/CJx8jrxJSC5aiSrvkGzcnF7sK06RD8mFxQ=
-github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.6 h1:gwTGMUG/+8Tz9z2b8yNMe6doTrRceuUlcxdsLSkHlqk=
-github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.6/go.mod h1:JrMdurPigkj7yZtbnLsgAxxPesjFhYtQki2TuofUkr4=
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.8 h1:rJX0K8xh/R42GgePEnEPHkBX5r0FX5AwT8UtT2XsxXo=
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.8/go.mod h1:JrMdurPigkj7yZtbnLsgAxxPesjFhYtQki2TuofUkr4=
 github.com/ElrondNetwork/elrond-vm-common v1.1.0/go.mod h1:w3i6f8uiuRkE68Ie/gebRcLgTuHqvruJSYrFyZWuLrE=
