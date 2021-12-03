@@ -218,13 +218,17 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 	return batch, nil
 }
 
+func (c *client) createCommonTxDataBuilder(funcName string, id int64) builders.TxDataBuilder {
+	return builders.NewTxDataBuilder().Function(funcName).ArgInt64(id)
+}
+
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
 func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", errNilBatch
 	}
 
-	txBuilder := builders.NewTxDataBuilder().Function(proposeSetStatusFuncName).ArgInt64(int64(batch.ID))
+	txBuilder := c.createCommonTxDataBuilder(proposeSetStatusFuncName, int64(batch.ID))
 	txBuilder.ArgBytes(batch.Statuses)
 
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.ProposeStatus)
@@ -257,7 +261,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 		return "", errNilBatch
 	}
 
-	txBuilder := builders.NewTxDataBuilder().Function(proposeTransferFuncName).ArgInt64(int64(batch.ID))
+	txBuilder := c.createCommonTxDataBuilder(proposeTransferFuncName, int64(batch.ID))
 
 	for _, dt := range batch.Deposits {
 		txBuilder.ArgBytes(dt.FromBytes).
@@ -278,7 +282,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 
 // Sign will trigger the execution of a sign operation
 func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
-	txBuilder := builders.NewTxDataBuilder().Function(signFuncName).ArgInt64(int64(actionID))
+	txBuilder := c.createCommonTxDataBuilder(signFuncName, int64(actionID))
 
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.Sign)
 	if err == nil {
@@ -294,7 +298,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 		return "", errNilBatch
 	}
 
-	txBuilder := builders.NewTxDataBuilder().Function(performActionFuncName).ArgInt64(int64(actionID))
+	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))
 
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
