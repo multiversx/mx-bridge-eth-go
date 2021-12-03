@@ -14,14 +14,20 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
+	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 )
 
 const (
-	hexPrefix = "0x"
+	hexPrefix                = "0x"
+	proposeTransferFuncName  = "proposeMultiTransferEsdtBatch"
+	proposeSetStatusFuncName = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
+	signFuncName             = "sign"
+	performActionFuncName    = "performAction"
 )
 
 // ClientArgs represents the argument for the NewClient constructor function
@@ -32,17 +38,17 @@ type ClientArgs struct {
 	RelayerPrivateKey            crypto.PrivateKey
 	MultisigContractAddress      core.AddressHandler
 	IntervalToResendTxsInSeconds uint64
+	TokensMapper                 TokensMapper
 }
 
 // client represents the Elrond Client implementation
 type client struct {
-	dataGetter                *elrondClientDataGetter
-	proxy                     ElrondProxy
-	relayerPrivateKey         crypto.PrivateKey
+	*elrondClientDataGetter
+	txHandler                 txHandler
+	tokensMapper              TokensMapper
 	relayerPublicKey          crypto.PublicKey
 	relayerAddress            core.AddressHandler
 	multisigContractAddress   core.AddressHandler
-	nonceTxHandler            NonceTransactionsHandler
 	log                       logger.Logger
 	gasMapConfig              config.ElrondGasMapConfig
 	addressPublicKeyConverter elrondCore.PubkeyConverter
@@ -61,6 +67,9 @@ func NewClient(args ClientArgs) (*client, error) {
 	}
 	if check.IfNil(args.Log) {
 		return nil, errNilLogger
+	}
+	if check.IfNil(args.TokensMapper) {
+		return nil, errNilTokensMapper
 	}
 
 	err := checkGasMapValues(args.GasMapConfig)
@@ -97,16 +106,22 @@ func NewClient(args ClientArgs) (*client, error) {
 	}
 
 	c := &client{
-		dataGetter:                getter,
-		relayerPrivateKey:         args.RelayerPrivateKey,
+		txHandler: &transactionHandler{
+			proxy:                   args.Proxy,
+			relayerAddress:          relayerAddress,
+			multisigAddressAsBech32: args.MultisigContractAddress.AddressAsBech32String(),
+			nonceTxHandler:          nonceTxsHandler,
+			relayerPrivateKey:       args.RelayerPrivateKey,
+			singleSigner:            &singlesig.Ed25519Signer{},
+		},
+		elrondClientDataGetter:    getter,
 		relayerPublicKey:          publicKey,
 		relayerAddress:            relayerAddress,
-		proxy:                     args.Proxy,
 		multisigContractAddress:   args.MultisigContractAddress,
 		log:                       args.Log,
-		nonceTxHandler:            nonceTxsHandler,
 		gasMapConfig:              args.GasMapConfig,
 		addressPublicKeyConverter: addressPubKeyConverter,
+		tokensMapper:              args.TokensMapper,
 	}
 
 	c.log.Info("NewElrondClient",
@@ -133,7 +148,7 @@ func checkGasMapValues(gasMap config.ElrondGasMapConfig) error {
 // GetPending returns the pending batch
 func (c *client) GetPending(ctx context.Context) (*clients.TransferBatch, error) {
 	c.log.Info("getting pending batch...")
-	responseData, err := c.dataGetter.GetCurrentBatchAsDataBytes(ctx)
+	responseData, err := c.GetCurrentBatchAsDataBytes(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -142,14 +157,14 @@ func (c *client) GetPending(ctx context.Context) (*clients.TransferBatch, error)
 		return nil, ErrNoPendingBatchAvailable
 	}
 
-	return c.createPendingBatchFromResponse(responseData)
+	return c.createPendingBatchFromResponse(ctx, responseData)
 }
 
 func emptyResponse(response [][]byte) bool {
 	return len(response) == 0 || (len(response) == 1 && len(response[0]) == 0)
 }
 
-func (c *client) createPendingBatchFromResponse(responseData [][]byte) (*clients.TransferBatch, error) {
+func (c *client) createPendingBatchFromResponse(ctx context.Context, responseData [][]byte) (*clients.TransferBatch, error) {
 	numFieldsForTransaction := 6
 	dataLen := len(responseData)
 	haveCorrectNumberOfArgs := (dataLen-1)%numFieldsForTransaction == 0 && dataLen > 1
@@ -176,332 +191,128 @@ func (c *client) createPendingBatchFromResponse(responseData [][]byte) (*clients
 
 		amount := big.NewInt(0).SetBytes(responseData[i+5])
 		deposit := &clients.DepositTransfer{
-			Nonce:            depositNonce,
-			FromBytes:        responseData[i+2],
-			DisplayableFrom:  c.addressPublicKeyConverter.Encode(responseData[i+2]),
-			ToBytes:          responseData[i+3],
+			Nonce:           depositNonce,
+			FromBytes:       responseData[i+2],
+			DisplayableFrom: c.addressPublicKeyConverter.Encode(responseData[i+2]),
+			ToBytes:         responseData[i+3],
+			//TODO: inject a pub key converter for the DisplayableTo conversion to allow better component re-usability
 			DisplayableTo:    fmt.Sprintf("%s%s", hexPrefix, hex.EncodeToString(responseData[i+3])),
 			TokenBytes:       responseData[i+4],
 			DisplayableToken: c.addressPublicKeyConverter.Encode(responseData[i+4]),
 			Amount:           amount,
 		}
 
+		deposit.ConvertedTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.TokenBytes)
+		if err != nil {
+			return nil, fmt.Errorf("%w while converting token bytes, transfer index %d", err, transferIndex)
+		}
+
 		batch.Deposits = append(batch.Deposits, deposit)
 		transferIndex++
 	}
+
+	batch.Statuses = make([]byte, len(batch.Deposits))
 
 	c.log.Debug("created batch " + batch.String())
 
 	return batch, nil
 }
 
-// TODO(next PR): remove comment and implement the rest of the needed functionality
-//// ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
-//func (c *client) ProposeSetStatus(ctx context.Context, batch *bridge.Batch) {
-//	builder := newBuilder(c.log).
-//		Func("proposeEsdtSafeSetCurrentTransactionBatchStatus").
-//		BatchId(batch.Id)
-//
-//	newBatch, err := c.GetPending(ctx)
-//	if err != nil {
-//		c.log.Error("Elrond: get pending batch failed in ProposeSetStatus", "error", err)
-//		return
-//	}
-//
-//	batch.ResolveNewDeposits(len(newBatch.Statuses))
-//
-//	for _, stat := range batch.Statuses {
-//		builder = builder.Int(big.NewInt(int64(stat)))
-//	}
-//
-//	hash, err := c.sendTransaction(builder, c.gasMapConfig.ProposeStatus)
-//	if err != nil {
-//		c.log.Error("Elrond: send transaction failed", "error", err)
-//		return
-//	}
-//
-//	c.log.Info("Elrond: Proposed status update", "hash", hash)
-//}
-//
-//// ProposeTransfer will trigger the propose transfer operation
-//func (c *client) ProposeTransfer(_ context.Context, batch *bridge.Batch) (string, error) {
-//	builder := newBuilder(c.log).
-//		Func("proposeMultiTransferEsdtBatch").
-//		BatchId(batch.Id)
-//
-//	for _, tx := range batch.Transactions {
-//		builder = builder.
-//			Address([]byte(tx.To)).
-//			HexString(c.GetTokenId(tx.TokenAddress)).
-//			BigInt(tx.Amount)
-//	}
-//
-//	batchData, errMarshal := json.Marshal(batch)
-//	if errMarshal != nil {
-//		c.log.Warn("Elrond: error not critical while serializing transaction", "error", errMarshal)
-//	}
-//
-//	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Transactions))*c.gasMapConfig.ProposeTransferForEach
-//	hash, err := c.sendTransaction(builder, gasLimit)
-//	if err == nil {
-//		c.log.Info("Elrond: Proposed transfer for batch ", batch.Id, "with hash", hash, "batch data", string(batchData))
-//	} else {
-//		c.log.Error("Elrond: Propose transfer errored", "batch data", string(batchData), "error", err)
-//	}
-//
-//	return hash, err
-//}
-//
-//// WasProposedTransfer returns true if the transfer action proposed was triggered
-//func (c *client) WasProposedTransfer(_ context.Context, batch *bridge.Batch) bool {
-//	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-//		Func("wasTransferActionProposed").
-//		BatchId(batch.Id).
-//		WithTx(batch, c.GetTokenId).
-//		Build()
-//
-//	return c.executeBoolQuery(valueRequest)
-//}
-//
-//// GetActionIdForProposeTransfer returns the action ID for the propose transfer operation
-//func (c *client) GetActionIdForProposeTransfer(_ context.Context, batch *bridge.Batch) bridge.ActionId {
-//	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-//		Func("getActionIdForTransferBatch").
-//		BatchId(batch.Id).
-//		WithTx(batch, c.GetTokenId).
-//		Build()
-//
-//	response, err := c.executeUintQuery(valueRequest)
-//	if err != nil {
-//		c.log.Error(err.Error())
-//		return bridge.NewActionId(0)
-//	}
-//
-//	actionId := bridge.NewActionId(int64(response))
-//
-//	c.log.Info("Elrond: fetched actionId for transfer batch", "actionId", actionId, "batch", batch.Id)
-//
-//	return actionId
-//}
-//
-//// WasProposedSetStatus returns true if the proposed set status was triggered
-//func (c *client) WasProposedSetStatus(ctx context.Context, batch *bridge.Batch) bool {
-//	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-//		Func("wasSetCurrentTransactionBatchStatusActionProposed").
-//		BatchId(batch.Id)
-//
-//	newBatch, err := c.GetPending(ctx)
-//	if err != nil {
-//		c.log.Error("Elrond: get pending batch failed in WasProposedSetStatus", "error", err)
-//		return false
-//	}
-//	batch.ResolveNewDeposits(len(newBatch.Statuses))
-//
-//	for _, stat := range batch.Statuses {
-//		valueRequest = valueRequest.BigInt(big.NewInt(int64(stat)))
-//	}
-//
-//	return c.executeBoolQuery(valueRequest.Build())
-//}
-//
-//// GetTransactionsStatuses will return the transactions statuses from the batch ID
-//func (c *client) GetTransactionsStatuses(_ context.Context, batchId bridge.BatchId) ([]uint8, error) {
-//	if batchId == nil {
-//		return nil, ErrNilBatchId
-//	}
-//
-//	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-//		Func("getStatusesAfterExecution").
-//		BatchId(batchId)
-//
-//	values, err := c.executeQuery(valueRequest.Build())
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if len(values) == 0 {
-//		return nil, fmt.Errorf("%w for batch ID %v", ErrNoStatusForBatchID, batchId)
-//	}
-//	isFinished := c.convertToBool(values[0])
-//	if !isFinished {
-//		return nil, fmt.Errorf("%w for batch ID %v", ErrBatchNotFinished, batchId)
-//	}
-//
-//	results := make([]byte, len(values)-1)
-//	for i := 1; i < len(values); i++ {
-//		results[i-1], err = getStatusFromBuff(values[i])
-//		if err != nil {
-//			return nil, fmt.Errorf("%w for result index %d", err, i)
-//		}
-//	}
-//
-//	if len(results) == 0 {
-//		return nil, fmt.Errorf("%w status is finished, no results are given", ErrMalformedBatchResponse)
-//	}
-//
-//	c.log.Debug("Elrond: got transaction status", "batchID", batchId, "status", results)
-//
-//	return results, nil
-//}
-//
-//func getStatusFromBuff(buff []byte) (byte, error) {
-//	if len(buff) == 0 {
-//		return 0, ErrMalformedBatchResponse
-//	}
-//
-//	return buff[len(buff)-1], nil
-//}
-//
-//// GetActionIdForSetStatusOnPendingTransfer returns the action ID for setting the status on the pending transfer batch
-//func (c *client) GetActionIdForSetStatusOnPendingTransfer(ctx context.Context, batch *bridge.Batch) bridge.ActionId {
-//	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-//		Func("getActionIdForSetCurrentTransactionBatchStatus").
-//		BatchId(batch.Id)
-//
-//	newBatch, err := c.GetPending(ctx)
-//	if err != nil {
-//		c.log.Error("Elrond: get pending batch failed in WasProposedSetStatus", "error", err)
-//		return bridge.NewActionId(0)
-//	}
-//	batch.ResolveNewDeposits(len(newBatch.Statuses))
-//
-//	for _, stat := range batch.Statuses {
-//		valueRequest = valueRequest.BigInt(big.NewInt(int64(stat)))
-//	}
-//
-//	response, err := c.executeUintQuery(valueRequest.Build())
-//	if err != nil {
-//		c.log.Error(err.Error())
-//		return bridge.NewActionId(0)
-//	}
-//
-//	c.log.Debug("Elrond: got actionID", "actionID", response)
-//
-//	return bridge.NewActionId(int64(response))
-//}
-//
-//// WasExecuted returns true if the provided actionId was executed or not
-//func (c *client) WasExecuted(_ context.Context, actionId bridge.ActionId, _ bridge.BatchId) bool {
-//	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-//		Func("wasActionExecuted").
-//		ActionId(actionId).
-//		Build()
-//
-//	result := c.executeBoolQuery(valueRequest)
-//
-//	if result {
-//		c.log.Info(fmt.Sprintf("Elrond: ActionId %v was executed", actionId))
-//	}
-//
-//	return result
-//}
-//
-//// Sign will trigger the execution of a sign operation
-//func (c *client) Sign(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch) (string, error) {
-//	builder := newBuilder(c.log).
-//		Func("sign").
-//		ActionId(actionId)
-//
-//	hash, err := c.sendTransaction(builder, c.gasMapConfig.Sign)
-//
-//	batchData, err := json.Marshal(batch)
-//	if err != nil {
-//		c.log.Warn("Elrond: error not critical while serializing transaction", "error", err)
-//	}
-//
-//	if err == nil {
-//		c.log.Info("Elrond: Signed", "hash", hash, "batch data", string(batchData))
-//	} else {
-//		c.log.Error("Elrond: Sign failed", "batch data", string(batchData), "error", err)
-//	}
-//
-//	return hash, err
-//}
-//
-//// Execute will trigger the execution of the provided action ID
-//func (c *client) Execute(_ context.Context, actionId bridge.ActionId, batch *bridge.Batch, _ bridge.SignaturesHolder) (string, error) {
-//	builder := newBuilder(c.log).
-//		Func("performAction").
-//		ActionId(actionId)
-//
-//	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Transactions))*c.gasMapConfig.PerformActionForEach
-//	hash, err := c.sendTransaction(builder, gasLimit)
-//
-//	batchData, err := json.Marshal(batch)
-//	if err != nil {
-//		c.log.Warn("Elrond: error not critical while serializing transaction", "error", err)
-//	}
-//
-//	if err == nil {
-//		c.log.Info("Elrond: Executed action", "actionID", actionId, "batch data", string(batchData), "hash", hash)
-//	} else {
-//		c.log.Info("Elrond: Execution failed for action",
-//			"actionID", actionId,
-//			"batch data", string(batchData),
-//			"hash", hash,
-//			"error", err)
-//	}
-//
-//	return hash, err
-//}
-//
-//// SignersCount returns the signers count
-//func (c *client) SignersCount(_ context.Context, _ *bridge.Batch, actionId bridge.ActionId, _ bridge.SignaturesHolder) uint {
-//	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-//		Func("getActionSignerCount").
-//		ActionId(actionId).
-//		Build()
-//
-//	count, _ := c.executeUintQuery(valueRequest)
-//	return uint(count)
-//}
-//
-//// GetTokenId returns the token ID for the erc 20 address
-//func (c *client) GetTokenId(address string) string {
-//	if strings.Index(address, hexPrefix) == 0 {
-//		address = address[len(hexPrefix):]
-//	}
-//
-//	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-//		Func("getTokenIdForErc20Address").
-//		HexString(address).
-//		Build()
-//
-//	tokenId, err := c.executeStringQuery(valueRequest)
-//	if err != nil {
-//		c.log.Error(err.Error())
-//	}
-//
-//	c.log.Debug("Elrond: get token ID", "address", address, "tokenID", tokenId)
-//
-//	return tokenId
-//}
-//
-//// GetErc20Address returns the corresponding ERC20 address
-//func (c *client) GetErc20Address(tokenId string) string {
-//	valueRequest := newValueBuilder(c.bridgeAddress, c.address.AddressAsBech32String(), c.log).
-//		Func("getErc20AddressForTokenId").
-//		HexString(tokenId).
-//		Build()
-//
-//	address, err := c.executeStringQuery(valueRequest)
-//	if err != nil {
-//		c.log.Error(err.Error())
-//	}
-//
-//	c.log.Debug("Elrond: get erc20 address", "tokenID", tokenId, "address", address)
-//
-//	return address
-//}
-//
-//// GetHexWalletAddress returns the wallet address as a hex string
-//func (c *client) GetHexWalletAddress() string {
-//	return hex.EncodeToString(c.address.AddressBytes())
-//}
+func (c *client) createCommonTxDataBuilder(funcName string, id int64) builders.TxDataBuilder {
+	return builders.NewTxDataBuilder().Function(funcName).ArgInt64(id)
+}
+
+// ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
+func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error) {
+	if batch == nil {
+		return "", errNilBatch
+	}
+
+	txBuilder := c.createCommonTxDataBuilder(proposeSetStatusFuncName, int64(batch.ID))
+	txBuilder.ArgBytes(batch.Statuses)
+
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.ProposeStatus)
+	if err == nil {
+		c.log.Info("proposed set statuses"+batch.String(), "transaction hash", hash)
+	}
+
+	return hash, err
+}
+
+// ResolveNewDeposits will try to add new statuses if the pending batch gets modified
+func (c *client) ResolveNewDeposits(ctx context.Context, batch *clients.TransferBatch) error {
+	if batch == nil {
+		return errNilBatch
+	}
+
+	newBatch, err := c.GetPending(ctx)
+	if err != nil {
+		return fmt.Errorf("%w while getting new batch in ResolveNewDeposits method", err)
+	}
+
+	batch.ResolveNewDeposits(len(newBatch.Statuses))
+
+	return nil
+}
+
+// ProposeTransfer will trigger the propose transfer operation
+func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error) {
+	if batch == nil {
+		return "", errNilBatch
+	}
+
+	txBuilder := c.createCommonTxDataBuilder(proposeTransferFuncName, int64(batch.ID))
+
+	for _, dt := range batch.Deposits {
+		txBuilder.ArgBytes(dt.FromBytes).
+			ArgBytes(dt.ToBytes).
+			ArgBytes(dt.ConvertedTokenBytes).
+			ArgBigInt(dt.Amount).
+			ArgInt64(int64(dt.Nonce))
+	}
+
+	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
+	if err == nil {
+		c.log.Info("proposed transfer"+batch.String(), "transaction hash", hash)
+	}
+
+	return hash, err
+}
+
+// Sign will trigger the execution of a sign operation
+func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
+	txBuilder := c.createCommonTxDataBuilder(signFuncName, int64(actionID))
+
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.Sign)
+	if err == nil {
+		c.log.Info("signed", "action ID", actionID, "transaction hash", hash)
+	}
+
+	return hash, err
+}
+
+// PerformAction will trigger the execution of the provided action ID
+func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error) {
+	if batch == nil {
+		return "", errNilBatch
+	}
+
+	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))
+
+	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
+
+	if err == nil {
+		c.log.Info("performed action", "actionID", actionID, "transaction hash", hash)
+	}
+
+	return hash, err
+}
 
 // Close will close any started go routines. It returns nil.
 func (c *client) Close() error {
-	return c.nonceTxHandler.Close()
+	return c.txHandler.Close()
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

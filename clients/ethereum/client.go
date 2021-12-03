@@ -157,6 +157,8 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) *clients.TransferBa
 			Amount:           big.NewInt(0).Set(deposit.Amount),
 		}
 
+		//TODO converted token & statuses
+
 		transferBatch.Deposits = append(transferBatch.Deposits, depositTransfer)
 	}
 

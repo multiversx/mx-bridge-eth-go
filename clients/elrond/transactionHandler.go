@@ -20,8 +20,8 @@ type transactionHandler struct {
 	singleSigner            crypto.SingleSigner
 }
 
-// sendTransactionReturnHash will try to assemble a transaction, sign it, send it and, if everything is OK, returns the transaction's hash
-func (txHandler *transactionHandler) sendTransactionReturnHash(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+// SendTransactionReturnHash will try to assemble a transaction, sign it, send it and, if everything is OK, returns the transaction's hash
+func (txHandler *transactionHandler) SendTransactionReturnHash(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 	tx, err := txHandler.signTransaction(ctx, builder, gasLimit)
 	if err != nil {
 		return "", err
@@ -83,4 +83,9 @@ func (txHandler *transactionHandler) signTransactionWithPrivateKey(tx *data.Tran
 	tx.Signature = hex.EncodeToString(signature)
 
 	return nil
+}
+
+// Close will close any sub-components it uses
+func (txHandler *transactionHandler) Close() error {
+	return txHandler.nonceTxHandler.Close()
 }

@@ -11,6 +11,11 @@ var (
 	errInvalidGasValue          = errors.New("invalid gas value")
 	errNilLogger                = errors.New("nil logger")
 	errNilPrivateKey            = errors.New("nil private key")
+	errNilBatch                 = errors.New("nil batch")
+	errNilTokensMapper          = errors.New("nil tokens mapper")
+	errNoStatusForBatchID       = errors.New("no status for batch ID")
+	errBatchNotFinished         = errors.New("batch not finished")
+	errMalformedBatchResponse   = errors.New("malformed batch response")
 	// ErrNoPendingBatchAvailable signals that no pending batch is available
 	ErrNoPendingBatchAvailable = errors.New("no pending batch available")
 )

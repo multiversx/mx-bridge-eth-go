@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"math/big"
 	"strings"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/data/vm"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -43,6 +47,37 @@ func createMockProxy(returningBytes [][]byte) *interactors.ElrondProxyStub {
 				},
 			}, nil
 		},
+	}
+}
+
+func createMockBatch() *clients.TransferBatch {
+	return &clients.TransferBatch{
+		ID: 112233,
+		Deposits: []*clients.DepositTransfer{
+			{
+				Nonce:               1,
+				ToBytes:             []byte("to1"),
+				DisplayableTo:       "to1",
+				FromBytes:           []byte("from1"),
+				DisplayableFrom:     "from1",
+				TokenBytes:          []byte("token1"),
+				ConvertedTokenBytes: []byte("converted_token1"),
+				DisplayableToken:    "token1",
+				Amount:              big.NewInt(2),
+			},
+			{
+				Nonce:               3,
+				ToBytes:             []byte("to2"),
+				DisplayableTo:       "to2",
+				FromBytes:           []byte("from2"),
+				DisplayableFrom:     "from2",
+				TokenBytes:          []byte("token2"),
+				ConvertedTokenBytes: []byte("converted_token2"),
+				DisplayableToken:    "token2",
+				Amount:              big.NewInt(4),
+			},
+		},
+		Statuses: []byte{clients.Rejected, clients.Executed},
 	}
 }
 
@@ -404,4 +439,420 @@ func TestDataGetter_GetERC20AddressForTokenId(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, returningBytes, result)
+}
+
+func TestDataGetter_WasProposedTransfer(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil batch", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.WasProposedTransfer(context.Background(), nil)
+		assert.False(t, result)
+		assert.Equal(t, errNilBatch, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		proxyCalled := false
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				proxyCalled = true
+				assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+				assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+				assert.Equal(t, "", vmRequest.CallValue)
+				assert.Equal(t, wasTransferActionProposedFuncName, vmRequest.FuncName)
+
+				expectedArgs := []string{
+					hex.EncodeToString(big.NewInt(112233).Bytes()),
+
+					hex.EncodeToString([]byte("from1")),
+					hex.EncodeToString([]byte("to1")),
+					hex.EncodeToString([]byte("converted_token1")),
+					hex.EncodeToString(big.NewInt(2).Bytes()),
+					hex.EncodeToString(big.NewInt(1).Bytes()),
+
+					hex.EncodeToString([]byte("from2")),
+					hex.EncodeToString([]byte("to2")),
+					hex.EncodeToString([]byte("converted_token2")),
+					hex.EncodeToString(big.NewInt(4).Bytes()),
+					hex.EncodeToString(big.NewInt(3).Bytes()),
+				}
+
+				assert.Equal(t, expectedArgs, vmRequest.Args)
+
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{{1}},
+					},
+				}, nil
+			},
+		}
+
+		dg, _ := NewDataGetter(args)
+
+		batch := createMockBatch()
+
+		result, err := dg.WasProposedTransfer(context.Background(), batch)
+		assert.True(t, result)
+		assert.Nil(t, err)
+		assert.True(t, proxyCalled)
+	})
+}
+
+func TestDataGetter_SignersCount(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsDataGetter()
+	proxyCalled := false
+	args.Proxy = &interactors.ElrondProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			proxyCalled = true
+			assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+			assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+			assert.Equal(t, "", vmRequest.CallValue)
+			assert.Equal(t, getActionSignerCountFuncName, vmRequest.FuncName)
+
+			expectedArgs := []string{hex.EncodeToString(big.NewInt(112233).Bytes())}
+			assert.Equal(t, expectedArgs, vmRequest.Args)
+
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: okCodeAfterExecution,
+					ReturnData: [][]byte{big.NewInt(1234).Bytes()},
+				},
+			}, nil
+		},
+	}
+
+	dg, _ := NewDataGetter(args)
+
+	result, err := dg.SignersCount(context.Background(), 112233)
+	assert.Nil(t, err)
+	assert.True(t, proxyCalled)
+	assert.Equal(t, uint64(1234), result)
+}
+
+func TestDataGetter_WasExecuted(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsDataGetter()
+	proxyCalled := false
+	args.Proxy = &interactors.ElrondProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			proxyCalled = true
+			assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+			assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+			assert.Equal(t, "", vmRequest.CallValue)
+			assert.Equal(t, wasActionExecutedFuncName, vmRequest.FuncName)
+
+			expectedArgs := []string{hex.EncodeToString(big.NewInt(112233).Bytes())}
+			assert.Equal(t, expectedArgs, vmRequest.Args)
+
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: okCodeAfterExecution,
+					ReturnData: [][]byte{{1}},
+				},
+			}, nil
+		},
+	}
+
+	dg, _ := NewDataGetter(args)
+
+	result, err := dg.WasExecuted(context.Background(), 112233)
+	assert.Nil(t, err)
+	assert.True(t, proxyCalled)
+	assert.True(t, result)
+}
+
+func TestDataGetter_executeQueryWithErroredBuilder(t *testing.T) {
+	t.Parallel()
+
+	builder := builders.NewVMQueryBuilder().ArgBytes(nil)
+
+	args := createMockArgsDataGetter()
+	dg, _ := NewDataGetter(args)
+
+	resultBytes, err := dg.executeQueryFromBuilder(context.Background(), builder)
+	assert.Nil(t, resultBytes)
+	assert.True(t, errors.Is(err, builders.ErrInvalidValue))
+	assert.True(t, strings.Contains(err.Error(), "builder.ArgBytes"))
+
+	resultUint64, err := dg.executeQueryUint64FromBuilder(context.Background(), builder)
+	assert.Zero(t, resultUint64)
+	assert.True(t, errors.Is(err, builders.ErrInvalidValue))
+	assert.True(t, strings.Contains(err.Error(), "builder.ArgBytes"))
+
+	resultBool, err := dg.executeQueryBoolFromBuilder(context.Background(), builder)
+	assert.False(t, resultBool)
+	assert.True(t, errors.Is(err, builders.ErrInvalidValue))
+	assert.True(t, strings.Contains(err.Error(), "builder.ArgBytes"))
+}
+
+func TestDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil batch", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.GetActionIDForProposeTransfer(context.Background(), nil)
+		assert.Zero(t, result)
+		assert.Equal(t, errNilBatch, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		proxyCalled := false
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				proxyCalled = true
+				assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+				assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+				assert.Equal(t, "", vmRequest.CallValue)
+				assert.Equal(t, getActionIdForTransferBatchFuncName, vmRequest.FuncName)
+
+				expectedArgs := []string{
+					hex.EncodeToString(big.NewInt(112233).Bytes()),
+
+					hex.EncodeToString([]byte("from1")),
+					hex.EncodeToString([]byte("to1")),
+					hex.EncodeToString([]byte("converted_token1")),
+					hex.EncodeToString(big.NewInt(2).Bytes()),
+					hex.EncodeToString(big.NewInt(1).Bytes()),
+
+					hex.EncodeToString([]byte("from2")),
+					hex.EncodeToString([]byte("to2")),
+					hex.EncodeToString([]byte("converted_token2")),
+					hex.EncodeToString(big.NewInt(4).Bytes()),
+					hex.EncodeToString(big.NewInt(3).Bytes()),
+				}
+
+				assert.Equal(t, expectedArgs, vmRequest.Args)
+
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{big.NewInt(1234).Bytes()},
+					},
+				}, nil
+			},
+		}
+
+		dg, _ := NewDataGetter(args)
+
+		batch := createMockBatch()
+
+		result, err := dg.GetActionIDForProposeTransfer(context.Background(), batch)
+		assert.Equal(t, uint64(1234), result)
+		assert.Nil(t, err)
+		assert.True(t, proxyCalled)
+	})
+}
+
+func TestDataGetter_WasProposedSetStatus(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil batch", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.WasProposedSetStatus(context.Background(), nil)
+		assert.False(t, result)
+		assert.Equal(t, errNilBatch, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		proxyCalled := false
+		batch := createMockBatch()
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				proxyCalled = true
+				assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+				assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+				assert.Equal(t, "", vmRequest.CallValue)
+				assert.Equal(t, wasSetCurrentTransactionBatchStatusActionProposedFuncName, vmRequest.FuncName)
+
+				expectedArgs := []string{
+					hex.EncodeToString(big.NewInt(112233).Bytes()),
+					hex.EncodeToString(batch.Statuses),
+				}
+
+				assert.Equal(t, expectedArgs, vmRequest.Args)
+
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{{1}},
+					},
+				}, nil
+			},
+		}
+
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.WasProposedSetStatus(context.Background(), batch)
+		assert.True(t, result)
+		assert.Nil(t, err)
+		assert.True(t, proxyCalled)
+	})
+}
+
+func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
+	t.Parallel()
+
+	batchID := uint64(112233)
+	t.Run("proxy errors", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		expectedErr := errors.New("expected error")
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return nil, expectedErr
+			},
+		}
+
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
+		assert.Nil(t, result)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("empty response", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
+		assert.Nil(t, result)
+		assert.True(t, errors.Is(err, errNoStatusForBatchID))
+		assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("for batch ID %d", batchID)))
+	})
+	t.Run("malformed batch finished status", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		args.Proxy = createMockProxy([][]byte{{56}})
+
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
+		assert.Nil(t, result)
+		expectedErr := NewQueryResponseError(internalError, `error converting the received bytes to bool, strconv.ParseBool: parsing "56": invalid syntax`,
+			"getStatusesAfterExecution", "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("batch not finished", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		args.Proxy = createMockProxy([][]byte{{0}})
+
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
+		assert.Nil(t, result)
+		assert.True(t, errors.Is(err, errBatchNotFinished))
+	})
+	t.Run("missing status", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		args.Proxy = createMockProxy([][]byte{{1}, {}})
+
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
+		assert.Nil(t, result)
+		assert.True(t, errors.Is(err, errMalformedBatchResponse))
+		assert.True(t, strings.Contains(err.Error(), "for result index 0"))
+	})
+	t.Run("batch finished without response", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		args.Proxy = createMockProxy([][]byte{{1}})
+
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
+		assert.Nil(t, result)
+		assert.True(t, errors.Is(err, errMalformedBatchResponse))
+		assert.True(t, strings.Contains(err.Error(), "status is finished, no results are given"))
+	})
+	t.Run("should work", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		proxyCalled := false
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				proxyCalled = true
+				assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+				assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+				assert.Equal(t, "", vmRequest.CallValue)
+				assert.Equal(t, getStatusesAfterExecutionFuncName, vmRequest.FuncName)
+
+				expectedArgs := []string{
+					hex.EncodeToString(big.NewInt(int64(batchID)).Bytes()),
+				}
+
+				assert.Equal(t, expectedArgs, vmRequest.Args)
+
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{{1}, {2}, {3}, {4}},
+					},
+				}, nil
+			},
+		}
+
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
+		assert.Equal(t, []byte{2, 3, 4}, result)
+		assert.Nil(t, err)
+		assert.True(t, proxyCalled)
+	})
+
+}
+
+func TestDataGetter_GetActionIDForSetStatusOnPendingTransfer(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil batch", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.GetActionIDForSetStatusOnPendingTransfer(context.Background(), nil)
+		assert.Zero(t, result)
+		assert.Equal(t, errNilBatch, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		args := createMockArgsDataGetter()
+		proxyCalled := false
+		batch := createMockBatch()
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				proxyCalled = true
+				assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+				assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+				assert.Equal(t, "", vmRequest.CallValue)
+				assert.Equal(t, getActionIdForSetCurrentTransactionBatchStatusFuncName, vmRequest.FuncName)
+
+				expectedArgs := []string{
+					hex.EncodeToString(big.NewInt(112233).Bytes()),
+					hex.EncodeToString(batch.Statuses),
+				}
+
+				assert.Equal(t, expectedArgs, vmRequest.Args)
+
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{big.NewInt(1132).Bytes()},
+					},
+				}, nil
+			},
+		}
+
+		dg, _ := NewDataGetter(args)
+
+		result, err := dg.GetActionIDForSetStatusOnPendingTransfer(context.Background(), batch)
+		assert.Equal(t, uint64(1132), result)
+		assert.Nil(t, err)
+		assert.True(t, proxyCalled)
+	})
 }
