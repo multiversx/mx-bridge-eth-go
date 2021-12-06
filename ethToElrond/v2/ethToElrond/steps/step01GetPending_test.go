@@ -14,12 +14,12 @@ import (
 )
 
 var testLogger = logger.GetOrCreate("test")
+var expectedError = errors.New("expected error")
 
 func TestExecuteGetPending(t *testing.T) {
 	t.Parallel()
 
 	t.Run("error on GetLastExecutedEthBatchIDFromElrond", func(t *testing.T) {
-		expectedError := errors.New("error message")
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetLastExecutedEthBatchIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 1122, expectedError
@@ -36,7 +36,6 @@ func TestExecuteGetPending(t *testing.T) {
 	})
 
 	t.Run("error on GetAndStoreBatchFromEthereum", func(t *testing.T) {
-		expectedError := errors.New("error message")
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetLastExecutedEthBatchIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 1122, nil
@@ -78,7 +77,6 @@ func TestExecuteGetPending(t *testing.T) {
 	})
 
 	t.Run("error on VerifyLastDepositNonceExecutedOnEthereumBatch", func(t *testing.T) {
-		expectedError := errors.New("error message")
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetLastExecutedEthBatchIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 1122, nil

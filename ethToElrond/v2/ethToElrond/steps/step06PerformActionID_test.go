@@ -2,7 +2,6 @@ package steps
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -14,7 +13,6 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 	t.Parallel()
 
 	t.Run("error on WasActionIDPerformed", func(t *testing.T) {
-		expectedError := errors.New("error message")
 		bridgeStub := createStubExecutor()
 		bridgeStub.WasActionIDPerformedCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
@@ -66,7 +64,6 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 	})
 
 	t.Run("error on PerformActionID", func(t *testing.T) {
-		expectedError := errors.New("error message")
 		bridgeStub := createStubExecutor()
 		bridgeStub.WasActionIDPerformedCalled = func(ctx context.Context) (bool, error) {
 			return false, nil

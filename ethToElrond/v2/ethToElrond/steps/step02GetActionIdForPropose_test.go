@@ -2,7 +2,6 @@ package steps
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
@@ -15,7 +14,6 @@ func TestExecuteGetActionIdForProposeStep(t *testing.T) {
 	t.Parallel()
 
 	t.Run("error on GetAndStoreActionID", func(t *testing.T) {
-		expectedError := errors.New("error message")
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetAndStoreActionIDCalled = func(ctx context.Context) (uint64, error) {
 			return 1122, expectedError

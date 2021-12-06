@@ -2,7 +2,6 @@ package steps
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -14,7 +13,6 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 	t.Parallel()
 
 	t.Run("error on IsQuorumReached", func(t *testing.T) {
-		expectedError := errors.New("error message")
 		bridgeStub := createStubExecutor()
 		bridgeStub.IsQuorumReachedCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
