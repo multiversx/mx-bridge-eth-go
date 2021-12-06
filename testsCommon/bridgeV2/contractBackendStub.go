@@ -2,15 +2,12 @@ package bridgeV2
 
 import (
 	"context"
-	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
-
-var notImplemented = errors.New("method not implemented")
 
 type ContractBackendStub struct {
 	CodeAtCalled              func(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
