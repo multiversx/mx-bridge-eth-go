@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
+
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
@@ -12,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"math/big"
 )
 
 const messagePrefix = "\u0019Ethereum Signed Message:\n32"
@@ -125,14 +126,11 @@ func checkArgs(args ArgsEthereumClient) error {
 }
 
 // GetBatch returns the batch (if existing) from the Ethereum contract by providing the nonce
-func (c *client) GetBatch(ctx context.Context, nonce uint64) *clients.TransferBatch {
+func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
 	c.log.Info("Getting batch", "nonce", nonce)
 	batch, err := c.clientWrapper.GetBatch(ctx, big.NewInt(0).SetUint64(nonce))
 	if err != nil {
-		// TODO maybe add filtering for the error here whenever the error will be defined
-		c.log.Trace("getting batch", "error", err)
-
-		return nil
+		return nil, err
 	}
 
 	transferBatch := &clients.TransferBatch{
@@ -157,12 +155,17 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) *clients.TransferBa
 			Amount:           big.NewInt(0).Set(deposit.Amount),
 		}
 
-		//TODO converted token & statuses
+		depositTransfer.ConvertedTokenBytes, err = c.tokensMapper.ConvertToken(ctx, depositTransfer.TokenBytes)
+		if err != nil {
+			return nil, err
+		}
 
 		transferBatch.Deposits = append(transferBatch.Deposits, depositTransfer)
 	}
 
-	return transferBatch
+	transferBatch.Statuses = make([]byte, len(transferBatch.Deposits))
+
+	return transferBatch, nil
 }
 
 // WasExecuted returns true if the batch ID was executed
@@ -182,7 +185,7 @@ func (c *client) BroadcastSignatureForMessageHash(msgHash common.Hash) {
 }
 
 // GenerateMessageHash will generate the message hash based on the provided batch
-func (c *client) GenerateMessageHash(ctx context.Context, batch *clients.TransferBatch) (common.Hash, error) {
+func (c *client) GenerateMessageHash(batch *clients.TransferBatch) (common.Hash, error) {
 	if batch == nil {
 		return common.Hash{}, errNilBatch
 	}
@@ -192,7 +195,7 @@ func (c *client) GenerateMessageHash(ctx context.Context, batch *clients.Transfe
 		return common.Hash{}, err
 	}
 
-	argLists, err := c.extractList(ctx, batch)
+	argLists, err := c.extractList(batch)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -237,19 +240,14 @@ func generateTransferArgs() (abi.Arguments, error) {
 	}, nil
 }
 
-func (c *client) extractList(ctx context.Context, batch *clients.TransferBatch) (argListsBatch, error) {
+func (c *client) extractList(batch *clients.TransferBatch) (argListsBatch, error) {
 	arg := argListsBatch{}
 
 	for _, dt := range batch.Deposits {
 		recipient := common.BytesToAddress(dt.ToBytes)
 		arg.recipients = append(arg.recipients, recipient)
 
-		erc20TokenBytes, err := c.tokensMapper.ConvertToken(ctx, dt.TokenBytes)
-		if err != nil {
-			return argListsBatch{}, err
-		}
-
-		token := common.BytesToAddress(erc20TokenBytes)
+		token := common.BytesToAddress(dt.ConvertedTokenBytes)
 		arg.tokens = append(arg.tokens, token)
 
 		amount := big.NewInt(0).Set(dt.Amount)
@@ -313,7 +311,7 @@ func (c *client) ExecuteTransfer(
 		signatures = signatures[:quorum]
 	}
 
-	argLists, err := c.extractList(ctx, batch)
+	argLists, err := c.extractList(batch)
 	if err != nil {
 		return "", err
 	}
