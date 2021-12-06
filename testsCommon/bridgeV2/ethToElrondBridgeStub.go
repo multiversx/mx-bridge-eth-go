@@ -44,6 +44,7 @@ func NewEthToElrondBridgeStub() *EthToElrondBridgeStub {
 
 // GetLogger -
 func (stub *EthToElrondBridgeStub) GetLogger() logger.Logger {
+	stub.incrementFunctionCounter()
 	if stub.GetLoggerCalled != nil {
 		return stub.GetLoggerCalled()
 	}
@@ -52,6 +53,7 @@ func (stub *EthToElrondBridgeStub) GetLogger() logger.Logger {
 
 // MyTurnAsLeader -
 func (stub *EthToElrondBridgeStub) MyTurnAsLeader() bool {
+	stub.incrementFunctionCounter()
 	if stub.MyTurnAsLeaderCalled != nil {
 		return stub.MyTurnAsLeaderCalled()
 	}
@@ -60,6 +62,7 @@ func (stub *EthToElrondBridgeStub) MyTurnAsLeader() bool {
 
 // GetAndStoreActionID -
 func (stub *EthToElrondBridgeStub) GetAndStoreActionID(ctx context.Context) (uint64, error) {
+	stub.incrementFunctionCounter()
 	if stub.GetAndStoreActionIDCalled != nil {
 		return stub.GetAndStoreActionIDCalled(ctx)
 	}
@@ -68,6 +71,7 @@ func (stub *EthToElrondBridgeStub) GetAndStoreActionID(ctx context.Context) (uin
 
 // GetStoredActionID -
 func (stub *EthToElrondBridgeStub) GetStoredActionID() uint64 {
+	stub.incrementFunctionCounter()
 	if stub.GetStoredActionIDCalled != nil {
 		return stub.GetStoredActionIDCalled()
 	}
@@ -76,6 +80,7 @@ func (stub *EthToElrondBridgeStub) GetStoredActionID() uint64 {
 
 // GetAndStoreBatchFromEthereum
 func (stub *EthToElrondBridgeStub) GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error {
+	stub.incrementFunctionCounter()
 	if stub.GetAndStoreBatchFromEthereumCalled != nil {
 		return stub.GetAndStoreBatchFromEthereumCalled(ctx, nonce)
 	}
@@ -84,6 +89,7 @@ func (stub *EthToElrondBridgeStub) GetAndStoreBatchFromEthereum(ctx context.Cont
 
 // GetStoredBatch -
 func (stub *EthToElrondBridgeStub) GetStoredBatch() *clients.TransferBatch {
+	stub.incrementFunctionCounter()
 	if stub.GetStoredBatchCalled != nil {
 		return stub.GetStoredBatchCalled()
 	}
@@ -92,6 +98,7 @@ func (stub *EthToElrondBridgeStub) GetStoredBatch() *clients.TransferBatch {
 
 // GetLastExecutedEthBatchIDFromElrond -
 func (stub *EthToElrondBridgeStub) GetLastExecutedEthBatchIDFromElrond(ctx context.Context) (uint64, error) {
+	stub.incrementFunctionCounter()
 	if stub.GetLastExecutedEthBatchIDFromElrondCalled != nil {
 		return stub.GetLastExecutedEthBatchIDFromElrondCalled(ctx)
 	}
@@ -100,6 +107,7 @@ func (stub *EthToElrondBridgeStub) GetLastExecutedEthBatchIDFromElrond(ctx conte
 
 // VerifyLastDepositNonceExecutedOnEthereumBatch -
 func (stub *EthToElrondBridgeStub) VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error {
+	stub.incrementFunctionCounter()
 	if stub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled != nil {
 		return stub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled(ctx)
 	}
@@ -108,6 +116,7 @@ func (stub *EthToElrondBridgeStub) VerifyLastDepositNonceExecutedOnEthereumBatch
 
 // WasTransferProposedOnElrond -
 func (stub *EthToElrondBridgeStub) WasTransferProposedOnElrond(ctx context.Context) (bool, error) {
+	stub.incrementFunctionCounter()
 	if stub.WasTransferProposedOnElrondCalled != nil {
 		return stub.WasTransferProposedOnElrondCalled(ctx)
 	}
@@ -116,6 +125,7 @@ func (stub *EthToElrondBridgeStub) WasTransferProposedOnElrond(ctx context.Conte
 
 // ProposeTransferOnElrond -
 func (stub *EthToElrondBridgeStub) ProposeTransferOnElrond(ctx context.Context) error {
+	stub.incrementFunctionCounter()
 	if stub.ProposeTransferOnElrondCalled != nil {
 		return stub.ProposeTransferOnElrondCalled(ctx)
 	}
@@ -124,6 +134,7 @@ func (stub *EthToElrondBridgeStub) ProposeTransferOnElrond(ctx context.Context) 
 
 // WasProposedTransferSigned -
 func (stub *EthToElrondBridgeStub) WasProposedTransferSigned(ctx context.Context) (bool, error) {
+	stub.incrementFunctionCounter()
 	if stub.WasProposedTransferSignedCalled != nil {
 		return stub.WasProposedTransferSignedCalled(ctx)
 	}
@@ -132,6 +143,7 @@ func (stub *EthToElrondBridgeStub) WasProposedTransferSigned(ctx context.Context
 
 // SignProposedTransfer -
 func (stub *EthToElrondBridgeStub) SignProposedTransfer(ctx context.Context) error {
+	stub.incrementFunctionCounter()
 	if stub.SignProposedTransferCalled != nil {
 		return stub.SignProposedTransferCalled(ctx)
 	}
@@ -140,6 +152,7 @@ func (stub *EthToElrondBridgeStub) SignProposedTransfer(ctx context.Context) err
 
 // IsQuorumReached -
 func (stub *EthToElrondBridgeStub) IsQuorumReached(ctx context.Context) (bool, error) {
+	stub.incrementFunctionCounter()
 	if stub.IsQuorumReachedCalled != nil {
 		return stub.IsQuorumReached(ctx)
 	}
@@ -148,6 +161,7 @@ func (stub *EthToElrondBridgeStub) IsQuorumReached(ctx context.Context) (bool, e
 
 // WasActionIDPerformed -
 func (stub *EthToElrondBridgeStub) WasActionIDPerformed(ctx context.Context) (bool, error) {
+	stub.incrementFunctionCounter()
 	if stub.WasActionIDPerformedCalled != nil {
 		return stub.WasActionIDPerformed(ctx)
 	}
@@ -156,6 +170,7 @@ func (stub *EthToElrondBridgeStub) WasActionIDPerformed(ctx context.Context) (bo
 
 // PerformActionID -
 func (stub *EthToElrondBridgeStub) PerformActionID(ctx context.Context) error {
+	stub.incrementFunctionCounter()
 	if stub.PerformActionIDCalled != nil {
 		return stub.PerformActionID(ctx)
 	}
