@@ -357,6 +357,90 @@ func TestDataGetter_GetCurrentBatchAsDataBytes(t *testing.T) {
 	assert.Equal(t, returningBytes, result)
 }
 
+func TestExecuteQueryFromBuilderReturnErr(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsDataGetter()
+	expectedError := errors.New("expected error")
+	erc20Address := "erc20Address"
+	args.Proxy = &interactors.ElrondProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: internalError,
+					ReturnData: [][]byte{},
+				},
+			}, expectedError
+		},
+	}
+	dg, _ := NewDataGetter(args)
+
+	_, err := dg.GetTokenIdForErc20Address(context.Background(), []byte(erc20Address))
+	assert.Equal(t, expectedError, err)
+}
+
+func TestDataGetter_GetTokenIdForErc20Address(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsDataGetter()
+	erdAddress := "erdAddress"
+	erc20Address := "erc20Address"
+	returningBytes := [][]byte{[]byte(erdAddress)}
+	args.Proxy = &interactors.ElrondProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+			assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+			assert.Equal(t, 0, len(vmRequest.CallValue))
+			assert.Equal(t, []string{hex.EncodeToString([]byte(erc20Address))}, vmRequest.Args)
+			assert.Equal(t, getTokenIdForErc20AddressFuncName, vmRequest.FuncName)
+
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: okCodeAfterExecution,
+					ReturnData: returningBytes,
+				},
+			}, nil
+		},
+	}
+	dg, _ := NewDataGetter(args)
+
+	result, err := dg.GetTokenIdForErc20Address(context.Background(), []byte(erc20Address))
+
+	assert.Nil(t, err)
+	assert.Equal(t, returningBytes, result)
+}
+
+func TestDataGetter_GetERC20AddressForTokenId(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsDataGetter()
+	erdAddress := "erdAddress"
+	erc20Address := "erc20Address"
+	returningBytes := [][]byte{[]byte(erc20Address)}
+	args.Proxy = &interactors.ElrondProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+			assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+			assert.Equal(t, 0, len(vmRequest.CallValue))
+			assert.Equal(t, []string{hex.EncodeToString([]byte(erdAddress))}, vmRequest.Args)
+			assert.Equal(t, getErc20AddressForTokenIdFuncName, vmRequest.FuncName)
+
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: okCodeAfterExecution,
+					ReturnData: returningBytes,
+				},
+			}, nil
+		},
+	}
+	dg, _ := NewDataGetter(args)
+
+	result, err := dg.GetERC20AddressForTokenId(context.Background(), []byte(erdAddress))
+
+	assert.Nil(t, err)
+	assert.Equal(t, returningBytes, result)
+}
+
 func TestDataGetter_WasProposedTransfer(t *testing.T) {
 	t.Parallel()
 
