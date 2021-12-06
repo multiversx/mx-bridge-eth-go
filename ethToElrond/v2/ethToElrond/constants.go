@@ -1,4 +1,4 @@
-package stepsEthToElrond
+package ethToElrond
 
 const (
 	// GetPendingBatchFromEthereum is the step identifier for fetching the pending batch from the Ethereum chain

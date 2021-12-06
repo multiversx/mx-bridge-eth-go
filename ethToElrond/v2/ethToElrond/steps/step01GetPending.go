@@ -1,13 +1,14 @@
-package stepsEthToElrond
+package steps
 
 import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 )
 
 type getPendingStep struct {
-	bridge EthToElrondBridge
+	bridge ethToElrond.EthToElrondBridge
 }
 
 // Execute will execute this step returning the next step to be executed
@@ -38,12 +39,12 @@ func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, e
 		return step.Identifier(), nil
 	}
 
-	return GetActionIdForProposeStep, nil
+	return ethToElrond.GetActionIdForProposeStep, nil
 }
 
 // Identifier returns the step's identifier
 func (step *getPendingStep) Identifier() core.StepIdentifier {
-	return GetPendingBatchFromEthereum
+	return ethToElrond.GetPendingBatchFromEthereum
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

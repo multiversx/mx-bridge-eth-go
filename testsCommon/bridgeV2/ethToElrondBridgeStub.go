@@ -2,12 +2,20 @@ package bridgeV2
 
 import (
 	"context"
+	"fmt"
+	"runtime"
+	"sync"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
+var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2.(*EthToElrondBridgeStub)."
+
 type EthToElrondBridgeStub struct {
+	functionCalledCounter map[string]int
+	mutExecutor           sync.RWMutex
+
 	GetLoggerCalled      func() logger.Logger
 	MyTurnAsLeaderCalled func() bool
 
@@ -27,6 +35,14 @@ type EthToElrondBridgeStub struct {
 	PerformActionIDCalled                               func(ctx context.Context) error
 }
 
+// NewEthToElrondBridgeStub creates a new EthToElrondBridgeStub instance
+func NewEthToElrondBridgeStub() *EthToElrondBridgeStub {
+	return &EthToElrondBridgeStub{
+		functionCalledCounter: make(map[string]int),
+	}
+}
+
+// GetLogger -
 func (stub *EthToElrondBridgeStub) GetLogger() logger.Logger {
 	if stub.GetLoggerCalled != nil {
 		return stub.GetLoggerCalled()
@@ -34,6 +50,7 @@ func (stub *EthToElrondBridgeStub) GetLogger() logger.Logger {
 	return nil
 }
 
+// MyTurnAsLeader -
 func (stub *EthToElrondBridgeStub) MyTurnAsLeader() bool {
 	if stub.MyTurnAsLeaderCalled != nil {
 		return stub.MyTurnAsLeaderCalled()
@@ -41,6 +58,7 @@ func (stub *EthToElrondBridgeStub) MyTurnAsLeader() bool {
 	return false
 }
 
+// GetAndStoreActionID -
 func (stub *EthToElrondBridgeStub) GetAndStoreActionID(ctx context.Context) (uint64, error) {
 	if stub.GetAndStoreActionIDCalled != nil {
 		return stub.GetAndStoreActionIDCalled(ctx)
@@ -48,6 +66,7 @@ func (stub *EthToElrondBridgeStub) GetAndStoreActionID(ctx context.Context) (uin
 	return 0, notImplemented
 }
 
+// GetStoredActionID -
 func (stub *EthToElrondBridgeStub) GetStoredActionID() uint64 {
 	if stub.GetStoredActionIDCalled != nil {
 		return stub.GetStoredActionIDCalled()
@@ -55,6 +74,7 @@ func (stub *EthToElrondBridgeStub) GetStoredActionID() uint64 {
 	return 0
 }
 
+// GetAndStoreBatchFromEthereum
 func (stub *EthToElrondBridgeStub) GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error {
 	if stub.GetAndStoreBatchFromEthereumCalled != nil {
 		return stub.GetAndStoreBatchFromEthereumCalled(ctx, nonce)
@@ -62,6 +82,7 @@ func (stub *EthToElrondBridgeStub) GetAndStoreBatchFromEthereum(ctx context.Cont
 	return notImplemented
 }
 
+// GetStoredBatch -
 func (stub *EthToElrondBridgeStub) GetStoredBatch() *clients.TransferBatch {
 	if stub.GetStoredBatchCalled != nil {
 		return stub.GetStoredBatchCalled()
@@ -69,6 +90,7 @@ func (stub *EthToElrondBridgeStub) GetStoredBatch() *clients.TransferBatch {
 	return nil
 }
 
+// GetLastExecutedEthBatchIDFromElrond -
 func (stub *EthToElrondBridgeStub) GetLastExecutedEthBatchIDFromElrond(ctx context.Context) (uint64, error) {
 	if stub.GetLastExecutedEthBatchIDFromElrondCalled != nil {
 		return stub.GetLastExecutedEthBatchIDFromElrondCalled(ctx)
@@ -76,6 +98,7 @@ func (stub *EthToElrondBridgeStub) GetLastExecutedEthBatchIDFromElrond(ctx conte
 	return 0, notImplemented
 }
 
+// VerifyLastDepositNonceExecutedOnEthereumBatch -
 func (stub *EthToElrondBridgeStub) VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error {
 	if stub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled != nil {
 		return stub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled(ctx)
@@ -83,6 +106,7 @@ func (stub *EthToElrondBridgeStub) VerifyLastDepositNonceExecutedOnEthereumBatch
 	return notImplemented
 }
 
+// WasTransferProposedOnElrond -
 func (stub *EthToElrondBridgeStub) WasTransferProposedOnElrond(ctx context.Context) (bool, error) {
 	if stub.WasTransferProposedOnElrondCalled != nil {
 		return stub.WasTransferProposedOnElrondCalled(ctx)
@@ -90,6 +114,7 @@ func (stub *EthToElrondBridgeStub) WasTransferProposedOnElrond(ctx context.Conte
 	return false, notImplemented
 }
 
+// ProposeTransferOnElrond -
 func (stub *EthToElrondBridgeStub) ProposeTransferOnElrond(ctx context.Context) error {
 	if stub.ProposeTransferOnElrondCalled != nil {
 		return stub.ProposeTransferOnElrondCalled(ctx)
@@ -97,6 +122,7 @@ func (stub *EthToElrondBridgeStub) ProposeTransferOnElrond(ctx context.Context) 
 	return notImplemented
 }
 
+// WasProposedTransferSigned -
 func (stub *EthToElrondBridgeStub) WasProposedTransferSigned(ctx context.Context) (bool, error) {
 	if stub.WasProposedTransferSignedCalled != nil {
 		return stub.WasProposedTransferSignedCalled(ctx)
@@ -104,6 +130,7 @@ func (stub *EthToElrondBridgeStub) WasProposedTransferSigned(ctx context.Context
 	return false, notImplemented
 }
 
+// SignProposedTransfer -
 func (stub *EthToElrondBridgeStub) SignProposedTransfer(ctx context.Context) error {
 	if stub.SignProposedTransferCalled != nil {
 		return stub.SignProposedTransferCalled(ctx)
@@ -111,6 +138,7 @@ func (stub *EthToElrondBridgeStub) SignProposedTransfer(ctx context.Context) err
 	return notImplemented
 }
 
+// IsQuorumReached -
 func (stub *EthToElrondBridgeStub) IsQuorumReached(ctx context.Context) (bool, error) {
 	if stub.IsQuorumReachedCalled != nil {
 		return stub.IsQuorumReached(ctx)
@@ -118,6 +146,7 @@ func (stub *EthToElrondBridgeStub) IsQuorumReached(ctx context.Context) (bool, e
 	return false, notImplemented
 }
 
+// WasActionIDPerformed -
 func (stub *EthToElrondBridgeStub) WasActionIDPerformed(ctx context.Context) (bool, error) {
 	if stub.WasActionIDPerformedCalled != nil {
 		return stub.WasActionIDPerformed(ctx)
@@ -125,9 +154,35 @@ func (stub *EthToElrondBridgeStub) WasActionIDPerformed(ctx context.Context) (bo
 	return false, notImplemented
 }
 
+// PerformActionID -
 func (stub *EthToElrondBridgeStub) PerformActionID(ctx context.Context) error {
 	if stub.PerformActionIDCalled != nil {
 		return stub.PerformActionID(ctx)
 	}
 	return notImplemented
+}
+
+// -------- helper functions
+
+// incrementFunctionCounter increments the counter for the function that called it
+func (stub *EthToElrondBridgeStub) incrementFunctionCounter() {
+	stub.mutExecutor.Lock()
+	defer stub.mutExecutor.Unlock()
+
+	pc, _, _, _ := runtime.Caller(1)
+	fmt.Printf("BridgeExecutorMock: called %s\n", runtime.FuncForPC(pc).Name())
+	stub.functionCalledCounter[runtime.FuncForPC(pc).Name()]++
+}
+
+// GetFunctionCounter returns the called counter of a given function
+func (stub *EthToElrondBridgeStub) GetFunctionCounter(function string) int {
+	stub.mutExecutor.Lock()
+	defer stub.mutExecutor.Unlock()
+
+	return stub.functionCalledCounter[fullPath+function]
+}
+
+// IsInterfaceNil -
+func (stub *EthToElrondBridgeStub) IsInterfaceNil() bool {
+	return stub == nil
 }

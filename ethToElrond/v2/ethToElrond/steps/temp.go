@@ -1,6 +1,6 @@
-package stepsEthToElrond
+package steps
 
-//TODO remove this file
+// TODO remove this file
 var _ = getPendingStep{}
 var _ = getActionIdForProposeStep{}
 var _ = proposeTransferStep{}
