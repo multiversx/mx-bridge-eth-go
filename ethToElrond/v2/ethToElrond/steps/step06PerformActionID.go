@@ -17,13 +17,13 @@ func (step *performActionIDStep) Execute(ctx context.Context) (core.StepIdentifi
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if the action ID was proposed or not",
 			"action ID", step.bridge.GetStoredActionID(), "error", err)
-		return ethToElrond.GetPendingBatchFromEthereum, nil
+		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
 	if wasPerformed {
 		step.bridge.GetLogger().Info("action ID performed",
 			"action ID", step.bridge.GetStoredActionID())
-		return ethToElrond.GetPendingBatchFromEthereum, nil
+		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
 	if !step.bridge.MyTurnAsLeader() {
@@ -32,9 +32,9 @@ func (step *performActionIDStep) Execute(ctx context.Context) (core.StepIdentifi
 
 	err = step.bridge.PerformActionID(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Info("errors performing action ID",
+		step.bridge.GetLogger().Info("error performing action ID",
 			"action ID", step.bridge.GetStoredActionID(), "error", err)
-		return ethToElrond.GetPendingBatchFromEthereum, nil
+		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
 	return step.Identifier(), nil
@@ -42,7 +42,7 @@ func (step *performActionIDStep) Execute(ctx context.Context) (core.StepIdentifi
 
 // Identifier returns the step's identifier
 func (step *performActionIDStep) Identifier() core.StepIdentifier {
-	return ethToElrond.PerformActionID
+	return ethToElrond.PerformingActionID
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

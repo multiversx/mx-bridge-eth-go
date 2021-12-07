@@ -124,13 +124,13 @@ func TestExecuteGetPending(t *testing.T) {
 			bridge: bridgeStub,
 		}
 		// Test Identifier()
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
 		assert.Equal(t, expectedStepIdentifier, step.Identifier())
 		// Test IsInterfaceNil()
 		assert.False(t, step.IsInterfaceNil())
 
 		// Test next step
-		expectedStepIdentifier = ethToElrond.GetActionIdForProposeStep
+		expectedStepIdentifier = ethToElrond.GettingActionIdForProposeTransfer
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)

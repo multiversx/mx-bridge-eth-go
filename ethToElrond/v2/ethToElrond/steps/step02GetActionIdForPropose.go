@@ -15,20 +15,25 @@ type getActionIdForProposeStep struct {
 func (step *getActionIdForProposeStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	batch := step.bridge.GetStoredBatch()
 
+	if batch == nil {
+		step.bridge.GetLogger().Debug("no batch found on eth")
+		return ethToElrond.GettingPendingBatchFromEthereum, nil
+	}
+
 	actionID, err := step.bridge.GetAndStoreActionID(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error fetching action ID", "batch ID", batch.ID, "error", err)
-		return ethToElrond.GetPendingBatchFromEthereum, nil
+		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
 	step.bridge.GetLogger().Info("fetched action ID", "action ID", actionID, "batch ID", batch.ID)
 
-	return ethToElrond.ProposeTransferOnElrond, nil
+	return ethToElrond.ProposingTransferOnElrond, nil
 }
 
 // Identifier returns the step's identifier
 func (step *getActionIdForProposeStep) Identifier() core.StepIdentifier {
-	return ethToElrond.GetActionIdForProposeStep
+	return ethToElrond.GettingActionIdForProposeTransfer
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

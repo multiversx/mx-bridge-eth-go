@@ -39,12 +39,12 @@ func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, e
 		return step.Identifier(), nil
 	}
 
-	return ethToElrond.GetActionIdForProposeStep, nil
+	return ethToElrond.GettingActionIdForProposeTransfer, nil
 }
 
 // Identifier returns the step's identifier
 func (step *getPendingStep) Identifier() core.StepIdentifier {
-	return ethToElrond.GetPendingBatchFromEthereum
+	return ethToElrond.GettingPendingBatchFromEthereum
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

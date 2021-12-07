@@ -1,21 +1,21 @@
 package ethToElrond
 
 const (
-	// GetPendingBatchFromEthereum is the step identifier for fetching the pending batch from the Ethereum chain
-	GetPendingBatchFromEthereum = "get pending batch from ethereum"
+	// GettingPendingBatchFromEthereum is the step identifier for fetching the pending batch from the Ethereum chain
+	GettingPendingBatchFromEthereum = "get pending batch from ethereum"
 
-	// GetActionIdForProposeStep is the step identifier for fetching the action ID for propose transfer on Elrond
-	GetActionIdForProposeStep = "get action ID for propose transfer"
+	// GettingActionIdForProposeTransfer is the step identifier for fetching the action ID for propose transfer on Elrond
+	GettingActionIdForProposeTransfer = "get action ID for propose transfer"
 
-	// ProposeTransferOnElrond is the step idetifier for proposing transfer on Elrond
-	ProposeTransferOnElrond = "propose transfer"
+	// ProposingTransferOnElrond is the step idetifier for proposing transfer on Elrond
+	ProposingTransferOnElrond = "propose transfer"
 
-	// SignProposedTransferOnElrond is the step identifier for signing proposed transfer
-	SignProposedTransferOnElrond = "sign proposed transfer"
+	// SigningProposedTransferOnElrond is the step identifier for signing proposed transfer
+	SigningProposedTransferOnElrond = "sign proposed transfer"
 
-	// WaitForQuorum is the step identifier for waiting until the quorum is reached
-	WaitForQuorum = "wait for quorum"
+	// WaitingForQuorum is the step identifier for waiting until the quorum is reached
+	WaitingForQuorum = "wait for quorum"
 
-	// PerformActionID is the step identifier for performing the ActionID on Elrond
-	PerformActionID = "perform action"
+	// PerformingActionID is the step identifier for performing the ActionID on Elrond
+	PerformingActionID = "perform action"
 )

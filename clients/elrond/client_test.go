@@ -58,17 +58,17 @@ func createMockPendingBatchBytes(numDeposits int) [][]byte {
 
 	generatorByte := byte(0)
 	for i := 0; i < numDeposits; i++ {
-		pendingBatchBytes = append(pendingBatchBytes, big.NewInt(int64(i)).Bytes())      //block nonce
-		pendingBatchBytes = append(pendingBatchBytes, big.NewInt(int64(i+5000)).Bytes()) //deposit nonce
+		pendingBatchBytes = append(pendingBatchBytes, big.NewInt(int64(i)).Bytes())      // block nonce
+		pendingBatchBytes = append(pendingBatchBytes, big.NewInt(int64(i+5000)).Bytes()) // deposit nonce
 
 		generatorByte++
-		pendingBatchBytes = append(pendingBatchBytes, bytes.Repeat([]byte{generatorByte}, 32)) //from
+		pendingBatchBytes = append(pendingBatchBytes, bytes.Repeat([]byte{generatorByte}, 32)) // from
 
 		generatorByte++
-		pendingBatchBytes = append(pendingBatchBytes, bytes.Repeat([]byte{generatorByte}, 20)) //to
+		pendingBatchBytes = append(pendingBatchBytes, bytes.Repeat([]byte{generatorByte}, 20)) // to
 
 		generatorByte++
-		pendingBatchBytes = append(pendingBatchBytes, bytes.Repeat([]byte{generatorByte}, 32)) //token
+		pendingBatchBytes = append(pendingBatchBytes, bytes.Repeat([]byte{generatorByte}, 32)) // token
 
 		pendingBatchBytes = append(pendingBatchBytes, big.NewInt(int64((i+1)*10000)).Bytes())
 	}

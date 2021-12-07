@@ -13,6 +13,22 @@ import (
 func TestExecuteGetActionIdForProposeStep(t *testing.T) {
 	t.Parallel()
 
+	t.Run("nil batch", func(t *testing.T) {
+		bridgeStub := createStubExecutor()
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+			return nil
+		}
+
+		step := getActionIdForProposeStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
+		stepIdentifier, err := step.Execute(context.Background())
+		assert.Nil(t, err)
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
+
 	t.Run("error on GetAndStoreActionID", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetAndStoreActionIDCalled = func(ctx context.Context) (uint64, error) {
@@ -26,7 +42,7 @@ func TestExecuteGetActionIdForProposeStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -46,13 +62,13 @@ func TestExecuteGetActionIdForProposeStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 		// Test Identifier()
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetActionIdForProposeStep)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingActionIdForProposeTransfer)
 		assert.Equal(t, expectedStepIdentifier, step.Identifier())
 		// Test IsInterfaceNil()
 		assert.False(t, step.IsInterfaceNil())
 
 		// Test next step
-		expectedStepIdentifier = ethToElrond.ProposeTransferOnElrond
+		expectedStepIdentifier = ethToElrond.ProposingTransferOnElrond
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)

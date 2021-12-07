@@ -13,6 +13,22 @@ import (
 func TestExecuteProposeTransfer(t *testing.T) {
 	t.Parallel()
 
+	t.Run("nil batch", func(t *testing.T) {
+		bridgeStub := createStubExecutor()
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+			return nil
+		}
+
+		step := proposeTransferStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
+		stepIdentifier, err := step.Execute(context.Background())
+		assert.Nil(t, err)
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
+
 	t.Run("error on WasTransferProposedOnElrond", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
@@ -26,7 +42,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -73,7 +89,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -92,7 +108,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.SignProposedTransferOnElrond)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.SigningProposedTransferOnElrond)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -119,7 +135,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 		// Test IsInterfaceNil
 		assert.NotNil(t, step.IsInterfaceNil())
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.SignProposedTransferOnElrond)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.SigningProposedTransferOnElrond)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)

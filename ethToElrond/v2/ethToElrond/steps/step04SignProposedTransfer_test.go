@@ -13,6 +13,22 @@ import (
 func TestExecutesignProposedTransferStep(t *testing.T) {
 	t.Parallel()
 
+	t.Run("nil batch", func(t *testing.T) {
+		bridgeStub := createStubExecutor()
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+			return nil
+		}
+
+		step := signProposedTransferStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
+		stepIdentifier, err := step.Execute(context.Background())
+		assert.Nil(t, err)
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
+
 	t.Run("error on WasProposedTransferSigned", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
@@ -26,7 +42,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -48,7 +64,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -67,7 +83,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.WaitForQuorum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.WaitingForQuorum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -89,12 +105,12 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 		// Test Identifier()
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.SignProposedTransferOnElrond)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.SigningProposedTransferOnElrond)
 		assert.Equal(t, expectedStepIdentifier, step.Identifier())
 		// Test IsInterfaceNil
 		assert.NotNil(t, step.IsInterfaceNil())
 
-		expectedStepIdentifier = ethToElrond.WaitForQuorum
+		expectedStepIdentifier = ethToElrond.WaitingForQuorum
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)

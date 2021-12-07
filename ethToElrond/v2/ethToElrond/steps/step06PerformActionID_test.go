@@ -22,7 +22,7 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -38,7 +38,7 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -79,7 +79,7 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -101,7 +101,7 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 		// Test Identifier()
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.PerformActionID)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.PerformingActionID)
 		assert.Equal(t, expectedStepIdentifier, step.Identifier())
 		// Test IsInterfaceNil
 		assert.NotNil(t, step.IsInterfaceNil())

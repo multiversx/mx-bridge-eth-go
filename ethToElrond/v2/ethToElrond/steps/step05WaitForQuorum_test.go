@@ -22,7 +22,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -38,7 +38,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.WaitForQuorum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.WaitingForQuorum)
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
@@ -54,12 +54,12 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 		// Test Identifier()
-		expectedStepIdentifier := core.StepIdentifier(ethToElrond.WaitForQuorum)
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.WaitingForQuorum)
 		assert.Equal(t, expectedStepIdentifier, step.Identifier())
 		// Test IsInterfaceNil
 		assert.NotNil(t, step.IsInterfaceNil())
 
-		expectedStepIdentifier = ethToElrond.PerformActionID
+		expectedStepIdentifier = ethToElrond.PerformingActionID
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)

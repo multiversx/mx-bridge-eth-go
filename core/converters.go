@@ -2,11 +2,12 @@ package core
 
 import (
 	"encoding/hex"
+	"strings"
+
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
-	"strings"
 )
 
 var log = logger.GetOrCreate("core")

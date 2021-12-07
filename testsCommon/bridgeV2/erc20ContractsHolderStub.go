@@ -2,8 +2,9 @@ package bridgeV2
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // ERC20ContractsHolderStub -
