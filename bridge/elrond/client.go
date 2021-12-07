@@ -734,7 +734,7 @@ func (builder *valueRequestBuilder) Address(value string) *valueRequestBuilder {
 
 func (builder *valueRequestBuilder) WithTx(batch *bridge.Batch, mapper func(string) string) *valueRequestBuilder {
 	for _, tx := range batch.Transactions {
-		builder = builder.
+		builder.
 			Address(tx.To).
 			HexString(mapper(tx.TokenAddress)).
 			BigInt(tx.Amount)

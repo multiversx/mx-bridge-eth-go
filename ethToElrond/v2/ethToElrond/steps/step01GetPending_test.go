@@ -27,7 +27,7 @@ func TestExecute(t *testing.T) {
 			bridge: stub,
 		}
 		si, _ := step.Execute(context.Background())
-		require.Equal(t, core.StepIdentifier(ethToElrond.GetPendingBatchFromEthereum), si)
+		require.Equal(t, core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum), si)
 	})
 
 }

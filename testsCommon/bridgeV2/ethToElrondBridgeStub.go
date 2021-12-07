@@ -78,7 +78,7 @@ func (stub *EthToElrondBridgeStub) GetStoredActionID() uint64 {
 	return 0
 }
 
-// GetAndStoreBatchFromEthereum
+// GetAndStoreBatchFromEthereum -
 func (stub *EthToElrondBridgeStub) GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error {
 	stub.incrementFunctionCounter()
 	if stub.GetAndStoreBatchFromEthereumCalled != nil {
