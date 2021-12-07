@@ -18,7 +18,6 @@ const (
 	internalError                                             = "internal error"
 	getCurrentTxBatchFuncName                                 = "getCurrentTxBatch"
 	wasTransferActionProposedFuncName                         = "wasTransferActionProposed"
-	getActionSignerCountFuncName                              = "getActionSignerCount"
 	wasActionExecutedFuncName                                 = "wasActionExecuted"
 	getActionIdForTransferBatchFuncName                       = "getActionIdForTransferBatch"
 	wasSetCurrentTransactionBatchStatusActionProposedFuncName = "wasSetCurrentTransactionBatchStatusActionProposed"

@@ -26,4 +26,6 @@ type EthToElrondBridge interface {
 	IsQuorumReached(ctx context.Context) (bool, error)
 	WasActionIDPerformed(ctx context.Context) (bool, error)
 	PerformActionID(ctx context.Context) error
+
+	IsInterfaceNil() bool
 }
