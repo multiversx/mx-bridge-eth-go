@@ -195,7 +195,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			FromBytes:       responseData[i+2],
 			DisplayableFrom: c.addressPublicKeyConverter.Encode(responseData[i+2]),
 			ToBytes:         responseData[i+3],
-			//TODO: inject a pub key converter for the DisplayableTo conversion to allow better component re-usability
+			// TODO: inject a pub key converter for the DisplayableTo conversion to allow better component re-usability
 			DisplayableTo:    fmt.Sprintf("%s%s", hexPrefix, hex.EncodeToString(responseData[i+3])),
 			TokenBytes:       responseData[i+4],
 			DisplayableToken: c.addressPublicKeyConverter.Encode(responseData[i+4]),

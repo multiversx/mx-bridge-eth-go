@@ -12,7 +12,7 @@ type elrondToErc20 struct {
 	dg DataGetter
 }
 
-// NewErc20ToElrondMapper returns a new instance of erc20ToElrond
+// NewElrondToErc20Mapper returns a new instance of erc20ToElrond
 func NewElrondToErc20Mapper(dg DataGetter) (*elrondToErc20, error) {
 	if check.IfNil(dg) {
 		return nil, errNilDataGetter

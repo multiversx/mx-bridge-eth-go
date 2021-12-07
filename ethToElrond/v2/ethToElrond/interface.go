@@ -1,4 +1,4 @@
-package stepsEthToElrond
+package ethToElrond
 
 import (
 	"context"
