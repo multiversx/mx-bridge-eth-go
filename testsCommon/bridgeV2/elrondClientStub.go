@@ -26,6 +26,9 @@ type ElrondClientStub struct {
 	ResolveNewDepositsCalled                       func(ctx context.Context, batch *clients.TransferBatch) error
 	ProposeTransferCalled                          func(ctx context.Context, batch *clients.TransferBatch) (string, error)
 	SignCalled                                     func(ctx context.Context, actionID uint64) (string, error)
+	WasSignedCalled                                func(ctx context.Context, actionID uint64) (bool, error)
+	PerformActionCalled                            func(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
+	CloseCalled                                    func() error
 }
 
 // GetPending -
@@ -154,22 +157,43 @@ func (stub *ElrondClientStub) ProposeTransfer(ctx context.Context, batch *client
 	return "", nil
 }
 
+// Sign -
 func (stub *ElrondClientStub) Sign(ctx context.Context, actionID uint64) (string, error) {
-	panic("implement me")
+	if stub.SignCalled != nil {
+		return stub.SignCalled(ctx, actionID)
+	}
+
+	return "", nil
 }
 
+// WasSigned -
 func (stub *ElrondClientStub) WasSigned(ctx context.Context, actionID uint64) (bool, error) {
-	panic("implement me")
+	if stub.WasSignedCalled != nil {
+		return stub.WasSignedCalled(ctx, actionID)
+	}
+
+	return false, nil
 }
 
+// PerformAction -
 func (stub *ElrondClientStub) PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error) {
-	panic("implement me")
+	if stub.PerformActionCalled != nil {
+		return stub.PerformActionCalled(ctx, actionID, batch)
+	}
+
+	return "", nil
 }
 
+// Close -
 func (stub *ElrondClientStub) Close() error {
-	panic("implement me")
+	if stub.CloseCalled != nil {
+		return stub.CloseCalled()
+	}
+
+	return nil
 }
 
+// IsInterfaceNil -
 func (stub *ElrondClientStub) IsInterfaceNil() bool {
-	panic("implement me")
+	return stub == nil
 }
