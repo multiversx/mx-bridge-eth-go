@@ -2,8 +2,9 @@ package core
 
 import (
 	"encoding/hex"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"testing"
+
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 
 	"github.com/stretchr/testify/assert"
 )
