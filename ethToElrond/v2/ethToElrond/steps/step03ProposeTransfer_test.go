@@ -16,11 +16,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("error on WasTransferProposedOnElrond", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
@@ -39,11 +35,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("not leader", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
@@ -65,11 +57,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("error on ProposeTransferOnElrond", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
@@ -94,11 +82,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("should work - transfer already proposed", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
@@ -117,11 +101,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil

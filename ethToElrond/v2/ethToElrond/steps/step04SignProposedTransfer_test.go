@@ -16,11 +16,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	t.Run("error on WasProposedTransferSigned", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.WasProposedTransferSignedCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
@@ -39,11 +35,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	t.Run("error on SignProposedTransfer", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.WasProposedTransferSignedCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
@@ -65,11 +57,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	t.Run("should work - transfer was already signed", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.WasProposedTransferSignedCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
@@ -88,11 +76,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.WasProposedTransferSignedCalled = func(ctx context.Context) (bool, error) {
 			return false, nil

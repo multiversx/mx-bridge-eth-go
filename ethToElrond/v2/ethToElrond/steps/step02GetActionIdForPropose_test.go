@@ -19,11 +19,7 @@ func TestExecuteGetActionIdForProposeStep(t *testing.T) {
 			return 1122, expectedError
 		}
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 
 		step := getActionIdForProposeStep{
@@ -34,6 +30,7 @@ func TestExecuteGetActionIdForProposeStep(t *testing.T) {
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+		assert.Equal(t, testBatch, step.bridge.GetStoredBatch())
 	})
 
 	t.Run("should work", func(t *testing.T) {
@@ -42,11 +39,7 @@ func TestExecuteGetActionIdForProposeStep(t *testing.T) {
 			return 0, nil
 		}
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 
 		step := getActionIdForProposeStep{

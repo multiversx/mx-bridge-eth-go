@@ -15,7 +15,11 @@ import (
 
 var testLogger = logger.GetOrCreate("test")
 var expectedError = errors.New("expected error")
-
+var testBatch = &clients.TransferBatch {
+	ID:       112233,
+	Deposits: nil,
+	Statuses: nil,
+}
 func TestExecuteGetPending(t *testing.T) {
 	t.Parallel()
 
@@ -85,11 +89,7 @@ func TestExecuteGetPending(t *testing.T) {
 			return nil
 		}
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled = func(ctx context.Context) error {
 			return expectedError
@@ -114,11 +114,7 @@ func TestExecuteGetPending(t *testing.T) {
 			return nil
 		}
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{
-				ID:	   112233,
-				Deposits: nil,
-				Statuses: nil,
-			}
+			return testBatch
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled = func(ctx context.Context) error {
 			return nil
@@ -138,6 +134,7 @@ func TestExecuteGetPending(t *testing.T) {
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+		assert.Equal(t, testBatch, step.bridge.GetStoredBatch())
 	})
 }
 
