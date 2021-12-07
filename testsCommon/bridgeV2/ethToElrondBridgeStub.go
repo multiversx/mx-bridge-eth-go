@@ -154,7 +154,7 @@ func (stub *EthToElrondBridgeStub) SignProposedTransfer(ctx context.Context) err
 func (stub *EthToElrondBridgeStub) IsQuorumReached(ctx context.Context) (bool, error) {
 	stub.incrementFunctionCounter()
 	if stub.IsQuorumReachedCalled != nil {
-		return stub.IsQuorumReached(ctx)
+		return stub.IsQuorumReachedCalled(ctx)
 	}
 	return false, notImplemented
 }
@@ -163,7 +163,7 @@ func (stub *EthToElrondBridgeStub) IsQuorumReached(ctx context.Context) (bool, e
 func (stub *EthToElrondBridgeStub) WasActionIDPerformed(ctx context.Context) (bool, error) {
 	stub.incrementFunctionCounter()
 	if stub.WasActionIDPerformedCalled != nil {
-		return stub.WasActionIDPerformed(ctx)
+		return stub.WasActionIDPerformedCalled(ctx)
 	}
 	return false, notImplemented
 }
@@ -172,7 +172,7 @@ func (stub *EthToElrondBridgeStub) WasActionIDPerformed(ctx context.Context) (bo
 func (stub *EthToElrondBridgeStub) PerformActionID(ctx context.Context) error {
 	stub.incrementFunctionCounter()
 	if stub.PerformActionIDCalled != nil {
-		return stub.PerformActionID(ctx)
+		return stub.PerformActionIDCalled(ctx)
 	}
 	return notImplemented
 }
