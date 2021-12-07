@@ -4,8 +4,8 @@ const (
 	// GetPendingBatchFromEthereum is the step identifier for fetching the pending batch from the Ethereum chain
 	GetPendingBatchFromEthereum = "get pending batch from ethereum"
 
-	// GetActionIdForProposeStep is the step identifier for fetching the action ID for propose transfer on Elrond
-	GetActionIdForProposeStep = "get action ID for propose transfer"
+	// GetActionIdForProposeTransfer is the step identifier for fetching the action ID for propose transfer on Elrond
+	GetActionIdForProposeTransfer = "get action ID for propose transfer"
 
 	// ProposeTransferOnElrond is the step idetifier for proposing transfer on Elrond
 	ProposeTransferOnElrond = "propose transfer"

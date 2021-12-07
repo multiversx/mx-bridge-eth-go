@@ -28,7 +28,7 @@ func (step *getActionIdForProposeStep) Execute(ctx context.Context) (core.StepId
 
 // Identifier returns the step's identifier
 func (step *getActionIdForProposeStep) Identifier() core.StepIdentifier {
-	return ethToElrond.GetActionIdForProposeStep
+	return ethToElrond.GetActionIdForProposeTransfer
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
