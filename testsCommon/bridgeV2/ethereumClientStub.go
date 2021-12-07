@@ -9,10 +9,9 @@ import (
 
 // EthereumClientStub -
 type EthereumClientStub struct {
-    GetBatchCalled            func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
-    WasExecutedCalled         func(ctx context.Context, batchID uint64) (bool, error)
-    GenerateMessageHashCalled func(batch *clients.TransferBatch) (common.Hash, error)
-
+    GetBatchCalled                         func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
+    WasExecutedCalled                      func(ctx context.Context, batchID uint64) (bool, error)
+    GenerateMessageHashCalled              func(batch *clients.TransferBatch) (common.Hash, error)
     BroadcastSignatureForMessageHashCalled func(msgHash common.Hash)
     ExecuteTransferCalled                  func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
 }
