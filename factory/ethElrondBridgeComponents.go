@@ -35,6 +35,11 @@ const (
 	pollingDurationOnError = time.Second * 5
 	// p2pStatusHandlerPollingInterval = time.Second * 2
 	ethToElrondName = "EthToElrond"
+	baseLogId = "EthElrond-Base"
+	elrondClientLogId = "EthElrond-ElrondClient"
+	ethClientLogId = "EthElrond-EthClient"
+	elrondRoleProviderLogId = "EthElrond-ElrondRoleProvider"
+	ethRoleProviderLogId = "EthElrond-EthRoleProvider"
 )
 
 var suite = ed25519.NewEd25519()
@@ -76,7 +81,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 	}
 
 	components := &ethElrondBridgeComponents{
-		baseLogger:      logger.GetOrCreate(ethToElrondName), // TODO use loggerWithIdentifier
+		baseLogger:      core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
 		messenger:       args.Messenger,
 		statusStorer:    args.StatusStorer,
 		configs:         args.Configs,
@@ -185,7 +190,7 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 	clientArgs := elrond.ClientArgs{
 		GasMapConfig:                 elrondConfigs.GasMap,
 		Proxy:                        args.Proxy,
-		Log:                          logger.GetOrCreate("elrond client"), // TODO use loggerWithIdentifier
+		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate("elrond client"), elrondClientLogId),
 		RelayerPrivateKey:            components.elrondRelayerPrivateKey,
 		MultisigContractAddress:      components.elrondMultisigContractAddress,
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
@@ -214,7 +219,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		return err
 	}
 
-	log := logger.GetOrCreate("eth client") // TODO use loggerWithIdentifier,
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate("eth client"), ethClientLogId)
 
 	argsBroadcaster := p2p.ArgsBroadcaster{
 		Messenger:          args.Messenger,
@@ -269,7 +274,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 
 func (components *ethElrondBridgeComponents) createElrondRoleProvider(args ArgsEthereumToElrondBridge) error {
 	configs := args.Configs.GeneralConfig
-	log := logger.GetOrCreate("elrond role provider") // TODO use loggerWithIdentifier,
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate("elrond role provider"), elrondRoleProviderLogId)
 
 	argsRoleProvider := roleProviders.ArgsElrondRoleProvider{
 		DataGetter: components.dataGetter,
@@ -303,7 +308,7 @@ func (components *ethElrondBridgeComponents) createElrondRoleProvider(args ArgsE
 func (components *ethElrondBridgeComponents) createEthereumRoleProvider(args ArgsEthereumToElrondBridge) error {
 	configs := args.Configs.GeneralConfig
 
-	log := logger.GetOrCreate("ethereum role provider") // TODO use loggerWithIdentifier,
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate("ethereum role provider"), ethRoleProviderLogId)
 	argsRoleProvider := roleProviders.ArgsEthereumRoleProvider{
 		EthereumChainInteractor: args.ClientWrapper,
 		Log:                     log,
