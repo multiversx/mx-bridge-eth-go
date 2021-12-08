@@ -18,4 +18,16 @@ const (
 
 	// PerformingActionID is the step identifier for performing the ActionID on Elrond
 	PerformingActionID = "perform action"
+
+	numSteps = 6
 )
+
+var StepList = [numSteps + 1]string{
+	GettingPendingBatchFromEthereum,
+	GettingActionIdForProposeTransfer,
+	ProposingTransferOnElrond,
+	SigningProposedTransferOnElrond,
+	WaitingForQuorum,
+	PerformingActionID,
+	"noFailing",
+}
