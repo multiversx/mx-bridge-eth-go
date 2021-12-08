@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testLogger = logger.GetOrCreate("test")
+var testLogger = core.NewLoggerWithIdentifier(logger.GetOrCreate("test"), "TEST")
 var expectedError = errors.New("expected error")
 var testBatch = &clients.TransferBatch {
 	ID:       112233,

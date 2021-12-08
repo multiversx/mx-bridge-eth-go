@@ -59,8 +59,8 @@ func (executor *ethToElrondBridgeExecutor) MyTurnAsLeader() bool {
 	return executor.topologyProvider.MyTurnAsLeader()
 }
 
-// GetAndStoreActionID fetches the action ID by using the stored batch and will return and store the action ID
-func (executor *ethToElrondBridgeExecutor) GetAndStoreActionID(ctx context.Context) (uint64, error) {
+// GetAndStoreActionIDFromElrond fetches the action ID by using the stored batch and will return and store the action ID
+func (executor *ethToElrondBridgeExecutor) GetAndStoreActionIDFromElrond(ctx context.Context) (uint64, error) {
 	if executor.batch == nil {
 		return 0, errNilBatch
 	}
@@ -121,7 +121,7 @@ func (executor *ethToElrondBridgeExecutor) verifyDepositNonces(lastNonce uint64)
 	startNonce := lastNonce + 1
 	for _, dt := range executor.batch.Deposits {
 		if dt.Nonce != startNonce {
-			return fmt.Errorf("%w for deposit %s", errInvalidDepositNonce, dt.String())
+			return fmt.Errorf("%w for deposit %s, expected: %d", errInvalidDepositNonce, dt.String(), startNonce)
 		}
 
 		startNonce++
@@ -156,13 +156,13 @@ func (executor *ethToElrondBridgeExecutor) ProposeTransferOnElrond(ctx context.C
 	return nil
 }
 
-// WasProposedTransferSigned returns true if the current relayer already signed the proposed transfer
-func (executor *ethToElrondBridgeExecutor) WasProposedTransferSigned(ctx context.Context) (bool, error) {
+// WasProposedTransferSignedOnElrond returns true if the current relayer already signed the proposed transfer
+func (executor *ethToElrondBridgeExecutor) WasProposedTransferSignedOnElrond(ctx context.Context) (bool, error) {
 	return executor.elrondClient.WasExecuted(ctx, executor.actionID)
 }
 
-// SignProposedTransfer will call the Elrond client to generate and send the signature
-func (executor *ethToElrondBridgeExecutor) SignProposedTransfer(ctx context.Context) error {
+// SignProposedTransferOnElrond will call the Elrond client to generate and send the signature
+func (executor *ethToElrondBridgeExecutor) SignProposedTransferOnElrond(ctx context.Context) error {
 	hash, err := executor.elrondClient.Sign(ctx, executor.actionID)
 	if err != nil {
 		return err
@@ -173,18 +173,18 @@ func (executor *ethToElrondBridgeExecutor) SignProposedTransfer(ctx context.Cont
 	return nil
 }
 
-// IsQuorumReached will return true if the proposed transfer reached the set quorum
-func (executor *ethToElrondBridgeExecutor) IsQuorumReached(ctx context.Context) (bool, error) {
+// IsQuorumReachedOnElrond will return true if the proposed transfer reached the set quorum
+func (executor *ethToElrondBridgeExecutor) IsQuorumReachedOnElrond(ctx context.Context) (bool, error) {
 	return executor.elrondClient.QuorumReached(ctx, executor.actionID)
 }
 
-// WasActionIDPerformed will return true if the action ID was already performed
-func (executor *ethToElrondBridgeExecutor) WasActionIDPerformed(ctx context.Context) (bool, error) {
+// WasActionIDPerformedOnElrond will return true if the action ID was already performed
+func (executor *ethToElrondBridgeExecutor) WasActionIDPerformedOnElrond(ctx context.Context) (bool, error) {
 	return executor.elrondClient.WasExecuted(ctx, executor.actionID)
 }
 
-// PerformActionID will send the perform-action transaction on the Elrond chain
-func (executor *ethToElrondBridgeExecutor) PerformActionID(ctx context.Context) error {
+// PerformActionIDOnElrond will send the perform-action transaction on the Elrond chain
+func (executor *ethToElrondBridgeExecutor) PerformActionIDOnElrond(ctx context.Context) error {
 	if executor.batch == nil {
 		return errNilBatch
 	}

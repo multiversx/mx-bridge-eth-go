@@ -13,7 +13,7 @@ type waitForQuorumStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *waitForQuorumStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	isQuorumReached, err := step.bridge.IsQuorumReached(ctx)
+	isQuorumReached, err := step.bridge.IsQuorumReachedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error while checking the quorum", "error", err)
 		return ethToElrond.GettingPendingBatchFromEthereum, nil

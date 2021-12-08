@@ -13,7 +13,7 @@ type performActionIDStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *performActionIDStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	wasPerformed, err := step.bridge.WasActionIDPerformed(ctx)
+	wasPerformed, err := step.bridge.WasActionIDPerformedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if the action ID was proposed or not",
 			"action ID", step.bridge.GetStoredActionID(), "error", err)
@@ -30,7 +30,7 @@ func (step *performActionIDStep) Execute(ctx context.Context) (core.StepIdentifi
 		return step.Identifier(), nil
 	}
 
-	err = step.bridge.PerformActionID(ctx)
+	err = step.bridge.PerformActionIDOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Info("error performing action ID",
 			"action ID", step.bridge.GetStoredActionID(), "error", err)
