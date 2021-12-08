@@ -5,8 +5,8 @@ import (
 )
 
 var (
-    ErrNilSortedPublicKeys = errors.New("nil sorted public keys")
-    ErrInvalidStepDuration = errors.New("invalid step duration")
-    ErrNilTimer            = errors.New("nil timer")
-    ErrNilAddress          = errors.New("nil address")
+    errNilSortedPublicKeys = errors.New("nil sorted public keys")
+    errInvalidStepDuration = errors.New("invalid step duration")
+    errNilTimer            = errors.New("nil timer")
+    errNilAddress          = errors.New("nil address")
 )

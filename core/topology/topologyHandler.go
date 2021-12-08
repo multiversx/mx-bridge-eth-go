@@ -58,16 +58,16 @@ func (t *topologyHandler) IsInterfaceNil() bool {
 
 func checkArgs(args ArgsTopologyHandler) error {
     if args.SortedPublicKeys == nil {
-        return ErrNilSortedPublicKeys
+        return errNilSortedPublicKeys
     }
     if check.IfNil(args.Timer) {
-        return ErrNilTimer
+        return errNilTimer
     }
     if int64(args.StepDuration.Seconds()) <= 0 {
-        return ErrInvalidStepDuration
+        return errInvalidStepDuration
     }
     if args.Address == nil {
-        return ErrNilAddress
+        return errNilAddress
     }
 
     return nil

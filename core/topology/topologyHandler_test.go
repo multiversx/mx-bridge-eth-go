@@ -8,7 +8,7 @@ import (
     "github.com/stretchr/testify/assert"
 )
 
-var duration = time.Duration(1000000000) // one sec
+var duration = time.Second
 
 func TestNewTopologyHandler(t *testing.T) {
     t.Parallel()
@@ -36,7 +36,7 @@ func TestNewTopologyHandler(t *testing.T) {
     })
 
     t.Run("nil providedSortedPublicKeys", func(t *testing.T) {
-        expectedErr := ErrNilSortedPublicKeys
+        expectedErr := errNilSortedPublicKeys
         args := ArgsTopologyHandler{}
         tph, err := NewTopologyHandler(args)
         assert.Nil(t, tph)
@@ -44,7 +44,7 @@ func TestNewTopologyHandler(t *testing.T) {
     })
 
     t.Run("nil timer", func(t *testing.T) {
-        expectedErr := ErrNilTimer
+        expectedErr := errNilTimer
         args := ArgsTopologyHandler{}
         args.SortedPublicKeys = [][]byte{[]byte("abc")}
         tph, err := NewTopologyHandler(args)
@@ -53,7 +53,7 @@ func TestNewTopologyHandler(t *testing.T) {
     })
 
     t.Run("invalid step duration", func(t *testing.T) {
-        expectedErr := ErrInvalidStepDuration
+        expectedErr := errInvalidStepDuration
         args := ArgsTopologyHandler{
             SortedPublicKeys: [][]byte{[]byte("abc")},
             Timer:            createTimerStubWithUnixValue(0),
@@ -65,7 +65,7 @@ func TestNewTopologyHandler(t *testing.T) {
     })
 
     t.Run("nil address", func(t *testing.T) {
-        expectedErr := ErrNilAddress
+        expectedErr := errNilAddress
         args := ArgsTopologyHandler{
             SortedPublicKeys: [][]byte{[]byte("abc")},
             Timer:            createTimerStubWithUnixValue(0),
