@@ -20,7 +20,7 @@ func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIde
 		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
-	wasSigned, err := step.bridge.WasProposedTransferSigned(ctx)
+	wasSigned, err := step.bridge.WasProposedTransferSignedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if the proposed transfer was signed or not",
 			"batch ID", batch.ID, "error", err)
@@ -31,7 +31,7 @@ func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIde
 		return ethToElrond.WaitingForQuorum, nil
 	}
 
-	err = step.bridge.SignProposedTransfer(ctx)
+	err = step.bridge.SignProposedTransferOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error signing the proposed transfer",
 			"batch ID", batch.ID, "error", err)
