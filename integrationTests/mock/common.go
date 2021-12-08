@@ -3,7 +3,6 @@ package mock
 import (
 	"fmt"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
@@ -24,8 +23,8 @@ func CreateMockRelayArgs(
 	return relay.ArgsRelayer{
 		Configs: config.Configs{
 			GeneralConfig:   createMockRelayConfig(index),
-			ApiRoutesConfig: &config.ApiRoutesConfig{},
-			FlagsConfig: &config.ContextFlagsConfig{
+			ApiRoutesConfig: config.ApiRoutesConfig{},
+			FlagsConfig: config.ContextFlagsConfig{
 				RestApiInterface: core.WebServerOffString,
 			},
 		},
@@ -39,7 +38,7 @@ func CreateMockRelayArgs(
 	}
 }
 
-func createMockRelayConfig(index int) *config.Config {
+func createMockRelayConfig(index int) config.Config {
 	stateMachineConfig := config.ConfigStateMachine{
 		StepDurationInMillis: 1000,
 		Steps: []config.StepConfig{
@@ -53,20 +52,20 @@ func createMockRelayConfig(index int) *config.Config {
 		},
 	}
 
-	return &config.Config{
-		Eth: bridge.EthereumConfig{
+	return config.Config{
+		Eth: config.EthereumConfig{
 			NetworkAddress:               "mock",
-			BridgeAddress:                "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
+			MultisigContractAddress:      "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
 			PrivateKeyFile:               fmt.Sprintf("testdata/ethereum%d.sk", index),
 			IntervalToResendTxsInSeconds: 10,
 			GasLimit:                     500000,
-			GasStation: bridge.GasStationConfig{
+			GasStation: config.GasStationConfig{
 				Enabled: false,
 			},
 		},
-		Elrond: bridge.ElrondConfig{
+		Elrond: config.ElrondConfig{
 			NetworkAddress:               "mock",
-			BridgeAddress:                "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+			MultisigContractAddress:      "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
 			PrivateKeyFile:               fmt.Sprintf("testdata/elrond%d.pem", index),
 			IntervalToResendTxsInSeconds: 10,
 			GasMap:                       testsCommon.CreateTestElrondGasMap(),

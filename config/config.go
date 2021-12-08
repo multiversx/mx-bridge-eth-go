@@ -1,21 +1,20 @@
 package config
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-go/config"
 )
 
 // Configs is a holder for the relayer configuration parameters
 type Configs struct {
-	GeneralConfig   *Config
-	ApiRoutesConfig *ApiRoutesConfig
-	FlagsConfig     *ContextFlagsConfig
+	GeneralConfig   Config
+	ApiRoutesConfig ApiRoutesConfig
+	FlagsConfig     ContextFlagsConfig
 }
 
 // Config general configuration struct
 type Config struct {
-	Eth          bridge.EthereumConfig
-	Elrond       bridge.ElrondConfig
+	Eth          EthereumConfig
+	Elrond       ElrondConfig
 	P2P          ConfigP2P
 	StateMachine map[string]ConfigStateMachine
 	Relayer      ConfigRelayer
@@ -26,7 +25,7 @@ type Config struct {
 // EthereumConfig represents the Ethereum Config parameters
 type EthereumConfig struct {
 	NetworkAddress               string
-	BridgeAddress                string
+	MultisigContractAddress      string
 	SafeContractAddress          string
 	PrivateKeyFile               string
 	IntervalToResendTxsInSeconds uint64
@@ -134,7 +133,7 @@ type RoleProviderConfig struct {
 // ElrondConfig represents the Elrond Config parameters
 type ElrondConfig struct {
 	NetworkAddress               string
-	BridgeAddress                string
+	MultisigContractAddress      string
 	PrivateKeyFile               string
 	IntervalToResendTxsInSeconds uint64
 	GasMap                       ElrondGasMapConfig

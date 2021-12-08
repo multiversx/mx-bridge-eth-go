@@ -203,7 +203,7 @@ func NewRelay(args ArgsRelayer) (*Relay, error) {
 	relay.quorumProvider = ethBridge
 	relay.ethereumAddress = ethBridge.Address()
 
-	err = relay.createRoleProviders(*cfgs)
+	err = relay.createRoleProviders(cfgs)
 	if err != nil {
 		return nil, err
 	}
@@ -647,7 +647,7 @@ func (r *Relay) createHttpServer() (shared.UpgradeableHttpServerHandler, error) 
 
 	httpServerArgs := gin.ArgsNewWebServer{
 		Facade:          relayerFacade,
-		ApiConfig:       *r.configs.ApiRoutesConfig,
+		ApiConfig:       r.configs.ApiRoutesConfig,
 		AntiFloodConfig: r.configs.GeneralConfig.Antiflood.WebServer,
 	}
 

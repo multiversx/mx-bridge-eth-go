@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -49,7 +50,7 @@ type client struct {
 
 // ArgsClient is the DTO used in the client constructor
 type ArgsClient struct {
-	Config              bridge.EthereumConfig
+	Config              config.EthereumConfig
 	Broadcaster         bridge.Broadcaster
 	Mapper              bridge.Mapper
 	GasHandler          bridge.GasHandler
