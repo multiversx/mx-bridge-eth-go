@@ -102,7 +102,7 @@ func TestEthToElrondBridgeExecutor_MyTurnAsLeader(t *testing.T) {
 	assert.True(t, wasCalled)
 }
 
-func TestEthToElrondBridgeExecutor_GetAndStoreActionID(t *testing.T) {
+func TestEthToElrondBridgeExecutor_GetAndStoreActionIDFromElrond(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch should error", func(t *testing.T) {
@@ -111,7 +111,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreActionID(t *testing.T) {
 		args := createMockEthToElrondExecutorArgs()
 		executor, _ := NewEthToElrondBridgeExecutor(args)
 
-		actionID, err := executor.GetAndStoreActionID(context.Background())
+		actionID, err := executor.GetAndStoreActionIDFromElrond(context.Background())
 		assert.Zero(t, actionID)
 		assert.Equal(t, errNilBatch, err)
 	})
@@ -131,7 +131,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreActionID(t *testing.T) {
 		executor, _ := NewEthToElrondBridgeExecutor(args)
 		executor.batch = providedBatch
 
-		actionID, err := executor.GetAndStoreActionID(context.Background())
+		actionID, err := executor.GetAndStoreActionIDFromElrond(context.Background())
 		assert.Zero(t, actionID)
 		assert.Equal(t, expectedErr, err)
 	})
@@ -151,10 +151,13 @@ func TestEthToElrondBridgeExecutor_GetAndStoreActionID(t *testing.T) {
 		executor, _ := NewEthToElrondBridgeExecutor(args)
 		executor.batch = providedBatch
 
-		actionID, err := executor.GetAndStoreActionID(context.Background())
+		assert.NotEqual(t, providedActionID, executor.actionID)
+
+		actionID, err := executor.GetAndStoreActionIDFromElrond(context.Background())
 		assert.Equal(t, providedActionID, actionID)
 		assert.Nil(t, err)
 		assert.Equal(t, providedActionID, executor.GetStoredActionID())
+		assert.Equal(t, providedActionID, executor.actionID)
 	})
 }
 
@@ -195,6 +198,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
+		assert.True(t, expectedBatch == executor.batch)
 	})
 }
 
@@ -252,7 +256,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 		},
 	}
 
-	t.Run("first deposit nonce equals should error", func(t *testing.T) {
+	t.Run("first deposit nonce equals last tx nonce should error", func(t *testing.T) {
 		t.Parallel()
 
 		executor, _ := NewEthToElrondBridgeExecutor(args)
@@ -261,17 +265,14 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 				{
 					Nonce: txId,
 				},
-				{
-					Nonce: txId + 2,
-				},
 			},
 		}
 
 		err := executor.VerifyLastDepositNonceExecutedOnEthereumBatch(context.Background())
 		assert.True(t, errors.Is(err, errInvalidDepositNonce))
-		assert.True(t, strings.Contains(err.Error(), "deposit nonce: 6657"))
+		assert.True(t, strings.Contains(err.Error(), "6657"))
 	})
-	t.Run("first deposit nonce smaller should error", func(t *testing.T) {
+	t.Run("first deposit nonce is smaller than the last tx nonce should error", func(t *testing.T) {
 		t.Parallel()
 
 		executor, _ := NewEthToElrondBridgeExecutor(args)
@@ -280,15 +281,12 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 				{
 					Nonce: txId - 1,
 				},
-				{
-					Nonce: txId + 2,
-				},
 			},
 		}
 
 		err := executor.VerifyLastDepositNonceExecutedOnEthereumBatch(context.Background())
 		assert.True(t, errors.Is(err, errInvalidDepositNonce))
-		assert.True(t, strings.Contains(err.Error(), "deposit nonce: 6656"))
+		assert.True(t, strings.Contains(err.Error(), "6656"))
 	})
 	t.Run("gap found error", func(t *testing.T) {
 		t.Parallel()
@@ -307,7 +305,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 
 		err := executor.VerifyLastDepositNonceExecutedOnEthereumBatch(context.Background())
 		assert.True(t, errors.Is(err, errInvalidDepositNonce))
-		assert.True(t, strings.Contains(err.Error(), "deposit nonce: 6660"))
+		assert.True(t, strings.Contains(err.Error(), "6660"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -431,7 +429,7 @@ func TestEthToElrondBridgeExecutor_ProposeTransferOnElrond(t *testing.T) {
 	})
 }
 
-func TestEthToElrondBridgeExecutor_WasProposedTransferSigned(t *testing.T) {
+func TestEthToElrondBridgeExecutor_WasProposedTransferSignedOnElrond(t *testing.T) {
 	t.Parallel()
 
 	args := createMockEthToElrondExecutorArgs()
@@ -447,13 +445,13 @@ func TestEthToElrondBridgeExecutor_WasProposedTransferSigned(t *testing.T) {
 	executor, _ := NewEthToElrondBridgeExecutor(args)
 	executor.actionID = providedActionID
 
-	wasSigned, err := executor.WasProposedTransferSigned(context.Background())
+	wasSigned, err := executor.WasProposedTransferSignedOnElrond(context.Background())
 	assert.True(t, wasSigned)
 	assert.Nil(t, err)
 	assert.True(t, wasCalled)
 }
 
-func TestEthToElrondBridgeExecutor_SignProposedTransfer(t *testing.T) {
+func TestEthToElrondBridgeExecutor_SignProposedTransferOnElrond(t *testing.T) {
 	t.Parallel()
 
 	t.Run("elrond client errors", func(t *testing.T) {
@@ -472,7 +470,7 @@ func TestEthToElrondBridgeExecutor_SignProposedTransfer(t *testing.T) {
 		executor, _ := NewEthToElrondBridgeExecutor(args)
 		executor.actionID = providedActionID
 
-		err := executor.SignProposedTransfer(context.Background())
+		err := executor.SignProposedTransferOnElrond(context.Background())
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -492,13 +490,13 @@ func TestEthToElrondBridgeExecutor_SignProposedTransfer(t *testing.T) {
 		executor, _ := NewEthToElrondBridgeExecutor(args)
 		executor.actionID = providedActionID
 
-		err := executor.SignProposedTransfer(context.Background())
+		err := executor.SignProposedTransferOnElrond(context.Background())
 		assert.Nil(t, err)
 		assert.True(t, wasCalled)
 	})
 }
 
-func TestEthToElrondBridgeExecutor_IsQuorumReached(t *testing.T) {
+func TestEthToElrondBridgeExecutor_IsQuorumReachedOnElrond(t *testing.T) {
 	t.Parallel()
 
 	args := createMockEthToElrondExecutorArgs()
@@ -514,13 +512,13 @@ func TestEthToElrondBridgeExecutor_IsQuorumReached(t *testing.T) {
 	executor, _ := NewEthToElrondBridgeExecutor(args)
 	executor.actionID = providedActionID
 
-	isQuorumReached, err := executor.IsQuorumReached(context.Background())
+	isQuorumReached, err := executor.IsQuorumReachedOnElrond(context.Background())
 	assert.True(t, isQuorumReached)
 	assert.Nil(t, err)
 	assert.True(t, wasCalled)
 }
 
-func TestEthToElrondBridgeExecutor_WasActionIDPerformed(t *testing.T) {
+func TestEthToElrondBridgeExecutor_WasActionIDPerformedOnElrond(t *testing.T) {
 	t.Parallel()
 
 	args := createMockEthToElrondExecutorArgs()
@@ -536,13 +534,13 @@ func TestEthToElrondBridgeExecutor_WasActionIDPerformed(t *testing.T) {
 	executor, _ := NewEthToElrondBridgeExecutor(args)
 	executor.actionID = providedActionID
 
-	wasPerformed, err := executor.WasActionIDPerformed(context.Background())
+	wasPerformed, err := executor.WasActionIDPerformedOnElrond(context.Background())
 	assert.True(t, wasPerformed)
 	assert.Nil(t, err)
 	assert.True(t, wasCalled)
 }
 
-func TestEthToElrondBridgeExecutor_PerformActionID(t *testing.T) {
+func TestEthToElrondBridgeExecutor_PerformActionIDOnElrond(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
@@ -551,7 +549,7 @@ func TestEthToElrondBridgeExecutor_PerformActionID(t *testing.T) {
 		args := createMockEthToElrondExecutorArgs()
 		executor, _ := NewEthToElrondBridgeExecutor(args)
 
-		err := executor.PerformActionID(context.Background())
+		err := executor.PerformActionIDOnElrond(context.Background())
 		assert.Equal(t, errNilBatch, err)
 	})
 	t.Run("elrond client errors", func(t *testing.T) {
@@ -572,7 +570,7 @@ func TestEthToElrondBridgeExecutor_PerformActionID(t *testing.T) {
 		executor.batch = providedBatch
 		executor.actionID = providedActionID
 
-		err := executor.PerformActionID(context.Background())
+		err := executor.PerformActionIDOnElrond(context.Background())
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -594,7 +592,7 @@ func TestEthToElrondBridgeExecutor_PerformActionID(t *testing.T) {
 		executor.batch = providedBatch
 		executor.actionID = providedActionID
 
-		err := executor.PerformActionID(context.Background())
+		err := executor.PerformActionIDOnElrond(context.Background())
 		assert.Nil(t, err)
 		assert.True(t, wasCalled)
 	})
