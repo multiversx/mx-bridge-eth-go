@@ -5,6 +5,7 @@ import (
     "time"
 
     "github.com/ElrondNetwork/elrond-eth-bridge/core"
+    "github.com/ElrondNetwork/elrond-go-core/core/check"
 )
 
 // ArgsTopologyHandler is the DTO used in the NewTopologyHandler constructor function
@@ -24,13 +25,18 @@ type topologyHandler struct {
 }
 
 // NewTopologyHandler creates a new topologyHandler instance
-func NewTopologyHandler(args ArgsTopologyHandler) *topologyHandler {
+func NewTopologyHandler(args ArgsTopologyHandler) (*topologyHandler, error) {
+    err := checkArgs(args)
+    if err != nil {
+        return nil, err
+    }
+
     return &topologyHandler{
         sortedPublicKeys: args.SortedPublicKeys,
         timer:            args.Timer,
         stepDuration:     args.StepDuration,
         address:          args.Address,
-    }
+    }, nil
 }
 
 // MyTurnAsLeader returns true if the current relay is leader
@@ -48,4 +54,21 @@ func (t *topologyHandler) MyTurnAsLeader() bool {
 // IsInterfaceNil returns true if there is no value under the interface
 func (t *topologyHandler) IsInterfaceNil() bool {
     return t == nil
+}
+
+func checkArgs(args ArgsTopologyHandler) error {
+    if args.SortedPublicKeys == nil {
+        return ErrNilSortedPublicKeys
+    }
+    if check.IfNil(args.Timer) {
+        return ErrNilTimer
+    }
+    if int64(args.StepDuration.Seconds()) <= 0 {
+        return ErrInvalidStepDuration
+    }
+    if args.Address == nil {
+        return ErrNilAddress
+    }
+
+    return nil
 }
