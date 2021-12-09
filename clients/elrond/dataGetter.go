@@ -18,7 +18,6 @@ const (
 	internalError                                             = "internal error"
 	getCurrentTxBatchFuncName                                 = "getCurrentTxBatch"
 	wasTransferActionProposedFuncName                         = "wasTransferActionProposed"
-	getActionSignerCountFuncName                              = "getActionSignerCount"
 	wasActionExecutedFuncName                                 = "wasActionExecuted"
 	getActionIdForTransferBatchFuncName                       = "getActionIdForTransferBatch"
 	wasSetCurrentTransactionBatchStatusActionProposedFuncName = "wasSetCurrentTransactionBatchStatusActionProposed"
@@ -221,14 +220,6 @@ func (dg *elrondClientDataGetter) WasProposedTransfer(ctx context.Context, batch
 	addBatchInfo(builder, batch)
 
 	return dg.executeQueryBoolFromBuilder(ctx, builder)
-}
-
-// SignersCount returns the signers count
-func (dg *elrondClientDataGetter) SignersCount(ctx context.Context, actionID uint64) (uint64, error) {
-	builder := dg.createDefaultVmQueryBuilder()
-	builder.Function(getActionSignerCountFuncName).ArgInt64(int64(actionID))
-
-	return dg.executeQueryUint64FromBuilder(ctx, builder)
 }
 
 // WasExecuted returns true if the provided actionID was executed or not

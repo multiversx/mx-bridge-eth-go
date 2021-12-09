@@ -34,7 +34,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.WasProposedTransferSignedCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
 		}
 
@@ -53,10 +53,10 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.WasProposedTransferSignedCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
 		}
-		bridgeStub.SignProposedTransferCalled = func(ctx context.Context) error {
+		bridgeStub.SignProposedTransferOnElrondCalled = func(ctx context.Context) error {
 			return expectedError
 		}
 
@@ -75,7 +75,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.WasProposedTransferSignedCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
 		}
 
@@ -94,10 +94,10 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.WasProposedTransferSignedCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
 		}
-		bridgeStub.SignProposedTransferCalled = func(ctx context.Context) error {
+		bridgeStub.SignProposedTransferOnElrondCalled = func(ctx context.Context) error {
 			return nil
 		}
 

@@ -501,39 +501,6 @@ func TestDataGetter_WasProposedTransfer(t *testing.T) {
 	})
 }
 
-func TestDataGetter_SignersCount(t *testing.T) {
-	t.Parallel()
-
-	args := createMockArgsDataGetter()
-	proxyCalled := false
-	args.Proxy = &interactors.ElrondProxyStub{
-		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-			proxyCalled = true
-			assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
-			assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
-			assert.Equal(t, "", vmRequest.CallValue)
-			assert.Equal(t, getActionSignerCountFuncName, vmRequest.FuncName)
-
-			expectedArgs := []string{hex.EncodeToString(big.NewInt(112233).Bytes())}
-			assert.Equal(t, expectedArgs, vmRequest.Args)
-
-			return &data.VmValuesResponseData{
-				Data: &vm.VMOutputApi{
-					ReturnCode: okCodeAfterExecution,
-					ReturnData: [][]byte{big.NewInt(1234).Bytes()},
-				},
-			}, nil
-		},
-	}
-
-	dg, _ := NewDataGetter(args)
-
-	result, err := dg.SignersCount(context.Background(), 112233)
-	assert.Nil(t, err)
-	assert.True(t, proxyCalled)
-	assert.Equal(t, uint64(1234), result)
-}
-
 func TestDataGetter_WasExecuted(t *testing.T) {
 	t.Parallel()
 
