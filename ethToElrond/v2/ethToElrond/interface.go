@@ -12,7 +12,7 @@ type EthToElrondBridge interface {
 	GetLogger() logger.Logger
 	MyTurnAsLeader() bool
 
-	GetAndStoreActionID(ctx context.Context) (uint64, error)
+	GetAndStoreActionIDFromElrond(ctx context.Context) (uint64, error)
 	GetStoredActionID() uint64
 	GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error
 	GetStoredBatch() *clients.TransferBatch
@@ -21,10 +21,11 @@ type EthToElrondBridge interface {
 	VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error
 	WasTransferProposedOnElrond(ctx context.Context) (bool, error)
 	ProposeTransferOnElrond(ctx context.Context) error
-	WasProposedTransferSigned(ctx context.Context) (bool, error)
-	SignProposedTransfer(ctx context.Context) error
-	IsQuorumReached(ctx context.Context) (bool, error)
-	WasActionIDPerformed(ctx context.Context) (bool, error)
-	PerformActionID(ctx context.Context) error
+	WasProposedTransferSignedOnElrond(ctx context.Context) (bool, error)
+	SignProposedTransferOnElrond(ctx context.Context) error
+	IsQuorumReachedOnElrond(ctx context.Context) (bool, error)
+	WasActionIDPerformedOnElrond(ctx context.Context) (bool, error)
+	PerformActionIDOnElrond(ctx context.Context) error
+
 	IsInterfaceNil() bool
 }

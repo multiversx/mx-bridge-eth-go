@@ -20,7 +20,7 @@ func (step *getActionIdForProposeStep) Execute(ctx context.Context) (core.StepId
 		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
-	actionID, err := step.bridge.GetAndStoreActionID(ctx)
+	actionID, err := step.bridge.GetAndStoreActionIDFromElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error fetching action ID", "batch ID", batch.ID, "error", err)
 		return ethToElrond.GettingPendingBatchFromEthereum, nil

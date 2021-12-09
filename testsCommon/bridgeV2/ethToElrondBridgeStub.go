@@ -19,20 +19,19 @@ type EthToElrondBridgeStub struct {
 	GetLoggerCalled      func() logger.Logger
 	MyTurnAsLeaderCalled func() bool
 
-	GetAndStoreActionIDCalled          func(ctx context.Context) (uint64, error)
-	GetStoredActionIDCalled            func() uint64
-	GetAndStoreBatchFromEthereumCalled func(ctx context.Context, nonce uint64) error
-	GetStoredBatchCalled               func() *clients.TransferBatch
-
+	GetAndStoreActionIDFromElrondCalled                 func(ctx context.Context) (uint64, error)
+	GetStoredActionIDCalled                             func() uint64
+	GetAndStoreBatchFromEthereumCalled                  func(ctx context.Context, nonce uint64) error
+	GetStoredBatchCalled                                func() *clients.TransferBatch
 	GetLastExecutedEthBatchIDFromElrondCalled           func(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatchCalled func(ctx context.Context) error
 	WasTransferProposedOnElrondCalled                   func(ctx context.Context) (bool, error)
 	ProposeTransferOnElrondCalled                       func(ctx context.Context) error
-	WasProposedTransferSignedCalled                     func(ctx context.Context) (bool, error)
-	SignProposedTransferCalled                          func(ctx context.Context) error
-	IsQuorumReachedCalled                               func(ctx context.Context) (bool, error)
-	WasActionIDPerformedCalled                          func(ctx context.Context) (bool, error)
-	PerformActionIDCalled                               func(ctx context.Context) error
+	WasProposedTransferSignedOnElrondCalled             func(ctx context.Context) (bool, error)
+	SignProposedTransferOnElrondCalled                  func(ctx context.Context) error
+	IsQuorumReachedOnElrondCalled                       func(ctx context.Context) (bool, error)
+	WasActionIDPerformedOnElrondCalled                  func(ctx context.Context) (bool, error)
+	PerformActionIDOnElrondCalled                       func(ctx context.Context) error
 }
 
 // NewEthToElrondBridgeStub creates a new EthToElrondBridgeStub instance
@@ -60,11 +59,11 @@ func (stub *EthToElrondBridgeStub) MyTurnAsLeader() bool {
 	return false
 }
 
-// GetAndStoreActionID -
-func (stub *EthToElrondBridgeStub) GetAndStoreActionID(ctx context.Context) (uint64, error) {
+// GetAndStoreActionIDFromElrond -
+func (stub *EthToElrondBridgeStub) GetAndStoreActionIDFromElrond(ctx context.Context) (uint64, error) {
 	stub.incrementFunctionCounter()
-	if stub.GetAndStoreActionIDCalled != nil {
-		return stub.GetAndStoreActionIDCalled(ctx)
+	if stub.GetAndStoreActionIDFromElrondCalled != nil {
+		return stub.GetAndStoreActionIDFromElrondCalled(ctx)
 	}
 	return 0, notImplemented
 }
@@ -132,47 +131,47 @@ func (stub *EthToElrondBridgeStub) ProposeTransferOnElrond(ctx context.Context) 
 	return notImplemented
 }
 
-// WasProposedTransferSigned -
-func (stub *EthToElrondBridgeStub) WasProposedTransferSigned(ctx context.Context) (bool, error) {
+// WasProposedTransferSignedOnElrond -
+func (stub *EthToElrondBridgeStub) WasProposedTransferSignedOnElrond(ctx context.Context) (bool, error) {
 	stub.incrementFunctionCounter()
-	if stub.WasProposedTransferSignedCalled != nil {
-		return stub.WasProposedTransferSignedCalled(ctx)
+	if stub.WasProposedTransferSignedOnElrondCalled != nil {
+		return stub.WasProposedTransferSignedOnElrondCalled(ctx)
 	}
 	return false, notImplemented
 }
 
-// SignProposedTransfer -
-func (stub *EthToElrondBridgeStub) SignProposedTransfer(ctx context.Context) error {
+// SignProposedTransferOnElrond -
+func (stub *EthToElrondBridgeStub) SignProposedTransferOnElrond(ctx context.Context) error {
 	stub.incrementFunctionCounter()
-	if stub.SignProposedTransferCalled != nil {
-		return stub.SignProposedTransferCalled(ctx)
+	if stub.SignProposedTransferOnElrondCalled != nil {
+		return stub.SignProposedTransferOnElrondCalled(ctx)
 	}
 	return notImplemented
 }
 
-// IsQuorumReached -
-func (stub *EthToElrondBridgeStub) IsQuorumReached(ctx context.Context) (bool, error) {
+// IsQuorumReachedOnElrond -
+func (stub *EthToElrondBridgeStub) IsQuorumReachedOnElrond(ctx context.Context) (bool, error) {
 	stub.incrementFunctionCounter()
-	if stub.IsQuorumReachedCalled != nil {
-		return stub.IsQuorumReachedCalled(ctx)
+	if stub.IsQuorumReachedOnElrondCalled != nil {
+		return stub.IsQuorumReachedOnElrondCalled(ctx)
 	}
 	return false, notImplemented
 }
 
-// WasActionIDPerformed -
-func (stub *EthToElrondBridgeStub) WasActionIDPerformed(ctx context.Context) (bool, error) {
+// WasActionIDPerformedOnElrond -
+func (stub *EthToElrondBridgeStub) WasActionIDPerformedOnElrond(ctx context.Context) (bool, error) {
 	stub.incrementFunctionCounter()
-	if stub.WasActionIDPerformedCalled != nil {
-		return stub.WasActionIDPerformedCalled(ctx)
+	if stub.WasActionIDPerformedOnElrondCalled != nil {
+		return stub.WasActionIDPerformedOnElrondCalled(ctx)
 	}
 	return false, notImplemented
 }
 
-// PerformActionID -
-func (stub *EthToElrondBridgeStub) PerformActionID(ctx context.Context) error {
+// PerformActionIDOnElrond -
+func (stub *EthToElrondBridgeStub) PerformActionIDOnElrond(ctx context.Context) error {
 	stub.incrementFunctionCounter()
-	if stub.PerformActionIDCalled != nil {
-		return stub.PerformActionIDCalled(ctx)
+	if stub.PerformActionIDOnElrondCalled != nil {
+		return stub.PerformActionIDOnElrondCalled(ctx)
 	}
 	return notImplemented
 }

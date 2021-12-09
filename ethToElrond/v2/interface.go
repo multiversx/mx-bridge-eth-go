@@ -12,7 +12,7 @@ type ElrondClient interface {
 	GetPending(ctx context.Context) (*clients.TransferBatch, error)
 	GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error)
 	WasProposedTransfer(ctx context.Context, batch *clients.TransferBatch) (bool, error)
-	SignersCount(ctx context.Context, actionID uint64) (uint64, error)
+	QuorumReached(ctx context.Context, actionID uint64) (bool, error)
 	WasExecuted(ctx context.Context, actionID uint64) (bool, error)
 	GetActionIDForProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error)
 	WasProposedSetStatus(ctx context.Context, batch *clients.TransferBatch) (bool, error)
@@ -25,6 +25,7 @@ type ElrondClient interface {
 	ResolveNewDeposits(ctx context.Context, batch *clients.TransferBatch) error
 	ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error)
 	Sign(ctx context.Context, actionID uint64) (string, error)
+	WasSigned(ctx context.Context, actionID uint64) (bool, error)
 	PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
 
 	Close() error
@@ -39,5 +40,11 @@ type EthereumClient interface {
 
 	BroadcastSignatureForMessageHash(msgHash common.Hash)
 	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
+	IsInterfaceNil() bool
+}
+
+// TopologyProvider is able to manage the current relayers topology
+type TopologyProvider interface {
+	MyTurnAsLeader() bool
 	IsInterfaceNil() bool
 }

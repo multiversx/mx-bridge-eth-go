@@ -31,7 +31,7 @@ func TestExecuteGetActionIdForProposeStep(t *testing.T) {
 
 	t.Run("error on GetAndStoreActionID", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetAndStoreActionIDCalled = func(ctx context.Context) (uint64, error) {
+		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 1122, expectedError
 		}
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
@@ -51,7 +51,7 @@ func TestExecuteGetActionIdForProposeStep(t *testing.T) {
 
 	t.Run("should work", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetAndStoreActionIDCalled = func(ctx context.Context) (uint64, error) {
+		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 0, nil
 		}
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
