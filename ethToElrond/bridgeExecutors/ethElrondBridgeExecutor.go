@@ -340,7 +340,7 @@ func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step core.StepIdentifi
 		"step", step, "batch ID", executor.getBatchID(), "duration", duration)
 
 	select {
-	case <-executor.timer.After(duration):
+	case <-time.After(duration):
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
