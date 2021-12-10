@@ -33,7 +33,6 @@ import (
 const (
 	pollingDurationOnError  = time.Second * 5
 	ethToElrondName         = "EthToElrond"
-  ethToElrondName         = "EthToElrond"
 	baseLogId               = "EthElrond-Base"
 	elrondClientLogId       = "EthElrond-ElrondClient"
 	ethClientLogId          = "EthElrond-EthClient"
