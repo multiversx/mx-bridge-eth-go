@@ -8,4 +8,5 @@ var (
 	errNilMessenger            = errors.New("nil network messenger")
 	errNilStatusStorer         = errors.New("nil status storer")
 	errNilErc20ContractsHolder = errors.New("nil ERC20 contracts holder")
+	errMissingConfig           = errors.New("missing config")
 )

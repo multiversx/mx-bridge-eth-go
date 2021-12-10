@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 )
 
@@ -24,5 +25,16 @@ type ElrondRoleProvider interface {
 type EthereumRoleProvider interface {
 	Execute(ctx context.Context) error
 	VerifyEthSignature(signature []byte, messageHash []byte) error
+	IsInterfaceNil() bool
+}
+
+// Broadcaster defines a component able to communicate with other such instances and manage signatures and other state related data
+type Broadcaster interface {
+	BroadcastSignature(signature []byte, messageHash []byte)
+	BroadcastJoinTopic()
+	SortedPublicKeys() [][]byte
+	RegisterOnTopics() error
+	AddBroadcastClient(client core.BroadcastClient) error
+	Close() error
 	IsInterfaceNil() bool
 }

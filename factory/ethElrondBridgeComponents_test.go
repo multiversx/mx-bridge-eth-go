@@ -9,10 +9,14 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
+	stateMachineConfig := config.ConfigStateMachine{
+		StepDurationInMillis: 1000,
+	}
+
 	cfg := config.Config{
 		Eth: config.EthereumConfig{
 			NetworkAddress:               "http://127.0.0.1:8545",
@@ -41,6 +45,10 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 				PollingIntervalInMillis: 1000,
 			},
 		},
+		StateMachine: map[string]config.ConfigStateMachine{
+			"EthToElrond": stateMachineConfig,
+			"ElrondToEth": stateMachineConfig,
+		},
 	}
 	configs := config.Configs{
 		GeneralConfig:   cfg,
@@ -68,7 +76,8 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		args := createMockEthElrondBridgeArgs()
 
 		components, err := NewEthElrondBridgeComponents(args)
-		assert.Nil(t, err)
-		assert.NotNil(t, components)
+		require.Nil(t, err)
+		require.NotNil(t, components)
+		require.Equal(t, 4, len(components.closableHandlers))
 	})
 }
