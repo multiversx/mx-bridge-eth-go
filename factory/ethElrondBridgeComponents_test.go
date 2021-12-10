@@ -9,6 +9,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
