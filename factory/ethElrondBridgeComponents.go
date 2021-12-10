@@ -188,7 +188,7 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 	clientArgs := elrond.ClientArgs{
 		GasMapConfig:                 elrondConfigs.GasMap,
 		Proxy:                        args.Proxy,
-		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate("elrond client"), elrondClientLogId),
+		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondClientLogId), elrondClientLogId),
 		RelayerPrivateKey:            components.elrondRelayerPrivateKey,
 		MultisigContractAddress:      components.elrondMultisigContractAddress,
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
@@ -217,7 +217,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		return err
 	}
 
-	log := core.NewLoggerWithIdentifier(logger.GetOrCreate("eth client"), ethClientLogId)
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId)
 
 	argsBroadcaster := p2p.ArgsBroadcaster{
 		Messenger:          args.Messenger,
@@ -272,7 +272,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 
 func (components *ethElrondBridgeComponents) createElrondRoleProvider(args ArgsEthereumToElrondBridge) error {
 	configs := args.Configs.GeneralConfig
-	log := core.NewLoggerWithIdentifier(logger.GetOrCreate("elrond role provider"), elrondRoleProviderLogId)
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondRoleProviderLogId), elrondRoleProviderLogId)
 
 	argsRoleProvider := roleProviders.ArgsElrondRoleProvider{
 		DataGetter: components.dataGetter,
@@ -306,7 +306,7 @@ func (components *ethElrondBridgeComponents) createElrondRoleProvider(args ArgsE
 func (components *ethElrondBridgeComponents) createEthereumRoleProvider(args ArgsEthereumToElrondBridge) error {
 	configs := args.Configs.GeneralConfig
 
-	log := core.NewLoggerWithIdentifier(logger.GetOrCreate("ethereum role provider"), ethRoleProviderLogId)
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethRoleProviderLogId), ethRoleProviderLogId)
 	argsRoleProvider := roleProviders.ArgsEthereumRoleProvider{
 		EthereumChainInteractor: args.ClientWrapper,
 		Log:                     log,
