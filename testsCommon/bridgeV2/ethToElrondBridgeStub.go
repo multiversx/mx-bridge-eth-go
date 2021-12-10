@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
@@ -185,7 +186,7 @@ func (stub *EthToElrondBridgeStub) incrementFunctionCounter() {
 
 	pc, _, _, _ := runtime.Caller(1)
 	fmt.Printf("BridgeExecutorMock: called %s\n", runtime.FuncForPC(pc).Name())
-	stub.functionCalledCounter[runtime.FuncForPC(pc).Name()]++
+	stub.functionCalledCounter[strings.ReplaceAll(runtime.FuncForPC(pc).Name(), fullPath, "")]++
 }
 
 // GetFunctionCounter returns the called counter of a given function
@@ -193,7 +194,7 @@ func (stub *EthToElrondBridgeStub) GetFunctionCounter(function string) int {
 	stub.mutExecutor.Lock()
 	defer stub.mutExecutor.Unlock()
 
-	return stub.functionCalledCounter[fullPath+function]
+	return stub.functionCalledCounter[function]
 }
 
 // IsInterfaceNil -

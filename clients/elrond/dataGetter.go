@@ -332,7 +332,7 @@ func (dg *elrondClientDataGetter) GetLastExecutedEthTxID(ctx context.Context) (u
 	return dg.executeQueryUint64FromBuilder(ctx, builder)
 }
 
-// WasSigned returns true if the action ID was signed by the current relayer
+// WasSigned returns true if the action was already signed by the current relayer
 func (dg *elrondClientDataGetter) WasSigned(ctx context.Context, actionID uint64) (bool, error) {
 	builder := dg.createDefaultVmQueryBuilder()
 	builder.Function(signedFuncName).ArgAddress(dg.relayerAddress).ArgInt64(int64(actionID))

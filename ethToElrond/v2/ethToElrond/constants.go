@@ -18,4 +18,22 @@ const (
 
 	// PerformingActionID is the step identifier for performing the ActionID on Elrond
 	PerformingActionID = "perform action"
+
+	// NoFailing indicates that the states machine performed also the last step without any error
+	NoFailing = "noFailing"
+
+	// numSteps indicates how many steps the
+	numSteps = 6
 )
+
+// FailingStepList is the list of all steps where from Ethereum to elrond flow indicating
+// at which step one relayer may fail or NoFailing in case all steps were executed successfully
+var FailingStepList = [numSteps + 1]string{
+	GettingPendingBatchFromEthereum,
+	GettingActionIdForProposeTransfer,
+	ProposingTransferOnElrond,
+	SigningProposedTransferOnElrond,
+	WaitingForQuorum,
+	PerformingActionID,
+	NoFailing,
+}

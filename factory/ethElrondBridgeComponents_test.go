@@ -80,4 +80,103 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		require.NotNil(t, components)
 		require.Equal(t, 4, len(components.closableHandlers))
 	})
+	t.Run("nil Proxy", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.Proxy = nil
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.Equal(t, errNilProxy, err)
+		assert.Nil(t, components)
+	})
+	t.Run("nil Messenger", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.Messenger = nil
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.Equal(t, errNilMessenger, err)
+		assert.Nil(t, components)
+	})
+	t.Run("nil ClientWrapper", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.ClientWrapper = nil
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.Equal(t, errNilEthClient, err)
+		assert.Nil(t, components)
+	})
+	t.Run("nil StatusStorer", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.StatusStorer = nil
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.Equal(t, errNilStatusStorer, err)
+		assert.Nil(t, components)
+	})
+	t.Run("nil Erc20ContractsHolder", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.Erc20ContractsHolder = nil
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.Equal(t, errNilErc20ContractsHolder, err)
+		assert.Nil(t, components)
+	})
+	t.Run("err on createElrondKeysAndAddresses, empty pk file", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.Configs.GeneralConfig.Elrond.PrivateKeyFile = ""
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.NotNil(t, err)
+		assert.Nil(t, components)
+	})
+	t.Run("err on createElrondKeysAndAddresses, empty multisig address", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.Configs.GeneralConfig.Elrond.MultisigContractAddress = ""
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.NotNil(t, err)
+		assert.Nil(t, components)
+	})
+	t.Run("err on createElrondClient", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.Configs.GeneralConfig.Elrond.GasMap = config.ElrondGasMapConfig{}
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.NotNil(t, err)
+		assert.Nil(t, components)
+	})
+	t.Run("err on createElrondRoleProvider", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.Configs.GeneralConfig.Relayer.RoleProvider.PollingIntervalInMillis = 0
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.NotNil(t, err)
+		assert.Nil(t, components)
+	})
+	t.Run("err on createEthereumClient, empty eth config", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.Configs.GeneralConfig.Eth = config.EthereumConfig{}
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.NotNil(t, err)
+		assert.Nil(t, components)
+	})
+	t.Run("err on createEthereumClient, invalid gas price selector", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.Configs.GeneralConfig.Eth.GasStation.GasPriceSelector = core.WebServerOffString
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.NotNil(t, err)
+		assert.Nil(t, components)
+	})
 }
