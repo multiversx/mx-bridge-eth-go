@@ -31,10 +31,8 @@ import (
 )
 
 const (
-	// minimumDurationForStep          = time.Second
 	pollingDurationOnError = time.Second * 5
-	// p2pStatusHandlerPollingInterval = time.Second * 2
-	ethToElrondName = "EthToElrond"
+	ethToElrondName        = "EthToElrond"
 )
 
 var suite = ed25519.NewEd25519()

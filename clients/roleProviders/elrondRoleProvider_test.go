@@ -1,8 +1,11 @@
 package roleProviders
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
@@ -23,6 +26,8 @@ func TestNewElrondRoleProvider(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil data getter should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createElrondMockArgs()
 		args.DataGetter = nil
 
@@ -31,6 +36,8 @@ func TestNewElrondRoleProvider(t *testing.T) {
 		assert.Equal(t, ErrNilDataGetter, err)
 	})
 	t.Run("nil logger should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createElrondMockArgs()
 		args.Log = nil
 
@@ -39,6 +46,8 @@ func TestNewElrondRoleProvider(t *testing.T) {
 		assert.Equal(t, ErrNilLogger, err)
 	})
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
 		args := createElrondMockArgs()
 
 		erp, err := NewElrondRoleProvider(args)
@@ -67,8 +76,8 @@ func TestElrondProvider_ExecuteShouldWork(t *testing.T) {
 	t.Parallel()
 
 	whitelistedAddresses := [][]byte{
-		[]byte("address 1"),
-		[]byte("address 2"),
+		bytes.Repeat([]byte("1"), 32),
+		bytes.Repeat([]byte("2"), 32),
 	}
 
 	t.Run("nil whitelisted", testElrondExecuteShouldWork(nil))
@@ -78,6 +87,8 @@ func TestElrondProvider_ExecuteShouldWork(t *testing.T) {
 
 func testElrondExecuteShouldWork(whitelistedAddresses [][]byte) func(t *testing.T) {
 	return func(t *testing.T) {
+		t.Parallel()
+
 		args := createElrondMockArgs()
 		args.DataGetter = &bridgeV2.DataGetterStub{
 			GetAllStakedRelayersCalled: func(ctx context.Context) ([][]byte, error) {
@@ -101,4 +112,27 @@ func testElrondExecuteShouldWork(whitelistedAddresses [][]byte) func(t *testing.
 		assert.Equal(t, len(whitelistedAddresses), len(erp.whitelistedAddresses))
 		erp.mut.RUnlock()
 	}
+}
+
+func TestElrondProvider_MisconfiguredAddressesShouldError(t *testing.T) {
+	t.Parallel()
+
+	misconfiguredAddresses := [][]byte{
+		bytes.Repeat([]byte("1"), 32),
+		bytes.Repeat([]byte("2"), 32),
+		[]byte("bad address"),
+	}
+
+	args := createElrondMockArgs()
+	args.DataGetter = &bridgeV2.DataGetterStub{
+		GetAllStakedRelayersCalled: func(ctx context.Context) ([][]byte, error) {
+			return misconfiguredAddresses, nil
+		},
+	}
+
+	erp, _ := NewElrondRoleProvider(args)
+	err := erp.Execute(context.TODO())
+	assert.True(t, errors.Is(err, ErrInvalidAddressBytes))
+	assert.True(t, strings.Contains(err.Error(), hex.EncodeToString(misconfiguredAddresses[2])))
+	assert.Zero(t, len(erp.whitelistedAddresses))
 }

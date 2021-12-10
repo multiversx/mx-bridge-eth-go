@@ -25,6 +25,8 @@ func TestNewEthereumRoleProvider(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil ethereum chain interactor should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createEthereumMockArgs()
 		args.EthereumChainInteractor = nil
 
@@ -33,6 +35,8 @@ func TestNewEthereumRoleProvider(t *testing.T) {
 		assert.Equal(t, ErrNilEthereumChainInteractor, err)
 	})
 	t.Run("nil logger should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createEthereumMockArgs()
 		args.Log = nil
 
@@ -41,6 +45,8 @@ func TestNewEthereumRoleProvider(t *testing.T) {
 		assert.Equal(t, ErrNilLogger, err)
 	})
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
 		args := createEthereumMockArgs()
 
 		erp, err := NewEthereumRoleProvider(args)
@@ -80,6 +86,8 @@ func TestEthereumProvider_ExecuteShouldWork(t *testing.T) {
 
 func testEthereumExecuteShouldWork(whitelistedAddresses []common.Address) func(t *testing.T) {
 	return func(t *testing.T) {
+		t.Parallel()
+
 		args := createEthereumMockArgs()
 		args.EthereumChainInteractor = &interactors.EthereumChainInteractorStub{
 			GetRelayersCalled: func(ctx context.Context) ([]common.Address, error) {
@@ -124,6 +132,8 @@ func TestEthereumRoleProvider_VerifyEthSignature(t *testing.T) {
 
 func testEthereumVerifySigShouldWork(whitelistedAddresses []common.Address, hexSig string, hexMsg string, expectedErr error) func(t *testing.T) {
 	return func(t *testing.T) {
+		t.Parallel()
+
 		sig, err := hex.DecodeString(hexSig)
 		require.Nil(t, err)
 
