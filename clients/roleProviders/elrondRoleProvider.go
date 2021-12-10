@@ -2,6 +2,8 @@ package roleProviders
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -58,26 +60,31 @@ func (erp *elrondRoleProvider) Execute(ctx context.Context) error {
 		return err
 	}
 
-	erp.processResults(results)
-
-	return nil
+	return erp.processResults(results)
 }
 
-func (erp *elrondRoleProvider) processResults(results [][]byte) {
+func (erp *elrondRoleProvider) processResults(results [][]byte) error {
 	currentList := make([]string, 0, len(results))
+	temporaryMap := make(map[string]struct{})
+
+	for i, result := range results {
+		address := data.NewAddressFromBytes(result)
+		isValid := address.IsValid()
+		if !isValid {
+			return fmt.Errorf("%w for index %d, malformed address: %s", ErrInvalidAddressBytes, i, hex.EncodeToString(result))
+		}
+
+		currentList = append(currentList, address.AddressAsBech32String())
+		temporaryMap[string(address.AddressBytes())] = struct{}{}
+	}
 
 	erp.mut.Lock()
-	erp.whitelistedAddresses = make(map[string]struct{})
-
-	for _, result := range results {
-		address := data.NewAddressFromBytes(result)
-		currentList = append(currentList, address.AddressAsBech32String())
-
-		erp.whitelistedAddresses[string(address.AddressBytes())] = struct{}{}
-	}
+	erp.whitelistedAddresses = temporaryMap
 	erp.mut.Unlock()
 
 	erp.log.Debug("fetched whitelisted addresses:\n" + strings.Join(currentList, "\n"))
+
+	return nil
 }
 
 // IsWhitelisted returns true if the non-nil address provided is whitelisted or not
