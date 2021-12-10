@@ -19,6 +19,10 @@ const (
 	// PerformingActionID is the step identifier for performing the ActionID on Elrond
 	PerformingActionID = "perform action"
 
+	// NoFailing indicates that the states machine performed also the last step without any error
+	NoFailing = "noFailing"
+
+	// numSteps indicates how many steps the
 	numSteps = 6
 )
 
@@ -29,5 +33,5 @@ var StepList = [numSteps + 1]string{
 	SigningProposedTransferOnElrond,
 	WaitingForQuorum,
 	PerformingActionID,
-	"noFailing",
+	NoFailing,
 }
