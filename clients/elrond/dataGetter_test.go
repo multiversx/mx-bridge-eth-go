@@ -895,6 +895,7 @@ func TestDataGetter_QuorumReached(t *testing.T) {
 
 	args := createMockArgsDataGetter()
 	proxyCalled := false
+	actionID := big.NewInt(112233)
 	args.Proxy = &interactors.ElrondProxyStub{
 		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 			proxyCalled = true
@@ -903,7 +904,7 @@ func TestDataGetter_QuorumReached(t *testing.T) {
 			assert.Equal(t, "", vmRequest.CallValue)
 			assert.Equal(t, quorumReachedFuncName, vmRequest.FuncName)
 
-			expectedArgs := []string{hex.EncodeToString(big.NewInt(112233).Bytes())}
+			expectedArgs := []string{hex.EncodeToString(actionID.Bytes())}
 			assert.Equal(t, expectedArgs, vmRequest.Args)
 
 			return &data.VmValuesResponseData{
@@ -917,7 +918,7 @@ func TestDataGetter_QuorumReached(t *testing.T) {
 
 	dg, _ := NewDataGetter(args)
 
-	result, err := dg.QuorumReached(context.Background(), 112233)
+	result, err := dg.QuorumReached(context.Background(), actionID.Uint64())
 	assert.Nil(t, err)
 	assert.True(t, proxyCalled)
 	assert.True(t, result)
@@ -928,6 +929,7 @@ func TestDataGetter_GetLastExecutedEthBatchID(t *testing.T) {
 
 	args := createMockArgsDataGetter()
 	proxyCalled := false
+	val := big.NewInt(45372)
 	args.Proxy = &interactors.ElrondProxyStub{
 		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 			proxyCalled = true
@@ -940,7 +942,7 @@ func TestDataGetter_GetLastExecutedEthBatchID(t *testing.T) {
 			return &data.VmValuesResponseData{
 				Data: &vm.VMOutputApi{
 					ReturnCode: okCodeAfterExecution,
-					ReturnData: [][]byte{{255}},
+					ReturnData: [][]byte{val.Bytes()},
 				},
 			}, nil
 		},
@@ -951,7 +953,7 @@ func TestDataGetter_GetLastExecutedEthBatchID(t *testing.T) {
 	result, err := dg.GetLastExecutedEthBatchID(context.Background())
 	assert.Nil(t, err)
 	assert.True(t, proxyCalled)
-	assert.Equal(t, uint64(255), result)
+	assert.Equal(t, val.Uint64(), result)
 }
 
 func TestDataGetter_GetLastExecutedEthTxID(t *testing.T) {
@@ -959,6 +961,7 @@ func TestDataGetter_GetLastExecutedEthTxID(t *testing.T) {
 
 	args := createMockArgsDataGetter()
 	proxyCalled := false
+	val := big.NewInt(45372)
 	args.Proxy = &interactors.ElrondProxyStub{
 		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 			proxyCalled = true
@@ -971,7 +974,7 @@ func TestDataGetter_GetLastExecutedEthTxID(t *testing.T) {
 			return &data.VmValuesResponseData{
 				Data: &vm.VMOutputApi{
 					ReturnCode: okCodeAfterExecution,
-					ReturnData: [][]byte{{255}},
+					ReturnData: [][]byte{val.Bytes()},
 				},
 			}, nil
 		},
@@ -982,7 +985,7 @@ func TestDataGetter_GetLastExecutedEthTxID(t *testing.T) {
 	result, err := dg.GetLastExecutedEthTxID(context.Background())
 	assert.Nil(t, err)
 	assert.True(t, proxyCalled)
-	assert.Equal(t, uint64(255), result)
+	assert.Equal(t, val.Uint64(), result)
 }
 
 func TestDataGetter_WasSigned(t *testing.T) {
@@ -990,6 +993,7 @@ func TestDataGetter_WasSigned(t *testing.T) {
 
 	args := createMockArgsDataGetter()
 	proxyCalled := false
+	actionID := big.NewInt(112233)
 	args.Proxy = &interactors.ElrondProxyStub{
 		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 			proxyCalled = true
@@ -1000,7 +1004,7 @@ func TestDataGetter_WasSigned(t *testing.T) {
 
 			expectedArgs := []string{
 				hex.EncodeToString(args.RelayerAddress.AddressBytes()),
-				hex.EncodeToString(big.NewInt(112233).Bytes()),
+				hex.EncodeToString(actionID.Bytes()),
 			}
 			assert.Equal(t, expectedArgs, vmRequest.Args)
 
@@ -1015,7 +1019,7 @@ func TestDataGetter_WasSigned(t *testing.T) {
 
 	dg, _ := NewDataGetter(args)
 
-	result, err := dg.WasSigned(context.Background(), 112233)
+	result, err := dg.WasSigned(context.Background(), actionID.Uint64())
 	assert.Nil(t, err)
 	assert.True(t, proxyCalled)
 	assert.True(t, result)

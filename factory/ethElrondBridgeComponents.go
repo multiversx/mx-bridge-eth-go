@@ -31,15 +31,14 @@ import (
 )
 
 const (
-	// minimumDurationForStep          = time.Second
-	pollingDurationOnError = time.Second * 5
-	// p2pStatusHandlerPollingInterval = time.Second * 2
-	ethToElrondName = "EthToElrond"
-	baseLogId = "EthElrond-Base"
-	elrondClientLogId = "EthElrond-ElrondClient"
-	ethClientLogId = "EthElrond-EthClient"
+	pollingDurationOnError  = time.Second * 5
+	ethToElrondName         = "EthToElrond"
+  ethToElrondName         = "EthToElrond"
+	baseLogId               = "EthElrond-Base"
+	elrondClientLogId       = "EthElrond-ElrondClient"
+	ethClientLogId          = "EthElrond-EthClient"
 	elrondRoleProviderLogId = "EthElrond-ElrondRoleProvider"
-	ethRoleProviderLogId = "EthElrond-EthRoleProvider"
+	ethRoleProviderLogId    = "EthElrond-EthRoleProvider"
 )
 
 var suite = ed25519.NewEd25519()
