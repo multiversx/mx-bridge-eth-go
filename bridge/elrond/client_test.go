@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
@@ -45,8 +46,8 @@ func createMockArguments() ClientArgs {
 	addr := data.NewAddressFromBytes(pkBytes)
 
 	return ClientArgs{
-		Config: bridge.ElrondConfig{
-			BridgeAddress:                "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
+		Config: config.ElrondConfig{
+			MultisigContractAddress:      "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede",
 			IntervalToResendTxsInSeconds: 1,
 			GasMap:                       testsCommon.CreateTestElrondGasMap(),
 		},

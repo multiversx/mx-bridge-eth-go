@@ -37,14 +37,14 @@ var log = logger.GetOrCreate("main")
 func TestNewRelay(t *testing.T) {
 	t.Parallel()
 
-	cfg := &config.Config{
-		Eth: bridge.EthereumConfig{
+	cfg := config.Config{
+		Eth: config.EthereumConfig{
 			NetworkAddress:               "http://127.0.0.1:8545",
 			SafeContractAddress:          "5DdDe022a65F8063eE9adaC54F359CBF46166068",
 			PrivateKeyFile:               "testdata/grace.sk",
 			IntervalToResendTxsInSeconds: 0,
 			GasLimit:                     0,
-			GasStation: bridge.GasStationConfig{
+			GasStation: config.GasStationConfig{
 				Enabled:                  true,
 				URL:                      "",
 				PollingIntervalInSeconds: 1,
@@ -53,11 +53,11 @@ func TestNewRelay(t *testing.T) {
 				GasPriceSelector:         "fast",
 			},
 		},
-		Elrond: bridge.ElrondConfig{
+		Elrond: config.ElrondConfig{
 			IntervalToResendTxsInSeconds: 60,
 			PrivateKeyFile:               "testdata/grace.pem",
 			NetworkAddress:               "http://127.0.0.1:8079",
-			BridgeAddress:                "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+			MultisigContractAddress:      "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 			GasMap:                       testsCommon.CreateTestElrondGasMap(),
 		},
 		Relayer: config.ConfigRelayer{
@@ -68,15 +68,15 @@ func TestNewRelay(t *testing.T) {
 	}
 	configs := config.Configs{
 		GeneralConfig:   cfg,
-		ApiRoutesConfig: &config.ApiRoutesConfig{},
-		FlagsConfig: &config.ContextFlagsConfig{
+		ApiRoutesConfig: config.ApiRoutesConfig{},
+		FlagsConfig: config.ContextFlagsConfig{
 			RestApiInterface: core.WebServerOffString,
 		},
 	}
 	ethClient, err := ethclient.Dial(cfg.Eth.NetworkAddress)
 	require.Nil(t, err)
 
-	ethInstance, err := contract.NewBridge(ethCommon.HexToAddress(cfg.Eth.BridgeAddress), ethClient)
+	ethInstance, err := contract.NewBridge(ethCommon.HexToAddress(cfg.Eth.MultisigContractAddress), ethClient)
 	require.Nil(t, err)
 
 	args := ArgsRelayer{
@@ -103,16 +103,16 @@ func TestInit(t *testing.T) {
 	broadcastJoinTopicCalled := false
 	relay := Relay{
 		configs: config.Configs{
-			GeneralConfig: &config.Config{
-				Eth:          bridge.EthereumConfig{},
-				Elrond:       bridge.ElrondConfig{},
+			GeneralConfig: config.Config{
+				Eth:          config.EthereumConfig{},
+				Elrond:       config.ElrondConfig{},
 				P2P:          config.ConfigP2P{},
 				StateMachine: createMapMockDurationsMapConfig(),
 				Relayer:      config.ConfigRelayer{},
 				Logs:         config.LogsConfig{},
 			},
-			ApiRoutesConfig: &config.ApiRoutesConfig{},
-			FlagsConfig: &config.ContextFlagsConfig{
+			ApiRoutesConfig: config.ApiRoutesConfig{},
+			FlagsConfig: config.ContextFlagsConfig{
 				RestApiInterface: core.WebServerOffString,
 			},
 		},
@@ -308,16 +308,16 @@ func TestRelay_CreateAndStartBridge(t *testing.T) {
 func createMockRelay() Relay {
 	return Relay{
 		configs: config.Configs{
-			GeneralConfig: &config.Config{
-				Eth:          bridge.EthereumConfig{},
-				Elrond:       bridge.ElrondConfig{},
+			GeneralConfig: config.Config{
+				Eth:          config.EthereumConfig{},
+				Elrond:       config.ElrondConfig{},
 				P2P:          config.ConfigP2P{},
 				StateMachine: createMapMockDurationsMapConfig(),
 				Relayer:      config.ConfigRelayer{},
 				Logs:         config.LogsConfig{},
 			},
-			ApiRoutesConfig: &config.ApiRoutesConfig{},
-			FlagsConfig: &config.ContextFlagsConfig{
+			ApiRoutesConfig: config.ApiRoutesConfig{},
+			FlagsConfig: config.ContextFlagsConfig{
 				RestApiInterface: core.WebServerOffString,
 			},
 		},

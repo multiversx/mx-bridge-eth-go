@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
@@ -50,12 +51,12 @@ type client struct {
 	address        core.AddressHandler
 	nonceTxHandler NonceTransactionsHandler
 	log            logger.Logger
-	gasMapConfig   bridge.ElrondGasMapConfig
+	gasMapConfig   config.ElrondGasMapConfig
 }
 
 // ClientArgs represents the argument for the NewClient constructor function
 type ClientArgs struct {
-	Config     bridge.ElrondConfig
+	Config     config.ElrondConfig
 	Proxy      bridge.ElrondProxy
 	PrivateKey crypto.PrivateKey
 	Address    core.AddressHandler
@@ -83,14 +84,14 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	_, err = data.NewAddressFromBech32String(args.Config.BridgeAddress)
+	_, err = data.NewAddressFromBech32String(args.Config.MultisigContractAddress)
 	if err != nil {
 		return nil, fmt.Errorf("%w for args.Config.BridgeAddress", err)
 	}
 
 	c := &client{
 		proxy:          args.Proxy,
-		bridgeAddress:  args.Config.BridgeAddress,
+		bridgeAddress:  args.Config.MultisigContractAddress,
 		privateKey:     args.PrivateKey,
 		address:        args.Address,
 		log:            logger.GetOrCreate("ElrondClient"),
@@ -103,7 +104,7 @@ func NewClient(args ClientArgs) (*client, error) {
 	return c, nil
 }
 
-func checkGasMapValues(gasMap bridge.ElrondGasMapConfig) error {
+func checkGasMapValues(gasMap config.ElrondGasMapConfig) error {
 	gasMapValue := reflect.ValueOf(gasMap)
 	typeOfGasMapValue := gasMapValue.Type()
 

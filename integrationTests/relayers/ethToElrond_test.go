@@ -309,9 +309,9 @@ func createMockRelayArgs(
 	generalConfigs := createMockRelayConfig(index)
 	return relay.ArgsRelayer{
 		Configs: config.Configs{
-			GeneralConfig:   &generalConfigs,
-			ApiRoutesConfig: &config.ApiRoutesConfig{},
-			FlagsConfig: &config.ContextFlagsConfig{
+			GeneralConfig:   generalConfigs,
+			ApiRoutesConfig: config.ApiRoutesConfig{},
+			FlagsConfig: config.ContextFlagsConfig{
 				RestApiInterface: core.WebServerOffString,
 			},
 		},
@@ -340,19 +340,19 @@ func createMockRelayConfig(index int) config.Config {
 	}
 
 	return config.Config{
-		Eth: bridge.EthereumConfig{
+		Eth: config.EthereumConfig{
 			NetworkAddress:               "mock",
-			BridgeAddress:                "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
+			MultisigContractAddress:      "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
 			PrivateKeyFile:               fmt.Sprintf("testdata/ethereum%d.sk", index),
 			IntervalToResendTxsInSeconds: 10,
 			GasLimit:                     500000,
-			GasStation: bridge.GasStationConfig{
+			GasStation: config.GasStationConfig{
 				Enabled: false,
 			},
 		},
-		Elrond: bridge.ElrondConfig{
+		Elrond: config.ElrondConfig{
 			NetworkAddress:               "mock",
-			BridgeAddress:                "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+			MultisigContractAddress:      "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
 			PrivateKeyFile:               fmt.Sprintf("testdata/elrond%d.pem", index),
 			IntervalToResendTxsInSeconds: 10,
 			GasMap:                       testsCommon.CreateTestElrondGasMap(),
