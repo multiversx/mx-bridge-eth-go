@@ -26,7 +26,9 @@ const (
 	numSteps = 6
 )
 
-var StepList = [numSteps + 1]string{
+// FailingStepList is the list of all steps where from Ethereum to elrond flow indicating
+// at which step one relayer may fail or NoFailing in case all steps were executed successfully
+var FailingStepList = [numSteps + 1]string{
 	GettingPendingBatchFromEthereum,
 	GettingActionIdForProposeTransfer,
 	ProposingTransferOnElrond,
