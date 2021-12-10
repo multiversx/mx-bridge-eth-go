@@ -143,7 +143,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	bridgeEthAddress := ethCommon.HexToAddress(cfg.Eth.BridgeAddress)
+	bridgeEthAddress := ethCommon.HexToAddress(cfg.Eth.MultisigContractAddress)
 	ethInstance, err := contract.NewBridge(bridgeEthAddress, ethClient)
 	if err != nil {
 		return err
@@ -159,7 +159,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	messenger, err := buildNetMessenger(*cfg, marshalizer)
+	messenger, err := buildNetMessenger(cfg, marshalizer)
 	if err != nil {
 		return err
 	}
@@ -219,28 +219,28 @@ func mainLoop(r *relay.Relay) {
 	}
 }
 
-func loadConfig(filepath string) (*config.Config, error) {
-	cfg := &config.Config{}
-	err := elrondCore.LoadTomlFile(cfg, filepath)
+func loadConfig(filepath string) (config.Config, error) {
+	cfg := config.Config{}
+	err := elrondCore.LoadTomlFile(&cfg, filepath)
 	if err != nil {
-		return nil, err
+		return config.Config{}, err
 	}
 
 	return cfg, nil
 }
 
 // LoadApiConfig returns a ApiRoutesConfig by reading the config file provided
-func loadApiConfig(filepath string) (*config.ApiRoutesConfig, error) {
-	cfg := &config.ApiRoutesConfig{}
-	err := elrondCore.LoadTomlFile(cfg, filepath)
+func loadApiConfig(filepath string) (config.ApiRoutesConfig, error) {
+	cfg := config.ApiRoutesConfig{}
+	err := elrondCore.LoadTomlFile(&cfg, filepath)
 	if err != nil {
-		return nil, err
+		return config.ApiRoutesConfig{}, err
 	}
 
 	return cfg, nil
 }
 
-func attachFileLogger(log logger.Logger, flagsConfig *config.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
+func attachFileLogger(log logger.Logger, flagsConfig config.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
 	var fileLogging elrondFactory.FileLoggingHandler
 	var err error
 	if flagsConfig.SaveLogFile {

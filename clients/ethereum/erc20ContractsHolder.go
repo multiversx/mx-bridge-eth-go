@@ -13,6 +13,7 @@ import (
 	ethCommon "github.com/ethereum/go-ethereum/common"
 )
 
+// ArgsErc20SafeContractsHolder is the argument DTO used in the NewErc20SafeContractsHolder function
 type ArgsErc20SafeContractsHolder struct {
 	EthClient              bind.ContractBackend
 	EthClientStatusHandler core.StatusHandler

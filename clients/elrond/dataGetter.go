@@ -25,6 +25,11 @@ const (
 	getActionIdForSetCurrentTransactionBatchStatusFuncName    = "getActionIdForSetCurrentTransactionBatchStatus"
 	getTokenIdForErc20AddressFuncName                         = "getTokenIdForErc20Address"
 	getErc20AddressForTokenIdFuncName                         = "getErc20AddressForTokenId"
+	quorumReachedFuncName                                     = "quorumReached"
+	getLastExecutedEthBatchIdFuncName                         = "getLastExecutedEthBatchId"
+	getLastExecutedEthTxId                                    = "getLastExecutedEthTxId"
+	signedFuncName                                            = "signed"
+	getAllStakedRelayersFuncName                              = "getAllStakedRelayers"
 )
 
 // ArgsDataGetter is the arguments DTO used in the NewDataGetter constructor
@@ -303,6 +308,44 @@ func (dg *elrondClientDataGetter) GetActionIDForSetStatusOnPendingTransfer(ctx c
 	builder.ArgBytes(batch.Statuses)
 
 	return dg.executeQueryUint64FromBuilder(ctx, builder)
+}
+
+// QuorumReached returns true if the provided action ID reached the set quorum
+func (dg *elrondClientDataGetter) QuorumReached(ctx context.Context, actionID uint64) (bool, error) {
+	builder := dg.createDefaultVmQueryBuilder()
+	builder.Function(quorumReachedFuncName).ArgInt64(int64(actionID))
+
+	return dg.executeQueryBoolFromBuilder(ctx, builder)
+}
+
+// GetLastExecutedEthBatchID returns the last executed Ethereum batch ID
+func (dg *elrondClientDataGetter) GetLastExecutedEthBatchID(ctx context.Context) (uint64, error) {
+	builder := dg.createDefaultVmQueryBuilder().Function(getLastExecutedEthBatchIdFuncName)
+
+	return dg.executeQueryUint64FromBuilder(ctx, builder)
+}
+
+// GetLastExecutedEthTxID returns the last executed Ethereum deposit ID
+func (dg *elrondClientDataGetter) GetLastExecutedEthTxID(ctx context.Context) (uint64, error) {
+	builder := dg.createDefaultVmQueryBuilder().Function(getLastExecutedEthTxId)
+
+	return dg.executeQueryUint64FromBuilder(ctx, builder)
+}
+
+// WasSigned returns true if the action was already signed by the current relayer
+func (dg *elrondClientDataGetter) WasSigned(ctx context.Context, actionID uint64) (bool, error) {
+	builder := dg.createDefaultVmQueryBuilder()
+	builder.Function(signedFuncName).ArgAddress(dg.relayerAddress).ArgInt64(int64(actionID))
+
+	return dg.executeQueryBoolFromBuilder(ctx, builder)
+}
+
+// GetAllStakedRelayers returns all staked relayers defined in Elrond SC
+func (dg *elrondClientDataGetter) GetAllStakedRelayers(ctx context.Context) ([][]byte, error) {
+	builder := dg.createDefaultVmQueryBuilder()
+	builder.Function(getAllStakedRelayersFuncName)
+
+	return dg.executeQueryFromBuilder(ctx, builder)
 }
 
 func getStatusFromBuff(buff []byte) (byte, error) {
