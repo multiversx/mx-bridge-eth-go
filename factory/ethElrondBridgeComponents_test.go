@@ -1,13 +1,19 @@
 package factory
 
 import (
+	"errors"
+	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -179,5 +185,99 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		components, err := NewEthElrondBridgeComponents(args)
 		assert.NotNil(t, err)
 		assert.Nil(t, components)
+	})
+	t.Run("err missing state machine config", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.Configs.GeneralConfig.StateMachine = make(map[string]config.ConfigStateMachine)
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.True(t, errors.Is(err, errMissingConfig))
+		assert.True(t, strings.Contains(err.Error(), ethToElrondName))
+		assert.Nil(t, components)
+	})
+}
+
+func TestEthElrondBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
+	t.Parallel()
+
+	args := createMockEthElrondBridgeArgs()
+	components, err := NewEthElrondBridgeComponents(args)
+	assert.Nil(t, err)
+
+	err = components.Start()
+	assert.Nil(t, err)
+	assert.Equal(t, 5, len(components.closableHandlers))
+
+	time.Sleep(time.Second * 2) //allow go routines to start
+
+	err = components.Close()
+	assert.Nil(t, err)
+}
+
+func TestEthElrondBridgeComponents_StartWithBadInitializationShouldError(t *testing.T) {
+	t.Parallel()
+
+	args := createMockEthElrondBridgeArgs()
+	components, _ := NewEthElrondBridgeComponents(args)
+	components.ethToElrondMachineStates = nil
+
+	err := components.Start()
+	assert.Equal(t, stateMachine.ErrNilStepsMap, err)
+}
+
+func TestEthElrondBridgeComponents_Close(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil closable should not panic", func(t *testing.T) {
+		t.Parallel()
+
+		defer func() {
+			r := recover()
+			if r != nil {
+				assert.Fail(t, fmt.Sprintf("should have not failed %v", r))
+			}
+		}()
+
+		components := &ethElrondBridgeComponents{
+			baseLogger: logger.GetOrCreate("test"),
+		}
+		components.addClosableComponent(nil)
+
+		err := components.Close()
+		assert.Nil(t, err)
+	})
+	t.Run("one component errors, should return error", func(t *testing.T) {
+		t.Parallel()
+
+		components := &ethElrondBridgeComponents{
+			baseLogger: logger.GetOrCreate("test"),
+		}
+
+		expectedErr := errors.New("expected error")
+
+		numCalls := 0
+		components.addClosableComponent(&testsCommon.CloserStub{
+			CloseCalled: func() error {
+				numCalls++
+				return nil
+			},
+		})
+		components.addClosableComponent(&testsCommon.CloserStub{
+			CloseCalled: func() error {
+				numCalls++
+				return expectedErr
+			},
+		})
+		components.addClosableComponent(&testsCommon.CloserStub{
+			CloseCalled: func() error {
+				numCalls++
+				return nil
+			},
+		})
+
+		err := components.Close()
+		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, 3, numCalls)
 	})
 }
