@@ -15,19 +15,19 @@ import (
 )
 
 const (
-    myTurnAsLeader                                = "MyTurnAsLeader"
-    getAndStoreActionID                           = "GetAndStoreActionIDFromElrond"
-    getAndStoreBatchFromEthereum                  = "GetAndStoreBatchFromEthereum"
-    getStoredBatch                                = "GetStoredBatch"
-    getLastExecutedEthBatchIDFromElrond           = "GetLastExecutedEthBatchIDFromElrond"
-    verifyLastDepositNonceExecutedOnEthereumBatch = "VerifyLastDepositNonceExecutedOnEthereumBatch"
-    wasTransferProposedOnElrond                   = "WasTransferProposedOnElrond"
-    wasProposedTransferSigned                     = "WasProposedTransferSignedOnElrond"
-    signProposedTransfer                          = "SignProposedTransferOnElrond"
-    isQuorumReached                               = "IsQuorumReachedOnElrond"
-    wasActionIDPerformed                          = "WasActionIDPerformedOnElrond"
-    proposeTransferOnElrond                       = "ProposeTransferOnElrond"
-    performActionID                               = "PerformActionIDOnElrond"
+	myTurnAsLeader                                = "MyTurnAsLeader"
+	getAndStoreActionID                           = "GetAndStoreActionIDFromElrond"
+	getAndStoreBatchFromEthereum                  = "GetAndStoreBatchFromEthereum"
+	getStoredBatch                                = "GetStoredBatch"
+	getLastExecutedEthBatchIDFromElrond           = "GetLastExecutedEthBatchIDFromElrond"
+	verifyLastDepositNonceExecutedOnEthereumBatch = "VerifyLastDepositNonceExecutedOnEthereumBatch"
+	wasTransferProposedOnElrond                   = "WasTransferProposedOnElrond"
+	wasProposedTransferSigned                     = "WasProposedTransferSignedOnElrond"
+	signProposedTransfer                          = "SignProposedTransferOnElrond"
+	isQuorumReached                               = "IsQuorumReachedOnElrond"
+	wasActionIDPerformed                          = "WasActionIDPerformedOnElrond"
+	proposeTransferOnElrond                       = "ProposeTransferOnElrond"
+	performActionID                               = "PerformActionIDOnElrond"
 )
 
 type testMode byte
@@ -89,6 +89,7 @@ func testSubFlow(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, faili
 	if failingStep == ethToElrond.ProposingTransferOnElrond {
 		return
 	}
+	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(wasProposedTransferSigned))
 	if wasProposedTransferSignedValue == false {
 		assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(signProposedTransfer))
 	}
