@@ -2,7 +2,6 @@ package steps
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"testing"
@@ -16,19 +15,19 @@ import (
 )
 
 const (
-	myTurnAsLeader                                = "myTurnAsLeader"
-	getAndStoreActionID                           = "getAndStoreActionID"
-	getAndStoreBatchFromEthereum                  = "getAndStoreBatchFromEthereum"
-	getStoredBatch                                = "getStoredBatch"
-	getLastExecutedEthBatchIDFromElrond           = "getLastExecutedEthBatchIDFromElrond"
-	verifyLastDepositNonceExecutedOnEthereumBatch = "verifyLastDepositNonceExecutedOnEthereumBatch"
-	wasTransferProposedOnElrond                   = "wasTransferProposedOnElrond"
-	wasProposedTransferSigned                     = "wasProposedTransferSigned"
-	signProposedTransfer                          = "signProposedTransfer"
-	isQuorumReached                               = "isQuorumReached"
-	wasActionIDPerformed                          = "wasActionIDPerformed"
-	proposeTransferOnElrond                       = "proposeTransferOnElrond"
-	performActionID                               = "performActionID"
+    myTurnAsLeader                                = "MyTurnAsLeader"
+    getAndStoreActionID                           = "GetAndStoreActionIDFromElrond"
+    getAndStoreBatchFromEthereum                  = "GetAndStoreBatchFromEthereum"
+    getStoredBatch                                = "GetStoredBatch"
+    getLastExecutedEthBatchIDFromElrond           = "GetLastExecutedEthBatchIDFromElrond"
+    verifyLastDepositNonceExecutedOnEthereumBatch = "VerifyLastDepositNonceExecutedOnEthereumBatch"
+    wasTransferProposedOnElrond                   = "WasTransferProposedOnElrond"
+    wasProposedTransferSigned                     = "WasProposedTransferSignedOnElrond"
+    signProposedTransfer                          = "SignProposedTransferOnElrond"
+    isQuorumReached                               = "IsQuorumReachedOnElrond"
+    wasActionIDPerformed                          = "WasActionIDPerformedOnElrond"
+    proposeTransferOnElrond                       = "ProposeTransferOnElrond"
+    performActionID                               = "PerformActionIDOnElrond"
 )
 
 type testMode byte
@@ -60,34 +59,8 @@ func createStateMachineMock(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridge
 	return smm
 }
 
-func testSubFlow1(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, failingStep string, mode testMode, numIterations int, numSteps int) {
-	wasProposedTransferSignedValue := getWasProposedTransferSignedValue(mode)
-
-	assert.Equal(t, 1, bridgeStub.GetFunctionCounter(getLastExecutedEthBatchIDFromElrond))
-	assert.Equal(t, 1, bridgeStub.GetFunctionCounter(getAndStoreBatchFromEthereum))
-	assert.Equal(t, 1, bridgeStub.GetFunctionCounter(verifyLastDepositNonceExecutedOnEthereumBatch))
-	assert.Equal(t, 1, bridgeStub.GetFunctionCounter(getAndStoreActionID))
-	if failingStep == ethToElrond.PerformingActionID || failingStep == ethToElrond.NoFailing {
-		assert.Equal(t, 4, bridgeStub.GetFunctionCounter(getStoredBatch))
-		assert.Equal(t, 1, bridgeStub.GetFunctionCounter(wasTransferProposedOnElrond))
-		assert.Equal(t, numSteps*numIterations-5, bridgeStub.GetFunctionCounter(wasActionIDPerformed))
-		assert.Equal(t, numSteps*numIterations-5, bridgeStub.GetFunctionCounter(myTurnAsLeader))
-		assert.Equal(t, 1, bridgeStub.GetFunctionCounter(wasProposedTransferSigned))
-		if wasProposedTransferSignedValue == false {
-			assert.Equal(t, 1, bridgeStub.GetFunctionCounter(signProposedTransfer))
-		}
-
-		assert.Equal(t, 1, bridgeStub.GetFunctionCounter(isQuorumReached))
-		return
-	}
-	assert.Equal(t, numSteps*numIterations, bridgeStub.GetFunctionCounter(getStoredBatch))
-	assert.Equal(t, numSteps*numIterations-2, bridgeStub.GetFunctionCounter(wasTransferProposedOnElrond))
-	assert.Equal(t, numSteps*numIterations-2, bridgeStub.GetFunctionCounter(myTurnAsLeader))
-}
-
-func testSubFlow2(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, failingStep string, mode testMode, numIterations int, numSteps int) {
+func testSubFlow(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, failingStep string, mode testMode, numIterations int, numSteps int) {
 	wasTransferProposedOnElrondValue := getWasTransferProposedOnElrondValue(mode)
-	myTurnAsLeaderReturnValue := getmyTurnAsLeaderValue(mode)
 	wasProposedTransferSignedValue := getWasProposedTransferSignedValue(mode)
 
 	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(getLastExecutedEthBatchIDFromElrond))
@@ -110,11 +83,13 @@ func testSubFlow2(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, fail
 		}
 
 		assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(proposeTransferOnElrond))
+	} else if failingStep == ethToElrond.PerformingActionID {
+		assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(myTurnAsLeader))
 	}
 	if failingStep == ethToElrond.ProposingTransferOnElrond {
 		return
 	}
-	if myTurnAsLeaderReturnValue == false && wasProposedTransferSignedValue == false {
+	if wasProposedTransferSignedValue == false {
 		assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(signProposedTransfer))
 	}
 	if failingStep == ethToElrond.SigningProposedTransferOnElrond {
@@ -128,43 +103,26 @@ func testSubFlow2(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, fail
 	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(performActionID))
 }
 
-func checkAfterExecution(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, failingStep string, mode testMode, numIterations int, numSteps int) {
-	myTurnAsLeaderReturnValue := getmyTurnAsLeaderValue(mode)
-
-	switch failingStep {
-	case ethToElrond.GettingPendingBatchFromEthereum, ethToElrond.GettingActionIdForProposeTransfer:
-		testSubFlow2(t, bridgeStub, failingStep, mode, numIterations, numSteps)
-	case ethToElrond.ProposingTransferOnElrond, ethToElrond.PerformingActionID:
-		if myTurnAsLeaderReturnValue {
-			testSubFlow2(t, bridgeStub, failingStep, mode, numIterations, numSteps)
-		} else {
-			testSubFlow1(t, bridgeStub, failingStep, mode, numIterations, numSteps)
-		}
-	case ethToElrond.SigningProposedTransferOnElrond:
-		transferNotProposedOrAsleaderNotsigned := ^transferProposed | (asLeader & proposedTransferSigned)
-		if mode == transferNotProposedOrAsleaderNotsigned {
-			testSubFlow2(t, bridgeStub, failingStep, mode, numIterations, numSteps)
-		} else {
-			testSubFlow1(t, bridgeStub, failingStep, mode, numIterations, numSteps)
-		}
-	case ethToElrond.WaitingForQuorum:
-		transferProposedOrAsLeader := transferProposed | asLeader
-		if mode == transferProposedOrAsLeader {
-			testSubFlow2(t, bridgeStub, failingStep, mode, numIterations, numSteps)
-		} else {
-			testSubFlow1(t, bridgeStub, failingStep, mode, numIterations, numSteps)
-		}
-	case ethToElrond.NoFailing:
-		// TODO: finish also the case when no error
-		return
-	default:
-		assert.Error(t, errors.New("unexpected step"))
-	}
-}
-
 func testFlow(t *testing.T, mode testMode) {
 	for numSteps, failingStep := range ethToElrond.FailingStepList {
 		currentNumStep, currentFailingStep := numSteps, failingStep
+		// Avoid invalid test cases
+		testSigningFailureWhileTransferAlreadySigned := getWasProposedTransferSignedValue(mode) && currentFailingStep == ethToElrond.SigningProposedTransferOnElrond
+		testProposingFailureWhileTransferAlreadyProposed := getWasTransferProposedOnElrondValue(mode) && currentFailingStep == ethToElrond.ProposingTransferOnElrond
+		testProposingWhileNotLeader := !getmyTurnAsLeaderValue(mode) && currentFailingStep == ethToElrond.ProposingTransferOnElrond
+		testPerformingActionWhileNotLeader := !getmyTurnAsLeaderValue(mode) && currentFailingStep == ethToElrond.PerformingActionID
+		testWaitingQuorumWhileNotLeaderAndNotAlreadyProposed := !getmyTurnAsLeaderValue(mode) && !getWasTransferProposedOnElrondValue(mode) && currentFailingStep == ethToElrond.WaitingForQuorum
+		if testSigningFailureWhileTransferAlreadySigned  ||
+			testProposingFailureWhileTransferAlreadyProposed ||
+			testProposingWhileNotLeader ||
+			testPerformingActionWhileNotLeader ||
+			testWaitingQuorumWhileNotLeaderAndNotAlreadyProposed {
+			continue
+		}
+		if currentFailingStep == ethToElrond.NoFailing {
+			// TODO implement this
+			continue
+		}
 		t.Run(fmt.Sprintf("at %s, mode: %d", failingStep, mode), func(t *testing.T) {
 			t.Parallel()
 			bridgeStub := createStubExecutorFailingAt(currentFailingStep, mode)
@@ -176,7 +134,7 @@ func testFlow(t *testing.T, mode testMode) {
 					require.Nil(t, err)
 				}
 			}
-			checkAfterExecution(t, bridgeStub, failingStep, mode, numIterations, currentNumStep+1)
+			testSubFlow(t, bridgeStub, currentFailingStep, mode, numIterations, currentNumStep+1)
 		})
 	}
 }
