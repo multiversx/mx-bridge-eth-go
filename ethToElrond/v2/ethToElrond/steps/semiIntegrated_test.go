@@ -36,7 +36,6 @@ const (
 	transferProposed       testMode = 1
 	asLeader               testMode = 2
 	proposedTransferSigned testMode = 4
-	reachMaxRetries        testMode = 8
 )
 
 const maxRetriesAllowed = 3
@@ -52,10 +51,6 @@ func getWasTransferProposedOnElrondValue(mode testMode) bool {
 
 func getWasProposedTransferSignedValue(mode testMode) bool {
 	return mode&proposedTransferSigned > 0
-}
-
-func getReachMaxRetriesAllowed(mode testMode) bool {
-	return mode&reachMaxRetries > 0
 }
 
 func createStateMachineMock(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub) *stateMachine.StateMachineMock {
@@ -138,6 +133,7 @@ func testFlow(t *testing.T, mode testMode) {
 			smm := createStateMachineMock(t, bridgeStub)
 			numIterations := 100
 			for i := 0; i < numIterations; i++ {
+				retriesNumber = 0
 				for stepNo := 0; stepNo <= currentNumStep; stepNo++ {
 					err := smm.ExecuteOneStep()
 					require.Nil(t, err)
@@ -209,14 +205,11 @@ func createStubExecutorFailingAt(failingStep string, mode testMode) *bridgeV2.Et
 		}
 	}
 	bridgeStub.ProcessMaxRetriesOnElrondCalled = func() bool {
-		if getReachMaxRetriesAllowed(mode) {
-			if retriesNumber < maxRetriesAllowed {
-				retriesNumber++
-				return false
-			}
-			return true
+		if retriesNumber < maxRetriesAllowed {
+			retriesNumber++
+			return false
 		}
-		return false
+		return true
 	}
 	bridgeStub.ResetRetriesCountOnElrondCalled = func() {
 		retriesNumber = 0
@@ -228,7 +221,7 @@ func createStubExecutorFailingAt(failingStep string, mode testMode) *bridgeV2.Et
 		return bridgeStub
 	} else {
 		bridgeStub.IsQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {
-			return !getReachMaxRetriesAllowed(mode), nil // return false in case mode requires to wait for reach max retries
+			return true, nil
 		}
 	}
 	bridgeStub.WasActionIDPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
@@ -249,7 +242,7 @@ func createStubExecutorFailingAt(failingStep string, mode testMode) *bridgeV2.Et
 
 func TestEndlessLoop(t *testing.T) {
 	t.Parallel()
-	numModes := testMode(8) // TODO cover reachMaxRetries as well
+	numModes := testMode(8)
 	for mode := testMode(1); mode < numModes; mode++ {
 		testFlow(t, mode)
 	}
