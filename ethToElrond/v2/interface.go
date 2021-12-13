@@ -27,7 +27,7 @@ type ElrondClient interface {
 	Sign(ctx context.Context, actionID uint64) (string, error)
 	WasSigned(ctx context.Context, actionID uint64) (bool, error)
 	PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
-
+	GetMaxNumberOfRetriesOnQuorumReached() uint64
 	Close() error
 	IsInterfaceNil() bool
 }
@@ -40,6 +40,7 @@ type EthereumClient interface {
 
 	BroadcastSignatureForMessageHash(msgHash common.Hash)
 	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
+	GetMaxNumberOfRetriesOnQuorumReached() uint64
 	IsInterfaceNil() bool
 }
 

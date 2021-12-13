@@ -39,6 +39,7 @@ type ClientArgs struct {
 	MultisigContractAddress      core.AddressHandler
 	IntervalToResendTxsInSeconds uint64
 	TokensMapper                 TokensMapper
+	MaxRetriesOnQuorumReached    uint64
 }
 
 // client represents the Elrond Client implementation
@@ -52,6 +53,7 @@ type client struct {
 	log                       logger.Logger
 	gasMapConfig              config.ElrondGasMapConfig
 	addressPublicKeyConverter elrondCore.PubkeyConverter
+	maxRetriesOnQuorumReached uint64
 }
 
 // NewClient returns a new Elrond Client instance
@@ -122,6 +124,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		gasMapConfig:              args.GasMapConfig,
 		addressPublicKeyConverter: addressPubKeyConverter,
 		tokensMapper:              args.TokensMapper,
+		maxRetriesOnQuorumReached: args.MaxRetriesOnQuorumReached,
 	}
 
 	c.log.Info("NewElrondClient",
@@ -308,6 +311,11 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	}
 
 	return hash, err
+}
+
+// GetMaxNumberOfRetriesOnQuorumReached returns the maximum number of retries allowed on quorum reached
+func(c *client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
+	return c.maxRetriesOnQuorumReached
 }
 
 // Close will close any started go routines. It returns nil.

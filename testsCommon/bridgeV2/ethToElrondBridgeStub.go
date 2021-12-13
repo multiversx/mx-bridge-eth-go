@@ -33,6 +33,8 @@ type EthToElrondBridgeStub struct {
 	IsQuorumReachedOnElrondCalled                       func(ctx context.Context) (bool, error)
 	WasActionIDPerformedOnElrondCalled                  func(ctx context.Context) (bool, error)
 	PerformActionIDOnElrondCalled                       func(ctx context.Context) error
+	ProcessMaxRetriesOnElrondCalled                     func() bool
+	ResetRetriesCountOnElrondCalled                     func()
 }
 
 // NewEthToElrondBridgeStub creates a new EthToElrondBridgeStub instance
@@ -175,6 +177,23 @@ func (stub *EthToElrondBridgeStub) PerformActionIDOnElrond(ctx context.Context) 
 		return stub.PerformActionIDOnElrondCalled(ctx)
 	}
 	return notImplemented
+}
+
+// ProcessMaxRetriesOnElrond -
+func (stub *EthToElrondBridgeStub) ProcessMaxRetriesOnElrond() bool {
+	stub.incrementFunctionCounter()
+	if stub.ProcessMaxRetriesOnElrondCalled != nil {
+		return stub.ProcessMaxRetriesOnElrondCalled()
+	}
+	return false
+}
+
+// ResetRetriesCountOnElrond -
+func (stub *EthToElrondBridgeStub) ResetRetriesCountOnElrond() {
+	stub.incrementFunctionCounter()
+	if stub.ResetRetriesCountOnElrondCalled != nil {
+		stub.ResetRetriesCountOnElrondCalled()
+	}
 }
 
 // -------- helper functions
