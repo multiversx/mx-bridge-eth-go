@@ -38,6 +38,9 @@ const (
 	proposedTransferSigned testMode = 4
 )
 
+const maxRetriesAllowed = 3
+var retriesNumber = 0
+
 func getmyTurnAsLeaderValue(mode testMode) bool {
 	return mode&asLeader > 0
 }
@@ -130,6 +133,7 @@ func testFlow(t *testing.T, mode testMode) {
 			smm := createStateMachineMock(t, bridgeStub)
 			numIterations := 100
 			for i := 0; i < numIterations; i++ {
+				retriesNumber = 0
 				for stepNo := 0; stepNo <= currentNumStep; stepNo++ {
 					err := smm.ExecuteOneStep()
 					require.Nil(t, err)
@@ -199,6 +203,16 @@ func createStubExecutorFailingAt(failingStep string, mode testMode) *bridgeV2.Et
 		bridgeStub.SignProposedTransferOnElrondCalled = func(ctx context.Context) error {
 			return nil
 		}
+	}
+	bridgeStub.ProcessMaxRetriesOnElrondCalled = func() bool {
+		if retriesNumber < maxRetriesAllowed {
+			retriesNumber++
+			return false
+		}
+		return true
+	}
+	bridgeStub.ResetRetriesCountOnElrondCalled = func() {
+		retriesNumber = 0
 	}
 	if failingStep == ethToElrond.WaitingForQuorum {
 		bridgeStub.IsQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {

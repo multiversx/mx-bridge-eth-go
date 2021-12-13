@@ -553,3 +553,15 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		assert.True(t, wasCalled)
 	})
 }
+
+func TestClient_GetMaxNumberOfRetriesOnQuorumReached(t *testing.T) {
+	t.Parallel()
+
+	expectedMRQR := uint64(1123)
+	args := createMockEthereumClientArgs()
+	args.MaxRetriesOnQuorumReached = expectedMRQR
+	c, _ := NewEthereumClient(args)
+
+	result := c.GetMaxNumberOfRetriesOnQuorumReached()
+	assert.Equal(t, expectedMRQR, result)
+}

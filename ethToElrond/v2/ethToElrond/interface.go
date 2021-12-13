@@ -27,5 +27,8 @@ type EthToElrondBridge interface {
 	WasActionIDPerformedOnElrond(ctx context.Context) (bool, error)
 	PerformActionIDOnElrond(ctx context.Context) error
 
+	ProcessMaxRetriesOnElrond() bool
+	ResetRetriesCountOnElrond()
+
 	IsInterfaceNil() bool
 }
