@@ -202,8 +202,8 @@ func (executor *ethToElrondBridgeExecutor) PerformActionIDOnElrond(ctx context.C
 	return nil
 }
 
-// IsMaxRetriesReachedOnElrond checks if the retries on waiting were reached and increments the counter
-func (executor *ethToElrondBridgeExecutor) IsMaxRetriesReachedOnElrond() bool {
+// ProcessMaxRetriesOnElrond checks if the retries on waiting were reached and increments the counter
+func (executor *ethToElrondBridgeExecutor) ProcessMaxRetriesOnElrond() bool {
 	maxNumberOfRetries := executor.elrondClient.GetMaxNumberOfRetriesOnQuorumReached()
 	if executor.retriesOnElrond < maxNumberOfRetries {
 		executor.retriesOnElrond++
@@ -216,22 +216,6 @@ func (executor *ethToElrondBridgeExecutor) IsMaxRetriesReachedOnElrond() bool {
 // ResetRetriesCountOnElrond resets the number of retries
 func (executor *ethToElrondBridgeExecutor) ResetRetriesCountOnElrond() {
 	executor.retriesOnElrond = 0
-}
-
-// IsMaxRetriesReachedOnEthereum checks if the retries on waiting were reached and increments the counter
-func (executor *ethToElrondBridgeExecutor) IsMaxRetriesReachedOnEthereum() bool {
-	maxNumberOfRetries := executor.ethereumClient.GetMaxNumberOfRetriesOnQuorumReached()
-	if executor.retriesOnEthereum < maxNumberOfRetries {
-		executor.retriesOnEthereum++
-		return false
-	}
-
-	return true
-}
-
-// ResetRetriesCountOnEthereum resets the number of retries
-func (executor *ethToElrondBridgeExecutor) ResetRetriesCountOnEthereum() {
-	executor.retriesOnEthereum = 0
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

@@ -33,10 +33,8 @@ type EthToElrondBridgeStub struct {
 	IsQuorumReachedOnElrondCalled                       func(ctx context.Context) (bool, error)
 	WasActionIDPerformedOnElrondCalled                  func(ctx context.Context) (bool, error)
 	PerformActionIDOnElrondCalled                       func(ctx context.Context) error
-	IsMaxRetriesReachedOnElrondCalled                   func() bool
+	ProcessMaxRetriesOnElrondCalled                     func() bool
 	ResetRetriesCountOnElrondCalled                     func()
-	IsMaxRetriesReachedOnEthereumCalled                 func() bool
-	ResetRetriesCountOnEthereumCalled                   func()
 }
 
 // NewEthToElrondBridgeStub creates a new EthToElrondBridgeStub instance
@@ -181,11 +179,11 @@ func (stub *EthToElrondBridgeStub) PerformActionIDOnElrond(ctx context.Context) 
 	return notImplemented
 }
 
-// IsMaxRetriesReachedOnElrond -
-func (stub *EthToElrondBridgeStub) IsMaxRetriesReachedOnElrond() bool {
+// ProcessMaxRetriesOnElrond -
+func (stub *EthToElrondBridgeStub) ProcessMaxRetriesOnElrond() bool {
 	stub.incrementFunctionCounter()
-	if stub.IsMaxRetriesReachedOnElrondCalled != nil {
-		return stub.IsMaxRetriesReachedOnElrondCalled()
+	if stub.ProcessMaxRetriesOnElrondCalled != nil {
+		return stub.ProcessMaxRetriesOnElrondCalled()
 	}
 	return false
 }
@@ -195,23 +193,6 @@ func (stub *EthToElrondBridgeStub) ResetRetriesCountOnElrond() {
 	stub.incrementFunctionCounter()
 	if stub.ResetRetriesCountOnElrondCalled != nil {
 		stub.ResetRetriesCountOnElrondCalled()
-	}
-}
-
-// IsMaxRetriesReachedOnEthereum -
-func (stub *EthToElrondBridgeStub) IsMaxRetriesReachedOnEthereum() bool {
-	stub.incrementFunctionCounter()
-	if stub.IsMaxRetriesReachedOnEthereumCalled != nil {
-		return stub.IsMaxRetriesReachedOnEthereumCalled()
-	}
-	return false
-}
-
-// ResetRetriesCountOnEthereum -
-func (stub *EthToElrondBridgeStub) ResetRetriesCountOnEthereum() {
-	stub.incrementFunctionCounter()
-	if stub.ResetRetriesCountOnEthereumCalled != nil {
-		stub.ResetRetriesCountOnEthereumCalled()
 	}
 }
 

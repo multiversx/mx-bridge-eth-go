@@ -208,7 +208,7 @@ func createStubExecutorFailingAt(failingStep string, mode testMode) *bridgeV2.Et
 			return nil
 		}
 	}
-	bridgeStub.IsMaxRetriesReachedOnElrondCalled = func() bool {
+	bridgeStub.ProcessMaxRetriesOnElrondCalled = func() bool {
 		if getReachMaxRetriesAllowed(mode) {
 			if retriesNumber < maxRetriesAllowed {
 				retriesNumber++

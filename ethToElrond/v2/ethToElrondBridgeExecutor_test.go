@@ -619,20 +619,12 @@ func TestEthToElrondBridgeExecutor_RetriesCount(t *testing.T) {
 	}
 	executor, _ := NewEthToElrondBridgeExecutor(args)
 	for i := uint64(0); i < expectedMaxRetries; i++ {
-		assert.False(t, executor.IsMaxRetriesReachedOnEthereum())
-		assert.False(t, executor.IsMaxRetriesReachedOnElrond())
+		assert.False(t, executor.ProcessMaxRetriesOnElrond())
 	}
-
-	// Test ethereum
-	assert.Equal(t, expectedMaxRetries, executor.retriesOnEthereum)
-	assert.True(t, executor.IsMaxRetriesReachedOnEthereum())
-	executor.ResetRetriesCountOnEthereum()
-	assert.Equal(t, uint64(0), executor.retriesOnEthereum)
-	assert.True(t, wasCalledOnEthClient)
 
 	// Test elrond
 	assert.Equal(t, expectedMaxRetries, executor.retriesOnElrond)
-	assert.True(t, executor.IsMaxRetriesReachedOnElrond())
+	assert.True(t, executor.ProcessMaxRetriesOnElrond())
 	executor.ResetRetriesCountOnElrond()
 	assert.Equal(t, uint64(0), executor.retriesOnElrond)
 	assert.True(t, wasCalledOnElrondClient)
