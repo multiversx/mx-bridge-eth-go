@@ -14,6 +14,8 @@ func TestNewTopologyHandler(t *testing.T) {
 	t.Parallel()
 
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockArgsTopologyHandler()
 		tph, err := NewTopologyHandler(args)
 
@@ -28,6 +30,8 @@ func TestNewTopologyHandler(t *testing.T) {
 	})
 
 	t.Run("nil PublicKeysProvider", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockArgsTopologyHandler()
 		args.PublicKeysProvider = nil
 		tph, err := NewTopologyHandler(args)
@@ -37,6 +41,8 @@ func TestNewTopologyHandler(t *testing.T) {
 	})
 
 	t.Run("nil timer", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockArgsTopologyHandler()
 		args.Timer = nil
 		tph, err := NewTopologyHandler(args)
@@ -46,6 +52,8 @@ func TestNewTopologyHandler(t *testing.T) {
 	})
 
 	t.Run("invalid step duration", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockArgsTopologyHandler()
 		args.StepDuration = time.Duration(12345)
 		tph, err := NewTopologyHandler(args)
@@ -55,6 +63,8 @@ func TestNewTopologyHandler(t *testing.T) {
 	})
 
 	t.Run("nil address", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockArgsTopologyHandler()
 		args.AddressBytes = nil
 		tph, err := NewTopologyHandler(args)
@@ -68,6 +78,8 @@ func TestMyTurnAsLeader(t *testing.T) {
 	t.Parallel()
 
 	t.Run("not leader - SortedPublicKeys empty", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockArgsTopologyHandler()
 		args.PublicKeysProvider = &testsCommon.BroadcasterStub{
 			SortedPublicKeysCalled: func() [][]byte {
@@ -80,6 +92,8 @@ func TestMyTurnAsLeader(t *testing.T) {
 	})
 
 	t.Run("not leader", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockArgsTopologyHandler()
 		args.AddressBytes = []byte("abc")
 		tph, _ := NewTopologyHandler(args)
@@ -89,6 +103,8 @@ func TestMyTurnAsLeader(t *testing.T) {
 	})
 
 	t.Run("leader", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockArgsTopologyHandler()
 		tph, _ := NewTopologyHandler(args)
 
