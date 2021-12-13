@@ -68,8 +68,8 @@ func checkArgs(args ArgsTopologyHandler) error {
 	if int64(args.StepDuration.Seconds()) <= 0 {
 		return errInvalidStepDuration
 	}
-	if args.AddressBytes == nil {
-		return errNilAddress
+	if len(args.AddressBytes) == 0 {
+		return errEmptyAddress
 	}
 
 	return nil

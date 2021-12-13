@@ -72,6 +72,7 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 		Proxy:                blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil),
 		Erc20ContractsHolder: &bridgeV2.ERC20ContractsHolderStub{},
 		ClientWrapper:        &bridgeV2.EthereumClientWrapperStub{},
+		TimeForBootstrap:     minTimeForBootstrap,
 	}
 }
 
@@ -196,6 +197,16 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		assert.True(t, strings.Contains(err.Error(), ethToElrondName))
 		assert.Nil(t, components)
 	})
+	t.Run("invalid time for bootstrap", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.TimeForBootstrap = minTimeForBootstrap - 1
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.True(t, errors.Is(err, errInvalidValue))
+		assert.True(t, strings.Contains(err.Error(), "for TimeForBootstrap"))
+		assert.Nil(t, components)
+	})
 }
 
 func TestEthElrondBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
@@ -215,15 +226,49 @@ func TestEthElrondBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestEthElrondBridgeComponents_StartWithBadInitializationShouldError(t *testing.T) {
+func TestEthElrondBridgeComponents_Start(t *testing.T) {
 	t.Parallel()
 
-	args := createMockEthElrondBridgeArgs()
-	components, _ := NewEthElrondBridgeComponents(args)
-	components.ethToElrondMachineStates = nil
+	t.Run("nil states should error", func(t *testing.T) {
+		t.Parallel()
 
-	err := components.Start()
-	assert.Equal(t, stateMachine.ErrNilStepsMap, err)
+		args := createMockEthElrondBridgeArgs()
+		components, _ := NewEthElrondBridgeComponents(args)
+		components.ethToElrondMachineStates = nil
+
+		err := components.Start()
+		assert.Equal(t, stateMachine.ErrNilStepsMap, err)
+	})
+	t.Run("messenger errors on bootstrap", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("expected error")
+		args := createMockEthElrondBridgeArgs()
+		args.Messenger = &p2pMocks.MessengerStub{
+			BootstrapCalled: func() error {
+				return expectedErr
+			},
+		}
+		components, _ := NewEthElrondBridgeComponents(args)
+
+		err := components.Start()
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("broadcaster errors on RegisterOnTopics", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("expected error")
+		args := createMockEthElrondBridgeArgs()
+		components, _ := NewEthElrondBridgeComponents(args)
+		components.broadcaster = &testsCommon.BroadcasterStub{
+			RegisterOnTopicsCalled: func() error {
+				return expectedErr
+			},
+		}
+
+		err := components.Start()
+		assert.Equal(t, expectedErr, err)
+	})
 }
 
 func TestEthElrondBridgeComponents_Close(t *testing.T) {
@@ -280,4 +325,14 @@ func TestEthElrondBridgeComponents_Close(t *testing.T) {
 		assert.Equal(t, expectedErr, err)
 		assert.Equal(t, 3, numCalls)
 	})
+}
+
+func TestEthElrondBridgeComponents_RelayerAddresses(t *testing.T) {
+	t.Parallel()
+
+	args := createMockEthElrondBridgeArgs()
+	components, _ := NewEthElrondBridgeComponents(args)
+
+	assert.Equal(t, "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede", components.ElrondRelayerAddress().AddressAsBech32String())
+	assert.Equal(t, "0x3FE464Ac5aa562F7948322F92020F2b668D543d8", components.EthereumRelayerAddress().String())
 }

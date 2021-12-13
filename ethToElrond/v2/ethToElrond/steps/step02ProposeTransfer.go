@@ -7,46 +7,49 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 )
 
-type signProposedTransferStep struct {
+type proposeTransferStep struct {
 	bridge ethToElrond.EthToElrondBridge
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+func (step *proposeTransferStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	batch := step.bridge.GetStoredBatch()
-
 	if batch == nil {
 		step.bridge.GetLogger().Debug("no batch found")
 		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
-	wasSigned, err := step.bridge.WasProposedTransferSignedOnElrond(ctx)
+	wasTransferProposed, err := step.bridge.WasTransferProposedOnElrond(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error determining if the proposed transfer was signed or not",
+		step.bridge.GetLogger().Error("error determining if the batch was proposed or not on Elrond",
 			"batch ID", batch.ID, "error", err)
 		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
-	if wasSigned {
-		return ethToElrond.WaitingForQuorum, nil
+	if wasTransferProposed {
+		return ethToElrond.SigningProposedTransferOnElrond, nil
 	}
 
-	err = step.bridge.SignProposedTransferOnElrond(ctx)
+	if !step.bridge.MyTurnAsLeader() {
+		return step.Identifier(), nil
+	}
+
+	err = step.bridge.ProposeTransferOnElrond(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error signing the proposed transfer",
+		step.bridge.GetLogger().Error("error proposing transfer on Elrond",
 			"batch ID", batch.ID, "error", err)
 		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
-	return ethToElrond.WaitingForQuorum, nil
+	return ethToElrond.SigningProposedTransferOnElrond, nil
 }
 
 // Identifier returns the step's identifier
-func (step *signProposedTransferStep) Identifier() core.StepIdentifier {
-	return ethToElrond.SigningProposedTransferOnElrond
+func (step *proposeTransferStep) Identifier() core.StepIdentifier {
+	return ethToElrond.ProposingTransferOnElrond
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
-func (step *signProposedTransferStep) IsInterfaceNil() bool {
+func (step *proposeTransferStep) IsInterfaceNil() bool {
 	return step == nil
 }

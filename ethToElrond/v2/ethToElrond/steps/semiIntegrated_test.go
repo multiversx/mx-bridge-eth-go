@@ -98,9 +98,6 @@ func testSubFlow2(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, fail
 	assert.Equal(t, int(math.Min(4, float64(numSteps)))*numIterations, bridgeStub.GetFunctionCounter(getStoredBatch))
 	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(verifyLastDepositNonceExecutedOnEthereumBatch))
 	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(getAndStoreActionID))
-	if failingStep == ethToElrond.GettingActionIdForProposeTransfer {
-		return
-	}
 	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(wasTransferProposedOnElrond))
 	if wasTransferProposedOnElrondValue == false {
 		if failingStep == ethToElrond.PerformingActionID {
@@ -132,7 +129,7 @@ func checkAfterExecution(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStu
 	myTurnAsLeaderReturnValue := getmyTurnAsLeaderValue(mode)
 
 	switch failingStep {
-	case ethToElrond.GettingPendingBatchFromEthereum, ethToElrond.GettingActionIdForProposeTransfer:
+	case ethToElrond.GettingPendingBatchFromEthereum:
 		testSubFlow2(t, bridgeStub, failingStep, mode, numIterations, numSteps)
 	case ethToElrond.ProposingTransferOnElrond, ethToElrond.PerformingActionID:
 		if myTurnAsLeaderReturnValue {
@@ -202,15 +199,9 @@ func createStubExecutorFailingAt(failingStep string, mode testMode) *bridgeV2.Et
 			return nil
 		}
 	}
-	if failingStep == ethToElrond.GettingActionIdForProposeTransfer {
-		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
-			return 1122, expectedError
-		}
-		return bridgeStub
-	} else {
-		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
-			return 0, nil
-		}
+
+	bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+		return 0, nil
 	}
 	bridgeStub.WasTransferProposedOnElrondCalled = func(ctx context.Context) (bool, error) {
 		return getWasTransferProposedOnElrondValue(mode), nil

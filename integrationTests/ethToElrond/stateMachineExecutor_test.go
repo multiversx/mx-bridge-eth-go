@@ -218,7 +218,6 @@ func createAndStartBridge(
 		StartStateIdentifier: ethToElrond.GettingPending,
 		DurationBetweenSteps: time.Millisecond,
 		Log:                  logStateMachine,
-		Timer:                &testsCommon.TimerMock{},
 		StatusHandler:        statusHandler,
 	}
 

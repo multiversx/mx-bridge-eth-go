@@ -54,13 +54,19 @@ func TestNewTopologyHandler(t *testing.T) {
 		assert.Equal(t, errInvalidStepDuration, err)
 	})
 
-	t.Run("nil address", func(t *testing.T) {
+	t.Run("empty address", func(t *testing.T) {
 		args := createMockArgsTopologyHandler()
 		args.AddressBytes = nil
 		tph, err := NewTopologyHandler(args)
 
 		assert.Nil(t, tph)
-		assert.Equal(t, errNilAddress, err)
+		assert.Equal(t, errEmptyAddress, err)
+
+		args.AddressBytes = make([]byte, 0)
+		tph, err = NewTopologyHandler(args)
+
+		assert.Nil(t, tph)
+		assert.Equal(t, errEmptyAddress, err)
 	})
 }
 

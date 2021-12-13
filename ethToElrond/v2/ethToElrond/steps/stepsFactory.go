@@ -24,9 +24,6 @@ func createMachineStates(executor ethToElrond.EthToElrondBridge) (core.MachineSt
 		&getPendingStep{
 			bridge: executor,
 		},
-		&getActionIdForProposeStep{
-			bridge: executor,
-		},
 		&proposeTransferStep{
 			bridge: executor,
 		},

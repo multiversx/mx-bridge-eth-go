@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -39,6 +40,7 @@ import (
 )
 
 const (
+	minTimeForBootstrap     = time.Millisecond * 100
 	pollingDurationOnError  = time.Second * 5
 	ethToElrondName         = "EthToElrond"
 	baseLogId               = "EthElrond-Base"
@@ -60,6 +62,7 @@ type ArgsEthereumToElrondBridge struct {
 	Proxy                elrond.ElrondProxy
 	Erc20ContractsHolder ethereum.Erc20ContractsHolder
 	ClientWrapper        ethereum.ClientWrapper
+	TimeForBootstrap     time.Duration
 }
 
 type ethElrondBridgeComponents struct {
@@ -72,12 +75,14 @@ type ethElrondBridgeComponents struct {
 	elrondMultisigContractAddress erdgoCore.AddressHandler
 	elrondRelayerPrivateKey       crypto.PrivateKey
 	elrondRelayerAddress          erdgoCore.AddressHandler
+	ethereumRelayerAddress        common.Address
 	dataGetter                    dataGetter
 	proxy                         elrond.ElrondProxy
 	elrondRoleProvider            ElrondRoleProvider
 	ethereumRoleProvider          EthereumRoleProvider
 	broadcaster                   Broadcaster
 	timer                         core.Timer
+	timeForBootstrap              time.Duration
 
 	ethToElrondBridge        ethToElrond.EthToElrondBridge
 	ethToElrondMachineStates core.MachineStates
@@ -102,6 +107,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		closableHandlers: make([]io.Closer, 0),
 		proxy:            args.Proxy,
 		timer:            timer.NewNTPTimer(),
+		timeForBootstrap: args.TimeForBootstrap,
 	}
 	components.addClosableComponent(components.timer)
 
@@ -164,6 +170,9 @@ func checkArgsEthereumToElrondBridge(args ArgsEthereumToElrondBridge) error {
 	}
 	if check.IfNil(args.Erc20ContractsHolder) {
 		return errNilErc20ContractsHolder
+	}
+	if args.TimeForBootstrap < minTimeForBootstrap {
+		return fmt.Errorf("%w for TimeForBootstrap, received: %v, minimum: %v", errInvalidValue, args.TimeForBootstrap, minTimeForBootstrap)
 	}
 
 	return nil
@@ -274,6 +283,13 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	if err != nil {
 		return err
 	}
+
+	publicKey := privateKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return errPublicKeyCast
+	}
+	components.ethereumRelayerAddress = ethCrypto.PubkeyToAddress(*publicKeyECDSA)
 
 	tokensMapper, err := mappers.NewErc20ToElrondMapper(components.dataGetter)
 	if err != nil {
@@ -410,6 +426,21 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 
 // Start will start the bridge
 func (components *ethElrondBridgeComponents) Start() error {
+	err := components.messenger.Bootstrap()
+	if err != nil {
+		return err
+	}
+
+	components.baseLogger.Info("waiting for p2p bootstrap", "time", components.timeForBootstrap)
+	time.Sleep(components.timeForBootstrap)
+
+	err = components.broadcaster.RegisterOnTopics()
+	if err != nil {
+		return err
+	}
+
+	components.broadcaster.BroadcastJoinTopic()
+
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
 
 	//TODO replace this with the real status handler
@@ -455,4 +486,14 @@ func (components *ethElrondBridgeComponents) Close() error {
 	}
 
 	return lastError
+}
+
+// ElrondRelayerAddress returns the Elrond's address associated to this relayer
+func (components *ethElrondBridgeComponents) ElrondRelayerAddress() erdgoCore.AddressHandler {
+	return components.elrondRelayerAddress
+}
+
+// EthereumRelayerAddress returns the Ethereum's address associated to this relayer
+func (components *ethElrondBridgeComponents) EthereumRelayerAddress() common.Address {
+	return components.ethereumRelayerAddress
 }

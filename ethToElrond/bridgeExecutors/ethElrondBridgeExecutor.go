@@ -37,7 +37,6 @@ type ethElrondBridgeExecutor struct {
 	actionID          bridge.ActionId
 	topologyProvider  TopologyProvider
 	quorumProvider    bridge.QuorumProvider
-	timer             core.Timer
 	durationsMap      map[core.StepIdentifier]time.Duration
 	statusHandler     core.StatusHandler
 }
@@ -57,7 +56,6 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 		destinationBridge: args.DestinationBridge,
 		topologyProvider:  args.TopologyProvider,
 		quorumProvider:    args.QuorumProvider,
-		timer:             args.Timer,
 		durationsMap:      args.DurationsMap,
 		statusHandler:     args.StatusHandler,
 	}, nil
@@ -340,7 +338,7 @@ func (executor *ethElrondBridgeExecutor) WaitStepToFinish(step core.StepIdentifi
 		"step", step, "batch ID", executor.getBatchID(), "duration", duration)
 
 	select {
-	case <-executor.timer.After(duration):
+	case <-time.After(duration):
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

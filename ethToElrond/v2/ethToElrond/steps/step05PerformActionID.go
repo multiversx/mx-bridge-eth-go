@@ -27,6 +27,8 @@ func (step *performActionIDStep) Execute(ctx context.Context) (core.StepIdentifi
 	}
 
 	if !step.bridge.MyTurnAsLeader() {
+		step.bridge.GetLogger().Debug("not my turn as leader in this round")
+
 		return step.Identifier(), nil
 	}
 

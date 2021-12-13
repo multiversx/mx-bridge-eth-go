@@ -39,7 +39,7 @@ func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, e
 		return step.Identifier(), nil
 	}
 
-	return ethToElrond.GettingActionIdForProposeTransfer, nil
+	return ethToElrond.ProposingTransferOnElrond, nil
 }
 
 // Identifier returns the step's identifier
