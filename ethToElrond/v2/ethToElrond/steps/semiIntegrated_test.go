@@ -22,6 +22,8 @@ const (
 	wasTransferProposedOnElrond                   = "WasTransferProposedOnElrond"
 	wasProposedTransferSigned                     = "WasProposedTransferSignedOnElrond"
 	signProposedTransfer                          = "SignProposedTransferOnElrond"
+	processMaxRetriesOnElrond                     = "ProcessMaxRetriesOnElrond"
+	resetRetriesCountOnElrond                     = "ResetRetriesCountOnElrond"
 	isQuorumReached                               = "IsQuorumReachedOnElrond"
 	wasActionIDPerformed                          = "WasActionIDPerformedOnElrond"
 	proposeTransferOnElrond                       = "ProposeTransferOnElrond"
@@ -71,7 +73,6 @@ func testSubFlow(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, faili
 		return
 	}
 	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(verifyLastDepositNonceExecutedOnEthereumBatch))
-	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(getAndStoreActionID))
 	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(wasTransferProposedOnElrond))
 	if wasTransferProposedOnElrondValue == false {
 		if failingStep == ethToElrond.PerformingActionID {
@@ -91,6 +92,7 @@ func testSubFlow(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, faili
 	if wasProposedTransferSignedValue == false {
 		assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(signProposedTransfer))
 	}
+	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(getAndStoreActionID))
 	if failingStep == ethToElrond.SigningProposedTransferOnElrond {
 		return
 	}

@@ -13,6 +13,7 @@ import (
 
 var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2.(*EthToElrondBridgeStub)."
 
+// EthToElrondBridgeStub -
 type EthToElrondBridgeStub struct {
 	functionCalledCounter map[string]int
 	mutExecutor           sync.RWMutex
