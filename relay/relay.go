@@ -501,7 +501,6 @@ func (r *Relay) createAndStartBridge(
 		StartStateIdentifier: ethToElrond.GettingPending,
 		DurationBetweenSteps: r.stepDuration,
 		Log:                  logStateMachine,
-		Timer:                r.timer,
 		StatusHandler:        statusHandler,
 	}
 
@@ -619,7 +618,7 @@ func (r *Relay) init(ctx context.Context) error {
 	}
 
 	select {
-	case <-r.timer.After(10 * time.Second):
+	case <-time.After(10 * time.Second):
 		r.log.Info(fmt.Sprint(r.messenger.Addresses()))
 
 		err = r.broadcaster.RegisterOnTopics()

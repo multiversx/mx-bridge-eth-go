@@ -20,7 +20,6 @@ type ArgsStateMachine struct {
 	StartStateIdentifier core.StepIdentifier
 	DurationBetweenSteps time.Duration
 	Log                  logger.Logger
-	Timer                core.Timer
 	StatusHandler        core.StatusHandler
 }
 
@@ -32,7 +31,6 @@ type stateMachine struct {
 	log                  logger.Logger
 	cancel               func()
 	loopStatus           *atomic.Flag
-	timer                core.Timer
 	statusHandler        core.StatusHandler
 }
 
@@ -49,7 +47,6 @@ func NewStateMachine(args ArgsStateMachine) (*stateMachine, error) {
 		durationBetweenSteps: args.DurationBetweenSteps,
 		log:                  args.Log,
 		loopStatus:           &atomic.Flag{},
-		timer:                args.Timer,
 		statusHandler:        args.StatusHandler,
 	}
 	sm.currentStep, err = sm.getNextStep(args.StartStateIdentifier)
@@ -76,9 +73,6 @@ func checkArgs(args ArgsStateMachine) error {
 	if check.IfNil(args.Log) {
 		return ErrNilLogger
 	}
-	if check.IfNil(args.Timer) {
-		return ErrNilTimer
-	}
 	if check.IfNil(args.StatusHandler) {
 		return ErrNilStatusHandler
 	}
@@ -91,12 +85,17 @@ func (sm *stateMachine) executeLoop(ctx context.Context) {
 	defer sm.loopStatus.Unset()
 	defer sm.statusHandler.SetStringMetric(core.MetricCurrentStateMachineStep, stopped)
 
+	timer := time.NewTimer(sm.durationBetweenSteps)
+	defer timer.Stop()
+
 	for {
+		timer.Reset(sm.durationBetweenSteps)
+
 		select {
 		case <-ctx.Done():
 			sm.log.Debug(fmt.Sprintf("%s: state machine main execute loop is closing...", sm.stateMachineName))
 			return
-		case <-sm.timer.After(sm.durationBetweenSteps):
+		case <-timer.C:
 			err := sm.executeStep(ctx)
 			if err != nil {
 				sm.log.Error(fmt.Sprintf("%s: state machine stopped", sm.stateMachineName),

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"sync"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
@@ -15,8 +16,15 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/polling"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core/timer"
 	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond/steps"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/topology"
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
+	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
+	"github.com/ElrondNetwork/elrond-eth-bridge/status"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
@@ -61,7 +69,6 @@ type ethElrondBridgeComponents struct {
 	statusStorer                  core.Storer
 	elrondClient                  v2.ElrondClient
 	ethClient                     v2.EthereumClient
-	pollingHandlers               []io.Closer
 	elrondMultisigContractAddress erdgoCore.AddressHandler
 	elrondRelayerPrivateKey       crypto.PrivateKey
 	elrondRelayerAddress          erdgoCore.AddressHandler
@@ -69,6 +76,15 @@ type ethElrondBridgeComponents struct {
 	proxy                         elrond.ElrondProxy
 	elrondRoleProvider            ElrondRoleProvider
 	ethereumRoleProvider          EthereumRoleProvider
+	broadcaster                   Broadcaster
+	timer                         core.Timer
+
+	ethToElrondBridge        ethToElrond.EthToElrondBridge
+	ethToElrondMachineStates core.MachineStates
+	ethToElrondStepDuration  time.Duration
+
+	mutClosableHandlers sync.RWMutex
+	closableHandlers    []io.Closer
 }
 
 // NewEthElrondBridgeComponents creates a new eth-elrond bridge components holder
@@ -79,13 +95,15 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 	}
 
 	components := &ethElrondBridgeComponents{
-		baseLogger:      core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
-		messenger:       args.Messenger,
-		statusStorer:    args.StatusStorer,
-		configs:         args.Configs,
-		pollingHandlers: make([]io.Closer, 0),
-		proxy:           args.Proxy,
+		baseLogger:       core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
+		messenger:        args.Messenger,
+		statusStorer:     args.StatusStorer,
+		configs:          args.Configs,
+		closableHandlers: make([]io.Closer, 0),
+		proxy:            args.Proxy,
+		timer:            timer.NewNTPTimer(),
 	}
+	components.addClosableComponent(components.timer)
 
 	err = components.createElrondKeysAndAddresses(args.Configs.GeneralConfig.Elrond)
 	if err != nil {
@@ -117,7 +135,18 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
+	err = components.createEthereumToElrondBridge(args)
+	if err != nil {
+		return nil, err
+	}
+
 	return components, nil
+}
+
+func (components *ethElrondBridgeComponents) addClosableComponent(closable io.Closer) {
+	components.mutClosableHandlers.Lock()
+	components.closableHandlers = append(components.closableHandlers, closable)
+	components.mutClosableHandlers.Unlock()
 }
 
 func checkArgsEthereumToElrondBridge(args ArgsEthereumToElrondBridge) error {
@@ -197,6 +226,7 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)
+	components.addClosableComponent(components.elrondClient)
 
 	return err
 }
@@ -231,7 +261,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		Name:               ethToElrondName,
 	}
 
-	broadcaster, err := p2p.NewBroadcaster(argsBroadcaster)
+	components.broadcaster, err = p2p.NewBroadcaster(argsBroadcaster)
 	if err != nil {
 		return err
 	}
@@ -257,14 +287,14 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		Erc20ContractsHandler:     args.Erc20ContractsHolder,
 		Log:                       log,
 		AddressConverter:          core.NewAddressConverter(),
-		Broadcaster:               broadcaster,
+		Broadcaster:               components.broadcaster,
 		PrivateKey:                privateKey,
 		TokensMapper:              tokensMapper,
 		SignatureHolder:           &disabledSignatureHolder{}, //TODO replace this with the real component
 		SafeContractAddress:       safeContractAddress,
 		GasHandler:                gs,
 		TransferGasLimit:          ethereumConfigs.GasLimit,
-		MaxRetriesOnQuorumReached: ethereumConfigs.MaxRetriesOnQuorumReached,
+    MaxRetriesOnQuorumReached: ethereumConfigs.MaxRetriesOnQuorumReached,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)
@@ -300,7 +330,7 @@ func (components *ethElrondBridgeComponents) createElrondRoleProvider(args ArgsE
 		return err
 	}
 
-	components.pollingHandlers = append(components.pollingHandlers, pollingHandler)
+	components.addClosableComponent(pollingHandler)
 
 	return pollingHandler.StartProcessingLoop()
 }
@@ -333,7 +363,98 @@ func (components *ethElrondBridgeComponents) createEthereumRoleProvider(args Arg
 		return err
 	}
 
-	components.pollingHandlers = append(components.pollingHandlers, pollingHandler)
+	components.addClosableComponent(pollingHandler)
 
 	return pollingHandler.StartProcessingLoop()
+}
+
+func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args ArgsEthereumToElrondBridge) error {
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
+
+	configs, found := args.Configs.GeneralConfig.StateMachine[ethToElrondName]
+	if !found {
+		return fmt.Errorf("%w for %q", errMissingConfig, ethToElrondName)
+	}
+
+	components.ethToElrondStepDuration = time.Duration(configs.StepDurationInMillis) * time.Millisecond
+
+	argsTopologyHandler := topology.ArgsTopologyHandler{
+		PublicKeysProvider: components.broadcaster,
+		Timer:              components.timer,
+		StepDuration:       components.ethToElrondStepDuration,
+		AddressBytes:       components.elrondRelayerAddress.AddressBytes(),
+	}
+
+	topologyHandler, err := topology.NewTopologyHandler(argsTopologyHandler)
+	if err != nil {
+		return err
+	}
+
+	argsBridgeExecutor := v2.ArgsEthToElrondBridgeExecutor{
+		Log:              log,
+		TopologyProvider: topologyHandler,
+		ElrondClient:     components.elrondClient,
+		EthereumClient:   components.ethClient,
+	}
+
+	components.ethToElrondBridge, err = v2.NewEthToElrondBridgeExecutor(argsBridgeExecutor)
+	if err != nil {
+		return err
+	}
+
+	components.ethToElrondMachineStates, err = steps.CreateSteps(components.ethToElrondBridge)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Start will start the bridge
+func (components *ethElrondBridgeComponents) Start() error {
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
+
+	//TODO replace this with the real status handler
+	ethToElrondStatusHandler, _ := status.NewStatusHandler("dummy", testsCommon.NewStorerMock())
+
+	argsStateMachine := stateMachine.ArgsStateMachine{
+		StateMachineName:     ethToElrondName,
+		Steps:                components.ethToElrondMachineStates,
+		StartStateIdentifier: ethToElrond.GettingPendingBatchFromEthereum,
+		DurationBetweenSteps: components.ethToElrondStepDuration,
+		Log:                  log,
+		StatusHandler:        ethToElrondStatusHandler,
+	}
+
+	sm, err := stateMachine.NewStateMachine(argsStateMachine)
+	if err != nil {
+		return err
+	}
+
+	components.addClosableComponent(sm)
+
+	return nil
+}
+
+// Close will close any sub-components started
+func (components *ethElrondBridgeComponents) Close() error {
+	components.mutClosableHandlers.RLock()
+	defer components.mutClosableHandlers.RUnlock()
+
+	var lastError error
+	for _, closable := range components.closableHandlers {
+		if closable == nil {
+			components.baseLogger.Warn("programming error, nil closable component")
+			continue
+		}
+
+		err := closable.Close()
+		if err != nil {
+			lastError = err
+
+			components.baseLogger.Error("error closing component", "error", err)
+		}
+	}
+
+	return lastError
 }
