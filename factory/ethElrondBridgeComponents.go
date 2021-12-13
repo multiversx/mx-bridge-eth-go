@@ -193,6 +193,7 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 		MultisigContractAddress:      components.elrondMultisigContractAddress,
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
+		MaxRetriesOnQuorumReached:    elrondConfigs.MaxRetriesOnQuorumReached,
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)
@@ -252,17 +253,18 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 
 	safeContractAddress := common.HexToAddress(ethereumConfigs.SafeContractAddress)
 	argsEthClient := ethereum.ArgsEthereumClient{
-		ClientWrapper:         args.ClientWrapper,
-		Erc20ContractsHandler: args.Erc20ContractsHolder,
-		Log:                   log,
-		AddressConverter:      core.NewAddressConverter(),
-		Broadcaster:           broadcaster,
-		PrivateKey:            privateKey,
-		TokensMapper:          tokensMapper,
-		SignatureHolder:       &disabledSignatureHolder{}, //TODO replace this with the real component
-		SafeContractAddress:   safeContractAddress,
-		GasHandler:            gs,
-		TransferGasLimit:      ethereumConfigs.GasLimit,
+		ClientWrapper:             args.ClientWrapper,
+		Erc20ContractsHandler:     args.Erc20ContractsHolder,
+		Log:                       log,
+		AddressConverter:          core.NewAddressConverter(),
+		Broadcaster:               broadcaster,
+		PrivateKey:                privateKey,
+		TokensMapper:              tokensMapper,
+		SignatureHolder:           &disabledSignatureHolder{}, //TODO replace this with the real component
+		SafeContractAddress:       safeContractAddress,
+		GasHandler:                gs,
+		TransferGasLimit:          ethereumConfigs.GasLimit,
+		MaxRetriesOnQuorumReached: ethereumConfigs.MaxRetriesOnQuorumReached,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)

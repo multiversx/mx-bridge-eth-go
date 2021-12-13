@@ -13,6 +13,7 @@ type getPendingStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+	step.bridge.ResetRetriesCountOnElrond()
 	lastEthBatchExecuted, err := step.bridge.GetLastExecutedEthBatchIDFromElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error fetching last executed eth batch ID", "error", err)

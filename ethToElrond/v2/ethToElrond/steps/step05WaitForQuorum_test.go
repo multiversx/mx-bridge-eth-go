@@ -64,4 +64,20 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
+
+	t.Run("max retries reached", func(t *testing.T) {
+		bridgeStub := createStubExecutor()
+		bridgeStub.IsMaxRetriesReachedOnElrondCalled = func() bool {
+			return true
+		}
+
+		step := waitForQuorumStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
+		stepIdentifier, err := step.Execute(context.Background())
+		assert.Nil(t, err)
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
 }

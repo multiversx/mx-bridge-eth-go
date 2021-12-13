@@ -18,12 +18,14 @@ type ArgsEthToElrondBridgeExecutor struct {
 }
 
 type ethToElrondBridgeExecutor struct {
-	log              logger.Logger
-	topologyProvider TopologyProvider
-	elrondClient     ElrondClient
-	ethereumClient   EthereumClient
-	batch            *clients.TransferBatch
-	actionID         uint64
+	log               logger.Logger
+	topologyProvider  TopologyProvider
+	elrondClient      ElrondClient
+	ethereumClient    EthereumClient
+	batch             *clients.TransferBatch
+	actionID          uint64
+	retriesOnElrond   uint64
+	retriesOnEthereum uint64
 }
 
 // NewEthToElrondBridgeExecutor will create a bridge executor for the Ethereum -> Elrond flow
@@ -198,6 +200,38 @@ func (executor *ethToElrondBridgeExecutor) PerformActionIDOnElrond(ctx context.C
 		"batch ID", executor.batch.ID, "action ID", executor.actionID)
 
 	return nil
+}
+
+// IsMaxRetriesReachedOnElrond checks if the retries on waiting were reached and increments the counter
+func (executor *ethToElrondBridgeExecutor) IsMaxRetriesReachedOnElrond() bool {
+	maxNumberOfRetries := executor.elrondClient.GetMaxNumberOfRetriesOnQuorumReached()
+	if executor.retriesOnElrond < maxNumberOfRetries {
+		executor.retriesOnElrond++
+		return false
+	}
+
+	return true
+}
+
+// ResetRetriesCountOnElrond resets the number of retries
+func (executor *ethToElrondBridgeExecutor) ResetRetriesCountOnElrond() {
+	executor.retriesOnElrond = 0
+}
+
+// IsMaxRetriesReachedOnEthereum checks if the retries on waiting were reached and increments the counter
+func (executor *ethToElrondBridgeExecutor) IsMaxRetriesReachedOnEthereum() bool {
+	maxNumberOfRetries := executor.ethereumClient.GetMaxNumberOfRetriesOnQuorumReached()
+	if executor.retriesOnEthereum < maxNumberOfRetries {
+		executor.retriesOnEthereum++
+		return false
+	}
+
+	return true
+}
+
+// ResetRetriesCountOnEthereum resets the number of retries
+func (executor *ethToElrondBridgeExecutor) ResetRetriesCountOnEthereum() {
+	executor.retriesOnEthereum = 0
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

@@ -36,7 +36,11 @@ const (
 	transferProposed       testMode = 1
 	asLeader               testMode = 2
 	proposedTransferSigned testMode = 4
+	reachMaxRetries        testMode = 8
 )
+
+const maxRetriesAllowed = 3
+var retriesNumber = 0
 
 func getmyTurnAsLeaderValue(mode testMode) bool {
 	return mode&asLeader > 0
@@ -48,6 +52,10 @@ func getWasTransferProposedOnElrondValue(mode testMode) bool {
 
 func getWasProposedTransferSignedValue(mode testMode) bool {
 	return mode&proposedTransferSigned > 0
+}
+
+func getReachMaxRetriesAllowed(mode testMode) bool {
+	return mode&reachMaxRetries > 0
 }
 
 func createStateMachineMock(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub) *stateMachine.StateMachineMock {
@@ -200,6 +208,19 @@ func createStubExecutorFailingAt(failingStep string, mode testMode) *bridgeV2.Et
 			return nil
 		}
 	}
+	bridgeStub.IsMaxRetriesReachedOnElrondCalled = func() bool {
+		if getReachMaxRetriesAllowed(mode) {
+			if retriesNumber < maxRetriesAllowed {
+				retriesNumber++
+				return false
+			}
+			return true
+		}
+		return false
+	}
+	bridgeStub.ResetRetriesCountOnElrondCalled = func() {
+		retriesNumber = 0
+	}
 	if failingStep == ethToElrond.WaitingForQuorum {
 		bridgeStub.IsQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
@@ -207,7 +228,7 @@ func createStubExecutorFailingAt(failingStep string, mode testMode) *bridgeV2.Et
 		return bridgeStub
 	} else {
 		bridgeStub.IsQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {
-			return true, nil
+			return !getReachMaxRetriesAllowed(mode), nil // return false in case mode requires to wait for reach max retries
 		}
 	}
 	bridgeStub.WasActionIDPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
@@ -228,7 +249,7 @@ func createStubExecutorFailingAt(failingStep string, mode testMode) *bridgeV2.Et
 
 func TestEndlessLoop(t *testing.T) {
 	t.Parallel()
-	numModes := testMode(8)
+	numModes := testMode(8) // TODO cover reachMaxRetries as well
 	for mode := testMode(1); mode < numModes; mode++ {
 		testFlow(t, mode)
 	}
