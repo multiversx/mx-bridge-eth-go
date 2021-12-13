@@ -3,7 +3,6 @@ package steps
 import (
 	"context"
 	"fmt"
-	"math"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
@@ -18,7 +17,6 @@ const (
 	myTurnAsLeader                                = "MyTurnAsLeader"
 	getAndStoreActionID                           = "GetAndStoreActionIDFromElrond"
 	getAndStoreBatchFromEthereum                  = "GetAndStoreBatchFromEthereum"
-	getStoredBatch                                = "GetStoredBatch"
 	getLastExecutedEthBatchIDFromElrond           = "GetLastExecutedEthBatchIDFromElrond"
 	verifyLastDepositNonceExecutedOnEthereumBatch = "VerifyLastDepositNonceExecutedOnEthereumBatch"
 	wasTransferProposedOnElrond                   = "WasTransferProposedOnElrond"
@@ -39,6 +37,7 @@ const (
 )
 
 const maxRetriesAllowed = 3
+
 var retriesNumber = 0
 
 func getmyTurnAsLeaderValue(mode testMode) bool {
@@ -62,7 +61,7 @@ func createStateMachineMock(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridge
 	return smm
 }
 
-func testSubFlow(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, failingStep string, mode testMode, numIterations int, numSteps int) {
+func testSubFlow(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, failingStep string, mode testMode, numIterations int) {
 	wasTransferProposedOnElrondValue := getWasTransferProposedOnElrondValue(mode)
 	wasProposedTransferSignedValue := getWasProposedTransferSignedValue(mode)
 
@@ -71,7 +70,6 @@ func testSubFlow(t *testing.T, bridgeStub *bridgeV2.EthToElrondBridgeStub, faili
 	if failingStep == ethToElrond.GettingPendingBatchFromEthereum {
 		return
 	}
-	assert.Equal(t, int(math.Min(4, float64(numSteps)))*numIterations, bridgeStub.GetFunctionCounter(getStoredBatch))
 	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(verifyLastDepositNonceExecutedOnEthereumBatch))
 	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(getAndStoreActionID))
 	assert.Equal(t, numIterations, bridgeStub.GetFunctionCounter(wasTransferProposedOnElrond))
@@ -113,7 +111,7 @@ func testFlow(t *testing.T, mode testMode) {
 		testProposingWhileNotLeader := !getmyTurnAsLeaderValue(mode) && currentFailingStep == ethToElrond.ProposingTransferOnElrond
 		testPerformingActionWhileNotLeader := !getmyTurnAsLeaderValue(mode) && currentFailingStep == ethToElrond.PerformingActionID
 		testWaitingQuorumWhileNotLeaderAndNotAlreadyProposed := !getmyTurnAsLeaderValue(mode) && !getWasTransferProposedOnElrondValue(mode) && currentFailingStep == ethToElrond.WaitingForQuorum
-		if testSigningFailureWhileTransferAlreadySigned  ||
+		if testSigningFailureWhileTransferAlreadySigned ||
 			testProposingFailureWhileTransferAlreadyProposed ||
 			testProposingWhileNotLeader ||
 			testPerformingActionWhileNotLeader ||
@@ -136,7 +134,7 @@ func testFlow(t *testing.T, mode testMode) {
 					require.Nil(t, err)
 				}
 			}
-			testSubFlow(t, bridgeStub, currentFailingStep, mode, numIterations, currentNumStep+1)
+			testSubFlow(t, bridgeStub, currentFailingStep, mode, numIterations)
 		})
 	}
 }
@@ -164,7 +162,7 @@ func createStubExecutorFailingAt(failingStep string, mode testMode) *bridgeV2.Et
 	}
 
 	bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
-		return 0, nil
+		return 2, nil
 	}
 	bridgeStub.WasTransferProposedOnElrondCalled = func(ctx context.Context) (bool, error) {
 		return getWasTransferProposedOnElrondValue(mode), nil

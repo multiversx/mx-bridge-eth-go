@@ -220,6 +220,7 @@ func createBridgeComponentsConfig(index int) config.Config {
 			PrivateKeyFile:               fmt.Sprintf("testdata/elrond%d.pem", index),
 			IntervalToResendTxsInSeconds: 10,
 			GasMap:                       testsCommon.CreateTestElrondGasMap(),
+			MaxRetriesOnQuorumReached:    1,
 		},
 		P2P: config.ConfigP2P{},
 		StateMachine: map[string]config.ConfigStateMachine{

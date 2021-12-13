@@ -46,6 +46,7 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 			NetworkAddress:               "http://127.0.0.1:8079",
 			MultisigContractAddress:      "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 			GasMap:                       testsCommon.CreateTestElrondGasMap(),
+			MaxRetriesOnQuorumReached:    1,
 		},
 		Relayer: config.ConfigRelayer{
 			RoleProvider: config.RoleProviderConfig{
