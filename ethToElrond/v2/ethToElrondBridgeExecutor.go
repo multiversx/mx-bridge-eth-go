@@ -25,7 +25,6 @@ type ethToElrondBridgeExecutor struct {
 	batch             *clients.TransferBatch
 	actionID          uint64
 	retriesOnElrond   uint64
-	retriesOnEthereum uint64
 }
 
 // NewEthToElrondBridgeExecutor will create a bridge executor for the Ethereum -> Elrond flow
