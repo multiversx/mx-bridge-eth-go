@@ -294,7 +294,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		SafeContractAddress:       safeContractAddress,
 		GasHandler:                gs,
 		TransferGasLimit:          ethereumConfigs.GasLimit,
-    MaxRetriesOnQuorumReached: ethereumConfigs.MaxRetriesOnQuorumReached,
+		MaxRetriesOnQuorumReached: ethereumConfigs.MaxRetriesOnQuorumReached,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)
