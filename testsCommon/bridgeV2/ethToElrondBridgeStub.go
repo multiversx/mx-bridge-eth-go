@@ -16,7 +16,6 @@ var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2.
 type EthToElrondBridgeStub struct {
 	functionCalledCounter map[string]int
 	mutExecutor           sync.RWMutex
-	retriesLeft           uint64
 
 	GetLoggerCalled      func() logger.Logger
 	MyTurnAsLeaderCalled func() bool
