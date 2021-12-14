@@ -45,9 +45,13 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 	})
 
 	t.Run("should work", func(t *testing.T) {
+		wasCalled := false
 		bridgeStub := createStubExecutor()
 		bridgeStub.IsQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
+		}
+		bridgeStub.ResetRetriesCountOnElrondCalled = func() {
+			wasCalled = true
 		}
 
 		step := waitForQuorumStep{
@@ -63,6 +67,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+		assert.True(t, wasCalled)
 	})
 
 	t.Run("max retries reached", func(t *testing.T) {

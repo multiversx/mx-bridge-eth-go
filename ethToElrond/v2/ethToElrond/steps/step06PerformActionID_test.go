@@ -86,6 +86,7 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 	})
 
 	t.Run("should work", func(t *testing.T) {
+		wasCalled := false
 		bridgeStub := createStubExecutor()
 		bridgeStub.WasActionIDPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
@@ -95,6 +96,9 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 		}
 		bridgeStub.PerformActionIDOnElrondCalled = func(ctx context.Context) error {
 			return nil
+		}
+		bridgeStub.ResetRetriesCountOnElrondCalled = func() {
+			wasCalled = true
 		}
 
 		step := performActionIDStep{
@@ -109,5 +113,6 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+		assert.True(t, wasCalled)
 	})
 }

@@ -32,7 +32,7 @@ type EthereumConfig struct {
 	GasLimit                     uint64
 	ERC20Contracts               []string
 	GasStation                   GasStationConfig
-	MaxRetriesOnQuorumReached    uint64
+	MaxRetriesAllowed            uint64
 }
 
 // GasStationConfig represents the configuration for the gas station handler
@@ -138,7 +138,7 @@ type ElrondConfig struct {
 	PrivateKeyFile               string
 	IntervalToResendTxsInSeconds uint64
 	GasMap                       ElrondGasMapConfig
-	MaxRetriesOnQuorumReached    uint64
+	MaxRetriesAllowed            uint64
 }
 
 // ElrondGasMapConfig represents the gas limits for Elrond operations

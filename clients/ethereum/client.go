@@ -27,34 +27,34 @@ type argListsBatch struct {
 
 // ArgsEthereumClient is the DTO used in the ethereum's client constructor
 type ArgsEthereumClient struct {
-	ClientWrapper             ClientWrapper
-	Erc20ContractsHandler     Erc20ContractsHolder
-	Log                       elrondCore.Logger
-	AddressConverter          core.AddressConverter
-	Broadcaster               Broadcaster
-	PrivateKey                *ecdsa.PrivateKey
-	TokensMapper              TokensMapper
-	SignatureHolder           SignaturesHolder
-	SafeContractAddress       common.Address
-	GasHandler                GasHandler
-	TransferGasLimit          uint64
-	MaxRetriesOnQuorumReached uint64
+	ClientWrapper         ClientWrapper
+	Erc20ContractsHandler Erc20ContractsHolder
+	Log                   elrondCore.Logger
+	AddressConverter      core.AddressConverter
+	Broadcaster           Broadcaster
+	PrivateKey            *ecdsa.PrivateKey
+	TokensMapper          TokensMapper
+	SignatureHolder       SignaturesHolder
+	SafeContractAddress   common.Address
+	GasHandler            GasHandler
+	TransferGasLimit      uint64
+	MaxRetriesAllowed     uint64
 }
 
 type client struct {
-	clientWrapper             ClientWrapper
-	erc20ContractsHandler     Erc20ContractsHolder
-	log                       elrondCore.Logger
-	addressConverter          core.AddressConverter
-	broadcaster               Broadcaster
-	privateKey                *ecdsa.PrivateKey
-	publicKey                 *ecdsa.PublicKey
-	tokensMapper              TokensMapper
-	signatureHolder           SignaturesHolder
-	safeContractAddress       common.Address
-	gasHandler                GasHandler
-	transferGasLimit          uint64
-	maxRetriesOnQuorumReached uint64
+	clientWrapper         ClientWrapper
+	erc20ContractsHandler Erc20ContractsHolder
+	log                   elrondCore.Logger
+	addressConverter      core.AddressConverter
+	broadcaster           Broadcaster
+	privateKey            *ecdsa.PrivateKey
+	publicKey             *ecdsa.PublicKey
+	tokensMapper          TokensMapper
+	signatureHolder       SignaturesHolder
+	safeContractAddress   common.Address
+	gasHandler            GasHandler
+	transferGasLimit      uint64
+	maxRetriesAllowed     uint64
 }
 
 // NewEthereumClient will create a new Ethereum client
@@ -71,19 +71,19 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 	}
 
 	c := &client{
-		clientWrapper:             args.ClientWrapper,
-		erc20ContractsHandler:     args.Erc20ContractsHandler,
-		log:                       args.Log,
-		addressConverter:          args.AddressConverter,
-		broadcaster:               args.Broadcaster,
-		privateKey:                args.PrivateKey,
-		publicKey:                 publicKeyECDSA,
-		tokensMapper:              args.TokensMapper,
-		signatureHolder:           args.SignatureHolder,
-		safeContractAddress:       args.SafeContractAddress,
-		gasHandler:                args.GasHandler,
-		transferGasLimit:          args.TransferGasLimit,
-		maxRetriesOnQuorumReached: args.MaxRetriesOnQuorumReached,
+		clientWrapper:         args.ClientWrapper,
+		erc20ContractsHandler: args.Erc20ContractsHandler,
+		log:                   args.Log,
+		addressConverter:      args.AddressConverter,
+		broadcaster:           args.Broadcaster,
+		privateKey:            args.PrivateKey,
+		publicKey:             publicKeyECDSA,
+		tokensMapper:          args.TokensMapper,
+		signatureHolder:       args.SignatureHolder,
+		safeContractAddress:   args.SafeContractAddress,
+		gasHandler:            args.GasHandler,
+		transferGasLimit:      args.TransferGasLimit,
+		maxRetriesAllowed:     args.MaxRetriesAllowed,
 	}
 
 	c.log.Info("NewEthereumClient",
@@ -336,9 +336,9 @@ func (c *client) ExecuteTransfer(
 	return txHash, err
 }
 
-// GetMaxNumberOfRetriesOnQuorumReached returns the maximum number of retries allowed on quorum reached
-func(c* client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
-	return c.maxRetriesOnQuorumReached
+// GetMaxNumberOfRetriesAllowed returns the maximum number of retries allowed on quorum reached
+func (c* client) GetMaxNumberOfRetriesAllowed() uint64 {
+	return c.maxRetriesAllowed
 }
 
 func (c *client) checkAvailableTokens(ctx context.Context, tokens []common.Address, amounts []*big.Int) error {

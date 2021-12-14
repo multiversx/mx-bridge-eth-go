@@ -512,15 +512,15 @@ func TestClient_PerformAction(t *testing.T) {
 	})
 }
 
-func TestClient_GetMaxNumberOfRetriesOnQuorumReached(t *testing.T) {
+func TestClient_GetMaxNumberOfRetriesAllowed(t *testing.T) {
 	t.Parallel()
 
 	expectedMRQR := uint64(1123)
 	args := createMockClientArgs()
-	args.MaxRetriesOnQuorumReached = expectedMRQR
+	args.MaxRetriesAllowed = expectedMRQR
 	c, _ := NewClient(args)
 
-	result := c.GetMaxNumberOfRetriesOnQuorumReached()
+	result := c.GetMaxNumberOfRetriesAllowed()
 	assert.Equal(t, expectedMRQR, result)
 }
 

@@ -203,7 +203,7 @@ func (executor *ethToElrondBridgeExecutor) PerformActionIDOnElrond(ctx context.C
 
 // ProcessMaxRetriesOnElrond checks if the retries on waiting were reached and increments the counter
 func (executor *ethToElrondBridgeExecutor) ProcessMaxRetriesOnElrond() bool {
-	maxNumberOfRetries := executor.elrondClient.GetMaxNumberOfRetriesOnQuorumReached()
+	maxNumberOfRetries := executor.elrondClient.GetMaxNumberOfRetriesAllowed()
 	if executor.retriesOnElrond < maxNumberOfRetries {
 		executor.retriesOnElrond++
 		return false

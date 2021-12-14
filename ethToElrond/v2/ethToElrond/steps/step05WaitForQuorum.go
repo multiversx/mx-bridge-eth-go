@@ -30,6 +30,9 @@ func (step *waitForQuorumStep) Execute(ctx context.Context) (core.StepIdentifier
 		return step.Identifier(), nil
 	}
 
+	// Loop is closed. Reset retries count
+	step.bridge.ResetRetriesCountOnElrond()
+
 	return ethToElrond.PerformingActionID, nil
 }
 

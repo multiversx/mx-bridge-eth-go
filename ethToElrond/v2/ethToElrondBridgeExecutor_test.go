@@ -605,7 +605,7 @@ func TestEthToElrondBridgeExecutor_RetriesCount(t *testing.T) {
 	args := createMockEthToElrondExecutorArgs()
 	wasCalledOnElrondClient := false
 	args.ElrondClient = &bridgeV2.ElrondClientStub{
-		GetMaxNumberOfRetriesOnQuorumReachedCalled: func() uint64 {
+		GetMaxNumberOfRetriesAllowedCalled: func() uint64 {
 			wasCalledOnElrondClient = true
 			return expectedMaxRetries
 		},

@@ -27,8 +27,16 @@ func (step *performActionIDStep) Execute(ctx context.Context) (core.StepIdentifi
 	}
 
 	if !step.bridge.MyTurnAsLeader() {
+		if step.bridge.ProcessMaxRetriesOnElrond() {
+			step.bridge.GetLogger().Debug("max number of retries reached, resetting counter")
+			return ethToElrond.GettingPendingBatchFromEthereum, nil
+		}
+
 		return step.Identifier(), nil
 	}
+
+	// Loop is closed. Reset retries count
+	step.bridge.ResetRetriesCountOnElrond()
 
 	err = step.bridge.PerformActionIDOnElrond(ctx)
 	if err != nil {

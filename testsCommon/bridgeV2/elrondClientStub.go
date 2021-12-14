@@ -28,7 +28,7 @@ type ElrondClientStub struct {
 	SignCalled                                     func(ctx context.Context, actionID uint64) (string, error)
 	WasSignedCalled                                func(ctx context.Context, actionID uint64) (bool, error)
 	PerformActionCalled                            func(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
-	GetMaxNumberOfRetriesOnQuorumReachedCalled     func() uint64
+	GetMaxNumberOfRetriesAllowedCalled             func() uint64
 	CloseCalled                                    func() error
 }
 
@@ -185,10 +185,10 @@ func (stub *ElrondClientStub) PerformAction(ctx context.Context, actionID uint64
 	return "", nil
 }
 
-// GetMaxNumberOfRetriesOnQuorumReached -
-func (stub *ElrondClientStub) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
-	if stub.GetMaxNumberOfRetriesOnQuorumReachedCalled != nil {
-		return stub.GetMaxNumberOfRetriesOnQuorumReachedCalled()
+// GetMaxNumberOfRetriesAllowed -
+func (stub *ElrondClientStub) GetMaxNumberOfRetriesAllowed() uint64 {
+	if stub.GetMaxNumberOfRetriesAllowedCalled != nil {
+		return stub.GetMaxNumberOfRetriesAllowedCalled()
 	}
 
 	return 0
