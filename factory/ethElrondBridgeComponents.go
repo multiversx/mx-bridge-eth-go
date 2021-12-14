@@ -306,7 +306,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		Broadcaster:               components.broadcaster,
 		PrivateKey:                privateKey,
 		TokensMapper:              tokensMapper,
-		SignatureHolder:           &disabledSignatureHolder{}, //TODO replace this with the real component
+		SignatureHolder:           &disabledSignatureHolder{}, // TODO replace this with the real component
 		SafeContractAddress:       safeContractAddress,
 		GasHandler:                gs,
 		TransferGasLimit:          ethereumConfigs.GasLimit,
@@ -406,14 +406,14 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		return err
 	}
 
-	argsBridgeExecutor := v2.ArgsEthToElrondBridgeExecutor{
+	argsBridgeExecutor := ethToElrond.ArgsEthToElrondBridgeExecutor{
 		Log:              log,
 		TopologyProvider: topologyHandler,
 		ElrondClient:     components.elrondClient,
 		EthereumClient:   components.ethClient,
 	}
 
-	components.ethToElrondBridge, err = v2.NewEthToElrondBridgeExecutor(argsBridgeExecutor)
+	components.ethToElrondBridge, err = ethToElrond.NewEthToElrondBridgeExecutor(argsBridgeExecutor)
 	if err != nil {
 		return err
 	}
@@ -445,7 +445,7 @@ func (components *ethElrondBridgeComponents) Start() error {
 
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
 
-	//TODO replace this with the real status handler
+	// TODO replace this with the real status handler
 	ethToElrondStatusHandler, _ := status.NewStatusHandler("dummy", testsCommon.NewStorerMock())
 
 	argsStateMachine := stateMachine.ArgsStateMachine{
