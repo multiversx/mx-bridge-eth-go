@@ -15,11 +15,12 @@ import (
 
 var testLogger = core.NewLoggerWithIdentifier(logger.GetOrCreate("test"), "TEST")
 var expectedError = errors.New("expected error")
-var testBatch = &clients.TransferBatch {
+var testBatch = &clients.TransferBatch{
 	ID:       112233,
 	Deposits: nil,
 	Statuses: nil,
 }
+
 func TestExecuteGetPending(t *testing.T) {
 	t.Parallel()
 
@@ -130,7 +131,7 @@ func TestExecuteGetPending(t *testing.T) {
 		assert.False(t, step.IsInterfaceNil())
 
 		// Test next step
-		expectedStepIdentifier = ethToElrond.GettingActionIdForProposeTransfer
+		expectedStepIdentifier = ethToElrond.ProposingTransferOnElrond
 		stepIdentifier, err := step.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)

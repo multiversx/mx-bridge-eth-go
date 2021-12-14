@@ -37,7 +37,6 @@ type ethElrondBridgeExecutor struct {
 	actionID          bridge.ActionId
 	topologyProvider  TopologyProvider
 	quorumProvider    bridge.QuorumProvider
-	timer             core.Timer
 	durationsMap      map[core.StepIdentifier]time.Duration
 	statusHandler     core.StatusHandler
 }
@@ -57,7 +56,6 @@ func NewEthElrondBridgeExecutor(args ArgsEthElrondBridgeExecutor) (*ethElrondBri
 		destinationBridge: args.DestinationBridge,
 		topologyProvider:  args.TopologyProvider,
 		quorumProvider:    args.QuorumProvider,
-		timer:             args.Timer,
 		durationsMap:      args.DurationsMap,
 		statusHandler:     args.StatusHandler,
 	}, nil

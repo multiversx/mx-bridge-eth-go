@@ -2,6 +2,7 @@ package steps
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
@@ -70,6 +71,51 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
+	t.Run("get action ID errors", func(t *testing.T) {
+		expectedErr := errors.New("expected error")
+		bridgeStub := createStubExecutor()
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+			return testBatch
+		}
+		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+			return true, nil
+		}
+		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+			return 0, expectedErr
+		}
+
+		step := signProposedTransferStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
+		stepIdentifier, err := step.Execute(context.Background())
+		assert.Nil(t, err)
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
+
+	t.Run("invalid action ID", func(t *testing.T) {
+		bridgeStub := createStubExecutor()
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+			return testBatch
+		}
+		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+			return true, nil
+		}
+		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+			return invalidActionID, nil
+		}
+
+		step := signProposedTransferStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
+		stepIdentifier, err := step.Execute(context.Background())
+		assert.Nil(t, err)
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
+
 	t.Run("should work - transfer was already signed", func(t *testing.T) {
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
@@ -77,6 +123,9 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 		}
 		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
+		}
+		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+			return 2, nil
 		}
 
 		step := signProposedTransferStep{
@@ -99,6 +148,9 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 		}
 		bridgeStub.SignProposedTransferOnElrondCalled = func(ctx context.Context) error {
 			return nil
+		}
+		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+			return 2, nil
 		}
 
 		step := signProposedTransferStep{

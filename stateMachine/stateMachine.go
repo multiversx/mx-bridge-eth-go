@@ -107,7 +107,7 @@ func (sm *stateMachine) executeLoop(ctx context.Context) {
 }
 
 func (sm *stateMachine) executeStep(ctx context.Context) error {
-	sm.log.Trace(fmt.Sprintf("%s: executing step", sm.stateMachineName),
+	sm.log.Debug(fmt.Sprintf("%s: executing step", sm.stateMachineName),
 		"step", sm.currentStep.Identifier())
 	sm.statusHandler.SetStringMetric(core.MetricCurrentStateMachineStep, string(sm.currentStep.Identifier()))
 	nextStepIdentifier, err := sm.currentStep.Execute(ctx)

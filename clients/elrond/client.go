@@ -28,6 +28,7 @@ const (
 	proposeSetStatusFuncName = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
 	signFuncName             = "sign"
 	performActionFuncName    = "performAction"
+	minRetriesOnQuorum       = 1
 )
 
 // ClientArgs represents the argument for the NewClient constructor function
@@ -72,6 +73,10 @@ func NewClient(args ClientArgs) (*client, error) {
 	}
 	if check.IfNil(args.TokensMapper) {
 		return nil, errNilTokensMapper
+	}
+	if args.MaxRetriesOnQuorumReached < minRetriesOnQuorum {
+		return nil, fmt.Errorf("%w for args.MaxRetriesOnQuorumReached, got: %d, minimum: %d",
+			errInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
 	}
 
 	err := checkGasMapValues(args.GasMapConfig)
@@ -314,7 +319,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 }
 
 // GetMaxNumberOfRetriesOnQuorumReached returns the maximum number of retries allowed on quorum reached
-func(c *client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
+func (c *client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
 	return c.maxRetriesOnQuorumReached
 }
 

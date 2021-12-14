@@ -4,9 +4,6 @@ const (
 	// GettingPendingBatchFromEthereum is the step identifier for fetching the pending batch from the Ethereum chain
 	GettingPendingBatchFromEthereum = "get pending batch from ethereum"
 
-	// GettingActionIdForProposeTransfer is the step identifier for fetching the action ID for propose transfer on Elrond
-	GettingActionIdForProposeTransfer = "get action ID for propose transfer"
-
 	// ProposingTransferOnElrond is the step idetifier for proposing transfer on Elrond
 	ProposingTransferOnElrond = "propose transfer"
 
@@ -23,14 +20,13 @@ const (
 	NoFailing = "noFailing"
 
 	// numSteps indicates how many steps the
-	numSteps = 6
+	numSteps = 5
 )
 
 // FailingStepList is the list of all steps where from Ethereum to elrond flow indicating
 // at which step one relayer may fail or NoFailing in case all steps were executed successfully
 var FailingStepList = [numSteps + 1]string{
 	GettingPendingBatchFromEthereum,
-	GettingActionIdForProposeTransfer,
 	ProposingTransferOnElrond,
 	SigningProposedTransferOnElrond,
 	WaitingForQuorum,

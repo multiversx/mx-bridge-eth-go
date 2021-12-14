@@ -48,6 +48,7 @@ func createMockClientArgs() ClientArgs {
 				return append([]byte("converted "), sourceBytes...), nil
 			},
 		},
+		MaxRetriesOnQuorumReached: 1,
 	}
 }
 
@@ -80,6 +81,8 @@ func TestNewClient(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil proxy should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.Proxy = nil
 
@@ -89,6 +92,8 @@ func TestNewClient(t *testing.T) {
 		require.Equal(t, errNilProxy, err)
 	})
 	t.Run("nil private key should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.RelayerPrivateKey = nil
 
@@ -98,6 +103,8 @@ func TestNewClient(t *testing.T) {
 		require.Equal(t, errNilPrivateKey, err)
 	})
 	t.Run("nil multisig contract address should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.MultisigContractAddress = nil
 
@@ -107,6 +114,8 @@ func TestNewClient(t *testing.T) {
 		require.True(t, errors.Is(err, errNilAddressHandler))
 	})
 	t.Run("nil logger should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.Log = nil
 
@@ -116,6 +125,8 @@ func TestNewClient(t *testing.T) {
 		require.Equal(t, errNilLogger, err)
 	})
 	t.Run("nil tokens mapper should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.TokensMapper = nil
 
@@ -125,6 +136,8 @@ func TestNewClient(t *testing.T) {
 		require.Equal(t, errNilTokensMapper, err)
 	})
 	t.Run("gas map invalid value should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.GasMapConfig.PerformActionForEach = 0
 
@@ -135,6 +148,8 @@ func TestNewClient(t *testing.T) {
 		require.True(t, strings.Contains(err.Error(), "for field PerformActionForEach"))
 	})
 	t.Run("invalid interval to resend should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.IntervalToResendTxsInSeconds = 0
 
@@ -144,7 +159,21 @@ func TestNewClient(t *testing.T) {
 		require.NotNil(t, err)
 		require.True(t, strings.Contains(err.Error(), "intervalToResend in NewNonceTransactionHandler"))
 	})
+	t.Run("invalid MaxRetriesOnQuorumReached should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.MaxRetriesOnQuorumReached = 0
+
+		c, err := NewClient(args)
+
+		require.True(t, check.IfNil(c))
+		require.True(t, errors.Is(err, errInvalidValue))
+		require.True(t, strings.Contains(err.Error(), "for args.MaxRetriesOnQuorumReached"))
+	})
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		c, err := NewClient(args)
 
@@ -157,6 +186,8 @@ func TestClient_GetPending(t *testing.T) {
 	t.Parallel()
 
 	t.Run("get pending batch failed should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		expectedErr := errors.New("expected error")
 		args.Proxy = &interactors.ElrondProxyStub{
@@ -171,6 +202,8 @@ func TestClient_GetPending(t *testing.T) {
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("empty response", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.Proxy = createMockProxy(make([][]byte, 0))
 
@@ -180,6 +213,8 @@ func TestClient_GetPending(t *testing.T) {
 		assert.Equal(t, ErrNoPendingBatchAvailable, err)
 	})
 	t.Run("invalid length", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		buff := createMockPendingBatchBytes(2)
 		args.Proxy = createMockProxy(buff[:len(buff)-1])
@@ -201,6 +236,8 @@ func TestClient_GetPending(t *testing.T) {
 		assert.True(t, strings.Contains(err.Error(), "got 1 argument(s)"))
 	})
 	t.Run("invalid batch ID", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		buff := createMockPendingBatchBytes(2)
 		buff[0] = bytes.Repeat([]byte{1}, 32)
@@ -214,6 +251,8 @@ func TestClient_GetPending(t *testing.T) {
 		assert.True(t, strings.Contains(err.Error(), "while parsing batch ID"))
 	})
 	t.Run("invalid deposit nonce", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		buff := createMockPendingBatchBytes(2)
 		buff[8] = bytes.Repeat([]byte{1}, 32)
@@ -227,6 +266,8 @@ func TestClient_GetPending(t *testing.T) {
 		assert.True(t, strings.Contains(err.Error(), "while parsing the deposit nonce, transfer index 1"))
 	})
 	t.Run("tokens mapper errors", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		expectedErr := errors.New("expected error in convert tokens")
 		args.TokensMapper = &bridgeV2.TokensMapperStub{
@@ -245,6 +286,8 @@ func TestClient_GetPending(t *testing.T) {
 		assert.True(t, strings.Contains(err.Error(), "while converting token bytes, transfer index 0"))
 	})
 	t.Run("should create pending batch", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.TokensMapper = &bridgeV2.TokensMapperStub{
 			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
@@ -301,6 +344,8 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		c, _ := NewClient(args)
 
@@ -309,6 +354,8 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		assert.Equal(t, errNilBatch, err)
 	})
 	t.Run("should propose set status", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.Proxy = createMockProxy(make([][]byte, 0))
 		expectedHash := "expected hash"
@@ -340,6 +387,8 @@ func TestClient_ResolveNewDeposits(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		c, _ := NewClient(args)
 
@@ -347,6 +396,8 @@ func TestClient_ResolveNewDeposits(t *testing.T) {
 		assert.Equal(t, errNilBatch, err)
 	})
 	t.Run("no pending batch should error", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.Proxy = createMockProxy(make([][]byte, 0))
 		c, _ := NewClient(args)
@@ -359,6 +410,8 @@ func TestClient_ResolveNewDeposits(t *testing.T) {
 		assert.Equal(t, []byte{clients.Rejected, clients.Executed}, batch.Statuses)
 	})
 	t.Run("should add new statuses to the existing batch", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.Proxy = createMockProxy(createMockPendingBatchBytes(3))
 		c, _ := NewClient(args)
@@ -375,6 +428,8 @@ func TestClient_ProposeTransfer(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		c, _ := NewClient(args)
 
@@ -383,6 +438,8 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		assert.Equal(t, errNilBatch, err)
 	})
 	t.Run("should propose transfer", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.Proxy = createMockProxy(make([][]byte, 0))
 		expectedHash := "expected hash"
@@ -470,6 +527,8 @@ func TestClient_PerformAction(t *testing.T) {
 
 	actionID := uint64(662528)
 	t.Run("nil batch", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		c, _ := NewClient(args)
 
@@ -478,6 +537,8 @@ func TestClient_PerformAction(t *testing.T) {
 		assert.Equal(t, errNilBatch, err)
 	})
 	t.Run("should perform action", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockClientArgs()
 		args.Proxy = createMockProxy(make([][]byte, 0))
 		expectedHash := "expected hash"

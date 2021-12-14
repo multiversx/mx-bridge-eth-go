@@ -117,6 +117,22 @@ func (mock *ElrondChainMock) AddRelayer(address erdgoCore.AddressHandler) {
 	mock.relayers = append(mock.relayers, address.AddressBytes())
 }
 
+// SetLastExecutedEthBatchID -
+func (mock *ElrondChainMock) SetLastExecutedEthBatchID(lastExecutedEthBatchId uint64) {
+	mock.mutState.Lock()
+	defer mock.mutState.Unlock()
+
+	mock.lastExecutedEthBatchId = lastExecutedEthBatchId
+}
+
+// SetLastExecutedEthTxId -
+func (mock *ElrondChainMock) SetLastExecutedEthTxId(lastExecutedEthTxId uint64) {
+	mock.mutState.Lock()
+	defer mock.mutState.Unlock()
+
+	mock.lastExecutedEthTxId = lastExecutedEthTxId
+}
+
 // AddTokensPair -
 func (mock *ElrondChainMock) AddTokensPair(erc20 common.Address, ticker string) {
 	mock.mutState.Lock()

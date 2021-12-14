@@ -25,5 +25,5 @@ func TestCreateSteps_ShouldWork(t *testing.T) {
 
 	require.NotNil(t, steps)
 	require.Nil(t, err)
-	require.Equal(t, 6, len(steps))
+	require.Equal(t, 5, len(steps))
 }
