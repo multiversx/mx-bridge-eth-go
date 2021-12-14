@@ -12,19 +12,16 @@ type ElrondToEthBridge interface {
 	GetLogger() logger.Logger
 	MyTurnAsLeader() bool
 
-	GetAndStoreActionIDFromElrond(ctx context.Context) (uint64, error)
-	GetStoredActionID() uint64
-	GetAndStoreBatchFromElrond(ctx context.Context, nonce uint64) error
+	GetAndStoreBatchFromElrond(ctx context.Context) error
 	GetStoredBatch() *clients.TransferBatch
 
-	WasTransferProposedOnEthereum(ctx context.Context) (bool, error)
-	ProposeTransferOnEthereum(ctx context.Context) error
-	WasProposedTransferSignedOnEthereum(ctx context.Context) (bool, error)
-	SignProposedTransferOnEthereum(ctx context.Context) error
-	IsQuorumReachedOnEthereum(ctx context.Context) (bool, error)
 	WasTransferPerformedOnEthereum(ctx context.Context) (bool, error)
+	SignTransferOnEthereum(ctx context.Context) error
+	IsQuorumReachedOnEthereum(ctx context.Context) (bool, error)
 	PerformTransferOnEthereum(ctx context.Context) error
 
+	GetAndStoreActionIDForSetStatusFromElrond(ctx context.Context) (uint64, error)
+	GetStoredActionIDForSetStatus() uint64
 	WasSetStatusProposedOnElrond(ctx context.Context) (bool, error)
 	ProposeSetStatusOnElrond(ctx context.Context) error
 	WasProposedSetStatusSignedOnElrond(ctx context.Context) (bool, error)
@@ -35,6 +32,8 @@ type ElrondToEthBridge interface {
 
 	ProcessMaxRetriesOnElrond() bool
 	ResetRetriesCountOnElrond()
+	ProcessMaxRetriesOnEthereum() bool
+	ResetRetriesCountOnEthereum()
 
 	IsInterfaceNil() bool
 }
