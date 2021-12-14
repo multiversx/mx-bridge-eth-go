@@ -214,11 +214,7 @@ func TestHappyCaseWhenLeaderAndActionIdNotPerformed(t *testing.T) {
 		isQuorumReachedHandler: trueHandler,
 		wasActionIDPerformedHandler: func() bool {
 			numCalled++
-			if numCalled > 1 {
-				return true
-			}
-
-			return false
+			return numCalled > 1
 		},
 		maxRetriesReachedHandler:         falseHandler,
 		wasProposedTransferSignedHandler: falseHandler,
@@ -281,11 +277,7 @@ func testErrorFlow(t *testing.T, stepThatErrors core.StepIdentifier) {
 		isQuorumReachedHandler: trueHandler,
 		wasActionIDPerformedHandler: func() bool {
 			numCalled++
-			if numCalled > 1 {
-				return true
-			}
-
-			return false
+			return numCalled > 1
 		},
 		maxRetriesReachedHandler:         falseHandler,
 		wasProposedTransferSignedHandler: falseHandler,
