@@ -11,6 +11,7 @@ type getPendingStep struct {
 	bridge elrondToEth.ElrondToEthBridge
 }
 
+// Execute will execute this step returning the next step to be executed
 func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	step.bridge.ResetRetriesCountOnEthereum()
 	step.bridge.ResetRetriesCountOnElrond()
@@ -31,12 +32,6 @@ func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, e
 		return step.Identifier(), nil
 	}
 
-	storedBatch := step.bridge.GetStoredBatchFromElrond()
-	if storedBatch == nil {
-		step.bridge.GetLogger().Debug("nil batch stored")
-		return step.Identifier(), nil
-	}
-
 	step.bridge.GetLogger().Info("fetched new batch from Elrond " + batch.String())
 
 	wasPerformed, err := step.bridge.WasTransferPerformedOnEthereum(ctx)
@@ -46,16 +41,18 @@ func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, e
 	}
 	if wasPerformed {
 		step.bridge.GetLogger().Info("transfer performed")
-		return elrondToEth.ProposingSetStatusOnElrond, nil
+		return elrondToEth.ResolvingSetStatusOnElrond, nil
 	}
 
 	return elrondToEth.SigningProposedTransferOnEthereum, nil
 }
 
+// Identifier returns the step's identifier
 func (step *getPendingStep) Identifier() core.StepIdentifier {
 	return elrondToEth.GettingPendingBatchFromElrond
 }
 
+// IsInterfaceNil returns true if there is no value under the interface
 func (step *getPendingStep) IsInterfaceNil() bool {
 	return step == nil
 }

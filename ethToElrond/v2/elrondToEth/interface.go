@@ -23,13 +23,13 @@ type ElrondToEthBridge interface {
 
 	GetAndStoreActionIDForSetStatusFromElrond(ctx context.Context) (uint64, error)
 	GetStoredActionIDForSetStatus() uint64
-	ResolveNewDpositsStatuses(ctx context.Context, numDeposits uint64) error
+	ResolveNewDepositsStatuses(numDeposits uint64)
 	GetBatchStatusesFromEthereum(ctx context.Context) ([]byte, error)
 	WasSetStatusProposedOnElrond(ctx context.Context) (bool, error)
 	ProposeSetStatusOnElrond(ctx context.Context) error
 	WasProposedSetStatusSignedOnElrond(ctx context.Context) (bool, error)
 	SignProposedSetStatusOnElrond(ctx context.Context) error
-	IsQuorumReachedOnElrond(ctx context.Context) (bool, error)
+	ProcessQuorumReachedOnElrond(ctx context.Context) (bool, error)
 	WasSetStatusPerformedOnElrond(ctx context.Context) (bool, error)
 	PerformSetStatusOnElrond(ctx context.Context) error
 

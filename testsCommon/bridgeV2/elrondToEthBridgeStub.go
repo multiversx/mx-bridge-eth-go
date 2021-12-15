@@ -12,6 +12,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
+// ElrondToEthBridgeStub -
 type ElrondToEthBridgeStub struct {
 	functionCalledCounter map[string]int
 	mutExecutor           sync.RWMutex
@@ -31,13 +32,13 @@ type ElrondToEthBridgeStub struct {
 
 	GetAndStoreActionIDForSetStatusFromElrondCalled func(ctx context.Context) (uint64, error)
 	GetStoredActionIDForSetStatusCalled             func() uint64
-	ResolveNewDpositsStatusesCalled                 func(ctx context.Context, numDeposits uint64) error
+	ResolveNewDepositsStatusesCalled                func(numDeposits uint64)
 	GetBatchStatusesFromEthereumCalled              func(ctx context.Context) ([]byte, error)
 	WasSetStatusProposedOnElrondCalled              func(ctx context.Context) (bool, error)
 	ProposeSetStatusOnElrondCalled                  func(ctx context.Context) error
 	WasProposedSetStatusSignedOnElrondCalled        func(ctx context.Context) (bool, error)
 	SignProposedSetStatusOnElrondCalled             func(ctx context.Context) error
-	IsQuorumReachedOnElrondCalled                   func(ctx context.Context) (bool, error)
+	ProcessQuorumReachedOnElrondCalled              func(ctx context.Context) (bool, error)
 	WasSetStatusPerformedOnElrondCalled             func(ctx context.Context) (bool, error)
 	PerformSetStatusOnElrondCalled                  func(ctx context.Context) error
 
@@ -156,13 +157,12 @@ func (stub *ElrondToEthBridgeStub) GetStoredActionIDForSetStatus() uint64 {
 	return v2.InvalidActionID
 }
 
-// ResolveNewDpositsStatuses -
-func (stub *ElrondToEthBridgeStub) ResolveNewDpositsStatuses(ctx context.Context, numDeposits uint64) error {
+// ResolveNewDepositsStatuses -
+func (stub *ElrondToEthBridgeStub) ResolveNewDepositsStatuses(numDeposits uint64) {
 	stub.incrementFunctionCounter()
-	if stub.ResolveNewDpositsStatusesCalled != nil {
-		return stub.ResolveNewDpositsStatusesCalled(ctx, numDeposits)
+	if stub.ResolveNewDepositsStatusesCalled != nil {
+		stub.ResolveNewDepositsStatusesCalled(numDeposits)
 	}
-	return notImplemented
 }
 
 // GetBatchStatusesFromEthereum -
@@ -210,11 +210,11 @@ func (stub *ElrondToEthBridgeStub) SignProposedSetStatusOnElrond(ctx context.Con
 	return notImplemented
 }
 
-// IsQuorumReachedOnElrond -
-func (stub *ElrondToEthBridgeStub) IsQuorumReachedOnElrond(ctx context.Context) (bool, error) {
+// ProcessQuorumReachedOnElrond -
+func (stub *ElrondToEthBridgeStub) ProcessQuorumReachedOnElrond(ctx context.Context) (bool, error) {
 	stub.incrementFunctionCounter()
-	if stub.IsQuorumReachedOnElrondCalled != nil {
-		return stub.IsQuorumReachedOnElrondCalled(ctx)
+	if stub.ProcessQuorumReachedOnElrondCalled != nil {
+		return stub.ProcessQuorumReachedOnElrondCalled(ctx)
 	}
 	return false, notImplemented
 }

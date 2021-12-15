@@ -11,6 +11,7 @@ type resolveSetStatusStep struct {
 	bridge elrondToEth.ElrondToEthBridge
 }
 
+// Execute will execute this step returning the next step to be executed
 func (step *resolveSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	storedBatch := step.bridge.GetStoredBatchFromElrond()
 	if storedBatch == nil {
@@ -33,32 +34,20 @@ func (step *resolveSetStatusStep) Execute(ctx context.Context) (core.StepIdentif
 		step.bridge.GetLogger().Error("error while fetching transaction statuses", "error", err)
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
-	if statuses == nil {
-		step.bridge.GetLogger().Error("nil transaction statuses")
-		return elrondToEth.GettingPendingBatchFromElrond, nil
-	}
 
-	for i, transactionStatus := range statuses {
-		batch.Statuses[i] = transactionStatus
-	}
+	batch.Statuses = statuses
 
-	numStoredBatchDeposits := len(storedBatch.Statuses)
-	numNewFetchedBatchDeposits := len(batch.Statuses)
-	if numStoredBatchDeposits != numNewFetchedBatchDeposits {
-		err = step.bridge.ResolveNewDpositsStatuses(ctx, uint64(numStoredBatchDeposits))
-		if err != nil {
-			step.bridge.GetLogger().Error("error while updating transaction statuses", "error", err)
-			return elrondToEth.GettingPendingBatchFromElrond, nil
-		}
-	}
+	step.bridge.ResolveNewDepositsStatuses(uint64(len(batch.Statuses)))
 
 	return elrondToEth.ProposingSetStatusOnElrond, nil
 }
 
+// Identifier returns the step's identifier
 func (step *resolveSetStatusStep) Identifier() core.StepIdentifier {
 	return elrondToEth.ResolvingSetStatusOnElrond
 }
 
+// IsInterfaceNil returns true if there is no value under the interface
 func (step *resolveSetStatusStep) IsInterfaceNil() bool {
 	return step == nil
 }

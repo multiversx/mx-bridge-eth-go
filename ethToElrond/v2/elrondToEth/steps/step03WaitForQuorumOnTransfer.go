@@ -11,6 +11,7 @@ type waitForQuorumOnTransferStep struct {
 	bridge elrondToEth.ElrondToEthBridge
 }
 
+// Execute will execute this step returning the next step to be executed
 func (step *waitForQuorumOnTransferStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	if step.bridge.ProcessMaxRetriesOnEthereum() {
 		step.bridge.GetLogger().Debug("max number of retries reached, resetting counter")
@@ -32,10 +33,12 @@ func (step *waitForQuorumOnTransferStep) Execute(ctx context.Context) (core.Step
 	return elrondToEth.PerformingTransfer, nil
 }
 
+// Identifier returns the step's identifier
 func (step *waitForQuorumOnTransferStep) Identifier() core.StepIdentifier {
 	return elrondToEth.WaitingForQuorumOnTransfer
 }
 
+// IsInterfaceNil returns true if there is no value under the interface
 func (step *waitForQuorumOnTransferStep) IsInterfaceNil() bool {
 	return step == nil
 }

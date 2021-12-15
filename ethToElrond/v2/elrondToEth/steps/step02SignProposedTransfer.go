@@ -11,6 +11,7 @@ type signProposedTransferStep struct {
 	bridge elrondToEth.ElrondToEthBridge
 }
 
+// Execute will execute this step returning the next step to be executed
 func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	storedBatch := step.bridge.GetStoredBatchFromElrond()
 	if storedBatch == nil {
@@ -27,10 +28,12 @@ func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIde
 	return elrondToEth.WaitingForQuorumOnTransfer, nil
 }
 
+// Identifier returns the step's identifier
 func (step *signProposedTransferStep) Identifier() core.StepIdentifier {
 	return elrondToEth.SigningProposedTransferOnEthereum
 }
 
+// IsInterfaceNil returns true if there is no value under the interface
 func (step *signProposedTransferStep) IsInterfaceNil() bool {
 	return step == nil
 }
