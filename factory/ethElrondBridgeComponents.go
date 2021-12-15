@@ -25,7 +25,6 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
@@ -63,10 +62,10 @@ type ArgsEthereumToElrondBridge struct {
 	Erc20ContractsHolder ethereum.Erc20ContractsHolder
 	ClientWrapper        ethereum.ClientWrapper
 	TimeForBootstrap     time.Duration
+	MetricsHolder        core.MetricsHolder
 }
 
 type ethElrondBridgeComponents struct {
-	configs                       config.Configs
 	baseLogger                    logger.Logger
 	messenger                     p2p.NetMessenger
 	statusStorer                  core.Storer
@@ -83,6 +82,8 @@ type ethElrondBridgeComponents struct {
 	broadcaster                   Broadcaster
 	timer                         core.Timer
 	timeForBootstrap              time.Duration
+	metricsHolder                 core.MetricsHolder
+	bridgeStatusHandler           core.StatusHandler
 
 	ethToElrondBridge        ethToElrond.EthToElrondBridge
 	ethToElrondMachineStates core.MachineStates
@@ -103,11 +104,11 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		baseLogger:       core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
 		messenger:        args.Messenger,
 		statusStorer:     args.StatusStorer,
-		configs:          args.Configs,
 		closableHandlers: make([]io.Closer, 0),
 		proxy:            args.Proxy,
 		timer:            timer.NewNTPTimer(),
 		timeForBootstrap: args.TimeForBootstrap,
+		metricsHolder:    args.MetricsHolder,
 	}
 	components.addClosableComponent(components.timer)
 
@@ -173,6 +174,9 @@ func checkArgsEthereumToElrondBridge(args ArgsEthereumToElrondBridge) error {
 	}
 	if args.TimeForBootstrap < minTimeForBootstrap {
 		return fmt.Errorf("%w for TimeForBootstrap, received: %v, minimum: %v", errInvalidValue, args.TimeForBootstrap, minTimeForBootstrap)
+	}
+	if check.IfNil(args.MetricsHolder) {
+		return errNilMetricsHolder
 	}
 
 	return nil
@@ -406,11 +410,22 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		return err
 	}
 
+	components.bridgeStatusHandler, err = status.NewStatusHandler(ethToElrondName, components.statusStorer)
+	if err != nil {
+		return err
+	}
+
+	err = components.metricsHolder.AddStatusHandler(components.bridgeStatusHandler)
+	if err != nil {
+		return err
+	}
+
 	argsBridgeExecutor := ethToElrond.ArgsEthToElrondBridgeExecutor{
 		Log:              log,
 		TopologyProvider: topologyHandler,
 		ElrondClient:     components.elrondClient,
 		EthereumClient:   components.ethClient,
+		StatusHandler:    components.bridgeStatusHandler,
 	}
 
 	components.ethToElrondBridge, err = ethToElrond.NewEthToElrondBridgeExecutor(argsBridgeExecutor)
@@ -445,16 +460,13 @@ func (components *ethElrondBridgeComponents) Start() error {
 
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
 
-	// TODO replace this with the real status handler
-	ethToElrondStatusHandler, _ := status.NewStatusHandler("dummy", testsCommon.NewStorerMock())
-
 	argsStateMachine := stateMachine.ArgsStateMachine{
 		StateMachineName:     ethToElrondName,
 		Steps:                components.ethToElrondMachineStates,
 		StartStateIdentifier: ethToElrond.GettingPendingBatchFromEthereum,
 		DurationBetweenSteps: components.ethToElrondStepDuration,
 		Log:                  log,
-		StatusHandler:        ethToElrondStatusHandler,
+		StatusHandler:        components.bridgeStatusHandler,
 	}
 
 	sm, err := stateMachine.NewStateMachine(argsStateMachine)
