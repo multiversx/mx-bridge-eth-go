@@ -12,6 +12,7 @@ type MachineStates map[StepIdentifier]Step
 
 // Step defines a state machine step
 type Step interface {
+	// Execute TODO: remove error since we always return nil error
 	Execute(ctx context.Context) (StepIdentifier, error)
 	Identifier() StepIdentifier
 	IsInterfaceNil() bool

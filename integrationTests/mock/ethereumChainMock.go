@@ -38,7 +38,7 @@ type EthereumChainMock struct {
 	ProposeMultiTransferEsdtBatchCalled func()
 }
 
-// NewEthereumChainMock2 -
+// NewEthereumChainMock -
 func NewEthereumChainMock() *EthereumChainMock {
 	return &EthereumChainMock{
 		nonces:  make(map[common.Address]uint64),

@@ -235,7 +235,7 @@ func (dg *elrondClientDataGetter) WasExecuted(ctx context.Context, actionID uint
 	return dg.executeQueryBoolFromBuilder(ctx, builder)
 }
 
-// GetActionIDForProposeTransfer returns the action ID for the propose transfer operation
+// GetActionIDForProposeTransfer returns the action ID for the proposed transfer operation
 func (dg *elrondClientDataGetter) GetActionIDForProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
 	if batch == nil {
 		return 0, errNilBatch

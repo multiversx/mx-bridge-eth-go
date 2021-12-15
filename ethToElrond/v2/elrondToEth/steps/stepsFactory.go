@@ -5,12 +5,12 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 )
 
 // CreateSteps creates all machine states providing the bridge executor
-func CreateSteps(executor ethToElrond.EthToElrondBridge) (core.MachineStates, error) {
+func CreateSteps(executor elrondToEth.ElrondToEthBridge) (core.MachineStates, error) {
 	if check.IfNil(executor) {
 		return nil, v2.ErrNilExecutor
 	}
@@ -18,23 +18,38 @@ func CreateSteps(executor ethToElrond.EthToElrondBridge) (core.MachineStates, er
 	return createMachineStates(executor)
 }
 
-func createMachineStates(executor ethToElrond.EthToElrondBridge) (core.MachineStates, error) {
+func createMachineStates(executor elrondToEth.ElrondToEthBridge) (core.MachineStates, error) {
 	machineStates := make(core.MachineStates)
 
 	steps := []core.Step{
 		&getPendingStep{
 			bridge: executor,
 		},
-		&proposeTransferStep{
-			bridge: executor,
-		},
 		&signProposedTransferStep{
 			bridge: executor,
 		},
-		&waitForQuorumStep{
+		&waitForQuorumOnTransferStep{
 			bridge: executor,
 		},
-		&performActionIDStep{
+		&performTransferStep{
+			bridge: executor,
+		},
+		&waitTransferConfirmationStep{
+			bridge: executor,
+		},
+		&resolveSetStatusStep{
+			bridge: executor,
+		},
+		&proposeSetStatusStep{
+			bridge: executor,
+		},
+		&signProposedSetStatusStep{
+			bridge: executor,
+		},
+		&waitForQuorumOnSetStatus{
+			bridge: executor,
+		},
+		&performSetStatusStep{
 			bridge: executor,
 		},
 	}
