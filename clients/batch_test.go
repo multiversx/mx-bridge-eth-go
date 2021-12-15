@@ -136,13 +136,29 @@ func TestTransferBatch_ResolveNewDeposits(t *testing.T) {
 		Statuses: make([]byte, 2),
 	}
 
-	for i := 0; i < 3; i++ {
-		batch.ResolveNewDeposits(i)
-		assert.Equal(t, 2, len(batch.Statuses))
-	}
+	t.Run("less new deposits", func(t *testing.T) {
+		t.Parallel()
 
-	batch.ResolveNewDeposits(3)
-	assert.Equal(t, 3, len(batch.Statuses))
-	assert.Equal(t, Rejected, batch.Statuses[2])
-	assert.Equal(t, byte(0), batch.Statuses[0]+batch.Statuses[1])
+		workingBatch := batch.Clone()
+		workingBatch.ResolveNewDeposits(0)
+		assert.Equal(t, []byte{Rejected, Rejected}, workingBatch.Statuses)
+
+		workingBatch = batch.Clone()
+		workingBatch.ResolveNewDeposits(1)
+		assert.Equal(t, []byte{0, Rejected}, workingBatch.Statuses)
+	})
+	t.Run("equal new deposits", func(t *testing.T) {
+		t.Parallel()
+
+		workingBatch := batch.Clone()
+		workingBatch.ResolveNewDeposits(2)
+		assert.Equal(t, []byte{0, 0}, workingBatch.Statuses)
+	})
+	t.Run("more new deposits", func(t *testing.T) {
+		t.Parallel()
+
+		workingBatch := batch.Clone()
+		workingBatch.ResolveNewDeposits(3)
+		assert.Equal(t, []byte{0, 0, Rejected}, workingBatch.Statuses)
+	})
 }
