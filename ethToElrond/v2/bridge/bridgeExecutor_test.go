@@ -987,7 +987,7 @@ func TestElrondToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 		args := createMockElrondToEthExecutorArgs()
 		executor, _ := CreateElrondToEthBridgeExecutor(args)
 
-		err := executor.SignTransferOnEthereum(context.Background())
+		err := executor.SignTransferOnEthereum()
 		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("GenerateMessageHash fails", func(t *testing.T) {
@@ -1002,7 +1002,7 @@ func TestElrondToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 
 		executor, _ := CreateElrondToEthBridgeExecutor(args)
 		executor.batch = providedBatch
-		err := executor.SignTransferOnEthereum(context.Background())
+		err := executor.SignTransferOnEthereum()
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -1023,7 +1023,7 @@ func TestElrondToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 
 		executor, _ := CreateElrondToEthBridgeExecutor(args)
 		executor.batch = providedBatch
-		err := executor.SignTransferOnEthereum(context.Background())
+		err := executor.SignTransferOnEthereum()
 		assert.Nil(t, err)
 		assert.True(t, wasCalledGenerateMessageHashCalled)
 		assert.True(t, wasCalledBroadcastSignatureForMessageHashCalled)
@@ -1184,10 +1184,49 @@ func TestWaitForTransferConfirmation(t *testing.T) {
 func TestGetBatchStatusesFromEthereum(t *testing.T) {
 	t.Parallel()
 
-	args := createMockElrondToEthExecutorArgs()
-	executor, _ := CreateElrondToEthBridgeExecutor(args)
-	_, _ = executor.GetBatchStatusesFromEthereum(context.Background())
-	// TODO: add tests with implementation
+	t.Run("nil batch should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockElrondToEthExecutorArgs()
+		executor, _ := CreateElrondToEthBridgeExecutor(args)
+		_, err := executor.GetBatchStatusesFromEthereum(context.Background())
+		assert.Equal(t, v2.ErrNilBatch, err)
+	})
+	t.Run("GetTransactionsStatuses fails", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockElrondToEthExecutorArgs()
+		args.EthereumClient = &bridgeV2.EthereumClientStub{
+			GetTransactionsStatusesCalled: func(ctx context.Context, batchId uint64) ([]byte, error) {
+				return nil, expectedErr
+			},
+		}
+
+		executor, _ := CreateElrondToEthBridgeExecutor(args)
+		executor.batch = providedBatch
+		_, err := executor.GetBatchStatusesFromEthereum(context.Background())
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		wasCalled := false
+		providedStatuses := []byte{1, 2, 3}
+		args := createMockElrondToEthExecutorArgs()
+		args.EthereumClient = &bridgeV2.EthereumClientStub{
+			GetTransactionsStatusesCalled: func(ctx context.Context, batchId uint64) ([]byte, error) {
+				wasCalled = true
+				return providedStatuses, nil
+			},
+		}
+
+		executor, _ := CreateElrondToEthBridgeExecutor(args)
+		executor.batch = providedBatch
+		statuses, err := executor.GetBatchStatusesFromEthereum(context.Background())
+		assert.Nil(t, err)
+		assert.True(t, wasCalled)
+		assert.Equal(t, providedStatuses, statuses)
+	})
 }
 
 func TestResolveNewDepositsStatuses(t *testing.T) {
@@ -1204,17 +1243,39 @@ func TestResolveNewDepositsStatuses(t *testing.T) {
 		},
 		Statuses: make([]byte, 2),
 	}
-	args := createMockElrondToEthExecutorArgs()
-	executor, _ := CreateElrondToEthBridgeExecutor(args)
-	executor.batch = providedBatchForResolve
 
-	for i := 0; i < 3; i++ {
-		executor.ResolveNewDepositsStatuses(uint64(i))
-		assert.Equal(t, 2, len(executor.batch.Statuses))
-	}
+	t.Run("less new deposits", func(t *testing.T) {
+		t.Parallel()
 
-	executor.ResolveNewDepositsStatuses(uint64(3))
-	assert.Equal(t, 3, len(executor.batch.Statuses))
-	assert.Equal(t, clients.Rejected, executor.batch.Statuses[2])
-	assert.Equal(t, byte(0), executor.batch.Statuses[0]+executor.batch.Statuses[1])
+		args := createMockElrondToEthExecutorArgs()
+		executor, _ := CreateElrondToEthBridgeExecutor(args)
+		executor.batch = providedBatchForResolve.Clone()
+
+		executor.ResolveNewDepositsStatuses(uint64(0))
+		assert.Equal(t, []byte{clients.Rejected, clients.Rejected}, executor.batch.Statuses)
+
+		executor.batch = providedBatchForResolve.Clone()
+		executor.batch.ResolveNewDeposits(1)
+		assert.Equal(t, []byte{0, clients.Rejected}, executor.batch.Statuses)
+	})
+	t.Run("equal new deposits", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockElrondToEthExecutorArgs()
+		executor, _ := CreateElrondToEthBridgeExecutor(args)
+		executor.batch = providedBatchForResolve.Clone()
+
+		executor.ResolveNewDepositsStatuses(uint64(2))
+		assert.Equal(t, []byte{0, 0}, executor.batch.Statuses)
+	})
+	t.Run("more new deposits", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockElrondToEthExecutorArgs()
+		executor, _ := CreateElrondToEthBridgeExecutor(args)
+		executor.batch = providedBatchForResolve.Clone()
+
+		executor.ResolveNewDepositsStatuses(uint64(3))
+		assert.Equal(t, []byte{0, 0, clients.Rejected}, executor.batch.Statuses)
+	})
 }

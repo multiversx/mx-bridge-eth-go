@@ -42,7 +42,7 @@ type Bridge interface {
 	MyTurnAsLeaderOnEthereum() bool
 	GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error
 	WasTransferPerformedOnEthereum(ctx context.Context) (bool, error)
-	SignTransferOnEthereum(ctx context.Context) error
+	SignTransferOnEthereum() error
 	PerformTransferOnEthereum(ctx context.Context) error
 	IsQuorumReachedOnEthereum(ctx context.Context) (bool, error)
 	WaitForTransferConfirmation(ctx context.Context)

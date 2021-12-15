@@ -42,6 +42,7 @@ type EthereumClient interface {
 	BroadcastSignatureForMessageHash(msgHash common.Hash)
 	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
 	GetMaxNumberOfRetriesOnQuorumReached() uint64
+	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
 	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
 	IsInterfaceNil() bool

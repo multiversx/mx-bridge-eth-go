@@ -291,10 +291,18 @@ func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context)
 	}
 }
 
-// GetBatchStatusesFromEthereum waits for the confirmation of a transfer
+// GetBatchStatusesFromEthereum gets statuses for the batch id
 func (executor *bridgeExecutor) GetBatchStatusesFromEthereum(ctx context.Context) ([]byte, error) {
-	// TODO: implement it
-	return nil, nil
+	if executor.batch == nil {
+		return nil, v2.ErrNilBatch
+	}
+
+	statuses, err := executor.ethereumClient.GetTransactionsStatuses(ctx, executor.batch.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return statuses, nil
 }
 
 // WasActionPerformedOnElrond will return true if the action was already performed
@@ -368,7 +376,7 @@ func (executor *bridgeExecutor) WasTransferPerformedOnEthereum(ctx context.Conte
 }
 
 // SignTransferOnEthereum will generate the message hash for batch and broadcast the signature
-func (executor *bridgeExecutor) SignTransferOnEthereum(ctx context.Context) error {
+func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 	if executor.batch == nil {
 		return v2.ErrNilBatch
 	}
