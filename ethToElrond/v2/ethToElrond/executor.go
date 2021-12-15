@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
@@ -46,7 +46,7 @@ func NewEthToElrondBridgeExecutor(args ArgsEthToElrondBridgeExecutor) (*ethToElr
 		return nil, v2.ErrNilTopologyProvider
 	}
 	if check.IfNil(args.StatusHandler) {
-		return nil, errNilStatusHandler
+		return nil, v2.ErrNilStatusHandler
 	}
 
 	return &ethToElrondBridgeExecutor{

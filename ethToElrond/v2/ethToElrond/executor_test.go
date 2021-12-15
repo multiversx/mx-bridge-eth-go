@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -77,7 +77,7 @@ func TestNewEthToElrondBridgeExecutor(t *testing.T) {
 		executor, err := NewEthToElrondBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, errNilStatusHandler, err)
+		assert.Equal(t, v2.ErrNilStatusHandler, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
