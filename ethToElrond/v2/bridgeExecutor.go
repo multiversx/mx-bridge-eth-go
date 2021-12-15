@@ -288,9 +288,6 @@ func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context)
 		executor.log.Debug("closing due to context expiration")
 	case <-timer.C:
 	}
-
-	executor.log.Info("waiting for transfer confirmation", "time", executor.timeForTransferExecution)
-	time.Sleep(executor.timeForTransferExecution)
 }
 
 // GetBatchStatusesFromEthereum waits for the confirmation of a transfer
