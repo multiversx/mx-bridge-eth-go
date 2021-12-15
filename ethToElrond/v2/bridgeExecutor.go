@@ -3,6 +3,7 @@ package v2
 import (
     "context"
     "fmt"
+    "time"
 
     "github.com/ElrondNetwork/elrond-eth-bridge/clients"
     "github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -28,6 +29,7 @@ type ArgsElrondToEthBridgeExectutor struct {
     ArgsBaseBridgeExecutor
     TopologyProviderOnElrond   TopologyProvider
     TopologyProviderOnEthereum TopologyProvider
+    TimeForTransferExecution   time.Duration
 }
 
 type bridgeExecutor struct {
@@ -41,6 +43,7 @@ type bridgeExecutor struct {
     msgHash                    common.Hash
     retriesOnElrond            uint64
     retriesOnEthereum          uint64
+    timeForTransferExecution   time.Duration
 }
 
 // CreateEthToElrondBridgeExecutor will create an Eth->Elrond bridge executor
@@ -70,10 +73,14 @@ func CreateElrondToEthBridgeExecutor(args ArgsElrondToEthBridgeExectutor) (*brid
     if check.IfNil(args.TopologyProviderOnEthereum) {
         return nil, ErrNilEthereumTopologyProvider
     }
+    if args.TimeForTransferExecution.Seconds() == 0  {
+        return nil, ErrInvalidDuration
+    }
 
     executor := createBaseBridgeExecutor(args.ArgsBaseBridgeExecutor)
     executor.topologyProviderOnElrond = args.TopologyProviderOnElrond
     executor.topologyProviderOnEthereum = args.TopologyProviderOnEthereum
+    executor.timeForTransferExecution = args.TimeForTransferExecution
     return executor, nil
 }
 
@@ -108,16 +115,18 @@ func (executor *bridgeExecutor) MyTurnAsLeaderOnElrond() bool {
     return executor.topologyProviderOnElrond.MyTurnAsLeader()
 }
 
-// GetAndStoreBatchFromElrond fetches the pending batch from Elrond and stores it
-func (executor *bridgeExecutor) GetAndStoreBatchFromElrond(ctx context.Context) error {
-    batch, err := executor.elrondClient.GetPending(ctx)
-    if err != nil {
-        return err
+// GetBatchFromElrond fetches the pending batch from Elrond
+func (executor *bridgeExecutor) GetBatchFromElrond(ctx context.Context) (*clients.TransferBatch, error) {
+    return executor.elrondClient.GetPending(ctx)
+}
+
+// StoreBatchFromElrond saves the pending batch from Elrond
+func (executor *bridgeExecutor) StoreBatchFromElrond(batch *clients.TransferBatch) error {
+    if batch == nil {
+        return ErrNilBatch
     }
 
     executor.batch = batch
-    executor.log.Info("got pending batch from Elrond", "batch ID", executor.batch.ID)
-
     return nil
 }
 
@@ -269,6 +278,18 @@ func (executor *bridgeExecutor) IsQuorumReachedOnElrond(ctx context.Context) (bo
     return executor.elrondClient.QuorumReached(ctx, executor.actionID)
 }
 
+// WaitForTransferConfirmation waits for the confirmation of a transfer
+func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context) {
+    executor.log.Info("waiting for transfer confirmation", "time", executor.timeForTransferExecution)
+    time.Sleep(executor.timeForTransferExecution)
+}
+
+// GetBatchStatusesFromEthereum waits for the confirmation of a transfer
+func (executor *bridgeExecutor) GetBatchStatusesFromEthereum(ctx context.Context) ([]byte, error) {
+    // TODO: implement it
+    return nil, nil
+}
+
 // WasActionPerformedOnElrond will return true if the action was already performed
 func (executor *bridgeExecutor) WasActionPerformedOnElrond(ctx context.Context) (bool, error) {
     return executor.elrondClient.WasExecuted(ctx, executor.actionID)
@@ -288,6 +309,12 @@ func (executor *bridgeExecutor) PerformActionOnElrond(ctx context.Context) error
     executor.log.Info("sent perform action transaction", "hash", hash,
         "batch ID", executor.batch.ID, "action ID", executor.actionID)
 
+    return nil
+}
+
+// ResolveNewDepositsStatuses -
+func (executor *bridgeExecutor) ResolveNewDepositsStatuses(ctx context.Context, numDeposits uint64) error {
+    // TODO: implement it
     return nil
 }
 

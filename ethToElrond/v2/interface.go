@@ -14,7 +14,8 @@ type Bridge interface {
 	GetLogger() logger.Logger
 
 	MyTurnAsLeaderOnElrond() bool
-	GetAndStoreBatchFromElrond(ctx context.Context) error
+	GetBatchFromElrond(ctx context.Context) (*clients.TransferBatch, error)
+	StoreBatchFromElrond(batch *clients.TransferBatch) error
 	GetStoredBatch() *clients.TransferBatch
 	GetLastExecutedEthBatchIDFromElrond(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error
@@ -35,6 +36,7 @@ type Bridge interface {
 	IsQuorumReachedOnElrond(ctx context.Context) (bool, error)
 	WasActionPerformedOnElrond(ctx context.Context) (bool, error)
 	PerformActionOnElrond(ctx context.Context) error
+	ResolveNewDepositsStatuses(ctx context.Context, numDeposits uint64) error
 
 	ProcessMaxRetriesOnElrond() bool
 	ResetRetriesCountOnElrond()
@@ -45,9 +47,12 @@ type Bridge interface {
 	SignTransferOnEthereum(ctx context.Context) error
 	PerformTransferOnEthereum(ctx context.Context) error
 	IsQuorumReachedOnEthereum(ctx context.Context) (bool, error)
+	WaitForTransferConfirmation(ctx context.Context)
+	GetBatchStatusesFromEthereum(ctx context.Context) ([]byte, error)
 
 	ProcessMaxRetriesOnEthereum() bool
 	ResetRetriesCountOnEthereum()
+
 
 	IsInterfaceNil() bool
 }

@@ -6,6 +6,7 @@ import (
     "math/big"
     "strings"
     "testing"
+    "time"
 
     "github.com/ElrondNetwork/elrond-eth-bridge/clients"
     "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
@@ -38,6 +39,7 @@ func createMockElrondToEthExecutorArgs() ArgsElrondToEthBridgeExectutor {
         ArgsBaseBridgeExecutor:     createMockBaseExecutorArgs(),
         TopologyProviderOnElrond:   &bridgeV2.TopologyProviderStub{},
         TopologyProviderOnEthereum: &bridgeV2.TopologyProviderStub{},
+        TimeForTransferExecution:   time.Second,
     }
 }
 
@@ -680,6 +682,16 @@ func TestCreateElrondToEthBridgeExecutor(t *testing.T) {
         assert.True(t, check.IfNil(executor))
         assert.Equal(t, ErrNilEthereumTopologyProvider, err)
     })
+    t.Run("invalid time", func(t *testing.T) {
+        t.Parallel()
+
+        args := createMockElrondToEthExecutorArgs()
+        args.TimeForTransferExecution = 0
+        executor, err := CreateElrondToEthBridgeExecutor(args)
+
+        assert.True(t, check.IfNil(executor))
+        assert.Equal(t, ErrInvalidDuration, err)
+    })
     t.Run("should work", func(t *testing.T) {
         t.Parallel()
 
@@ -694,7 +706,7 @@ func TestCreateElrondToEthBridgeExecutor(t *testing.T) {
 func TestElrondToEthBridgeExecutor_GetAndStoreBatchFromElrond(t *testing.T) {
     t.Parallel()
 
-    t.Run("GetAndStoreBatchFromElrond fails", func(t *testing.T) {
+    t.Run("GetBatchFromElrond fails", func(t *testing.T) {
         t.Parallel()
 
         args := createMockElrondToEthExecutorArgs()
@@ -705,11 +717,21 @@ func TestElrondToEthBridgeExecutor_GetAndStoreBatchFromElrond(t *testing.T) {
         }
 
         executor, _ := CreateElrondToEthBridgeExecutor(args)
-        err := executor.GetAndStoreBatchFromElrond(context.Background())
+        _, err := executor.GetBatchFromElrond(context.Background())
         assert.Equal(t, expectedErr, err)
 
         batch := executor.GetStoredBatch()
         assert.Nil(t, batch)
+    })
+    t.Run("nil batch should error", func(t *testing.T) {
+        t.Parallel()
+
+        args := createMockElrondToEthExecutorArgs()
+        args.ElrondClient = &bridgeV2.ElrondClientStub{}
+
+        executor, _ := CreateElrondToEthBridgeExecutor(args)
+        err := executor.StoreBatchFromElrond(nil)
+        assert.Equal(t, ErrNilBatch, err)
     })
     t.Run("should work", func(t *testing.T) {
         t.Parallel()
@@ -724,9 +746,13 @@ func TestElrondToEthBridgeExecutor_GetAndStoreBatchFromElrond(t *testing.T) {
         }
 
         executor, _ := CreateElrondToEthBridgeExecutor(args)
-        err := executor.GetAndStoreBatchFromElrond(context.Background())
+        batch, err := executor.GetBatchFromElrond(context.Background())
         assert.True(t, wasCalled)
-        assert.Equal(t, providedBatch, executor.GetStoredBatch())
+        assert.Equal(t, providedBatch, batch)
+        assert.Nil(t, err)
+
+        err = executor.StoreBatchFromElrond(batch)
+        assert.Equal(t, providedBatch, executor.batch)
         assert.Nil(t, err)
     })
 }
@@ -1142,4 +1168,32 @@ func TestElrondToEthBridgeExecutor_RetriesCountOnEthereum(t *testing.T) {
     executor.ResetRetriesCountOnEthereum()
     assert.Equal(t, uint64(0), executor.retriesOnEthereum)
     assert.True(t, wasCalled)
+}
+
+func TestWaitForTransferConfirmation(t *testing.T) {
+    t.Parallel()
+
+    args := createMockElrondToEthExecutorArgs()
+    args.TimeForTransferExecution = time.Second
+    executor, _ := CreateElrondToEthBridgeExecutor(args)
+    executor.WaitForTransferConfirmation(context.Background())
+    // TODO: add tests with implementation or delete test
+}
+
+func TestGetBatchStatusesFromEthereum(t *testing.T) {
+    t.Parallel()
+
+    args := createMockElrondToEthExecutorArgs()
+    executor, _ := CreateElrondToEthBridgeExecutor(args)
+    _, _ = executor.GetBatchStatusesFromEthereum(context.Background())
+    // TODO: add tests with implementation
+}
+
+func TestResolveNewDepositsStatuses(t *testing.T) {
+    t.Parallel()
+
+    args := createMockElrondToEthExecutorArgs()
+    executor, _ := CreateElrondToEthBridgeExecutor(args)
+    _ = executor.ResolveNewDepositsStatuses(context.Background(), 0)
+    // TODO: add tests with implementation
 }
