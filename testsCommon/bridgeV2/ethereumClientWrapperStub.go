@@ -5,7 +5,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -24,7 +24,8 @@ type EthereumClientWrapperStub struct {
 	NonceAtCalled          func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	ExecuteTransferCalled  func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
 		amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
-	QuorumCalled func(ctx context.Context) (*big.Int, error)
+	QuorumCalled                    func(ctx context.Context) (*big.Int, error)
+	GetStatusesAfterExecutionCalled func(ctx context.Context, batchID *big.Int) ([]byte, error)
 }
 
 // GetBatch -
@@ -97,6 +98,15 @@ func (stub *EthereumClientWrapperStub) Quorum(ctx context.Context) (*big.Int, er
 	}
 
 	return big.NewInt(0), nil
+}
+
+// GetStatusesAfterExecution -
+func (stub *EthereumClientWrapperStub) GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, error) {
+	if stub.GetStatusesAfterExecutionCalled != nil {
+		return stub.GetStatusesAfterExecutionCalled(ctx, batchID)
+	}
+
+	return make([]byte, 0), nil
 }
 
 // IsInterfaceNil -

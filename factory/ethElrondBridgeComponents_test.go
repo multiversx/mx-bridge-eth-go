@@ -10,9 +10,11 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
+	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/stretchr/testify/assert"
@@ -74,21 +76,13 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 		Erc20ContractsHolder: &bridgeV2.ERC20ContractsHolderStub{},
 		ClientWrapper:        &bridgeV2.EthereumClientWrapperStub{},
 		TimeForBootstrap:     minTimeForBootstrap,
+		MetricsHolder:        status.NewMetricsHolder(),
 	}
 }
 
 func TestNewEthElrondBridgeComponents(t *testing.T) {
 	t.Parallel()
 
-	t.Run("should work", func(t *testing.T) {
-		t.Parallel()
-		args := createMockEthElrondBridgeArgs()
-
-		components, err := NewEthElrondBridgeComponents(args)
-		require.Nil(t, err)
-		require.NotNil(t, components)
-		require.Equal(t, 4, len(components.closableHandlers))
-	})
 	t.Run("nil Proxy", func(t *testing.T) {
 		t.Parallel()
 		args := createMockEthElrondBridgeArgs()
@@ -207,6 +201,25 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		assert.True(t, errors.Is(err, errInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "for TimeForBootstrap"))
 		assert.Nil(t, components)
+	})
+	t.Run("nil MetricsHolder", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.MetricsHolder = nil
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.Equal(t, errNilMetricsHolder, err)
+		assert.Nil(t, components)
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+
+		components, err := NewEthElrondBridgeComponents(args)
+		require.Nil(t, err)
+		require.NotNil(t, components)
+		require.Equal(t, 4, len(components.closableHandlers))
+		require.False(t, check.IfNil(components.bridgeStatusHandler))
 	})
 }
 

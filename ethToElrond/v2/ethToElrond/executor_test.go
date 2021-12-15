@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -20,6 +22,7 @@ func createMockEthToElrondExecutorArgs() ArgsEthToElrondBridgeExecutor {
 		TopologyProvider: &bridgeV2.TopologyProviderStub{},
 		ElrondClient:     &bridgeV2.ElrondClientStub{},
 		EthereumClient:   &bridgeV2.EthereumClientStub{},
+		StatusHandler:    testsCommon.NewStatusHandlerMock("test"),
 	}
 }
 
@@ -65,6 +68,16 @@ func TestNewEthToElrondBridgeExecutor(t *testing.T) {
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, v2.ErrNilTopologyProvider, err)
+	})
+	t.Run("nil status handler", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthToElrondExecutorArgs()
+		args.StatusHandler = nil
+		executor, err := NewEthToElrondBridgeExecutor(args)
+
+		assert.True(t, check.IfNil(executor))
+		assert.Equal(t, v2.ErrNilStatusHandler, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -622,4 +635,25 @@ func TestEthToElrondBridgeExecutor_RetriesCount(t *testing.T) {
 	executor.ResetRetriesCountOnElrond()
 	assert.Equal(t, uint64(0), executor.retriesOnElrond)
 	assert.True(t, wasCalledOnElrondClient)
+}
+
+func TestEthToElrondBridgeExecutor_setExecutionMessageInStatusHandler(t *testing.T) {
+	t.Parallel()
+
+	expectedString := "DEBUG: message a = 1 b = ff c = str"
+
+	wasCalled := false
+	args := createMockEthToElrondExecutorArgs()
+	args.StatusHandler = &testsCommon.StatusHandlerStub{
+		SetStringMetricCalled: func(metric string, val string) {
+			wasCalled = true
+
+			assert.Equal(t, metric, core.MetricLastError)
+			assert.Equal(t, expectedString, val)
+		},
+	}
+	executor, _ := NewEthToElrondBridgeExecutor(args)
+	executor.setExecutionMessageInStatusHandler(logger.LogDebug, "message", "a", 1, "b", []byte{255}, "c", "str")
+
+	assert.True(t, wasCalled)
 }

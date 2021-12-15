@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -214,6 +214,11 @@ func (mock *EthereumChainMock) SetQuorum(quorum int) {
 	defer mock.mutState.Unlock()
 
 	mock.quorum = quorum
+}
+
+// GetStatusesAfterExecution -
+func (mock *EthereumChainMock) GetStatusesAfterExecution(_ context.Context, _ *big.Int) ([]byte, error) {
+	return mock.GetStatusesAfterExecutionHandler(), nil
 }
 
 // IsInterfaceNil -

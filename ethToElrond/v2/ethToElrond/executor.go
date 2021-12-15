@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -16,6 +17,7 @@ type ArgsEthToElrondBridgeExecutor struct {
 	TopologyProvider v2.TopologyProvider
 	ElrondClient     v2.ElrondClient
 	EthereumClient   v2.EthereumClient
+	StatusHandler    core.StatusHandler
 }
 
 type ethToElrondBridgeExecutor struct {
@@ -26,6 +28,7 @@ type ethToElrondBridgeExecutor struct {
 	batch            *clients.TransferBatch
 	actionID         uint64
 	retriesOnElrond  uint64
+	statusHandler    core.StatusHandler
 }
 
 // NewEthToElrondBridgeExecutor will create a bridge executor for the Ethereum -> Elrond flow
@@ -42,12 +45,16 @@ func NewEthToElrondBridgeExecutor(args ArgsEthToElrondBridgeExecutor) (*ethToElr
 	if check.IfNil(args.TopologyProvider) {
 		return nil, v2.ErrNilTopologyProvider
 	}
+	if check.IfNil(args.StatusHandler) {
+		return nil, v2.ErrNilStatusHandler
+	}
 
 	return &ethToElrondBridgeExecutor{
 		log:              args.Log,
 		topologyProvider: args.TopologyProvider,
 		elrondClient:     args.ElrondClient,
 		ethereumClient:   args.EthereumClient,
+		statusHandler:    args.StatusHandler,
 	}, nil
 }
 
@@ -75,6 +82,16 @@ func (executor *ethToElrondBridgeExecutor) GetAndStoreActionIDFromElrond(ctx con
 	executor.actionID = actionID
 
 	return actionID, nil
+}
+
+// TODO(next PR) use & integrate this
+func (executor *ethToElrondBridgeExecutor) setExecutionMessageInStatusHandler(level logger.LogLevel, message string, extras ...interface{}) {
+	msg := fmt.Sprintf("%s: %s", level, message)
+	for i := 0; i < len(extras)-1; i += 2 {
+		msg += fmt.Sprintf(" %s = %s", convertObjectToString(extras[i]), convertObjectToString(extras[i+1]))
+	}
+
+	executor.statusHandler.SetStringMetric(core.MetricLastError, msg)
 }
 
 // GetStoredActionID will return the stored action ID
