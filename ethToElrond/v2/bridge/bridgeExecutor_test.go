@@ -1,4 +1,4 @@
-package v2
+package bridge
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -54,7 +55,7 @@ func TestCreateEthToElrondBridgeExecutor(t *testing.T) {
 		executor, err := CreateEthToElrondBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilLogger, err)
+		assert.Equal(t, v2.ErrNilLogger, err)
 	})
 	t.Run("nil elrond client should error", func(t *testing.T) {
 		t.Parallel()
@@ -64,7 +65,7 @@ func TestCreateEthToElrondBridgeExecutor(t *testing.T) {
 		executor, err := CreateEthToElrondBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilElrondClient, err)
+		assert.Equal(t, v2.ErrNilElrondClient, err)
 	})
 	t.Run("nil ethereum client should error", func(t *testing.T) {
 		t.Parallel()
@@ -74,7 +75,7 @@ func TestCreateEthToElrondBridgeExecutor(t *testing.T) {
 		executor, err := CreateEthToElrondBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilEthereumClient, err)
+		assert.Equal(t, v2.ErrNilEthereumClient, err)
 	})
 	t.Run("nil topology provider should error", func(t *testing.T) {
 		t.Parallel()
@@ -84,7 +85,7 @@ func TestCreateEthToElrondBridgeExecutor(t *testing.T) {
 		executor, err := CreateEthToElrondBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilElrondTopologyProvider, err)
+		assert.Equal(t, v2.ErrNilElrondTopologyProvider, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -134,7 +135,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreActionIDForProposeTransferOnElrond
 
 		actionID, err := executor.GetAndStoreActionIDForProposeTransferOnElrond(context.Background())
 		assert.Zero(t, actionID)
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("elrond client errors", func(t *testing.T) {
 		t.Parallel()
@@ -245,7 +246,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 		executor, _ := CreateEthToElrondBridgeExecutor(args)
 
 		err := executor.VerifyLastDepositNonceExecutedOnEthereumBatch(context.Background())
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("get last executed tx id errors", func(t *testing.T) {
 		t.Parallel()
@@ -284,7 +285,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 		}
 
 		err := executor.VerifyLastDepositNonceExecutedOnEthereumBatch(context.Background())
-		assert.True(t, errors.Is(err, ErrInvalidDepositNonce))
+		assert.True(t, errors.Is(err, v2.ErrInvalidDepositNonce))
 		assert.True(t, strings.Contains(err.Error(), "6657"))
 	})
 	t.Run("first deposit nonce is smaller than the last tx nonce should error", func(t *testing.T) {
@@ -300,7 +301,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 		}
 
 		err := executor.VerifyLastDepositNonceExecutedOnEthereumBatch(context.Background())
-		assert.True(t, errors.Is(err, ErrInvalidDepositNonce))
+		assert.True(t, errors.Is(err, v2.ErrInvalidDepositNonce))
 		assert.True(t, strings.Contains(err.Error(), "6656"))
 	})
 	t.Run("gap found error", func(t *testing.T) {
@@ -319,7 +320,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 		}
 
 		err := executor.VerifyLastDepositNonceExecutedOnEthereumBatch(context.Background())
-		assert.True(t, errors.Is(err, ErrInvalidDepositNonce))
+		assert.True(t, errors.Is(err, v2.ErrInvalidDepositNonce))
 		assert.True(t, strings.Contains(err.Error(), "6660"))
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -364,7 +365,7 @@ func TestEthToElrondBridgeExecutor_WasTransferProposedOnElrond(t *testing.T) {
 
 		wasTransfered, err := executor.WasTransferProposedOnElrond(context.Background())
 		assert.False(t, wasTransfered)
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -399,7 +400,7 @@ func TestEthToElrondBridgeExecutor_ProposeTransferOnElrond(t *testing.T) {
 		executor, _ := CreateEthToElrondBridgeExecutor(args)
 
 		err := executor.ProposeTransferOnElrond(context.Background())
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("propose transfer fails", func(t *testing.T) {
 		t.Parallel()
@@ -560,7 +561,7 @@ func TestEthToElrondBridgeExecutor_PerformActionOnElrond(t *testing.T) {
 		executor, _ := CreateEthToElrondBridgeExecutor(args)
 
 		err := executor.PerformActionOnElrond(context.Background())
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("elrond client errors", func(t *testing.T) {
 		t.Parallel()
@@ -640,7 +641,7 @@ func TestCreateElrondToEthBridgeExecutor(t *testing.T) {
 		executor, err := CreateElrondToEthBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilLogger, err)
+		assert.Equal(t, v2.ErrNilLogger, err)
 	})
 	t.Run("nil elrond client should error", func(t *testing.T) {
 		t.Parallel()
@@ -650,7 +651,7 @@ func TestCreateElrondToEthBridgeExecutor(t *testing.T) {
 		executor, err := CreateElrondToEthBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilElrondClient, err)
+		assert.Equal(t, v2.ErrNilElrondClient, err)
 	})
 	t.Run("nil ethereum client should error", func(t *testing.T) {
 		t.Parallel()
@@ -660,7 +661,7 @@ func TestCreateElrondToEthBridgeExecutor(t *testing.T) {
 		executor, err := CreateElrondToEthBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilEthereumClient, err)
+		assert.Equal(t, v2.ErrNilEthereumClient, err)
 	})
 	t.Run("nil elrond topology provider should error", func(t *testing.T) {
 		t.Parallel()
@@ -670,7 +671,7 @@ func TestCreateElrondToEthBridgeExecutor(t *testing.T) {
 		executor, err := CreateElrondToEthBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilElrondTopologyProvider, err)
+		assert.Equal(t, v2.ErrNilElrondTopologyProvider, err)
 	})
 	t.Run("nil ethereum topology provider should error", func(t *testing.T) {
 		t.Parallel()
@@ -680,7 +681,7 @@ func TestCreateElrondToEthBridgeExecutor(t *testing.T) {
 		executor, err := CreateElrondToEthBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilEthereumTopologyProvider, err)
+		assert.Equal(t, v2.ErrNilEthereumTopologyProvider, err)
 	})
 	t.Run("invalid time", func(t *testing.T) {
 		t.Parallel()
@@ -690,7 +691,7 @@ func TestCreateElrondToEthBridgeExecutor(t *testing.T) {
 		executor, err := CreateElrondToEthBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrInvalidDuration, err)
+		assert.Equal(t, v2.ErrInvalidDuration, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -731,7 +732,7 @@ func TestElrondToEthBridgeExecutor_GetAndStoreBatchFromElrond(t *testing.T) {
 
 		executor, _ := CreateElrondToEthBridgeExecutor(args)
 		err := executor.StoreBatchFromElrond(nil)
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -767,8 +768,8 @@ func TestElrondToEthBridgeExecutor_GetAndStoreActionIDForProposeSetStatusFromElr
 		executor, _ := CreateElrondToEthBridgeExecutor(args)
 
 		actionId, err := executor.GetAndStoreActionIDForProposeSetStatusFromElrond(context.Background())
-		assert.Equal(t, ErrNilBatch, err)
-		assert.Equal(t, InvalidActionID, actionId)
+		assert.Equal(t, v2.ErrNilBatch, err)
+		assert.Equal(t, v2.InvalidActionID, actionId)
 	})
 	t.Run("GetAndStoreActionIDForProposeSetStatusFromElrond fails", func(t *testing.T) {
 		t.Parallel()
@@ -819,7 +820,7 @@ func TestElrondToEthBridgeExecutor_WasSetStatusProposedOnElrond(t *testing.T) {
 		executor, _ := CreateElrondToEthBridgeExecutor(args)
 
 		wasProposed, err := executor.WasSetStatusProposedOnElrond(context.Background())
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 		assert.False(t, wasProposed)
 	})
 	t.Run("WasSetStatusProposedOnElrond fails", func(t *testing.T) {
@@ -869,7 +870,7 @@ func TestEthToElrondBridgeExecutor_ProposeSetStatusOnElrond(t *testing.T) {
 		executor, _ := CreateElrondToEthBridgeExecutor(args)
 
 		err := executor.ProposeSetStatusOnElrond(context.Background())
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("ProposeSetStatusOnElrond fails", func(t *testing.T) {
 		t.Parallel()
@@ -936,7 +937,7 @@ func TestElrondToEthBridgeExecutor_WasTransferPerformedOnEthereum(t *testing.T) 
 		executor, _ := CreateElrondToEthBridgeExecutor(args)
 
 		_, err := executor.WasTransferPerformedOnEthereum(context.Background())
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("WasExecuted fails", func(t *testing.T) {
 		t.Parallel()
@@ -987,7 +988,7 @@ func TestElrondToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 		executor, _ := CreateElrondToEthBridgeExecutor(args)
 
 		err := executor.SignTransferOnEthereum(context.Background())
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("GenerateMessageHash fails", func(t *testing.T) {
 		t.Parallel()
@@ -1039,14 +1040,14 @@ func TestElrondToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 		executor, _ := CreateElrondToEthBridgeExecutor(args)
 
 		err := executor.PerformTransferOnEthereum(context.Background())
-		assert.Equal(t, ErrNilBatch, err)
+		assert.Equal(t, v2.ErrNilBatch, err)
 	})
 	t.Run("GetQuorumSize fails", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockElrondToEthExecutorArgs()
 		args.EthereumClient = &bridgeV2.EthereumClientStub{
-			GetQuorumSizeCalled: func() (*big.Int, error) {
+			GetQuorumSizeCalled: func(ctx context.Context) (*big.Int, error) {
 				return big.NewInt(0), expectedErr
 			},
 		}
@@ -1061,7 +1062,7 @@ func TestElrondToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 
 		args := createMockElrondToEthExecutorArgs()
 		args.EthereumClient = &bridgeV2.EthereumClientStub{
-			GetQuorumSizeCalled: func() (*big.Int, error) {
+			GetQuorumSizeCalled: func(ctx context.Context) (*big.Int, error) {
 				return big.NewInt(0), nil
 			},
 			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error) {
@@ -1083,7 +1084,7 @@ func TestElrondToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 		wasCalledExecuteTransferCalled := false
 		args := createMockElrondToEthExecutorArgs()
 		args.EthereumClient = &bridgeV2.EthereumClientStub{
-			GetQuorumSizeCalled: func() (*big.Int, error) {
+			GetQuorumSizeCalled: func(ctx context.Context) (*big.Int, error) {
 				wasCalledGetQuorumSizeCalled = true
 				return big.NewInt(int64(providedQuorum)), nil
 			},
@@ -1115,7 +1116,7 @@ func TestElrondToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 
 		args := createMockElrondToEthExecutorArgs()
 		args.EthereumClient = &bridgeV2.EthereumClientStub{
-			IsQuorumReachedCalled: func() (bool, error) {
+			IsQuorumReachedCalled: func(ctx context.Context, msgHash common.Hash) (bool, error) {
 				return false, expectedErr
 			},
 		}
@@ -1131,7 +1132,7 @@ func TestElrondToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 		args := createMockElrondToEthExecutorArgs()
 		wasCalled := false
 		args.EthereumClient = &bridgeV2.EthereumClientStub{
-			IsQuorumReachedCalled: func() (bool, error) {
+			IsQuorumReachedCalled: func(ctx context.Context, msgHash common.Hash) (bool, error) {
 				wasCalled = true
 				return true, nil
 			},
@@ -1208,11 +1209,11 @@ func TestResolveNewDepositsStatuses(t *testing.T) {
 	executor.batch = providedBatchForResolve
 
 	for i := 0; i < 3; i++ {
-		executor.ResolveNewDepositsStatuses(context.Background(), uint64(i))
+		executor.ResolveNewDepositsStatuses(uint64(i))
 		assert.Equal(t, 2, len(executor.batch.Statuses))
 	}
 
-	executor.ResolveNewDepositsStatuses(context.Background(), uint64(3))
+	executor.ResolveNewDepositsStatuses(uint64(3))
 	assert.Equal(t, 3, len(executor.batch.Statuses))
 	assert.Equal(t, clients.Rejected, executor.batch.Statuses[2])
 	assert.Equal(t, byte(0), executor.batch.Statuses[0]+executor.batch.Statuses[1])
