@@ -395,7 +395,7 @@ func (c *client) getNonce(ctx context.Context, fromAddress common.Address) (int6
 	return int64(nonce), err
 }
 
-// GetTransactionsStatuses will return the transactions statuses from the batch ID
+// GetTransactionsStatuses will return the transactions statuses from the batch
 func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error) {
 	return c.clientWrapper.GetStatusesAfterExecution(ctx, big.NewInt(0).SetUint64(batchId))
 }

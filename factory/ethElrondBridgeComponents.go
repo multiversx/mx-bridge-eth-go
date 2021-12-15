@@ -66,7 +66,6 @@ type ArgsEthereumToElrondBridge struct {
 }
 
 type ethElrondBridgeComponents struct {
-	configs                       config.Configs
 	baseLogger                    logger.Logger
 	messenger                     p2p.NetMessenger
 	statusStorer                  core.Storer
@@ -105,7 +104,6 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		baseLogger:       core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
 		messenger:        args.Messenger,
 		statusStorer:     args.StatusStorer,
-		configs:          args.Configs,
 		closableHandlers: make([]io.Closer, 0),
 		proxy:            args.Proxy,
 		timer:            timer.NewNTPTimer(),

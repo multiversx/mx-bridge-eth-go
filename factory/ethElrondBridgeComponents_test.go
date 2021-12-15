@@ -119,15 +119,6 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		assert.Equal(t, errNilStatusStorer, err)
 		assert.Nil(t, components)
 	})
-	t.Run("nil MetricsHolder", func(t *testing.T) {
-		t.Parallel()
-		args := createMockEthElrondBridgeArgs()
-		args.MetricsHolder = nil
-
-		components, err := NewEthElrondBridgeComponents(args)
-		assert.Equal(t, errNilMetricsHolder, err)
-		assert.Nil(t, components)
-	})
 	t.Run("nil Erc20ContractsHolder", func(t *testing.T) {
 		t.Parallel()
 		args := createMockEthElrondBridgeArgs()
@@ -209,6 +200,15 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		components, err := NewEthElrondBridgeComponents(args)
 		assert.True(t, errors.Is(err, errInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "for TimeForBootstrap"))
+		assert.Nil(t, components)
+	})
+	t.Run("nil MetricsHolder", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.MetricsHolder = nil
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.Equal(t, errNilMetricsHolder, err)
 		assert.Nil(t, components)
 	})
 	t.Run("should work", func(t *testing.T) {

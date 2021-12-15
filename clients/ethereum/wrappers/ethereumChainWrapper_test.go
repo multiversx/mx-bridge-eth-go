@@ -153,7 +153,7 @@ func TestEthClientWrapper_ChainID(t *testing.T) {
 func TestEthClientWrapper_BlockNumber(t *testing.T) {
 	t.Parallel()
 
-	t.Run("block number call errors", func(t *testing.T) {
+	t.Run("block number call returns error", func(t *testing.T) {
 		args, statusHandler := createMockArgsEthereumChainWrapper()
 		handlerCalled := false
 		expectedError := errors.New("expected error")
