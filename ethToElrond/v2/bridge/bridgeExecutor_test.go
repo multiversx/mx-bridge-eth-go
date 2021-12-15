@@ -1175,10 +1175,14 @@ func TestWaitForTransferConfirmation(t *testing.T) {
 	t.Parallel()
 
 	args := createMockElrondToEthExecutorArgs()
-	args.TimeForTransferExecution = time.Second
+	args.TimeForTransferExecution = 2 * time.Second
 	executor, _ := CreateElrondToEthBridgeExecutor(args)
+
+	start := time.Now()
 	executor.WaitForTransferConfirmation(context.Background())
-	// TODO: add tests with implementation or delete test
+	elapsed := time.Since(start)
+
+	assert.True(t, elapsed >= args.TimeForTransferExecution)
 }
 
 func TestGetBatchStatusesFromEthereum(t *testing.T) {
