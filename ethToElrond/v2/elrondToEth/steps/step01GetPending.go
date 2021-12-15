@@ -15,15 +15,25 @@ func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, e
 	step.bridge.ResetRetriesCountOnEthereum()
 	step.bridge.ResetRetriesCountOnElrond()
 
-	err := step.bridge.GetAndStoreBatchFromElrond(ctx)
+	batch, err := step.bridge.GetBatchFromElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error fetching Elrond batch", "error", err)
 		return step.Identifier(), nil
 	}
-
-	batch := step.bridge.GetStoredBatch()
 	if batch == nil {
 		step.bridge.GetLogger().Debug("no new batch found on Elrond")
+		return step.Identifier(), nil
+	}
+
+	err = step.bridge.StoreBatchFromElrond(ctx, batch)
+	if err != nil {
+		step.bridge.GetLogger().Error("error storing Elrond batch", "error", err)
+		return step.Identifier(), nil
+	}
+
+	storedBatch := step.bridge.GetStoredBatchFromElrond()
+	if storedBatch == nil {
+		step.bridge.GetLogger().Debug("nil batch stored")
 		return step.Identifier(), nil
 	}
 

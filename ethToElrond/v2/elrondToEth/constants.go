@@ -14,7 +14,10 @@ const (
 	PerformingTransfer = "perform transfer"
 
 	// WaitingTransferConfirmation is the step identifier for waiting the transfer confirmation on Ethereum
-	WaitingTransferConfirmation = "wait transfer confirmationg"
+	WaitingTransferConfirmation = "wait transfer confirmating"
+
+	// ResolvingSetStatusOnElrond is the step idetifier for resolving set status on Elrond
+	ResolvingSetStatusOnElrond = "resolve set status"
 
 	// ProposingSetStatusOnElrond is the step idetifier for proposing set status action on Elrond
 	ProposingSetStatusOnElrond = "propose set status"
@@ -28,23 +31,6 @@ const (
 	// PerformingSetStatus is the step identifier for performing the set status action on Elrond
 	PerformingSetStatus = "perform set status"
 
-	// NoFailing indicates that the states machine performed also the last step without any error
-	NoFailing = "noFailing"
-
-	// numSteps indicates how many steps the
-	numSteps = 9
+	// numSteps indicates how many steps the state machine for Elrond -> Ethereum flow has
+	NumSteps = 10
 )
-
-// FailingStepList is the list of all steps where from Ethereum to elrond flow indicating
-// at which step one relayer may fail or NoFailing in case all steps were executed successfully
-var FailingStepList = [numSteps + 1]string{
-	GettingPendingBatchFromElrond,
-	SigningProposedTransferOnEthereum,
-	WaitingForQuorumOnTransfer,
-	PerformingTransfer,
-	ProposingSetStatusOnElrond,
-	SigningProposedSetStatusOnElrond,
-	WaitingForQuorumOnSetStatus,
-	PerformingSetStatus,
-	NoFailing,
-}

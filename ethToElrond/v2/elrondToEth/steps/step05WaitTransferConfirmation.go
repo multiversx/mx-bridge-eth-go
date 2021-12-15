@@ -12,6 +12,7 @@ type waitTransferConfirmationStep struct {
 }
 
 func (step *waitTransferConfirmationStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+	step.bridge.WaitForTransferConfirmation(ctx)
 	return elrondToEth.PerformingTransfer, nil
 }
 

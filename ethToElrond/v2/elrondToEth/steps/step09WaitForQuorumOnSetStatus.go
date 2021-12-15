@@ -17,15 +17,15 @@ func (step *waitForQuorumOnSetStatus) Execute(ctx context.Context) (core.StepIde
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
-	isQuorumReached, err := step.bridge.IsQuorumReachedOnElrond(ctx)
+	ProcessQuorumReachedOnElrond, err := step.bridge.IsQuorumReachedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error while checking the quorum", "error", err)
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
-	step.bridge.GetLogger().Debug("quorum reached check", "is reached", isQuorumReached)
+	step.bridge.GetLogger().Debug("quorum reached check", "is reached", ProcessQuorumReachedOnElrond)
 
-	if !isQuorumReached {
+	if !ProcessQuorumReachedOnElrond {
 		return step.Identifier(), nil
 	}
 

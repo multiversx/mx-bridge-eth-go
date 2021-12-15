@@ -4,7 +4,10 @@ import (
 	"testing"
 
 	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateSteps_Errors(t *testing.T) {
@@ -19,10 +22,9 @@ func TestCreateSteps_Errors(t *testing.T) {
 func TestCreateSteps_ShouldWork(t *testing.T) {
 	t.Parallel()
 
-	// TODO:CreateElrondToEthBridgeStub
-	// steps, err := CreateSteps(bridgeV2.NewElrondToEthBridgeStub())
-	//
-	// require.NotNil(t, steps)
-	// require.Nil(t, err)
-	// require.Equal(t, 9, len(steps))
+	steps, err := CreateSteps(bridgeV2.NewElrondToEthBridgeStub())
+
+	require.NotNil(t, steps)
+	require.Nil(t, err)
+	require.Equal(t, elrondToEth.NumSteps, len(steps))
 }

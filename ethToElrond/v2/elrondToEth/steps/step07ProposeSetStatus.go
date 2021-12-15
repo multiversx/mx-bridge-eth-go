@@ -13,9 +13,9 @@ type proposeSetStatusStep struct {
 }
 
 func (step *proposeSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	batch := step.bridge.GetStoredBatch()
+	batch := step.bridge.GetStoredBatchFromElrond()
 	if batch == nil {
-		step.bridge.GetLogger().Debug("no batch found")
+		step.bridge.GetLogger().Debug("nil batch stored")
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 

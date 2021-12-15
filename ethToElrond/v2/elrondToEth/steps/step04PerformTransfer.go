@@ -20,7 +20,7 @@ func (step *performTransferStep) Execute(ctx context.Context) (core.StepIdentifi
 
 	if wasPerformed {
 		step.bridge.GetLogger().Info("transfer performed")
-		return elrondToEth.ProposingSetStatusOnElrond, nil
+		return elrondToEth.ResolvingSetStatusOnElrond, nil
 	}
 
 	if !step.bridge.MyTurnAsLeader() {

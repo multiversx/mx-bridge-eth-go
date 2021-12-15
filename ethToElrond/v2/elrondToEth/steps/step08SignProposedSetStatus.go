@@ -13,29 +13,29 @@ type signProposedSetStatusStep struct {
 }
 
 func (step *signProposedSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	batch := step.bridge.GetStoredBatch()
-	if batch == nil {
-		step.bridge.GetLogger().Debug("no batch found")
+	storedBatch := step.bridge.GetStoredBatchFromElrond()
+	if storedBatch == nil {
+		step.bridge.GetLogger().Debug("nil stored batch")
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
 	actionID, err := step.bridge.GetAndStoreActionIDForSetStatusFromElrond(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error fetching action ID", "batch ID", batch.ID, "error", err)
+		step.bridge.GetLogger().Error("error fetching action ID", "batch ID", storedBatch.ID, "error", err)
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 	if actionID == v2.InvalidActionID {
 		step.bridge.GetLogger().Error("contract error, got invalid action ID",
-			"batch ID", batch.ID, "error", err, "action ID", actionID)
+			"batch ID", storedBatch.ID, "error", err, "action ID", actionID)
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
-	step.bridge.GetLogger().Info("fetched action ID", "action ID", actionID, "batch ID", batch.ID)
+	step.bridge.GetLogger().Info("fetched action ID", "action ID", actionID, "batch ID", storedBatch.ID)
 
 	wasSigned, err := step.bridge.WasProposedSetStatusSignedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if the proposed transfer was signed or not",
-			"batch ID", batch.ID, "error", err)
+			"batch ID", storedBatch.ID, "error", err)
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
@@ -46,7 +46,7 @@ func (step *signProposedSetStatusStep) Execute(ctx context.Context) (core.StepId
 	err = step.bridge.SignProposedSetStatusOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error signing the proposed transfer",
-			"batch ID", batch.ID, "error", err)
+			"batch ID", storedBatch.ID, "error", err)
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
