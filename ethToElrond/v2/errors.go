@@ -9,4 +9,5 @@ var (
 	errNilElrondClient     = errors.New("nil Elrond client")
 	errNilEthereumClient   = errors.New("nil Ethereum client")
 	errNilTopologyProvider = errors.New("nil topology provider")
+	errNilStatusHandler    = errors.New("nil status handler")
 )

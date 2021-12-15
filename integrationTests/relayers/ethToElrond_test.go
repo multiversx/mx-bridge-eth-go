@@ -8,13 +8,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
+	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
@@ -101,7 +102,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	elrondChainMock.SetLastExecutedEthBatchID(batchNonceOnEthereum)
 	elrondChainMock.SetLastExecutedEthTxId(txNonceOnEthereum)
 	elrondChainMock.GetStatusesAfterExecutionHandler = func() []byte {
-		return []byte{bridge.Executed, bridge.Rejected}
+		return []byte{clients.Executed, clients.Rejected}
 	}
 
 	numRelayers := 3
@@ -186,6 +187,7 @@ func createMockBridgeComponentsArgs(
 		Messenger:        messenger,
 		StatusStorer:     testsCommon.NewStorerMock(),
 		TimeForBootstrap: time.Second,
+		MetricsHolder:    status.NewMetricsHolder(),
 	}
 }
 

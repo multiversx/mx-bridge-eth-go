@@ -1,4 +1,4 @@
-package ethereum
+package wrappers
 
 import (
 	"context"
@@ -13,12 +13,12 @@ import (
 // ArgsErc20ContractWrapper is the DTO used to construct an erc20ContractWrapper instance
 type ArgsErc20ContractWrapper struct {
 	StatusHandler core.StatusHandler
-	Erc20Contract GenericErc20Contract
+	Erc20Contract genericErc20Contract
 }
 
 type erc20ContractWrapper struct {
 	statusHandler core.StatusHandler
-	erc20Contract GenericErc20Contract
+	erc20Contract genericErc20Contract
 }
 
 // NewErc20ContractWrapper creates a new instance of type erc20ContractWrapper

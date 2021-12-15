@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/wrappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -22,7 +23,7 @@ type ArgsErc20SafeContractsHolder struct {
 // erc20SafeContractsHolder represents the Erc20ContractsHolder implementation
 type erc20SafeContractsHolder struct {
 	mut                    sync.RWMutex
-	contracts              map[ethCommon.Address]*erc20ContractWrapper
+	contracts              map[ethCommon.Address]erc20ContractWrapper
 	ethClient              bind.ContractBackend
 	ethClientStatusHandler core.StatusHandler
 }
@@ -36,7 +37,7 @@ func NewErc20SafeContractsHolder(args ArgsErc20SafeContractsHolder) (*erc20SafeC
 		return nil, errNilStatusHandler
 	}
 	return &erc20SafeContractsHolder{
-		contracts:              make(map[ethCommon.Address]*erc20ContractWrapper),
+		contracts:              make(map[ethCommon.Address]erc20ContractWrapper),
 		ethClient:              args.EthClient,
 		ethClientStatusHandler: args.EthClientStatusHandler,
 	}, nil
@@ -54,11 +55,11 @@ func (h *erc20SafeContractsHolder) BalanceOf(ctx context.Context, erc20Address e
 		if err != nil {
 			return nil, fmt.Errorf("%w for %s", err, erc20Address.String())
 		}
-		args := ArgsErc20ContractWrapper{
+		args := wrappers.ArgsErc20ContractWrapper{
 			StatusHandler: h.ethClientStatusHandler,
 			Erc20Contract: contractInstance,
 		}
-		wrapper, err = NewErc20ContractWrapper(args)
+		wrapper, err = wrappers.NewErc20ContractWrapper(args)
 		if err != nil {
 			return nil, err
 		}
@@ -66,7 +67,7 @@ func (h *erc20SafeContractsHolder) BalanceOf(ctx context.Context, erc20Address e
 		h.contracts[erc20Address] = wrapper
 	}
 
-	return wrapper.erc20Contract.BalanceOf(&bind.CallOpts{Context: ctx}, address)
+	return wrapper.BalanceOf(ctx, address)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

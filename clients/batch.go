@@ -53,6 +53,7 @@ func (tb *TransferBatch) ResolveNewDeposits(newNumDeposits int) {
 	}
 
 	if newNumDeposits < oldLen {
+		//TODO this might happen, treat this case too
 		log.Error("num statuses unrecoverable", "len statuses", oldLen, "new num deposits", newNumDeposits)
 		return
 	}
