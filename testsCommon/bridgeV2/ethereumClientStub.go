@@ -29,12 +29,11 @@ func (stub *EthereumClientStub) GetQuorumSize(ctx context.Context) (*big.Int, er
 }
 
 func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error) {
-    if stub.IsQuorumReachedCalled != nil {
-        return stub.IsQuorumReachedCalled()
-    }
+	if stub.IsQuorumReachedCalled != nil {
+		return stub.IsQuorumReachedCalled()
+	}
 
-    return false, errNotImplemented
-
+	return false, errNotImplemented
 }
 
 // GetBatch -

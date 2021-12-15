@@ -53,7 +53,6 @@ type Bridge interface {
 	ProcessMaxRetriesOnEthereum() bool
 	ResetRetriesCountOnEthereum()
 
-
 	IsInterfaceNil() bool
 }
 
@@ -92,7 +91,7 @@ type EthereumClient interface {
 	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
 	GetMaxNumberOfRetriesOnQuorumReached() uint64
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
-	IsQuorumReached(ctx context.Context, msgHash common.Hash,) (bool, error)
+	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
 	IsInterfaceNil() bool
 }
 
