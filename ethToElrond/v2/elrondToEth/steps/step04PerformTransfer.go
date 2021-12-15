@@ -11,6 +11,7 @@ type performTransferStep struct {
 	bridge elrondToEth.ElrondToEthBridge
 }
 
+// Execute will execute this step returning the next step to be executed
 func (step *performTransferStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	wasPerformed, err := step.bridge.WasTransferPerformedOnEthereum(ctx)
 	if err != nil {
@@ -20,10 +21,10 @@ func (step *performTransferStep) Execute(ctx context.Context) (core.StepIdentifi
 
 	if wasPerformed {
 		step.bridge.GetLogger().Info("transfer performed")
-		return elrondToEth.ProposingSetStatusOnElrond, nil
+		return elrondToEth.ResolvingSetStatusOnElrond, nil
 	}
 
-	if !step.bridge.MyTurnAsLeader() {
+	if step.bridge.MyTurnAsLeader() {
 		err = step.bridge.PerformTransferOnEthereum(ctx)
 		if err != nil {
 			step.bridge.GetLogger().Info("error performing action ID", "error", err)
@@ -36,10 +37,12 @@ func (step *performTransferStep) Execute(ctx context.Context) (core.StepIdentifi
 	return elrondToEth.WaitingTransferConfirmation, nil
 }
 
+// Identifier returns the step's identifier
 func (step *performTransferStep) Identifier() core.StepIdentifier {
 	return elrondToEth.PerformingTransfer
 }
 
+// IsInterfaceNil returns true if there is no value under the interface
 func (step *performTransferStep) IsInterfaceNil() bool {
 	return step == nil
 }

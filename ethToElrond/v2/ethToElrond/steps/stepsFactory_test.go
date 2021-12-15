@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,5 +26,5 @@ func TestCreateSteps_ShouldWork(t *testing.T) {
 
 	require.NotNil(t, steps)
 	require.Nil(t, err)
-	require.Equal(t, 5, len(steps))
+	require.Equal(t, ethToElrond.NumSteps, len(steps))
 }

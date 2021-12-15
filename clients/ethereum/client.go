@@ -337,7 +337,7 @@ func (c *client) ExecuteTransfer(
 }
 
 // GetMaxNumberOfRetriesOnQuorumReached returns the maximum number of retries allowed on quorum reached
-func(c* client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
+func (c *client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
 	return c.maxRetriesOnQuorumReached
 }
 
