@@ -1192,8 +1192,28 @@ func TestGetBatchStatusesFromEthereum(t *testing.T) {
 func TestResolveNewDepositsStatuses(t *testing.T) {
     t.Parallel()
 
+    providedBatchForResolve := &clients.TransferBatch{
+        Deposits: []*clients.DepositTransfer{
+            {
+                DisplayableTo: "to1",
+            },
+            {
+                DisplayableTo: "to2",
+            },
+        },
+        Statuses: make([]byte, 2),
+    }
     args := createMockElrondToEthExecutorArgs()
     executor, _ := CreateElrondToEthBridgeExecutor(args)
-    _ = executor.ResolveNewDepositsStatuses(context.Background(), 0)
-    // TODO: add tests with implementation
+    executor.batch = providedBatchForResolve
+
+    for i := 0; i < 3; i++ {
+        executor.ResolveNewDepositsStatuses(context.Background(), uint64(i))
+        assert.Equal(t, 2, len(executor.batch.Statuses))
+    }
+
+    executor.ResolveNewDepositsStatuses(context.Background(), uint64(3))
+    assert.Equal(t, 3, len(executor.batch.Statuses))
+    assert.Equal(t, clients.Rejected, executor.batch.Statuses[2])
+    assert.Equal(t, byte(0), executor.batch.Statuses[0]+executor.batch.Statuses[1])
 }

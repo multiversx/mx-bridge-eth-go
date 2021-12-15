@@ -36,7 +36,7 @@ type Bridge interface {
 	IsQuorumReachedOnElrond(ctx context.Context) (bool, error)
 	WasActionPerformedOnElrond(ctx context.Context) (bool, error)
 	PerformActionOnElrond(ctx context.Context) error
-	ResolveNewDepositsStatuses(ctx context.Context, numDeposits uint64) error
+	ResolveNewDepositsStatuses(ctx context.Context, numDeposits uint64)
 
 	ProcessMaxRetriesOnElrond() bool
 	ResetRetriesCountOnElrond()

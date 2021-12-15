@@ -312,10 +312,9 @@ func (executor *bridgeExecutor) PerformActionOnElrond(ctx context.Context) error
     return nil
 }
 
-// ResolveNewDepositsStatuses -
-func (executor *bridgeExecutor) ResolveNewDepositsStatuses(ctx context.Context, numDeposits uint64) error {
-    // TODO: implement it
-    return nil
+// ResolveNewDepositsStatuses resolves the new deposits statuses for batch
+func (executor *bridgeExecutor) ResolveNewDepositsStatuses(ctx context.Context, numDeposits uint64) {
+    executor.batch.ResolveNewDeposits(int(numDeposits))
 }
 
 // ProcessMaxRetriesOnElrond checks if the retries on Elrond were reached and increments the counter
