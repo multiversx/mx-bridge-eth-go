@@ -4,10 +4,9 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 )
-
-const invalidActionID = uint64(0)
 
 type signProposedTransferStep struct {
 	bridge ethToElrond.EthToElrondBridge
@@ -26,7 +25,7 @@ func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIde
 		step.bridge.GetLogger().Error("error fetching action ID", "batch ID", batch.ID, "error", err)
 		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
-	if actionID == invalidActionID {
+	if actionID == v2.InvalidActionID {
 		step.bridge.GetLogger().Error("contract error, got invalid action ID",
 			"batch ID", batch.ID, "error", err, "action ID", actionID)
 		return ethToElrond.GettingPendingBatchFromEthereum, nil

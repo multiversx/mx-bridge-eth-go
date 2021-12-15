@@ -11,12 +11,11 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2.(*EthToElrondBridgeStub)."
-
 // EthToElrondBridgeStub -
 type EthToElrondBridgeStub struct {
 	functionCalledCounter map[string]int
 	mutExecutor           sync.RWMutex
+	fullPath              string
 
 	GetLoggerCalled      func() logger.Logger
 	MyTurnAsLeaderCalled func() bool
@@ -42,6 +41,7 @@ type EthToElrondBridgeStub struct {
 func NewEthToElrondBridgeStub() *EthToElrondBridgeStub {
 	return &EthToElrondBridgeStub{
 		functionCalledCounter: make(map[string]int),
+		fullPath:              "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2.(*EthToElrondBridgeStub).",
 	}
 }
 
@@ -206,7 +206,7 @@ func (stub *EthToElrondBridgeStub) incrementFunctionCounter() {
 
 	pc, _, _, _ := runtime.Caller(1)
 	fmt.Printf("BridgeExecutorMock: called %s\n", runtime.FuncForPC(pc).Name())
-	stub.functionCalledCounter[strings.ReplaceAll(runtime.FuncForPC(pc).Name(), fullPath, "")]++
+	stub.functionCalledCounter[strings.ReplaceAll(runtime.FuncForPC(pc).Name(), stub.fullPath, "")]++
 }
 
 // GetFunctionCounter returns the called counter of a given function
