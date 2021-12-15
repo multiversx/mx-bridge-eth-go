@@ -2,6 +2,7 @@ package bridgeV2
 
 import (
     "context"
+    "math/big"
 
     "github.com/ElrondNetwork/elrond-eth-bridge/clients"
     "github.com/ethereum/go-ethereum/common"
@@ -15,6 +16,24 @@ type EthereumClientStub struct {
     BroadcastSignatureForMessageHashCalled     func(msgHash common.Hash)
     ExecuteTransferCalled                      func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
     GetMaxNumberOfRetriesOnQuorumReachedCalled func() uint64
+    GetQuorumSizeCalled                        func() (*big.Int, error)
+    IsQuorumReachedCalled                      func() (bool, error)
+}
+
+func (stub *EthereumClientStub) GetQuorumSize(ctx context.Context) (*big.Int, error) {
+    if stub.GetQuorumSizeCalled != nil {
+        return stub.GetQuorumSizeCalled()
+    }
+
+    return nil, errNotImplemented
+}
+
+func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error) {
+    if stub.IsQuorumReachedCalled != nil {
+        return stub.IsQuorumReachedCalled()
+    }
+
+    return false, errNotImplemented
 }
 
 // GetBatch -

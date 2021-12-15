@@ -306,7 +306,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		Broadcaster:               components.broadcaster,
 		PrivateKey:                privateKey,
 		TokensMapper:              tokensMapper,
-		SignatureHolder:           &disabledSignatureHolder{}, // TODO replace this with the real component
+		SignatureHolder:           v2.NewSignatureHolder(),
 		SafeContractAddress:       safeContractAddress,
 		GasHandler:                gs,
 		TransferGasLimit:          ethereumConfigs.GasLimit,
