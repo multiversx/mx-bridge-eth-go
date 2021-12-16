@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -26,6 +28,7 @@ func createMockExecutorArgs() ArgsBridgeExecutor {
 		ElrondClient:             &bridgeV2.ElrondClientStub{},
 		EthereumClient:           &bridgeV2.EthereumClientStub{},
 		TopologyProvider:         &bridgeV2.TopologyProviderStub{},
+		StatusHandler:            testsCommon.NewStatusHandlerMock("test"),
 		TimeForTransferExecution: time.Second,
 	}
 }
@@ -72,6 +75,16 @@ func TestNewBridgeExecutor(t *testing.T) {
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, v2.ErrNilTopologyProvider, err)
+	})
+	t.Run("nil status handler", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.StatusHandler = nil
+		executor, err := NewBridgeExecutor(args)
+
+		assert.True(t, check.IfNil(executor))
+		assert.Equal(t, v2.ErrNilStatusHandler, err)
 	})
 	t.Run("invalid time", func(t *testing.T) {
 		t.Parallel()
@@ -444,7 +457,7 @@ func TestEthToElrondBridgeExecutor_WasActionSignedOnElrond(t *testing.T) {
 	providedActionID := uint64(378276)
 	wasCalled := false
 	args.ElrondClient = &bridgeV2.ElrondClientStub{
-		WasExecutedCalled: func(ctx context.Context, actionID uint64) (bool, error) {
+		WasSignedCalled: func(ctx context.Context, actionID uint64) (bool, error) {
 			assert.Equal(t, providedActionID, actionID)
 			wasCalled = true
 			return true, nil
@@ -1204,4 +1217,25 @@ func TestResolveNewDepositsStatuses(t *testing.T) {
 		executor.ResolveNewDepositsStatuses(uint64(3))
 		assert.Equal(t, []byte{0, 0, clients.Rejected}, executor.batch.Statuses)
 	})
+}
+
+func TestEthToElrondBridgeExecutor_setExecutionMessageInStatusHandler(t *testing.T) {
+	t.Parallel()
+
+	expectedString := "DEBUG: message a = 1 b = ff c = str"
+
+	wasCalled := false
+	args := createMockExecutorArgs()
+	args.StatusHandler = &testsCommon.StatusHandlerStub{
+		SetStringMetricCalled: func(metric string, val string) {
+			wasCalled = true
+
+			assert.Equal(t, metric, core.MetricLastError)
+			assert.Equal(t, expectedString, val)
+		},
+	}
+	executor, _ := NewBridgeExecutor(args)
+	executor.setExecutionMessageInStatusHandler(logger.LogDebug, "message", "a", 1, "b", []byte{255}, "c", "str")
+
+	assert.True(t, wasCalled)
 }
