@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
@@ -564,4 +564,24 @@ func TestClient_GetMaxNumberOfRetriesOnQuorumReached(t *testing.T) {
 
 	result := c.GetMaxNumberOfRetriesOnQuorumReached()
 	assert.Equal(t, expectedMRQR, result)
+}
+
+func TestClient_GetTransactionsStatuses(t *testing.T) {
+	t.Parallel()
+
+	expectedStatuses := []byte{1, 2, 3}
+	expectedBatchID := big.NewInt(2232)
+	args := createMockEthereumClientArgs()
+	args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		GetStatusesAfterExecutionCalled: func(ctx context.Context, batchID *big.Int) ([]byte, error) {
+			assert.Equal(t, expectedBatchID, batchID)
+			return expectedStatuses, nil
+		},
+	}
+
+	c, _ := NewEthereumClient(args)
+
+	statuses, err := c.GetTransactionsStatuses(context.Background(), expectedBatchID.Uint64())
+	assert.Nil(t, err)
+	assert.Equal(t, expectedStatuses, statuses)
 }

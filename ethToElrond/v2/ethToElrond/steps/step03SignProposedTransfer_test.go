@@ -7,6 +7,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 	"github.com/stretchr/testify/assert"
 )
@@ -103,7 +104,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 			return true, nil
 		}
 		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
-			return invalidActionID, nil
+			return v2.InvalidActionID, nil
 		}
 
 		step := signProposedTransferStep{

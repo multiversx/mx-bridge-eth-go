@@ -52,9 +52,8 @@ func (tb *TransferBatch) ResolveNewDeposits(newNumDeposits int) {
 		return
 	}
 
-	if newNumDeposits < oldLen {
-		log.Error("num statuses unrecoverable", "len statuses", oldLen, "new num deposits", newNumDeposits)
-		return
+	for i := newNumDeposits; i < oldLen; i++ {
+		tb.Statuses[i] = Rejected
 	}
 
 	for newNumDeposits > len(tb.Statuses) {

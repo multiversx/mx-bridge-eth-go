@@ -337,7 +337,7 @@ func (c *client) ExecuteTransfer(
 }
 
 // GetMaxNumberOfRetriesOnQuorumReached returns the maximum number of retries allowed on quorum reached
-func(c* client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
+func (c *client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
 	return c.maxRetriesOnQuorumReached
 }
 
@@ -393,6 +393,11 @@ func (c *client) getNonce(ctx context.Context, fromAddress common.Address) (int6
 	nonce, err := c.clientWrapper.NonceAt(ctx, fromAddress, big.NewInt(int64(blockNonce)))
 
 	return int64(nonce), err
+}
+
+// GetTransactionsStatuses will return the transactions statuses from the batch
+func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error) {
+	return c.clientWrapper.GetStatusesAfterExecution(ctx, big.NewInt(0).SetUint64(batchId))
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

@@ -1,10 +1,12 @@
-package v2
+package ethToElrond
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
@@ -12,34 +14,39 @@ import (
 // ArgsEthToElrondBridgeExecutor is the arguments DTO struct used in the ethToElrondBridgeExecutor constructor
 type ArgsEthToElrondBridgeExecutor struct {
 	Log              logger.Logger
-	TopologyProvider TopologyProvider
-	ElrondClient     ElrondClient
-	EthereumClient   EthereumClient
+	TopologyProvider v2.TopologyProvider
+	ElrondClient     v2.ElrondClient
+	EthereumClient   v2.EthereumClient
+	StatusHandler    core.StatusHandler
 }
 
 type ethToElrondBridgeExecutor struct {
-	log               logger.Logger
-	topologyProvider  TopologyProvider
-	elrondClient      ElrondClient
-	ethereumClient    EthereumClient
-	batch             *clients.TransferBatch
-	actionID          uint64
-	retriesOnElrond   uint64
+	log              logger.Logger
+	topologyProvider v2.TopologyProvider
+	elrondClient     v2.ElrondClient
+	ethereumClient   v2.EthereumClient
+	batch            *clients.TransferBatch
+	actionID         uint64
+	retriesOnElrond  uint64
+	statusHandler    core.StatusHandler
 }
 
 // NewEthToElrondBridgeExecutor will create a bridge executor for the Ethereum -> Elrond flow
 func NewEthToElrondBridgeExecutor(args ArgsEthToElrondBridgeExecutor) (*ethToElrondBridgeExecutor, error) {
 	if check.IfNil(args.Log) {
-		return nil, errNilLogger
+		return nil, v2.ErrNilLogger
 	}
 	if check.IfNil(args.ElrondClient) {
-		return nil, errNilElrondClient
+		return nil, v2.ErrNilElrondClient
 	}
 	if check.IfNil(args.EthereumClient) {
-		return nil, errNilEthereumClient
+		return nil, v2.ErrNilEthereumClient
 	}
 	if check.IfNil(args.TopologyProvider) {
-		return nil, errNilTopologyProvider
+		return nil, v2.ErrNilTopologyProvider
+	}
+	if check.IfNil(args.StatusHandler) {
+		return nil, v2.ErrNilStatusHandler
 	}
 
 	return &ethToElrondBridgeExecutor{
@@ -47,6 +54,7 @@ func NewEthToElrondBridgeExecutor(args ArgsEthToElrondBridgeExecutor) (*ethToElr
 		topologyProvider: args.TopologyProvider,
 		elrondClient:     args.ElrondClient,
 		ethereumClient:   args.EthereumClient,
+		statusHandler:    args.StatusHandler,
 	}, nil
 }
 
@@ -63,7 +71,7 @@ func (executor *ethToElrondBridgeExecutor) MyTurnAsLeader() bool {
 // GetAndStoreActionIDFromElrond fetches the action ID by using the stored batch and will return and store the action ID
 func (executor *ethToElrondBridgeExecutor) GetAndStoreActionIDFromElrond(ctx context.Context) (uint64, error) {
 	if executor.batch == nil {
-		return 0, errNilBatch
+		return 0, v2.ErrNilBatch
 	}
 
 	actionID, err := executor.elrondClient.GetActionIDForProposeTransfer(ctx, executor.batch)
@@ -74,6 +82,16 @@ func (executor *ethToElrondBridgeExecutor) GetAndStoreActionIDFromElrond(ctx con
 	executor.actionID = actionID
 
 	return actionID, nil
+}
+
+// TODO(next PR) use & integrate this
+func (executor *ethToElrondBridgeExecutor) setExecutionMessageInStatusHandler(level logger.LogLevel, message string, extras ...interface{}) {
+	msg := fmt.Sprintf("%s: %s", level, message)
+	for i := 0; i < len(extras)-1; i += 2 {
+		msg += fmt.Sprintf(" %s = %s", convertObjectToString(extras[i]), convertObjectToString(extras[i+1]))
+	}
+
+	executor.statusHandler.SetStringMetric(core.MetricLastError, msg)
 }
 
 // GetStoredActionID will return the stored action ID
@@ -107,7 +125,7 @@ func (executor *ethToElrondBridgeExecutor) GetLastExecutedEthBatchIDFromElrond(c
 // VerifyLastDepositNonceExecutedOnEthereumBatch will check the deposit nonces from the fetched batch from Ethereum client
 func (executor *ethToElrondBridgeExecutor) VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error {
 	if executor.batch == nil {
-		return errNilBatch
+		return v2.ErrNilBatch
 	}
 
 	lastNonce, err := executor.elrondClient.GetLastExecutedEthTxID(ctx)
@@ -122,7 +140,7 @@ func (executor *ethToElrondBridgeExecutor) verifyDepositNonces(lastNonce uint64)
 	startNonce := lastNonce + 1
 	for _, dt := range executor.batch.Deposits {
 		if dt.Nonce != startNonce {
-			return fmt.Errorf("%w for deposit %s, expected: %d", errInvalidDepositNonce, dt.String(), startNonce)
+			return fmt.Errorf("%w for deposit %s, expected: %d", v2.ErrInvalidDepositNonce, dt.String(), startNonce)
 		}
 
 		startNonce++
@@ -134,7 +152,7 @@ func (executor *ethToElrondBridgeExecutor) verifyDepositNonces(lastNonce uint64)
 // WasTransferProposedOnElrond checks if the transfer was proposed on Elrond
 func (executor *ethToElrondBridgeExecutor) WasTransferProposedOnElrond(ctx context.Context) (bool, error) {
 	if executor.batch == nil {
-		return false, errNilBatch
+		return false, v2.ErrNilBatch
 	}
 
 	return executor.elrondClient.WasProposedTransfer(ctx, executor.batch)
@@ -143,7 +161,7 @@ func (executor *ethToElrondBridgeExecutor) WasTransferProposedOnElrond(ctx conte
 // ProposeTransferOnElrond will propose the transfer on Elrond
 func (executor *ethToElrondBridgeExecutor) ProposeTransferOnElrond(ctx context.Context) error {
 	if executor.batch == nil {
-		return errNilBatch
+		return v2.ErrNilBatch
 	}
 
 	hash, err := executor.elrondClient.ProposeTransfer(ctx, executor.batch)
@@ -187,7 +205,7 @@ func (executor *ethToElrondBridgeExecutor) WasActionIDPerformedOnElrond(ctx cont
 // PerformActionIDOnElrond will send the perform-action transaction on the Elrond chain
 func (executor *ethToElrondBridgeExecutor) PerformActionIDOnElrond(ctx context.Context) error {
 	if executor.batch == nil {
-		return errNilBatch
+		return v2.ErrNilBatch
 	}
 
 	hash, err := executor.elrondClient.PerformAction(ctx, executor.actionID, executor.batch)

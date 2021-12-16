@@ -4,7 +4,7 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -24,6 +24,7 @@ type ClientWrapper interface {
 		recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int,
 		signatures [][]byte) (*types.Transaction, error)
 	Quorum(ctx context.Context) (*big.Int, error)
+	GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, error)
 }
 
 // Erc20ContractsHolder defines the Ethereum ERC20 contract operations
@@ -56,7 +57,7 @@ type SignaturesHolder interface {
 	IsInterfaceNil() bool
 }
 
-// GenericErc20Contract defines the Ethereum ERC20 contract operations
-type GenericErc20Contract interface {
-	BalanceOf(opts *bind.CallOpts, account common.Address) (*big.Int, error)
+type erc20ContractWrapper interface {
+	BalanceOf(ctx context.Context, account common.Address) (*big.Int, error)
+	IsInterfaceNil() bool
 }
