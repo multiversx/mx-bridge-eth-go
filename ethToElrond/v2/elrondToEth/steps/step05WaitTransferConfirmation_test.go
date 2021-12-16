@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExecute_WaitTrransferConfirmation(t *testing.T) {
+func TestExecute_WaitTransferConfirmation(t *testing.T) {
 	t.Parallel()
 	t.Run("should call WaitForTransferConfirmation and go to PerformingTransfer", func(t *testing.T) {
 		bridgeStub := bridgeV2.NewElrondToEthBridgeStub()

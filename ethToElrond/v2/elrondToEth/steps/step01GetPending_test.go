@@ -131,7 +131,7 @@ func TestExecute_GetPending(t *testing.T) {
 	})
 }
 
-func createStubExecutorGetpending() *bridgeV2.ElrondToEthBridgeStub {
+func createStubExecutorGetPending() *bridgeV2.ElrondToEthBridgeStub {
 	stub := bridgeV2.NewElrondToEthBridgeStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger

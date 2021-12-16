@@ -66,7 +66,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 	})
 }
 
-func createStubeEecutorSignproposedtransfer() *bridgeV2.ElrondToEthBridgeStub {
+func createStubExecutorSignProposedTransfer() *bridgeV2.ElrondToEthBridgeStub {
 	stub := bridgeV2.NewElrondToEthBridgeStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
