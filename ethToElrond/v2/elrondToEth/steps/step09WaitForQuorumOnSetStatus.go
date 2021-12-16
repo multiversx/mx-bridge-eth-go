@@ -4,15 +4,16 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
 )
 
-type waitForQuorumOnSetStatus struct {
-	bridge elrondToEth.ElrondToEthBridge
+type waitForQuorumOnSetStatusStep struct {
+	bridge bridge.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *waitForQuorumOnSetStatus) Execute(ctx context.Context) (core.StepIdentifier, error) {
+func (step *waitForQuorumOnSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
 	if step.bridge.ProcessMaxRetriesOnElrond() {
 		step.bridge.GetLogger().Debug("max number of retries reached, resetting counter")
 		return elrondToEth.GettingPendingBatchFromElrond, nil
@@ -34,11 +35,11 @@ func (step *waitForQuorumOnSetStatus) Execute(ctx context.Context) (core.StepIde
 }
 
 // Identifier returns the step's identifier
-func (step *waitForQuorumOnSetStatus) Identifier() core.StepIdentifier {
+func (step *waitForQuorumOnSetStatusStep) Identifier() core.StepIdentifier {
 	return elrondToEth.WaitingForQuorumOnSetStatus
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
-func (step *waitForQuorumOnSetStatus) IsInterfaceNil() bool {
+func (step *waitForQuorumOnSetStatusStep) IsInterfaceNil() bool {
 	return step == nil
 }

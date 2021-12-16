@@ -4,17 +4,17 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 )
 
 type proposeSetStatusStep struct {
-	bridge elrondToEth.ElrondToEthBridge
+	bridge bridge.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
 func (step *proposeSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	batch := step.bridge.GetStoredBatchFromElrond()
+	batch := step.bridge.GetStoredBatch()
 	if batch == nil {
 		step.bridge.GetLogger().Debug("nil batch stored")
 		return elrondToEth.GettingPendingBatchFromElrond, nil
@@ -42,7 +42,7 @@ func (step *proposeSetStatusStep) Execute(ctx context.Context) (core.StepIdentif
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
-	return ethToElrond.SigningProposedTransferOnElrond, nil
+	return elrondToEth.SigningProposedSetStatusOnElrond, nil
 }
 
 // Identifier returns the step's identifier

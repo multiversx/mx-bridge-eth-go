@@ -5,12 +5,12 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 )
 
 // CreateSteps creates all machine states providing the bridge executor
-func CreateSteps(executor elrondToEth.ElrondToEthBridge) (core.MachineStates, error) {
+func CreateSteps(executor bridge.Executor) (core.MachineStates, error) {
 	if check.IfNil(executor) {
 		return nil, v2.ErrNilExecutor
 	}
@@ -18,7 +18,7 @@ func CreateSteps(executor elrondToEth.ElrondToEthBridge) (core.MachineStates, er
 	return createMachineStates(executor)
 }
 
-func createMachineStates(executor elrondToEth.ElrondToEthBridge) (core.MachineStates, error) {
+func createMachineStates(executor bridge.Executor) (core.MachineStates, error) {
 	machineStates := make(core.MachineStates)
 
 	steps := []core.Step{
@@ -46,7 +46,7 @@ func createMachineStates(executor elrondToEth.ElrondToEthBridge) (core.MachineSt
 		&signProposedSetStatusStep{
 			bridge: executor,
 		},
-		&waitForQuorumOnSetStatus{
+		&waitForQuorumOnSetStatusStep{
 			bridge: executor,
 		},
 		&performSetStatusStep{

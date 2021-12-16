@@ -5,11 +5,12 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 )
 
 type signProposedTransferStep struct {
-	bridge ethToElrond.EthToElrondBridge
+	bridge bridge.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
@@ -20,7 +21,7 @@ func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIde
 		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
-	actionID, err := step.bridge.GetAndStoreActionIDFromElrond(ctx)
+	actionID, err := step.bridge.GetAndStoreActionIDForProposeTransferOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error fetching action ID", "batch ID", batch.ID, "error", err)
 		return ethToElrond.GettingPendingBatchFromEthereum, nil
@@ -33,7 +34,7 @@ func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIde
 
 	step.bridge.GetLogger().Info("fetched action ID", "action ID", actionID, "batch ID", batch.ID)
 
-	wasSigned, err := step.bridge.WasProposedTransferSignedOnElrond(ctx)
+	wasSigned, err := step.bridge.WasActionSignedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if the proposed transfer was signed or not",
 			"batch ID", batch.ID, "error", err)
@@ -44,7 +45,7 @@ func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIde
 		return ethToElrond.WaitingForQuorum, nil
 	}
 
-	err = step.bridge.SignProposedTransferOnElrond(ctx)
+	err = step.bridge.SignActionOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error signing the proposed transfer",
 			"batch ID", batch.ID, "error", err)

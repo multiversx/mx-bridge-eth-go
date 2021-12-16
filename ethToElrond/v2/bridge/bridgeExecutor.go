@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -19,6 +20,7 @@ type ArgsBridgeExecutor struct {
 	EthereumClient           v2.EthereumClient
 	TopologyProvider         v2.TopologyProvider
 	TimeForTransferExecution time.Duration
+	StatusHandler            core.StatusHandler
 }
 
 type bridgeExecutor struct {
@@ -32,6 +34,7 @@ type bridgeExecutor struct {
 	retriesOnElrond          uint64
 	retriesOnEthereum        uint64
 	timeForTransferExecution time.Duration
+	statusHandler            core.StatusHandler
 }
 
 // NewBridgeExecutor creates a bridge executor, which can be used for both half-bridges
@@ -58,6 +61,9 @@ func checkArgs(args ArgsBridgeExecutor) error {
 	if check.IfNil(args.TopologyProvider) {
 		return v2.ErrNilTopologyProvider
 	}
+	if check.IfNil(args.StatusHandler) {
+		return v2.ErrNilStatusHandler
+	}
 	if args.TimeForTransferExecution < durationLimit {
 		return v2.ErrInvalidDuration
 	}
@@ -70,6 +76,7 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 		elrondClient:             args.ElrondClient,
 		ethereumClient:           args.EthereumClient,
 		topologyProvider:         args.TopologyProvider,
+		statusHandler:            args.StatusHandler,
 		timeForTransferExecution: args.TimeForTransferExecution,
 	}
 }
@@ -77,6 +84,16 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 // GetLogger returns the logger implementation
 func (executor *bridgeExecutor) GetLogger() logger.Logger {
 	return executor.log
+}
+
+// TODO(next PR) use & integrate this
+func (executor *bridgeExecutor) setExecutionMessageInStatusHandler(level logger.LogLevel, message string, extras ...interface{}) {
+	msg := fmt.Sprintf("%s: %s", level, message)
+	for i := 0; i < len(extras)-1; i += 2 {
+		msg += fmt.Sprintf(" %s = %s", convertObjectToString(extras[i]), convertObjectToString(extras[i+1]))
+	}
+
+	executor.statusHandler.SetStringMetric(core.MetricLastError, msg)
 }
 
 // MyTurnAsLeader returns true if the current relayer node is the leader
@@ -227,7 +244,7 @@ func (executor *bridgeExecutor) ProposeSetStatusOnElrond(ctx context.Context) er
 
 // WasActionSignedOnElrond returns true if the current relayer already signed the action
 func (executor *bridgeExecutor) WasActionSignedOnElrond(ctx context.Context) (bool, error) {
-	return executor.elrondClient.WasExecuted(ctx, executor.actionID)
+	return executor.elrondClient.WasSigned(ctx, executor.actionID)
 }
 
 // SignActionOnElrond calls the Elrond client to generate and send the signature
@@ -242,8 +259,8 @@ func (executor *bridgeExecutor) SignActionOnElrond(ctx context.Context) error {
 	return nil
 }
 
-// IsQuorumReachedOnElrond returns true if the proposed transfer reached the set quorum
-func (executor *bridgeExecutor) IsQuorumReachedOnElrond(ctx context.Context) (bool, error) {
+// ProcessQuorumReachedOnElrond returns true if the proposed transfer reached the set quorum
+func (executor *bridgeExecutor) ProcessQuorumReachedOnElrond(ctx context.Context) (bool, error) {
 	return executor.elrondClient.QuorumReached(ctx, executor.actionID)
 }
 
@@ -379,8 +396,8 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 	return nil
 }
 
-// IsQuorumReachedOnEthereum returns true if the proposed transfer reached the set quorum
-func (executor *bridgeExecutor) IsQuorumReachedOnEthereum(ctx context.Context) (bool, error) {
+// ProcessQuorumReachedOnEthereum returns true if the proposed transfer reached the set quorum
+func (executor *bridgeExecutor) ProcessQuorumReachedOnEthereum(ctx context.Context) (bool, error) {
 	return executor.ethereumClient.IsQuorumReached(ctx, executor.msgHash)
 }
 

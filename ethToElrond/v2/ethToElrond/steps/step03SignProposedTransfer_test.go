@@ -16,6 +16,7 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return nil
@@ -32,11 +33,12 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	})
 
 	t.Run("error on WasProposedTransferSigned", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
 		}
 
@@ -51,14 +53,15 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	})
 
 	t.Run("error on SignProposedTransfer", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
 		}
-		bridgeStub.SignProposedTransferOnElrondCalled = func(ctx context.Context) error {
+		bridgeStub.SignActionOnElrondCalled = func(ctx context.Context) error {
 			return expectedError
 		}
 
@@ -73,15 +76,16 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	})
 
 	t.Run("get action ID errors", func(t *testing.T) {
+		t.Parallel()
 		expectedErr := errors.New("expected error")
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
 		}
-		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+		bridgeStub.GetAndStoreActionIDForProposeTransferOnElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 0, expectedErr
 		}
 
@@ -96,14 +100,15 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	})
 
 	t.Run("invalid action ID", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
 		}
-		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+		bridgeStub.GetAndStoreActionIDForProposeTransferOnElrondCalled = func(ctx context.Context) (uint64, error) {
 			return v2.InvalidActionID, nil
 		}
 
@@ -118,14 +123,15 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	})
 
 	t.Run("should work - transfer was already signed", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
 		}
-		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+		bridgeStub.GetAndStoreActionIDForProposeTransferOnElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 2, nil
 		}
 
@@ -140,17 +146,18 @@ func TestExecutesignProposedTransferStep(t *testing.T) {
 	})
 
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
 		}
-		bridgeStub.SignProposedTransferOnElrondCalled = func(ctx context.Context) error {
+		bridgeStub.SignActionOnElrondCalled = func(ctx context.Context) error {
 			return nil
 		}
-		bridgeStub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+		bridgeStub.GetAndStoreActionIDForProposeTransferOnElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 2, nil
 		}
 

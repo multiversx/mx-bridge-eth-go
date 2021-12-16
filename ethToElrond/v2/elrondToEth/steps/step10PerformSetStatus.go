@@ -4,25 +4,26 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
 )
 
 type performSetStatusStep struct {
-	bridge elrondToEth.ElrondToEthBridge
+	bridge bridge.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
 func (step *performSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	wasPerformed, err := step.bridge.WasSetStatusPerformedOnElrond(ctx)
+	wasPerformed, err := step.bridge.WasActionPerformedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if the set status was proposed or not",
-			"action ID", step.bridge.GetStoredActionIDForSetStatus(), "error", err)
+			"action ID", step.bridge.GetStoredActionID(), "error", err)
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
 	if wasPerformed {
 		step.bridge.GetLogger().Info("action ID performed",
-			"action ID", step.bridge.GetStoredActionIDForSetStatus())
+			"action ID", step.bridge.GetStoredActionID())
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
@@ -32,10 +33,10 @@ func (step *performSetStatusStep) Execute(ctx context.Context) (core.StepIdentif
 		return step.Identifier(), nil
 	}
 
-	err = step.bridge.PerformSetStatusOnElrond(ctx)
+	err = step.bridge.PerformActionOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Info("error performing action ID",
-			"action ID", step.bridge.GetStoredActionIDForSetStatus(), "error", err)
+			"action ID", step.bridge.GetStoredActionID(), "error", err)
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 

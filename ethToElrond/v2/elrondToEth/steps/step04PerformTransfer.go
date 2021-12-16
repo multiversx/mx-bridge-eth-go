@@ -4,11 +4,12 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
 )
 
 type performTransferStep struct {
-	bridge elrondToEth.ElrondToEthBridge
+	bridge bridge.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
