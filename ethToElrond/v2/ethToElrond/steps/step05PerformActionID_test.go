@@ -15,7 +15,7 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 	t.Run("error on WasActionIDPerformed", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.WasActionIDPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
 		}
 
@@ -32,7 +32,7 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 	t.Run("should work - actionID already performed", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.WasActionIDPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
 		}
 
@@ -49,7 +49,7 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 	t.Run("should work - not leader", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.WasActionIDPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
 		}
 		bridgeStub.MyTurnAsLeaderCalled = func() bool {
@@ -69,13 +69,13 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 	t.Run("error on PerformActionID", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.WasActionIDPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
 		}
 		bridgeStub.MyTurnAsLeaderCalled = func() bool {
 			return true
 		}
-		bridgeStub.PerformActionIDOnElrondCalled = func(ctx context.Context) error {
+		bridgeStub.PerformActionOnElrondCalled = func(ctx context.Context) error {
 			return expectedError
 		}
 
@@ -92,13 +92,13 @@ func TestExecutePerformActionIDStep(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.WasActionIDPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
 		}
 		bridgeStub.MyTurnAsLeaderCalled = func() bool {
 			return true
 		}
-		bridgeStub.PerformActionIDOnElrondCalled = func(ctx context.Context) error {
+		bridgeStub.PerformActionOnElrondCalled = func(ctx context.Context) error {
 			return nil
 		}
 

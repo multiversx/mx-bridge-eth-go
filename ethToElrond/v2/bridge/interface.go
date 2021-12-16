@@ -7,8 +7,8 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-// Bridge defines a generic bridge interface able to handle both halves of the bridge
-type Bridge interface {
+// Executor defines a generic bridge interface able to handle both halves of the bridge
+type Executor interface {
 	GetLogger() logger.Logger
 	MyTurnAsLeader() bool
 

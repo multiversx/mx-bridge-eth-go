@@ -8,6 +8,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/stateMachine"
@@ -17,19 +18,19 @@ import (
 )
 
 const (
-	getAndStoreActionID                           = "GetAndStoreActionIDFromElrond"
 	getAndStoreBatchFromEthereum                  = "GetAndStoreBatchFromEthereum"
 	getLastExecutedEthBatchIDFromElrond           = "GetLastExecutedEthBatchIDFromElrond"
 	verifyLastDepositNonceExecutedOnEthereumBatch = "VerifyLastDepositNonceExecutedOnEthereumBatch"
 	wasTransferProposedOnElrond                   = "WasTransferProposedOnElrond"
-	wasProposedTransferSigned                     = "WasProposedTransferSignedOnElrond"
-	signProposedTransfer                          = "SignProposedTransferOnElrond"
+	wasActionSignedOnElrond                       = "WasActionSignedOnElrond"
+	signActionOnElrond                            = "SignActionOnElrond"
+	getAndStoreActionIDForProposeTransferOnElrond = "GetAndStoreActionIDForProposeTransferOnElrond"
 	processMaxRetriesOnElrond                     = "ProcessMaxRetriesOnElrond"
 	resetRetriesCountOnElrond                     = "ResetRetriesCountOnElrond"
-	isQuorumReached                               = "IsQuorumReachedOnElrond"
-	wasActionIDPerformed                          = "WasActionIDPerformedOnElrond"
+	isQuorumReachedOnElrond                       = "IsQuorumReachedOnElrond"
+	wasActionPerformedOnElrond                    = "WasActionPerformedOnElrond"
 	proposeTransferOnElrond                       = "ProposeTransferOnElrond"
-	performActionID                               = "PerformActionIDOnElrond"
+	performActionOnElrond                         = "PerformActionOnElrond"
 )
 
 var trueHandler = func() bool { return true }
@@ -54,9 +55,9 @@ type argsBridgeStub struct {
 	maxRetriesReachedHandler         func() bool
 }
 
-func createMockBridge(args argsBridgeStub) (*bridgeV2.EthToElrondBridgeStub, *errorHandler) {
+func createMockBridge(args argsBridgeStub) (*bridgeV2.BridgeExecutorStub, *errorHandler) {
 	errHandler := &errorHandler{}
-	stub := bridgeV2.NewEthToElrondBridgeStub()
+	stub := bridgeV2.NewBridgeExecutorStub()
 	expectedErr := errors.New("expected error")
 	stub.GetLoggerCalled = func() logger.Logger {
 		return logger.GetOrCreate("test")
@@ -64,8 +65,8 @@ func createMockBridge(args argsBridgeStub) (*bridgeV2.EthToElrondBridgeStub, *er
 	stub.MyTurnAsLeaderCalled = func() bool {
 		return args.myTurnHandler()
 	}
-	stub.GetAndStoreActionIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
-		if args.failingStep == getAndStoreActionID {
+	stub.GetAndStoreActionIDForProposeTransferOnElrondCalled = func(ctx context.Context) (uint64, error) {
+		if args.failingStep == getAndStoreActionIDForProposeTransferOnElrond {
 			return 0, errHandler.storeAndReturnError(expectedErr)
 		}
 
@@ -112,36 +113,36 @@ func createMockBridge(args argsBridgeStub) (*bridgeV2.EthToElrondBridgeStub, *er
 
 		return errHandler.storeAndReturnError(nil)
 	}
-	stub.WasProposedTransferSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
-		if args.failingStep == wasProposedTransferSigned {
+	stub.WasTransferProposedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		if args.failingStep == wasActionSignedOnElrond {
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
 
 		return args.wasProposedTransferSignedHandler(), errHandler.storeAndReturnError(nil)
 	}
-	stub.SignProposedTransferOnElrondCalled = func(ctx context.Context) error {
-		if args.failingStep == signProposedTransfer {
+	stub.SignActionOnElrondCalled = func(ctx context.Context) error {
+		if args.failingStep == signActionOnElrond {
 			return errHandler.storeAndReturnError(expectedErr)
 		}
 
 		return errHandler.storeAndReturnError(nil)
 	}
 	stub.IsQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {
-		if args.failingStep == isQuorumReached {
+		if args.failingStep == isQuorumReachedOnElrond {
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
 
 		return args.isQuorumReachedHandler(), errHandler.storeAndReturnError(nil)
 	}
-	stub.WasActionIDPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
-		if args.failingStep == wasActionIDPerformed {
+	stub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		if args.failingStep == wasActionPerformedOnElrond {
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
 
 		return args.wasActionIDPerformedHandler(), errHandler.storeAndReturnError(nil)
 	}
-	stub.PerformActionIDOnElrondCalled = func(ctx context.Context) error {
-		if args.failingStep == performActionID {
+	stub.PerformActionOnElrondCalled = func(ctx context.Context) error {
+		if args.failingStep == performActionOnElrond {
 			return errHandler.storeAndReturnError(expectedErr)
 		}
 
@@ -154,7 +155,7 @@ func createMockBridge(args argsBridgeStub) (*bridgeV2.EthToElrondBridgeStub, *er
 	return stub, errHandler
 }
 
-func createStateMachine(t *testing.T, executor ethToElrond.EthToElrondBridge, initialStep core.StepIdentifier) *stateMachine.StateMachineMock {
+func createStateMachine(t *testing.T, executor bridge.Executor, initialStep core.StepIdentifier) *stateMachine.StateMachineMock {
 	steps, err := CreateSteps(executor)
 	require.Nil(t, err)
 
@@ -192,15 +193,15 @@ func TestHappyCaseWhenLeader(t *testing.T) {
 	assert.Equal(t, 4, executor.GetFunctionCounter(wasTransferProposedOnElrond))
 	assert.Equal(t, 4, executor.GetFunctionCounter(proposeTransferOnElrond))
 
-	assert.Equal(t, 4, executor.GetFunctionCounter(getAndStoreActionID))
-	assert.Equal(t, 4, executor.GetFunctionCounter(wasProposedTransferSigned))
-	assert.Equal(t, 4, executor.GetFunctionCounter(signProposedTransfer))
+	assert.Equal(t, 4, executor.GetFunctionCounter(getAndStoreActionIDForProposeTransferOnElrond))
+	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionSignedOnElrond))
+	assert.Equal(t, 4, executor.GetFunctionCounter(signActionOnElrond))
 
 	assert.Equal(t, 4, executor.GetFunctionCounter(processMaxRetriesOnElrond))
-	assert.Equal(t, 4, executor.GetFunctionCounter(isQuorumReached))
+	assert.Equal(t, 4, executor.GetFunctionCounter(isQuorumReachedOnElrond))
 
-	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionIDPerformed))
-	assert.Equal(t, 0, executor.GetFunctionCounter(performActionID))
+	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionPerformedOnElrond))
+	assert.Equal(t, 0, executor.GetFunctionCounter(performActionOnElrond))
 
 	assert.Nil(t, eh.lastError)
 }
@@ -236,32 +237,32 @@ func TestHappyCaseWhenLeaderAndActionIdNotPerformed(t *testing.T) {
 	assert.Equal(t, 4, executor.GetFunctionCounter(wasTransferProposedOnElrond))
 	assert.Equal(t, 4, executor.GetFunctionCounter(proposeTransferOnElrond))
 
-	assert.Equal(t, 4, executor.GetFunctionCounter(getAndStoreActionID))
-	assert.Equal(t, 4, executor.GetFunctionCounter(wasProposedTransferSigned))
-	assert.Equal(t, 4, executor.GetFunctionCounter(signProposedTransfer))
+	assert.Equal(t, 4, executor.GetFunctionCounter(getAndStoreActionIDForProposeTransferOnElrond))
+	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionSignedOnElrond))
+	assert.Equal(t, 4, executor.GetFunctionCounter(signActionOnElrond))
 
 	assert.Equal(t, 4, executor.GetFunctionCounter(processMaxRetriesOnElrond))
-	assert.Equal(t, 4, executor.GetFunctionCounter(isQuorumReached))
+	assert.Equal(t, 4, executor.GetFunctionCounter(isQuorumReachedOnElrond))
 
-	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionIDPerformed))
-	assert.Equal(t, 1, executor.GetFunctionCounter(performActionID))
+	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionPerformedOnElrond))
+	assert.Equal(t, 1, executor.GetFunctionCounter(performActionOnElrond))
 
 	assert.Nil(t, eh.lastError)
 }
 
 func TestOneStepErrors_ShouldReturnToPendingBatch(t *testing.T) {
 	stepsThatCanError := []core.StepIdentifier{
-		getAndStoreActionID,
+		getAndStoreActionIDForProposeTransferOnElrond,
 		getAndStoreBatchFromEthereum,
 		getLastExecutedEthBatchIDFromElrond,
 		verifyLastDepositNonceExecutedOnEthereumBatch,
 		wasTransferProposedOnElrond,
 		proposeTransferOnElrond,
-		wasProposedTransferSigned,
-		signProposedTransfer,
-		isQuorumReached,
-		wasActionIDPerformed,
-		performActionID,
+		wasTransferProposedOnElrond,
+		signActionOnElrond,
+		isQuorumReachedOnElrond,
+		wasActionPerformedOnElrond,
+		performActionOnElrond,
 	}
 
 	for _, stepThatError := range stepsThatCanError {
