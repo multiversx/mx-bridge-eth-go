@@ -2,6 +2,7 @@ package v2
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ethereum/go-ethereum/common"
@@ -41,6 +42,9 @@ type EthereumClient interface {
 	BroadcastSignatureForMessageHash(msgHash common.Hash)
 	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
 	GetMaxNumberOfRetriesOnQuorumReached() uint64
+	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
+	GetQuorumSize(ctx context.Context) (*big.Int, error)
+	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
 	IsInterfaceNil() bool
 }
 
