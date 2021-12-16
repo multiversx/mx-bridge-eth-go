@@ -21,33 +21,6 @@ type EthereumClientStub struct {
 	IsQuorumReachedCalled                      func(ctx context.Context, msgHash common.Hash) (bool, error)
 }
 
-// GetTransactionsStatuses -
-func (stub *EthereumClientStub) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error) {
-	if stub.GetTransactionsStatusesCalled != nil {
-		return stub.GetTransactionsStatusesCalled(ctx, batchId)
-	}
-
-	return nil, errNotImplemented
-}
-
-// GetQuorumSize -
-func (stub *EthereumClientStub) GetQuorumSize(ctx context.Context) (*big.Int, error) {
-	if stub.GetQuorumSizeCalled != nil {
-		return stub.GetQuorumSizeCalled(ctx)
-	}
-
-	return nil, errNotImplemented
-}
-
-// IsQuorumReached -
-func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error) {
-	if stub.IsQuorumReachedCalled != nil {
-		return stub.IsQuorumReachedCalled(ctx, msgHash)
-	}
-
-	return false, errNotImplemented
-}
-
 // GetBatch -
 func (stub *EthereumClientStub) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
 	if stub.GetBatchCalled != nil {
@@ -98,6 +71,33 @@ func (stub *EthereumClientStub) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
 	}
 
 	return 0
+}
+
+// GetTransactionsStatuses -
+func (stub *EthereumClientStub) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error) {
+	if stub.GetTransactionsStatusesCalled != nil {
+		return stub.GetTransactionsStatusesCalled(ctx, batchId)
+	}
+
+	return nil, errNotImplemented
+}
+
+// GetQuorumSize -
+func (stub *EthereumClientStub) GetQuorumSize(ctx context.Context) (*big.Int, error) {
+	if stub.GetQuorumSizeCalled != nil {
+		return stub.GetQuorumSizeCalled(ctx)
+	}
+
+	return nil, errNotImplemented
+}
+
+// IsQuorumReached -
+func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error) {
+	if stub.IsQuorumReachedCalled != nil {
+		return stub.IsQuorumReachedCalled(ctx, msgHash)
+	}
+
+	return false, errNotImplemented
 }
 
 // IsInterfaceNil -

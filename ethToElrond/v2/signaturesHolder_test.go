@@ -31,6 +31,8 @@ func TestSignatureHolder_ProcessNewMessage(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil messages", func(t *testing.T) {
+		t.Parallel()
+
 		msg := generateSignedMessage(0)
 		ethMsg := generateEthMessage(0)
 
@@ -44,6 +46,8 @@ func TestSignatureHolder_ProcessNewMessage(t *testing.T) {
 		assert.Equal(t, 0, len(sh.ethMessages))
 	})
 	t.Run("first message should add", func(t *testing.T) {
+		t.Parallel()
+
 		msg := generateSignedMessage(0)
 		ethMsg := generateEthMessage(0)
 
@@ -53,6 +57,8 @@ func TestSignatureHolder_ProcessNewMessage(t *testing.T) {
 		assert.Equal(t, []*core.EthereumSignature{ethMsg}, sh.ethMessages)
 	})
 	t.Run("two messages should add", func(t *testing.T) {
+		t.Parallel()
+
 		msg := generateSignedMessage(0)
 		ethMsg := generateEthMessage(0)
 
@@ -71,6 +77,8 @@ func TestSignatureHolder_Signatures(t *testing.T) {
 	t.Parallel()
 
 	t.Run("unique signatures should work", func(t *testing.T) {
+		t.Parallel()
+
 		msg := generateSignedMessage(0)
 		ethMsg := generateEthMessage(0)
 
@@ -88,6 +96,8 @@ func TestSignatureHolder_Signatures(t *testing.T) {
 		assert.Equal(t, 0, len(sh.Signatures([]byte("eth msg"))))
 	})
 	t.Run("same signatures should return the unique ones", func(t *testing.T) {
+		t.Parallel()
+
 		msg := generateSignedMessage(0)
 		ethMsg := generateEthMessage(0)
 
@@ -106,6 +116,8 @@ func TestSignatureHolder_Signatures(t *testing.T) {
 		compareBytesSlicesLists(t, [][]byte{ethMsg.Signature, ethMsg1.Signature}, sh.Signatures(ethMsg.MessageHash))
 	})
 	t.Run("same signatures should return filter by message", func(t *testing.T) {
+		t.Parallel()
+
 		msg := generateSignedMessage(0)
 		ethMsg := generateEthMessage(0)
 		ethMsg.MessageHash = []byte("eth msg 1")

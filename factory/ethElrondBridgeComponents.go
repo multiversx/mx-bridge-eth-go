@@ -301,6 +301,12 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		return err
 	}
 
+	signatureHolder := v2.NewSignatureHolder()
+	err = components.broadcaster.AddBroadcastClient(signatureHolder)
+	if err != nil {
+		return err
+	}
+
 	safeContractAddress := common.HexToAddress(ethereumConfigs.SafeContractAddress)
 	argsEthClient := ethereum.ArgsEthereumClient{
 		ClientWrapper:             args.ClientWrapper,
@@ -310,7 +316,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		Broadcaster:               components.broadcaster,
 		PrivateKey:                privateKey,
 		TokensMapper:              tokensMapper,
-		SignatureHolder:           v2.NewSignatureHolder(),
+		SignatureHolder:           signatureHolder,
 		SafeContractAddress:       safeContractAddress,
 		GasHandler:                gs,
 		TransferGasLimit:          ethereumConfigs.GasLimit,
