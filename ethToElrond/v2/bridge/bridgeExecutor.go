@@ -58,7 +58,7 @@ func checkArgs(args ArgsBridgeExecutor) error {
 	if check.IfNil(args.TopologyProvider) {
 		return v2.ErrNilTopologyProvider
 	}
-	if args.TimeForTransferExecution.Seconds() == 0 {
+	if args.TimeForTransferExecution < durationLimit {
 		return v2.ErrInvalidDuration
 	}
 	return nil
