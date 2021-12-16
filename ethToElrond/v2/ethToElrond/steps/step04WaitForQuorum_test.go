@@ -13,6 +13,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 	t.Parallel()
 
 	t.Run("error on IsQuorumReached", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.IsQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
@@ -29,6 +30,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 	})
 
 	t.Run("should work - quorum not reached", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.IsQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
@@ -45,6 +47,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 	})
 
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.IsQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
@@ -66,6 +69,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 	})
 
 	t.Run("max retries reached", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.ProcessMaxRetriesOnElrondCalled = func() bool {
 			return true

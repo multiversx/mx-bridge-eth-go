@@ -25,6 +25,7 @@ func TestExecuteGetPending(t *testing.T) {
 	t.Parallel()
 
 	t.Run("error on GetLastExecutedEthBatchIDFromElrond", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetLastExecutedEthBatchIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 1122, expectedError
@@ -41,6 +42,7 @@ func TestExecuteGetPending(t *testing.T) {
 	})
 
 	t.Run("error on GetAndStoreBatchFromEthereum", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetLastExecutedEthBatchIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 1122, nil
@@ -82,6 +84,7 @@ func TestExecuteGetPending(t *testing.T) {
 	})
 
 	t.Run("error on VerifyLastDepositNonceExecutedOnEthereumBatch", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetLastExecutedEthBatchIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 1122, nil
@@ -107,6 +110,7 @@ func TestExecuteGetPending(t *testing.T) {
 	})
 
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetLastExecutedEthBatchIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return 1122, nil
