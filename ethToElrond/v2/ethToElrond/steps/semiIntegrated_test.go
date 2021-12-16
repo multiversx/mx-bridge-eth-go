@@ -50,6 +50,7 @@ type argsBridgeStub struct {
 	myTurnHandler                    func() bool
 	wasTransferProposedHandler       func() bool
 	wasProposedTransferSignedHandler func() bool
+	wasActionSigned                  func() bool
 	isQuorumReachedHandler           func() bool
 	wasActionIDPerformedHandler      func() bool
 	maxRetriesReachedHandler         func() bool
@@ -113,12 +114,12 @@ func createMockBridge(args argsBridgeStub) (*bridgeV2.BridgeExecutorStub, *error
 
 		return errHandler.storeAndReturnError(nil)
 	}
-	stub.WasTransferProposedOnElrondCalled = func(ctx context.Context) (bool, error) {
+	stub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 		if args.failingStep == wasActionSignedOnElrond {
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
 
-		return args.wasProposedTransferSignedHandler(), errHandler.storeAndReturnError(nil)
+		return args.wasActionSigned(), errHandler.storeAndReturnError(nil)
 	}
 	stub.SignActionOnElrondCalled = func(ctx context.Context) error {
 		if args.failingStep == signActionOnElrond {
@@ -176,6 +177,7 @@ func TestHappyCaseWhenLeader(t *testing.T) {
 		maxRetriesReachedHandler:         falseHandler,
 		wasProposedTransferSignedHandler: falseHandler,
 		wasTransferProposedHandler:       falseHandler,
+		wasActionSigned:                  falseHandler,
 	}
 	executor, eh := createMockBridge(args)
 	sm := createStateMachine(t, executor, ethToElrond.GettingPendingBatchFromEthereum)
@@ -220,6 +222,7 @@ func TestHappyCaseWhenLeaderAndActionIdNotPerformed(t *testing.T) {
 		maxRetriesReachedHandler:         falseHandler,
 		wasProposedTransferSignedHandler: falseHandler,
 		wasTransferProposedHandler:       falseHandler,
+		wasActionSigned:                  falseHandler,
 	}
 	executor, eh := createMockBridge(args)
 	sm := createStateMachine(t, executor, ethToElrond.GettingPendingBatchFromEthereum)
@@ -283,6 +286,7 @@ func testErrorFlow(t *testing.T, stepThatErrors core.StepIdentifier) {
 		maxRetriesReachedHandler:         falseHandler,
 		wasProposedTransferSignedHandler: falseHandler,
 		wasTransferProposedHandler:       falseHandler,
+		wasActionSigned:                  falseHandler,
 	}
 
 	executor, eh := createMockBridge(args)

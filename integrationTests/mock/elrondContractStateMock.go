@@ -252,6 +252,8 @@ func (mock *elrondContractStateMock) processVmRequests(vmRequest *data.VmValueRe
 		return mock.vmRequestGetLastExecutedEthBatchId(vmRequest), nil
 	case "getLastExecutedEthTxId":
 		return mock.vmRequestGetLastExecutedEthTxId(vmRequest), nil
+	case "signed":
+		return mock.vmRequestSigned(vmRequest), nil
 	}
 
 	panic("unimplemented function: " + vmRequest.FuncName)
@@ -430,6 +432,25 @@ func (mock *elrondContractStateMock) vmRequestGetCurrentPendingBatch(_ *data.VmV
 
 func (mock *elrondContractStateMock) setPendingBatch(pendingBatch *ElrondPendingBatch) {
 	mock.pendingBatch = pendingBatch
+}
+
+func (mock *elrondContractStateMock) vmRequestSigned(request *data.VmValueRequest) *data.VmValuesResponseData {
+	address := request.Args[0]
+	actionID := request.Args[1]
+
+	actionIDMap, found := mock.signedActionIDs[actionID]
+	if !found {
+		return createOkVmResponse([][]byte{BoolToByteSlice(false)})
+	}
+
+	addr, err := data.NewAddressFromBech32String(address)
+	if err != nil {
+		panic(err)
+	}
+
+	_, found = actionIDMap[hex.EncodeToString(addr.AddressBytes())]
+
+	return createOkVmResponse([][]byte{BoolToByteSlice(found)})
 }
 
 func getActionIDFromString(data string) *big.Int {

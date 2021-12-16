@@ -432,8 +432,8 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		TopologyProvider:         topologyHandler,
 		ElrondClient:             components.elrondClient,
 		EthereumClient:           components.ethClient,
-		TimeForTransferExecution: time.Second,
 		StatusHandler:            components.bridgeStatusHandler,
+		TimeForTransferExecution: time.Minute, // TODO: get this from configs
 	}
 
 	components.ethToElrondBridge, err = bridge.NewBridgeExecutor(argsBridgeExecutor)
