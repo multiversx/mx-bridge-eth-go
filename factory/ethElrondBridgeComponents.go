@@ -19,6 +19,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/polling"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/timer"
 	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/topology"
@@ -85,7 +86,7 @@ type ethElrondBridgeComponents struct {
 	metricsHolder                 core.MetricsHolder
 	bridgeStatusHandler           core.StatusHandler
 
-	ethToElrondBridge        ethToElrond.EthToElrondBridge
+	ethToElrondBridge        bridge.Executor
 	ethToElrondMachineStates core.MachineStates
 	ethToElrondStepDuration  time.Duration
 
@@ -426,15 +427,16 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		return err
 	}
 
-	argsBridgeExecutor := ethToElrond.ArgsEthToElrondBridgeExecutor{
-		Log:              log,
-		TopologyProvider: topologyHandler,
-		ElrondClient:     components.elrondClient,
-		EthereumClient:   components.ethClient,
-		StatusHandler:    components.bridgeStatusHandler,
+	argsBridgeExecutor := bridge.ArgsBridgeExecutor{
+		Log:                      log,
+		TopologyProvider:         topologyHandler,
+		ElrondClient:             components.elrondClient,
+		EthereumClient:           components.ethClient,
+		TimeForTransferExecution: time.Second,
+		StatusHandler:            components.bridgeStatusHandler,
 	}
 
-	components.ethToElrondBridge, err = ethToElrond.NewEthToElrondBridgeExecutor(argsBridgeExecutor)
+	components.ethToElrondBridge, err = bridge.NewBridgeExecutor(argsBridgeExecutor)
 	if err != nil {
 		return err
 	}
