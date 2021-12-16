@@ -17,10 +17,10 @@ var actionID = uint64(662528)
 
 func TestExecute_SignProposedSetStatus(t *testing.T) {
 	t.Parallel()
-	t.Run("nil batch on GetStoredBatchFromElrond", func(t *testing.T) {
+	t.Run("nil batch on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedSetStatus()
-		bridgeStub.GetStoredBatchFromElrondCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return nil
 		}
 
@@ -32,10 +32,10 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
-	t.Run("error on GetAndStoreActionIDForSetStatusFromElrond", func(t *testing.T) {
+	t.Run("error on GetAndStoreActionIDForProposeSetStatusFromElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedSetStatus()
-		bridgeStub.GetAndStoreActionIDForSetStatusFromElrondCalled = func(ctx context.Context) (uint64, error) {
+		bridgeStub.GetAndStoreActionIDForProposeSetStatusFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return v2.InvalidActionID, expectedError
 		}
 
@@ -47,10 +47,10 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
-	t.Run("invalid actionID on GetAndStoreActionIDForSetStatusFromElrond", func(t *testing.T) {
+	t.Run("invalid actionID on GetAndStoreActionIDForProposeSetStatusFromElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedSetStatus()
-		bridgeStub.GetAndStoreActionIDForSetStatusFromElrondCalled = func(ctx context.Context) (uint64, error) {
+		bridgeStub.GetAndStoreActionIDForProposeSetStatusFromElrondCalled = func(ctx context.Context) (uint64, error) {
 			return v2.InvalidActionID, nil
 		}
 
@@ -62,10 +62,10 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
-	t.Run("error on WasProposedSetStatusSignedOnElrond", func(t *testing.T) {
+	t.Run("error on WasActionSignedOnElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedSetStatus()
-		bridgeStub.WasProposedSetStatusSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
 		}
 
@@ -77,10 +77,10 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
-	t.Run("error on SignProposedSetStatusOnElrond", func(t *testing.T) {
+	t.Run("error on SignActionOnElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedSetStatus()
-		bridgeStub.SignProposedSetStatusOnElrondCalled = func(ctx context.Context) error {
+		bridgeStub.SignActionOnElrondCalled = func(ctx context.Context) error {
 			return expectedError
 		}
 
@@ -97,12 +97,12 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 		t.Run("if proposed set status was signed, go to WaitingForQuorumOnSetStatus", func(t *testing.T) {
 			t.Parallel()
 			bridgeStub := createStubExecutorSignProposedSetStatus()
-			bridgeStub.WasProposedSetStatusSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+			bridgeStub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 				return true, nil
 			}
 
 			wasCalled := false
-			bridgeStub.SignProposedSetStatusOnElrondCalled = func(ctx context.Context) error {
+			bridgeStub.SignActionOnElrondCalled = func(ctx context.Context) error {
 				wasCalled = true
 				return nil
 			}
@@ -121,7 +121,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 			t.Parallel()
 			bridgeStub := createStubExecutorSignProposedSetStatus()
 			wasCalled := false
-			bridgeStub.SignProposedSetStatusOnElrondCalled = func(ctx context.Context) error {
+			bridgeStub.SignActionOnElrondCalled = func(ctx context.Context) error {
 				wasCalled = true
 				return nil
 			}
@@ -142,21 +142,21 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 
 }
 
-func createStubExecutorSignProposedSetStatus() *bridgeV2.ElrondToEthBridgeStub {
-	stub := bridgeV2.NewElrondToEthBridgeStub()
+func createStubExecutorSignProposedSetStatus() *bridgeV2.BridgeExecutorStub {
+	stub := bridgeV2.NewBridgeExecutorStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
 	}
-	stub.GetStoredBatchFromElrondCalled = func() *clients.TransferBatch {
+	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
 		return testBatch
 	}
-	stub.GetAndStoreActionIDForSetStatusFromElrondCalled = func(ctx context.Context) (uint64, error) {
+	stub.GetAndStoreActionIDForProposeSetStatusFromElrondCalled = func(ctx context.Context) (uint64, error) {
 		return actionID, nil
 	}
-	stub.WasProposedSetStatusSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+	stub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
 		return false, nil
 	}
-	stub.SignProposedSetStatusOnElrondCalled = func(ctx context.Context) error {
+	stub.SignActionOnElrondCalled = func(ctx context.Context) error {
 		return nil
 	}
 	return stub

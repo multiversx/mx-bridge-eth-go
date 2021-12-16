@@ -61,7 +61,7 @@ func TestExecute_GetPending(t *testing.T) {
 	t.Run("error on StoreBatchFromElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
-		bridgeStub.StoreBatchFromElrondCalled = func(ctx context.Context, batch *clients.TransferBatch) error {
+		bridgeStub.StoreBatchFromElrondCalled = func(batch *clients.TransferBatch) error {
 			return expectedError
 		}
 
@@ -131,15 +131,15 @@ func TestExecute_GetPending(t *testing.T) {
 	})
 }
 
-func createStubExecutorGetPending() *bridgeV2.ElrondToEthBridgeStub {
-	stub := bridgeV2.NewElrondToEthBridgeStub()
+func createStubExecutorGetPending() *bridgeV2.BridgeExecutorStub {
+	stub := bridgeV2.NewBridgeExecutorStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
 	}
 	stub.GetBatchFromElrondCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
 		return testBatch, nil
 	}
-	stub.StoreBatchFromElrondCalled = func(ctx context.Context, batch *clients.TransferBatch) error {
+	stub.StoreBatchFromElrondCalled = func(batch *clients.TransferBatch) error {
 		return nil
 	}
 	return stub

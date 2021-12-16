@@ -4,11 +4,12 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
 )
 
 type waitForQuorumOnTransferStep struct {
-	bridge elrondToEth.ElrondToEthBridge
+	bridge bridge.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
@@ -18,7 +19,7 @@ func (step *waitForQuorumOnTransferStep) Execute(ctx context.Context) (core.Step
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
-	isQuorumReached, err := step.bridge.IsQuorumReachedOnEthereum(ctx)
+	isQuorumReached, err := step.bridge.ProcessQuorumReachedOnEthereum(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error while checking the quorum on Ethereum", "error", err)
 		return elrondToEth.GettingPendingBatchFromElrond, nil

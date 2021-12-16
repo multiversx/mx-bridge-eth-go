@@ -27,7 +27,7 @@ const (
 	getAndStoreActionIDForProposeTransferOnElrond = "GetAndStoreActionIDForProposeTransferOnElrond"
 	processMaxRetriesOnElrond                     = "ProcessMaxRetriesOnElrond"
 	resetRetriesCountOnElrond                     = "ResetRetriesCountOnElrond"
-	isQuorumReachedOnElrond                       = "IsQuorumReachedOnElrond"
+	processQuorumReachedOnElrond                  = "ProcessQuorumReachedOnElrond"
 	wasActionPerformedOnElrond                    = "WasActionPerformedOnElrond"
 	proposeTransferOnElrond                       = "ProposeTransferOnElrond"
 	performActionOnElrond                         = "PerformActionOnElrond"
@@ -128,8 +128,8 @@ func createMockBridge(args argsBridgeStub) (*bridgeV2.BridgeExecutorStub, *error
 
 		return errHandler.storeAndReturnError(nil)
 	}
-	stub.IsQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {
-		if args.failingStep == isQuorumReachedOnElrond {
+	stub.ProcessQuorumReachedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		if args.failingStep == processQuorumReachedOnElrond {
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
 
@@ -200,7 +200,7 @@ func TestHappyCaseWhenLeader(t *testing.T) {
 	assert.Equal(t, 4, executor.GetFunctionCounter(signActionOnElrond))
 
 	assert.Equal(t, 4, executor.GetFunctionCounter(processMaxRetriesOnElrond))
-	assert.Equal(t, 4, executor.GetFunctionCounter(isQuorumReachedOnElrond))
+	assert.Equal(t, 4, executor.GetFunctionCounter(processQuorumReachedOnElrond))
 
 	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionPerformedOnElrond))
 	assert.Equal(t, 0, executor.GetFunctionCounter(performActionOnElrond))
@@ -245,7 +245,7 @@ func TestHappyCaseWhenLeaderAndActionIdNotPerformed(t *testing.T) {
 	assert.Equal(t, 4, executor.GetFunctionCounter(signActionOnElrond))
 
 	assert.Equal(t, 4, executor.GetFunctionCounter(processMaxRetriesOnElrond))
-	assert.Equal(t, 4, executor.GetFunctionCounter(isQuorumReachedOnElrond))
+	assert.Equal(t, 4, executor.GetFunctionCounter(processQuorumReachedOnElrond))
 
 	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionPerformedOnElrond))
 	assert.Equal(t, 1, executor.GetFunctionCounter(performActionOnElrond))
@@ -263,7 +263,7 @@ func TestOneStepErrors_ShouldReturnToPendingBatch(t *testing.T) {
 		proposeTransferOnElrond,
 		wasTransferProposedOnElrond,
 		signActionOnElrond,
-		isQuorumReachedOnElrond,
+		processQuorumReachedOnElrond,
 		wasActionPerformedOnElrond,
 		performActionOnElrond,
 	}

@@ -4,22 +4,23 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
 )
 
 type signProposedTransferStep struct {
-	bridge elrondToEth.ElrondToEthBridge
+	bridge bridge.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
 func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	storedBatch := step.bridge.GetStoredBatchFromElrond()
+	storedBatch := step.bridge.GetStoredBatch()
 	if storedBatch == nil {
 		step.bridge.GetLogger().Debug("nil batch stored")
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
-	err := step.bridge.SignTransferOnEthereum(ctx)
+	err := step.bridge.SignTransferOnEthereum()
 	if err != nil {
 		step.bridge.GetLogger().Error("error signing", "batch ID", storedBatch.ID, "error", err)
 		return elrondToEth.GettingPendingBatchFromElrond, nil

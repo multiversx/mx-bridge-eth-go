@@ -259,8 +259,8 @@ func (executor *bridgeExecutor) SignActionOnElrond(ctx context.Context) error {
 	return nil
 }
 
-// IsQuorumReachedOnElrond returns true if the proposed transfer reached the set quorum
-func (executor *bridgeExecutor) IsQuorumReachedOnElrond(ctx context.Context) (bool, error) {
+// ProcessQuorumReachedOnElrond returns true if the proposed transfer reached the set quorum
+func (executor *bridgeExecutor) ProcessQuorumReachedOnElrond(ctx context.Context) (bool, error) {
 	return executor.elrondClient.QuorumReached(ctx, executor.actionID)
 }
 
@@ -396,8 +396,8 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 	return nil
 }
 
-// IsQuorumReachedOnEthereum returns true if the proposed transfer reached the set quorum
-func (executor *bridgeExecutor) IsQuorumReachedOnEthereum(ctx context.Context) (bool, error) {
+// ProcessQuorumReachedOnEthereum returns true if the proposed transfer reached the set quorum
+func (executor *bridgeExecutor) ProcessQuorumReachedOnEthereum(ctx context.Context) (bool, error) {
 	return executor.ethereumClient.IsQuorumReached(ctx, executor.msgHash)
 }
 

@@ -19,7 +19,7 @@ func (step *waitForQuorumStep) Execute(ctx context.Context) (core.StepIdentifier
 		return ethToElrond.GettingPendingBatchFromEthereum, nil
 	}
 
-	isQuorumReached, err := step.bridge.IsQuorumReachedOnElrond(ctx)
+	isQuorumReached, err := step.bridge.ProcessQuorumReachedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error while checking the quorum", "error", err)
 		return ethToElrond.GettingPendingBatchFromEthereum, nil

@@ -12,10 +12,10 @@ import (
 func TestExecute_PerformSetStatus(t *testing.T) {
 	t.Parallel()
 
-	t.Run("error on WasTransferPerformedOnElrond", func(t *testing.T) {
+	t.Run("error on WasActionPerformedOnElrondCalled", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorPerformSetStatus()
-		bridgeStub.WasSetStatusPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
 		}
 
@@ -28,13 +28,13 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
-	t.Run("error on PerformTransferOnElrond", func(t *testing.T) {
+	t.Run("error on PerformActionOnElrondCalled", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorPerformSetStatus()
 		bridgeStub.MyTurnAsLeaderCalled = func() bool {
 			return true
 		}
-		bridgeStub.PerformSetStatusOnElrondCalled = func(ctx context.Context) error {
+		bridgeStub.PerformActionOnElrondCalled = func(ctx context.Context) error {
 			return expectedError
 		}
 
@@ -52,7 +52,7 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 		t.Run("if transfer was performed we should go to initial step", func(t *testing.T) {
 			t.Parallel()
 			bridgeStub := createStubExecutorPerformSetStatus()
-			bridgeStub.WasSetStatusPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
+			bridgeStub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 				return true, nil
 			}
 
@@ -69,7 +69,7 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 			t.Parallel()
 			bridgeStub := createStubExecutorPerformSetStatus()
 			wasCalled := false
-			bridgeStub.PerformSetStatusOnElrondCalled = func(ctx context.Context) error {
+			bridgeStub.PerformActionOnElrondCalled = func(ctx context.Context) error {
 				wasCalled = true
 				return nil
 			}
@@ -90,7 +90,7 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 				return true
 			}
 			wasCalled := false
-			bridgeStub.PerformSetStatusOnElrondCalled = func(ctx context.Context) error {
+			bridgeStub.PerformActionOnElrondCalled = func(ctx context.Context) error {
 				wasCalled = true
 				return nil
 			}
@@ -106,12 +106,12 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 	})
 }
 
-func createStubExecutorPerformSetStatus() *bridgeV2.ElrondToEthBridgeStub {
-	stub := bridgeV2.NewElrondToEthBridgeStub()
+func createStubExecutorPerformSetStatus() *bridgeV2.BridgeExecutorStub {
+	stub := bridgeV2.NewBridgeExecutorStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
 	}
-	stub.WasSetStatusPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
+	stub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 	stub.MyTurnAsLeaderCalled = func() bool {

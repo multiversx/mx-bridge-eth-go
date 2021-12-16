@@ -32,7 +32,7 @@ type BridgeExecutorStub struct {
 	ProposeSetStatusOnElrondCalled                         func(ctx context.Context) error
 	WasActionSignedOnElrondCalled                          func(ctx context.Context) (bool, error)
 	SignActionOnElrondCalled                               func(ctx context.Context) error
-	IsQuorumReachedOnElrondCalled                          func(ctx context.Context) (bool, error)
+	ProcessQuorumReachedOnElrondCalled                     func(ctx context.Context) (bool, error)
 	WasActionPerformedOnElrondCalled                       func(ctx context.Context) (bool, error)
 	PerformActionOnElrondCalled                            func(ctx context.Context) error
 	ResolveNewDepositsStatusesCalled                       func(numDeposits uint64)
@@ -42,12 +42,11 @@ type BridgeExecutorStub struct {
 	WasTransferPerformedOnEthereumCalled                   func(ctx context.Context) (bool, error)
 	SignTransferOnEthereumCalled                           func() error
 	PerformTransferOnEthereumCalled                        func(ctx context.Context) error
-	IsQuorumReachedOnEthereumCalled                        func(ctx context.Context) (bool, error)
+	ProcessQuorumReachedOnEthereumCalled                   func(ctx context.Context) (bool, error)
 	WaitForTransferConfirmationCalled                      func(ctx context.Context)
 	GetBatchStatusesFromEthereumCalled                     func(ctx context.Context) ([]byte, error)
 	ProcessMaxRetriesOnEthereumCalled                      func() bool
 	ResetRetriesCountOnEthereumCalled                      func()
-	IsInterfaceNilCalled                                   func() bool
 }
 
 // NewBridgeExecutorStub creates a new BridgeExecutorStub instance
@@ -179,7 +178,7 @@ func (stub *BridgeExecutorStub) WasSetStatusProposedOnElrond(ctx context.Context
 func (stub *BridgeExecutorStub) ProposeSetStatusOnElrond(ctx context.Context) error {
 	stub.incrementFunctionCounter()
 	if stub.ProposeSetStatusOnElrondCalled != nil {
-		return stub.ProposeTransferOnElrondCalled(ctx)
+		return stub.ProposeSetStatusOnElrondCalled(ctx)
 	}
 	return notImplemented
 }
@@ -202,11 +201,11 @@ func (stub *BridgeExecutorStub) SignActionOnElrond(ctx context.Context) error {
 	return notImplemented
 }
 
-// IsQuorumReachedOnElrond -
-func (stub *BridgeExecutorStub) IsQuorumReachedOnElrond(ctx context.Context) (bool, error) {
+// ProcessQuorumReachedOnElrond -
+func (stub *BridgeExecutorStub) ProcessQuorumReachedOnElrond(ctx context.Context) (bool, error) {
 	stub.incrementFunctionCounter()
-	if stub.IsQuorumReachedOnElrondCalled != nil {
-		return stub.IsQuorumReachedOnElrondCalled(ctx)
+	if stub.ProcessQuorumReachedOnElrondCalled != nil {
+		return stub.ProcessQuorumReachedOnElrondCalled(ctx)
 	}
 	return false, notImplemented
 }
@@ -290,11 +289,11 @@ func (stub *BridgeExecutorStub) PerformTransferOnEthereum(ctx context.Context) e
 	return notImplemented
 }
 
-// IsQuorumReachedOnEthereum -
-func (stub *BridgeExecutorStub) IsQuorumReachedOnEthereum(ctx context.Context) (bool, error) {
+// ProcessQuorumReachedOnEthereum -
+func (stub *BridgeExecutorStub) ProcessQuorumReachedOnEthereum(ctx context.Context) (bool, error) {
 	stub.incrementFunctionCounter()
-	if stub.IsQuorumReachedOnEthereumCalled != nil {
-		return stub.IsQuorumReachedOnEthereumCalled(ctx)
+	if stub.ProcessQuorumReachedOnEthereumCalled != nil {
+		return stub.ProcessQuorumReachedOnEthereumCalled(ctx)
 	}
 	return false, notImplemented
 }

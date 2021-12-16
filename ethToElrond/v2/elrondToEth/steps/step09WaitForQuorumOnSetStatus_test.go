@@ -85,8 +85,8 @@ func TestExecute_WaitForQuorumOnSetStatus(t *testing.T) {
 	})
 }
 
-func createStubExecutorWaitForQuorumOnSetStatus() *bridgeV2.ElrondToEthBridgeStub {
-	stub := bridgeV2.NewElrondToEthBridgeStub()
+func createStubExecutorWaitForQuorumOnSetStatus() *bridgeV2.BridgeExecutorStub {
+	stub := bridgeV2.NewBridgeExecutorStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
 	}

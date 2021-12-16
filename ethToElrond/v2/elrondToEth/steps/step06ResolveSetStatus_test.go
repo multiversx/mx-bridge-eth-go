@@ -14,10 +14,10 @@ import (
 
 func TestExecute_ResolveSetStatus(t *testing.T) {
 	t.Parallel()
-	t.Run("nil batch on GetStoredBatchFromElrond", func(t *testing.T) {
+	t.Run("nil batch on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
-		bridgeStub.GetStoredBatchFromElrondCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return nil
 		}
 
@@ -30,7 +30,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
-	t.Run("error on GetBatchFromElrond", func(t *testing.T) {
+	t.Run("error on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
 		bridgeStub.GetBatchFromElrondCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
@@ -103,12 +103,12 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 	})
 }
 
-func createStubExecutorResolveSetStatus() *bridgeV2.ElrondToEthBridgeStub {
-	stub := bridgeV2.NewElrondToEthBridgeStub()
+func createStubExecutorResolveSetStatus() *bridgeV2.BridgeExecutorStub {
+	stub := bridgeV2.NewBridgeExecutorStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
 	}
-	stub.GetStoredBatchFromElrondCalled = func() *clients.TransferBatch {
+	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
 		return testBatch
 	}
 	stub.GetBatchFromElrondCalled = func(ctx context.Context) (*clients.TransferBatch, error) {

@@ -31,7 +31,7 @@ type Executor interface {
 	WasActionSignedOnElrond(ctx context.Context) (bool, error)
 	SignActionOnElrond(ctx context.Context) error
 
-	IsQuorumReachedOnElrond(ctx context.Context) (bool, error)
+	ProcessQuorumReachedOnElrond(ctx context.Context) (bool, error)
 	WasActionPerformedOnElrond(ctx context.Context) (bool, error)
 	PerformActionOnElrond(ctx context.Context) error
 	ResolveNewDepositsStatuses(numDeposits uint64)
@@ -43,7 +43,7 @@ type Executor interface {
 	WasTransferPerformedOnEthereum(ctx context.Context) (bool, error)
 	SignTransferOnEthereum() error
 	PerformTransferOnEthereum(ctx context.Context) error
-	IsQuorumReachedOnEthereum(ctx context.Context) (bool, error)
+	ProcessQuorumReachedOnEthereum(ctx context.Context) (bool, error)
 	WaitForTransferConfirmation(ctx context.Context)
 	GetBatchStatusesFromEthereum(ctx context.Context) ([]byte, error)
 
