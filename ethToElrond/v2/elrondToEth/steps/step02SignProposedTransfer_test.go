@@ -17,10 +17,10 @@ var initialStep = core.StepIdentifier(elrondToEth.GettingPendingBatchFromElrond)
 func TestExecute_SignProposedTransfer(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil batch on GetStoredBatchFromElrond", func(t *testing.T) {
+	t.Run("nil batch on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedTransfer()
-		bridgeStub.GetStoredBatchFromElrondCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return nil
 		}
 
@@ -36,7 +36,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 	t.Run("nil batch on SignTransferOnEthereum", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedTransfer()
-		bridgeStub.SignTransferOnEthereumCalled = func(ctx context.Context) error {
+		bridgeStub.SignTransferOnEthereumCalled = func() error {
 			return expectedError
 		}
 
@@ -66,15 +66,15 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 	})
 }
 
-func createStubExecutorSignProposedTransfer() *bridgeV2.ElrondToEthBridgeStub {
-	stub := bridgeV2.NewElrondToEthBridgeStub()
+func createStubExecutorSignProposedTransfer() *bridgeV2.BridgeExecutorStub {
+	stub := bridgeV2.NewBridgeExecutorStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
 	}
-	stub.GetStoredBatchFromElrondCalled = func() *clients.TransferBatch {
+	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
 		return testBatch
 	}
-	stub.SignTransferOnEthereumCalled = func(ctx context.Context) error {
+	stub.SignTransferOnEthereumCalled = func() error {
 		return nil
 	}
 	return stub

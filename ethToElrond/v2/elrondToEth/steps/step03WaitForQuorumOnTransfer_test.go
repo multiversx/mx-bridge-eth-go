@@ -14,10 +14,10 @@ import (
 func TestExecute_WaitForQuorumOnTransfer(t *testing.T) {
 	t.Parallel()
 
-	t.Run("error on IsQuorumReachedOnEthereum", func(t *testing.T) {
+	t.Run("error on ProcessQuorumReachedOnEthereum", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorWaitForQuorumOnTransfer()
-		bridgeStub.IsQuorumReachedOnEthereumCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.ProcessQuorumReachedOnEthereumCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
 		}
 
@@ -49,7 +49,7 @@ func TestExecute_WaitForQuorumOnTransfer(t *testing.T) {
 	t.Run("quorum not reached", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorWaitForQuorumOnTransfer()
-		bridgeStub.IsQuorumReachedOnEthereumCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.ProcessQuorumReachedOnEthereumCalled = func(ctx context.Context) (bool, error) {
 			return false, nil
 		}
 
@@ -68,7 +68,7 @@ func TestExecute_WaitForQuorumOnTransfer(t *testing.T) {
 	t.Run("quorum reached", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorWaitForQuorumOnTransfer()
-		bridgeStub.IsQuorumReachedOnEthereumCalled = func(ctx context.Context) (bool, error) {
+		bridgeStub.ProcessQuorumReachedOnEthereumCalled = func(ctx context.Context) (bool, error) {
 			return true, nil
 		}
 
@@ -85,8 +85,8 @@ func TestExecute_WaitForQuorumOnTransfer(t *testing.T) {
 	})
 }
 
-func createStubExecutorWaitForQuorumOnTransfer() *bridgeV2.ElrondToEthBridgeStub {
-	stub := bridgeV2.NewElrondToEthBridgeStub()
+func createStubExecutorWaitForQuorumOnTransfer() *bridgeV2.BridgeExecutorStub {
+	stub := bridgeV2.NewBridgeExecutorStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
 	}

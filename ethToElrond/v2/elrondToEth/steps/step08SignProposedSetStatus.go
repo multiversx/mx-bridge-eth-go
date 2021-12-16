@@ -5,22 +5,23 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
 )
 
 type signProposedSetStatusStep struct {
-	bridge elrondToEth.ElrondToEthBridge
+	bridge bridge.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
 func (step *signProposedSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
-	storedBatch := step.bridge.GetStoredBatchFromElrond()
+	storedBatch := step.bridge.GetStoredBatch()
 	if storedBatch == nil {
 		step.bridge.GetLogger().Debug("nil stored batch")
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
-	actionID, err := step.bridge.GetAndStoreActionIDForSetStatusFromElrond(ctx)
+	actionID, err := step.bridge.GetAndStoreActionIDForProposeSetStatusFromElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error fetching action ID", "batch ID", storedBatch.ID, "error", err)
 		return elrondToEth.GettingPendingBatchFromElrond, nil
@@ -33,7 +34,7 @@ func (step *signProposedSetStatusStep) Execute(ctx context.Context) (core.StepId
 
 	step.bridge.GetLogger().Info("fetched action ID", "action ID", actionID, "batch ID", storedBatch.ID)
 
-	wasSigned, err := step.bridge.WasProposedSetStatusSignedOnElrond(ctx)
+	wasSigned, err := step.bridge.WasActionSignedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if the proposed transfer was signed or not",
 			"batch ID", storedBatch.ID, "error", err)
@@ -44,7 +45,7 @@ func (step *signProposedSetStatusStep) Execute(ctx context.Context) (core.StepId
 		return elrondToEth.WaitingForQuorumOnSetStatus, nil
 	}
 
-	err = step.bridge.SignProposedSetStatusOnElrond(ctx)
+	err = step.bridge.SignActionOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error signing the proposed transfer",
 			"batch ID", storedBatch.ID, "error", err)

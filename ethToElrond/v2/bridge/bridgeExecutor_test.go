@@ -532,7 +532,7 @@ func TestEthToElrondBridgeExecutor_IsQuorumReachedOnElrond(t *testing.T) {
 	executor, _ := NewBridgeExecutor(args)
 	executor.actionID = providedActionID
 
-	isQuorumReached, err := executor.IsQuorumReachedOnElrond(context.Background())
+	isQuorumReached, err := executor.ProcessQuorumReachedOnElrond(context.Background())
 	assert.True(t, isQuorumReached)
 	assert.Nil(t, err)
 	assert.True(t, wasCalled)
@@ -1046,7 +1046,7 @@ func TestElrondToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 func TestElrondToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 	t.Parallel()
 
-	t.Run("IsQuorumReached fails", func(t *testing.T) {
+	t.Run("ProcessQuorumReachedOnEthereum fails", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
@@ -1058,7 +1058,7 @@ func TestElrondToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 
 		executor, _ := NewBridgeExecutor(args)
 
-		_, err := executor.IsQuorumReachedOnEthereum(context.Background())
+		_, err := executor.ProcessQuorumReachedOnEthereum(context.Background())
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -1075,7 +1075,7 @@ func TestElrondToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 
 		executor, _ := NewBridgeExecutor(args)
 
-		isReached, err := executor.IsQuorumReachedOnEthereum(context.Background())
+		isReached, err := executor.ProcessQuorumReachedOnEthereum(context.Background())
 		assert.Nil(t, err)
 		assert.True(t, wasCalled)
 		assert.True(t, isReached)

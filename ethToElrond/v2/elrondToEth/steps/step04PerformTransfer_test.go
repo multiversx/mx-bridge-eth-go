@@ -111,8 +111,8 @@ func TestExecute_PerformTransfer(t *testing.T) {
 	})
 }
 
-func createStubExecutorPerformTransfer() *bridgeV2.ElrondToEthBridgeStub {
-	stub := bridgeV2.NewElrondToEthBridgeStub()
+func createStubExecutorPerformTransfer() *bridgeV2.BridgeExecutorStub {
+	stub := bridgeV2.NewBridgeExecutorStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
 	}

@@ -4,11 +4,12 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
 )
 
 type getPendingStep struct {
-	bridge elrondToEth.ElrondToEthBridge
+	bridge bridge.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
@@ -26,7 +27,7 @@ func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, e
 		return step.Identifier(), nil
 	}
 
-	err = step.bridge.StoreBatchFromElrond(ctx, batch)
+	err = step.bridge.StoreBatchFromElrond(batch)
 	if err != nil {
 		step.bridge.GetLogger().Error("error storing Elrond batch", "error", err)
 		return step.Identifier(), nil

@@ -14,7 +14,7 @@ import (
 func TestExecute_WaitTransferConfirmation(t *testing.T) {
 	t.Parallel()
 	t.Run("should call WaitForTransferConfirmation and go to PerformingTransfer", func(t *testing.T) {
-		bridgeStub := bridgeV2.NewElrondToEthBridgeStub()
+		bridgeStub := bridgeV2.NewBridgeExecutorStub()
 		bridgeStub.GetLoggerCalled = func() logger.Logger {
 			return testLogger
 		}

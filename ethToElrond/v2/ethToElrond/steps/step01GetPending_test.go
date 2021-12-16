@@ -143,8 +143,8 @@ func TestExecuteGetPending(t *testing.T) {
 	})
 }
 
-func createStubExecutor() *bridgeV2.EthToElrondBridgeStub {
-	stub := bridgeV2.NewEthToElrondBridgeStub()
+func createStubExecutor() *bridgeV2.BridgeExecutorStub {
+	stub := bridgeV2.NewBridgeExecutorStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
 	}

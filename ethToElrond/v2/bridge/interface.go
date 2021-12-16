@@ -7,8 +7,8 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
-// Bridge defines a generic bridge interface able to handle both halves of the bridge
-type Bridge interface {
+// Executor defines a generic bridge interface able to handle both halves of the bridge
+type Executor interface {
 	GetLogger() logger.Logger
 	MyTurnAsLeader() bool
 
@@ -31,7 +31,7 @@ type Bridge interface {
 	WasActionSignedOnElrond(ctx context.Context) (bool, error)
 	SignActionOnElrond(ctx context.Context) error
 
-	IsQuorumReachedOnElrond(ctx context.Context) (bool, error)
+	ProcessQuorumReachedOnElrond(ctx context.Context) (bool, error)
 	WasActionPerformedOnElrond(ctx context.Context) (bool, error)
 	PerformActionOnElrond(ctx context.Context) error
 	ResolveNewDepositsStatuses(numDeposits uint64)
@@ -43,7 +43,7 @@ type Bridge interface {
 	WasTransferPerformedOnEthereum(ctx context.Context) (bool, error)
 	SignTransferOnEthereum() error
 	PerformTransferOnEthereum(ctx context.Context) error
-	IsQuorumReachedOnEthereum(ctx context.Context) (bool, error)
+	ProcessQuorumReachedOnEthereum(ctx context.Context) (bool, error)
 	WaitForTransferConfirmation(ctx context.Context)
 	GetBatchStatusesFromEthereum(ctx context.Context) ([]byte, error)
 

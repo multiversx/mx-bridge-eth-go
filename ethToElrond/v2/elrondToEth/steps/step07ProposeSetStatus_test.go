@@ -14,10 +14,10 @@ import (
 
 func TestExecute_ProposeSetStatus(t *testing.T) {
 	t.Parallel()
-	t.Run("nil batch on GetStoredBatchFromElrond", func(t *testing.T) {
+	t.Run("nil batch on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorProposeSetStatus()
-		bridgeStub.GetStoredBatchFromElrondCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return nil
 		}
 
@@ -118,12 +118,12 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 	})
 }
 
-func createStubExecutorProposeSetStatus() *bridgeV2.ElrondToEthBridgeStub {
-	stub := bridgeV2.NewElrondToEthBridgeStub()
+func createStubExecutorProposeSetStatus() *bridgeV2.BridgeExecutorStub {
+	stub := bridgeV2.NewBridgeExecutorStub()
 	stub.GetLoggerCalled = func() logger.Logger {
 		return testLogger
 	}
-	stub.GetStoredBatchFromElrondCalled = func() *clients.TransferBatch {
+	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
 		return testBatch
 	}
 	stub.WasSetStatusProposedOnElrondCalled = func(ctx context.Context) (bool, error) {
