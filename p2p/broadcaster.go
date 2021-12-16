@@ -29,7 +29,6 @@ type ArgsBroadcaster struct {
 	Log                logger.Logger
 	ElrondRoleProvider ElrondRoleProvider
 	SignatureProcessor SignatureProcessor
-	SignaturesHolder   SignaturesHolder
 	KeyGen             crypto.KeyGenerator
 	SingleSigner       crypto.SingleSigner
 	PrivateKey         crypto.PrivateKey
@@ -43,7 +42,6 @@ type broadcaster struct {
 	log                logger.Logger
 	elrondRoleProvider ElrondRoleProvider
 	signatureProcessor SignatureProcessor
-	signaturesHolder   SignaturesHolder
 	name               string
 	mutClients         sync.RWMutex
 	clients            []core.BroadcastClient
@@ -65,7 +63,6 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 		log:                args.Log,
 		elrondRoleProvider: args.ElrondRoleProvider,
 		signatureProcessor: args.SignatureProcessor,
-		signaturesHolder:   args.SignaturesHolder,
 		relayerMessageHandler: &relayerMessageHandler{
 			marshalizer:  &marshal.JsonMarshalizer{},
 			keyGen:       args.KeyGen,
@@ -111,9 +108,6 @@ func checkArgs(args ArgsBroadcaster) error {
 	}
 	if check.IfNil(args.SignatureProcessor) {
 		return ErrNilSignatureProcessor
-	}
-	if check.IfNil(args.SignaturesHolder) {
-		return ErrNilSignaturesHolder
 	}
 
 	return nil

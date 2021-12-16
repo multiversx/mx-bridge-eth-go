@@ -32,9 +32,3 @@ type SignatureProcessor interface {
 	VerifyEthSignature(signature []byte, messageHash []byte) error
 	IsInterfaceNil() bool
 }
-
-// SignaturesHolder defines the operations for a component that can hold and manage signatures
-type SignaturesHolder interface {
-	Signatures(messageHash []byte) [][]byte
-	IsInterfaceNil() bool
-}
