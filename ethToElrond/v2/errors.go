@@ -20,6 +20,9 @@ var ErrNilEthereumClient = errors.New("nil Ethereum client")
 // ErrNilTopologyProvider signals that a nil topology provider has been provided
 var ErrNilTopologyProvider = errors.New("nil topology provider")
 
+// ErrInvalidDuration signals that an invalid duration has been provided
+var ErrInvalidDuration = errors.New("invalid duration")
+
 // ErrNilExecutor signals that a nil bridge executor has been provided
 var ErrNilExecutor = errors.New("nil bridge executor")
 

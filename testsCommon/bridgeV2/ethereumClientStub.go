@@ -2,6 +2,7 @@ package bridgeV2
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ethereum/go-ethereum/common"
@@ -15,6 +16,9 @@ type EthereumClientStub struct {
 	BroadcastSignatureForMessageHashCalled     func(msgHash common.Hash)
 	ExecuteTransferCalled                      func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
 	GetMaxNumberOfRetriesOnQuorumReachedCalled func() uint64
+	GetTransactionsStatusesCalled              func(ctx context.Context, batchId uint64) ([]byte, error)
+	GetQuorumSizeCalled                        func(ctx context.Context) (*big.Int, error)
+	IsQuorumReachedCalled                      func(ctx context.Context, msgHash common.Hash) (bool, error)
 }
 
 // GetBatch -
@@ -67,6 +71,33 @@ func (stub *EthereumClientStub) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
 	}
 
 	return 0
+}
+
+// GetTransactionsStatuses -
+func (stub *EthereumClientStub) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error) {
+	if stub.GetTransactionsStatusesCalled != nil {
+		return stub.GetTransactionsStatusesCalled(ctx, batchId)
+	}
+
+	return nil, errNotImplemented
+}
+
+// GetQuorumSize -
+func (stub *EthereumClientStub) GetQuorumSize(ctx context.Context) (*big.Int, error) {
+	if stub.GetQuorumSizeCalled != nil {
+		return stub.GetQuorumSizeCalled(ctx)
+	}
+
+	return nil, errNotImplemented
+}
+
+// IsQuorumReached -
+func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error) {
+	if stub.IsQuorumReachedCalled != nil {
+		return stub.IsQuorumReachedCalled(ctx, msgHash)
+	}
+
+	return false, errNotImplemented
 }
 
 // IsInterfaceNil -
