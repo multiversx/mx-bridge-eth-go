@@ -10,8 +10,8 @@ import (
 // Bridge defines a generic bridge interface able to handle both halves of the bridge
 type Bridge interface {
 	GetLogger() logger.Logger
+	MyTurnAsLeader() bool
 
-	MyTurnAsLeaderOnElrond() bool
 	GetBatchFromElrond(ctx context.Context) (*clients.TransferBatch, error)
 	StoreBatchFromElrond(batch *clients.TransferBatch) error
 	GetStoredBatch() *clients.TransferBatch
@@ -39,7 +39,6 @@ type Bridge interface {
 	ProcessMaxRetriesOnElrond() bool
 	ResetRetriesCountOnElrond()
 
-	MyTurnAsLeaderOnEthereum() bool
 	GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error
 	WasTransferPerformedOnEthereum(ctx context.Context) (bool, error)
 	SignTransferOnEthereum() error
