@@ -135,6 +135,10 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	if len(cfg.Elrond.NetworkAddress) == 0 {
+		return fmt.Errorf("empty Elrond.NetworkAddress in config file")
+	}
+
 	proxy := blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil)
 
 	ethClient, err := ethclient.Dial(cfg.Eth.NetworkAddress)

@@ -66,7 +66,6 @@ type ArgsEthereumToElrondBridge struct {
 }
 
 type ethElrondBridgeComponents struct {
-	configs                       config.Configs
 	baseLogger                    logger.Logger
 	messenger                     p2p.NetMessenger
 	statusStorer                  core.Storer
@@ -105,7 +104,6 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		baseLogger:       core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
 		messenger:        args.Messenger,
 		statusStorer:     args.StatusStorer,
-		configs:          args.Configs,
 		closableHandlers: make([]io.Closer, 0),
 		proxy:            args.Proxy,
 		timer:            timer.NewNTPTimer(),
@@ -312,7 +310,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		Broadcaster:               components.broadcaster,
 		PrivateKey:                privateKey,
 		TokensMapper:              tokensMapper,
-		SignatureHolder:           &disabledSignatureHolder{}, //TODO replace this with the real component
+		SignatureHolder:           &disabledSignatureHolder{}, // TODO replace this with the real component
 		SafeContractAddress:       safeContractAddress,
 		GasHandler:                gs,
 		TransferGasLimit:          ethereumConfigs.GasLimit,
@@ -422,7 +420,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		return err
 	}
 
-	argsBridgeExecutor := v2.ArgsEthToElrondBridgeExecutor{
+	argsBridgeExecutor := ethToElrond.ArgsEthToElrondBridgeExecutor{
 		Log:              log,
 		TopologyProvider: topologyHandler,
 		ElrondClient:     components.elrondClient,
@@ -430,7 +428,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		StatusHandler:    components.bridgeStatusHandler,
 	}
 
-	components.ethToElrondBridge, err = v2.NewEthToElrondBridgeExecutor(argsBridgeExecutor)
+	components.ethToElrondBridge, err = ethToElrond.NewEthToElrondBridgeExecutor(argsBridgeExecutor)
 	if err != nil {
 		return err
 	}
