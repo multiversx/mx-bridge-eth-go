@@ -19,7 +19,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 
 	t.Run("nil batch on GetStoredBatchFromElrond", func(t *testing.T) {
 		t.Parallel()
-		bridgeStub := createStubeEecutorSignproposedtransfer()
+		bridgeStub := createStubExecutorSignProposedTransfer()
 		bridgeStub.GetStoredBatchFromElrondCalled = func() *clients.TransferBatch {
 			return nil
 		}
@@ -35,7 +35,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 
 	t.Run("nil batch on SignTransferOnEthereum", func(t *testing.T) {
 		t.Parallel()
-		bridgeStub := createStubeEecutorSignproposedtransfer()
+		bridgeStub := createStubExecutorSignProposedTransfer()
 		bridgeStub.SignTransferOnEthereumCalled = func(ctx context.Context) error {
 			return expectedError
 		}
@@ -51,7 +51,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
-		bridgeStub := createStubeEecutorSignproposedtransfer()
+		bridgeStub := createStubExecutorSignProposedTransfer()
 
 		step := signProposedTransferStep{
 			bridge: bridgeStub,

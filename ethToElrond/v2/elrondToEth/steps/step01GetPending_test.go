@@ -26,7 +26,7 @@ func TestExecute_GetPending(t *testing.T) {
 
 	t.Run("error on GetBatchFromElrond", func(t *testing.T) {
 		t.Parallel()
-		bridgeStub := createStubExecutorGetpending()
+		bridgeStub := createStubExecutorGetPending()
 		bridgeStub.GetBatchFromElrondCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
 			return nil, expectedError
 		}
@@ -43,7 +43,7 @@ func TestExecute_GetPending(t *testing.T) {
 
 	t.Run("nil batch on GetBatchFromElrond", func(t *testing.T) {
 		t.Parallel()
-		bridgeStub := createStubExecutorGetpending()
+		bridgeStub := createStubExecutorGetPending()
 		bridgeStub.GetBatchFromElrondCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
 			return nil, nil
 		}
@@ -60,7 +60,7 @@ func TestExecute_GetPending(t *testing.T) {
 
 	t.Run("error on StoreBatchFromElrond", func(t *testing.T) {
 		t.Parallel()
-		bridgeStub := createStubExecutorGetpending()
+		bridgeStub := createStubExecutorGetPending()
 		bridgeStub.StoreBatchFromElrondCalled = func(ctx context.Context, batch *clients.TransferBatch) error {
 			return expectedError
 		}
@@ -77,7 +77,7 @@ func TestExecute_GetPending(t *testing.T) {
 
 	t.Run("error on WasTransferPerformedOnEthereum", func(t *testing.T) {
 		t.Parallel()
-		bridgeStub := createStubExecutorGetpending()
+		bridgeStub := createStubExecutorGetPending()
 		bridgeStub.WasTransferPerformedOnEthereumCalled = func(ctx context.Context) (bool, error) {
 			return false, expectedError
 		}
@@ -96,7 +96,7 @@ func TestExecute_GetPending(t *testing.T) {
 		t.Parallel()
 		t.Run("if transfer already performed next step should be ResolvingSetStatusOnElrond", func(t *testing.T) {
 			t.Parallel()
-			bridgeStub := createStubExecutorGetpending()
+			bridgeStub := createStubExecutorGetPending()
 			bridgeStub.WasTransferPerformedOnEthereumCalled = func(ctx context.Context) (bool, error) {
 				return true, nil
 			}
@@ -114,7 +114,7 @@ func TestExecute_GetPending(t *testing.T) {
 		})
 		t.Run("if transfer was not performed next step should be SigningProposedTransferOnEthereum", func(t *testing.T) {
 			t.Parallel()
-			bridgeStub := createStubExecutorGetpending()
+			bridgeStub := createStubExecutorGetPending()
 			bridgeStub.WasTransferPerformedOnEthereumCalled = func(ctx context.Context) (bool, error) {
 				return false, nil
 			}
