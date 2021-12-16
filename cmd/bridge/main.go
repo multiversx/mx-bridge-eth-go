@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/wrappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -177,10 +177,9 @@ func startRelay(ctx *cli.Context, version string) error {
 		FlagsConfig:     flagsConfig,
 	}
 
-	_ = multiSigInstance // TODO remove this, no longer required
 	argsClientWrapper := wrappers.ArgsEthereumChainWrapper{
 		StatusHandler:    ethClientStatusHandler,
-		MultiSigContract: nil, // TODO fix this after the ABI re-generation
+		MultiSigContract: multiSigInstance,
 		BlockchainClient: ethClient,
 	}
 

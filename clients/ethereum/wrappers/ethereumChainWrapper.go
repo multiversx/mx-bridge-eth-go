@@ -99,7 +99,8 @@ func (wrapper *ethereumChainWrapper) NonceAt(ctx context.Context, account common
 // ExecuteTransfer will send an execute-transfer transaction on the ethereum chain
 func (wrapper *ethereumChainWrapper) ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientTransactions, 1)
-	return wrapper.multiSigContract.ExecuteTransfer(opts, tokens, recipients, amounts, nonces, batchNonce, signatures)
+	_ = nonces // TODO: decide if we need to pass the nonces as well
+	return wrapper.multiSigContract.ExecuteTransfer(opts, tokens, recipients, amounts, batchNonce, signatures)
 }
 
 // Quorum returns the current set quorum value
