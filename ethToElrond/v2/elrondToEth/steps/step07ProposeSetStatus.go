@@ -5,7 +5,6 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 )
 
 type proposeSetStatusStep struct {
@@ -42,7 +41,7 @@ func (step *proposeSetStatusStep) Execute(ctx context.Context) (core.StepIdentif
 		return elrondToEth.GettingPendingBatchFromElrond, nil
 	}
 
-	return ethToElrond.SigningProposedTransferOnElrond, nil
+	return elrondToEth.SigningProposedSetStatusOnElrond, nil
 }
 
 // Identifier returns the step's identifier

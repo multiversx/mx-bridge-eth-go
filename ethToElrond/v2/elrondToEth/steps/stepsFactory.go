@@ -46,7 +46,7 @@ func createMachineStates(executor elrondToEth.ElrondToEthBridge) (core.MachineSt
 		&signProposedSetStatusStep{
 			bridge: executor,
 		},
-		&waitForQuorumOnSetStatus{
+		&waitForQuorumOnSetStatusStep{
 			bridge: executor,
 		},
 		&performSetStatusStep{

@@ -37,7 +37,7 @@ func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, e
 	wasPerformed, err := step.bridge.WasTransferPerformedOnEthereum(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if transfer was performed or not", "error", err)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return step.Identifier(), nil
 	}
 	if wasPerformed {
 		step.bridge.GetLogger().Info("transfer performed")

@@ -14,6 +14,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return nil
@@ -30,6 +31,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	})
 
 	t.Run("error on WasTransferProposedOnElrond", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
@@ -49,6 +51,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	})
 
 	t.Run("not leader", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
@@ -71,6 +74,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	})
 
 	t.Run("error on ProposeTransferOnElrond", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
@@ -96,6 +100,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	})
 
 	t.Run("should work - transfer already proposed", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
@@ -115,6 +120,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	})
 
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
