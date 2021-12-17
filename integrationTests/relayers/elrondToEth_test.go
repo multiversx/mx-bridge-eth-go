@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
@@ -31,7 +31,7 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.SetQuorum(3)
-	expectedStatuses := []byte{bridge.Executed, bridge.Rejected}
+	expectedStatuses := []byte{clients.Executed, clients.Rejected}
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return expectedStatuses
 	}
@@ -114,7 +114,7 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.SetQuorum(3)
-	expectedStatuses := []byte{bridge.Executed, bridge.Rejected}
+	expectedStatuses := []byte{clients.Executed, clients.Rejected}
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return expectedStatuses
 	}
