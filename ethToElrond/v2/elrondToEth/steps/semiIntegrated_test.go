@@ -55,7 +55,6 @@ type argsBridgeStub struct {
 	wasActionPerformedOnElrondHandler     func() bool
 	maxRetriesReachedEthereumHandler      func() bool
 	maxRetriesReachedElrondHandler        func() bool
-	resolveNewDepositsStatusesHandler     func() bool
 }
 
 var trueHandler = func() bool { return true }
