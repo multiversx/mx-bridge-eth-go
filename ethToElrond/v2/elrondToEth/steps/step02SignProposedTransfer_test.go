@@ -28,8 +28,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -44,8 +43,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -60,8 +58,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 		assert.False(t, step.IsInterfaceNil())
 
 		expectedStepIdentifier := core.StepIdentifier(elrondToEth.WaitingForQuorumOnTransfer)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 }

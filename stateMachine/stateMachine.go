@@ -3,35 +3,27 @@ package stateMachine
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/atomic"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
-
-const stopped = "stopped"
 
 // ArgsStateMachine represents the state machine arguments
 type ArgsStateMachine struct {
 	StateMachineName     string
 	Steps                core.MachineStates
 	StartStateIdentifier core.StepIdentifier
-	DurationBetweenSteps time.Duration
 	Log                  logger.Logger
 	StatusHandler        core.StatusHandler
 }
 
 type stateMachine struct {
-	stateMachineName     string
-	steps                core.MachineStates
-	currentStep          core.Step
-	durationBetweenSteps time.Duration
-	log                  logger.Logger
-	cancel               func()
-	loopStatus           *atomic.Flag
-	statusHandler        core.StatusHandler
+	stateMachineName string
+	steps            core.MachineStates
+	currentStep      core.Step
+	log              logger.Logger
+	statusHandler    core.StatusHandler
 }
 
 // NewStateMachine creates a state machine able to execute all provided steps
@@ -42,21 +34,15 @@ func NewStateMachine(args ArgsStateMachine) (*stateMachine, error) {
 	}
 
 	sm := &stateMachine{
-		stateMachineName:     args.StateMachineName,
-		steps:                args.Steps,
-		durationBetweenSteps: args.DurationBetweenSteps,
-		log:                  args.Log,
-		loopStatus:           &atomic.Flag{},
-		statusHandler:        args.StatusHandler,
+		stateMachineName: args.StateMachineName,
+		steps:            args.Steps,
+		log:              args.Log,
+		statusHandler:    args.StatusHandler,
 	}
 	sm.currentStep, err = sm.getNextStep(args.StartStateIdentifier)
 	if err != nil {
 		return nil, err
 	}
-
-	var ctx context.Context
-	ctx, sm.cancel = context.WithCancel(context.Background())
-	go sm.executeLoop(ctx)
 
 	return sm, nil
 }
@@ -80,42 +66,19 @@ func checkArgs(args ArgsStateMachine) error {
 	return nil
 }
 
-func (sm *stateMachine) executeLoop(ctx context.Context) {
-	sm.loopStatus.Set()
-	defer sm.loopStatus.Unset()
-	defer sm.statusHandler.SetStringMetric(core.MetricCurrentStateMachineStep, stopped)
-
-	timer := time.NewTimer(sm.durationBetweenSteps)
-	defer timer.Stop()
-
-	for {
-		timer.Reset(sm.durationBetweenSteps)
-
-		select {
-		case <-ctx.Done():
-			sm.log.Debug(fmt.Sprintf("%s: state machine main execute loop is closing...", sm.stateMachineName))
-			return
-		case <-timer.C:
-			err := sm.executeStep(ctx)
-			if err != nil {
-				sm.log.Error(fmt.Sprintf("%s: state machine stopped", sm.stateMachineName),
-					"error", err)
-				return
-			}
-		}
-	}
+// Execute will execute one step
+func (sm *stateMachine) Execute(ctx context.Context) error {
+	return sm.executeStep(ctx)
 }
 
 func (sm *stateMachine) executeStep(ctx context.Context) error {
 	sm.log.Debug(fmt.Sprintf("%s: executing step", sm.stateMachineName),
 		"step", sm.currentStep.Identifier())
 	sm.statusHandler.SetStringMetric(core.MetricCurrentStateMachineStep, string(sm.currentStep.Identifier()))
-	nextStepIdentifier, err := sm.currentStep.Execute(ctx)
-	if err != nil {
-		return err
-	}
+	nextStepIdentifier := sm.currentStep.Execute(ctx)
 
-	sm.currentStep, err = sm.getNextStep(nextStepIdentifier)
+	currentStep, err := sm.getNextStep(nextStepIdentifier)
+	sm.currentStep = currentStep
 
 	return err
 }
@@ -129,9 +92,7 @@ func (sm *stateMachine) getNextStep(identifier core.StepIdentifier) (core.Step, 
 	return nextStep, nil
 }
 
-// Close will close the state machine's main loop
-func (sm *stateMachine) Close() error {
-	sm.cancel()
-
-	return nil
+// IsInterfaceNil returns true if there is no value under the interface
+func (sm *stateMachine) IsInterfaceNil() bool {
+	return sm == nil
 }

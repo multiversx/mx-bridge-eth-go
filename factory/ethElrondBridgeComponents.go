@@ -85,6 +85,7 @@ type ethElrondBridgeComponents struct {
 	timeForBootstrap              time.Duration
 	metricsHolder                 core.MetricsHolder
 	bridgeStatusHandler           core.StatusHandler
+	stateMachine                  StateMachine
 
 	ethToElrondBridge        bridge.Executor
 	ethToElrondMachineStates core.MachineStates
@@ -144,6 +145,11 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 	}
 
 	err = components.createEthereumToElrondBridge(args)
+	if err != nil {
+		return nil, err
+	}
+
+	err = components.createStateMachine()
 	if err != nil {
 		return nil, err
 	}
@@ -449,6 +455,44 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 	return nil
 }
 
+func (components *ethElrondBridgeComponents) createStateMachine() error {
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
+
+	argsStateMachine := stateMachine.ArgsStateMachine{
+		StateMachineName:     ethToElrondName,
+		Steps:                components.ethToElrondMachineStates,
+		StartStateIdentifier: ethToElrond.GettingPendingBatchFromEthereum,
+		Log:                  log,
+		StatusHandler:        components.bridgeStatusHandler,
+	}
+
+	var err error
+	components.stateMachine, err = stateMachine.NewStateMachine(argsStateMachine)
+
+	return err
+}
+
+func (components *ethElrondBridgeComponents) createAndStartPollingHandlerForStateMachine() error {
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
+
+	argsPollingHandler := polling.ArgsPollingHandler{
+		Log:              log,
+		Name:             "State machine",
+		PollingInterval:  components.ethToElrondStepDuration,
+		PollingWhenError: pollingDurationOnError,
+		Executor:         components.stateMachine,
+	}
+
+	pollingHandler, err := polling.NewPollingHandler(argsPollingHandler)
+	if err != nil {
+		return err
+	}
+
+	components.addClosableComponent(pollingHandler)
+
+	return pollingHandler.StartProcessingLoop()
+}
+
 // Start will start the bridge
 func (components *ethElrondBridgeComponents) Start() error {
 	err := components.messenger.Bootstrap()
@@ -466,23 +510,10 @@ func (components *ethElrondBridgeComponents) Start() error {
 
 	components.broadcaster.BroadcastJoinTopic()
 
-	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
-
-	argsStateMachine := stateMachine.ArgsStateMachine{
-		StateMachineName:     ethToElrondName,
-		Steps:                components.ethToElrondMachineStates,
-		StartStateIdentifier: ethToElrond.GettingPendingBatchFromEthereum,
-		DurationBetweenSteps: components.ethToElrondStepDuration,
-		Log:                  log,
-		StatusHandler:        components.bridgeStatusHandler,
-	}
-
-	sm, err := stateMachine.NewStateMachine(argsStateMachine)
+	err = components.createAndStartPollingHandlerForStateMachine()
 	if err != nil {
 		return err
 	}
-
-	components.addClosableComponent(sm)
 
 	return nil
 }

@@ -38,3 +38,9 @@ type Broadcaster interface {
 	Close() error
 	IsInterfaceNil() bool
 }
+
+// StateMachine defines a state machine component
+type StateMachine interface {
+	Execute(ctx context.Context) error
+	IsInterfaceNil() bool
+}

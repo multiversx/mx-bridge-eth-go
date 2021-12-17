@@ -13,34 +13,34 @@ type resolveSetStatusStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *resolveSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+func (step *resolveSetStatusStep) Execute(ctx context.Context) core.StepIdentifier {
 	storedBatch := step.bridge.GetStoredBatch()
 	if storedBatch == nil {
 		step.bridge.GetLogger().Debug("nil batch stored")
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
 	batch, err := step.bridge.GetBatchFromElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error while fetching batch", "error", err)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 	if batch == nil {
 		step.bridge.GetLogger().Debug("nil batch fetched")
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
 	statuses, err := step.bridge.GetBatchStatusesFromEthereum(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error while fetching transaction statuses", "error", err)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
 	batch.Statuses = statuses
 
 	step.bridge.ResolveNewDepositsStatuses(uint64(len(batch.Statuses)))
 
-	return elrondToEth.ProposingSetStatusOnElrond, nil
+	return elrondToEth.ProposingSetStatusOnElrond
 }
 
 // Identifier returns the step's identifier

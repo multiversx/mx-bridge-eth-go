@@ -25,8 +25,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -41,8 +40,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -57,8 +55,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -77,8 +74,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 
 			assert.False(t, step.IsInterfaceNil())
 			expectedStep := core.StepIdentifier(elrondToEth.SigningProposedSetStatusOnElrond)
-			stepIdentifier, err := step.Execute(context.Background())
-			assert.Nil(t, err)
+			stepIdentifier := step.Execute(context.Background())
 			assert.Equal(t, expectedStep, stepIdentifier)
 
 		})
@@ -94,8 +90,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 					bridge: bridgeStub,
 				}
 
-				stepIdentifier, err := step.Execute(context.Background())
-				assert.Nil(t, err)
+				stepIdentifier := step.Execute(context.Background())
 				assert.Equal(t, step.Identifier(), stepIdentifier)
 
 			})
@@ -108,8 +103,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 				}
 
 				expectedStep := core.StepIdentifier(elrondToEth.SigningProposedSetStatusOnElrond)
-				stepIdentifier, err := step.Execute(context.Background())
-				assert.Nil(t, err)
+				stepIdentifier := step.Execute(context.Background())
 				assert.Equal(t, expectedStep, stepIdentifier)
 
 			})
