@@ -15,7 +15,7 @@ type MultiSigContractStub struct {
 	GetRelayersCalled      func(opts *bind.CallOpts) ([]common.Address, error)
 	WasBatchExecutedCalled func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	ExecuteTransferCalled  func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
-		amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
+		amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	QuorumCalled                    func(opts *bind.CallOpts) (*big.Int, error)
 	GetStatusesAfterExecutionCalled func(opts *bind.CallOpts, batchID *big.Int) ([]byte, error)
 }
@@ -53,12 +53,11 @@ func (stub *MultiSigContractStub) ExecuteTransfer(
 	tokens []common.Address,
 	recipients []common.Address,
 	amounts []*big.Int,
-	nonces []*big.Int,
 	batchNonce *big.Int,
 	signatures [][]byte,
 ) (*types.Transaction, error) {
 	if stub.ExecuteTransferCalled != nil {
-		return stub.ExecuteTransferCalled(opts, tokens, recipients, amounts, nonces, batchNonce, signatures)
+		return stub.ExecuteTransferCalled(opts, tokens, recipients, amounts, batchNonce, signatures)
 	}
 
 	return nil, errNotImplemented

@@ -30,7 +30,6 @@ type EthereumConfig struct {
 	PrivateKeyFile                     string
 	IntervalToResendTxsInSeconds       uint64
 	GasLimit                           uint64
-	ERC20Contracts                     []string
 	GasStation                         GasStationConfig
 	MaxRetriesOnQuorumReached          uint64
 	IntervalToWaitForTransferInSeconds uint64
