@@ -10,7 +10,6 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/stateMachine"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -47,16 +46,16 @@ const (
 
 type argsBridgeStub struct {
 	failingStep                           string
-	WasTransferPerformedOnEthereumHandler func() bool
-	ProcessQuorumReachedOnEthereumHandler func() bool
-	ProcessQuorumReachedOnElrondHandler   func() bool
+	wasTransferPerformedOnEthereumHandler func() bool
+	processQuorumReachedOnEthereumHandler func() bool
+	processQuorumReachedOnElrondHandler   func() bool
 	myTurnHandler                         func() bool
-	WasSetStatusProposedOnElrondHandler   func() bool
-	WasActionSignedOnElrondHandler        func() bool
-	WasActionPerformedOnElrondHandler     func() bool
+	wasSetStatusProposedOnElrondHandler   func() bool
+	wasActionSignedOnElrondHandler        func() bool
+	wasActionPerformedOnElrondHandler     func() bool
 	maxRetriesReachedEthereumHandler      func() bool
 	maxRetriesReachedElrondHandler        func() bool
-	ResolveNewDepositsStatusesHandler     func() bool
+	resolveNewDepositsStatusesHandler     func() bool
 }
 
 var trueHandler = func() bool { return true }
@@ -119,7 +118,7 @@ func createMockBridge(args argsBridgeStub) (*bridgeV2.BridgeExecutorStub, *error
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
 
-		return args.WasTransferPerformedOnEthereumHandler(), errHandler.storeAndReturnError(nil)
+		return args.wasTransferPerformedOnEthereumHandler(), errHandler.storeAndReturnError(nil)
 	}
 	stub.SignTransferOnEthereumCalled = func() error {
 		if args.failingStep == signTransferOnEthereum {
@@ -133,7 +132,7 @@ func createMockBridge(args argsBridgeStub) (*bridgeV2.BridgeExecutorStub, *error
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
 
-		return args.ProcessQuorumReachedOnEthereumHandler(), errHandler.storeAndReturnError(nil)
+		return args.processQuorumReachedOnEthereumHandler(), errHandler.storeAndReturnError(nil)
 	}
 	stub.PerformTransferOnEthereumCalled = func(ctx context.Context) error {
 		if args.failingStep == performTransferOnEthereum {
@@ -159,7 +158,7 @@ func createMockBridge(args argsBridgeStub) (*bridgeV2.BridgeExecutorStub, *error
 		if args.failingStep == wasSetStatusProposedOnElrond {
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
-		return args.WasSetStatusProposedOnElrondHandler(), errHandler.storeAndReturnError(nil)
+		return args.wasSetStatusProposedOnElrondHandler(), errHandler.storeAndReturnError(nil)
 	}
 	stub.ProposeSetStatusOnElrondCalled = func(ctx context.Context) error {
 		if args.failingStep == proposeSetStatusOnElrond {
@@ -173,7 +172,7 @@ func createMockBridge(args argsBridgeStub) (*bridgeV2.BridgeExecutorStub, *error
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
 
-		return args.WasActionSignedOnElrondHandler(), errHandler.storeAndReturnError(nil)
+		return args.wasActionSignedOnElrondHandler(), errHandler.storeAndReturnError(nil)
 	}
 	stub.SignActionOnElrondCalled = func(ctx context.Context) error {
 		if args.failingStep == signActionOnElrond {
@@ -187,14 +186,14 @@ func createMockBridge(args argsBridgeStub) (*bridgeV2.BridgeExecutorStub, *error
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
 
-		return args.ProcessQuorumReachedOnElrondHandler(), errHandler.storeAndReturnError(nil)
+		return args.processQuorumReachedOnElrondHandler(), errHandler.storeAndReturnError(nil)
 	}
 	stub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 		if args.failingStep == wasActionPerformedOnElrond {
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}
 
-		return args.WasActionPerformedOnElrondHandler(), errHandler.storeAndReturnError(nil)
+		return args.wasActionPerformedOnElrondHandler(), errHandler.storeAndReturnError(nil)
 	}
 	stub.PerformActionOnElrondCalled = func(ctx context.Context) error {
 		if args.failingStep == performActionOnElrond {
@@ -219,20 +218,20 @@ func TestHappyCaseWhenLeaderSetStatusAlreadySigned(t *testing.T) {
 	numCalled := 0
 	args := argsBridgeStub{
 		myTurnHandler:                         trueHandler,
-		ProcessQuorumReachedOnEthereumHandler: trueHandler,
-		ProcessQuorumReachedOnElrondHandler:   trueHandler,
-		WasActionSignedOnElrondHandler:        trueHandler,
-		WasActionPerformedOnElrondHandler: func() bool {
+		processQuorumReachedOnEthereumHandler: trueHandler,
+		processQuorumReachedOnElrondHandler:   trueHandler,
+		wasActionSignedOnElrondHandler:        trueHandler,
+		wasActionPerformedOnElrondHandler: func() bool {
 			numCalled++
 			return numCalled > 1
 		},
-		WasTransferPerformedOnEthereumHandler: falseHandler,
+		wasTransferPerformedOnEthereumHandler: falseHandler,
 		maxRetriesReachedEthereumHandler:      falseHandler,
 		maxRetriesReachedElrondHandler:        falseHandler,
-		WasSetStatusProposedOnElrondHandler:   falseHandler,
+		wasSetStatusProposedOnElrondHandler:   falseHandler,
 	}
 	executor, eh := createMockBridge(args)
-	sm := createStateMachine(t, executor, ethToElrond.GettingPendingBatchFromEthereum)
+	sm := createStateMachine(t, executor, elrondToEth.GettingPendingBatchFromElrond)
 	numSteps := 12
 	for i := 0; i < numSteps; i++ {
 		err := sm.ExecuteOneStep()
@@ -297,21 +296,21 @@ func testErrorFlow(t *testing.T, stepThatErrors core.StepIdentifier) {
 	args := argsBridgeStub{
 		failingStep:                           string(stepThatErrors),
 		myTurnHandler:                         trueHandler,
-		ProcessQuorumReachedOnEthereumHandler: trueHandler,
-		ProcessQuorumReachedOnElrondHandler:   trueHandler,
-		WasActionSignedOnElrondHandler:        trueHandler,
-		WasActionPerformedOnElrondHandler: func() bool {
+		processQuorumReachedOnEthereumHandler: trueHandler,
+		processQuorumReachedOnElrondHandler:   trueHandler,
+		wasActionSignedOnElrondHandler:        trueHandler,
+		wasActionPerformedOnElrondHandler: func() bool {
 			numCalled++
 			return numCalled > 1
 		},
-		WasTransferPerformedOnEthereumHandler: falseHandler,
+		wasTransferPerformedOnEthereumHandler: falseHandler,
 		maxRetriesReachedEthereumHandler:      falseHandler,
 		maxRetriesReachedElrondHandler:        falseHandler,
-		WasSetStatusProposedOnElrondHandler:   falseHandler,
+		wasSetStatusProposedOnElrondHandler:   falseHandler,
 	}
 
 	if stepThatErrors == "SignActionOnElrond" {
-		args.WasActionSignedOnElrondHandler = falseHandler
+		args.wasActionSignedOnElrondHandler = falseHandler
 	}
 
 	executor, eh := createMockBridge(args)
