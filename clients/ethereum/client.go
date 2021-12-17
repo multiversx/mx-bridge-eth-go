@@ -400,6 +400,22 @@ func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([
 	return c.clientWrapper.GetStatusesAfterExecution(ctx, big.NewInt(0).SetUint64(batchId))
 }
 
+// GetQuorumSize returns the size of the quorum
+func (c *client) GetQuorumSize(ctx context.Context) (*big.Int, error) {
+	return c.clientWrapper.Quorum(ctx)
+}
+
+// IsQuorumReached returns true if the number of signatures is at least the size of quorum
+func (c *client) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error) {
+	signatures := c.signatureHolder.Signatures(msgHash.Bytes())
+	quorum, err := c.clientWrapper.Quorum(ctx)
+	if err != nil {
+		return false, fmt.Errorf("%w in IsQuorumReached, Quorum call", err)
+	}
+
+	return len(signatures) < int(quorum.Int64()), nil
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
 func (c *client) IsInterfaceNil() bool {
 	return c == nil

@@ -22,7 +22,7 @@ func TestCreateSteps_Errors(t *testing.T) {
 func TestCreateSteps_ShouldWork(t *testing.T) {
 	t.Parallel()
 
-	steps, err := CreateSteps(bridgeV2.NewEthToElrondBridgeStub())
+	steps, err := CreateSteps(bridgeV2.NewBridgeExecutorStub())
 
 	require.NotNil(t, steps)
 	require.Nil(t, err)
