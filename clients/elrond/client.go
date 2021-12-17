@@ -206,7 +206,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			// TODO: inject a pub key converter for the DisplayableTo conversion to allow better component re-usability
 			DisplayableTo:    fmt.Sprintf("%s%s", hexPrefix, hex.EncodeToString(responseData[i+3])),
 			TokenBytes:       responseData[i+4],
-			DisplayableToken: c.addressPublicKeyConverter.Encode(responseData[i+4]),
+			DisplayableToken: string(responseData[i+4]),
 			Amount:           amount,
 		}
 
@@ -237,7 +237,9 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 	}
 
 	txBuilder := c.createCommonTxDataBuilder(proposeSetStatusFuncName, int64(batch.ID))
-	txBuilder.ArgBytes(batch.Statuses)
+	for _, stat := range batch.Statuses {
+		txBuilder.ArgBytes([]byte{stat})
+	}
 
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.ProposeStatus)
 	if err == nil {

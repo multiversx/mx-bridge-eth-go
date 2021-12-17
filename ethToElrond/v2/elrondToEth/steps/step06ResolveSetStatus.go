@@ -36,7 +36,7 @@ func (step *resolveSetStatusStep) Execute(ctx context.Context) core.StepIdentifi
 		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
-	batch.Statuses = statuses
+	storedBatch.Statuses = statuses
 
 	step.bridge.ResolveNewDepositsStatuses(uint64(len(batch.Statuses)))
 

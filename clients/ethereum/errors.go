@@ -19,4 +19,5 @@ var (
 	errInvalidGasLimit          = errors.New("invalid gas limit")
 	errNilStatusHandler         = errors.New("nil status handler")
 	errNilEthClient             = errors.New("nil eth client")
+	errInvalidValue             = errors.New("invalid value")
 )

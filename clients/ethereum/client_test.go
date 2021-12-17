@@ -43,10 +43,11 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 				return append([]byte("ERC20"), sourceBytes...), nil
 			},
 		},
-		SignatureHolder:     &testsCommon.SignaturesHolderStub{},
-		SafeContractAddress: testsCommon.CreateRandomEthereumAddress(),
-		GasHandler:          &testsCommon.GasHandlerStub{},
-		TransferGasLimit:    100,
+		SignatureHolder:           &testsCommon.SignaturesHolderStub{},
+		SafeContractAddress:       testsCommon.CreateRandomEthereumAddress(),
+		GasHandler:                &testsCommon.GasHandlerStub{},
+		TransferGasLimit:          100,
+		MaxRetriesOnQuorumReached: 1,
 	}
 }
 
@@ -162,6 +163,14 @@ func TestNewEthereumClient(t *testing.T) {
 		c, err := NewEthereumClient(args)
 
 		assert.Equal(t, errInvalidGasLimit, err)
+		assert.True(t, check.IfNil(c))
+	})
+	t.Run("invalid MaxRetriesOnQuorumReached", func(t *testing.T) {
+		args := createMockEthereumClientArgs()
+		args.MaxRetriesOnQuorumReached = minRetriesOnQuorum - 1
+		c, err := NewEthereumClient(args)
+
+		assert.True(t, errors.Is(err, errInvalidValue))
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -584,4 +593,95 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	statuses, err := c.GetTransactionsStatuses(context.Background(), expectedBatchID.Uint64())
 	assert.Nil(t, err)
 	assert.Equal(t, expectedStatuses, statuses)
+}
+
+func TestClient_GetQuorumSize(t *testing.T) {
+	t.Parallel()
+
+	args := createMockEthereumClientArgs()
+	providedValue := big.NewInt(6453)
+	args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		QuorumCalled: func(ctx context.Context) (*big.Int, error) {
+			return providedValue, nil
+		},
+	}
+	c, _ := NewEthereumClient(args)
+
+	quorum, err := c.GetQuorumSize(context.Background())
+	assert.Nil(t, err)
+	assert.Equal(t, providedValue, quorum)
+}
+
+func TestClient_IsQuorumReached(t *testing.T) {
+	t.Parallel()
+
+	t.Run("quorum errors", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("expected error")
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+			QuorumCalled: func(ctx context.Context) (*big.Int, error) {
+				return nil, expectedErr
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		isReached, err := c.IsQuorumReached(context.Background(), common.Hash{})
+		assert.False(t, isReached)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("quorum returns less than minimum allowed", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+			QuorumCalled: func(ctx context.Context) (*big.Int, error) {
+				return big.NewInt(0), nil
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		isReached, err := c.IsQuorumReached(context.Background(), common.Hash{})
+		assert.False(t, isReached)
+		assert.True(t, errors.Is(err, errInvalidValue))
+		assert.True(t, strings.Contains(err.Error(), "in IsQuorumReached, minQuorum"))
+	})
+	t.Run("quorum values comparison", func(t *testing.T) {
+		t.Parallel()
+
+		signatures := make([][]byte, 0)
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+			QuorumCalled: func(ctx context.Context) (*big.Int, error) {
+				return big.NewInt(3), nil
+			},
+		}
+		args.SignatureHolder = &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return signatures
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		isReached, err := c.IsQuorumReached(context.Background(), common.Hash{})
+		assert.False(t, isReached)
+		assert.Nil(t, err)
+
+		signatures = append(signatures, []byte("sig"))
+		signatures = append(signatures, []byte("sig"))
+		isReached, err = c.IsQuorumReached(context.Background(), common.Hash{})
+		assert.False(t, isReached)
+		assert.Nil(t, err)
+
+		signatures = append(signatures, []byte("sig"))
+		isReached, err = c.IsQuorumReached(context.Background(), common.Hash{})
+		assert.True(t, isReached)
+		assert.Nil(t, err)
+
+		signatures = append(signatures, []byte("sig"))
+		isReached, err = c.IsQuorumReached(context.Background(), common.Hash{})
+		assert.True(t, isReached)
+		assert.Nil(t, err)
+	})
 }

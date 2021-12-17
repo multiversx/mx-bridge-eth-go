@@ -256,7 +256,9 @@ func (dg *elrondClientDataGetter) WasProposedSetStatus(ctx context.Context, batc
 
 	builder := dg.createDefaultVmQueryBuilder()
 	builder.Function(wasSetCurrentTransactionBatchStatusActionProposedFuncName).ArgInt64(int64(batch.ID))
-	builder.ArgBytes(batch.Statuses)
+	for _, stat := range batch.Statuses {
+		builder.ArgBytes([]byte{stat})
+	}
 
 	return dg.executeQueryBoolFromBuilder(ctx, builder)
 }
@@ -305,7 +307,9 @@ func (dg *elrondClientDataGetter) GetActionIDForSetStatusOnPendingTransfer(ctx c
 
 	builder := dg.createDefaultVmQueryBuilder()
 	builder.Function(getActionIdForSetCurrentTransactionBatchStatusFuncName).ArgInt64(int64(batch.ID))
-	builder.ArgBytes(batch.Statuses)
+	for _, stat := range batch.Statuses {
+		builder.ArgBytes([]byte{stat})
+	}
 
 	return dg.executeQueryUint64FromBuilder(ctx, builder)
 }

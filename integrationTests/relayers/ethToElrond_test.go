@@ -17,7 +17,6 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ethereum/go-ethereum/common"
@@ -48,23 +47,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	tokens := []common.Address{token1Erc20, token2Erc20}
 	availableBalances := []*big.Int{value1, value2}
 
-	erc20ContractsHolder := &bridgeV2.ERC20ContractsHolderStub{
-		BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
-			for i, tk := range tokens {
-				if tk != erc20Address {
-					continue
-				}
-
-				if address == safeContractEthAddress {
-					return availableBalances[i], nil
-				}
-
-				return big.NewInt(0), nil
-			}
-
-			return nil, fmt.Errorf("unregistered token %s", erc20Address.Hex())
-		},
-	}
+	erc20ContractsHolder := createMockErc20ContractsHolder(tokens, safeContractEthAddress, availableBalances)
 
 	batchNonceOnEthereum := uint64(345)
 	txNonceOnEthereum := uint64(772634)
@@ -215,6 +198,8 @@ func createBridgeComponentsConfig(index int) config.Config {
 			GasStation: config.GasStationConfig{
 				Enabled: false,
 			},
+			MaxRetriesOnQuorumReached:          1,
+			IntervalToWaitForTransferInSeconds: 1,
 		},
 		Elrond: config.ElrondConfig{
 			NetworkAddress:               "mock",

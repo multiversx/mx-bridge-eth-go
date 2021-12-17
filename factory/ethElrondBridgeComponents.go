@@ -20,8 +20,10 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/timer"
 	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
+	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
+	elrondToEthSteps "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond/steps"
+	ethToElrondSteps "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/topology"
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
@@ -43,6 +45,7 @@ const (
 	minTimeForBootstrap     = time.Millisecond * 100
 	pollingDurationOnError  = time.Second * 5
 	ethToElrondName         = "EthToElrond"
+	elrondToEthName         = "ElrondToEth"
 	baseLogId               = "EthElrond-Base"
 	elrondClientLogId       = "EthElrond-ElrondClient"
 	ethClientLogId          = "EthElrond-EthClient"
@@ -84,12 +87,16 @@ type ethElrondBridgeComponents struct {
 	timer                         core.Timer
 	timeForBootstrap              time.Duration
 	metricsHolder                 core.MetricsHolder
-	bridgeStatusHandler           core.StatusHandler
-	stateMachine                  StateMachine
 
 	ethToElrondBridge        bridge.Executor
 	ethToElrondMachineStates core.MachineStates
 	ethToElrondStepDuration  time.Duration
+	ethToElrondStatusHandler core.StatusHandler
+
+	elrondToEthBridge        bridge.Executor
+	elrondToEthMachineStates core.MachineStates
+	elrondToEthStepDuration  time.Duration
+	elrondToEthStatusHandler core.StatusHandler
 
 	mutClosableHandlers sync.RWMutex
 	closableHandlers    []io.Closer
@@ -149,7 +156,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
-	err = components.createStateMachine()
+	err = components.createElrondToEthereumBridge(args)
 	if err != nil {
 		return nil, err
 	}
@@ -423,23 +430,24 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		return err
 	}
 
-	components.bridgeStatusHandler, err = status.NewStatusHandler(ethToElrondName, components.statusStorer)
+	components.ethToElrondStatusHandler, err = status.NewStatusHandler(ethToElrondName, components.statusStorer)
 	if err != nil {
 		return err
 	}
 
-	err = components.metricsHolder.AddStatusHandler(components.bridgeStatusHandler)
+	err = components.metricsHolder.AddStatusHandler(components.ethToElrondStatusHandler)
 	if err != nil {
 		return err
 	}
 
+	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 	argsBridgeExecutor := bridge.ArgsBridgeExecutor{
 		Log:                      log,
 		TopologyProvider:         topologyHandler,
 		ElrondClient:             components.elrondClient,
 		EthereumClient:           components.ethClient,
-		StatusHandler:            components.bridgeStatusHandler,
-		TimeForTransferExecution: time.Minute, // TODO: get this from configs
+		StatusHandler:            components.ethToElrondStatusHandler,
+		TimeForTransferExecution: timeForTransferExecution,
 	}
 
 	components.ethToElrondBridge, err = bridge.NewBridgeExecutor(argsBridgeExecutor)
@@ -447,7 +455,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		return err
 	}
 
-	components.ethToElrondMachineStates, err = steps.CreateSteps(components.ethToElrondBridge)
+	components.ethToElrondMachineStates, err = ethToElrondSteps.CreateSteps(components.ethToElrondBridge)
 	if err != nil {
 		return err
 	}
@@ -455,42 +463,58 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 	return nil
 }
 
-func (components *ethElrondBridgeComponents) createStateMachine() error {
-	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
+func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args ArgsEthereumToElrondBridge) error {
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondToEthName), elrondToEthName)
 
-	argsStateMachine := stateMachine.ArgsStateMachine{
-		StateMachineName:     ethToElrondName,
-		Steps:                components.ethToElrondMachineStates,
-		StartStateIdentifier: ethToElrond.GettingPendingBatchFromEthereum,
-		Log:                  log,
-		StatusHandler:        components.bridgeStatusHandler,
+	configs, found := args.Configs.GeneralConfig.StateMachine[elrondToEthName]
+	if !found {
+		return fmt.Errorf("%w for %q", errMissingConfig, elrondToEthName)
 	}
 
-	var err error
-	components.stateMachine, err = stateMachine.NewStateMachine(argsStateMachine)
-
-	return err
-}
-
-func (components *ethElrondBridgeComponents) createAndStartPollingHandlerForStateMachine() error {
-	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
-
-	argsPollingHandler := polling.ArgsPollingHandler{
-		Log:              log,
-		Name:             "State machine",
-		PollingInterval:  components.ethToElrondStepDuration,
-		PollingWhenError: pollingDurationOnError,
-		Executor:         components.stateMachine,
+	components.elrondToEthStepDuration = time.Duration(configs.StepDurationInMillis) * time.Millisecond
+	argsTopologyHandler := topology.ArgsTopologyHandler{
+		PublicKeysProvider: components.broadcaster,
+		Timer:              components.timer,
+		StepDuration:       components.elrondToEthStepDuration,
+		AddressBytes:       components.elrondRelayerAddress.AddressBytes(),
 	}
 
-	pollingHandler, err := polling.NewPollingHandler(argsPollingHandler)
+	topologyHandler, err := topology.NewTopologyHandler(argsTopologyHandler)
 	if err != nil {
 		return err
 	}
 
-	components.addClosableComponent(pollingHandler)
+	components.elrondToEthStatusHandler, err = status.NewStatusHandler(elrondToEthName, components.statusStorer)
+	if err != nil {
+		return err
+	}
 
-	return pollingHandler.StartProcessingLoop()
+	err = components.metricsHolder.AddStatusHandler(components.elrondToEthStatusHandler)
+	if err != nil {
+		return err
+	}
+
+	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
+	argsBridgeExecutor := bridge.ArgsBridgeExecutor{
+		Log:                      log,
+		TopologyProvider:         topologyHandler,
+		ElrondClient:             components.elrondClient,
+		EthereumClient:           components.ethClient,
+		StatusHandler:            components.elrondToEthStatusHandler,
+		TimeForTransferExecution: timeForTransferExecution,
+	}
+
+	components.elrondToEthBridge, err = bridge.NewBridgeExecutor(argsBridgeExecutor)
+	if err != nil {
+		return err
+	}
+
+	components.elrondToEthMachineStates, err = elrondToEthSteps.CreateSteps(components.ethToElrondBridge)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Start will start the bridge
@@ -510,10 +534,61 @@ func (components *ethElrondBridgeComponents) Start() error {
 
 	components.broadcaster.BroadcastJoinTopic()
 
-	err = components.createAndStartPollingHandlerForStateMachine()
+	err = components.createAndStartEthToElrondStateMachine()
 	if err != nil {
 		return err
 	}
+
+	err = components.createAndStartElrondToEthStateMachine()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (components *ethElrondBridgeComponents) createAndStartEthToElrondStateMachine() error {
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
+
+	//TODO add a Start method on the state machine and move the creation of the state machine in the constructor
+	argsStateMachine := stateMachine.ArgsStateMachine{
+		StateMachineName:     ethToElrondName,
+		Steps:                components.ethToElrondMachineStates,
+		StartStateIdentifier: ethToElrond.GettingPendingBatchFromEthereum,
+		DurationBetweenSteps: components.ethToElrondStepDuration,
+		Log:                  log,
+		StatusHandler:        components.ethToElrondStatusHandler,
+	}
+
+	sm, err := stateMachine.NewStateMachine(argsStateMachine)
+	if err != nil {
+		return err
+	}
+
+	components.addClosableComponent(sm)
+
+	return nil
+}
+
+func (components *ethElrondBridgeComponents) createAndStartElrondToEthStateMachine() error {
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondToEthName), elrondToEthName)
+
+	//TODO add a Start method on the state machine and move the creation of the state machine in the constructor
+	argsStateMachine := stateMachine.ArgsStateMachine{
+		StateMachineName:     elrondToEthName,
+		Steps:                components.elrondToEthMachineStates,
+		StartStateIdentifier: elrondToEth.GettingPendingBatchFromElrond,
+		DurationBetweenSteps: components.elrondToEthStepDuration,
+		Log:                  log,
+		StatusHandler:        components.elrondToEthStatusHandler,
+	}
+
+	sm, err := stateMachine.NewStateMachine(argsStateMachine)
+	if err != nil {
+		return err
+	}
+
+	components.addClosableComponent(sm)
 
 	return nil
 }
