@@ -4,6 +4,7 @@
     SafeContractAddress = "A6504Cc508889bbDBd4B748aFf6EA6b5D0d2684c"
     PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
     GasLimit = 500000
+    IntervalToWaitForTransferInSeconds = 600 #10 minutes
     [Eth.GasStation]
         Enabled = true
         URL = "https://ethgasstation.info/api/ethgasAPI.json?" # gas station URL. Suggestion to provide the api-key here
