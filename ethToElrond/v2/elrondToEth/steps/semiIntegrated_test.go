@@ -233,7 +233,7 @@ func TestHappyCaseWhenLeaderSetStatusAlreadySigned(t *testing.T) {
 	sm := createStateMachine(t, executor, elrondToEth.GettingPendingBatchFromElrond)
 	numSteps := 12
 	for i := 0; i < numSteps; i++ {
-		err := sm.ExecuteOneStep()
+		err := sm.Execute(context.Background())
 		require.Nil(t, err)
 	}
 
@@ -317,7 +317,7 @@ func testErrorFlow(t *testing.T, stepThatErrors core.StepIdentifier) {
 
 	maxNumSteps := 12
 	for i := 0; i < maxNumSteps; i++ {
-		err := sm.ExecuteOneStep()
+		err := sm.Execute(context.Background())
 		assert.Nil(t, err)
 
 		if eh.lastError != nil {
