@@ -16,7 +16,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-const messagePrefix = "\u0019Ethereum Signed Message:\n32"
+const (
+	messagePrefix      = "\u0019Ethereum Signed Message:\n32"
+	minRetriesOnQuorum = 1
+	minQuorumValue     = uint64(1)
+)
 
 type argListsBatch struct {
 	tokens     []common.Address
@@ -123,6 +127,10 @@ func checkArgs(args ArgsEthereumClient) error {
 	}
 	if args.TransferGasLimit == 0 {
 		return errInvalidGasLimit
+	}
+	if args.MaxRetriesOnQuorumReached < minRetriesOnQuorum {
+		return fmt.Errorf("%w for args.MaxRetriesOnQuorumReached, got: %d, minimum: %d",
+			errInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
 	}
 
 	return nil
@@ -412,8 +420,11 @@ func (c *client) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool
 	if err != nil {
 		return false, fmt.Errorf("%w in IsQuorumReached, Quorum call", err)
 	}
+	if quorum.Uint64() < minQuorumValue {
+		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %s", errInvalidValue, minQuorumValue, quorum.String())
+	}
 
-	return len(signatures) < int(quorum.Int64()), nil
+	return len(signatures) >= int(quorum.Int64()), nil
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
