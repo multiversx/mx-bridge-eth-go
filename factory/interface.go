@@ -44,3 +44,9 @@ type StateMachine interface {
 	Execute(ctx context.Context) error
 	IsInterfaceNil() bool
 }
+
+// PollingHandler defines a polling handler component
+type PollingHandler interface {
+	StartProcessingLoop() error
+	IsInterfaceNil() bool
+}

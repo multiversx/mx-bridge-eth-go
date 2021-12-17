@@ -219,7 +219,7 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		components, err := NewEthElrondBridgeComponents(args)
 		require.Nil(t, err)
 		require.NotNil(t, components)
-		require.Equal(t, 4, len(components.closableHandlers))
+		require.Equal(t, 6, len(components.closableHandlers))
 		require.False(t, check.IfNil(components.ethToElrondStatusHandler))
 		require.False(t, check.IfNil(components.elrondToEthStatusHandler))
 	})

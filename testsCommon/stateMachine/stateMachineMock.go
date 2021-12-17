@@ -16,10 +16,6 @@ type StateMachineMock struct {
 	CurrentStep   core.Step
 }
 
-func (smm *StateMachineMock) IsInterfaceNil() bool {
-	return smm == nil
-}
-
 // NewStateMachineMock -
 func NewStateMachineMock(steps core.MachineStates, initialStep core.StepIdentifier) *StateMachineMock {
 	return &StateMachineMock{
@@ -65,4 +61,9 @@ func (smm *StateMachineMock) Execute(ctx context.Context) error {
 	smm.CurrentStep = nextStep
 
 	return nil
+}
+
+// IsInterfaceNil -
+func (smm *StateMachineMock) IsInterfaceNil() bool {
+	return smm == nil
 }
