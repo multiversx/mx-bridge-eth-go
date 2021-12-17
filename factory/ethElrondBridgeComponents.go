@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/gasManagement/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/elrond/mappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/gasManagement"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/gasManagement/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/roleProviders"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
