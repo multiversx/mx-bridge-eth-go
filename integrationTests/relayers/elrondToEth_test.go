@@ -218,3 +218,9 @@ func createTransaction(index int) (mock.ElrondDeposit, common.Address) {
 		Amount: big.NewInt(int64(index)),
 	}, tokenAddress
 }
+
+// TODO: remove duplicated code from the integration tests:
+// L154-L169, for loop is the same as in the first tests
+// L108-L129 same with L25-L47
+// L137-L151 same with L49-L63
+// check are the same after ctx.Done()
