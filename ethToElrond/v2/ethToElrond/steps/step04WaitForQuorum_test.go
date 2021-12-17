@@ -24,8 +24,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 		}
 
 		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -41,8 +40,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 		}
 
 		expectedStepIdentifier := core.StepIdentifier(ethToElrond.WaitingForQuorum)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -63,8 +61,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 		assert.NotNil(t, step.IsInterfaceNil())
 
 		expectedStepIdentifier = ethToElrond.PerformingActionID
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -80,8 +77,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 		}
 
 		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 }

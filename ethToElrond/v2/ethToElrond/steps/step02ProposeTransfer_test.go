@@ -25,8 +25,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 		}
 
 		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -45,8 +44,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 		}
 
 		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -68,8 +66,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 		}
 
 		expectedStepIdentifier := step.Identifier()
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -94,8 +91,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 		}
 
 		expectedStepIdentifier := core.StepIdentifier(ethToElrond.GettingPendingBatchFromEthereum)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -114,8 +110,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 		}
 
 		expectedStepIdentifier := core.StepIdentifier(ethToElrond.SigningProposedTransferOnElrond)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -142,8 +137,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 		assert.NotNil(t, step.IsInterfaceNil())
 
 		expectedStepIdentifier := core.StepIdentifier(ethToElrond.SigningProposedTransferOnElrond)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 }

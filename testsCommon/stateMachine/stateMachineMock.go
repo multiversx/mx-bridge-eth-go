@@ -42,17 +42,14 @@ func (smm *StateMachineMock) getNextStep(identifier core.StepIdentifier) (core.S
 	return nextStep, nil
 }
 
-// ExecuteOneStep -
-func (smm *StateMachineMock) ExecuteOneStep() error {
+// Execute -
+func (smm *StateMachineMock) Execute(ctx context.Context) error {
 	if check.IfNil(smm.CurrentStep) {
 		return fmt.Errorf("current step is nil. Call Initialize() first")
 	}
 
 	fmt.Printf("executing step %s...\n", smm.CurrentStep.Identifier())
-	nextStepIdentifier, err := smm.CurrentStep.Execute(context.Background())
-	if err != nil {
-		return err
-	}
+	nextStepIdentifier := smm.CurrentStep.Execute(ctx)
 
 	smm.ExecutedSteps = append(smm.ExecutedSteps, smm.CurrentStep.Identifier())
 
@@ -64,4 +61,9 @@ func (smm *StateMachineMock) ExecuteOneStep() error {
 	smm.CurrentStep = nextStep
 
 	return nil
+}
+
+// IsInterfaceNil -
+func (smm *StateMachineMock) IsInterfaceNil() bool {
+	return smm == nil
 }

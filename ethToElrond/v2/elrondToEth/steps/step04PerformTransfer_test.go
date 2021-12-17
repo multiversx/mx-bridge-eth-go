@@ -25,8 +25,7 @@ func TestExecute_PerformTransfer(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -44,8 +43,7 @@ func TestExecute_PerformTransfer(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -64,8 +62,7 @@ func TestExecute_PerformTransfer(t *testing.T) {
 
 			assert.False(t, step.IsInterfaceNil())
 			expectedStep := core.StepIdentifier(elrondToEth.ResolvingSetStatusOnElrond)
-			stepIdentifier, err := step.Execute(context.Background())
-			assert.Nil(t, err)
+			stepIdentifier := step.Execute(context.Background())
 			assert.Equal(t, expectedStep, stepIdentifier)
 		})
 		t.Run("if not leader, go to WaitingTransferConfirmation", func(t *testing.T) {
@@ -82,8 +79,7 @@ func TestExecute_PerformTransfer(t *testing.T) {
 			}
 
 			expectedStep := core.StepIdentifier(elrondToEth.WaitingTransferConfirmation)
-			stepIdentifier, err := step.Execute(context.Background())
-			assert.Nil(t, err)
+			stepIdentifier := step.Execute(context.Background())
 			assert.False(t, wasCalled)
 			assert.Equal(t, expectedStep, stepIdentifier)
 		})
@@ -103,8 +99,7 @@ func TestExecute_PerformTransfer(t *testing.T) {
 			}
 
 			expectedStep := core.StepIdentifier(elrondToEth.WaitingTransferConfirmation)
-			stepIdentifier, err := step.Execute(context.Background())
-			assert.Nil(t, err)
+			stepIdentifier := step.Execute(context.Background())
 			assert.True(t, wasCalled)
 			assert.Equal(t, expectedStep, stepIdentifier)
 		})

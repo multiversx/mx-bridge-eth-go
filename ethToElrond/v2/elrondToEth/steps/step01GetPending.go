@@ -13,24 +13,24 @@ type getPendingStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 	step.bridge.ResetRetriesCountOnEthereum()
 	step.bridge.ResetRetriesCountOnElrond()
 
 	batch, err := step.bridge.GetBatchFromElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error fetching Elrond batch", "error", err)
-		return step.Identifier(), nil
+		return step.Identifier()
 	}
 	if batch == nil {
 		step.bridge.GetLogger().Debug("no new batch found on Elrond")
-		return step.Identifier(), nil
+		return step.Identifier()
 	}
 
 	err = step.bridge.StoreBatchFromElrond(batch)
 	if err != nil {
 		step.bridge.GetLogger().Error("error storing Elrond batch", "error", err)
-		return step.Identifier(), nil
+		return step.Identifier()
 	}
 
 	step.bridge.GetLogger().Info("fetched new batch from Elrond " + batch.String())
@@ -38,14 +38,14 @@ func (step *getPendingStep) Execute(ctx context.Context) (core.StepIdentifier, e
 	wasPerformed, err := step.bridge.WasTransferPerformedOnEthereum(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if transfer was performed or not", "error", err)
-		return step.Identifier(), nil
+		return step.Identifier()
 	}
 	if wasPerformed {
 		step.bridge.GetLogger().Info("transfer performed")
-		return elrondToEth.ResolvingSetStatusOnElrond, nil
+		return elrondToEth.ResolvingSetStatusOnElrond
 	}
 
-	return elrondToEth.SigningProposedTransferOnEthereum, nil
+	return elrondToEth.SigningProposedTransferOnEthereum
 }
 
 // Identifier returns the step's identifier

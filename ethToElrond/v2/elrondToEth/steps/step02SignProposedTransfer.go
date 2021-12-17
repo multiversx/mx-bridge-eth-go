@@ -13,20 +13,20 @@ type signProposedTransferStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *signProposedTransferStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+func (step *signProposedTransferStep) Execute(ctx context.Context) core.StepIdentifier {
 	storedBatch := step.bridge.GetStoredBatch()
 	if storedBatch == nil {
 		step.bridge.GetLogger().Debug("nil batch stored")
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
 	err := step.bridge.SignTransferOnEthereum()
 	if err != nil {
 		step.bridge.GetLogger().Error("error signing", "batch ID", storedBatch.ID, "error", err)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
-	return elrondToEth.WaitingForQuorumOnTransfer, nil
+	return elrondToEth.WaitingForQuorumOnTransfer
 }
 
 // Identifier returns the step's identifier

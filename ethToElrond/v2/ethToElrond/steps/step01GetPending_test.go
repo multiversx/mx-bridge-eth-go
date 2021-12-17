@@ -36,8 +36,7 @@ func TestExecuteGetPending(t *testing.T) {
 		}
 
 		expectedStepIdentifier := step.Identifier()
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -56,8 +55,7 @@ func TestExecuteGetPending(t *testing.T) {
 		}
 
 		expectedStepIdentifier := step.Identifier()
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -78,8 +76,7 @@ func TestExecuteGetPending(t *testing.T) {
 		}
 
 		expectedStepIdentifier := step.Identifier()
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -104,8 +101,7 @@ func TestExecuteGetPending(t *testing.T) {
 		}
 
 		expectedStepIdentifier := step.Identifier()
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -136,8 +132,7 @@ func TestExecuteGetPending(t *testing.T) {
 
 		// Test next step
 		expectedStepIdentifier = ethToElrond.ProposingTransferOnElrond
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 		assert.Equal(t, testBatch, step.bridge.GetStoredBatch())
 	})
