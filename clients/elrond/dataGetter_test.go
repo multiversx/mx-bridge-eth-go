@@ -691,7 +691,9 @@ func TestDataGetter_WasProposedSetStatus(t *testing.T) {
 
 				expectedArgs := []string{
 					hex.EncodeToString(big.NewInt(112233).Bytes()),
-					hex.EncodeToString(batch.Statuses),
+				}
+				for _, stat := range batch.Statuses {
+					expectedArgs = append(expectedArgs, hex.EncodeToString([]byte{stat}))
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -867,7 +869,9 @@ func TestDataGetter_GetActionIDForSetStatusOnPendingTransfer(t *testing.T) {
 
 				expectedArgs := []string{
 					hex.EncodeToString(big.NewInt(112233).Bytes()),
-					hex.EncodeToString(batch.Statuses),
+				}
+				for _, stat := range batch.Statuses {
+					expectedArgs = append(expectedArgs, hex.EncodeToString([]byte{stat}))
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)

@@ -309,7 +309,7 @@ func TestClient_GetPending(t *testing.T) {
 					DisplayableFrom:     "erd1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsl6e0p7",
 					TokenBytes:          tokenBytes1,
 					ConvertedTokenBytes: append([]byte("converted_"), tokenBytes1...),
-					DisplayableToken:    "erd1qvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcrqvpsh78jz5",
+					DisplayableToken:    string(tokenBytes1),
 					Amount:              big.NewInt(10000),
 				},
 				{
@@ -320,7 +320,7 @@ func TestClient_GetPending(t *testing.T) {
 					DisplayableFrom:     "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn",
 					TokenBytes:          tokenBytes2,
 					ConvertedTokenBytes: append([]byte("converted_"), tokenBytes2...),
-					DisplayableToken:    "erd1qcrqvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcrqvpsxqcrqwkh39e",
+					DisplayableToken:    string(tokenBytes2),
 					Amount:              big.NewInt(20000),
 				},
 			},
@@ -367,8 +367,17 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 
 				dataField, err := builder.ToDataString()
 				assert.Nil(t, err)
-				expectedDataField := proposeSetStatusFuncName + "@" + hex.EncodeToString(big.NewInt(112233).Bytes()) + "@" +
-					hex.EncodeToString([]byte{clients.Rejected, clients.Executed})
+
+				expectedArgs := []string{
+					proposeSetStatusFuncName,
+					hex.EncodeToString(big.NewInt(112233).Bytes()),
+				}
+				expectedStatus := []byte{clients.Rejected, clients.Executed}
+				for _, stat := range expectedStatus {
+					expectedArgs = append(expectedArgs, hex.EncodeToString([]byte{stat}))
+				}
+
+				expectedDataField := strings.Join(expectedArgs, "@")
 				assert.Equal(t, expectedDataField, dataField)
 				assert.Equal(t, c.gasMapConfig.ProposeStatus, gasLimit)
 

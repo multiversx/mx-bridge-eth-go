@@ -2,7 +2,7 @@ package ethToElrond
 
 const (
 	// GettingPendingBatchFromEthereum is the step identifier for fetching the pending batch from the Ethereum chain
-	GettingPendingBatchFromEthereum = "get pending batch from ethereum"
+	GettingPendingBatchFromEthereum = "get pending batch from Ethereum"
 
 	// ProposingTransferOnElrond is the step idetifier for proposing transfer on Elrond
 	ProposingTransferOnElrond = "propose transfer"
