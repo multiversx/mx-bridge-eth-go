@@ -92,11 +92,13 @@ type ethElrondBridgeComponents struct {
 	ethToElrondMachineStates core.MachineStates
 	ethToElrondStepDuration  time.Duration
 	ethToElrondStatusHandler core.StatusHandler
+	ethToElrondStateMachine  StateMachine
 
 	elrondToEthBridge        bridge.Executor
 	elrondToEthMachineStates core.MachineStates
 	elrondToEthStepDuration  time.Duration
 	elrondToEthStatusHandler core.StatusHandler
+	elrondToEthStateMachine  StateMachine
 
 	mutClosableHandlers sync.RWMutex
 	closableHandlers    []io.Closer
@@ -550,47 +552,71 @@ func (components *ethElrondBridgeComponents) Start() error {
 func (components *ethElrondBridgeComponents) createAndStartEthToElrondStateMachine() error {
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
 
-	//TODO add a Start method on the state machine and move the creation of the state machine in the constructor
 	argsStateMachine := stateMachine.ArgsStateMachine{
 		StateMachineName:     ethToElrondName,
 		Steps:                components.ethToElrondMachineStates,
 		StartStateIdentifier: ethToElrond.GettingPendingBatchFromEthereum,
-		DurationBetweenSteps: components.ethToElrondStepDuration,
 		Log:                  log,
 		StatusHandler:        components.ethToElrondStatusHandler,
 	}
 
-	sm, err := stateMachine.NewStateMachine(argsStateMachine)
+	var err error
+	components.ethToElrondStateMachine, err = stateMachine.NewStateMachine(argsStateMachine)
 	if err != nil {
 		return err
 	}
 
-	components.addClosableComponent(sm)
+	argsPollingHandler := polling.ArgsPollingHandler{
+		Log:              log,
+		Name:             "Eth->Elrond State machine",
+		PollingInterval:  components.ethToElrondStepDuration,
+		PollingWhenError: pollingDurationOnError,
+		Executor:         components.ethToElrondStateMachine,
+	}
 
-	return nil
+	pollingHandler, err := polling.NewPollingHandler(argsPollingHandler)
+	if err != nil {
+		return err
+	}
+
+	components.addClosableComponent(pollingHandler)
+
+	return pollingHandler.StartProcessingLoop()
 }
 
 func (components *ethElrondBridgeComponents) createAndStartElrondToEthStateMachine() error {
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondToEthName), elrondToEthName)
 
-	//TODO add a Start method on the state machine and move the creation of the state machine in the constructor
 	argsStateMachine := stateMachine.ArgsStateMachine{
 		StateMachineName:     elrondToEthName,
 		Steps:                components.elrondToEthMachineStates,
 		StartStateIdentifier: elrondToEth.GettingPendingBatchFromElrond,
-		DurationBetweenSteps: components.elrondToEthStepDuration,
 		Log:                  log,
 		StatusHandler:        components.elrondToEthStatusHandler,
 	}
 
-	sm, err := stateMachine.NewStateMachine(argsStateMachine)
+	var err error
+	components.elrondToEthStateMachine, err = stateMachine.NewStateMachine(argsStateMachine)
 	if err != nil {
 		return err
 	}
 
-	components.addClosableComponent(sm)
+	argsPollingHandler := polling.ArgsPollingHandler{
+		Log:              log,
+		Name:             "Elrond->Eth State machine",
+		PollingInterval:  components.elrondToEthStepDuration,
+		PollingWhenError: pollingDurationOnError,
+		Executor:         components.elrondToEthStateMachine,
+	}
 
-	return nil
+	pollingHandler, err := polling.NewPollingHandler(argsPollingHandler)
+	if err != nil {
+		return err
+	}
+
+	components.addClosableComponent(pollingHandler)
+
+	return pollingHandler.StartProcessingLoop()
 }
 
 // Close will close any sub-components started
