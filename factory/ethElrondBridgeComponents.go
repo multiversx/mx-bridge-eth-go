@@ -562,6 +562,9 @@ func (components *ethElrondBridgeComponents) Start() error {
 	components.broadcaster.BroadcastJoinTopic()
 
 	err = components.startPollingHandlers()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
