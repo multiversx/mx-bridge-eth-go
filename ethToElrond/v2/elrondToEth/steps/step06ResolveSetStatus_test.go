@@ -25,8 +25,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -41,8 +40,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -57,8 +55,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -73,8 +70,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 	t.Run("should call ResolveNewDepositsStatuses and go to ProposingSetStatusOnElrond", func(t *testing.T) {
@@ -95,8 +91,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		assert.False(t, step.IsInterfaceNil())
 
 		expectedStep := core.StepIdentifier(elrondToEth.ProposingSetStatusOnElrond)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.True(t, wasCalled)
 		assert.NotEqual(t, step.Identifier(), stepIdentifier)
 		assert.Equal(t, expectedStep, stepIdentifier)

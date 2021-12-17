@@ -13,25 +13,25 @@ type waitForQuorumStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *waitForQuorumStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+func (step *waitForQuorumStep) Execute(ctx context.Context) core.StepIdentifier {
 	if step.bridge.ProcessMaxRetriesOnElrond() {
 		step.bridge.GetLogger().Debug("max number of retries reached, resetting counter")
-		return ethToElrond.GettingPendingBatchFromEthereum, nil
+		return ethToElrond.GettingPendingBatchFromEthereum
 	}
 
 	isQuorumReached, err := step.bridge.ProcessQuorumReachedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error while checking the quorum", "error", err)
-		return ethToElrond.GettingPendingBatchFromEthereum, nil
+		return ethToElrond.GettingPendingBatchFromEthereum
 	}
 
 	step.bridge.GetLogger().Debug("quorum reached check", "is reached", isQuorumReached)
 
 	if !isQuorumReached {
-		return step.Identifier(), nil
+		return step.Identifier()
 	}
 
-	return ethToElrond.PerformingActionID, nil
+	return ethToElrond.PerformingActionID
 }
 
 // Identifier returns the step's identifier

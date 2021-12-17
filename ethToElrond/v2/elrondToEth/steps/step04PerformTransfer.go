@@ -13,29 +13,29 @@ type performTransferStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *performTransferStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+func (step *performTransferStep) Execute(ctx context.Context) core.StepIdentifier {
 	wasPerformed, err := step.bridge.WasTransferPerformedOnEthereum(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if transfer was performed or not", "error", err)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
 	if wasPerformed {
 		step.bridge.GetLogger().Info("transfer performed")
-		return elrondToEth.ResolvingSetStatusOnElrond, nil
+		return elrondToEth.ResolvingSetStatusOnElrond
 	}
 
 	if step.bridge.MyTurnAsLeader() {
 		err = step.bridge.PerformTransferOnEthereum(ctx)
 		if err != nil {
 			step.bridge.GetLogger().Info("error performing action ID", "error", err)
-			return elrondToEth.GettingPendingBatchFromElrond, nil
+			return elrondToEth.GettingPendingBatchFromElrond
 		}
 	} else {
 		step.bridge.GetLogger().Debug("not my turn as leader in this round")
 	}
 
-	return elrondToEth.WaitingTransferConfirmation, nil
+	return elrondToEth.WaitingTransferConfirmation
 }
 
 // Identifier returns the step's identifier

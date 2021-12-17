@@ -9,7 +9,6 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
@@ -220,7 +219,7 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		components, err := NewEthElrondBridgeComponents(args)
 		require.Nil(t, err)
 		require.NotNil(t, components)
-		require.Equal(t, 4, len(components.closableHandlers))
+		require.Equal(t, 6, len(components.closableHandlers))
 		require.False(t, check.IfNil(components.ethToElrondStatusHandler))
 		require.False(t, check.IfNil(components.elrondToEthStatusHandler))
 	})
@@ -246,16 +245,6 @@ func TestEthElrondBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
 func TestEthElrondBridgeComponents_Start(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil states should error", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockEthElrondBridgeArgs()
-		components, _ := NewEthElrondBridgeComponents(args)
-		components.ethToElrondMachineStates = nil
-
-		err := components.Start()
-		assert.Equal(t, stateMachine.ErrNilStepsMap, err)
-	})
 	t.Run("messenger errors on bootstrap", func(t *testing.T) {
 		t.Parallel()
 

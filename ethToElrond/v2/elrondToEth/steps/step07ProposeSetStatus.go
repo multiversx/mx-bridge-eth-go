@@ -13,36 +13,36 @@ type proposeSetStatusStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *proposeSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+func (step *proposeSetStatusStep) Execute(ctx context.Context) core.StepIdentifier {
 	batch := step.bridge.GetStoredBatch()
 	if batch == nil {
 		step.bridge.GetLogger().Debug("nil batch stored")
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
 	wasSetStatusProposed, err := step.bridge.WasSetStatusProposedOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if the set status action was proposed or not on Elrond",
 			"batch ID", batch.ID, "error", err)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
 	if wasSetStatusProposed {
-		return elrondToEth.SigningProposedSetStatusOnElrond, nil
+		return elrondToEth.SigningProposedSetStatusOnElrond
 	}
 
 	if !step.bridge.MyTurnAsLeader() {
-		return step.Identifier(), nil
+		return step.Identifier()
 	}
 
 	err = step.bridge.ProposeSetStatusOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error proposing transfer on Elrond",
 			"batch ID", batch.ID, "error", err)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
-	return elrondToEth.SigningProposedSetStatusOnElrond, nil
+	return elrondToEth.SigningProposedSetStatusOnElrond
 }
 
 // Identifier returns the step's identifier

@@ -14,22 +14,22 @@ type signProposedSetStatusStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *signProposedSetStatusStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+func (step *signProposedSetStatusStep) Execute(ctx context.Context) core.StepIdentifier {
 	storedBatch := step.bridge.GetStoredBatch()
 	if storedBatch == nil {
 		step.bridge.GetLogger().Debug("nil stored batch")
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
 	actionID, err := step.bridge.GetAndStoreActionIDForProposeSetStatusFromElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error fetching action ID", "batch ID", storedBatch.ID, "error", err)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 	if actionID == v2.InvalidActionID {
 		step.bridge.GetLogger().Error("contract error, got invalid action ID",
 			"batch ID", storedBatch.ID, "error", err, "action ID", actionID)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
 	step.bridge.GetLogger().Info("fetched action ID", "action ID", actionID, "batch ID", storedBatch.ID)
@@ -38,21 +38,21 @@ func (step *signProposedSetStatusStep) Execute(ctx context.Context) (core.StepId
 	if err != nil {
 		step.bridge.GetLogger().Error("error determining if the proposed transfer was signed or not",
 			"batch ID", storedBatch.ID, "error", err)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
 	if wasSigned {
-		return elrondToEth.WaitingForQuorumOnSetStatus, nil
+		return elrondToEth.WaitingForQuorumOnSetStatus
 	}
 
 	err = step.bridge.SignActionOnElrond(ctx)
 	if err != nil {
 		step.bridge.GetLogger().Error("error signing the proposed transfer",
 			"batch ID", storedBatch.ID, "error", err)
-		return elrondToEth.GettingPendingBatchFromElrond, nil
+		return elrondToEth.GettingPendingBatchFromElrond
 	}
 
-	return elrondToEth.WaitingForQuorumOnSetStatus, nil
+	return elrondToEth.WaitingForQuorumOnSetStatus
 }
 
 // Identifier returns the step's identifier

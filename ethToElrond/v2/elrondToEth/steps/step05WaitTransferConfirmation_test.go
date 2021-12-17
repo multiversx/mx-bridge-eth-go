@@ -25,9 +25,8 @@ func TestExecute_WaitTransferConfirmation(t *testing.T) {
 
 		assert.False(t, step.IsInterfaceNil())
 
-		stepIdentifier, err := step.Execute(context.Background())
+		stepIdentifier := step.Execute(context.Background())
 		expectedStep := core.StepIdentifier(elrondToEth.PerformingTransfer)
-		assert.Nil(t, err)
 		assert.Equal(t, expectedStep, stepIdentifier)
 	})
 }

@@ -28,8 +28,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 	t.Run("error on GetAndStoreActionIDForProposeSetStatusFromElrond", func(t *testing.T) {
@@ -43,8 +42,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 	t.Run("invalid actionID on GetAndStoreActionIDForProposeSetStatusFromElrond", func(t *testing.T) {
@@ -58,8 +56,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 	t.Run("error on WasActionSignedOnElrond", func(t *testing.T) {
@@ -73,8 +70,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 	t.Run("error on SignActionOnElrond", func(t *testing.T) {
@@ -88,8 +84,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -112,8 +107,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 			}
 
 			expectedStep := core.StepIdentifier(elrondToEth.WaitingForQuorumOnSetStatus)
-			stepIdentifier, err := step.Execute(context.Background())
-			assert.Nil(t, err)
+			stepIdentifier := step.Execute(context.Background())
 			assert.False(t, wasCalled)
 			assert.Equal(t, expectedStep, stepIdentifier)
 		})
@@ -132,8 +126,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 
 			assert.False(t, step.IsInterfaceNil())
 			expectedStep := core.StepIdentifier(elrondToEth.WaitingForQuorumOnSetStatus)
-			stepIdentifier, err := step.Execute(context.Background())
-			assert.Nil(t, err)
+			stepIdentifier := step.Execute(context.Background())
 			assert.True(t, wasCalled)
 			assert.NotEqual(t, step.Identifier(), stepIdentifier)
 			assert.Equal(t, expectedStep, stepIdentifier)
