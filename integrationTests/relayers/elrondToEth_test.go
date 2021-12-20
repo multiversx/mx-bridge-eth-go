@@ -83,10 +83,13 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 
 	<-ctx.Done()
 
+	// let all transactions propagate
+	time.Sleep(time.Second * 5)
+
 	transactions := elrondChainMock.GetAllSentTransactions(context.Background())
-	assert.Equal(t, 1, len(transactions))
+	assert.Equal(t, 5, len(transactions))
 	assert.Nil(t, elrondChainMock.ProposedTransfer())
-	assert.Nil(t, elrondChainMock.PerformedActionID())
+	assert.NotNil(t, elrondChainMock.PerformedActionID())
 
 	transfer := ethereumChainMock.GetLastProposedTransfer()
 	require.NotNil(t, transfer)
@@ -171,10 +174,13 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 
 	<-ctx.Done()
 
+	// let all transactions propagate
+	time.Sleep(time.Second * 5)
+
 	transactions := elrondChainMock.GetAllSentTransactions(context.Background())
-	assert.Equal(t, 1, len(transactions))
+	assert.Equal(t, 5, len(transactions))
 	assert.Nil(t, elrondChainMock.ProposedTransfer())
-	assert.Nil(t, elrondChainMock.PerformedActionID())
+	assert.NotNil(t, elrondChainMock.PerformedActionID())
 
 	transfer := ethereumChainMock.GetLastProposedTransfer()
 	require.NotNil(t, transfer)
