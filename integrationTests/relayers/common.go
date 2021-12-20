@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
+	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func createMockErc20ContractsHolder(tokens []common.Address, safeContractEthAddress common.Address, availableBalances []*big.Int) *bridgeV2.ERC20ContractsHolderStub {
-	return &bridgeV2.ERC20ContractsHolderStub{
+func createMockErc20ContractsHolder(tokens []common.Address, safeContractEthAddress common.Address, availableBalances []*big.Int) *bridgeTests.ERC20ContractsHolderStub {
+	return &bridgeTests.ERC20ContractsHolderStub{
 		BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
 			for i, tk := range tokens {
 				if tk != erc20Address {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
+	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +19,7 @@ func TestNewMapper(t *testing.T) {
 			assert.True(t, check.IfNil(mapper))
 		})
 		t.Run("ElrondToErc20: should work", func(t *testing.T) {
-			mapper, err := NewErc20ToElrondMapper(&bridgeV2.DataGetterStub{})
+			mapper, err := NewErc20ToElrondMapper(&bridgeTests.DataGetterStub{})
 			assert.Nil(t, err)
 			assert.False(t, check.IfNil(mapper))
 		})
@@ -31,7 +31,7 @@ func TestNewMapper(t *testing.T) {
 			assert.True(t, check.IfNil(mapper))
 		})
 		t.Run("Erc20ToElrond: should work", func(t *testing.T) {
-			mapper, err := NewElrondToErc20Mapper(&bridgeV2.DataGetterStub{})
+			mapper, err := NewElrondToErc20Mapper(&bridgeTests.DataGetterStub{})
 			assert.Nil(t, err)
 			assert.False(t, check.IfNil(mapper))
 		})
@@ -44,7 +44,7 @@ func TestConvertToken(t *testing.T) {
 	{
 		t.Run("ElrondToErc20: dataGetter returns error", func(t *testing.T) {
 			expectedError := errors.New("expected error")
-			dg := &bridgeV2.DataGetterStub{
+			dg := &bridgeTests.DataGetterStub{
 				GetERC20AddressForTokenIdCalled: func(ctx context.Context, tokenId []byte) ([][]byte, error) {
 					return nil, expectedError
 				}}
@@ -57,7 +57,7 @@ func TestConvertToken(t *testing.T) {
 		})
 		t.Run("ElrondToErc20: should work", func(t *testing.T) {
 			expectedErc20Address := []byte("erc20Address")
-			dg := &bridgeV2.DataGetterStub{
+			dg := &bridgeTests.DataGetterStub{
 				GetERC20AddressForTokenIdCalled: func(ctx context.Context, tokenId []byte) ([][]byte, error) {
 					return [][]byte{expectedErc20Address}, nil
 				}}
@@ -72,7 +72,7 @@ func TestConvertToken(t *testing.T) {
 	{
 		t.Run("Erc20ToElrond: dataGetter returns error", func(t *testing.T) {
 			expectedError := errors.New("expected error")
-			dg := &bridgeV2.DataGetterStub{
+			dg := &bridgeTests.DataGetterStub{
 				GetTokenIdForErc20AddressCalled: func(ctx context.Context, erc20Address []byte) ([][]byte, error) {
 					return nil, expectedError
 				}}
@@ -85,7 +85,7 @@ func TestConvertToken(t *testing.T) {
 		})
 		t.Run("Erc20ToElrond: should work", func(t *testing.T) {
 			expectedErdAddress := []byte("erdAddress")
-			dg := &bridgeV2.DataGetterStub{
+			dg := &bridgeTests.DataGetterStub{
 				GetTokenIdForErc20AddressCalled: func(ctx context.Context, erc20Address []byte) ([][]byte, error) {
 					return [][]byte{expectedErdAddress}, nil
 				}}

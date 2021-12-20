@@ -9,7 +9,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
+	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -22,7 +22,7 @@ func createMockArgsEthereumChainWrapper() (ArgsEthereumChainWrapper, *testsCommo
 	statusHandler := testsCommon.NewStatusHandlerMock("mock")
 
 	return ArgsEthereumChainWrapper{
-		MultiSigContract: &bridgeV2.MultiSigContractStub{},
+		MultiSigContract: &bridgeTests.MultiSigContractStub{},
 		BlockchainClient: &interactors.BlockchainClientStub{},
 		StatusHandler:    statusHandler,
 	}, statusHandler
@@ -78,7 +78,7 @@ func TestEthClientWrapper_GetBatch(t *testing.T) {
 	args, statusHandler := createMockArgsEthereumChainWrapper()
 	handlerCalled := false
 	providedBatchID := big.NewInt(223)
-	args.MultiSigContract = &bridgeV2.MultiSigContractStub{
+	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
 		GetBatchCalled: func(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, error) {
 			handlerCalled = true
 			assert.Equal(t, providedBatchID, batchNonce)
@@ -98,7 +98,7 @@ func TestEthClientWrapper_GetRelayers(t *testing.T) {
 
 	args, statusHandler := createMockArgsEthereumChainWrapper()
 	handlerCalled := false
-	args.MultiSigContract = &bridgeV2.MultiSigContractStub{
+	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
 		GetRelayersCalled: func(opts *bind.CallOpts) ([]common.Address, error) {
 			handlerCalled = true
 			return nil, nil
@@ -117,7 +117,7 @@ func TestEthClientWrapper_WasBatchExecuted(t *testing.T) {
 
 	args, statusHandler := createMockArgsEthereumChainWrapper()
 	handlerCalled := false
-	args.MultiSigContract = &bridgeV2.MultiSigContractStub{
+	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
 		WasBatchExecutedCalled: func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error) {
 			handlerCalled = true
 			return false, nil
@@ -221,7 +221,7 @@ func TestEthClientWrapper_ExecuteTransfer(t *testing.T) {
 
 	args, statusHandler := createMockArgsEthereumChainWrapper()
 	handlerCalled := false
-	args.MultiSigContract = &bridgeV2.MultiSigContractStub{
+	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
 		ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
 			amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
 
@@ -242,7 +242,7 @@ func TestEthClientWrapper_Quorum(t *testing.T) {
 
 	args, statusHandler := createMockArgsEthereumChainWrapper()
 	handlerCalled := false
-	args.MultiSigContract = &bridgeV2.MultiSigContractStub{
+	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
 		QuorumCalled: func(opts *bind.CallOpts) (*big.Int, error) {
 			handlerCalled = true
 			return nil, nil
@@ -261,7 +261,7 @@ func TestEthClientWrapper_GetStatusesAfterExecution(t *testing.T) {
 
 	args, statusHandler := createMockArgsEthereumChainWrapper()
 	handlerCalled := false
-	args.MultiSigContract = &bridgeV2.MultiSigContractStub{
+	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
 		GetStatusesAfterExecutionCalled: func(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error) {
 			handlerCalled = true
 			return nil, nil

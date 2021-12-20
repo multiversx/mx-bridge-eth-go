@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
+	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -18,7 +18,7 @@ import (
 func createElrondMockArgs() ArgsElrondRoleProvider {
 	return ArgsElrondRoleProvider{
 		Log:        logger.GetOrCreate("test"),
-		DataGetter: &bridgeV2.DataGetterStub{},
+		DataGetter: &bridgeTests.DataGetterStub{},
 	}
 }
 
@@ -61,7 +61,7 @@ func TestElrondRoleProvider_ExecuteErrors(t *testing.T) {
 
 	expectedErr := errors.New("expected error")
 	args := createElrondMockArgs()
-	args.DataGetter = &bridgeV2.DataGetterStub{
+	args.DataGetter = &bridgeTests.DataGetterStub{
 		GetAllStakedRelayersCalled: func(ctx context.Context) ([][]byte, error) {
 			return nil, expectedErr
 		},
@@ -90,7 +90,7 @@ func testElrondExecuteShouldWork(whitelistedAddresses [][]byte) func(t *testing.
 		t.Parallel()
 
 		args := createElrondMockArgs()
-		args.DataGetter = &bridgeV2.DataGetterStub{
+		args.DataGetter = &bridgeTests.DataGetterStub{
 			GetAllStakedRelayersCalled: func(ctx context.Context) ([][]byte, error) {
 				return whitelistedAddresses, nil
 			},
@@ -124,7 +124,7 @@ func TestElrondProvider_MisconfiguredAddressesShouldError(t *testing.T) {
 	}
 
 	args := createElrondMockArgs()
-	args.DataGetter = &bridgeV2.DataGetterStub{
+	args.DataGetter = &bridgeTests.DataGetterStub{
 		GetAllStakedRelayersCalled: func(ctx context.Context) ([][]byte, error) {
 			return misconfiguredAddresses, nil
 		},
