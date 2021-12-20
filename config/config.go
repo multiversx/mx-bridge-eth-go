@@ -24,15 +24,15 @@ type Config struct {
 
 // EthereumConfig represents the Ethereum Config parameters
 type EthereumConfig struct {
-	NetworkAddress               string
-	MultisigContractAddress      string
-	SafeContractAddress          string
-	PrivateKeyFile               string
-	IntervalToResendTxsInSeconds uint64
-	GasLimit                     uint64
-	ERC20Contracts               []string
-	GasStation                   GasStationConfig
-	MaxRetriesOnQuorumReached    uint64
+	NetworkAddress                     string
+	MultisigContractAddress            string
+	SafeContractAddress                string
+	PrivateKeyFile                     string
+	IntervalToResendTxsInSeconds       uint64
+	GasLimit                           uint64
+	GasStation                         GasStationConfig
+	MaxRetriesOnQuorumReached          uint64
+	IntervalToWaitForTransferInSeconds uint64
 }
 
 // GasStationConfig represents the configuration for the gas station handler

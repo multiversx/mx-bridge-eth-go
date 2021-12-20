@@ -37,19 +37,17 @@ type Transfer struct {
 
 // ElrondPendingBatch -
 type ElrondPendingBatch struct {
-	Nonce                  *big.Int
-	Timestamp              *big.Int
-	LastUpdatedBlockNumber *big.Int
-	ElrondDeposits         []ElrondDeposit
-	Status                 uint8
+	Nonce          *big.Int
+	ElrondDeposits []ElrondDeposit
 }
 
 // ElrondDeposit -
 type ElrondDeposit struct {
-	From   erdgoCore.AddressHandler
-	To     common.Address
-	Ticker string
-	Amount *big.Int
+	From         erdgoCore.AddressHandler
+	To           common.Address
+	Ticker       string
+	Amount       *big.Int
+	DepositNonce uint64
 }
 
 // elrondContractStateMock is not concurrent safe
@@ -421,7 +419,7 @@ func (mock *elrondContractStateMock) vmRequestGetCurrentPendingBatch(_ *data.VmV
 	args := [][]byte{mock.pendingBatch.Nonce.Bytes()} // first non-empty slice
 	for _, deposit := range mock.pendingBatch.ElrondDeposits {
 		args = append(args, make([]byte, 0)) // mocked block nonce
-		args = append(args, make([]byte, 0)) // mocked deposit nonce
+		args = append(args, big.NewInt(0).SetUint64(deposit.DepositNonce).Bytes())
 		args = append(args, deposit.From.AddressBytes())
 		args = append(args, deposit.To.Bytes())
 		args = append(args, []byte(deposit.Ticker))

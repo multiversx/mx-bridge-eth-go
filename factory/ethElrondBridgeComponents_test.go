@@ -9,7 +9,6 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
@@ -41,6 +40,8 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 				MaximumAllowedGasPrice:   1000,
 				GasPriceSelector:         "fast",
 			},
+			MaxRetriesOnQuorumReached:          1,
+			IntervalToWaitForTransferInSeconds: 1,
 		},
 		Elrond: config.ElrondConfig{
 			IntervalToResendTxsInSeconds: 60,
@@ -218,8 +219,9 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		components, err := NewEthElrondBridgeComponents(args)
 		require.Nil(t, err)
 		require.NotNil(t, components)
-		require.Equal(t, 4, len(components.closableHandlers))
-		require.False(t, check.IfNil(components.bridgeStatusHandler))
+		require.Equal(t, 6, len(components.closableHandlers))
+		require.False(t, check.IfNil(components.ethToElrondStatusHandler))
+		require.False(t, check.IfNil(components.elrondToEthStatusHandler))
 	})
 }
 
@@ -232,7 +234,7 @@ func TestEthElrondBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
 
 	err = components.Start()
 	assert.Nil(t, err)
-	assert.Equal(t, 5, len(components.closableHandlers))
+	assert.Equal(t, 6, len(components.closableHandlers))
 
 	time.Sleep(time.Second * 2) //allow go routines to start
 
@@ -243,16 +245,6 @@ func TestEthElrondBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
 func TestEthElrondBridgeComponents_Start(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil states should error", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockEthElrondBridgeArgs()
-		components, _ := NewEthElrondBridgeComponents(args)
-		components.ethToElrondMachineStates = nil
-
-		err := components.Start()
-		assert.Equal(t, stateMachine.ErrNilStepsMap, err)
-	})
 	t.Run("messenger errors on bootstrap", func(t *testing.T) {
 		t.Parallel()
 

@@ -221,6 +221,14 @@ func (mock *EthereumChainMock) GetStatusesAfterExecution(_ context.Context, _ *b
 	return mock.GetStatusesAfterExecutionHandler(), nil
 }
 
+// GetLastProposedTransfer -
+func (mock *EthereumChainMock) GetLastProposedTransfer() *EthereumProposedTransfer {
+	mock.mutState.RLock()
+	defer mock.mutState.RUnlock()
+
+	return mock.proposedTransfer
+}
+
 // IsInterfaceNil -
 func (mock *EthereumChainMock) IsInterfaceNil() bool {
 	return mock == nil

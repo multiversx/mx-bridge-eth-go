@@ -23,8 +23,7 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -42,8 +41,7 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -61,8 +59,7 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 			}
 
 			assert.False(t, step.IsInterfaceNil())
-			stepIdentifier, err := step.Execute(context.Background())
-			assert.Nil(t, err)
+			stepIdentifier := step.Execute(context.Background())
 			assert.Equal(t, initialStep, stepIdentifier)
 		})
 		t.Run("if not leader, wait in this step", func(t *testing.T) {
@@ -78,8 +75,7 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 				bridge: bridgeStub,
 			}
 
-			stepIdentifier, err := step.Execute(context.Background())
-			assert.Nil(t, err)
+			stepIdentifier := step.Execute(context.Background())
 			assert.False(t, wasCalled)
 			assert.Equal(t, step.Identifier(), stepIdentifier)
 		})
@@ -98,8 +94,7 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 				bridge: bridgeStub,
 			}
 
-			stepIdentifier, err := step.Execute(context.Background())
-			assert.Nil(t, err)
+			stepIdentifier := step.Execute(context.Background())
 			assert.True(t, wasCalled)
 			assert.Equal(t, step.Identifier(), stepIdentifier)
 		})

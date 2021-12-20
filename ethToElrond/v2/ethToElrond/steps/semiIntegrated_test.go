@@ -183,7 +183,7 @@ func TestHappyCaseWhenLeader(t *testing.T) {
 	sm := createStateMachine(t, executor, ethToElrond.GettingPendingBatchFromEthereum)
 	numSteps := 20
 	for i := 0; i < numSteps; i++ {
-		err := sm.ExecuteOneStep()
+		err := sm.Execute(context.Background())
 		require.Nil(t, err)
 	}
 
@@ -228,7 +228,7 @@ func TestHappyCaseWhenLeaderAndActionIdNotPerformed(t *testing.T) {
 	sm := createStateMachine(t, executor, ethToElrond.GettingPendingBatchFromEthereum)
 	numSteps := 20
 	for i := 0; i < numSteps; i++ {
-		err := sm.ExecuteOneStep()
+		err := sm.Execute(context.Background())
 		require.Nil(t, err)
 	}
 
@@ -294,7 +294,7 @@ func testErrorFlow(t *testing.T, stepThatErrors core.StepIdentifier) {
 
 	maxNumSteps := 10
 	for i := 0; i < maxNumSteps; i++ {
-		err := sm.ExecuteOneStep()
+		err := sm.Execute(context.Background())
 		assert.Nil(t, err)
 
 		if eh.lastError != nil {

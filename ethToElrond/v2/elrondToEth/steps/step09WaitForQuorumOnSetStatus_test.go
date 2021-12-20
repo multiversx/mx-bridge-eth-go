@@ -25,8 +25,7 @@ func TestExecute_WaitForQuorumOnSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -41,8 +40,7 @@ func TestExecute_WaitForQuorumOnSetStatus(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
@@ -60,8 +58,7 @@ func TestExecute_WaitForQuorumOnSetStatus(t *testing.T) {
 		assert.False(t, step.IsInterfaceNil())
 
 		expectedStepIdentifier := step.Identifier()
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
@@ -79,8 +76,7 @@ func TestExecute_WaitForQuorumOnSetStatus(t *testing.T) {
 		assert.False(t, step.IsInterfaceNil())
 
 		expectedStepIdentifier := core.StepIdentifier(elrondToEth.PerformingSetStatus)
-		stepIdentifier, err := step.Execute(context.Background())
-		assert.Nil(t, err)
+		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 }

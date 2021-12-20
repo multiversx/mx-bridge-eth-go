@@ -13,9 +13,9 @@ type waitTransferConfirmationStep struct {
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *waitTransferConfirmationStep) Execute(ctx context.Context) (core.StepIdentifier, error) {
+func (step *waitTransferConfirmationStep) Execute(ctx context.Context) core.StepIdentifier {
 	step.bridge.WaitForTransferConfirmation(ctx)
-	return elrondToEth.PerformingTransfer, nil
+	return elrondToEth.PerformingTransfer
 }
 
 // Identifier returns the step's identifier

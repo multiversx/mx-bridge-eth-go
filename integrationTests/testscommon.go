@@ -2,9 +2,7 @@ package integrationTests
 
 import (
 	"fmt"
-	"math/big"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/hashing/blake2b"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
@@ -33,11 +31,6 @@ var TestMarshalizer = &marshal.JsonMarshalizer{}
 
 // TestHasher -
 var TestHasher = blake2b.NewBlake2b()
-
-// NoPendingBatch -
-var NoPendingBatch = contract.Batch{
-	Nonce: big.NewInt(0),
-}
 
 // Connectable defines the operations for a struct to become connectable by other struct
 // In other words, all instances that implement this interface are able to connect with each other
