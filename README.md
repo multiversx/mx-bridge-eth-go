@@ -1,5 +1,9 @@
 # Elrond<->Eth Bridge
-The relayer code implemented in go and the smart contracts that power the bridge between elrond and eth.
+The relayer code implemented in go that uses the smart contracts and powers the bridge between Elrond and Ethereum.
+
+Smart contracts for both blockchains:
+- https://github.com/ElrondNetwork/sc-bridge-elrond
+- https://github.com/ElrondNetwork/sc-bridge-ethereum-sol
 
 ## Installation and running for the relayer
 
