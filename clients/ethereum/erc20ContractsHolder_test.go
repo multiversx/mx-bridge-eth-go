@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
+	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ethereum/go-ethereum"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ import (
 func createMockArgsContractsHolder() ArgsErc20SafeContractsHolder {
 
 	args := ArgsErc20SafeContractsHolder{
-		EthClient:              &bridgeV2.ContractBackendStub{},
+		EthClient:              &bridgeTests.ContractBackendStub{},
 		EthClientStatusHandler: &testsCommon.StatusHandlerStub{},
 	}
 
@@ -58,7 +58,7 @@ func TestBalanceOf(t *testing.T) {
 	t.Run("address does not exists on map nor blockchain", func(t *testing.T) {
 		expectedError := errors.New("no contract code at given address")
 		args := createMockArgsContractsHolder()
-		args.EthClient = &bridgeV2.ContractBackendStub{
+		args.EthClient = &bridgeTests.ContractBackendStub{
 			CallContractCalled: func(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 				return nil, expectedError
 			},
@@ -76,7 +76,7 @@ func TestBalanceOf(t *testing.T) {
 	t.Run("address exists only on blockchain", func(t *testing.T) {
 		var returnedBalance int64 = 1000
 		args := createMockArgsContractsHolder()
-		args.EthClient = &bridgeV2.ContractBackendStub{
+		args.EthClient = &bridgeTests.ContractBackendStub{
 			CallContractCalled: func(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 				return convertBigToAbiCompatible(big.NewInt(returnedBalance)), nil
 			},
@@ -94,7 +94,7 @@ func TestBalanceOf(t *testing.T) {
 	t.Run("address exists also in contracts map", func(t *testing.T) {
 		var returnedBalance int64 = 1000
 		args := createMockArgsContractsHolder()
-		args.EthClient = &bridgeV2.ContractBackendStub{
+		args.EthClient = &bridgeTests.ContractBackendStub{
 			CallContractCalled: func(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 				return convertBigToAbiCompatible(big.NewInt(returnedBalance)), nil
 			},
@@ -123,7 +123,7 @@ func TestBalanceOf(t *testing.T) {
 	t.Run("new contract addres while another contracts already exists", func(t *testing.T) {
 		var returnedBalance int64 = 1000
 		args := createMockArgsContractsHolder()
-		args.EthClient = &bridgeV2.ContractBackendStub{
+		args.EthClient = &bridgeTests.ContractBackendStub{
 			CallContractCalled: func(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 				return convertBigToAbiCompatible(big.NewInt(returnedBalance)), nil
 			},

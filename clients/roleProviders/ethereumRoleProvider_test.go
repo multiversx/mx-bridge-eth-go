@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
+	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ethereum/go-ethereum/common"
@@ -17,7 +17,7 @@ import (
 func createEthereumMockArgs() ArgsEthereumRoleProvider {
 	return ArgsEthereumRoleProvider{
 		Log:                     logger.GetOrCreate("test"),
-		EthereumChainInteractor: &bridgeV2.EthereumClientWrapperStub{},
+		EthereumChainInteractor: &bridgeTests.EthereumClientWrapperStub{},
 	}
 }
 
@@ -60,7 +60,7 @@ func TestEthereumRoleProvider_ExecuteErrorsInInteractor(t *testing.T) {
 
 	expectedErr := errors.New("expected error")
 	args := createEthereumMockArgs()
-	args.EthereumChainInteractor = &bridgeV2.EthereumClientWrapperStub{
+	args.EthereumChainInteractor = &bridgeTests.EthereumClientWrapperStub{
 		GetRelayersCalled: func(ctx context.Context) ([]common.Address, error) {
 			return nil, expectedErr
 		},
@@ -89,7 +89,7 @@ func testEthereumExecuteShouldWork(whitelistedAddresses []common.Address) func(t
 		t.Parallel()
 
 		args := createEthereumMockArgs()
-		args.EthereumChainInteractor = &bridgeV2.EthereumClientWrapperStub{
+		args.EthereumChainInteractor = &bridgeTests.EthereumClientWrapperStub{
 			GetRelayersCalled: func(ctx context.Context) ([]common.Address, error) {
 				return whitelistedAddresses, nil
 			},
@@ -141,7 +141,7 @@ func testEthereumVerifySigShouldWork(whitelistedAddresses []common.Address, hexS
 		require.Nil(t, err)
 
 		args := createEthereumMockArgs()
-		args.EthereumChainInteractor = &bridgeV2.EthereumClientWrapperStub{
+		args.EthereumChainInteractor = &bridgeTests.EthereumClientWrapperStub{
 			GetRelayersCalled: func(ctx context.Context) ([]common.Address, error) {
 				return whitelistedAddresses, nil
 			},

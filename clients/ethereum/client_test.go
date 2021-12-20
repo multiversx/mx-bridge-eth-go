@@ -13,7 +13,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
+	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -32,13 +32,13 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 	sk, _ := crypto.HexToECDSA("9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1")
 
 	return ArgsEthereumClient{
-		ClientWrapper:         &bridgeV2.EthereumClientWrapperStub{},
-		Erc20ContractsHandler: &bridgeV2.ERC20ContractsHolderStub{},
+		ClientWrapper:         &bridgeTests.EthereumClientWrapperStub{},
+		Erc20ContractsHandler: &bridgeTests.ERC20ContractsHolderStub{},
 		Log:                   logger.GetOrCreate("test"),
 		AddressConverter:      core.NewAddressConverter(),
 		Broadcaster:           &testsCommon.BroadcasterStub{},
 		PrivateKey:            sk,
-		TokensMapper: &bridgeV2.TokensMapperStub{
+		TokensMapper: &bridgeTests.TokensMapperStub{
 			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
 				return append([]byte("ERC20"), sourceBytes...), nil
 			},
@@ -190,7 +190,7 @@ func TestClient_GetBatch(t *testing.T) {
 
 	t.Run("error while getting batch", func(t *testing.T) {
 		expectedErr := errors.New("expected error")
-		c.clientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
 				return contract.Batch{}, expectedErr
 			},
@@ -208,7 +208,7 @@ func TestClient_GetBatch(t *testing.T) {
 		token2 := testsCommon.CreateRandomEthereumAddress()
 		recipient2 := testsCommon.CreateRandomElrondAddress().AddressBytes()
 
-		c.clientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
 				return contract.Batch{
 					Nonce:                  big.NewInt(112243),
@@ -324,7 +324,7 @@ func TestClient_WasExecuted(t *testing.T) {
 
 	wasCalled := false
 	args := createMockEthereumClientArgs()
-	args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+	args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
 		WasBatchExecutedCalled: func(ctx context.Context, batchNonce *big.Int) (bool, error) {
 			wasCalled = true
 			return true, nil
@@ -357,7 +357,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 	t.Run("get block number fails", func(t *testing.T) {
 		expectedErr := errors.New("expected error get block number")
 		c, _ := NewEthereumClient(args)
-		c.clientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			BlockNumberCalled: func(ctx context.Context) (uint64, error) {
 				return 0, expectedErr
 			},
@@ -369,7 +369,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 	t.Run("get nonce fails", func(t *testing.T) {
 		expectedErr := errors.New("expected error get nonce")
 		c, _ := NewEthereumClient(args)
-		c.clientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			NonceAtCalled: func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
 				return 0, expectedErr
 			},
@@ -381,7 +381,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 	t.Run("get chain ID fails", func(t *testing.T) {
 		expectedErr := errors.New("expected error get chain ID")
 		c, _ := NewEthereumClient(args)
-		c.clientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			ChainIDCalled: func(ctx context.Context) (*big.Int, error) {
 				return big.NewInt(0), expectedErr
 			},
@@ -421,7 +421,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return signatures[:9]
 			},
 		}
-		c.erc20ContractsHandler = &bridgeV2.ERC20ContractsHolderStub{
+		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
 			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
 				assert.Equal(t, c.safeContractAddress, address)
 				tokenErc20 := common.BytesToAddress([]byte("ERC20token1"))
@@ -458,7 +458,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return signatures[:9]
 			},
 		}
-		c.erc20ContractsHandler = &bridgeV2.ERC20ContractsHolderStub{
+		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
 			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
 				return nil, expectedErr
 			},
@@ -476,12 +476,12 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return signatures[:9]
 			},
 		}
-		c.erc20ContractsHandler = &bridgeV2.ERC20ContractsHolderStub{
+		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
 			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
 				return big.NewInt(10000), nil
 			},
 		}
-		c.clientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, sigs [][]byte) (*types.Transaction, error) {
 				return nil, expectedErr
 			},
@@ -498,13 +498,13 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return signatures[:9]
 			},
 		}
-		c.erc20ContractsHandler = &bridgeV2.ERC20ContractsHolderStub{
+		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
 			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
 				return big.NewInt(10000), nil
 			},
 		}
 		wasCalled := false
-		c.clientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, sigs [][]byte) (*types.Transaction, error) {
 				assert.Equal(t, expectedTokens, tokens)
 				assert.Equal(t, expectedRecipients, recipients)
@@ -533,13 +533,13 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return signatures[:9]
 			},
 		}
-		c.erc20ContractsHandler = &bridgeV2.ERC20ContractsHolderStub{
+		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
 			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
 				return big.NewInt(10000), nil
 			},
 		}
 		wasCalled := false
-		c.clientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, sigs [][]byte) (*types.Transaction, error) {
 				assert.Equal(t, expectedTokens, tokens)
 				assert.Equal(t, expectedRecipients, recipients)
@@ -581,7 +581,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 	expectedStatuses := []byte{1, 2, 3}
 	expectedBatchID := big.NewInt(2232)
 	args := createMockEthereumClientArgs()
-	args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+	args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
 		GetStatusesAfterExecutionCalled: func(ctx context.Context, batchID *big.Int) ([]byte, error) {
 			assert.Equal(t, expectedBatchID, batchID)
 			return expectedStatuses, nil
@@ -600,7 +600,7 @@ func TestClient_GetQuorumSize(t *testing.T) {
 
 	args := createMockEthereumClientArgs()
 	providedValue := big.NewInt(6453)
-	args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+	args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
 		QuorumCalled: func(ctx context.Context) (*big.Int, error) {
 			return providedValue, nil
 		},
@@ -620,7 +620,7 @@ func TestClient_IsQuorumReached(t *testing.T) {
 
 		expectedErr := errors.New("expected error")
 		args := createMockEthereumClientArgs()
-		args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			QuorumCalled: func(ctx context.Context) (*big.Int, error) {
 				return nil, expectedErr
 			},
@@ -635,7 +635,7 @@ func TestClient_IsQuorumReached(t *testing.T) {
 		t.Parallel()
 
 		args := createMockEthereumClientArgs()
-		args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			QuorumCalled: func(ctx context.Context) (*big.Int, error) {
 				return big.NewInt(0), nil
 			},
@@ -652,7 +652,7 @@ func TestClient_IsQuorumReached(t *testing.T) {
 
 		signatures := make([][]byte, 0)
 		args := createMockEthereumClientArgs()
-		args.ClientWrapper = &bridgeV2.EthereumClientWrapperStub{
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			QuorumCalled: func(ctx context.Context) (*big.Int, error) {
 				return big.NewInt(3), nil
 			},

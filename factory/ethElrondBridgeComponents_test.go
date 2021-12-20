@@ -11,7 +11,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
+	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -74,8 +74,8 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 		Messenger:            &p2pMocks.MessengerStub{},
 		StatusStorer:         testsCommon.NewStorerMock(),
 		Proxy:                blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil),
-		Erc20ContractsHolder: &bridgeV2.ERC20ContractsHolderStub{},
-		ClientWrapper:        &bridgeV2.EthereumClientWrapperStub{},
+		Erc20ContractsHolder: &bridgeTests.ERC20ContractsHolderStub{},
+		ClientWrapper:        &bridgeTests.EthereumClientWrapperStub{},
 		TimeForBootstrap:     minTimeForBootstrap,
 		MetricsHolder:        status.NewMetricsHolder(),
 	}

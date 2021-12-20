@@ -8,6 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
+	elrondToEthSteps "github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps/elrondToEth"
+	ethToElrondSteps "github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps/ethToElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/topology"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/elrond/mappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum"
@@ -18,13 +22,6 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/polling"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/timer"
-	v2 "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth"
-	elrondToEthSteps "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/elrondToEth/steps"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond"
-	ethToElrondSteps "github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/ethToElrond/steps"
-	"github.com/ElrondNetwork/elrond-eth-bridge/ethToElrond/v2/topology"
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
@@ -73,8 +70,8 @@ type ethElrondBridgeComponents struct {
 	baseLogger                    logger.Logger
 	messenger                     p2p.NetMessenger
 	statusStorer                  core.Storer
-	elrondClient                  v2.ElrondClient
-	ethClient                     v2.EthereumClient
+	elrondClient                  ethElrond.ElrondClient
+	ethClient                     ethElrond.EthereumClient
 	elrondMultisigContractAddress erdgoCore.AddressHandler
 	elrondRelayerPrivateKey       crypto.PrivateKey
 	elrondRelayerAddress          erdgoCore.AddressHandler
@@ -88,13 +85,13 @@ type ethElrondBridgeComponents struct {
 	timeForBootstrap              time.Duration
 	metricsHolder                 core.MetricsHolder
 
-	ethToElrondBridge        bridge.Executor
+	ethToElrondBridge        ethElrond.Executor
 	ethToElrondMachineStates core.MachineStates
 	ethToElrondStepDuration  time.Duration
 	ethToElrondStatusHandler core.StatusHandler
 	ethToElrondStateMachine  StateMachine
 
-	elrondToEthBridge        bridge.Executor
+	elrondToEthBridge        ethElrond.Executor
 	elrondToEthMachineStates core.MachineStates
 	elrondToEthStepDuration  time.Duration
 	elrondToEthStatusHandler core.StatusHandler
@@ -329,7 +326,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		return err
 	}
 
-	signatureHolder := v2.NewSignatureHolder()
+	signatureHolder := ethElrond.NewSignatureHolder()
 	err = components.broadcaster.AddBroadcastClient(signatureHolder)
 	if err != nil {
 		return err
@@ -457,7 +454,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 	}
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
-	argsBridgeExecutor := bridge.ArgsBridgeExecutor{
+	argsBridgeExecutor := ethElrond.ArgsBridgeExecutor{
 		Log:                      log,
 		TopologyProvider:         topologyHandler,
 		ElrondClient:             components.elrondClient,
@@ -466,7 +463,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		TimeForTransferExecution: timeForTransferExecution,
 	}
 
-	components.ethToElrondBridge, err = bridge.NewBridgeExecutor(argsBridgeExecutor)
+	components.ethToElrondBridge, err = ethElrond.NewBridgeExecutor(argsBridgeExecutor)
 	if err != nil {
 		return err
 	}
@@ -511,7 +508,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 	}
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
-	argsBridgeExecutor := bridge.ArgsBridgeExecutor{
+	argsBridgeExecutor := ethElrond.ArgsBridgeExecutor{
 		Log:                      log,
 		TopologyProvider:         topologyHandler,
 		ElrondClient:             components.elrondClient,
@@ -520,7 +517,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 		TimeForTransferExecution: timeForTransferExecution,
 	}
 
-	components.elrondToEthBridge, err = bridge.NewBridgeExecutor(argsBridgeExecutor)
+	components.elrondToEthBridge, err = ethElrond.NewBridgeExecutor(argsBridgeExecutor)
 	if err != nil {
 		return err
 	}
@@ -575,7 +572,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondStateMachine(
 	argsStateMachine := stateMachine.ArgsStateMachine{
 		StateMachineName:     ethToElrondName,
 		Steps:                components.ethToElrondMachineStates,
-		StartStateIdentifier: ethToElrond.GettingPendingBatchFromEthereum,
+		StartStateIdentifier: ethToElrondSteps.GettingPendingBatchFromEthereum,
 		Log:                  log,
 		StatusHandler:        components.ethToElrondStatusHandler,
 	}
@@ -611,7 +608,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumStateMachine(
 	argsStateMachine := stateMachine.ArgsStateMachine{
 		StateMachineName:     elrondToEthName,
 		Steps:                components.elrondToEthMachineStates,
-		StartStateIdentifier: elrondToEth.GettingPendingBatchFromElrond,
+		StartStateIdentifier: elrondToEthSteps.GettingPendingBatchFromElrond,
 		Log:                  log,
 		StatusHandler:        components.elrondToEthStatusHandler,
 	}

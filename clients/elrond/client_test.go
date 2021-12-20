@@ -11,7 +11,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
+	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
@@ -43,7 +43,7 @@ func createMockClientArgs() ClientArgs {
 		RelayerPrivateKey:            privateKey,
 		MultisigContractAddress:      multisigContractAddress,
 		IntervalToResendTxsInSeconds: 1,
-		TokensMapper: &bridgeV2.TokensMapperStub{
+		TokensMapper: &bridgeTests.TokensMapperStub{
 			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
 				return append([]byte("converted "), sourceBytes...), nil
 			},
@@ -270,7 +270,7 @@ func TestClient_GetPending(t *testing.T) {
 
 		args := createMockClientArgs()
 		expectedErr := errors.New("expected error in convert tokens")
-		args.TokensMapper = &bridgeV2.TokensMapperStub{
+		args.TokensMapper = &bridgeTests.TokensMapperStub{
 			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
 				return nil, expectedErr
 			},
@@ -289,7 +289,7 @@ func TestClient_GetPending(t *testing.T) {
 		t.Parallel()
 
 		args := createMockClientArgs()
-		args.TokensMapper = &bridgeV2.TokensMapperStub{
+		args.TokensMapper = &bridgeTests.TokensMapperStub{
 			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
 				return append([]byte("converted_"), sourceBytes...), nil
 			},
@@ -361,7 +361,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		expectedHash := "expected hash"
 		c, _ := NewClient(args)
 		sendWasCalled := false
-		c.txHandler = &bridgeV2.TxHandlerStub{
+		c.txHandler = &bridgeTests.TxHandlerStub{
 			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
@@ -456,7 +456,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		sendWasCalled := false
 		batch := createMockBatch()
 
-		c.txHandler = &bridgeV2.TxHandlerStub{
+		c.txHandler = &bridgeTests.TxHandlerStub{
 			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
@@ -510,7 +510,7 @@ func TestClient_Sign(t *testing.T) {
 	sendWasCalled := false
 	actionID := uint64(662528)
 
-	c.txHandler = &bridgeV2.TxHandlerStub{
+	c.txHandler = &bridgeTests.TxHandlerStub{
 		SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 			sendWasCalled = true
 
@@ -555,7 +555,7 @@ func TestClient_PerformAction(t *testing.T) {
 		sendWasCalled := false
 		batch := createMockBatch()
 
-		c.txHandler = &bridgeV2.TxHandlerStub{
+		c.txHandler = &bridgeTests.TxHandlerStub{
 			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
@@ -601,7 +601,7 @@ func TestClient_Close(t *testing.T) {
 	c, _ := NewClient(args)
 
 	closeCalled := false
-	c.txHandler = &bridgeV2.TxHandlerStub{
+	c.txHandler = &bridgeTests.TxHandlerStub{
 		CloseCalled: func() error {
 			closeCalled = true
 			return nil

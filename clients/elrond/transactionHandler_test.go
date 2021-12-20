@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridgeV2"
+	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	cryptoMock "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/crypto"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-go-crypto"
@@ -33,7 +33,7 @@ func createTransactionHandlerWithMockComponents() *transactionHandler {
 		proxy:                   &interactors.ElrondProxyStub{},
 		relayerAddress:          data.NewAddressFromBytes(pkBytes),
 		multisigAddressAsBech32: testMultisigAddress,
-		nonceTxHandler:          &bridgeV2.NonceTransactionsHandlerStub{},
+		nonceTxHandler:          &bridgeTests.NonceTransactionsHandlerStub{},
 		relayerPrivateKey:       sk,
 		singleSigner:            testSigner,
 	}
@@ -61,7 +61,7 @@ func TestTransactionHandler_SendTransactionReturnHash(t *testing.T) {
 	t.Run("get nonce errors", func(t *testing.T) {
 		expectedErr := errors.New("expected error in get nonce")
 		txHandlerInstance := createTransactionHandlerWithMockComponents()
-		txHandlerInstance.nonceTxHandler = &bridgeV2.NonceTransactionsHandlerStub{
+		txHandlerInstance.nonceTxHandler = &bridgeTests.NonceTransactionsHandlerStub{
 			GetNonceCalled: func(ctx context.Context, address core.AddressHandler) (uint64, error) {
 				return 0, expectedErr
 			},
@@ -113,7 +113,7 @@ func TestTransactionHandler_SendTransactionReturnHash(t *testing.T) {
 			},
 		}
 
-		txHandlerInstance.nonceTxHandler = &bridgeV2.NonceTransactionsHandlerStub{
+		txHandlerInstance.nonceTxHandler = &bridgeTests.NonceTransactionsHandlerStub{
 			GetNonceCalled: func(ctx context.Context, address core.AddressHandler) (uint64, error) {
 				if address.AddressAsBech32String() == relayerAddress {
 					return nonce, nil
