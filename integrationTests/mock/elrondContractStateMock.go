@@ -93,9 +93,6 @@ func (mock *elrondContractStateMock) processTransaction(tx *data.Transaction) {
 	switch funcName {
 	case "proposeEsdtSafeSetCurrentTransactionBatchStatus":
 		mock.proposeEsdtSafeSetCurrentTransactionBatchStatus(dataSplit, tx)
-		mock.setPendingBatch(&ElrondPendingBatch{
-			Nonce: big.NewInt(0),
-		})
 
 		if mock.ProcessFinishedHandler != nil {
 			mock.ProcessFinishedHandler()
@@ -155,7 +152,8 @@ func (mock *elrondContractStateMock) createProposedStatus(dataSplit []string) (*
 	}
 
 	if len(status.Statuses) != len(mock.pendingBatch.ElrondDeposits) {
-		panic("different number of statuses fetched while creating proposed status")
+		panic(fmt.Sprintf("different number of statuses fetched while creating proposed status: provided %d, existing %d",
+			len(status.Statuses), len(mock.pendingBatch.ElrondDeposits)))
 	}
 
 	hash, err := core.CalculateHash(integrationTests.TestMarshalizer, integrationTests.TestHasher, status)
