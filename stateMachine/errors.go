@@ -2,7 +2,7 @@ package stateMachine
 
 import "errors"
 
-// ErrStepNotFound signals that the step was not registered (and found in the steps map)
+// ErrStepNotFound signals that the step was not registered (and found in the ethToElrond map)
 var ErrStepNotFound = errors.New("step not found")
 
 // ErrNilStepsMap signals that a nil steps map was provided
