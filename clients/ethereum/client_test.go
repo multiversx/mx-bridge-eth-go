@@ -16,7 +16,6 @@ import (
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -203,11 +202,11 @@ func TestClient_GetBatch(t *testing.T) {
 	t.Run("returns batch should work", func(t *testing.T) {
 		from1 := testsCommon.CreateRandomEthereumAddress()
 		token1 := testsCommon.CreateRandomEthereumAddress()
-		recipient1 := testsCommon.CreateRandomElrondAddress().AddressBytes()
+		recipient1 := testsCommon.CreateRandomElrondAddress()
 
 		from2 := testsCommon.CreateRandomEthereumAddress()
 		token2 := testsCommon.CreateRandomEthereumAddress()
-		recipient2 := testsCommon.CreateRandomElrondAddress().AddressBytes()
+		recipient2 := testsCommon.CreateRandomElrondAddress()
 
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
@@ -221,14 +220,14 @@ func TestClient_GetBatch(t *testing.T) {
 							TokenAddress: token1,
 							Amount:       big.NewInt(20),
 							Depositor:    from1,
-							Recipient:    data.NewAddressFromBytes(recipient1).AddressSlice(),
+							Recipient:    recipient1.AddressSlice(),
 						},
 						{
 							Nonce:        big.NewInt(30),
 							TokenAddress: token2,
 							Amount:       big.NewInt(40),
 							Depositor:    from2,
-							Recipient:    data.NewAddressFromBytes(recipient2).AddressSlice(),
+							Recipient:    recipient2.AddressSlice(),
 						},
 					},
 				}, nil
@@ -240,8 +239,8 @@ func TestClient_GetBatch(t *testing.T) {
 			Deposits: []*clients.DepositTransfer{
 				{
 					Nonce:               10,
-					ToBytes:             recipient1,
-					DisplayableTo:       c.addressConverter.ToBech32String(recipient1),
+					ToBytes:             recipient1.AddressBytes(),
+					DisplayableTo:       recipient1.AddressAsBech32String(),
 					FromBytes:           from1[:],
 					DisplayableFrom:     hex.EncodeToString(from1[:]),
 					TokenBytes:          token1[:],
@@ -251,8 +250,8 @@ func TestClient_GetBatch(t *testing.T) {
 				},
 				{
 					Nonce:               30,
-					ToBytes:             recipient2,
-					DisplayableTo:       c.addressConverter.ToBech32String(recipient2),
+					ToBytes:             recipient2.AddressBytes(),
+					DisplayableTo:       recipient2.AddressAsBech32String(),
 					FromBytes:           from2[:],
 					DisplayableFrom:     hex.EncodeToString(from2[:]),
 					TokenBytes:          token2[:],
