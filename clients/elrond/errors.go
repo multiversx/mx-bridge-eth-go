@@ -17,6 +17,7 @@ var (
 	errBatchNotFinished         = errors.New("batch not finished")
 	errMalformedBatchResponse   = errors.New("malformed batch response")
 	errInvalidValue             = errors.New("invalid value")
+	errNilAddressConverter      = errors.New("nil address converter")
 	// ErrNoPendingBatchAvailable signals that no pending batch is available
 	ErrNoPendingBatchAvailable = errors.New("no pending batch available")
 )

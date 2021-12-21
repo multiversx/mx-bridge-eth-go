@@ -2,7 +2,6 @@ package elrond
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -10,9 +9,9 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
+	bridgeCore "github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core/converters"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -23,7 +22,6 @@ import (
 )
 
 const (
-	hexPrefix                = "0x"
 	proposeTransferFuncName  = "proposeMultiTransferEsdtBatch"
 	proposeSetStatusFuncName = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
 	signFuncName             = "sign"
@@ -53,7 +51,7 @@ type client struct {
 	multisigContractAddress   core.AddressHandler
 	log                       logger.Logger
 	gasMapConfig              config.ElrondGasMapConfig
-	addressPublicKeyConverter elrondCore.PubkeyConverter
+	addressPublicKeyConverter bridgeCore.AddressConverter
 	maxRetriesOnQuorumReached uint64
 }
 
@@ -107,9 +105,9 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	addressPubKeyConverter, err := pubkeyConverter.NewBech32PubkeyConverter(core.AddressBytesLen, args.Log)
-	if err != nil {
-		return nil, err
+	addressConverter := converters.NewAddressConverter()
+	if addressConverter == nil {
+		return nil, errNilAddressConverter
 	}
 
 	c := &client{
@@ -127,7 +125,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		multisigContractAddress:   args.MultisigContractAddress,
 		log:                       args.Log,
 		gasMapConfig:              args.GasMapConfig,
-		addressPublicKeyConverter: addressPubKeyConverter,
+		addressPublicKeyConverter: addressConverter,
 		tokensMapper:              args.TokensMapper,
 		maxRetriesOnQuorumReached: args.MaxRetriesOnQuorumReached,
 	}
@@ -199,12 +197,11 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 
 		amount := big.NewInt(0).SetBytes(responseData[i+5])
 		deposit := &clients.DepositTransfer{
-			Nonce:           depositNonce,
-			FromBytes:       responseData[i+2],
-			DisplayableFrom: c.addressPublicKeyConverter.Encode(responseData[i+2]),
-			ToBytes:         responseData[i+3],
-			// TODO: inject a pub key converter for the DisplayableTo conversion to allow better component re-usability
-			DisplayableTo:    fmt.Sprintf("%s%s", hexPrefix, hex.EncodeToString(responseData[i+3])),
+			Nonce:            depositNonce,
+			FromBytes:        responseData[i+2],
+			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32String(responseData[i+2]),
+			ToBytes:          responseData[i+3],
+			DisplayableTo:    c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
 			TokenBytes:       responseData[i+4],
 			DisplayableToken: string(responseData[i+4]),
 			Amount:           amount,

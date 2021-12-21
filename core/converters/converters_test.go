@@ -64,3 +64,14 @@ func TestAddressConverter_ToHexString(t *testing.T) {
 	bytes := []byte("bytes to encode")
 	assert.Equal(t, expected, addrConv.ToHexString(bytes))
 }
+
+func TestAddressConverter_ToHexStringWithPrefix(t *testing.T) {
+	t.Parallel()
+
+	addrConv := NewAddressConverter()
+	assert.False(t, check.IfNil(addrConv))
+
+	expected := "0x627974657320746f20656e636f6465"
+	bytes := []byte("bytes to encode")
+	assert.Equal(t, expected, addrConv.ToHexStringWithPrefix(bytes))
+}
