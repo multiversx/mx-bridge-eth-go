@@ -11,7 +11,7 @@ import (
 
 // Executor defines a generic bridge interface able to handle both halves of the bridge
 type Executor interface {
-	GetLogger() logger.Logger
+	PrintInfo(logLevel logger.LogLevel, message string, extras ...interface{})
 	MyTurnAsLeader() bool
 
 	GetBatchFromElrond(ctx context.Context) (*clients.TransferBatch, error)

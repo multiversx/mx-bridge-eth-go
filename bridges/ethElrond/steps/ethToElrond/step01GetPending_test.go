@@ -8,11 +8,9 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 )
 
-var testLogger = core.NewLoggerWithIdentifier(logger.GetOrCreate("test"), "TEST")
 var expectedError = errors.New("expected error")
 var testBatch = &clients.TransferBatch{
 	ID:       112233,
@@ -139,8 +137,6 @@ func TestExecuteGetPending(t *testing.T) {
 
 func createStubExecutor() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetLoggerCalled = func() logger.Logger {
-		return testLogger
-	}
+
 	return stub
 }

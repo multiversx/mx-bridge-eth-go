@@ -7,7 +7,6 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -99,9 +98,6 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 
 func createStubExecutorResolveSetStatus() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetLoggerCalled = func() logger.Logger {
-		return testLogger
-	}
 	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
 		return testBatch
 	}

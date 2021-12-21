@@ -6,7 +6,6 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -82,9 +81,6 @@ func TestExecute_WaitForQuorumOnTransfer(t *testing.T) {
 
 func createStubExecutorWaitForQuorumOnTransfer() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetLoggerCalled = func() logger.Logger {
-		return testLogger
-	}
 	stub.ProcessMaxRetriesOnEthereumCalled = func() bool {
 		return false
 	}

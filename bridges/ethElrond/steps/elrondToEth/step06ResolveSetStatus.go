@@ -2,6 +2,7 @@ package elrondToEth
 
 import (
 	"context"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -15,23 +16,23 @@ type resolveSetStatusStep struct {
 func (step *resolveSetStatusStep) Execute(ctx context.Context) core.StepIdentifier {
 	storedBatch := step.bridge.GetStoredBatch()
 	if storedBatch == nil {
-		step.bridge.GetLogger().Debug("nil batch stored")
+		step.bridge.PrintInfo(logger.LogDebug, "nil batch stored")
 		return GettingPendingBatchFromElrond
 	}
 
 	batch, err := step.bridge.GetBatchFromElrond(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error while fetching batch", "error", err)
+		step.bridge.PrintInfo(logger.LogError, "error while fetching batch", "error", err)
 		return GettingPendingBatchFromElrond
 	}
 	if batch == nil {
-		step.bridge.GetLogger().Debug("nil batch fetched")
+		step.bridge.PrintInfo(logger.LogDebug, "nil batch fetched")
 		return GettingPendingBatchFromElrond
 	}
 
 	statuses, err := step.bridge.GetBatchStatusesFromEthereum(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error while fetching transaction statuses", "error", err)
+		step.bridge.PrintInfo(logger.LogError, "error while fetching transaction statuses", "error", err)
 		return GettingPendingBatchFromElrond
 	}
 

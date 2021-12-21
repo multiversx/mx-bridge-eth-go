@@ -80,12 +80,16 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 	}
 }
 
-// GetLogger returns the logger implementation
-func (executor *bridgeExecutor) GetLogger() logger.Logger {
-	return executor.log
+// PrintInfo will print the provided data through the inner logger instance
+func (executor *bridgeExecutor) PrintInfo(logLevel logger.LogLevel, message string, extras ...interface{}) {
+	executor.log.Log(logLevel, message, extras...)
+
+	switch logLevel {
+	case logger.LogWarning, logger.LogError:
+		executor.setExecutionMessageInStatusHandler(logLevel, message, extras...)
+	}
 }
 
-// TODO(next PR) use & integrate this
 func (executor *bridgeExecutor) setExecutionMessageInStatusHandler(level logger.LogLevel, message string, extras ...interface{}) {
 	msg := fmt.Sprintf("%s: %s", level, message)
 	for i := 0; i < len(extras)-1; i += 2 {
