@@ -13,10 +13,10 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/converter"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -221,14 +221,14 @@ func TestClient_GetBatch(t *testing.T) {
 							TokenAddress: token1,
 							Amount:       big.NewInt(20),
 							Depositor:    from1,
-							Recipient:    bridge.StaticAddress.ConvertFromByteSliceToArray(recipient1),
+							Recipient:    data.NewAddressFromBytes(recipient1).AddressSlice(),
 						},
 						{
 							Nonce:        big.NewInt(30),
 							TokenAddress: token2,
 							Amount:       big.NewInt(40),
 							Depositor:    from2,
-							Recipient:    bridge.StaticAddress.ConvertFromByteSliceToArray(recipient2),
+							Recipient:    data.NewAddressFromBytes(recipient2).AddressSlice(),
 						},
 					},
 				}, nil

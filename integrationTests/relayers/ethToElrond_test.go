@@ -17,9 +17,9 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,11 +38,11 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	ticker2 := "tck-000002"
 
 	value1 := big.NewInt(111111111)
-	destination1 := testsCommon.CreateRandomElrondAddress()
+	destination1 := testsCommon.CreateRandomElrondAddress().AddressBytes()
 	depositor1 := testsCommon.CreateRandomEthereumAddress()
 
 	value2 := big.NewInt(222222222)
-	destination2 := testsCommon.CreateRandomElrondAddress()
+	destination2 := testsCommon.CreateRandomElrondAddress().AddressBytes()
 	depositor2 := testsCommon.CreateRandomEthereumAddress()
 
 	tokens := []common.Address{token1Erc20, token2Erc20}
@@ -62,7 +62,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 				TokenAddress: token1Erc20,
 				Amount:       value1,
 				Depositor:    depositor1,
-				Recipient:    bridge.StaticAddress.ConvertFromByteSliceToArray(destination1.AddressBytes()),
+				Recipient:    data.NewAddressFromBytes(destination1).AddressSlice(),
 				Status:       0,
 			},
 			{
@@ -70,7 +70,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 				TokenAddress: token2Erc20,
 				Amount:       value2,
 				Depositor:    depositor2,
-				Recipient:    bridge.StaticAddress.ConvertFromByteSliceToArray(destination2.AddressBytes()),
+				Recipient:    data.NewAddressFromBytes(destination2).AddressSlice(),
 				Status:       0,
 			},
 		},
@@ -137,13 +137,13 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	require.Equal(t, 2, len(transfer.Transfers))
 	assert.Equal(t, batchNonceOnEthereum+1, transfer.BatchId.Uint64())
 
-	assert.Equal(t, destination1.AddressBytes(), transfer.Transfers[0].To)
+	assert.Equal(t, destination1, transfer.Transfers[0].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker1)), transfer.Transfers[0].Token)
 	assert.Equal(t, value1, transfer.Transfers[0].Amount)
 	assert.Equal(t, depositor1, common.BytesToAddress(transfer.Transfers[0].From))
 	assert.Equal(t, txNonceOnEthereum+1, transfer.Transfers[0].Nonce.Uint64())
 
-	assert.Equal(t, destination2.AddressBytes(), transfer.Transfers[1].To)
+	assert.Equal(t, destination2, transfer.Transfers[1].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker2)), transfer.Transfers[1].Token)
 	assert.Equal(t, value2, transfer.Transfers[1].Amount)
 	assert.Equal(t, depositor2, common.BytesToAddress(transfer.Transfers[1].From))
