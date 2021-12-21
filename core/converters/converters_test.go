@@ -1,10 +1,11 @@
-package core
+package converters
 
 import (
 	"encoding/hex"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -14,26 +15,26 @@ func TestConvertFromByteSliceToArray(t *testing.T) {
 
 	buff := []byte("12345678901234567890123456789012")
 
-	result := ConvertFromByteSliceToArray(buff)
+	result := data.NewAddressFromBytes(buff).AddressSlice()
 	assert.Equal(t, buff, result[:])
 }
 
 func TestTrimWhiteSpaceCharacters(t *testing.T) {
 	t.Parallel()
 
-	data := "aaII139HSAh32q782!$#*$(nc"
+	dataField := "aaII139HSAh32q782!$#*$(nc"
 
-	input := " " + data
-	assert.Equal(t, data, TrimWhiteSpaceCharacters(input))
+	input := " " + dataField
+	assert.Equal(t, dataField, TrimWhiteSpaceCharacters(input))
 
-	input = "\t " + data
-	assert.Equal(t, data, TrimWhiteSpaceCharacters(input))
+	input = "\t " + dataField
+	assert.Equal(t, dataField, TrimWhiteSpaceCharacters(input))
 
-	input = "\t " + data + "\n"
-	assert.Equal(t, data, TrimWhiteSpaceCharacters(input))
+	input = "\t " + dataField + "\n"
+	assert.Equal(t, dataField, TrimWhiteSpaceCharacters(input))
 
-	input = "\t\n " + data + "\n\n\n\n\t"
-	assert.Equal(t, data, TrimWhiteSpaceCharacters(input))
+	input = "\t\n " + dataField + "\n\n\n\n\t"
+	assert.Equal(t, dataField, TrimWhiteSpaceCharacters(input))
 }
 
 func TestAddressConverter_ToBech32String(t *testing.T) {

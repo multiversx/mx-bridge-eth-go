@@ -61,7 +61,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 				TokenAddress: token1Erc20,
 				Amount:       value1,
 				Depositor:    depositor1,
-				Recipient:    core.ConvertFromByteSliceToArray(destination1.AddressBytes()),
+				Recipient:    destination1.AddressSlice(),
 				Status:       0,
 			},
 			{
@@ -69,7 +69,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 				TokenAddress: token2Erc20,
 				Amount:       value2,
 				Depositor:    depositor2,
-				Recipient:    core.ConvertFromByteSliceToArray(destination2.AddressBytes()),
+				Recipient:    destination2.AddressSlice(),
 				Status:       0,
 			},
 		},
