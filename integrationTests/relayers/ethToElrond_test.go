@@ -17,6 +17,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ethereum/go-ethereum/common"
@@ -61,7 +62,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 				TokenAddress: token1Erc20,
 				Amount:       value1,
 				Depositor:    depositor1,
-				Recipient:    core.ConvertFromByteSliceToArray(destination1.AddressBytes()),
+				Recipient:    bridge.StaticAddress.ConvertFromByteSliceToArray(destination1.AddressBytes()),
 				Status:       0,
 			},
 			{
@@ -69,7 +70,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 				TokenAddress: token2Erc20,
 				Amount:       value2,
 				Depositor:    depositor2,
-				Recipient:    core.ConvertFromByteSliceToArray(destination2.AddressBytes()),
+				Recipient:    bridge.StaticAddress.ConvertFromByteSliceToArray(destination2.AddressBytes()),
 				Status:       0,
 			},
 		},

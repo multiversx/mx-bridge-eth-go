@@ -20,6 +20,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/roleProviders"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core/converter"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/polling"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/timer"
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
@@ -308,7 +309,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	if err != nil {
 		return err
 	}
-	privateKeyString := core.TrimWhiteSpaceCharacters(string(privateKeyBytes))
+	privateKeyString := converter.TrimWhiteSpaceCharacters(string(privateKeyBytes))
 	privateKey, err := ethCrypto.HexToECDSA(privateKeyString)
 	if err != nil {
 		return err
@@ -337,7 +338,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		ClientWrapper:             args.ClientWrapper,
 		Erc20ContractsHandler:     args.Erc20ContractsHolder,
 		Log:                       log,
-		AddressConverter:          core.NewAddressConverter(),
+		AddressConverter:          converter.NewAddressConverter(),
 		Broadcaster:               components.broadcaster,
 		PrivateKey:                privateKey,
 		TokensMapper:              tokensMapper,

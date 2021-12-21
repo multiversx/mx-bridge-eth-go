@@ -1,9 +1,10 @@
-package core
+package converter
 
 import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ func TestConvertFromByteSliceToArray(t *testing.T) {
 
 	buff := []byte("12345678901234567890123456789012")
 
-	result := ConvertFromByteSliceToArray(buff)
+	result := bridge.StaticAddress.ConvertFromByteSliceToArray(buff)
 	assert.Equal(t, buff, result[:])
 }
 

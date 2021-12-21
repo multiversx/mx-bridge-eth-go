@@ -11,8 +11,9 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core/converter"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -35,7 +36,7 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 		ClientWrapper:         &bridgeTests.EthereumClientWrapperStub{},
 		Erc20ContractsHandler: &bridgeTests.ERC20ContractsHolderStub{},
 		Log:                   logger.GetOrCreate("test"),
-		AddressConverter:      core.NewAddressConverter(),
+		AddressConverter:      converter.NewAddressConverter(),
 		Broadcaster:           &testsCommon.BroadcasterStub{},
 		PrivateKey:            sk,
 		TokensMapper: &bridgeTests.TokensMapperStub{
@@ -220,14 +221,14 @@ func TestClient_GetBatch(t *testing.T) {
 							TokenAddress: token1,
 							Amount:       big.NewInt(20),
 							Depositor:    from1,
-							Recipient:    core.ConvertFromByteSliceToArray(recipient1),
+							Recipient:    bridge.StaticAddress.ConvertFromByteSliceToArray(recipient1),
 						},
 						{
 							Nonce:        big.NewInt(30),
 							TokenAddress: token2,
 							Amount:       big.NewInt(40),
 							Depositor:    from2,
-							Recipient:    core.ConvertFromByteSliceToArray(recipient2),
+							Recipient:    bridge.StaticAddress.ConvertFromByteSliceToArray(recipient2),
 						},
 					},
 				}, nil
