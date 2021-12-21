@@ -12,6 +12,8 @@ import (
 
 var log = logger.GetOrCreate("core")
 
+const hexPrefix = "0x"
+
 type addressConverter struct {
 	converter core.PubkeyConverter
 }
@@ -32,6 +34,11 @@ func NewAddressConverter() *addressConverter {
 // ToHexString will convert the addressBytes to the hex representation
 func (ac *addressConverter) ToHexString(addressBytes []byte) string {
 	return hex.EncodeToString(addressBytes)
+}
+
+// ToHexStringWithPrefix will convert the addressBytes to the hex representation adding the hex prefix
+func (ac *addressConverter) ToHexStringWithPrefix(addressBytes []byte) string {
+	return hexPrefix + hex.EncodeToString(addressBytes)
 }
 
 // ToBech32String will convert the addressBytes to the bech32 representation

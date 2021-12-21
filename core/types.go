@@ -31,6 +31,7 @@ type Timer interface {
 // AddressConverter can convert a provided address bytes to its string representation
 type AddressConverter interface {
 	ToHexString(addressBytes []byte) string
+	ToHexStringWithPrefix(addressBytes []byte) string
 	ToBech32String(addressBytes []byte) string
 	IsInterfaceNil() bool
 }
