@@ -11,7 +11,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core/converter"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core/converters"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -36,7 +36,7 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 		ClientWrapper:         &bridgeTests.EthereumClientWrapperStub{},
 		Erc20ContractsHandler: &bridgeTests.ERC20ContractsHolderStub{},
 		Log:                   logger.GetOrCreate("test"),
-		AddressConverter:      converter.NewAddressConverter(),
+		AddressConverter:      converters.NewAddressConverter(),
 		Broadcaster:           &testsCommon.BroadcasterStub{},
 		PrivateKey:            sk,
 		TokensMapper: &bridgeTests.TokensMapperStub{
