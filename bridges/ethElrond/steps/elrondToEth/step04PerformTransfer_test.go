@@ -6,7 +6,6 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -107,9 +106,6 @@ func TestExecute_PerformTransfer(t *testing.T) {
 
 func createStubExecutorPerformTransfer() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetLoggerCalled = func() logger.Logger {
-		return testLogger
-	}
 	stub.WasTransferPerformedOnEthereumCalled = func(ctx context.Context) (bool, error) {
 		return false, nil
 	}

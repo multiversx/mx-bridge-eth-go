@@ -2,6 +2,7 @@ package ethToElrond
 
 import (
 	"context"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -15,13 +16,13 @@ type proposeTransferStep struct {
 func (step *proposeTransferStep) Execute(ctx context.Context) core.StepIdentifier {
 	batch := step.bridge.GetStoredBatch()
 	if batch == nil {
-		step.bridge.GetLogger().Debug("no batch found")
+		step.bridge.PrintInfo(logger.LogDebug, "no batch found")
 		return GettingPendingBatchFromEthereum
 	}
 
 	wasTransferProposed, err := step.bridge.WasTransferProposedOnElrond(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error determining if the batch was proposed or not on Elrond",
+		step.bridge.PrintInfo(logger.LogError, "error determining if the batch was proposed or not on Elrond",
 			"batch ID", batch.ID, "error", err)
 		return GettingPendingBatchFromEthereum
 	}
@@ -36,7 +37,7 @@ func (step *proposeTransferStep) Execute(ctx context.Context) core.StepIdentifie
 
 	err = step.bridge.ProposeTransferOnElrond(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error proposing transfer on Elrond",
+		step.bridge.PrintInfo(logger.LogError, "error proposing transfer on Elrond",
 			"batch ID", batch.ID, "error", err)
 		return GettingPendingBatchFromEthereum
 	}

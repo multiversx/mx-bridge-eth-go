@@ -2,6 +2,7 @@ package elrondToEth
 
 import (
 	"context"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -15,23 +16,23 @@ type performTransferStep struct {
 func (step *performTransferStep) Execute(ctx context.Context) core.StepIdentifier {
 	wasPerformed, err := step.bridge.WasTransferPerformedOnEthereum(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error determining if transfer was performed or not", "error", err)
+		step.bridge.PrintInfo(logger.LogError, "error determining if transfer was performed or not", "error", err)
 		return GettingPendingBatchFromElrond
 	}
 
 	if wasPerformed {
-		step.bridge.GetLogger().Info("transfer performed")
+		step.bridge.PrintInfo(logger.LogInfo, "transfer performed")
 		return ResolvingSetStatusOnElrond
 	}
 
 	if step.bridge.MyTurnAsLeader() {
 		err = step.bridge.PerformTransferOnEthereum(ctx)
 		if err != nil {
-			step.bridge.GetLogger().Info("error performing action ID", "error", err)
+			step.bridge.PrintInfo(logger.LogInfo, "error performing action ID", "error", err)
 			return GettingPendingBatchFromElrond
 		}
 	} else {
-		step.bridge.GetLogger().Debug("not my turn as leader in this round")
+		step.bridge.PrintInfo(logger.LogDebug, "not my turn as leader in this round")
 	}
 
 	return WaitingTransferConfirmation

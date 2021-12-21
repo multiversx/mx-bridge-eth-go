@@ -2,6 +2,7 @@ package elrondToEth
 
 import (
 	"context"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -15,26 +16,26 @@ type signProposedSetStatusStep struct {
 func (step *signProposedSetStatusStep) Execute(ctx context.Context) core.StepIdentifier {
 	storedBatch := step.bridge.GetStoredBatch()
 	if storedBatch == nil {
-		step.bridge.GetLogger().Debug("nil stored batch")
+		step.bridge.PrintInfo(logger.LogDebug, "nil stored batch")
 		return GettingPendingBatchFromElrond
 	}
 
 	actionID, err := step.bridge.GetAndStoreActionIDForProposeSetStatusFromElrond(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error fetching action ID", "batch ID", storedBatch.ID, "error", err)
+		step.bridge.PrintInfo(logger.LogError, "error fetching action ID", "batch ID", storedBatch.ID, "error", err)
 		return GettingPendingBatchFromElrond
 	}
 	if actionID == ethElrond.InvalidActionID {
-		step.bridge.GetLogger().Error("contract error, got invalid action ID",
+		step.bridge.PrintInfo(logger.LogError, "contract error, got invalid action ID",
 			"batch ID", storedBatch.ID, "error", err, "action ID", actionID)
 		return GettingPendingBatchFromElrond
 	}
 
-	step.bridge.GetLogger().Info("fetched action ID", "action ID", actionID, "batch ID", storedBatch.ID)
+	step.bridge.PrintInfo(logger.LogInfo, "fetched action ID", "action ID", actionID, "batch ID", storedBatch.ID)
 
 	wasSigned, err := step.bridge.WasActionSignedOnElrond(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error determining if the proposed transfer was signed or not",
+		step.bridge.PrintInfo(logger.LogError, "error determining if the proposed transfer was signed or not",
 			"batch ID", storedBatch.ID, "error", err)
 		return GettingPendingBatchFromElrond
 	}
@@ -45,7 +46,7 @@ func (step *signProposedSetStatusStep) Execute(ctx context.Context) core.StepIde
 
 	err = step.bridge.SignActionOnElrond(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error signing the proposed transfer",
+		step.bridge.PrintInfo(logger.LogError, "error signing the proposed transfer",
 			"batch ID", storedBatch.ID, "error", err)
 		return GettingPendingBatchFromElrond
 	}

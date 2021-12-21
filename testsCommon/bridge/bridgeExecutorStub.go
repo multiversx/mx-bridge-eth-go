@@ -11,12 +11,13 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
+// BridgeExecutorStub -
 type BridgeExecutorStub struct {
 	functionCalledCounter map[string]int
 	mutExecutor           sync.RWMutex
 	fullPath              string
 
-	GetLoggerCalled                                        func() logger.Logger
+	PrintInfoCalled                                        func(logLevel logger.LogLevel, message string, extras ...interface{})
 	MyTurnAsLeaderCalled                                   func() bool
 	GetBatchFromElrondCalled                               func(ctx context.Context) (*clients.TransferBatch, error)
 	StoreBatchFromElrondCalled                             func(batch *clients.TransferBatch) error
@@ -57,13 +58,12 @@ func NewBridgeExecutorStub() *BridgeExecutorStub {
 	}
 }
 
-// GetLogger -
-func (stub *BridgeExecutorStub) GetLogger() logger.Logger {
+// PrintInfo -
+func (stub *BridgeExecutorStub) PrintInfo(logLevel logger.LogLevel, message string, extras ...interface{}) {
 	stub.incrementFunctionCounter()
-	if stub.GetLoggerCalled != nil {
-		return stub.GetLoggerCalled()
+	if stub.PrintInfoCalled != nil {
+		stub.PrintInfoCalled(logLevel, message, extras...)
 	}
-	return nil
 }
 
 // MyTurnAsLeader -

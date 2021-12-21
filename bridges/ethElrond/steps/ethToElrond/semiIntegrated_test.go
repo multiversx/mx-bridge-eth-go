@@ -11,7 +11,6 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/stateMachine"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -59,9 +58,6 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 	errHandler := &errorHandler{}
 	stub := bridgeTests.NewBridgeExecutorStub()
 	expectedErr := errors.New("expected error")
-	stub.GetLoggerCalled = func() logger.Logger {
-		return logger.GetOrCreate("test")
-	}
 	stub.MyTurnAsLeaderCalled = func() bool {
 		return args.myTurnHandler()
 	}

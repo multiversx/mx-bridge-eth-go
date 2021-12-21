@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -103,9 +102,6 @@ func TestExecute_PerformSetStatus(t *testing.T) {
 
 func createStubExecutorPerformSetStatus() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetLoggerCalled = func() logger.Logger {
-		return testLogger
-	}
 	stub.WasActionPerformedOnElrondCalled = func(ctx context.Context) (bool, error) {
 		return false, nil
 	}

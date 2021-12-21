@@ -106,13 +106,41 @@ func TestNewBridgeExecutor(t *testing.T) {
 	})
 }
 
-func TestEthToElrondBridgeExecutor_GetLogger(t *testing.T) {
+func TestEthToElrondBridgeExecutor_PrintInfo(t *testing.T) {
 	t.Parallel()
 
-	args := createMockExecutorArgs()
-	executor, _ := NewBridgeExecutor(args)
+	logLevels := []logger.LogLevel{logger.LogTrace, logger.LogDebug, logger.LogInfo, logger.LogWarning, logger.LogError, logger.LogNone}
+	for _, logLevel := range logLevels {
+		shouldOutputToStatusHandler := logLevel == logger.LogError || logLevel == logger.LogWarning
+		testPrintInfo(t, logLevel, shouldOutputToStatusHandler)
+	}
+}
 
-	assert.True(t, args.Log == executor.GetLogger()) // pointer testing
+func testPrintInfo(t *testing.T, logLevel logger.LogLevel, shouldOutputToStatusHandler bool) {
+	providedLogLevel := logLevel
+	providedMessage := "message"
+	providedArgs := []interface{}{"string", 1, []byte("aaa")}
+	wasCalled := false
+
+	args := createMockExecutorArgs()
+	statusHandler := testsCommon.NewStatusHandlerMock("test")
+	args.StatusHandler = statusHandler
+	args.Log = &testsCommon.LoggerStub{
+		LogCalled: func(logLevel logger.LogLevel, message string, args ...interface{}) {
+			wasCalled = true
+			assert.Equal(t, providedLogLevel, logLevel)
+			assert.Equal(t, providedMessage, message)
+			assert.Equal(t, providedArgs, args)
+		},
+	}
+	executor, _ := NewBridgeExecutor(args)
+	executor.PrintInfo(providedLogLevel, providedMessage, providedArgs...)
+
+	assert.True(t, wasCalled)
+
+	if shouldOutputToStatusHandler {
+		assert.True(t, len(statusHandler.GetStringMetric(core.MetricLastError)) > 0)
+	}
 }
 
 func TestEthToElrondBridgeExecutor_MyTurnAsLeader(t *testing.T) {

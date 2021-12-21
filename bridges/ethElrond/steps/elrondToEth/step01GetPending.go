@@ -2,6 +2,7 @@ package elrondToEth
 
 import (
 	"context"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -18,29 +19,29 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 
 	batch, err := step.bridge.GetBatchFromElrond(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error fetching Elrond batch", "error", err)
+		step.bridge.PrintInfo(logger.LogError, "error fetching Elrond batch", "error", err)
 		return step.Identifier()
 	}
 	if batch == nil {
-		step.bridge.GetLogger().Debug("no new batch found on Elrond")
+		step.bridge.PrintInfo(logger.LogDebug, "no new batch found on Elrond")
 		return step.Identifier()
 	}
 
 	err = step.bridge.StoreBatchFromElrond(batch)
 	if err != nil {
-		step.bridge.GetLogger().Error("error storing Elrond batch", "error", err)
+		step.bridge.PrintInfo(logger.LogError, "error storing Elrond batch", "error", err)
 		return step.Identifier()
 	}
 
-	step.bridge.GetLogger().Info("fetched new batch from Elrond " + batch.String())
+	step.bridge.PrintInfo(logger.LogInfo, "fetched new batch from Elrond "+batch.String())
 
 	wasPerformed, err := step.bridge.WasTransferPerformedOnEthereum(ctx)
 	if err != nil {
-		step.bridge.GetLogger().Error("error determining if transfer was performed or not", "error", err)
+		step.bridge.PrintInfo(logger.LogError, "error determining if transfer was performed or not", "error", err)
 		return step.Identifier()
 	}
 	if wasPerformed {
-		step.bridge.GetLogger().Info("transfer performed")
+		step.bridge.PrintInfo(logger.LogInfo, "transfer performed")
 		return ResolvingSetStatusOnElrond
 	}
 

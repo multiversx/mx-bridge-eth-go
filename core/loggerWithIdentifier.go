@@ -58,14 +58,19 @@ func (l *loggerWithIdentifier) LogIfError(err error, args ...interface{}) {
 	l.Error(err.Error(), args...)
 }
 
-// Log forwards the log line towards underlying log output handler, in respect with the identifier
-func (l *loggerWithIdentifier) Log(line *logger.LogLine) {
+// Log outputs a log message with optional provided arguments, preceded by the identifier
+func (l *loggerWithIdentifier) Log(logLevel logger.LogLevel, message string, args ...interface{}) {
+	l.logger.Log(logLevel, l.formatMessage(message), args...)
+}
+
+// LogLine forwards the log line towards underlying log output handler, in respect with the identifier
+func (l *loggerWithIdentifier) LogLine(line *logger.LogLine) {
 	if line == nil {
 		return
 	}
 
 	line.Message = l.formatMessage(line.Message)
-	l.logger.Log(line)
+	l.logger.LogLine(line)
 }
 
 // SetLevel sets the current level of the logger
