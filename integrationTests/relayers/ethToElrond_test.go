@@ -101,7 +101,6 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 	defer cancel()
 	ethereumChainMock.ProcessFinishedHandler = func() {
-		time.Sleep(time.Second * 2)
 		cancel()
 	}
 	elrondChainMock.ProcessFinishedHandler = func() {
@@ -129,6 +128,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	}
 
 	<-ctx.Done()
+	time.Sleep(time.Second * 5)
 
 	assert.NotNil(t, elrondChainMock.PerformedActionID())
 	transfer := elrondChainMock.ProposedTransfer()
@@ -169,7 +169,7 @@ func createMockBridgeComponentsArgs(
 		ClientWrapper:    ethereumChainMock,
 		Messenger:        messenger,
 		StatusStorer:     testsCommon.NewStorerMock(),
-		TimeForBootstrap: time.Second,
+		TimeForBootstrap: time.Second * 5,
 		MetricsHolder:    status.NewMetricsHolder(),
 	}
 }
