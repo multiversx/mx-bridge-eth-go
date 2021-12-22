@@ -108,7 +108,7 @@ func checkArgs(args ArgsEthereumClient) error {
 		return errNilLogger
 	}
 	if check.IfNil(args.AddressConverter) {
-		return errNilAddressConverter
+		return clients.ErrNilAddressConverter
 	}
 	if check.IfNil(args.Broadcaster) {
 		return errNilBroadcaster

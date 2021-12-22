@@ -105,9 +105,9 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	addressConverter := converters.NewAddressConverter()
-	if addressConverter == nil {
-		return nil, errNilAddressConverter
+	addressConverter, err := converters.NewAddressConverter()
+	if err != nil {
+		return nil, clients.ErrNilAddressConverter
 	}
 
 	c := &client{

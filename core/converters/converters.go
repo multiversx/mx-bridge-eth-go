@@ -19,16 +19,16 @@ type addressConverter struct {
 }
 
 // NewAddressConverter will create an address converter instance
-func NewAddressConverter() *addressConverter {
+func NewAddressConverter() (*addressConverter, error) {
 	var err error
 	ac := &addressConverter{}
 	ac.converter, err = pubkeyConverter.NewBech32PubkeyConverter(erdgoCore.AddressBytesLen, log)
 	if err != nil {
 		log.Error("error while creating and addressConverter", "error", err)
-		return nil
+		return nil, err
 	}
 
-	return ac
+	return ac, nil
 }
 
 // ToHexString will convert the addressBytes to the hex representation
