@@ -17,6 +17,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ethereum/go-ethereum/common"
@@ -28,6 +29,9 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
+
+	//TODO remove this
+	_ = logger.SetLogLevel("*:DEBUG")
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
