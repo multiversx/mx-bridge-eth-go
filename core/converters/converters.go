@@ -24,7 +24,6 @@ func NewAddressConverter() (*addressConverter, error) {
 	ac := &addressConverter{}
 	ac.converter, err = pubkeyConverter.NewBech32PubkeyConverter(erdgoCore.AddressBytesLen, log)
 	if err != nil {
-		log.Error("error while creating and addressConverter", "error", err)
 		return nil, err
 	}
 
