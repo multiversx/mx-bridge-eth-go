@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"math/big"
 	"testing"
 	"time"
@@ -28,6 +29,9 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
+
+	//TODO remove this
+	logger.SetLogLevel("*:DEBUG")
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
