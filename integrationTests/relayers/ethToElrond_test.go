@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"math/big"
 	"testing"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ethereum/go-ethereum/common"
@@ -31,7 +31,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	}
 
 	//TODO remove this
-	logger.SetLogLevel("*:DEBUG")
+	_ = logger.SetLogLevel("*:DEBUG")
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
