@@ -6,6 +6,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -40,7 +41,8 @@ func TestTrimWhiteSpaceCharacters(t *testing.T) {
 func TestAddressConverter_ToBech32String(t *testing.T) {
 	t.Parallel()
 
-	addrConv := NewAddressConverter()
+	addrConv, err := NewAddressConverter()
+	require.Nil(t, err)
 	assert.False(t, check.IfNil(addrConv))
 
 	t.Run("invalid bytes should return empty", func(t *testing.T) {
@@ -57,7 +59,8 @@ func TestAddressConverter_ToBech32String(t *testing.T) {
 func TestAddressConverter_ToHexString(t *testing.T) {
 	t.Parallel()
 
-	addrConv := NewAddressConverter()
+	addrConv, err := NewAddressConverter()
+	require.Nil(t, err)
 	assert.False(t, check.IfNil(addrConv))
 
 	expected := "627974657320746f20656e636f6465"
@@ -68,7 +71,8 @@ func TestAddressConverter_ToHexString(t *testing.T) {
 func TestAddressConverter_ToHexStringWithPrefix(t *testing.T) {
 	t.Parallel()
 
-	addrConv := NewAddressConverter()
+	addrConv, err := NewAddressConverter()
+	require.Nil(t, err)
 	assert.False(t, check.IfNil(addrConv))
 
 	expected := "0x627974657320746f20656e636f6465"

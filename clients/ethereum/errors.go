@@ -10,7 +10,6 @@ var (
 	errNilERC20ContractsHandler = errors.New("nil ERC20 contracts handler")
 	errNilTokensMapper          = errors.New("nil tokens mapper")
 	errNilLogger                = errors.New("nil logger")
-	errNilAddressConverter      = errors.New("nil address converter")
 	errNilBroadcaster           = errors.New("nil broadcaster")
 	errNilPrivateKey            = errors.New("nil private key")
 	errNilBatch                 = errors.New("nil batch")

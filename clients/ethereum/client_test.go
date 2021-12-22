@@ -31,11 +31,16 @@ var expectedNonces = []*big.Int{big.NewInt(10), big.NewInt(30)}
 func createMockEthereumClientArgs() ArgsEthereumClient {
 	sk, _ := crypto.HexToECDSA("9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1")
 
+	addressConverter, err := converters.NewAddressConverter()
+	if err != nil {
+		panic(err)
+	}
+
 	return ArgsEthereumClient{
 		ClientWrapper:         &bridgeTests.EthereumClientWrapperStub{},
 		Erc20ContractsHandler: &bridgeTests.ERC20ContractsHolderStub{},
 		Log:                   logger.GetOrCreate("test"),
-		AddressConverter:      converters.NewAddressConverter(),
+		AddressConverter:      addressConverter,
 		Broadcaster:           &testsCommon.BroadcasterStub{},
 		PrivateKey:            sk,
 		TokensMapper: &bridgeTests.TokensMapperStub{
@@ -114,7 +119,7 @@ func TestNewEthereumClient(t *testing.T) {
 		args.AddressConverter = nil
 		c, err := NewEthereumClient(args)
 
-		assert.Equal(t, errNilAddressConverter, err)
+		assert.Equal(t, clients.ErrNilAddressConverter, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("nil broadcaster", func(t *testing.T) {

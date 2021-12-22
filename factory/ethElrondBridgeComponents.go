@@ -12,6 +12,7 @@ import (
 	elrondToEthSteps "github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps/elrondToEth"
 	ethToElrondSteps "github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/topology"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/elrond/mappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum"
@@ -334,11 +335,17 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	}
 
 	safeContractAddress := common.HexToAddress(ethereumConfigs.SafeContractAddress)
+
+	addressConverter, err := converters.NewAddressConverter()
+	if err != nil {
+		return clients.ErrNilAddressConverter
+	}
+
 	argsEthClient := ethereum.ArgsEthereumClient{
 		ClientWrapper:             args.ClientWrapper,
 		Erc20ContractsHandler:     args.Erc20ContractsHolder,
 		Log:                       log,
-		AddressConverter:          converters.NewAddressConverter(),
+		AddressConverter:          addressConverter,
 		Broadcaster:               components.broadcaster,
 		PrivateKey:                privateKey,
 		TokensMapper:              tokensMapper,
