@@ -3,6 +3,7 @@ package ethElrond
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -234,12 +235,61 @@ func TestEthToElrondBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T) {
 
 		assert.Equal(t, expectedErr, err)
 	})
+	t.Run("batch nonce mismatch should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		providedNonce := uint64(8346)
+		expectedBatch := &clients.TransferBatch{
+			ID: 0,
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return expectedBatch, nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+		assert.True(t, errors.Is(err, ErrBatchNotFound))
+		assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("%d", providedNonce)))
+		assert.Nil(t, executor.GetStoredBatch())
+		assert.Nil(t, executor.batch)
+	})
+	t.Run("no deposits should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		providedNonce := uint64(8346)
+		expectedBatch := &clients.TransferBatch{
+			ID: providedNonce,
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return expectedBatch, nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+		assert.True(t, errors.Is(err, ErrBatchNotFound))
+		assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("%d", providedNonce)))
+		assert.Nil(t, executor.GetStoredBatch())
+		assert.Nil(t, executor.batch)
+	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
 		providedNonce := uint64(8346)
-		expectedBatch := &clients.TransferBatch{}
+		expectedBatch := &clients.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*clients.DepositTransfer{
+				{},
+			},
+		}
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
 			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
 				assert.Equal(t, providedNonce, nonce)

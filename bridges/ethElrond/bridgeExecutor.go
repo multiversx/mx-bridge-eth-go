@@ -339,9 +339,14 @@ func (executor *bridgeExecutor) ResetRetriesCountOnElrond() {
 // GetAndStoreBatchFromEthereum fetches and stores the batch from the ethereum client
 func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error {
 	batch, err := executor.ethereumClient.GetBatch(ctx, nonce)
-	// TODO add error filtering here
 	if err != nil {
 		return err
+	}
+
+	isBatchInvalid := batch.ID != nonce || len(batch.Deposits) == 0
+	if isBatchInvalid {
+		return fmt.Errorf("%w, requested nonce: %d, fetched nonce: %d, num deposits: %d",
+			ErrBatchNotFound, nonce, batch.ID, len(batch.Deposits))
 	}
 
 	executor.batch = batch

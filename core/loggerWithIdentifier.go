@@ -55,7 +55,7 @@ func (l *loggerWithIdentifier) LogIfError(err error, args ...interface{}) {
 		return
 	}
 
-	l.Error(err.Error(), args...)
+	l.Error(l.formatMessage(err.Error()), args...)
 }
 
 // Log outputs a log message with optional provided arguments, preceded by the identifier
