@@ -31,3 +31,6 @@ var ErrDuplicatedStepIdentifier = errors.New("duplicated step identifier used in
 
 // ErrNilStatusHandler signals that a nil status handler was provided
 var ErrNilStatusHandler = errors.New("nil status handler")
+
+// ErrBatchNotFound signals that the batch was not found
+var ErrBatchNotFound = errors.New("batch not found")
