@@ -19,7 +19,7 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 
 	batch, err := step.bridge.GetBatchFromElrond(ctx)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogError, "error fetching Elrond batch", "error", err)
+		step.bridge.PrintInfo(logger.LogDebug, "error fetching Elrond batch", "error", err)
 		return step.Identifier()
 	}
 	if batch == nil {
