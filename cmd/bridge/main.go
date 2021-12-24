@@ -44,6 +44,7 @@ const (
 	nilListSharderType       = "NilListSharder"
 	dbPath                   = "db"
 	timeForBootstrap         = time.Second * 20
+	timeBeforeRepeatJoin     = time.Minute
 )
 
 var log = logger.GetOrCreate("main")
@@ -196,6 +197,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		Erc20ContractsHolder: erc20ContractsHolder,
 		ClientWrapper:        clientWrapper,
 		TimeForBootstrap:     timeForBootstrap,
+		TimeBeforeRepeatJoin: timeBeforeRepeatJoin,
 		MetricsHolder:        metricsHolder,
 	}
 	ethToElrondComponents, err := factory.NewEthElrondBridgeComponents(args)

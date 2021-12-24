@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"io"
@@ -42,6 +43,7 @@ import (
 
 const (
 	minTimeForBootstrap     = time.Millisecond * 100
+	minTimeBeforeRepeatJoin = time.Second * 30
 	pollingDurationOnError  = time.Second * 5
 	ethToElrondName         = "EthToElrond"
 	elrondToEthName         = "ElrondToEth"
@@ -65,6 +67,7 @@ type ArgsEthereumToElrondBridge struct {
 	Erc20ContractsHolder ethereum.Erc20ContractsHolder
 	ClientWrapper        ethereum.ClientWrapper
 	TimeForBootstrap     time.Duration
+	TimeBeforeRepeatJoin time.Duration
 	MetricsHolder        core.MetricsHolder
 }
 
@@ -103,6 +106,9 @@ type ethElrondBridgeComponents struct {
 	closableHandlers    []io.Closer
 
 	pollingHandlers []PollingHandler
+
+	timeBeforeRepeatJoin time.Duration
+	cancelFunc           func()
 }
 
 // NewEthElrondBridgeComponents creates a new eth-elrond bridge components holder
@@ -201,6 +207,9 @@ func checkArgsEthereumToElrondBridge(args ArgsEthereumToElrondBridge) error {
 	}
 	if args.TimeForBootstrap < minTimeForBootstrap {
 		return fmt.Errorf("%w for TimeForBootstrap, received: %v, minimum: %v", errInvalidValue, args.TimeForBootstrap, minTimeForBootstrap)
+	}
+	if args.TimeBeforeRepeatJoin < minTimeBeforeRepeatJoin {
+		return fmt.Errorf("%w for TimeBeforeRepeatJoin, received: %v, minimum: %v", errInvalidValue, args.TimeBeforeRepeatJoin, minTimeBeforeRepeatJoin)
 	}
 	if check.IfNil(args.MetricsHolder) {
 		return errNilMetricsHolder
@@ -571,6 +580,8 @@ func (components *ethElrondBridgeComponents) Start() error {
 		return err
 	}
 
+	go components.startBroadcastJoinRetriesLoop()
+
 	return nil
 }
 
@@ -646,10 +657,30 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumStateMachine(
 	return nil
 }
 
+func (components *ethElrondBridgeComponents) startBroadcastJoinRetriesLoop() {
+	var ctx context.Context
+	ctx, components.cancelFunc = context.WithCancel(context.Background())
+	for {
+		select {
+		case <-time.After(components.timeBeforeRepeatJoin):
+			components.baseLogger.Info("broadcast again join topic")
+			components.broadcaster.BroadcastJoinTopic()
+		case <-ctx.Done():
+			components.baseLogger.Info("closing broadcast join topic loop")
+			return
+
+		}
+	}
+}
+
 // Close will close any sub-components started
 func (components *ethElrondBridgeComponents) Close() error {
 	components.mutClosableHandlers.RLock()
 	defer components.mutClosableHandlers.RUnlock()
+
+	if components.cancelFunc != nil {
+		components.cancelFunc()
+	}
 
 	var lastError error
 	for _, closable := range components.closableHandlers {

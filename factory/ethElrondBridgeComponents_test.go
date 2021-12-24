@@ -77,6 +77,7 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 		Erc20ContractsHolder: &bridgeTests.ERC20ContractsHolderStub{},
 		ClientWrapper:        &bridgeTests.EthereumClientWrapperStub{},
 		TimeForBootstrap:     minTimeForBootstrap,
+		TimeBeforeRepeatJoin: minTimeBeforeRepeatJoin,
 		MetricsHolder:        status.NewMetricsHolder(),
 	}
 }
@@ -201,6 +202,16 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		components, err := NewEthElrondBridgeComponents(args)
 		assert.True(t, errors.Is(err, errInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "for TimeForBootstrap"))
+		assert.Nil(t, components)
+	})
+	t.Run("invalid time before retry", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.TimeBeforeRepeatJoin = minTimeBeforeRepeatJoin - 1
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.True(t, errors.Is(err, errInvalidValue))
+		assert.True(t, strings.Contains(err.Error(), "for TimeBeforeRepeatJoin"))
 		assert.Nil(t, components)
 	})
 	t.Run("nil MetricsHolder", func(t *testing.T) {

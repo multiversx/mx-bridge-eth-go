@@ -169,12 +169,13 @@ func createMockBridgeComponentsArgs(
 				RestApiInterface: core.WebServerOffString,
 			},
 		},
-		Proxy:            elrondChainMock,
-		ClientWrapper:    ethereumChainMock,
-		Messenger:        messenger,
-		StatusStorer:     testsCommon.NewStorerMock(),
-		TimeForBootstrap: time.Second * 5,
-		MetricsHolder:    status.NewMetricsHolder(),
+		Proxy:                elrondChainMock,
+		ClientWrapper:        ethereumChainMock,
+		Messenger:            messenger,
+		StatusStorer:         testsCommon.NewStorerMock(),
+		TimeForBootstrap:     time.Second * 5,
+		TimeBeforeRepeatJoin: time.Second * 30,
+		MetricsHolder:        status.NewMetricsHolder(),
 	}
 }
 
