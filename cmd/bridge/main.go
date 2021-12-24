@@ -44,7 +44,7 @@ const (
 	nilListSharderType       = "NilListSharder"
 	dbPath                   = "db"
 	timeForBootstrap         = time.Second * 20
-	timeBeforeRepeatJoin     = time.Minute
+	timeBeforeRepeatJoin     = time.Minute * 5
 )
 
 var log = logger.GetOrCreate("main")
