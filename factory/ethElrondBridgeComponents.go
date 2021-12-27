@@ -119,14 +119,15 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 	}
 
 	components := &ethElrondBridgeComponents{
-		baseLogger:       core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
-		messenger:        args.Messenger,
-		statusStorer:     args.StatusStorer,
-		closableHandlers: make([]io.Closer, 0),
-		proxy:            args.Proxy,
-		timer:            timer.NewNTPTimer(),
-		timeForBootstrap: args.TimeForBootstrap,
-		metricsHolder:    args.MetricsHolder,
+		baseLogger:           core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
+		messenger:            args.Messenger,
+		statusStorer:         args.StatusStorer,
+		closableHandlers:     make([]io.Closer, 0),
+		proxy:                args.Proxy,
+		timer:                timer.NewNTPTimer(),
+		timeForBootstrap:     args.TimeForBootstrap,
+		timeBeforeRepeatJoin: args.TimeBeforeRepeatJoin,
+		metricsHolder:        args.MetricsHolder,
 	}
 	components.addClosableComponent(components.timer)
 

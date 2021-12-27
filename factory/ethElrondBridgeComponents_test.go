@@ -344,6 +344,51 @@ func TestEthElrondBridgeComponents_Close(t *testing.T) {
 	})
 }
 
+func TestEthElrondBridgeComponents_startBroadcastJoinRetriesLoop(t *testing.T) {
+	t.Parallel()
+
+	t.Run("close before minTimeBeforeRepeatJoin", func(t *testing.T) {
+		t.Parallel()
+
+		numberOfCalls := 0
+		args := createMockEthElrondBridgeArgs()
+		components, _ := NewEthElrondBridgeComponents(args)
+		components.broadcaster = &testsCommon.BroadcasterStub{
+			BroadcastJoinTopicCalled: func() {
+				numberOfCalls++
+			},
+		}
+
+		err := components.Start()
+		assert.Nil(t, err)
+		time.Sleep(time.Second * 3)
+
+		err = components.Close()
+		assert.Nil(t, err)
+		assert.Equal(t, 1, numberOfCalls) // one call expected from Start
+	})
+	t.Run("broadcast should be called again", func(t *testing.T) {
+		t.Parallel()
+
+		numberOfCalls := 0
+		args := createMockEthElrondBridgeArgs()
+		components, _ := NewEthElrondBridgeComponents(args)
+		components.broadcaster = &testsCommon.BroadcasterStub{
+			BroadcastJoinTopicCalled: func() {
+				numberOfCalls++
+			},
+		}
+
+		err := components.Start()
+		assert.Nil(t, err)
+		time.Sleep(time.Second * 30)
+
+		err = components.Close()
+		assert.Nil(t, err)
+		assert.Equal(t, 2, numberOfCalls) // 2 calls expected Start + loop
+	})
+}
+
 func TestEthElrondBridgeComponents_RelayerAddresses(t *testing.T) {
 	t.Parallel()
 
