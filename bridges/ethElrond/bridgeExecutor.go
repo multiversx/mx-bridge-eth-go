@@ -374,7 +374,7 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		return err
 	}
 
-	executor.log.Info("generated message hash on Ethereum", hash,
+	executor.log.Info("generated message hash on Ethereum", "hash", hash,
 		"batch ID", executor.batch.ID)
 
 	executor.msgHash = hash
@@ -392,6 +392,8 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 	if err != nil {
 		return err
 	}
+
+	executor.log.Debug("fetched quorum size", "quorum", quorumSize.Int64())
 
 	hash, err := executor.ethereumClient.ExecuteTransfer(ctx, executor.msgHash, executor.batch, int(quorumSize.Int64()))
 	if err != nil {
