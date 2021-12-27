@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -350,12 +351,12 @@ func TestEthElrondBridgeComponents_startBroadcastJoinRetriesLoop(t *testing.T) {
 	t.Run("close before minTimeBeforeRepeatJoin", func(t *testing.T) {
 		t.Parallel()
 
-		numberOfCalls := 0
+		numberOfCalls := uint32(0)
 		args := createMockEthElrondBridgeArgs()
 		components, _ := NewEthElrondBridgeComponents(args)
 		components.broadcaster = &testsCommon.BroadcasterStub{
 			BroadcastJoinTopicCalled: func() {
-				numberOfCalls++
+				atomic.AddUint32(&numberOfCalls, 1)
 			},
 		}
 
@@ -365,27 +366,28 @@ func TestEthElrondBridgeComponents_startBroadcastJoinRetriesLoop(t *testing.T) {
 
 		err = components.Close()
 		assert.Nil(t, err)
-		assert.Equal(t, 1, numberOfCalls) // one call expected from Start
+		assert.Equal(t, uint32(1), atomic.LoadUint32(&numberOfCalls)) // one call expected from Start
 	})
 	t.Run("broadcast should be called again", func(t *testing.T) {
 		t.Parallel()
 
-		numberOfCalls := 0
+		numberOfCalls := uint32(0)
 		args := createMockEthElrondBridgeArgs()
 		components, _ := NewEthElrondBridgeComponents(args)
+		components.timeBeforeRepeatJoin = time.Second * 3
 		components.broadcaster = &testsCommon.BroadcasterStub{
 			BroadcastJoinTopicCalled: func() {
-				numberOfCalls++
+				atomic.AddUint32(&numberOfCalls, 1)
 			},
 		}
 
 		err := components.Start()
 		assert.Nil(t, err)
-		time.Sleep(time.Second * 40)
+		time.Sleep(time.Second * 7)
 
 		err = components.Close()
 		assert.Nil(t, err)
-		assert.Equal(t, 2, numberOfCalls) // 2 calls expected Start + loop
+		assert.Equal(t, uint32(3), atomic.LoadUint32(&numberOfCalls)) // 3 calls expected: Start + 2 times from loop
 	})
 }
 
