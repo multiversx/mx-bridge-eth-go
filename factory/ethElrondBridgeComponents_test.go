@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -77,6 +78,7 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 		Erc20ContractsHolder: &bridgeTests.ERC20ContractsHolderStub{},
 		ClientWrapper:        &bridgeTests.EthereumClientWrapperStub{},
 		TimeForBootstrap:     minTimeForBootstrap,
+		TimeBeforeRepeatJoin: minTimeBeforeRepeatJoin,
 		MetricsHolder:        status.NewMetricsHolder(),
 	}
 }
@@ -201,6 +203,16 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 		components, err := NewEthElrondBridgeComponents(args)
 		assert.True(t, errors.Is(err, errInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "for TimeForBootstrap"))
+		assert.Nil(t, components)
+	})
+	t.Run("invalid time before retry", func(t *testing.T) {
+		t.Parallel()
+		args := createMockEthElrondBridgeArgs()
+		args.TimeBeforeRepeatJoin = minTimeBeforeRepeatJoin - 1
+
+		components, err := NewEthElrondBridgeComponents(args)
+		assert.True(t, errors.Is(err, errInvalidValue))
+		assert.True(t, strings.Contains(err.Error(), "for TimeBeforeRepeatJoin"))
 		assert.Nil(t, components)
 	})
 	t.Run("nil MetricsHolder", func(t *testing.T) {
@@ -330,6 +342,52 @@ func TestEthElrondBridgeComponents_Close(t *testing.T) {
 		err := components.Close()
 		assert.Equal(t, expectedErr, err)
 		assert.Equal(t, 3, numCalls)
+	})
+}
+
+func TestEthElrondBridgeComponents_startBroadcastJoinRetriesLoop(t *testing.T) {
+	t.Parallel()
+
+	t.Run("close before minTimeBeforeRepeatJoin", func(t *testing.T) {
+		t.Parallel()
+
+		numberOfCalls := uint32(0)
+		args := createMockEthElrondBridgeArgs()
+		components, _ := NewEthElrondBridgeComponents(args)
+		components.broadcaster = &testsCommon.BroadcasterStub{
+			BroadcastJoinTopicCalled: func() {
+				atomic.AddUint32(&numberOfCalls, 1)
+			},
+		}
+
+		err := components.Start()
+		assert.Nil(t, err)
+		time.Sleep(time.Second * 3)
+
+		err = components.Close()
+		assert.Nil(t, err)
+		assert.Equal(t, uint32(1), atomic.LoadUint32(&numberOfCalls)) // one call expected from Start
+	})
+	t.Run("broadcast should be called again", func(t *testing.T) {
+		t.Parallel()
+
+		numberOfCalls := uint32(0)
+		args := createMockEthElrondBridgeArgs()
+		components, _ := NewEthElrondBridgeComponents(args)
+		components.timeBeforeRepeatJoin = time.Second * 3
+		components.broadcaster = &testsCommon.BroadcasterStub{
+			BroadcastJoinTopicCalled: func() {
+				atomic.AddUint32(&numberOfCalls, 1)
+			},
+		}
+
+		err := components.Start()
+		assert.Nil(t, err)
+		time.Sleep(time.Second * 7)
+
+		err = components.Close()
+		assert.Nil(t, err)
+		assert.Equal(t, uint32(3), atomic.LoadUint32(&numberOfCalls)) // 3 calls expected: Start + 2 times from loop
 	})
 }
 
