@@ -381,7 +381,7 @@ func TestEthElrondBridgeComponents_startBroadcastJoinRetriesLoop(t *testing.T) {
 
 		err := components.Start()
 		assert.Nil(t, err)
-		time.Sleep(time.Second * 30)
+		time.Sleep(time.Second * 40)
 
 		err = components.Close()
 		assert.Nil(t, err)
