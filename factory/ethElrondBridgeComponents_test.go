@@ -248,7 +248,7 @@ func TestEthElrondBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 6, len(components.closableHandlers))
 
-	time.Sleep(time.Second * 2) //allow go routines to start
+	time.Sleep(time.Second * 2) // allow go routines to start
 
 	err = components.Close()
 	assert.Nil(t, err)

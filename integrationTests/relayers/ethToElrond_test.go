@@ -30,7 +30,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 		t.Skip("this is not a short test")
 	}
 
-	//TODO remove this
+	// TODO remove this
 	_ = logger.SetLogLevel("*:DEBUG")
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
