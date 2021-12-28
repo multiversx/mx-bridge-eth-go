@@ -141,6 +141,10 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	proxy := blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil)
+	proxyWithCacher, err := blockchain.NewElrondProxyWithCache(proxy, time.Second*time.Duration(cfg.Elrond.ProxyCacherExpirationSeconds))
+	if err != nil {
+		return err
+	}
 
 	ethClient, err := ethclient.Dial(cfg.Eth.NetworkAddress)
 	if err != nil {
@@ -193,7 +197,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		Configs:              configs,
 		Messenger:            messenger,
 		StatusStorer:         statusStorer,
-		Proxy:                proxy,
+		Proxy:                proxyWithCacher,
 		Erc20ContractsHolder: erc20ContractsHolder,
 		ClientWrapper:        clientWrapper,
 		TimeForBootstrap:     timeForBootstrap,

@@ -49,7 +49,6 @@ func createMockClientArgs() ClientArgs {
 			},
 		},
 		MaxRetriesOnQuorumReached: 1,
-		ProxyCacherExpirationTime: 600,
 	}
 }
 
@@ -171,18 +170,6 @@ func TestNewClient(t *testing.T) {
 		require.True(t, check.IfNil(c))
 		require.True(t, errors.Is(err, errInvalidValue))
 		require.True(t, strings.Contains(err.Error(), "for args.MaxRetriesOnQuorumReached"))
-	})
-	t.Run("invalid ProxyCacherExpirationTime should error", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockClientArgs()
-		args.ProxyCacherExpirationTime = 0
-
-		c, err := NewClient(args)
-
-		require.True(t, check.IfNil(c))
-		require.True(t, errors.Is(err, errInvalidValue))
-		require.True(t, strings.Contains(err.Error(), "for args.ProxyCacherExpirationTime"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()

@@ -51,7 +51,6 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 			MultisigContractAddress:      "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 			GasMap:                       testsCommon.CreateTestElrondGasMap(),
 			MaxRetriesOnQuorumReached:    1,
-			ProxyCacherExpirationTime:    600,
 		},
 		Relayer: config.ConfigRelayer{
 			RoleProvider: config.RoleProviderConfig{

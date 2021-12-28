@@ -273,7 +273,6 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
 		MaxRetriesOnQuorumReached:    elrondConfigs.MaxRetriesOnQuorumReached,
-		ProxyCacherExpirationTime:    elrondConfigs.ProxyCacherExpirationTime,
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)

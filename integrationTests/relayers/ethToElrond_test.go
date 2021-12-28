@@ -213,7 +213,6 @@ func createBridgeComponentsConfig(index int) config.Config {
 			IntervalToResendTxsInSeconds: 10,
 			GasMap:                       testsCommon.CreateTestElrondGasMap(),
 			MaxRetriesOnQuorumReached:    1,
-			ProxyCacherExpirationTime:    600,
 		},
 		P2P: config.ConfigP2P{},
 		StateMachine: map[string]config.ConfigStateMachine{
