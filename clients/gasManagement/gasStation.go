@@ -94,6 +94,8 @@ func (gs *gasStation) processLoop(ctx context.Context) {
 	defer timer.Stop()
 
 	for {
+		timer.Reset(gs.requestPollingInterval)
+
 		requestContext, cancel := context.WithTimeout(ctx, gs.requestTime)
 
 		err := gs.doRequest(requestContext)
