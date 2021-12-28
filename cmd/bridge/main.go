@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -10,14 +9,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/contract"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth/wrappers"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/wrappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -32,7 +30,6 @@ import (
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
@@ -40,16 +37,14 @@ import (
 )
 
 const (
-	exitCodeErr       = 1
-	exitCodeInterrupt = 2
-
-	filePathPlaceholder = "[path]"
-
+	filePathPlaceholder      = "[path]"
 	defaultLogsPath          = "logs"
 	logFilePrefix            = "elrond-eth-bridge"
 	p2pPeerNetworkDiscoverer = "optimized"
 	nilListSharderType       = "NilListSharder"
 	dbPath                   = "db"
+	timeForBootstrap         = time.Second * 20
+	timeBeforeRepeatJoin     = time.Minute * 5
 )
 
 var log = logger.GetOrCreate("main")
@@ -131,9 +126,18 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	metricsHolder := status.NewMetricsHolder()
 	ethClientStatusHandler, err := status.NewStatusHandler(core.EthClientStatusHandlerName, statusStorer)
 	if err != nil {
 		return err
+	}
+	err = metricsHolder.AddStatusHandler(ethClientStatusHandler)
+	if err != nil {
+		return err
+	}
+
+	if len(cfg.Elrond.NetworkAddress) == 0 {
+		return fmt.Errorf("empty Elrond.NetworkAddress in config file")
 	}
 
 	proxy := blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil)
@@ -143,13 +147,17 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	bridgeEthAddress := ethCommon.HexToAddress(cfg.Eth.BridgeAddress)
-	ethInstance, err := contract.NewBridge(bridgeEthAddress, ethClient)
+	bridgeEthAddress := ethCommon.HexToAddress(cfg.Eth.MultisigContractAddress)
+	multiSigInstance, err := contract.NewBridge(bridgeEthAddress, ethClient)
 	if err != nil {
 		return err
 	}
 
-	erc20Contracts, err := createMapOfErc20Contracts(cfg.Eth.ERC20Contracts, ethClient, ethClientStatusHandler)
+	argsContractsHolder := ethereum.ArgsErc20SafeContractsHolder{
+		EthClient:              ethClient,
+		EthClientStatusHandler: ethClientStatusHandler,
+	}
+	erc20ContractsHolder, err := ethereum.NewErc20SafeContractsHolder(argsContractsHolder)
 	if err != nil {
 		return err
 	}
@@ -159,88 +167,99 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	messenger, err := buildNetMessenger(*cfg, marshalizer)
+	messenger, err := buildNetMessenger(cfg, marshalizer)
 	if err != nil {
 		return err
 	}
 
-	args := relay.ArgsRelayer{
-		Configs: config.Configs{
-			GeneralConfig:   cfg,
-			ApiRoutesConfig: apiRoutesConfig,
-			FlagsConfig:     flagsConfig,
-		},
-		Name:                   "EthToElrRelay",
-		Proxy:                  proxy,
-		EthClient:              ethClient,
-		EthInstance:            ethInstance,
-		Messenger:              messenger,
-		Erc20Contracts:         erc20Contracts,
-		EthClientStatusHandler: ethClientStatusHandler,
-		StatusStorer:           statusStorer,
+	configs := config.Configs{
+		GeneralConfig:   cfg,
+		ApiRoutesConfig: apiRoutesConfig,
+		FlagsConfig:     flagsConfig,
 	}
-	ethToElrRelay, err := relay.NewRelay(args)
+
+	argsClientWrapper := wrappers.ArgsEthereumChainWrapper{
+		StatusHandler:    ethClientStatusHandler,
+		MultiSigContract: multiSigInstance,
+		BlockchainClient: ethClient,
+	}
+
+	clientWrapper, err := wrappers.NewEthereumChainWrapper(argsClientWrapper)
 	if err != nil {
 		return err
 	}
 
-	mainLoop(ethToElrRelay)
+	args := factory.ArgsEthereumToElrondBridge{
+		Configs:              configs,
+		Messenger:            messenger,
+		StatusStorer:         statusStorer,
+		Proxy:                proxy,
+		Erc20ContractsHolder: erc20ContractsHolder,
+		ClientWrapper:        clientWrapper,
+		TimeForBootstrap:     timeForBootstrap,
+		TimeBeforeRepeatJoin: timeBeforeRepeatJoin,
+		MetricsHolder:        metricsHolder,
+	}
+	ethToElrondComponents, err := factory.NewEthElrondBridgeComponents(args)
+	if err != nil {
+		return err
+	}
 
-	return nil
-}
+	webServer, err := factory.StartWebServer(configs, metricsHolder)
+	if err != nil {
+		return err
+	}
 
-func mainLoop(r *relay.Relay) {
+	log.Info("Starting relay")
+
+	err = ethToElrondComponents.Start()
+	if err != nil {
+		return err
+	}
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Info("Starting relay")
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	<-sigs
 
-	defer func() {
-		signal.Stop(sigs)
-		cancel()
-	}()
+	log.Info("application closing, calling Close on all subcomponents...")
 
-	go func() {
-		select {
-		case <-sigs:
-			cancel()
-		case <-ctx.Done():
-		}
-		<-sigs
-		os.Exit(exitCodeInterrupt)
-	}()
-
-	err := r.Start(ctx)
+	var lastErr error
+	err = ethToElrondComponents.Close()
 	if err != nil {
-		log.Error(err.Error())
-		os.Exit(exitCodeErr)
+		lastErr = err
 	}
+
+	err = webServer.Close()
+	if err != nil {
+		lastErr = err
+	}
+
+	return lastErr
 }
 
-func loadConfig(filepath string) (*config.Config, error) {
-	cfg := &config.Config{}
-	err := elrondCore.LoadTomlFile(cfg, filepath)
+func loadConfig(filepath string) (config.Config, error) {
+	cfg := config.Config{}
+	err := elrondCore.LoadTomlFile(&cfg, filepath)
 	if err != nil {
-		return nil, err
+		return config.Config{}, err
 	}
 
 	return cfg, nil
 }
 
 // LoadApiConfig returns a ApiRoutesConfig by reading the config file provided
-func loadApiConfig(filepath string) (*config.ApiRoutesConfig, error) {
-	cfg := &config.ApiRoutesConfig{}
-	err := elrondCore.LoadTomlFile(cfg, filepath)
+func loadApiConfig(filepath string) (config.ApiRoutesConfig, error) {
+	cfg := config.ApiRoutesConfig{}
+	err := elrondCore.LoadTomlFile(&cfg, filepath)
 	if err != nil {
-		return nil, err
+		return config.ApiRoutesConfig{}, err
 	}
 
 	return cfg, nil
 }
 
-func attachFileLogger(log logger.Logger, flagsConfig *config.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
+func attachFileLogger(log logger.Logger, flagsConfig config.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
 	var fileLogging elrondFactory.FileLoggingHandler
 	var err error
 	if flagsConfig.SaveLogFile {
@@ -320,36 +339,4 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 	}
 
 	return messenger, nil
-}
-
-func createMapOfErc20Contracts(
-	erc20List []string,
-	ethClient bind.ContractBackend,
-	ethClientStatusHandler core.StatusHandler,
-) (map[ethCommon.Address]eth.Erc20Contract, error) {
-	if len(erc20List) == 0 {
-		return nil, fmt.Errorf("no ERC20 address specified in config, [Eth] section, field ERC20Contracts")
-	}
-
-	contracts := make(map[ethCommon.Address]eth.Erc20Contract)
-	for _, strAddress := range erc20List {
-		addr := ethCommon.HexToAddress(strAddress)
-		contractInstance, err := contract.NewGenericErc20(addr, ethClient)
-		if err != nil {
-			return nil, fmt.Errorf("%w for %s", err, addr.String())
-		}
-
-		args := wrappers.ArgsErc20ContractWrapper{
-			StatusHandler: ethClientStatusHandler,
-			Erc20Contract: contractInstance,
-		}
-		wrapper, err := wrappers.NewErc20ContractWrapper(args)
-		if err != nil {
-			return nil, err
-		}
-
-		contracts[addr] = wrapper
-	}
-
-	return contracts, nil
 }

@@ -7,13 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge/eth"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
-	"github.com/ElrondNetwork/elrond-eth-bridge/relay"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	mockInteractors "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,24 +25,13 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	numTransactions := 2
 	deposits, tokensAddresses, erc20Map := createTransactions(numTransactions)
 
+	tokens, availableBalances := availableTokensMapToSlices(erc20Map)
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
-	erc20Contracts := make(map[common.Address]eth.Erc20Contract)
-	for addr, val := range erc20Map {
-		value := big.NewInt(0).Set(val)
-		erc20Contracts[addr] = &mockInteractors.Erc20ContractStub{
-			BalanceOfCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
-				if account == safeContractEthAddress {
-					return value, nil
-				}
-
-				return big.NewInt(0), nil
-			},
-		}
-	}
+	erc20ContractsHolder := createMockErc20ContractsHolder(tokens, safeContractEthAddress, availableBalances)
 
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.SetQuorum(3)
-	expectedStatuses := []byte{bridge.Executed, bridge.Rejected}
+	expectedStatuses := []byte{clients.Executed, clients.Rejected}
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return expectedStatuses
 	}
@@ -53,17 +40,14 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 		elrondChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker)
 	}
 	pendingBatch := mock.ElrondPendingBatch{
-		Nonce:                  big.NewInt(1),
-		Timestamp:              big.NewInt(0),
-		LastUpdatedBlockNumber: big.NewInt(0),
-		ElrondDeposits:         deposits,
-		Status:                 0,
+		Nonce:          big.NewInt(1),
+		ElrondDeposits: deposits,
 	}
 
 	elrondChainMock.SetPendingBatch(&pendingBatch)
 
 	numRelayers := 3
-	relayers := make([]*relay.Relay, 0, numRelayers)
+	relayers := make([]bridgeComponents, 0, numRelayers)
 	defer func() {
 		for _, r := range relayers {
 			_ = r.Close()
@@ -79,30 +63,33 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	}
 
 	for i := 0; i < numRelayers; i++ {
-		argsRelay := mock.CreateMockRelayArgs("elrond <-> eth", i, messengers[i], elrondChainMock, ethereumChainMock)
-		argsRelay.Configs.GeneralConfig.Eth.SafeContractAddress = safeContractEthAddress.Hex()
-		argsRelay.Erc20Contracts = erc20Contracts
-		r, err := relay.NewRelay(argsRelay)
+		argsBridgeComponents := createMockBridgeComponentsArgs(i, messengers[i], elrondChainMock, ethereumChainMock)
+		argsBridgeComponents.Configs.GeneralConfig.Eth.SafeContractAddress = safeContractEthAddress.Hex()
+		argsBridgeComponents.Erc20ContractsHolder = erc20ContractsHolder
+		relayer, err := factory.NewEthElrondBridgeComponents(argsBridgeComponents)
 		require.Nil(t, err)
 
-		elrondChainMock.AddRelayer(r.ElrondAddress())
-		ethereumChainMock.AddRelayer(r.EthereumAddress())
+		elrondChainMock.AddRelayer(relayer.ElrondRelayerAddress())
+		ethereumChainMock.AddRelayer(relayer.EthereumRelayerAddress())
 
 		go func() {
-			err = r.Start(ctx)
+			err = relayer.Start()
 			integrationTests.Log.LogIfError(err)
 			require.Nil(t, err)
 		}()
 
-		relayers = append(relayers, r)
+		relayers = append(relayers, relayer)
 	}
 
 	<-ctx.Done()
 
-	transactions := elrondChainMock.GetAllSentTransactions()
-	assert.Equal(t, 1, len(transactions))
+	// let all transactions propagate
+	time.Sleep(time.Second * 5)
+
+	transactions := elrondChainMock.GetAllSentTransactions(context.Background())
+	assert.Equal(t, 5, len(transactions))
 	assert.Nil(t, elrondChainMock.ProposedTransfer())
-	assert.Nil(t, elrondChainMock.PerformedActionID())
+	assert.NotNil(t, elrondChainMock.PerformedActionID())
 
 	transfer := ethereumChainMock.GetLastProposedTransfer()
 	require.NotNil(t, transfer)
@@ -125,23 +112,12 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 	deposits, tokensAddresses, erc20Map := createTransactions(numTransactions)
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
-	erc20Contracts := make(map[common.Address]eth.Erc20Contract)
-	for addr, val := range erc20Map {
-		value := big.NewInt(0).Set(val)
-		erc20Contracts[addr] = &mockInteractors.Erc20ContractStub{
-			BalanceOfCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
-				if account == safeContractEthAddress {
-					return value, nil
-				}
-
-				return big.NewInt(0), nil
-			},
-		}
-	}
+	tokens, availableBalances := availableTokensMapToSlices(erc20Map)
+	erc20ContractsHolder := createMockErc20ContractsHolder(tokens, safeContractEthAddress, availableBalances)
 
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.SetQuorum(3)
-	expectedStatuses := []byte{bridge.Executed, bridge.Rejected}
+	expectedStatuses := []byte{clients.Executed, clients.Rejected}
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return expectedStatuses
 	}
@@ -150,11 +126,8 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 		elrondChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker)
 	}
 	pendingBatch := mock.ElrondPendingBatch{
-		Nonce:                  big.NewInt(1),
-		Timestamp:              big.NewInt(0),
-		LastUpdatedBlockNumber: big.NewInt(0),
-		ElrondDeposits:         deposits,
-		Status:                 0,
+		Nonce:          big.NewInt(1),
+		ElrondDeposits: deposits,
 	}
 	elrondChainMock.SetPendingBatch(&pendingBatch)
 
@@ -165,7 +138,7 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 	}
 
 	numRelayers := 3
-	relayers := make([]*relay.Relay, 0, numRelayers)
+	relayers := make([]bridgeComponents, 0, numRelayers)
 	defer func() {
 		for _, r := range relayers {
 			_ = r.Close()
@@ -181,30 +154,33 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 	}
 
 	for i := 0; i < numRelayers; i++ {
-		argsRelay := mock.CreateMockRelayArgs("elrond <-> eth", i, messengers[i], elrondChainMock, ethereumChainMock)
-		argsRelay.Configs.GeneralConfig.Eth.SafeContractAddress = safeContractEthAddress.Hex()
-		argsRelay.Erc20Contracts = erc20Contracts
-		r, err := relay.NewRelay(argsRelay)
+		argsBridgeComponents := createMockBridgeComponentsArgs(i, messengers[i], elrondChainMock, ethereumChainMock)
+		argsBridgeComponents.Configs.GeneralConfig.Eth.SafeContractAddress = safeContractEthAddress.Hex()
+		argsBridgeComponents.Erc20ContractsHolder = erc20ContractsHolder
+		relayer, err := factory.NewEthElrondBridgeComponents(argsBridgeComponents)
 		require.Nil(t, err)
 
-		elrondChainMock.AddRelayer(r.ElrondAddress())
-		ethereumChainMock.AddRelayer(r.EthereumAddress())
+		elrondChainMock.AddRelayer(relayer.ElrondRelayerAddress())
+		ethereumChainMock.AddRelayer(relayer.EthereumRelayerAddress())
 
 		go func() {
-			err = r.Start(ctx)
+			err = relayer.Start()
 			integrationTests.Log.LogIfError(err)
 			require.Nil(t, err)
 		}()
 
-		relayers = append(relayers, r)
+		relayers = append(relayers, relayer)
 	}
 
 	<-ctx.Done()
 
-	transactions := elrondChainMock.GetAllSentTransactions()
-	assert.Equal(t, 1, len(transactions))
+	// let all transactions propagate
+	time.Sleep(time.Second * 5)
+
+	transactions := elrondChainMock.GetAllSentTransactions(context.Background())
+	assert.Equal(t, 5, len(transactions))
 	assert.Nil(t, elrondChainMock.ProposedTransfer())
-	assert.Nil(t, elrondChainMock.PerformedActionID())
+	assert.NotNil(t, elrondChainMock.PerformedActionID())
 
 	transfer := ethereumChainMock.GetLastProposedTransfer()
 	require.NotNil(t, transfer)
@@ -248,3 +224,9 @@ func createTransaction(index int) (mock.ElrondDeposit, common.Address) {
 		Amount: big.NewInt(int64(index)),
 	}, tokenAddress
 }
+
+// TODO: remove duplicated code from the integration tests:
+// L154-L169, for loop is the same as in the first tests
+// L108-L129 same with L25-L47
+// L137-L151 same with L49-L63
+// check are the same after ctx.Done()

@@ -1,26 +1,48 @@
 package config
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-go/config"
 )
 
 // Configs is a holder for the relayer configuration parameters
 type Configs struct {
-	GeneralConfig   *Config
-	ApiRoutesConfig *ApiRoutesConfig
-	FlagsConfig     *ContextFlagsConfig
+	GeneralConfig   Config
+	ApiRoutesConfig ApiRoutesConfig
+	FlagsConfig     ContextFlagsConfig
 }
 
 // Config general configuration struct
 type Config struct {
-	Eth          bridge.EthereumConfig
-	Elrond       bridge.ElrondConfig
+	Eth          EthereumConfig
+	Elrond       ElrondConfig
 	P2P          ConfigP2P
 	StateMachine map[string]ConfigStateMachine
 	Relayer      ConfigRelayer
 	Logs         LogsConfig
 	Antiflood    AntifloodConfig
+}
+
+// EthereumConfig represents the Ethereum Config parameters
+type EthereumConfig struct {
+	NetworkAddress                     string
+	MultisigContractAddress            string
+	SafeContractAddress                string
+	PrivateKeyFile                     string
+	IntervalToResendTxsInSeconds       uint64
+	GasLimit                           uint64
+	GasStation                         GasStationConfig
+	MaxRetriesOnQuorumReached          uint64
+	IntervalToWaitForTransferInSeconds uint64
+}
+
+// GasStationConfig represents the configuration for the gas station handler
+type GasStationConfig struct {
+	Enabled                  bool
+	URL                      string
+	PollingIntervalInSeconds int
+	RequestTimeInSeconds     int
+	MaximumAllowedGasPrice   int
+	GasPriceSelector         string
 }
 
 // ConfigP2P configuration for the P2P communication
@@ -107,4 +129,24 @@ type LogsConfig struct {
 // RoleProviderConfig is the configuration for the role provider component
 type RoleProviderConfig struct {
 	PollingIntervalInMillis uint64
+}
+
+// ElrondConfig represents the Elrond Config parameters
+type ElrondConfig struct {
+	NetworkAddress               string
+	MultisigContractAddress      string
+	PrivateKeyFile               string
+	IntervalToResendTxsInSeconds uint64
+	GasMap                       ElrondGasMapConfig
+	MaxRetriesOnQuorumReached    uint64
+}
+
+// ElrondGasMapConfig represents the gas limits for Elrond operations
+type ElrondGasMapConfig struct {
+	Sign                   uint64
+	ProposeTransferBase    uint64
+	ProposeTransferForEach uint64
+	ProposeStatus          uint64
+	PerformActionBase      uint64
+	PerformActionForEach   uint64
 }

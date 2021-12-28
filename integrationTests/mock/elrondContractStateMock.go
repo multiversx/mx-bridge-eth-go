@@ -28,26 +28,26 @@ type ElrondProposedTransfer struct {
 
 // Transfer -
 type Transfer struct {
+	From   []byte
 	To     []byte
 	Token  string
 	Amount *big.Int
+	Nonce  *big.Int
 }
 
 // ElrondPendingBatch -
 type ElrondPendingBatch struct {
-	Nonce                  *big.Int
-	Timestamp              *big.Int
-	LastUpdatedBlockNumber *big.Int
-	ElrondDeposits         []ElrondDeposit
-	Status                 uint8
+	Nonce          *big.Int
+	ElrondDeposits []ElrondDeposit
 }
 
 // ElrondDeposit -
 type ElrondDeposit struct {
-	From   erdgoCore.AddressHandler
-	To     common.Address
-	Ticker string
-	Amount *big.Int
+	From         erdgoCore.AddressHandler
+	To           common.Address
+	Ticker       string
+	Amount       *big.Int
+	DepositNonce uint64
 }
 
 // elrondContractStateMock is not concurrent safe
@@ -62,6 +62,8 @@ type elrondContractStateMock struct {
 	performedAction                  *big.Int
 	pendingBatch                     *ElrondPendingBatch
 	quorum                           int
+	lastExecutedEthBatchId           uint64
+	lastExecutedEthTxId              uint64
 
 	ProposeMultiTransferEsdtBatchCalled func()
 }
@@ -91,10 +93,7 @@ func (mock *elrondContractStateMock) processTransaction(tx *data.Transaction) {
 	switch funcName {
 	case "proposeEsdtSafeSetCurrentTransactionBatchStatus":
 		mock.proposeEsdtSafeSetCurrentTransactionBatchStatus(dataSplit, tx)
-		mock.setPendingBatch(&ElrondPendingBatch{
-			Nonce: big.NewInt(0),
-		})
-		integrationTests.Log.Info("process finished, set status was written")
+
 		if mock.ProcessFinishedHandler != nil {
 			mock.ProcessFinishedHandler()
 		}
@@ -107,6 +106,10 @@ func (mock *elrondContractStateMock) processTransaction(tx *data.Transaction) {
 		return
 	case "performAction":
 		mock.performAction(dataSplit, tx)
+
+		if mock.ProcessFinishedHandler != nil {
+			mock.ProcessFinishedHandler()
+		}
 		return
 	}
 
@@ -149,7 +152,8 @@ func (mock *elrondContractStateMock) createProposedStatus(dataSplit []string) (*
 	}
 
 	if len(status.Statuses) != len(mock.pendingBatch.ElrondDeposits) {
-		panic("different number of statuses fetched while creating proposed status")
+		panic(fmt.Sprintf("different number of statuses fetched while creating proposed status: provided %d, existing %d",
+			len(status.Statuses), len(mock.pendingBatch.ElrondDeposits)))
 	}
 
 	hash, err := core.CalculateHash(integrationTests.TestMarshalizer, integrationTests.TestHasher, status)
@@ -169,21 +173,33 @@ func (mock *elrondContractStateMock) createProposedTransfer(dataSplit []string) 
 		BatchId: big.NewInt(0).SetBytes(buff),
 	}
 
-	for i := 2; i < len(dataSplit); i += 3 {
-		to, errDecode := hex.DecodeString(dataSplit[i])
+	for i := 2; i < len(dataSplit); i += 5 {
+		from, errDecode := hex.DecodeString(dataSplit[i])
 		if errDecode != nil {
 			panic(errDecode)
 		}
 
-		amountBytes, errDecode := hex.DecodeString(dataSplit[i+2])
+		to, errDecode := hex.DecodeString(dataSplit[i+1])
+		if errDecode != nil {
+			panic(errDecode)
+		}
+
+		amountBytes, errDecode := hex.DecodeString(dataSplit[i+3])
+		if errDecode != nil {
+			panic(errDecode)
+		}
+
+		nonceBytes, errDecode := hex.DecodeString(dataSplit[i+4])
 		if errDecode != nil {
 			panic(errDecode)
 		}
 
 		t := Transfer{
+			From:   from,
 			To:     to,
-			Token:  dataSplit[i+1],
+			Token:  dataSplit[i+2],
 			Amount: big.NewInt(0).SetBytes(amountBytes),
+			Nonce:  big.NewInt(0).SetBytes(nonceBytes),
 		}
 
 		transfer.Transfers = append(transfer.Transfers, t)
@@ -218,8 +234,8 @@ func (mock *elrondContractStateMock) processVmRequests(vmRequest *data.VmValueRe
 		return mock.vmRequestGetActionIdForSetCurrentTransactionBatchStatus(vmRequest), nil
 	case "wasActionExecuted":
 		return mock.vmRequestWasActionExecuted(vmRequest), nil
-	case "getActionSignerCount":
-		return mock.vmRequestGetActionSignerCount(vmRequest), nil
+	case "quorumReached":
+		return mock.vmRequestQuorumReached(vmRequest), nil
 	case "getTokenIdForErc20Address":
 		return mock.vmRequestGetTokenIdForErc20Address(vmRequest), nil
 	case "getErc20AddressForTokenId":
@@ -228,13 +244,19 @@ func (mock *elrondContractStateMock) processVmRequests(vmRequest *data.VmValueRe
 		return mock.vmRequestGetCurrentPendingBatch(vmRequest), nil
 	case "getAllStakedRelayers":
 		return mock.vmRequestGetAllStakedRelayers(vmRequest), nil
+	case "getLastExecutedEthBatchId":
+		return mock.vmRequestGetLastExecutedEthBatchId(vmRequest), nil
+	case "getLastExecutedEthTxId":
+		return mock.vmRequestGetLastExecutedEthTxId(vmRequest), nil
+	case "signed":
+		return mock.vmRequestSigned(vmRequest), nil
 	}
 
 	panic("unimplemented function: " + vmRequest.FuncName)
 }
 
 func (mock *elrondContractStateMock) vmRequestWasSetCurrentTransactionBatchStatusActionProposed(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
-	args := append([]string{"function name"}, vmRequest.Args...) // prepend the function name so the next call will work
+	args := append([]string{vmRequest.FuncName}, vmRequest.Args...) // prepend the function name so the next call will work
 	_, hash := mock.createProposedStatus(args)
 
 	_, found := mock.proposedStatus[hash]
@@ -243,7 +265,7 @@ func (mock *elrondContractStateMock) vmRequestWasSetCurrentTransactionBatchStatu
 }
 
 func (mock *elrondContractStateMock) vmRequestGetActionIdForSetCurrentTransactionBatchStatus(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
-	args := append([]string{"function name"}, vmRequest.Args...) // prepend the function name so the next call will work
+	args := append([]string{vmRequest.FuncName}, vmRequest.Args...) // prepend the function name so the next call will work
 	_, hash := mock.createProposedStatus(args)
 
 	_, found := mock.proposedStatus[hash]
@@ -255,7 +277,7 @@ func (mock *elrondContractStateMock) vmRequestGetActionIdForSetCurrentTransactio
 }
 
 func (mock *elrondContractStateMock) vmRequestwasTransferActionProposed(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
-	args := append([]string{"function name"}, vmRequest.Args...) // prepend the function name so the next call will work
+	args := append([]string{vmRequest.FuncName}, vmRequest.Args...) // prepend the function name so the next call will work
 	_, hash := mock.createProposedTransfer(args)
 
 	_, found := mock.proposedTransfers[hash]
@@ -264,12 +286,13 @@ func (mock *elrondContractStateMock) vmRequestwasTransferActionProposed(vmReques
 }
 
 func (mock *elrondContractStateMock) vmRequestGetActionIdForTransferBatch(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
-	args := append([]string{"function name"}, vmRequest.Args...) // prepend the function name so the next call will work
+	args := append([]string{vmRequest.FuncName}, vmRequest.Args...) // prepend the function name so the next call will work
 	_, hash := mock.createProposedTransfer(args)
 
 	_, found := mock.proposedTransfers[hash]
 	if !found {
-		return createNokVmResponse(fmt.Errorf("proposed transfer not found for hash %s", hex.EncodeToString([]byte(hash))))
+		// return action ID == 0 in case there is no such transfer proposed
+		return createOkVmResponse([][]byte{big.NewInt(0).Bytes()})
 	}
 
 	return createOkVmResponse([][]byte{Uint64BytesFromHash(hash)})
@@ -318,6 +341,11 @@ func (mock *elrondContractStateMock) performAction(dataSplit []string, _ *data.T
 
 func (mock *elrondContractStateMock) vmRequestWasActionExecuted(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
 	actionID := getActionIDFromString(vmRequest.Args[0])
+
+	if mock.performedAction == nil {
+		return createOkVmResponse([][]byte{BoolToByteSlice(false)})
+	}
+
 	actionProposed := actionID.Cmp(mock.performedAction) == 0
 
 	return createOkVmResponse([][]byte{BoolToByteSlice(actionProposed)})
@@ -341,14 +369,16 @@ func (mock *elrondContractStateMock) actionIDExists(actionID *big.Int) bool {
 	return false
 }
 
-func (mock *elrondContractStateMock) vmRequestGetActionSignerCount(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
+func (mock *elrondContractStateMock) vmRequestQuorumReached(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
 	actionID := getActionIDFromString(vmRequest.Args[0])
 	m, found := mock.signedActionIDs[actionID.String()]
 	if !found {
-		return createOkVmResponse([][]byte{Uint64ByteSlice(0)})
+		return createOkVmResponse([][]byte{BoolToByteSlice(false)})
 	}
 
-	return createOkVmResponse([][]byte{Uint64ByteSlice(uint64(len(m)))})
+	quorumReached := len(m) >= mock.quorum
+
+	return createOkVmResponse([][]byte{BoolToByteSlice(quorumReached)})
 }
 
 func (mock *elrondContractStateMock) vmRequestGetTokenIdForErc20Address(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
@@ -367,6 +397,18 @@ func (mock *elrondContractStateMock) vmRequestGetAllStakedRelayers(_ *data.VmVal
 	return createOkVmResponse(mock.relayers)
 }
 
+func (mock *elrondContractStateMock) vmRequestGetLastExecutedEthBatchId(_ *data.VmValueRequest) *data.VmValuesResponseData {
+	val := big.NewInt(int64(mock.lastExecutedEthBatchId))
+
+	return createOkVmResponse([][]byte{val.Bytes()})
+}
+
+func (mock *elrondContractStateMock) vmRequestGetLastExecutedEthTxId(_ *data.VmValueRequest) *data.VmValuesResponseData {
+	val := big.NewInt(int64(mock.lastExecutedEthTxId))
+
+	return createOkVmResponse([][]byte{val.Bytes()})
+}
+
 func (mock *elrondContractStateMock) vmRequestGetCurrentPendingBatch(_ *data.VmValueRequest) *data.VmValuesResponseData {
 	if mock.pendingBatch == nil {
 		return createOkVmResponse(make([][]byte, 0))
@@ -375,7 +417,7 @@ func (mock *elrondContractStateMock) vmRequestGetCurrentPendingBatch(_ *data.VmV
 	args := [][]byte{mock.pendingBatch.Nonce.Bytes()} // first non-empty slice
 	for _, deposit := range mock.pendingBatch.ElrondDeposits {
 		args = append(args, make([]byte, 0)) // mocked block nonce
-		args = append(args, make([]byte, 0)) // mocked deposit nonce
+		args = append(args, big.NewInt(0).SetUint64(deposit.DepositNonce).Bytes())
 		args = append(args, deposit.From.AddressBytes())
 		args = append(args, deposit.To.Bytes())
 		args = append(args, []byte(deposit.Ticker))
@@ -386,6 +428,25 @@ func (mock *elrondContractStateMock) vmRequestGetCurrentPendingBatch(_ *data.VmV
 
 func (mock *elrondContractStateMock) setPendingBatch(pendingBatch *ElrondPendingBatch) {
 	mock.pendingBatch = pendingBatch
+}
+
+func (mock *elrondContractStateMock) vmRequestSigned(request *data.VmValueRequest) *data.VmValuesResponseData {
+	address := request.Args[0]
+	actionID := request.Args[1]
+
+	actionIDMap, found := mock.signedActionIDs[actionID]
+	if !found {
+		return createOkVmResponse([][]byte{BoolToByteSlice(false)})
+	}
+
+	addr, err := data.NewAddressFromBech32String(address)
+	if err != nil {
+		panic(err)
+	}
+
+	_, found = actionIDMap[hex.EncodeToString(addr.AddressBytes())]
+
+	return createOkVmResponse([][]byte{BoolToByteSlice(found)})
 }
 
 func getActionIDFromString(data string) *big.Int {

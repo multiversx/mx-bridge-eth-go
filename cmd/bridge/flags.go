@@ -90,8 +90,8 @@ func getFlags() []cli.Flag {
 		restApiInterface,
 	}
 }
-func getFlagsConfig(ctx *cli.Context) *config.ContextFlagsConfig {
-	flagsConfig := &config.ContextFlagsConfig{}
+func getFlagsConfig(ctx *cli.Context) config.ContextFlagsConfig {
+	flagsConfig := config.ContextFlagsConfig{}
 
 	flagsConfig.WorkingDir = ctx.GlobalString(workingDirectory.Name)
 	flagsConfig.LogLevel = ctx.GlobalString(logLevel.Name)
