@@ -90,6 +90,9 @@ func (gs *gasStation) processLoop(ctx context.Context) {
 	gs.loopStatus.Set()
 	defer gs.loopStatus.Unset()
 
+	timer := time.NewTimer(gs.requestPollingInterval)
+	defer timer.Stop()
+
 	for {
 		requestContext, cancel := context.WithTimeout(ctx, gs.requestTime)
 
@@ -103,7 +106,7 @@ func (gs *gasStation) processLoop(ctx context.Context) {
 		case <-ctx.Done():
 			gs.log.Debug("Ethereum's gas station fetcher main execute loop is closing...")
 			return
-		case <-time.After(gs.requestPollingInterval):
+		case <-timer.C:
 		}
 	}
 }
