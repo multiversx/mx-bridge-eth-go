@@ -30,7 +30,7 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 		t.Skip("this is not a short test")
 	}
 
-	//TODO remove this
+	// TODO remove this
 	_ = logger.SetLogLevel("*:DEBUG")
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
@@ -213,6 +213,7 @@ func createBridgeComponentsConfig(index int) config.Config {
 			IntervalToResendTxsInSeconds: 10,
 			GasMap:                       testsCommon.CreateTestElrondGasMap(),
 			MaxRetriesOnQuorumReached:    1,
+			ProxyCacherExpirationTime:    600,
 		},
 		P2P: config.ConfigP2P{},
 		StateMachine: map[string]config.ConfigStateMachine{

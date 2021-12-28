@@ -15,6 +15,7 @@ import (
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -27,6 +28,7 @@ const (
 	signFuncName             = "sign"
 	performActionFuncName    = "performAction"
 	minRetriesOnQuorum       = 1
+	minimumCachingInterval   = 1
 )
 
 // ClientArgs represents the argument for the NewClient constructor function
@@ -39,6 +41,7 @@ type ClientArgs struct {
 	IntervalToResendTxsInSeconds uint64
 	TokensMapper                 TokensMapper
 	MaxRetriesOnQuorumReached    uint64
+	ProxyCacherExpirationTime    uint64
 }
 
 // client represents the Elrond Client implementation
@@ -76,6 +79,10 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, fmt.Errorf("%w for args.MaxRetriesOnQuorumReached, got: %d, minimum: %d",
 			errInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
 	}
+	if args.ProxyCacherExpirationTime < minimumCachingInterval {
+		return nil, fmt.Errorf("%w for args.ProxyCacherExpirationTime, got: %d, minimum: %d",
+			errInvalidValue, args.ProxyCacherExpirationTime, minimumCachingInterval)
+	}
 
 	err := checkGasMapValues(args.GasMapConfig)
 	if err != nil {
@@ -110,9 +117,14 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, clients.ErrNilAddressConverter
 	}
 
+	proxyWithCacher, err := blockchain.NewElrondProxyWithCache(args.Proxy, time.Second*time.Duration(args.ProxyCacherExpirationTime))
+	if err != nil {
+		return nil, err
+	}
+
 	c := &client{
 		txHandler: &transactionHandler{
-			proxy:                   args.Proxy,
+			proxy:                   proxyWithCacher,
 			relayerAddress:          relayerAddress,
 			multisigAddressAsBech32: args.MultisigContractAddress.AddressAsBech32String(),
 			nonceTxHandler:          nonceTxsHandler,

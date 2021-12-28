@@ -31,7 +31,6 @@ func (txHandler *transactionHandler) SendTransactionReturnHash(ctx context.Conte
 }
 
 func (txHandler *transactionHandler) signTransaction(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (*data.Transaction, error) {
-	// TODO use a smart cache here (request the configs only from time to time)
 	networkConfig, err := txHandler.proxy.GetNetworkConfig(ctx)
 	if err != nil {
 		return nil, err
