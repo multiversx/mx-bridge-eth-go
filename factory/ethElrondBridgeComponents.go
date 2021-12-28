@@ -659,11 +659,16 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumStateMachine(
 }
 
 func (components *ethElrondBridgeComponents) startBroadcastJoinRetriesLoop() {
+	broadcastTimer := time.NewTimer(components.timeBeforeRepeatJoin)
+	defer broadcastTimer.Stop()
+
 	var ctx context.Context
 	ctx, components.cancelFunc = context.WithCancel(context.Background())
 	for {
+		broadcastTimer.Reset(components.timeBeforeRepeatJoin)
+
 		select {
-		case <-time.After(components.timeBeforeRepeatJoin):
+		case <-broadcastTimer.C:
 			components.baseLogger.Info("broadcast again join topic")
 			components.broadcaster.BroadcastJoinTopic()
 		case <-ctx.Done():
