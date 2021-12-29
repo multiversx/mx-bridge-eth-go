@@ -18,7 +18,7 @@ type multiSigContract interface {
 	GetBatch(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, error)
 	GetRelayers(opts *bind.CallOpts) ([]common.Address, error)
 	WasBatchExecuted(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
-	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
+	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, depositNonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	Quorum(opts *bind.CallOpts) (*big.Int, error)
 	GetStatusesAfterExecution(opts *bind.CallOpts, batchID *big.Int) ([]byte, error)
 }
