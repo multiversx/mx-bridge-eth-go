@@ -223,7 +223,7 @@ func TestEthClientWrapper_ExecuteTransfer(t *testing.T) {
 	handlerCalled := false
 	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
 		ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
-			amounts []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+			amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
 
 			handlerCalled = true
 			return nil, nil
