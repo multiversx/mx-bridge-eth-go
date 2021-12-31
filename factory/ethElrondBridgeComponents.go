@@ -90,13 +90,11 @@ type ethElrondBridgeComponents struct {
 	timeForBootstrap              time.Duration
 	metricsHolder                 core.MetricsHolder
 
-	ethToElrondBridge        ethElrond.Executor
 	ethToElrondMachineStates core.MachineStates
 	ethToElrondStepDuration  time.Duration
 	ethToElrondStatusHandler core.StatusHandler
 	ethToElrondStateMachine  StateMachine
 
-	elrondToEthBridge        ethElrond.Executor
 	elrondToEthMachineStates core.MachineStates
 	elrondToEthStepDuration  time.Duration
 	elrondToEthStatusHandler core.StatusHandler
@@ -481,12 +479,12 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		TimeForTransferExecution: timeForTransferExecution,
 	}
 
-	components.ethToElrondBridge, err = ethElrond.NewBridgeExecutor(argsBridgeExecutor)
+	bridge, err := ethElrond.NewBridgeExecutor(argsBridgeExecutor)
 	if err != nil {
 		return err
 	}
 
-	components.ethToElrondMachineStates, err = ethToElrondSteps.CreateSteps(components.ethToElrondBridge)
+	components.ethToElrondMachineStates, err = ethToElrondSteps.CreateSteps(bridge)
 	if err != nil {
 		return err
 	}
@@ -535,12 +533,12 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 		TimeForTransferExecution: timeForTransferExecution,
 	}
 
-	components.elrondToEthBridge, err = ethElrond.NewBridgeExecutor(argsBridgeExecutor)
+	bridge, err := ethElrond.NewBridgeExecutor(argsBridgeExecutor)
 	if err != nil {
 		return err
 	}
 
-	components.elrondToEthMachineStates, err = elrondToEthSteps.CreateSteps(components.ethToElrondBridge)
+	components.elrondToEthMachineStates, err = elrondToEthSteps.CreateSteps(bridge)
 	if err != nil {
 		return err
 	}
