@@ -2,10 +2,10 @@ package ethToElrond
 
 import (
 	"context"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
 type signProposedTransferStep struct {
