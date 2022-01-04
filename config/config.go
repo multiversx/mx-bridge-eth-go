@@ -140,6 +140,7 @@ type ElrondConfig struct {
 	GasMap                       ElrondGasMapConfig
 	MaxRetriesOnQuorumReached    uint64
 	ProxyCacherExpirationSeconds uint64
+	AggregatorContractAddress    string
 }
 
 // ElrondGasMapConfig represents the gas limits for Elrond operations
