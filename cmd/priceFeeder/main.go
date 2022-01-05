@@ -22,17 +22,7 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 )
 
-const (
-	configPath                = "config/config.toml"
-	base                      = "ETH"
-	quote                     = "USD"
-	percentDifferenceToNotify = 1
-	trimPrecision             = 0.01
-	denominationFactor        = 100
-	minResultsNum             = 3
-	pollInterval              = time.Second * 2
-	autoSendInterval          = time.Second * 10
-)
+const configPath = "config/config.toml"
 
 var log = logger.GetOrCreate("priceFeeder/main")
 
@@ -57,12 +47,12 @@ func runApp() error {
 		return err
 	}
 
-	if len(cfg.Elrond.NetworkAddress) == 0 {
-		return fmt.Errorf("empty Elrond.NetworkAddress in config file")
+	if len(cfg.GeneralConfig.NetworkAddress) == 0 {
+		return fmt.Errorf("empty NetworkAddress in config file")
 	}
 
-	proxy := blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil)
-	proxyWithCacher, err := blockchain.NewElrondProxyWithCache(proxy, time.Second*time.Duration(cfg.Elrond.ProxyCacherExpirationSeconds))
+	proxy := blockchain.NewElrondProxy(cfg.GeneralConfig.NetworkAddress, nil)
+	proxyWithCacher, err := blockchain.NewElrondProxyWithCache(proxy, time.Second*time.Duration(cfg.GeneralConfig.ProxyCacherExpirationSeconds))
 	if err != nil {
 		return err
 	}
@@ -74,33 +64,31 @@ func runApp() error {
 
 	argsPriceAggregator := aggregator.ArgsPriceAggregator{
 		PriceFetchers: priceFetchers,
-		MinResultsNum: minResultsNum,
+		MinResultsNum: cfg.GeneralConfig.MinResultsNum,
 	}
 	priceAggregator, err := aggregator.NewPriceAggregator(argsPriceAggregator)
 	if err != nil {
 		return err
 	}
 
-	elrondConfigs := cfg.Elrond
-
 	txBuilder, err := builders.NewTxBuilder(blockchain.NewTxSigner())
 	if err != nil {
 		return err
 	}
 
-	txNonceHandler, err := interactors.NewNonceTransactionHandler(proxyWithCacher, time.Second*time.Duration(elrondConfigs.IntervalToResendTxsInSeconds))
+	txNonceHandler, err := interactors.NewNonceTransactionHandler(proxyWithCacher, time.Second*time.Duration(cfg.GeneralConfig.IntervalToResendTxsInSeconds))
 	if err != nil {
 		return err
 	}
 
-	aggregatorAddress, err := data.NewAddressFromBech32String(elrondConfigs.AggregatorContractAddress)
+	aggregatorAddress, err := data.NewAddressFromBech32String(cfg.GeneralConfig.AggregatorContractAddress)
 	if err != nil {
 		return err
 	}
 
 	var keyGen = signing.NewKeyGenerator(ed25519.NewEd25519())
 	wallet := interactors.NewWallet()
-	privateKeyBytes, err := wallet.LoadPrivateKeyFromPemFile(elrondConfigs.PrivateKeyFile)
+	privateKeyBytes, err := wallet.LoadPrivateKeyFromPemFile(cfg.GeneralConfig.PrivateKeyFile)
 	if err != nil {
 		return err
 	}
@@ -116,8 +104,8 @@ func runApp() error {
 		TxNonceHandler:  txNonceHandler,
 		ContractAddress: aggregatorAddress,
 		PrivateKey:      privateKey,
-		BaseGasLimit:    elrondConfigs.GasMap.PerformActionBase,
-		GasLimitForEach: elrondConfigs.GasMap.PerformActionForEach,
+		BaseGasLimit:    cfg.GeneralConfig.BaseGasLimit,
+		GasLimitForEach: cfg.GeneralConfig.GasLimitForEach,
 	}
 	elrondNotifee, err := notifees.NewElrondNotifee(argsElrondNotifee)
 	if err != nil {
@@ -125,18 +113,20 @@ func runApp() error {
 	}
 
 	argsPriceNotifier := aggregator.ArgsPriceNotifier{
-		Pairs: []*aggregator.ArgsPair{
-			{
-				Base:                      base,
-				Quote:                     quote,
-				PercentDifferenceToNotify: percentDifferenceToNotify,
-				TrimPrecision:             trimPrecision,
-				DenominationFactor:        denominationFactor,
-			},
-		},
+		Pairs:            []*aggregator.ArgsPair{},
 		Fetcher:          priceAggregator,
 		Notifee:          elrondNotifee,
-		AutoSendInterval: autoSendInterval,
+		AutoSendInterval: time.Second * time.Duration(cfg.GeneralConfig.AutoSendIntervalInSeconds),
+	}
+	for _, pair := range cfg.Pairs {
+		argsPair := &aggregator.ArgsPair{
+			Base:                      pair.Base,
+			Quote:                     pair.Quote,
+			PercentDifferenceToNotify: pair.PercentDifferenceToNotify,
+			TrimPrecision:             pair.TrimPrecision,
+			DenominationFactor:        pair.DenominationFactor,
+		}
+		argsPriceNotifier.Pairs = append(argsPriceNotifier.Pairs, argsPair)
 	}
 	priceNotifier, err := aggregator.NewPriceNotifier(argsPriceNotifier)
 	if err != nil {
@@ -146,8 +136,8 @@ func runApp() error {
 	argsPollingHandler := polling.ArgsPollingHandler{
 		Log:              log,
 		Name:             "price notifier polling handler",
-		PollingInterval:  pollInterval,
-		PollingWhenError: pollInterval,
+		PollingInterval:  time.Second * time.Duration(cfg.GeneralConfig.PollIntervalInSeconds),
+		PollingWhenError: time.Second * time.Duration(cfg.GeneralConfig.PollIntervalInSeconds),
 		Executor:         priceNotifier,
 	}
 
@@ -174,11 +164,11 @@ func runApp() error {
 	return err
 }
 
-func loadConfig(filepath string) (config.Config, error) {
-	cfg := config.Config{}
+func loadConfig(filepath string) (config.PriceNotifierConfig, error) {
+	cfg := config.PriceNotifierConfig{}
 	err := elrondCore.LoadTomlFile(&cfg, filepath)
 	if err != nil {
-		return config.Config{}, err
+		return config.PriceNotifierConfig{}, err
 	}
 
 	return cfg, nil

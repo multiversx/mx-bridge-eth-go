@@ -22,7 +22,6 @@
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
     MaxRetriesOnQuorumReached = 3
     ProxyCacherExpirationSeconds = 600 # the caching time in seconds
-    AggregatorContractAddress = "erd1qqqqqqqqqqqqqpgqzdhexj4kg0z9grkuvynt2csl0fqa9hzgz8hqh3d3cs" # aggregator contract address
     [Elrond.GasMap]
         Sign = 8000000
         ProposeTransferBase = 11000000

@@ -68,12 +68,6 @@ github.com/ElrondNetwork/elrond-go-logger v1.0.4/go.mod h1:e5D+c97lKUfFdAzFX7rrI
 github.com/ElrondNetwork/elrond-go-logger v1.0.5/go.mod h1:cBfgx0ST/CJx8jrxJSC5aiSrvkGzcnF7sK06RD8mFxQ=
 github.com/ElrondNetwork/elrond-go-logger v1.0.6 h1:FGbO2C/s9cfNHag9jaKSB+sjuWUo+k8E+8iAz08Woac=
 github.com/ElrondNetwork/elrond-go-logger v1.0.6/go.mod h1:cBfgx0ST/CJx8jrxJSC5aiSrvkGzcnF7sK06RD8mFxQ=
-github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13-0.20211228154855-89564efcb4ad h1:nvqhPJ4taGcYZNX7pGCPrxVXllxsu+A3O6VAgmzKT8U=
-github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13-0.20211228154855-89564efcb4ad/go.mod h1:JrMdurPigkj7yZtbnLsgAxxPesjFhYtQki2TuofUkr4=
-github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13-0.20220104122958-3fd284139ec5 h1:6HNkZaxIqDKEDiyQmGwEnJlSsKutl9wdq2NASJvj/VI=
-github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13-0.20220104122958-3fd284139ec5/go.mod h1:JrMdurPigkj7yZtbnLsgAxxPesjFhYtQki2TuofUkr4=
-github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13-0.20220105070749-9318e2776c98 h1:MXiQG4rV15fqTRcTeXE43vjW96SAWSc/swADY4LcbNc=
-github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13-0.20220105070749-9318e2776c98/go.mod h1:JrMdurPigkj7yZtbnLsgAxxPesjFhYtQki2TuofUkr4=
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13 h1:b0w6URWfTWp/7ndmBb1YIZ3YjPaHNTJBFHD8N3OY6GY=
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13/go.mod h1:JrMdurPigkj7yZtbnLsgAxxPesjFhYtQki2TuofUkr4=
 github.com/ElrondNetwork/elrond-vm-common v1.1.0/go.mod h1:w3i6f8uiuRkE68Ie/gebRcLgTuHqvruJSYrFyZWuLrE=
