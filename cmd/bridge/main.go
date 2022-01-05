@@ -21,6 +21,8 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
+	"github.com/ElrondNetwork/elrond-go-crypto/signing"
+	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	elrondCommon "github.com/ElrondNetwork/elrond-go/common"
@@ -31,8 +33,12 @@ import (
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator/fetchers"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator/notifees"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core/polling"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
@@ -239,7 +245,6 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	/* TODO: uncomment and replace the notifee in priceNotifier after fix
 	elrondConfigs := configs.GeneralConfig.Elrond
 
 	txBuilder, err := builders.NewTxBuilder(blockchain.NewTxSigner())
@@ -263,7 +268,6 @@ func startRelay(ctx *cli.Context, version string) error {
 
 	privateKey, err := keyGen.PrivateKeyFromByteArray(privateKeyBytes)
 
-
 	if err != nil {
 		return err
 	}
@@ -277,9 +281,9 @@ func startRelay(ctx *cli.Context, version string) error {
 		GasLimitForEach: elrondConfigs.GasMap.PerformActionForEach,
 	}
 	elrondNotifee, err := notifees.NewElrondNotifee(argsElrondNotifee)
-	if err != nil{
+	if err != nil {
 		return err
-	} */
+	}
 
 	argsPriceNotifier := aggregator.ArgsPriceNotifier{
 		Pairs: []*aggregator.ArgsPair{
@@ -292,7 +296,7 @@ func startRelay(ctx *cli.Context, version string) error {
 			},
 		},
 		Fetcher:          priceAggregator,
-		Notifee:          nil, // TODO replace with elrondNotifee,
+		Notifee:          elrondNotifee,
 		AutoSendInterval: autoSendInterval,
 	}
 	priceNotifier, err := aggregator.NewPriceNotifier(argsPriceNotifier)
