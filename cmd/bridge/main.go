@@ -253,6 +253,9 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	txNonceHandler, err := interactors.NewNonceTransactionHandler(proxyWithCacher, time.Second*time.Duration(elrondConfigs.IntervalToResendTxsInSeconds))
+	if err != nil {
+		return err
+	}
 
 	aggregatorAddress, err := data.NewAddressFromBech32String(elrondConfigs.AggregatorContractAddress)
 	if err != nil {
