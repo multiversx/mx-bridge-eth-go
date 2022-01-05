@@ -20,7 +20,6 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core/polling"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
-	_ "github.com/urfave/cli"
 )
 
 const (
