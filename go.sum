@@ -74,6 +74,8 @@ github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13-0.20220104122958-3fd284139ec5 
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13-0.20220104122958-3fd284139ec5/go.mod h1:JrMdurPigkj7yZtbnLsgAxxPesjFhYtQki2TuofUkr4=
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13-0.20220105070749-9318e2776c98 h1:MXiQG4rV15fqTRcTeXE43vjW96SAWSc/swADY4LcbNc=
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13-0.20220105070749-9318e2776c98/go.mod h1:JrMdurPigkj7yZtbnLsgAxxPesjFhYtQki2TuofUkr4=
+github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13 h1:b0w6URWfTWp/7ndmBb1YIZ3YjPaHNTJBFHD8N3OY6GY=
+github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.13/go.mod h1:JrMdurPigkj7yZtbnLsgAxxPesjFhYtQki2TuofUkr4=
 github.com/ElrondNetwork/elrond-vm-common v1.1.0/go.mod h1:w3i6f8uiuRkE68Ie/gebRcLgTuHqvruJSYrFyZWuLrE=
 github.com/ElrondNetwork/elrond-vm-common v1.1.3/go.mod h1:09cTlI5tYUzD1bb8GEt0FcCm/qfQlidu4tIF3Dy+cWs=
 github.com/ElrondNetwork/elrond-vm-common v1.2.1/go.mod h1:07N31evc3GKh+tcmOXpc3xz/YsgV4yUHMo3LSlF0DIs=

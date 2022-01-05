@@ -21,8 +21,6 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
-	"github.com/ElrondNetwork/elrond-go-crypto/signing"
-	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	elrondCommon "github.com/ElrondNetwork/elrond-go/common"
@@ -31,14 +29,7 @@ import (
 	elrondP2P "github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator/fetchers"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator/notifees"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core/polling"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
@@ -46,22 +37,14 @@ import (
 )
 
 const (
-	filePathPlaceholder       = "[path]"
-	defaultLogsPath           = "logs"
-	logFilePrefix             = "elrond-eth-bridge"
-	p2pPeerNetworkDiscoverer  = "optimized"
-	nilListSharderType        = "NilListSharder"
-	dbPath                    = "db"
-	timeForBootstrap          = time.Second * 20
-	timeBeforeRepeatJoin      = time.Minute * 5
-	base                      = "ETH"
-	quote                     = "USD"
-	percentDifferenceToNotify = 1
-	trimPrecision             = 0.01
-	denominationFactor        = 100
-	minResultsNum             = 3
-	pollInterval              = time.Second * 2
-	autoSendInterval          = time.Second * 10
+	filePathPlaceholder      = "[path]"
+	defaultLogsPath          = "logs"
+	logFilePrefix            = "elrond-eth-bridge"
+	p2pPeerNetworkDiscoverer = "optimized"
+	nilListSharderType       = "NilListSharder"
+	dbPath                   = "db"
+	timeForBootstrap         = time.Second * 20
+	timeBeforeRepeatJoin     = time.Minute * 5
 )
 
 var log = logger.GetOrCreate("main")
@@ -83,10 +66,6 @@ func main() {
 	machineID := elrondCore.GetAnonymizedMachineID(app.Name)
 	app.Version = fmt.Sprintf("%s/%s/%s-%s/%s", appVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH, machineID)
 	app.Authors = []cli.Author{
-		{
-			Name:  "The Agile Freaks team",
-			Email: "office@agilefreaks.com",
-		},
 		{
 			Name:  "The Elrond Team",
 			Email: "contact@elrond.com",
@@ -231,102 +210,6 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	priceFetchers, err := createPriceFetchers()
-	if err != nil {
-		return err
-	}
-
-	argsPriceAggregator := aggregator.ArgsPriceAggregator{
-		PriceFetchers: priceFetchers,
-		MinResultsNum: minResultsNum,
-	}
-	priceAggregator, err := aggregator.NewPriceAggregator(argsPriceAggregator)
-	if err != nil {
-		return err
-	}
-
-	elrondConfigs := configs.GeneralConfig.Elrond
-
-	txBuilder, err := builders.NewTxBuilder(blockchain.NewTxSigner())
-	if err != nil {
-		return err
-	}
-
-	txNonceHandler, err := interactors.NewNonceTransactionHandler(proxyWithCacher, time.Second*time.Duration(elrondConfigs.IntervalToResendTxsInSeconds))
-	if err != nil {
-		return err
-	}
-
-	aggregatorAddress, err := data.NewAddressFromBech32String(elrondConfigs.AggregatorContractAddress)
-	if err != nil {
-		return err
-	}
-
-	var keyGen = signing.NewKeyGenerator(ed25519.NewEd25519())
-	wallet := interactors.NewWallet()
-	privateKeyBytes, err := wallet.LoadPrivateKeyFromPemFile(elrondConfigs.PrivateKeyFile)
-	if err != nil {
-		return err
-	}
-
-	privateKey, err := keyGen.PrivateKeyFromByteArray(privateKeyBytes)
-
-	if err != nil {
-		return err
-	}
-	argsElrondNotifee := notifees.ArgsElrondNotifee{
-		Proxy:           proxyWithCacher,
-		TxBuilder:       txBuilder,
-		TxNonceHandler:  txNonceHandler,
-		ContractAddress: aggregatorAddress,
-		PrivateKey:      privateKey,
-		BaseGasLimit:    elrondConfigs.GasMap.PerformActionBase,
-		GasLimitForEach: elrondConfigs.GasMap.PerformActionForEach,
-	}
-	elrondNotifee, err := notifees.NewElrondNotifee(argsElrondNotifee)
-	if err != nil {
-		return err
-	}
-
-	argsPriceNotifier := aggregator.ArgsPriceNotifier{
-		Pairs: []*aggregator.ArgsPair{
-			{
-				Base:                      base,
-				Quote:                     quote,
-				PercentDifferenceToNotify: percentDifferenceToNotify,
-				TrimPrecision:             trimPrecision,
-				DenominationFactor:        denominationFactor,
-			},
-		},
-		Fetcher:          priceAggregator,
-		Notifee:          elrondNotifee,
-		AutoSendInterval: autoSendInterval,
-	}
-	priceNotifier, err := aggregator.NewPriceNotifier(argsPriceNotifier)
-	if err != nil {
-		return err
-	}
-
-	argsPollingHandler := polling.ArgsPollingHandler{
-		Log:              log,
-		Name:             "price notifier polling handler",
-		PollingInterval:  pollInterval,
-		PollingWhenError: pollInterval,
-		Executor:         priceNotifier,
-	}
-
-	pollingHandler, err := polling.NewPollingHandler(argsPollingHandler)
-	if err != nil {
-		return err
-	}
-
-	log.Info("Starting Elrond Notifee")
-
-	err = pollingHandler.StartProcessingLoop()
-	if err != nil {
-		return err
-	}
-
 	log.Info("Starting relay")
 
 	err = ethToElrondComponents.Start()
@@ -342,11 +225,6 @@ func startRelay(ctx *cli.Context, version string) error {
 	log.Info("application closing, calling Close on all subcomponents...")
 
 	var lastErr error
-	err = pollingHandler.Close()
-	if err != nil {
-		lastErr = err
-	}
-
 	err = ethToElrondComponents.Close()
 	if err != nil {
 		lastErr = err
@@ -461,19 +339,4 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 	}
 
 	return messenger, nil
-}
-
-func createPriceFetchers() ([]aggregator.PriceFetcher, error) {
-	exchanges := fetchers.ImplementedFetchers
-	priceFetchers := make([]aggregator.PriceFetcher, 0, len(exchanges))
-	for _, exchangeName := range exchanges {
-		priceFetcher, err := fetchers.NewPriceFetcher(exchangeName, &aggregator.HttpResponseGetter{})
-		if err != nil {
-			return nil, err
-		}
-
-		priceFetchers = append(priceFetchers, priceFetcher)
-	}
-
-	return priceFetchers, nil
 }
