@@ -67,10 +67,6 @@ func main() {
 	app.Version = fmt.Sprintf("%s/%s/%s-%s/%s", appVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH, machineID)
 	app.Authors = []cli.Author{
 		{
-			Name:  "The Agile Freaks team",
-			Email: "office@agilefreaks.com",
-		},
-		{
 			Name:  "The Elrond Team",
 			Email: "contact@elrond.com",
 		},
