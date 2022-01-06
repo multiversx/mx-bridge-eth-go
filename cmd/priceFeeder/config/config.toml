@@ -1,6 +1,6 @@
 [GeneralConfig]
     NetworkAddress = "https://devnet-gateway.elrond.com" # the network address
-    PrivateKeyFile = "keys/oracle1.pem" # the path to the pem file containing the relayer elrond wallet
+    PrivateKeyFile = "keys/oracle.pem" # the path to the pem file containing the relayer elrond wallet allowed to write to contract
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
     ProxyCacherExpirationSeconds = 600 # the caching time in seconds
     AggregatorContractAddress = "erd1qqqqqqqqqqqqqpgq74rwur65602kl0hudyzq8jxcsd02yv7785cs8gkzxs" # aggregator contract address
