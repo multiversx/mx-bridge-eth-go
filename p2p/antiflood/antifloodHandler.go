@@ -12,6 +12,7 @@ type antifloodHandler struct {
 	topicPreventer topicAntifloodPreventer
 }
 
+// NewAntifloodHandler creates a new antiflood handler component
 func NewAntifloodHandler(topicFloodPreventer topicAntifloodPreventer) (*antifloodHandler, error) {
 	if check.IfNil(topicFloodPreventer) {
 		return nil, errNilTopicFloodPreventer
