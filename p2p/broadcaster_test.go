@@ -3,8 +3,11 @@ package p2p
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/crypto"
@@ -30,6 +33,18 @@ func createMockArgsBroadcaster() ArgsBroadcaster {
 		PrivateKey:         &cryptoMocks.PrivateKeyStub{},
 		SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 		Name:               "test",
+		AntifloodConfig: config.TopicsAntifloodConfig{
+			DefaultMaxMessagesPerInterval: 15000,
+			IntervalDuration:              time.Second,
+			MaxMessages: []config.TopicMaxMessagesConfig{
+				{
+					Topic: "test" + signTopicSuffix,
+				},
+				{
+					Topic: "test" + joinTopicSuffix,
+				},
+			},
+		},
 	}
 }
 
@@ -116,6 +131,14 @@ func TestNewBroadcaster(t *testing.T) {
 		b, err := NewBroadcaster(args)
 		assert.True(t, check.IfNil(b))
 		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("invalid default value on antiflood handler should error", func(t *testing.T) {
+		args := createMockArgsBroadcaster()
+		args.AntifloodConfig.DefaultMaxMessagesPerInterval = 0
+
+		b, err := NewBroadcaster(args)
+		assert.True(t, check.IfNil(b))
+		assert.True(t, strings.Contains(err.Error(), "invalid number of messages"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
@@ -341,6 +364,41 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Equal(t, 1, len(b.SortedPublicKeys()))
+	})
+	t.Run("system busy on a topic", func(t *testing.T) {
+		args := createMockArgsBroadcaster()
+		_, buff1 := createSignedMessageForEthSig(0)
+		_, buff2 := createSignedMessageForEthSig(1)
+		args.Messenger = &p2pMocks.MessengerStub{}
+		args.AntifloodConfig.MaxMessages = []config.TopicMaxMessagesConfig{
+			{
+				Topic:                  args.Name + signTopicSuffix,
+				NumMessagesPerInterval: uint32(len(buff2)),
+			},
+		}
+
+		processedMessages := make([]*core.SignedMessage, 0)
+		b, _ := NewBroadcaster(args)
+		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
+			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+				processedMessages = append(processedMessages, msg)
+			},
+		})
+		p2pMsg := &p2pMocks.P2PMessageMock{
+			DataField:  buff2,
+			TopicField: args.Name + signTopicSuffix,
+		}
+
+		err := b.ProcessReceivedMessage(p2pMsg, "")
+		assert.Nil(t, err)
+
+		p2pMsg = &p2pMocks.P2PMessageMock{
+			DataField:  buff1,
+			TopicField: args.Name + signTopicSuffix,
+		}
+
+		err = b.ProcessReceivedMessage(p2pMsg, "")
+		assert.True(t, strings.Contains(err.Error(), "system busy"))
 	})
 	t.Run("sign should store message", func(t *testing.T) {
 		args := createMockArgsBroadcaster()

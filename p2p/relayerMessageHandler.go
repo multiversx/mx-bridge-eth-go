@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/p2p/antiflood"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go/p2p"
@@ -14,12 +15,18 @@ import (
 const absolutMaxSliceSize = 1024
 
 type relayerMessageHandler struct {
-	marshalizer    marshal.Marshalizer
-	keyGen         crypto.KeyGenerator
-	singleSigner   crypto.SingleSigner
-	counter        uint64
-	publicKeyBytes []byte
-	privateKey     crypto.PrivateKey
+	marshalizer      marshal.Marshalizer
+	keyGen           crypto.KeyGenerator
+	singleSigner     crypto.SingleSigner
+	counter          uint64
+	publicKeyBytes   []byte
+	privateKey       crypto.PrivateKey
+	antifloodHandler antiflood.AntifloodHandler
+}
+
+// canProcessMessage will check if a specific message can be processed
+func (rmh *relayerMessageHandler) canProcessMessage(message p2p.MessageP2P) error {
+	return rmh.antifloodHandler.CanProcessMessagesOnTopic(message.Peer(), message.Topic(), uint32(len(message.Data())))
 }
 
 // preProcessMessage is able to preprocess the received p2p message
