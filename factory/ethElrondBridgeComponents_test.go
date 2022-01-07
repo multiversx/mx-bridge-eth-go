@@ -61,6 +61,11 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 			"EthToElrond": stateMachineConfig,
 			"ElrondToEth": stateMachineConfig,
 		},
+		TopicsAntiflood: config.TopicsAntifloodConfig{
+			DefaultMaxMessagesPerInterval: 15000,
+			IntervalDuration:              time.Second,
+			MaxMessages:                   []config.TopicMaxMessagesConfig{},
+		},
 	}
 	configs := config.Configs{
 		GeneralConfig:   cfg,
@@ -354,6 +359,7 @@ func TestEthElrondBridgeComponents_startBroadcastJoinRetriesLoop(t *testing.T) {
 		numberOfCalls := uint32(0)
 		args := createMockEthElrondBridgeArgs()
 		components, _ := NewEthElrondBridgeComponents(args)
+
 		components.broadcaster = &testsCommon.BroadcasterStub{
 			BroadcastJoinTopicCalled: func() {
 				atomic.AddUint32(&numberOfCalls, 1)

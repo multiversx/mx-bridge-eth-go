@@ -307,6 +307,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		SingleSigner:       singleSigner,
 		PrivateKey:         components.elrondRelayerPrivateKey,
 		Name:               ethToElrondName,
+		AntifloodConfig:    args.Configs.GeneralConfig.TopicsAntiflood,
 	}
 
 	components.broadcaster, err = p2p.NewBroadcaster(argsBroadcaster)

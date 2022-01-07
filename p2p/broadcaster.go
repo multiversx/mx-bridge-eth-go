@@ -1,12 +1,15 @@
 package p2p
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/ElrondNetwork/elrond-eth-bridge/p2p/antiflood"
 	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
@@ -33,20 +36,23 @@ type ArgsBroadcaster struct {
 	SingleSigner       crypto.SingleSigner
 	PrivateKey         crypto.PrivateKey
 	Name               string
+	AntifloodConfig    config.TopicsAntifloodConfig
 }
 
 type broadcaster struct {
 	*relayerMessageHandler
 	*noncesOfPublicKeys
-	messenger          NetMessenger
-	log                logger.Logger
-	elrondRoleProvider ElrondRoleProvider
-	signatureProcessor SignatureProcessor
-	name               string
-	mutClients         sync.RWMutex
-	clients            []core.BroadcastClient
-	joinTopicName      string
-	signTopicName      string
+	messenger                NetMessenger
+	log                      logger.Logger
+	elrondRoleProvider       ElrondRoleProvider
+	signatureProcessor       SignatureProcessor
+	name                     string
+	mutClients               sync.RWMutex
+	clients                  []core.BroadcastClient
+	joinTopicName            string
+	signTopicName            string
+	antifloodConfig          config.TopicsAntifloodConfig
+	cancelResetAntifloodFunc func()
 }
 
 // NewBroadcaster will create a new broadcaster able to pass messages and signatures
@@ -70,16 +76,25 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 			counter:      uint64(time.Now().UnixNano()),
 			privateKey:   args.PrivateKey,
 		},
-		clients:       make([]core.BroadcastClient, 0),
-		joinTopicName: args.Name + joinTopicSuffix,
-		signTopicName: args.Name + signTopicSuffix,
+		clients:         make([]core.BroadcastClient, 0),
+		joinTopicName:   args.Name + joinTopicSuffix,
+		signTopicName:   args.Name + signTopicSuffix,
+		antifloodConfig: args.AntifloodConfig,
 	}
-
 	pk := b.privateKey.GeneratePublic()
 	b.publicKeyBytes, err = pk.ToByteArray()
 	if err != nil {
 		return nil, err
 	}
+
+	b.relayerMessageHandler.antifloodHandler, err = b.createAntifloodHandler()
+	if err != nil {
+		return nil, err
+	}
+
+	go b.startResettingAntiFloodPreventers()
+
+	b.setMaxMessages()
 
 	return b, err
 }
@@ -111,6 +126,55 @@ func checkArgs(args ArgsBroadcaster) error {
 	}
 
 	return nil
+}
+
+func (b *broadcaster) createAntifloodHandler() (antiflood.AntifloodHandler, error) {
+	topicFloodPreventer, err := antiflood.NewTopicFloodPreventer(b.antifloodConfig.DefaultMaxMessagesPerInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	antifloodHandler, err := antiflood.NewAntifloodHandler(topicFloodPreventer)
+	if err != nil {
+		return nil, err
+	}
+
+	return antifloodHandler, nil
+}
+
+func (b *broadcaster) setMaxMessages() {
+	topicsMaxMessages := b.antifloodConfig.MaxMessages
+	for _, topicMax := range topicsMaxMessages {
+		err := b.antifloodHandler.SetMaxMessagesForTopic(topicMax.Topic, topicMax.NumMessagesPerInterval)
+		if err != nil {
+			b.log.Debug("error %w on set max messages for topic:%s, maxNumMessages:%d", err.Error(), topicMax.Topic, topicMax.NumMessagesPerInterval)
+		}
+	}
+}
+
+func (b *broadcaster) startResettingAntiFloodPreventers() {
+	antifloodhandler := b.relayerMessageHandler.antifloodHandler
+	localTopicMaxMessages := make([]config.TopicMaxMessagesConfig, len(b.antifloodConfig.MaxMessages))
+	copy(localTopicMaxMessages, b.antifloodConfig.MaxMessages)
+
+	antifloodResetTimer := time.NewTimer(b.antifloodConfig.IntervalDuration)
+	defer antifloodResetTimer.Stop()
+
+	var ctx context.Context
+	ctx, b.cancelResetAntifloodFunc = context.WithCancel(context.Background())
+
+	for {
+		antifloodResetTimer.Reset(b.antifloodConfig.IntervalDuration)
+		select {
+		case <-antifloodResetTimer.C:
+			for _, topicMaxMsg := range localTopicMaxMessages {
+				antifloodhandler.ResetForTopic(topicMaxMsg.Topic)
+			}
+		case <-ctx.Done():
+			b.log.Debug("startResettingFloodPreventers's go routine is stopping...")
+			return
+		}
+	}
 }
 
 // RegisterOnTopics will register the messenger on all required topics
@@ -154,6 +218,13 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ elrondCor
 	if err != nil {
 		// someone might try to send old, already seen by the network, messages
 		// drop the message and do not resend-it to other relayers
+		return err
+	}
+
+	err = b.canProcessMessage(message)
+	if err != nil {
+		b.log.Debug("can't process message", "topic", message.Topic(), "msg.Payload", msg.Payload,
+			"msg.Nonce", msg.Nonce, "msg.PublicKey", addr.AddressAsBech32String(), "error", err)
 		return err
 	}
 
@@ -303,6 +374,9 @@ func (b *broadcaster) AddBroadcastClient(client core.BroadcastClient) error {
 
 // Close will close any containing members and clean any go routines associated
 func (b *broadcaster) Close() error {
+	if b.cancelResetAntifloodFunc != nil {
+		b.cancelResetAntifloodFunc()
+	}
 	return b.messenger.Close()
 }
 

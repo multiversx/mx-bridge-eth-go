@@ -76,3 +76,13 @@
             SameSourceRequests = 10000
             # SameSourceResetIntervalInSec time frame between counter reset, in seconds
             SameSourceResetIntervalInSec = 1
+
+[TopicsAntiflood]
+    DefaultMaxMessagesPerInterval = 15000 # default number of messages per interval for a topic
+	IntervalDurationInSeconds = 1 # interval duration for the allowed number of messages
+    [[TopicMaxMessagesConfig]]
+        Topic = "EthToElrond_join"
+        NumMessagesPerInterval = 500
+    [[TopicMaxMessagesConfig]]
+        Topic = "EthToElrond_sign"
+        NumMessagesPerInterval = 500

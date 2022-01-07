@@ -228,5 +228,10 @@ func createBridgeComponentsConfig(index int) config.Config {
 				PollingIntervalInMillis: 1000,
 			},
 		},
+		TopicsAntiflood: config.TopicsAntifloodConfig{
+			DefaultMaxMessagesPerInterval: 15000,
+			IntervalDuration:              time.Second,
+			MaxMessages:                   []config.TopicMaxMessagesConfig{},
+		},
 	}
 }

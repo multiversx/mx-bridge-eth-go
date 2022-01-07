@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
@@ -200,6 +201,11 @@ func createBroadcaster(
 		PrivateKey:         privateKey,
 		SignatureProcessor: &testsCommon.SignatureProcessorStub{},
 		Name:               "test",
+		AntifloodConfig: config.TopicsAntifloodConfig{
+			DefaultMaxMessagesPerInterval: 15000,
+			IntervalDuration:              time.Second,
+			MaxMessages:                   []config.TopicMaxMessagesConfig{},
+		},
 	}
 
 	b, err := p2p.NewBroadcaster(args)
