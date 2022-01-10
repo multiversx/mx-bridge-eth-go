@@ -29,9 +29,6 @@ var ErrInvalidSize = errors.New("invalid size")
 // ErrNilSignatureProcessor signals that a nil signature processor was provided
 var ErrNilSignatureProcessor = errors.New("nil signature processor")
 
-// ErrNilSignaturesHolder signals that a nil signatures holder was provided
-var ErrNilSignaturesHolder = errors.New("nil signatures holder")
-
 // ErrNonceTooLowInReceivedMessage signals that a too low nonce was provided in the message
 var ErrNonceTooLowInReceivedMessage = errors.New("nonce too low in received message")
 
@@ -43,3 +40,6 @@ var ErrNilBroadcastClient = errors.New("nil broadcast client")
 
 // ErrNilStatusHandler signals that a nil status handler was provided
 var ErrNilStatusHandler = errors.New("nil status handler")
+
+// ErrNilMessage signals that a nil status handler was provided
+var ErrNilMessage = errors.New("nil message")

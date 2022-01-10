@@ -19,6 +19,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/ElrondNetwork/elrond-go-core/data/typeConverters/uint64ByteSlice"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -189,6 +190,15 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	statusHandlersFactory, err := elrondFactory.NewStatusHandlersFactory()
+	if err != nil {
+		return err
+	}
+	appStatusHandler, err := statusHandlersFactory.Create(marshalizer, uint64ByteSlice.NewBigEndianConverter())
+	if err != nil {
+		return err
+	}
+
 	args := factory.ArgsEthereumToElrondBridge{
 		Configs:              configs,
 		Messenger:            messenger,
@@ -199,7 +209,9 @@ func startRelay(ctx *cli.Context, version string) error {
 		TimeForBootstrap:     timeForBootstrap,
 		TimeBeforeRepeatJoin: timeBeforeRepeatJoin,
 		MetricsHolder:        metricsHolder,
+		AppStatusHandler:     appStatusHandler.StatusHandler(),
 	}
+
 	ethToElrondComponents, err := factory.NewEthElrondBridgeComponents(args)
 	if err != nil {
 		return err

@@ -35,6 +35,66 @@
     Seed = ""
     InitialPeerList = []
     ProtocolID = "/erd/relay/1.0.0"
+    [AntifloodConfig]
+        Enabled = true
+        NumConcurrentResolverJobs = 50
+        [Antiflood.FastReacting]
+            IntervalInSeconds = 1
+            ReservedPercent   = 20.0
+            [Antiflood.FastReacting.PeerMaxInput]
+                BaseMessagesPerInterval  = 140
+                TotalSizePerInterval = 4194304 #4MB/s
+                [Antiflood.FastReacting.PeerMaxInput.IncreaseFactor]
+                    Threshold = 10 #if consensus size will exceed this value, then
+                    Factor = 1.0   #increase the base value with [factor*consensus size]
+            [Antiflood.FastReacting.BlackList]
+                ThresholdNumMessagesPerInterval = 1000
+                ThresholdSizePerInterval = 8388608 #8MB/s
+                NumFloodingRounds = 10
+                PeerBanDurationInSeconds = 300
+
+        [Antiflood.SlowReacting]
+            IntervalInSeconds = 30
+            ReservedPercent   = 20.0
+            [Antiflood.SlowReacting.PeerMaxInput]
+                BaseMessagesPerInterval = 6000
+                TotalSizePerInterval = 18874368 # 18MB/interval
+                [Antiflood.SlowReacting.PeerMaxInput.IncreaseFactor]
+                    Threshold = 10 #if consensus size will exceed this value, then
+                    Factor = 0.0   #increase the base value with [factor*consensus size]
+            [Antiflood.SlowReacting.BlackList]
+                ThresholdNumMessagesPerInterval = 10000
+                ThresholdSizePerInterval = 37748736 # 36MB/interval
+                NumFloodingRounds = 2
+                PeerBanDurationInSeconds = 3600
+
+        [Antiflood.OutOfSpecs]
+            IntervalInSeconds = 1
+            ReservedPercent   = 0.0
+            [Antiflood.OutOfSpecs.PeerMaxInput]
+                BaseMessagesPerInterval = 2000
+                TotalSizePerInterval = 10485760 # 10MB/interval
+                [Antiflood.OutOfSpecs.PeerMaxInput.IncreaseFactor]
+                    Threshold = 0 #if consensus size will exceed this value, then
+                    Factor = 0.0     #increase the base value with [factor*consensus size]
+            [Antiflood.OutOfSpecs.BlackList]
+                ThresholdNumMessagesPerInterval = 3600
+                ThresholdSizePerInterval = 12582912 # 12MB/interval
+                NumFloodingRounds = 2
+                PeerBanDurationInSeconds = 3600
+
+        [Antiflood.PeerMaxOutput]
+            BaseMessagesPerInterval  = 75
+            TotalSizePerInterval     = 2097152 #2MB/s
+
+        [Antiflood.Cache]
+            Name = "Antiflood"
+            Capacity = 7000
+            Type = "LRU"
+        [Antiflood.Topic]
+            DefaultMaxMessagesPerSec = 300 # default number of messages per interval for a topic
+            MaxMessages = [{ Topic = "EthToElrond_join", NumMessagesPerSec = 100 },
+                           { Topic = "EthToElrond_sign", NumMessagesPerSec = 100 }]
 
 [Relayer]
     [Relayer.Marshalizer]
@@ -76,13 +136,3 @@
             SameSourceRequests = 10000
             # SameSourceResetIntervalInSec time frame between counter reset, in seconds
             SameSourceResetIntervalInSec = 1
-
-[TopicsAntiflood]
-    DefaultMaxMessagesPerInterval = 15000 # default number of messages per interval for a topic
-	IntervalDurationInSeconds = 1 # interval duration for the allowed number of messages
-    [[TopicMaxMessagesConfig]]
-        Topic = "EthToElrond_join"
-        NumMessagesPerInterval = 500
-    [[TopicMaxMessagesConfig]]
-        Topic = "EthToElrond_sign"
-        NumMessagesPerInterval = 500

@@ -7,15 +7,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/p2p/antiflood"
 	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 )
 
@@ -28,31 +28,31 @@ const (
 
 // ArgsBroadcaster is the DTO used in the broadcaster constructor
 type ArgsBroadcaster struct {
-	Messenger          NetMessenger
-	Log                logger.Logger
-	ElrondRoleProvider ElrondRoleProvider
-	SignatureProcessor SignatureProcessor
-	KeyGen             crypto.KeyGenerator
-	SingleSigner       crypto.SingleSigner
-	PrivateKey         crypto.PrivateKey
-	Name               string
-	AntifloodConfig    config.TopicsAntifloodConfig
+	Messenger              NetMessenger
+	Log                    logger.Logger
+	ElrondRoleProvider     ElrondRoleProvider
+	SignatureProcessor     SignatureProcessor
+	KeyGen                 crypto.KeyGenerator
+	SingleSigner           crypto.SingleSigner
+	PrivateKey             crypto.PrivateKey
+	Name                   string
+	AntifloodConfig        elrondConfig.AntifloodConfig
+	AntifloodStatusHandler elrondCore.AppStatusHandler
 }
 
 type broadcaster struct {
 	*relayerMessageHandler
 	*noncesOfPublicKeys
-	messenger                NetMessenger
-	log                      logger.Logger
-	elrondRoleProvider       ElrondRoleProvider
-	signatureProcessor       SignatureProcessor
-	name                     string
-	mutClients               sync.RWMutex
-	clients                  []core.BroadcastClient
-	joinTopicName            string
-	signTopicName            string
-	antifloodConfig          config.TopicsAntifloodConfig
-	cancelResetAntifloodFunc func()
+	messenger              NetMessenger
+	log                    logger.Logger
+	elrondRoleProvider     ElrondRoleProvider
+	signatureProcessor     SignatureProcessor
+	name                   string
+	mutClients             sync.RWMutex
+	clients                []core.BroadcastClient
+	joinTopicName          string
+	signTopicName          string
+	antifloodStatusHandler elrondCore.AppStatusHandler
 }
 
 // NewBroadcaster will create a new broadcaster able to pass messages and signatures
@@ -76,10 +76,10 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 			counter:      uint64(time.Now().UnixNano()),
 			privateKey:   args.PrivateKey,
 		},
-		clients:         make([]core.BroadcastClient, 0),
-		joinTopicName:   args.Name + joinTopicSuffix,
-		signTopicName:   args.Name + signTopicSuffix,
-		antifloodConfig: args.AntifloodConfig,
+		clients:                make([]core.BroadcastClient, 0),
+		joinTopicName:          args.Name + joinTopicSuffix,
+		signTopicName:          args.Name + signTopicSuffix,
+		antifloodStatusHandler: args.AntifloodStatusHandler,
 	}
 	pk := b.privateKey.GeneratePublic()
 	b.publicKeyBytes, err = pk.ToByteArray()
@@ -87,14 +87,10 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 		return nil, err
 	}
 
-	b.relayerMessageHandler.antifloodHandler, err = b.createAntifloodHandler()
+	b.relayerMessageHandler.antifloodComponents, err = b.createAntifloodComponents(args.AntifloodConfig)
 	if err != nil {
 		return nil, err
 	}
-
-	go b.startResettingAntiFloodPreventers()
-
-	b.setMaxMessages()
 
 	return b, err
 }
@@ -124,57 +120,30 @@ func checkArgs(args ArgsBroadcaster) error {
 	if check.IfNil(args.SignatureProcessor) {
 		return ErrNilSignatureProcessor
 	}
+	if check.IfNil(args.AntifloodStatusHandler) {
+		return ErrNilStatusHandler
+	}
 
 	return nil
 }
 
-func (b *broadcaster) createAntifloodHandler() (antiflood.AntifloodHandler, error) {
-	topicFloodPreventer, err := antiflood.NewTopicFloodPreventer(b.antifloodConfig.DefaultMaxMessagesPerInterval)
-	if err != nil {
-		return nil, err
-	}
-
-	antifloodHandler, err := antiflood.NewAntifloodHandler(topicFloodPreventer)
-	if err != nil {
-		return nil, err
-	}
-
-	return antifloodHandler, nil
-}
-
-func (b *broadcaster) setMaxMessages() {
-	topicsMaxMessages := b.antifloodConfig.MaxMessages
-	for _, topicMax := range topicsMaxMessages {
-		err := b.antifloodHandler.SetMaxMessagesForTopic(topicMax.Topic, topicMax.NumMessagesPerInterval)
+func (b *broadcaster) createAntifloodComponents(antifloodConfig elrondConfig.AntifloodConfig) (*factory.AntiFloodComponents, error) {
+	var err error
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer func() {
 		if err != nil {
-			b.log.Debug("error %w on set max messages for topic:%s, maxNumMessages:%d", err.Error(), topicMax.Topic, topicMax.NumMessagesPerInterval)
+			cancelFunc()
 		}
+	}()
+
+	cfg := elrondConfig.Config{
+		Antiflood: antifloodConfig,
 	}
-}
-
-func (b *broadcaster) startResettingAntiFloodPreventers() {
-	antifloodhandler := b.relayerMessageHandler.antifloodHandler
-	localTopicMaxMessages := make([]config.TopicMaxMessagesConfig, len(b.antifloodConfig.MaxMessages))
-	copy(localTopicMaxMessages, b.antifloodConfig.MaxMessages)
-
-	antifloodResetTimer := time.NewTimer(b.antifloodConfig.IntervalDuration)
-	defer antifloodResetTimer.Stop()
-
-	var ctx context.Context
-	ctx, b.cancelResetAntifloodFunc = context.WithCancel(context.Background())
-
-	for {
-		antifloodResetTimer.Reset(b.antifloodConfig.IntervalDuration)
-		select {
-		case <-antifloodResetTimer.C:
-			for _, topicMaxMsg := range localTopicMaxMessages {
-				antifloodhandler.ResetForTopic(topicMaxMsg.Topic)
-			}
-		case <-ctx.Done():
-			b.log.Debug("startResettingFloodPreventers's go routine is stopping...")
-			return
-		}
+	antiFloodComponents, err := factory.NewP2PAntiFloodComponents(ctx, cfg, b.antifloodStatusHandler, b.messenger.ID())
+	if err != nil {
+		return nil, err
 	}
+	return antiFloodComponents, nil
 }
 
 // RegisterOnTopics will register the messenger on all required topics
@@ -198,7 +167,7 @@ func (b *broadcaster) RegisterOnTopics() error {
 }
 
 // ProcessReceivedMessage will be called by the network messenger whenever a new message is received
-func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ elrondCore.PeerID) error {
+func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
 	msg, err := b.preProcessMessage(message)
 	if err != nil {
 		b.log.Debug("got message", "topic", message.Topic(), "error", err)
@@ -221,9 +190,9 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ elrondCor
 		return err
 	}
 
-	err = b.canProcessMessage(message)
+	err = b.canProcessMessage(message, fromConnectedPeer)
 	if err != nil {
-		b.log.Debug("can't process message", "topic", message.Topic(), "msg.Payload", msg.Payload,
+		b.log.Debug("can't process message", "peer", fromConnectedPeer, "topic", message.Topic(), "msg.Payload", msg.Payload,
 			"msg.Nonce", msg.Nonce, "msg.PublicKey", addr.AddressAsBech32String(), "error", err)
 		return err
 	}
@@ -374,9 +343,6 @@ func (b *broadcaster) AddBroadcastClient(client core.BroadcastClient) error {
 
 // Close will close any containing members and clean any go routines associated
 func (b *broadcaster) Close() error {
-	if b.cancelResetAntifloodFunc != nil {
-		b.cancelResetAntifloodFunc()
-	}
 	return b.messenger.Close()
 }
 

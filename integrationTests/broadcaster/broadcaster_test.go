@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	mockRoleProviders "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	elrondP2P "github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-go/testscommon/statusHandler"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/stretchr/testify/require"
 )
@@ -193,19 +194,16 @@ func createBroadcaster(
 	privateKey crypto.PrivateKey,
 ) (integrationTests.Broadcaster, *testsCommon.SignaturesHolderMock) {
 	args := p2p.ArgsBroadcaster{
-		Messenger:          messenger,
-		Log:                integrationTests.Log,
-		ElrondRoleProvider: roleProvider,
-		KeyGen:             integrationTests.TestKeyGenerator,
-		SingleSigner:       integrationTests.TestSingleSigner,
-		PrivateKey:         privateKey,
-		SignatureProcessor: &testsCommon.SignatureProcessorStub{},
-		Name:               "test",
-		AntifloodConfig: config.TopicsAntifloodConfig{
-			DefaultMaxMessagesPerInterval: 15000,
-			IntervalDuration:              time.Second,
-			MaxMessages:                   []config.TopicMaxMessagesConfig{},
-		},
+		Messenger:              messenger,
+		Log:                    integrationTests.Log,
+		ElrondRoleProvider:     roleProvider,
+		KeyGen:                 integrationTests.TestKeyGenerator,
+		SingleSigner:           integrationTests.TestSingleSigner,
+		PrivateKey:             privateKey,
+		SignatureProcessor:     &testsCommon.SignatureProcessorStub{},
+		Name:                   "test",
+		AntifloodConfig:        p2pMocks.CreateAntifloodConfig(),
+		AntifloodStatusHandler: &statusHandler.AppStatusHandlerStub{},
 	}
 
 	b, err := p2p.NewBroadcaster(args)

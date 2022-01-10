@@ -1,8 +1,6 @@
 package config
 
 import (
-	"time"
-
 	"github.com/ElrondNetwork/elrond-go/config"
 )
 
@@ -15,14 +13,13 @@ type Configs struct {
 
 // Config general configuration struct
 type Config struct {
-	Eth             EthereumConfig
-	Elrond          ElrondConfig
-	P2P             ConfigP2P
-	StateMachine    map[string]ConfigStateMachine
-	Relayer         ConfigRelayer
-	Logs            LogsConfig
-	Antiflood       AntifloodConfig
-	TopicsAntiflood TopicsAntifloodConfig
+	Eth          EthereumConfig
+	Elrond       ElrondConfig
+	P2P          ConfigP2P
+	StateMachine map[string]ConfigStateMachine
+	Relayer      ConfigRelayer
+	Logs         LogsConfig
+	Antiflood    AntifloodConfig
 }
 
 // EthereumConfig represents the Ethereum Config parameters
@@ -54,6 +51,7 @@ type ConfigP2P struct {
 	Seed            string
 	InitialPeerList []string
 	ProtocolID      string
+	AntifloodConfig config.AntifloodConfig
 }
 
 // ConfigRelayer configuration for general relayer configuration
@@ -182,17 +180,4 @@ type Pair struct {
 	PercentDifferenceToNotify uint32
 	TrimPrecision             float64
 	DenominationFactor        uint64
-}
-
-// TopicMaxMessagesConfig will hold the maximum number of messages/sec per topic value
-type TopicMaxMessagesConfig struct {
-	Topic                  string
-	NumMessagesPerInterval uint32
-}
-
-// TopicsAntifloodConfig will hold the maximum values per second to be used in certain topics
-type TopicsAntifloodConfig struct {
-	DefaultMaxMessagesPerInterval uint32
-	IntervalDuration              time.Duration
-	MaxMessages                   []TopicMaxMessagesConfig
 }

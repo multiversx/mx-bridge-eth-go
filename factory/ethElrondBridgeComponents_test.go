@@ -16,6 +16,7 @@ import (
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/testscommon/statusHandler"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,11 +62,6 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 			"EthToElrond": stateMachineConfig,
 			"ElrondToEth": stateMachineConfig,
 		},
-		TopicsAntiflood: config.TopicsAntifloodConfig{
-			DefaultMaxMessagesPerInterval: 15000,
-			IntervalDuration:              time.Second,
-			MaxMessages:                   []config.TopicMaxMessagesConfig{},
-		},
 	}
 	configs := config.Configs{
 		GeneralConfig:   cfg,
@@ -85,6 +81,7 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 		TimeForBootstrap:     minTimeForBootstrap,
 		TimeBeforeRepeatJoin: minTimeBeforeRepeatJoin,
 		MetricsHolder:        status.NewMetricsHolder(),
+		AppStatusHandler:     &statusHandler.AppStatusHandlerStub{},
 	}
 }
 

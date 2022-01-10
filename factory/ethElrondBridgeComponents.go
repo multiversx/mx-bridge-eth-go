@@ -27,6 +27,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
@@ -69,6 +70,7 @@ type ArgsEthereumToElrondBridge struct {
 	TimeForBootstrap     time.Duration
 	TimeBeforeRepeatJoin time.Duration
 	MetricsHolder        core.MetricsHolder
+	AppStatusHandler     elrondCore.AppStatusHandler
 }
 
 type ethElrondBridgeComponents struct {
@@ -107,6 +109,7 @@ type ethElrondBridgeComponents struct {
 
 	timeBeforeRepeatJoin time.Duration
 	cancelFunc           func()
+	appStatusHandler     elrondCore.AppStatusHandler
 }
 
 // NewEthElrondBridgeComponents creates a new eth-elrond bridge components holder
@@ -126,6 +129,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		timeForBootstrap:     args.TimeForBootstrap,
 		timeBeforeRepeatJoin: args.TimeBeforeRepeatJoin,
 		metricsHolder:        args.MetricsHolder,
+		appStatusHandler:     args.AppStatusHandler,
 	}
 	components.addClosableComponent(components.timer)
 
@@ -213,6 +217,9 @@ func checkArgsEthereumToElrondBridge(args ArgsEthereumToElrondBridge) error {
 	if check.IfNil(args.MetricsHolder) {
 		return errNilMetricsHolder
 	}
+	if check.IfNil(args.AppStatusHandler) {
+		return errNilStatusHandler
+	}
 
 	return nil
 }
@@ -299,15 +306,16 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId)
 
 	argsBroadcaster := p2p.ArgsBroadcaster{
-		Messenger:          args.Messenger,
-		Log:                log,
-		ElrondRoleProvider: components.elrondRoleProvider,
-		SignatureProcessor: components.ethereumRoleProvider,
-		KeyGen:             keyGen,
-		SingleSigner:       singleSigner,
-		PrivateKey:         components.elrondRelayerPrivateKey,
-		Name:               ethToElrondName,
-		AntifloodConfig:    args.Configs.GeneralConfig.TopicsAntiflood,
+		Messenger:              args.Messenger,
+		Log:                    log,
+		ElrondRoleProvider:     components.elrondRoleProvider,
+		SignatureProcessor:     components.ethereumRoleProvider,
+		KeyGen:                 keyGen,
+		SingleSigner:           singleSigner,
+		PrivateKey:             components.elrondRelayerPrivateKey,
+		Name:                   ethToElrondName,
+		AntifloodConfig:        args.Configs.GeneralConfig.P2P.AntifloodConfig,
+		AntifloodStatusHandler: components.appStatusHandler,
 	}
 
 	components.broadcaster, err = p2p.NewBroadcaster(argsBroadcaster)

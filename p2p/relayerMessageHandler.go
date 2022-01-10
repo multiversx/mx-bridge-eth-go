@@ -6,27 +6,40 @@ import (
 	"sync/atomic"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/p2p/antiflood"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
 )
 
 const absolutMaxSliceSize = 1024
 
 type relayerMessageHandler struct {
-	marshalizer      marshal.Marshalizer
-	keyGen           crypto.KeyGenerator
-	singleSigner     crypto.SingleSigner
-	counter          uint64
-	publicKeyBytes   []byte
-	privateKey       crypto.PrivateKey
-	antifloodHandler antiflood.AntifloodHandler
+	marshalizer         marshal.Marshalizer
+	keyGen              crypto.KeyGenerator
+	singleSigner        crypto.SingleSigner
+	counter             uint64
+	publicKeyBytes      []byte
+	privateKey          crypto.PrivateKey
+	antifloodComponents *factory.AntiFloodComponents
 }
 
 // canProcessMessage will check if a specific message can be processed
-func (rmh *relayerMessageHandler) canProcessMessage(message p2p.MessageP2P) error {
-	return rmh.antifloodHandler.CanProcessMessagesOnTopic(message.Peer(), message.Topic(), uint32(len(message.Data())))
+func (rmh *relayerMessageHandler) canProcessMessage(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
+	if check.IfNil(message) {
+		return ErrNilMessage
+	}
+	err := rmh.antifloodComponents.AntiFloodHandler.CanProcessMessage(message, fromConnectedPeer)
+	if err != nil {
+		return fmt.Errorf("%w on resolver topic %s", err, message.Topic())
+	}
+	err = rmh.antifloodComponents.AntiFloodHandler.CanProcessMessagesOnTopic(fromConnectedPeer, message.Topic(), 1, uint64(len(message.Data())), message.SeqNo())
+	if err != nil {
+		return fmt.Errorf("%w on resolver topic %s", err, message.Topic())
+	}
+	return nil
 }
 
 // preProcessMessage is able to preprocess the received p2p message
