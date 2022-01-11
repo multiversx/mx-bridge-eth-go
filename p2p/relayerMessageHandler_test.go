@@ -15,6 +15,7 @@ import (
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
+	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/process/mock"
 	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
 	"github.com/stretchr/testify/assert"
@@ -23,8 +24,93 @@ import (
 
 var marshalizer = &testsCommon.MarshalizerMock{}
 
-const fromPeer = "from-peer"
+const fromPeer = elrondCore.PeerID("from-peer")
 const pid = elrondCore.PeerID("pid1")
+
+func TestRelayerMessageHandler_canProcess(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil message should error", func(t *testing.T) {
+		t.Parallel()
+
+		rmh := &relayerMessageHandler{}
+		err := rmh.canProcessMessage(nil, fromPeer)
+		assert.Equal(t, ErrNilMessage, err)
+	})
+
+	t.Run("CanProcessMessageCalled returns error", func(t *testing.T) {
+		t.Parallel()
+
+		providedMessage := &p2pMocks.P2PMessageMock{}
+		expectedErr := errors.New("expected error")
+		rmh := &relayerMessageHandler{
+			antifloodComponents: &factory.AntiFloodComponents{
+				AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
+					CanProcessMessageCalled: func(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
+						return expectedErr
+					},
+				},
+			},
+		}
+		err := rmh.canProcessMessage(providedMessage, fromPeer)
+		assert.True(t, strings.Contains(err.Error(), expectedErr.Error()))
+	})
+
+	t.Run("CanProcessMessagesOnTopicCalled returns error", func(t *testing.T) {
+		t.Parallel()
+
+		providedMessage := &p2pMocks.P2PMessageMock{}
+		expectedErr := errors.New("expected error")
+		rmh := &relayerMessageHandler{
+			antifloodComponents: &factory.AntiFloodComponents{
+				AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
+					CanProcessMessagesOnTopicCalled: func(peer elrondCore.PeerID, topic string, numMessages uint32, totalSize uint64, sequence []byte) error {
+						return expectedErr
+					},
+				},
+			},
+		}
+		err := rmh.canProcessMessage(providedMessage, fromPeer)
+		assert.True(t, strings.Contains(err.Error(), expectedErr.Error()))
+	})
+
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		providedMessage := &p2pMocks.P2PMessageMock{
+			DataField:  []byte("provided"),
+			SeqNoField: []byte("123"),
+			TopicField: "provided-topic",
+			PeerField:  pid,
+		}
+		wasCanProcessCalled := false
+		wasCanProcessOnTopicCalled := false
+		rmh := &relayerMessageHandler{
+			antifloodComponents: &factory.AntiFloodComponents{
+				AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
+					CanProcessMessageCalled: func(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
+						assert.Equal(t, fromPeer, fromConnectedPeer)
+						assert.Equal(t, providedMessage, message)
+						wasCanProcessCalled = true
+						return nil
+					},
+					CanProcessMessagesOnTopicCalled: func(peer elrondCore.PeerID, topic string, numMessages uint32, totalSize uint64, sequence []byte) error {
+						assert.Equal(t, fromPeer, peer)
+						assert.Equal(t, providedMessage.Topic(), topic)
+						assert.Equal(t, uint64(len(providedMessage.DataField)), totalSize)
+						assert.Equal(t, providedMessage.SeqNo(), sequence)
+						wasCanProcessOnTopicCalled = true
+						return nil
+					},
+				},
+			},
+		}
+		err := rmh.canProcessMessage(providedMessage, fromPeer)
+		assert.Nil(t, err)
+		assert.True(t, wasCanProcessCalled)
+		assert.True(t, wasCanProcessOnTopicCalled)
+	})
+}
 
 func TestRelayerMessageHandler_preProcess(t *testing.T) {
 	t.Parallel()
