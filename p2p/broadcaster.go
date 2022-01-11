@@ -168,7 +168,7 @@ func (b *broadcaster) RegisterOnTopics() error {
 
 // ProcessReceivedMessage will be called by the network messenger whenever a new message is received
 func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
-	msg, err := b.preProcessMessage(message)
+	msg, err := b.preProcessMessage(message, fromConnectedPeer)
 	if err != nil {
 		b.log.Debug("got message", "topic", message.Topic(), "error", err)
 		return err

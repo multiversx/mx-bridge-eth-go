@@ -10,6 +10,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
+	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
 )
@@ -43,10 +44,13 @@ func (rmh *relayerMessageHandler) canProcessMessage(message p2p.MessageP2P, from
 }
 
 // preProcessMessage is able to preprocess the received p2p message
-func (rmh *relayerMessageHandler) preProcessMessage(message p2p.MessageP2P) (*core.SignedMessage, error) {
+func (rmh *relayerMessageHandler) preProcessMessage(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) (*core.SignedMessage, error) {
 	msg := &core.SignedMessage{}
 	err := rmh.marshalizer.Unmarshal(msg, message.Data())
 	if err != nil {
+		reason := "unmarshalable data got on request topic " + message.Topic()
+		rmh.antifloodComponents.AntiFloodHandler.BlacklistPeer(message.Peer(), reason, common.InvalidMessageBlacklistDuration)
+		rmh.antifloodComponents.AntiFloodHandler.BlacklistPeer(fromConnectedPeer, reason, common.InvalidMessageBlacklistDuration)
 		return nil, err
 	}
 
@@ -66,6 +70,9 @@ func (rmh *relayerMessageHandler) preProcessMessage(message p2p.MessageP2P) (*co
 
 	err = rmh.singleSigner.Verify(pk, msgWithNonce, msg.Signature)
 	if err != nil {
+		reason := "unverifiable signature on request topic " + message.Topic()
+		rmh.antifloodComponents.AntiFloodHandler.BlacklistPeer(message.Peer(), reason, common.InvalidMessageBlacklistDuration)
+		rmh.antifloodComponents.AntiFloodHandler.BlacklistPeer(fromConnectedPeer, reason, common.InvalidMessageBlacklistDuration)
 		return nil, err
 	}
 
