@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"io"
 	"io/ioutil"
 	"sync"
@@ -349,7 +350,13 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		return clients.ErrNilAddressConverter
 	}
 
+	ethClient, err := ethclient.Dial(ethereumConfigs.NetworkAddress)
+	if err != nil {
+		return err
+	}
+
 	argsEthClient := ethereum.ArgsEthereumClient{
+		Ethclient:                 ethClient,
 		ClientWrapper:             args.ClientWrapper,
 		Erc20ContractsHandler:     args.Erc20ContractsHolder,
 		Log:                       log,
