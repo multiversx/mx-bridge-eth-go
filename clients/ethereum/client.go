@@ -32,6 +32,7 @@ type argListsBatch struct {
 
 // ArgsEthereumClient is the DTO used in the ethereum's client constructor
 type ArgsEthereumClient struct {
+	Ethclient                 *ethclient.Client
 	ClientWrapper             ClientWrapper
 	Erc20ContractsHandler     Erc20ContractsHolder
 	Log                       elrondCore.Logger
@@ -47,6 +48,7 @@ type ArgsEthereumClient struct {
 }
 
 type client struct {
+	ethclient                 *ethclient.Client
 	clientWrapper             ClientWrapper
 	erc20ContractsHandler     Erc20ContractsHolder
 	log                       elrondCore.Logger
