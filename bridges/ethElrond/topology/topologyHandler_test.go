@@ -104,7 +104,6 @@ func TestMyTurnAsLeader(t *testing.T) {
 		args.AddressBytes = []byte("abc")
 		tph, _ := NewTopologyHandler(args)
 
-		// 0/1%2=0 -> providedSortedPublicKeys[0] != providedAddress -> not leader
 		assert.False(t, tph.MyTurnAsLeader())
 	})
 
@@ -114,7 +113,6 @@ func TestMyTurnAsLeader(t *testing.T) {
 		args := createMockArgsTopologyHandler()
 		tph, _ := NewTopologyHandler(args)
 
-		// index=0/1%2=0 -> providedSortedPublicKeys[0] == providedAddress -> leader
 		assert.True(t, tph.MyTurnAsLeader())
 	})
 }

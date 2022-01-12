@@ -22,6 +22,7 @@ type topologyHandler struct {
 	timer              core.Timer
 	stepDuration       time.Duration
 	addressBytes       []byte
+	selector           *hashRandomSelector
 }
 
 // NewTopologyHandler creates a new topologyHandler instance
@@ -36,6 +37,7 @@ func NewTopologyHandler(args ArgsTopologyHandler) (*topologyHandler, error) {
 		timer:              args.Timer,
 		stepDuration:       args.StepDuration,
 		addressBytes:       args.AddressBytes,
+		selector:           &hashRandomSelector{},
 	}, nil
 }
 
@@ -47,7 +49,9 @@ func (t *topologyHandler) MyTurnAsLeader() bool {
 		return false
 	} else {
 		numberOfPeers := int64(len(sortedPublicKeys))
-		index := (t.timer.NowUnix() / int64(t.stepDuration.Seconds())) % numberOfPeers
+
+		seed := uint64(t.timer.NowUnix() / int64(t.stepDuration.Seconds()))
+		index := t.selector.randomInt(seed, uint64(numberOfPeers))
 
 		return bytes.Equal(sortedPublicKeys[index], t.addressBytes)
 	}
