@@ -18,6 +18,10 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return nil
 		}
+		clearWasCalled := false
+		bridgeStub.ClearStoredP2PSignaturesForEthereumCalled = func() {
+			clearWasCalled = true
+		}
 
 		step := resolveSetStatusStep{
 			bridge: bridgeStub,
@@ -25,6 +29,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
+		assert.True(t, clearWasCalled)
 	})
 
 	t.Run("error on GetStoredBatch", func(t *testing.T) {
@@ -33,6 +38,10 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		bridgeStub.GetBatchFromElrondCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
 			return nil, expectedError
 		}
+		clearWasCalled := false
+		bridgeStub.ClearStoredP2PSignaturesForEthereumCalled = func() {
+			clearWasCalled = true
+		}
 
 		step := resolveSetStatusStep{
 			bridge: bridgeStub,
@@ -40,6 +49,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
+		assert.True(t, clearWasCalled)
 	})
 
 	t.Run("nil batch on GetBatchFromElrond", func(t *testing.T) {
@@ -48,6 +58,10 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		bridgeStub.GetBatchFromElrondCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
 			return nil, nil
 		}
+		clearWasCalled := false
+		bridgeStub.ClearStoredP2PSignaturesForEthereumCalled = func() {
+			clearWasCalled = true
+		}
 
 		step := resolveSetStatusStep{
 			bridge: bridgeStub,
@@ -55,6 +69,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
+		assert.True(t, clearWasCalled)
 	})
 
 	t.Run("error on GetBatchStatusesFromEthereum", func(t *testing.T) {
@@ -63,6 +78,10 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		bridgeStub.GetBatchStatusesFromEthereumCalled = func(ctx context.Context) ([]byte, error) {
 			return nil, expectedError
 		}
+		clearWasCalled := false
+		bridgeStub.ClearStoredP2PSignaturesForEthereumCalled = func() {
+			clearWasCalled = true
+		}
 
 		step := resolveSetStatusStep{
 			bridge: bridgeStub,
@@ -70,6 +89,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
+		assert.True(t, clearWasCalled)
 	})
 	t.Run("should call ResolveNewDepositsStatuses and go to ProposingSetStatusOnElrond", func(t *testing.T) {
 		t.Parallel()
@@ -80,6 +100,10 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		wasCalled := false
 		bridgeStub.ResolveNewDepositsStatusesCalled = func(numDeposits uint64) {
 			wasCalled = true
+		}
+		clearWasCalled := false
+		bridgeStub.ClearStoredP2PSignaturesForEthereumCalled = func() {
+			clearWasCalled = true
 		}
 
 		step := resolveSetStatusStep{
@@ -93,6 +117,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		assert.True(t, wasCalled)
 		assert.NotEqual(t, step.Identifier(), stepIdentifier)
 		assert.Equal(t, expectedStep, stepIdentifier)
+		assert.True(t, clearWasCalled)
 	})
 }
 
