@@ -20,6 +20,7 @@ type ArgsBridgeExecutor struct {
 	TopologyProvider         TopologyProvider
 	TimeForTransferExecution time.Duration
 	StatusHandler            core.StatusHandler
+	SignaturesHolder         SignaturesHolder
 }
 
 type bridgeExecutor struct {
@@ -34,6 +35,7 @@ type bridgeExecutor struct {
 	retriesOnEthereum        uint64
 	timeForTransferExecution time.Duration
 	statusHandler            core.StatusHandler
+	sigsHolder               SignaturesHolder
 }
 
 // NewBridgeExecutor creates a bridge executor, which can be used for both half-bridges
@@ -66,6 +68,9 @@ func checkArgs(args ArgsBridgeExecutor) error {
 	if args.TimeForTransferExecution < durationLimit {
 		return ErrInvalidDuration
 	}
+	if check.IfNil(args.SignaturesHolder) {
+		return ErrNilSignaturesHolder
+	}
 	return nil
 }
 
@@ -77,6 +82,7 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 		topologyProvider:         args.TopologyProvider,
 		statusHandler:            args.StatusHandler,
 		timeForTransferExecution: args.TimeForTransferExecution,
+		sigsHolder:               args.SignaturesHolder,
 	}
 }
 
@@ -425,6 +431,11 @@ func (executor *bridgeExecutor) ProcessMaxRetriesOnEthereum() bool {
 // ResetRetriesCountOnEthereum resets the number of retries on Ethereum
 func (executor *bridgeExecutor) ResetRetriesCountOnEthereum() {
 	executor.retriesOnEthereum = 0
+}
+
+// ClearStoredP2PSignaturesForEthereum deletes all stored P2P signatures used for Ethereum client
+func (executor *bridgeExecutor) ClearStoredP2PSignaturesForEthereum() {
+	executor.sigsHolder.ClearStoredSignatures()
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

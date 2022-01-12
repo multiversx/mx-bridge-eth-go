@@ -34,3 +34,6 @@ var ErrNilStatusHandler = errors.New("nil status handler")
 
 // ErrBatchNotFound signals that the batch was not found
 var ErrBatchNotFound = errors.New("batch not found")
+
+// ErrNilSignaturesHolder signals that a nil signatures holder was provided
+var ErrNilSignaturesHolder = errors.New("nil signatures holder")

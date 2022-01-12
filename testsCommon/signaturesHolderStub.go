@@ -2,7 +2,8 @@ package testsCommon
 
 // SignaturesHolderStub -
 type SignaturesHolderStub struct {
-	SignaturesCalled func(messageHash []byte) [][]byte
+	SignaturesCalled            func(messageHash []byte) [][]byte
+	ClearStoredSignaturesCalled func()
 }
 
 // Signatures -
@@ -12,6 +13,13 @@ func (stub *SignaturesHolderStub) Signatures(messageHash []byte) [][]byte {
 	}
 
 	return make([][]byte, 0)
+}
+
+// ClearStoredSignatures -
+func (stub *SignaturesHolderStub) ClearStoredSignatures() {
+	if stub.ClearStoredSignaturesCalled != nil {
+		stub.ClearStoredSignaturesCalled()
+	}
 }
 
 // IsInterfaceNil -
