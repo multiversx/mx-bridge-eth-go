@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
@@ -151,11 +151,11 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 	return stub, errHandler
 }
 
-func createStateMachine(t *testing.T, executor ethElrond.Executor, initialStep core.StepIdentifier) *stateMachine.StateMachineMock {
-	steps, err := CreateSteps(executor)
+func createStateMachine(t *testing.T, executor steps.Executor, initialStep core.StepIdentifier) *stateMachine.StateMachineMock {
+	stepsSlice, err := CreateSteps(executor)
 	require.Nil(t, err)
 
-	sm := stateMachine.NewStateMachineMock(steps, initialStep)
+	sm := stateMachine.NewStateMachineMock(stepsSlice, initialStep)
 	err = sm.Initialize()
 	require.Nil(t, err)
 

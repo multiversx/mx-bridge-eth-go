@@ -48,6 +48,7 @@ type BridgeExecutorStub struct {
 	GetBatchStatusesFromEthereumCalled                     func(ctx context.Context) ([]byte, error)
 	ProcessMaxRetriesOnEthereumCalled                      func() bool
 	ResetRetriesCountOnEthereumCalled                      func()
+	ClearStoredP2PSignaturesForEthereumCalled              func()
 }
 
 // NewBridgeExecutorStub creates a new BridgeExecutorStub instance
@@ -329,6 +330,14 @@ func (stub *BridgeExecutorStub) ResetRetriesCountOnEthereum() {
 	stub.incrementFunctionCounter()
 	if stub.ResetRetriesCountOnEthereumCalled != nil {
 		stub.ResetRetriesCountOnEthereumCalled()
+	}
+}
+
+// ClearStoredP2PSignaturesForEthereum -
+func (stub *BridgeExecutorStub) ClearStoredP2PSignaturesForEthereum() {
+	stub.incrementFunctionCounter()
+	if stub.ClearStoredP2PSignaturesForEthereumCalled != nil {
+		stub.ClearStoredP2PSignaturesForEthereumCalled()
 	}
 }
 
