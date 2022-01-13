@@ -12,6 +12,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// splits - represent the number of times we split the maximum interval
+//we wait for the transfer confirmation on Ethereum
+const splits = 10
+
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
 	Log                      logger.Logger
@@ -269,13 +273,18 @@ func (executor *bridgeExecutor) ProcessQuorumReachedOnElrond(ctx context.Context
 
 // WaitForTransferConfirmation waits for the confirmation of a transfer
 func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context) {
-	timer := time.NewTimer(executor.timeForTransferExecution)
-	defer timer.Stop()
+	wasPerformed := false
+	for i := 0; i <= splits && !wasPerformed; i++ {
+		timer := time.NewTimer(executor.timeForTransferExecution / splits)
+		defer timer.Stop()
 
-	select {
-	case <-ctx.Done():
-		executor.log.Debug("closing due to context expiration")
-	case <-timer.C:
+		select {
+		case <-ctx.Done():
+			executor.log.Debug("closing due to context expiration")
+		case <-timer.C:
+		}
+
+		wasPerformed, _ = executor.WasTransferPerformedOnEthereum(ctx)
 	}
 }
 
