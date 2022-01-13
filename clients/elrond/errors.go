@@ -17,6 +17,8 @@ var (
 	errBatchNotFinished         = errors.New("batch not finished")
 	errMalformedBatchResponse   = errors.New("malformed batch response")
 	errInvalidValue             = errors.New("invalid value")
+	errNilRoleProvider          = errors.New("nil role provider")
+	errRelayerNotWhitelisted    = errors.New("relayer not whitelisted")
 
 	// ErrNoPendingBatchAvailable signals that no pending batch is available
 	ErrNoPendingBatchAvailable = errors.New("no pending batch available")

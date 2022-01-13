@@ -53,6 +53,7 @@ const (
 	ethClientLogId          = "EthElrond-EthClient"
 	elrondRoleProviderLogId = "EthElrond-ElrondRoleProvider"
 	ethRoleProviderLogId    = "EthElrond-EthRoleProvider"
+	broadcasterLogId        = "EthElrond-Broadcaster"
 )
 
 var suite = ed25519.NewEd25519()
@@ -141,12 +142,12 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
-	err = components.createElrondClient(args)
+	err = components.createElrondRoleProvider(args)
 	if err != nil {
 		return nil, err
 	}
 
-	err = components.createElrondRoleProvider(args)
+	err = components.createElrondClient(args)
 	if err != nil {
 		return nil, err
 	}
@@ -273,6 +274,7 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
 		MaxRetriesOnQuorumReached:    elrondConfigs.MaxRetriesOnQuorumReached,
+		RoleProvider:                 components.elrondRoleProvider,
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)
@@ -298,11 +300,9 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		return err
 	}
 
-	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId)
-
 	argsBroadcaster := p2p.ArgsBroadcaster{
 		Messenger:          args.Messenger,
-		Log:                log,
+		Log:                core.NewLoggerWithIdentifier(logger.GetOrCreate(broadcasterLogId), broadcasterLogId),
 		ElrondRoleProvider: components.elrondRoleProvider,
 		SignatureProcessor: components.ethereumRoleProvider,
 		KeyGen:             keyGen,
@@ -355,7 +355,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	argsEthClient := ethereum.ArgsEthereumClient{
 		ClientWrapper:             args.ClientWrapper,
 		Erc20ContractsHandler:     args.Erc20ContractsHolder,
-		Log:                       log,
+		Log:                       core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
 		AddressConverter:          addressConverter,
 		Broadcaster:               components.broadcaster,
 		PrivateKey:                privateKey,

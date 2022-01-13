@@ -35,3 +35,8 @@ type txHandler interface {
 	SendTransactionReturnHash(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error)
 	Close() error
 }
+
+type roleProvider interface {
+	IsWhitelisted(address core.AddressHandler) bool
+	IsInterfaceNil() bool
+}
