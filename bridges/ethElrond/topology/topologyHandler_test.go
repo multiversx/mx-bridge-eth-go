@@ -25,7 +25,7 @@ func TestNewTopologyHandler(t *testing.T) {
 
 		assert.True(t, args.PublicKeysProvider == tph.publicKeysProvider) // pointer testing
 		assert.Equal(t, args.Timer, tph.timer)
-		assert.Equal(t, args.StepDuration, tph.stepDuration)
+		assert.Equal(t, args.IntervalForLeader, tph.intervalForLeader)
 		assert.Equal(t, args.AddressBytes, tph.addressBytes)
 	})
 
@@ -55,11 +55,11 @@ func TestNewTopologyHandler(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsTopologyHandler()
-		args.StepDuration = time.Duration(12345)
+		args.IntervalForLeader = time.Duration(12345)
 		tph, err := NewTopologyHandler(args)
 
 		assert.Nil(t, tph)
-		assert.Equal(t, errInvalidStepDuration, err)
+		assert.Equal(t, errInvalidIntervalForLeader, err)
 	})
 
 	t.Run("empty address", func(t *testing.T) {
@@ -104,7 +104,6 @@ func TestMyTurnAsLeader(t *testing.T) {
 		args.AddressBytes = []byte("abc")
 		tph, _ := NewTopologyHandler(args)
 
-		// 0/1%2=0 -> providedSortedPublicKeys[0] != providedAddress -> not leader
 		assert.False(t, tph.MyTurnAsLeader())
 	})
 
@@ -114,7 +113,6 @@ func TestMyTurnAsLeader(t *testing.T) {
 		args := createMockArgsTopologyHandler()
 		tph, _ := NewTopologyHandler(args)
 
-		// index=0/1%2=0 -> providedSortedPublicKeys[0] == providedAddress -> leader
 		assert.True(t, tph.MyTurnAsLeader())
 	})
 }
@@ -134,8 +132,8 @@ func createMockArgsTopologyHandler() ArgsTopologyHandler {
 				return [][]byte{[]byte("aaa"), []byte("bbb")}
 			},
 		},
-		Timer:        createTimerStubWithUnixValue(0),
-		StepDuration: duration,
-		AddressBytes: []byte("aaa"),
+		Timer:             createTimerStubWithUnixValue(0),
+		IntervalForLeader: duration,
+		AddressBytes:      []byte("aaa"),
 	}
 }

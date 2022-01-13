@@ -62,14 +62,8 @@ type ConfigRelayer struct {
 
 // ConfigStateMachine the configuration for the state machine
 type ConfigStateMachine struct {
-	StepDurationInMillis uint64
-	Steps                []StepConfig
-}
-
-// StepConfig defines a step configuration
-type StepConfig struct {
-	Name             string
-	DurationInMillis uint64
+	StepDurationInMillis       uint64
+	IntervalForLeaderInSeconds uint64
 }
 
 // ContextFlagsConfig the configuration for flags
@@ -150,4 +144,33 @@ type ElrondGasMapConfig struct {
 	ProposeStatus          uint64
 	PerformActionBase      uint64
 	PerformActionForEach   uint64
+}
+
+// PriceNotifierConfig price notifier configuration struct
+type PriceNotifierConfig struct {
+	GeneralConfig GeneralNotifierConfig
+	Pairs         []Pair
+}
+
+// GeneralNotifierConfig general price notifier configuration struct
+type GeneralNotifierConfig struct {
+	NetworkAddress               string
+	PrivateKeyFile               string
+	IntervalToResendTxsInSeconds uint64
+	ProxyCacherExpirationSeconds uint64
+	AggregatorContractAddress    string
+	BaseGasLimit                 uint64
+	GasLimitForEach              uint64
+	MinResultsNum                int
+	PollIntervalInSeconds        uint64
+	AutoSendIntervalInSeconds    uint64
+}
+
+// Pair parameters for a pair
+type Pair struct {
+	Base                      string
+	Quote                     string
+	PercentDifferenceToNotify uint32
+	TrimPrecision             float64
+	DenominationFactor        uint64
 }

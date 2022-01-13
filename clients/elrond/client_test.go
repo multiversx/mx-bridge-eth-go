@@ -13,6 +13,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
@@ -49,6 +50,7 @@ func createMockClientArgs() ClientArgs {
 			},
 		},
 		MaxRetriesOnQuorumReached: 1,
+		RoleProvider:              &roleProviders.ElrondRoleProviderStub{},
 	}
 }
 
@@ -170,6 +172,17 @@ func TestNewClient(t *testing.T) {
 		require.True(t, check.IfNil(c))
 		require.True(t, errors.Is(err, errInvalidValue))
 		require.True(t, strings.Contains(err.Error(), "for args.MaxRetriesOnQuorumReached"))
+	})
+	t.Run("nil role provider should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.RoleProvider = nil
+
+		c, err := NewClient(args)
+
+		require.True(t, check.IfNil(c))
+		require.Equal(t, errNilRoleProvider, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()

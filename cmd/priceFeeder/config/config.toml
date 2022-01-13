@@ -1,0 +1,18 @@
+[GeneralConfig]
+    NetworkAddress = "https://devnet-gateway.elrond.com" # the network address
+    PrivateKeyFile = "keys/oracle.pem" # the path to the pem file containing the relayer elrond wallet allowed to write to contract
+    IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
+    ProxyCacherExpirationSeconds = 600 # the caching time in seconds
+    AggregatorContractAddress = "erd1qqqqqqqqqqqqqpgq74rwur65602kl0hudyzq8jxcsd02yv7785cs8gkzxs" # aggregator contract address
+    BaseGasLimit = 25000000 # base gas limit
+    GasLimitForEach = 2000000 # gas limit for each fetcher
+    MinResultsNum = 3 # min number of results waiting
+    PollIntervalInSeconds = 2 # polling interval for fetchers
+    AutoSendIntervalInSeconds = 10 # seconds before next send price when percent difference is not met
+
+[[Pairs]]
+    Base = "ETH"
+    Quote = "USD"
+    PercentDifferenceToNotify = 1 # percent difference to notify price change. 0 notifies for each change
+    TrimPrecision = 0.01 # trim precision for prices
+    DenominationFactor = 100 # denomination factor

@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
 type signProposedTransferStep struct {
-	bridge ethElrond.Executor
+	bridge steps.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
