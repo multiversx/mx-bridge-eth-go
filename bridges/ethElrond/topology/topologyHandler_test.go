@@ -25,7 +25,7 @@ func TestNewTopologyHandler(t *testing.T) {
 
 		assert.True(t, args.PublicKeysProvider == tph.publicKeysProvider) // pointer testing
 		assert.Equal(t, args.Timer, tph.timer)
-		assert.Equal(t, args.StepDuration, tph.stepDuration)
+		assert.Equal(t, args.IntervalForLeader, tph.intervalForLeader)
 		assert.Equal(t, args.AddressBytes, tph.addressBytes)
 	})
 
@@ -55,11 +55,11 @@ func TestNewTopologyHandler(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsTopologyHandler()
-		args.StepDuration = time.Duration(12345)
+		args.IntervalForLeader = time.Duration(12345)
 		tph, err := NewTopologyHandler(args)
 
 		assert.Nil(t, tph)
-		assert.Equal(t, errInvalidStepDuration, err)
+		assert.Equal(t, errInvalidIntervalForLeader, err)
 	})
 
 	t.Run("empty address", func(t *testing.T) {
@@ -132,8 +132,8 @@ func createMockArgsTopologyHandler() ArgsTopologyHandler {
 				return [][]byte{[]byte("aaa"), []byte("bbb")}
 			},
 		},
-		Timer:        createTimerStubWithUnixValue(0),
-		StepDuration: duration,
-		AddressBytes: []byte("aaa"),
+		Timer:             createTimerStubWithUnixValue(0),
+		IntervalForLeader: duration,
+		AddressBytes:      []byte("aaa"),
 	}
 }

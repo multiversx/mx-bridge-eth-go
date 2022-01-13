@@ -453,7 +453,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 	argsTopologyHandler := topology.ArgsTopologyHandler{
 		PublicKeysProvider: components.broadcaster,
 		Timer:              components.timer,
-		StepDuration:       components.ethToElrondStepDuration,
+		IntervalForLeader:  time.Second * time.Duration(configs.IntervalForLeaderInSeconds),
 		AddressBytes:       components.elrondRelayerAddress.AddressBytes(),
 	}
 
@@ -508,7 +508,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 	argsTopologyHandler := topology.ArgsTopologyHandler{
 		PublicKeysProvider: components.broadcaster,
 		Timer:              components.timer,
-		StepDuration:       components.elrondToEthStepDuration,
+		IntervalForLeader:  time.Second * time.Duration(configs.IntervalForLeaderInSeconds),
 		AddressBytes:       components.elrondRelayerAddress.AddressBytes(),
 	}
 
