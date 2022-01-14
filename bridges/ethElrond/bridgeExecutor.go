@@ -13,7 +13,7 @@ import (
 )
 
 // splits - represent the number of times we split the maximum interval
-//we wait for the transfer confirmation on Ethereum
+// we wait for the transfer confirmation on Ethereum
 const splits = 10
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
