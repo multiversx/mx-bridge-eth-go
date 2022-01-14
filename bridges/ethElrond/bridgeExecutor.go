@@ -280,7 +280,7 @@ func (executor *bridgeExecutor) ProcessQuorumReachedOnElrond(ctx context.Context
 // WaitForTransferConfirmation waits for the confirmation of a transfer
 func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context) {
 	wasPerformed := false
-	for i := 0; i <= splits && !wasPerformed; i++ {
+	for i := 0; i < splits && !wasPerformed; i++ {
 		timer := time.NewTimer(executor.timeForTransferExecution / splits)
 		defer timer.Stop()
 

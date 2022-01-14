@@ -42,7 +42,7 @@ func TestNewBridgeExecutor(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.Log = nil
-		executor, err := NewBridgeExecutor(args)
+		executor, err := NewTestBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilLogger, err)
@@ -52,7 +52,7 @@ func TestNewBridgeExecutor(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.ElrondClient = nil
-		executor, err := NewBridgeExecutor(args)
+		executor, err := NewTestBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilElrondClient, err)
@@ -62,7 +62,7 @@ func TestNewBridgeExecutor(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.EthereumClient = nil
-		executor, err := NewBridgeExecutor(args)
+		executor, err := NewTestBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilEthereumClient, err)
@@ -72,7 +72,7 @@ func TestNewBridgeExecutor(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.TopologyProvider = nil
-		executor, err := NewBridgeExecutor(args)
+		executor, err := NewTestBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilTopologyProvider, err)
@@ -82,7 +82,7 @@ func TestNewBridgeExecutor(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.StatusHandler = nil
-		executor, err := NewBridgeExecutor(args)
+		executor, err := NewTestBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilStatusHandler, err)
@@ -92,7 +92,7 @@ func TestNewBridgeExecutor(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.TimeForTransferExecution = 0
-		executor, err := NewBridgeExecutor(args)
+		executor, err := NewTestBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrInvalidDuration, err)
@@ -102,7 +102,7 @@ func TestNewBridgeExecutor(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.SignaturesHolder = nil
-		executor, err := NewBridgeExecutor(args)
+		executor, err := NewTestBridgeExecutor(args)
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilSignaturesHolder, err)
@@ -111,7 +111,7 @@ func TestNewBridgeExecutor(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, err := NewBridgeExecutor(args)
+		executor, err := NewTestBridgeExecutor(args)
 
 		assert.False(t, check.IfNil(executor))
 		assert.Nil(t, err)
@@ -145,7 +145,7 @@ func testPrintInfo(t *testing.T, logLevel logger.LogLevel, shouldOutputToStatusH
 			assert.Equal(t, providedArgs, args)
 		},
 	}
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 	executor.PrintInfo(providedLogLevel, providedMessage, providedArgs...)
 
 	assert.True(t, wasCalled)
@@ -167,7 +167,7 @@ func TestEthToElrondBridgeExecutor_MyTurnAsLeader(t *testing.T) {
 		},
 	}
 
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 	assert.True(t, executor.MyTurnAsLeader())
 	assert.True(t, wasCalled)
 }
@@ -179,7 +179,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreActionIDForProposeTransferOnElrond
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		actionID, err := executor.GetAndStoreActionIDForProposeTransferOnElrond(context.Background())
 		assert.Zero(t, actionID)
@@ -195,7 +195,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreActionIDForProposeTransferOnElrond
 				return 0, expectedErr
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 
 		actionID, err := executor.GetAndStoreActionIDForProposeTransferOnElrond(context.Background())
@@ -214,7 +214,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreActionIDForProposeTransferOnElrond
 				return providedActionID, nil
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 
 		assert.NotEqual(t, providedActionID, executor.actionID)
@@ -241,7 +241,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T) {
 				return nil, expectedErr
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
 
 		assert.Equal(t, expectedErr, err)
@@ -260,7 +260,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T) {
 				return expectedBatch, nil
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
 
 		assert.True(t, errors.Is(err, ErrBatchNotFound))
@@ -282,7 +282,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T) {
 				return expectedBatch, nil
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
 
 		assert.True(t, errors.Is(err, ErrBatchNotFound))
@@ -307,7 +307,7 @@ func TestEthToElrondBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T) {
 				return expectedBatch, nil
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
 
 		assert.Nil(t, err)
@@ -326,7 +326,7 @@ func TestEthToElrondBridgeExecutor_GetLastExecutedEthBatchIDFromElrond(t *testin
 			return providedBatchID, nil
 		},
 	}
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 
 	batchID, err := executor.GetLastExecutedEthBatchIDFromElrond(context.Background())
 	assert.Equal(t, providedBatchID, batchID)
@@ -340,7 +340,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		err := executor.VerifyLastDepositNonceExecutedOnEthereumBatch(context.Background())
 		assert.Equal(t, ErrNilBatch, err)
@@ -354,7 +354,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 				return 0, expectedErr
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = &clients.TransferBatch{}
 
 		err := executor.VerifyLastDepositNonceExecutedOnEthereumBatch(context.Background())
@@ -372,7 +372,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 	t.Run("first deposit nonce equals last tx nonce should error", func(t *testing.T) {
 		t.Parallel()
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = &clients.TransferBatch{
 			Deposits: []*clients.DepositTransfer{
 				{
@@ -388,7 +388,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 	t.Run("first deposit nonce is smaller than the last tx nonce should error", func(t *testing.T) {
 		t.Parallel()
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = &clients.TransferBatch{
 			Deposits: []*clients.DepositTransfer{
 				{
@@ -404,7 +404,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 	t.Run("gap found error", func(t *testing.T) {
 		t.Parallel()
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = &clients.TransferBatch{
 			Deposits: []*clients.DepositTransfer{
 				{
@@ -423,7 +423,7 @@ func TestEthToElrondBridgeExecutor_VerifyLastDepositNonceExecutedOnEthereumBatch
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = &clients.TransferBatch{
 			Deposits: []*clients.DepositTransfer{
 				{
@@ -458,7 +458,7 @@ func TestEthToElrondBridgeExecutor_WasTransferProposedOnElrond(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		wasTransfered, err := executor.WasTransferProposedOnElrond(context.Background())
 		assert.False(t, wasTransfered)
@@ -477,7 +477,7 @@ func TestEthToElrondBridgeExecutor_WasTransferProposedOnElrond(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 
 		wasProposed, err := executor.WasTransferProposedOnElrond(context.Background())
@@ -494,7 +494,7 @@ func TestEthToElrondBridgeExecutor_ProposeTransferOnElrond(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		err := executor.ProposeTransferOnElrond(context.Background())
 		assert.Equal(t, ErrNilBatch, err)
@@ -510,7 +510,7 @@ func TestEthToElrondBridgeExecutor_ProposeTransferOnElrond(t *testing.T) {
 				return "", expectedErr
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 
 		err := executor.ProposeTransferOnElrond(context.Background())
@@ -529,7 +529,7 @@ func TestEthToElrondBridgeExecutor_ProposeTransferOnElrond(t *testing.T) {
 				return "", nil
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 
 		err := executor.ProposeTransferOnElrond(context.Background())
@@ -551,7 +551,7 @@ func TestEthToElrondBridgeExecutor_WasActionSignedOnElrond(t *testing.T) {
 			return true, nil
 		},
 	}
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 	executor.actionID = providedActionID
 
 	wasSigned, err := executor.WasActionSignedOnElrond(context.Background())
@@ -575,7 +575,7 @@ func TestEthToElrondBridgeExecutor_SignActionOnElrond(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.actionID = providedActionID
 
 		err := executor.SignActionOnElrond(context.Background())
@@ -595,7 +595,7 @@ func TestEthToElrondBridgeExecutor_SignActionOnElrond(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.actionID = providedActionID
 
 		err := executor.SignActionOnElrond(context.Background())
@@ -617,7 +617,7 @@ func TestEthToElrondBridgeExecutor_IsQuorumReachedOnElrond(t *testing.T) {
 			return true, nil
 		},
 	}
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 	executor.actionID = providedActionID
 
 	isQuorumReached, err := executor.ProcessQuorumReachedOnElrond(context.Background())
@@ -639,7 +639,7 @@ func TestEthToElrondBridgeExecutor_WasActionPerformedOnElrond(t *testing.T) {
 			return true, nil
 		},
 	}
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 	executor.actionID = providedActionID
 
 	wasPerformed, err := executor.WasActionPerformedOnElrond(context.Background())
@@ -655,7 +655,7 @@ func TestEthToElrondBridgeExecutor_PerformActionOnElrond(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		err := executor.PerformActionOnElrond(context.Background())
 		assert.Equal(t, ErrNilBatch, err)
@@ -672,7 +672,7 @@ func TestEthToElrondBridgeExecutor_PerformActionOnElrond(t *testing.T) {
 				return "", expectedErr
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		executor.actionID = providedActionID
 
@@ -693,7 +693,7 @@ func TestEthToElrondBridgeExecutor_PerformActionOnElrond(t *testing.T) {
 				return "", nil
 			},
 		}
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		executor.actionID = providedActionID
 
@@ -715,7 +715,7 @@ func TestEthToElrondBridgeExecutor_RetriesCountOnElrond(t *testing.T) {
 			return expectedMaxRetries
 		},
 	}
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 	for i := uint64(0); i < expectedMaxRetries; i++ {
 		assert.False(t, executor.ProcessMaxRetriesOnElrond())
 	}
@@ -740,7 +740,7 @@ func TestElrondToEthBridgeExecutor_GetAndStoreBatchFromElrond(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		_, err := executor.GetBatchFromElrond(context.Background())
 		assert.Equal(t, expectedErr, err)
 
@@ -753,7 +753,7 @@ func TestElrondToEthBridgeExecutor_GetAndStoreBatchFromElrond(t *testing.T) {
 		args := createMockExecutorArgs()
 		args.ElrondClient = &bridgeTests.ElrondClientStub{}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		err := executor.StoreBatchFromElrond(nil)
 		assert.Equal(t, ErrNilBatch, err)
 	})
@@ -769,7 +769,7 @@ func TestElrondToEthBridgeExecutor_GetAndStoreBatchFromElrond(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		batch, err := executor.GetBatchFromElrond(context.Background())
 		assert.True(t, wasCalled)
 		assert.Equal(t, providedBatch, batch)
@@ -788,7 +788,7 @@ func TestElrondToEthBridgeExecutor_GetAndStoreActionIDForProposeSetStatusFromElr
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		actionId, err := executor.GetAndStoreActionIDForProposeSetStatusFromElrond(context.Background())
 		assert.Equal(t, ErrNilBatch, err)
@@ -804,7 +804,7 @@ func TestElrondToEthBridgeExecutor_GetAndStoreActionIDForProposeSetStatusFromElr
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		_, err := executor.GetAndStoreActionIDForProposeSetStatusFromElrond(context.Background())
 		assert.Equal(t, expectedErr, err)
@@ -822,7 +822,7 @@ func TestElrondToEthBridgeExecutor_GetAndStoreActionIDForProposeSetStatusFromElr
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		actionId, err := executor.GetAndStoreActionIDForProposeSetStatusFromElrond(context.Background())
 		assert.True(t, wasCalled)
@@ -840,7 +840,7 @@ func TestElrondToEthBridgeExecutor_WasSetStatusProposedOnElrond(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		wasProposed, err := executor.WasSetStatusProposedOnElrond(context.Background())
 		assert.Equal(t, ErrNilBatch, err)
@@ -856,7 +856,7 @@ func TestElrondToEthBridgeExecutor_WasSetStatusProposedOnElrond(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		_, err := executor.WasSetStatusProposedOnElrond(context.Background())
 		assert.Equal(t, expectedErr, err)
@@ -874,7 +874,7 @@ func TestElrondToEthBridgeExecutor_WasSetStatusProposedOnElrond(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		wasProposed, err := executor.WasSetStatusProposedOnElrond(context.Background())
 		assert.True(t, wasCalled)
@@ -890,7 +890,7 @@ func TestEthToElrondBridgeExecutor_ProposeSetStatusOnElrond(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		err := executor.ProposeSetStatusOnElrond(context.Background())
 		assert.Equal(t, ErrNilBatch, err)
@@ -905,7 +905,7 @@ func TestEthToElrondBridgeExecutor_ProposeSetStatusOnElrond(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		err := executor.ProposeSetStatusOnElrond(context.Background())
 		assert.Equal(t, expectedErr, err)
@@ -924,7 +924,7 @@ func TestEthToElrondBridgeExecutor_ProposeSetStatusOnElrond(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 
 		err := executor.ProposeSetStatusOnElrond(context.Background())
@@ -945,7 +945,7 @@ func TestElrondToEthBridgeExecutor_MyTurnAsLeader(t *testing.T) {
 		},
 	}
 
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 	assert.True(t, executor.MyTurnAsLeader())
 	assert.True(t, wasCalled)
 }
@@ -957,7 +957,7 @@ func TestElrondToEthBridgeExecutor_WasTransferPerformedOnEthereum(t *testing.T) 
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		_, err := executor.WasTransferPerformedOnEthereum(context.Background())
 		assert.Equal(t, ErrNilBatch, err)
@@ -972,7 +972,7 @@ func TestElrondToEthBridgeExecutor_WasTransferPerformedOnEthereum(t *testing.T) 
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		_, err := executor.WasTransferPerformedOnEthereum(context.Background())
 		assert.Equal(t, expectedErr, err)
@@ -991,7 +991,7 @@ func TestElrondToEthBridgeExecutor_WasTransferPerformedOnEthereum(t *testing.T) 
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		executor.batch.ID = providedBatchID
 
@@ -1008,7 +1008,7 @@ func TestElrondToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		err := executor.SignTransferOnEthereum()
 		assert.Equal(t, ErrNilBatch, err)
@@ -1023,7 +1023,7 @@ func TestElrondToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		err := executor.SignTransferOnEthereum()
 		assert.Equal(t, expectedErr, err)
@@ -1044,7 +1044,7 @@ func TestElrondToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		err := executor.SignTransferOnEthereum()
 		assert.Nil(t, err)
@@ -1060,7 +1060,7 @@ func TestElrondToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		err := executor.PerformTransferOnEthereum(context.Background())
 		assert.Equal(t, ErrNilBatch, err)
@@ -1075,7 +1075,7 @@ func TestElrondToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		err := executor.PerformTransferOnEthereum(context.Background())
 		assert.Equal(t, expectedErr, err)
@@ -1093,7 +1093,7 @@ func TestElrondToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		err := executor.PerformTransferOnEthereum(context.Background())
 		assert.Equal(t, expectedErr, err)
@@ -1121,7 +1121,7 @@ func TestElrondToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.msgHash = providedHash
 		executor.batch = providedBatch
 		err := executor.PerformTransferOnEthereum(context.Background())
@@ -1144,7 +1144,7 @@ func TestElrondToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		_, err := executor.ProcessQuorumReachedOnEthereum(context.Background())
 		assert.Equal(t, expectedErr, err)
@@ -1161,7 +1161,7 @@ func TestElrondToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		isReached, err := executor.ProcessQuorumReachedOnEthereum(context.Background())
 		assert.Nil(t, err)
@@ -1182,7 +1182,7 @@ func TestElrondToEthBridgeExecutor_RetriesCountOnEthereum(t *testing.T) {
 			return expectedMaxRetries
 		},
 	}
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 	for i := uint64(0); i < expectedMaxRetries; i++ {
 		assert.False(t, executor.ProcessMaxRetriesOnEthereum())
 	}
@@ -1202,7 +1202,7 @@ func TestWaitForTransferConfirmation(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.TimeForTransferExecution = 2 * time.Second
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 
 		start := time.Now()
 		executor.WaitForTransferConfirmation(context.Background())
@@ -1214,8 +1214,8 @@ func TestWaitForTransferConfirmation(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		args.TimeForTransferExecution = 2 * time.Hour
-		executor, _ := NewBridgeExecutor(args)
+		args.TimeForTransferExecution = 10 * time.Second
+		executor, _ := NewTestBridgeExecutor(args)
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 		defer cancel()
@@ -1226,6 +1226,52 @@ func TestWaitForTransferConfirmation(t *testing.T) {
 
 		assert.True(t, elapsed < args.TimeForTransferExecution)
 	})
+
+	t.Run("WasTransferPerformedOnEthereum always returns false/err", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.TimeForTransferExecution = 10 * time.Second
+		executor, _ := NewTestBridgeExecutor(args)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		counter := 0
+		executor.SetWasTransferPerformedOnEthereumHandle(func(ctx context.Context) (bool, error) {
+			counter++
+			return false, nil
+		})
+		executor.WaitForTransferConfirmation(ctx)
+
+		assert.Equal(t, 10, counter)
+	})
+
+	t.Run("WasTransferPerformedOnEthereum always returns true only after 4 checks", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.TimeForTransferExecution = 10 * time.Second
+		executor, _ := NewTestBridgeExecutor(args)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		start := time.Now()
+		counter := 0
+		executor.SetWasTransferPerformedOnEthereumHandle(func(ctx context.Context) (bool, error) {
+			counter++
+			if counter >= 5 {
+				return true, nil
+			}
+			return false, nil
+		})
+		executor.WaitForTransferConfirmation(ctx)
+		elapsed := time.Since(start)
+
+		assert.True(t, elapsed < args.TimeForTransferExecution)
+		assert.Equal(t, 5, counter)
+	})
 }
 
 func TestGetBatchStatusesFromEthereum(t *testing.T) {
@@ -1235,7 +1281,7 @@ func TestGetBatchStatusesFromEthereum(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		_, err := executor.GetBatchStatusesFromEthereum(context.Background())
 		assert.Equal(t, ErrNilBatch, err)
 	})
@@ -1249,7 +1295,7 @@ func TestGetBatchStatusesFromEthereum(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		_, err := executor.GetBatchStatusesFromEthereum(context.Background())
 		assert.Equal(t, expectedErr, err)
@@ -1267,7 +1313,7 @@ func TestGetBatchStatusesFromEthereum(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatch
 		statuses, err := executor.GetBatchStatusesFromEthereum(context.Background())
 		assert.Nil(t, err)
@@ -1295,7 +1341,7 @@ func TestResolveNewDepositsStatuses(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatchForResolve.Clone()
 
 		executor.ResolveNewDepositsStatuses(uint64(0))
@@ -1309,7 +1355,7 @@ func TestResolveNewDepositsStatuses(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatchForResolve.Clone()
 
 		executor.ResolveNewDepositsStatuses(uint64(2))
@@ -1319,7 +1365,7 @@ func TestResolveNewDepositsStatuses(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		executor, _ := NewBridgeExecutor(args)
+		executor, _ := NewTestBridgeExecutor(args)
 		executor.batch = providedBatchForResolve.Clone()
 
 		executor.ResolveNewDepositsStatuses(uint64(3))
@@ -1342,7 +1388,7 @@ func TestEthToElrondBridgeExecutor_setExecutionMessageInStatusHandler(t *testing
 			assert.Equal(t, expectedString, val)
 		},
 	}
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 	executor.setExecutionMessageInStatusHandler(logger.LogDebug, "message", "a", 1, "b", []byte{255}, "c", "str")
 
 	assert.True(t, wasCalled)
@@ -1359,7 +1405,7 @@ func TestSignaturesHolder_ClearStoredSignatures(t *testing.T) {
 		},
 	}
 
-	executor, _ := NewBridgeExecutor(args)
+	executor, _ := NewTestBridgeExecutor(args)
 	executor.ClearStoredP2PSignaturesForEthereum()
 
 	assert.True(t, wasCalled)
