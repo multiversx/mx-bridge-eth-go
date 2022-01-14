@@ -1214,7 +1214,7 @@ func TestWaitForTransferConfirmation(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
-		args.TimeForTransferExecution = 2 * time.Hour
+		args.TimeForTransferExecution = 10 * time.Second
 		executor, _ := NewBridgeExecutor(args)
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
@@ -1225,6 +1225,59 @@ func TestWaitForTransferConfirmation(t *testing.T) {
 		elapsed := time.Since(start)
 
 		assert.True(t, elapsed < args.TimeForTransferExecution)
+	})
+
+	t.Run("WasTransferPerformedOnEthereum always returns false/err", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.TimeForTransferExecution = 10 * time.Second
+		counter := 0
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WasExecutedCalled: func(ctx context.Context, batchID uint64) (bool, error) {
+				counter++
+				return false, nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		executor.batch = &clients.TransferBatch{}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		executor.WaitForTransferConfirmation(ctx)
+
+		assert.Equal(t, 10, counter)
+	})
+
+	t.Run("WasTransferPerformedOnEthereum always returns true only after 4 checks", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.TimeForTransferExecution = 10 * time.Second
+		counter := 0
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WasExecutedCalled: func(ctx context.Context, batchID uint64) (bool, error) {
+				counter++
+				if counter >= 5 {
+					return true, nil
+				}
+				return false, nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		executor.batch = &clients.TransferBatch{}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		start := time.Now()
+
+		executor.WaitForTransferConfirmation(ctx)
+		elapsed := time.Since(start)
+
+		assert.True(t, elapsed < args.TimeForTransferExecution)
+		assert.Equal(t, 5, counter)
 	})
 }
 
