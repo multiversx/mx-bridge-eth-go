@@ -287,6 +287,7 @@ func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context)
 		select {
 		case <-ctx.Done():
 			executor.log.Debug("closing due to context expiration")
+			return
 		case <-timer.C:
 		}
 
