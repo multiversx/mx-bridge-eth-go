@@ -211,7 +211,7 @@ func (c *client) GenerateMessageHash(batch *clients.TransferBatch) (common.Hash,
 		return common.Hash{}, err
 	}
 
-	pack, err := args.Pack(argLists.tokens, argLists.recipients, argLists.amounts, argLists.nonces, big.NewInt(0).SetUint64(batch.ID), "ExecuteBatchedTransfer")
+	pack, err := args.Pack(argLists.recipients, argLists.tokens, argLists.amounts, argLists.nonces, big.NewInt(0).SetUint64(batch.ID), "ExecuteBatchedTransfer")
 	if err != nil {
 		return common.Hash{}, err
 	}
