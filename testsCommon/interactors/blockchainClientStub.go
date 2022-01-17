@@ -42,6 +42,7 @@ func (bcs *BlockchainClientStub) ChainID(ctx context.Context) (*big.Int, error) 
 	return big.NewInt(0), nil
 }
 
+// BalanceAt -
 func (bcs *BlockchainClientStub) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
 	if bcs.BalanceAtCalled != nil {
 		return bcs.BalanceAtCalled(ctx, account, blockNumber)
