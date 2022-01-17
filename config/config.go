@@ -63,14 +63,8 @@ type ConfigRelayer struct {
 
 // ConfigStateMachine the configuration for the state machine
 type ConfigStateMachine struct {
-	StepDurationInMillis uint64
-	Steps                []StepConfig
-}
-
-// StepConfig defines a step configuration
-type StepConfig struct {
-	Name             string
-	DurationInMillis uint64
+	StepDurationInMillis       uint64
+	IntervalForLeaderInSeconds uint64
 }
 
 // ContextFlagsConfig the configuration for flags

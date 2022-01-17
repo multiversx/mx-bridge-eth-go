@@ -24,7 +24,8 @@ import (
 
 func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 	stateMachineConfig := config.ConfigStateMachine{
-		StepDurationInMillis: 1000,
+		StepDurationInMillis:       1000,
+		IntervalForLeaderInSeconds: 60,
 	}
 
 	cfg := config.Config{

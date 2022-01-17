@@ -2,14 +2,14 @@ package elrondToEth
 
 import (
 	"context"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
 type performSetStatusStep struct {
-	bridge ethElrond.Executor
+	bridge steps.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
@@ -35,7 +35,7 @@ func (step *performSetStatusStep) Execute(ctx context.Context) core.StepIdentifi
 
 	err = step.bridge.PerformActionOnElrond(ctx)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogInfo, "error performing action ID",
+		step.bridge.PrintInfo(logger.LogError, "error performing action ID",
 			"action ID", step.bridge.GetStoredActionID(), "error", err)
 		return GettingPendingBatchFromElrond
 	}

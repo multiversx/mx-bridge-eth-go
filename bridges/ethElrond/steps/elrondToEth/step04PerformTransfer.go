@@ -2,14 +2,14 @@ package elrondToEth
 
 import (
 	"context"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
 type performTransferStep struct {
-	bridge ethElrond.Executor
+	bridge steps.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
@@ -28,7 +28,8 @@ func (step *performTransferStep) Execute(ctx context.Context) core.StepIdentifie
 	if step.bridge.MyTurnAsLeader() {
 		err = step.bridge.PerformTransferOnEthereum(ctx)
 		if err != nil {
-			step.bridge.PrintInfo(logger.LogInfo, "error performing action ID", "error", err)
+			step.bridge.PrintInfo(logger.LogError, "error performing action ID",
+				"action ID", step.bridge.GetStoredActionID(), "error", err)
 			return GettingPendingBatchFromElrond
 		}
 	} else {

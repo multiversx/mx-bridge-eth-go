@@ -117,10 +117,12 @@
 
 [StateMachine]
     [StateMachine.EthToElrond]
-        StepDurationInMillis = 12000
+        StepDurationInMillis = 12000 #12 seconds
+        IntervalForLeaderInSeconds = 120 #2 minutes
 
     [StateMachine.ElrondToEth]
         StepDurationInMillis = 12000
+        IntervalForLeaderInSeconds = 720 #12 minutes
 
 [Logs]
     LogFileLifeSpanInSec = 86400 # 24h

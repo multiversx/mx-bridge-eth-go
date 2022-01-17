@@ -30,6 +30,7 @@ func createMockExecutorArgs() ArgsBridgeExecutor {
 		TopologyProvider:         &bridgeTests.TopologyProviderStub{},
 		StatusHandler:            testsCommon.NewStatusHandlerMock("test"),
 		TimeForTransferExecution: time.Second,
+		SignaturesHolder:         &testsCommon.SignaturesHolderStub{},
 	}
 }
 
@@ -95,6 +96,16 @@ func TestNewBridgeExecutor(t *testing.T) {
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrInvalidDuration, err)
+	})
+	t.Run("nil signatures holder", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.SignaturesHolder = nil
+		executor, err := NewBridgeExecutor(args)
+
+		assert.True(t, check.IfNil(executor))
+		assert.Equal(t, ErrNilSignaturesHolder, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -1186,15 +1197,88 @@ func TestElrondToEthBridgeExecutor_RetriesCountOnEthereum(t *testing.T) {
 func TestWaitForTransferConfirmation(t *testing.T) {
 	t.Parallel()
 
-	args := createMockExecutorArgs()
-	args.TimeForTransferExecution = 2 * time.Second
-	executor, _ := NewBridgeExecutor(args)
+	t.Run("normal expiration", func(t *testing.T) {
+		t.Parallel()
 
-	start := time.Now()
-	executor.WaitForTransferConfirmation(context.Background())
-	elapsed := time.Since(start)
+		args := createMockExecutorArgs()
+		args.TimeForTransferExecution = 2 * time.Second
+		executor, _ := NewBridgeExecutor(args)
 
-	assert.True(t, elapsed >= args.TimeForTransferExecution)
+		start := time.Now()
+		executor.WaitForTransferConfirmation(context.Background())
+		elapsed := time.Since(start)
+
+		assert.True(t, elapsed >= args.TimeForTransferExecution)
+	})
+	t.Run("context expiration", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.TimeForTransferExecution = 10 * time.Second
+		executor, _ := NewBridgeExecutor(args)
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+		defer cancel()
+
+		start := time.Now()
+		executor.WaitForTransferConfirmation(ctx)
+		elapsed := time.Since(start)
+
+		assert.True(t, elapsed < args.TimeForTransferExecution)
+	})
+
+	t.Run("WasTransferPerformedOnEthereum always returns false/err", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.TimeForTransferExecution = 10 * time.Second
+		counter := 0
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WasExecutedCalled: func(ctx context.Context, batchID uint64) (bool, error) {
+				counter++
+				return false, nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		executor.batch = &clients.TransferBatch{}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		executor.WaitForTransferConfirmation(ctx)
+
+		assert.Equal(t, 10, counter)
+	})
+
+	t.Run("WasTransferPerformedOnEthereum always returns true only after 4 checks", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.TimeForTransferExecution = 10 * time.Second
+		counter := 0
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WasExecutedCalled: func(ctx context.Context, batchID uint64) (bool, error) {
+				counter++
+				if counter >= 5 {
+					return true, nil
+				}
+				return false, nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		executor.batch = &clients.TransferBatch{}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		start := time.Now()
+
+		executor.WaitForTransferConfirmation(ctx)
+		elapsed := time.Since(start)
+
+		assert.True(t, elapsed < args.TimeForTransferExecution)
+		assert.Equal(t, 5, counter)
+	})
 }
 
 func TestGetBatchStatusesFromEthereum(t *testing.T) {
@@ -1313,6 +1397,23 @@ func TestEthToElrondBridgeExecutor_setExecutionMessageInStatusHandler(t *testing
 	}
 	executor, _ := NewBridgeExecutor(args)
 	executor.setExecutionMessageInStatusHandler(logger.LogDebug, "message", "a", 1, "b", []byte{255}, "c", "str")
+
+	assert.True(t, wasCalled)
+}
+
+func TestSignaturesHolder_ClearStoredSignatures(t *testing.T) {
+	t.Parallel()
+
+	args := createMockExecutorArgs()
+	wasCalled := false
+	args.SignaturesHolder = &testsCommon.SignaturesHolderStub{
+		ClearStoredSignaturesCalled: func() {
+			wasCalled = true
+		},
+	}
+
+	executor, _ := NewBridgeExecutor(args)
+	executor.ClearStoredP2PSignaturesForEthereum()
 
 	assert.True(t, wasCalled)
 }

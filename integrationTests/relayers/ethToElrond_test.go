@@ -183,16 +183,8 @@ func createMockBridgeComponentsArgs(
 
 func createBridgeComponentsConfig(index int) config.Config {
 	stateMachineConfig := config.ConfigStateMachine{
-		StepDurationInMillis: 1000,
-		Steps: []config.StepConfig{
-			{Name: "getting the pending transactions", DurationInMillis: 1000},
-			{Name: "proposing transfer", DurationInMillis: 1000},
-			{Name: "waiting signatures for propose transfer", DurationInMillis: 1000},
-			{Name: "executing transfer", DurationInMillis: 1000},
-			{Name: "proposing set status", DurationInMillis: 1000},
-			{Name: "waiting signatures for propose set status", DurationInMillis: 1000},
-			{Name: "executing set status", DurationInMillis: 1000},
-		},
+		StepDurationInMillis:       1000,
+		IntervalForLeaderInSeconds: 60,
 	}
 
 	return config.Config{
