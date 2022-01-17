@@ -45,11 +45,11 @@ func createAntiFloodPreventerConfig() elrondConfig.FloodPreventerConfig {
 	return elrondConfig.FloodPreventerConfig{
 		IntervalInSeconds: 1,
 		PeerMaxInput: elrondConfig.AntifloodLimitsConfig{
-			BaseMessagesPerInterval: 10,
+			BaseMessagesPerInterval: 100,
 			TotalSizePerInterval:    1000,
 		},
 		BlackList: elrondConfig.BlackListConfig{
-			ThresholdNumMessagesPerInterval: 10,
+			ThresholdNumMessagesPerInterval: 100,
 			ThresholdSizePerInterval:        1000,
 			NumFloodingRounds:               10,
 			PeerBanDurationInSeconds:        10,
