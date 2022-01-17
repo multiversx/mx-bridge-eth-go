@@ -12,6 +12,7 @@ type BlockchainClientStub struct {
 	BlockNumberCalled func(ctx context.Context) (uint64, error)
 	NonceAtCalled     func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	ChainIDCalled     func(ctx context.Context) (*big.Int, error)
+	BalanceAtCalled   func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
 // BlockNumber -
@@ -36,6 +37,15 @@ func (bcs *BlockchainClientStub) NonceAt(ctx context.Context, account common.Add
 func (bcs *BlockchainClientStub) ChainID(ctx context.Context) (*big.Int, error) {
 	if bcs.ChainIDCalled != nil {
 		return bcs.ChainIDCalled(ctx)
+	}
+
+	return big.NewInt(0), nil
+}
+
+// BalanceAt -
+func (bcs *BlockchainClientStub) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
+	if bcs.BalanceAtCalled != nil {
+		return bcs.BalanceAtCalled(ctx, account, blockNumber)
 	}
 
 	return big.NewInt(0), nil

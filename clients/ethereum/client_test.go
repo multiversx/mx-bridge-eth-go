@@ -419,6 +419,45 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		assert.True(t, errors.Is(err, errQuorumNotReached))
 		assert.True(t, strings.Contains(err.Error(), "num signatures: 9, quorum: 10"))
 	})
+	t.Run("not enough balance for fees", func(t *testing.T) {
+		gasPrice := big.NewInt(1000000000)
+		t.Parallel()
+		c, _ := NewEthereumClient(args)
+		c.gasHandler = &testsCommon.GasHandlerStub{GetCurrentGasPriceCalled: func() (*big.Int, error) {
+			return gasPrice, nil
+		}}
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			BalanceAtCalled: func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
+				return gasPrice, nil
+			},
+		}
+		c.signatureHolder = &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return signatures[:9]
+			},
+		}
+		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
+			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
+				return big.NewInt(10000), nil
+			},
+		}
+		newBatch := batch.Clone()
+		newBatch.Deposits = append(newBatch.Deposits, &clients.DepositTransfer{
+			Nonce:               40,
+			ToBytes:             []byte("to3"),
+			DisplayableTo:       "to3",
+			FromBytes:           []byte("from3"),
+			DisplayableFrom:     "from3",
+			TokenBytes:          []byte("token1"),
+			DisplayableToken:    "token1",
+			Amount:              big.NewInt(80),
+			ConvertedTokenBytes: []byte("ERC20token1"),
+		})
+
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, newBatch, 9)
+		assert.Equal(t, "", hash)
+		assert.True(t, errors.Is(err, errInsufficientBalance))
+	})
 	t.Run("not enough erc20 balance", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)
 		c.signatureHolder = &testsCommon.SignaturesHolderStub{

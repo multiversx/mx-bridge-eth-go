@@ -7,7 +7,7 @@ type DisabledGasStation struct{}
 
 // GetCurrentGasPrice returns nil,nil and will cause the gas price to be determined automatically
 func (dgs *DisabledGasStation) GetCurrentGasPrice() (*big.Int, error) {
-	return nil, nil
+	return big.NewInt(0), nil
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

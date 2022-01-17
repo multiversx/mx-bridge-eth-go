@@ -1,6 +1,7 @@
 package disabled
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -13,6 +14,6 @@ func TestNewDisabledGasStation(t *testing.T) {
 	assert.False(t, check.IfNil(dgs))
 
 	gasPrice, err := dgs.GetCurrentGasPrice()
-	assert.Nil(t, gasPrice)
+	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Nil(t, err)
 }

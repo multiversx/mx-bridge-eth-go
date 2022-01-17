@@ -26,6 +26,7 @@ type EthereumClientWrapperStub struct {
 		amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	QuorumCalled                    func(ctx context.Context) (*big.Int, error)
 	GetStatusesAfterExecutionCalled func(ctx context.Context, batchID *big.Int) ([]byte, error)
+	BalanceAtCalled                 func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
 // GetBatch -
@@ -107,6 +108,15 @@ func (stub *EthereumClientWrapperStub) GetStatusesAfterExecution(ctx context.Con
 	}
 
 	return make([]byte, 0), nil
+}
+
+// BalanceAt -
+func (stub *EthereumClientWrapperStub) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
+	if stub.BalanceAtCalled != nil {
+		return stub.BalanceAtCalled(ctx, account, blockNumber)
+	}
+
+	return big.NewInt(0), nil
 }
 
 // IsInterfaceNil -

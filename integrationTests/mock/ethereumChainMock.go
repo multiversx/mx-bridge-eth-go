@@ -36,6 +36,7 @@ type EthereumChainMock struct {
 	relayers                         []common.Address
 
 	ProposeMultiTransferEsdtBatchCalled func()
+	BalanceAtCalled                     func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 }
 
 // NewEthereumChainMock -
@@ -227,6 +228,14 @@ func (mock *EthereumChainMock) GetLastProposedTransfer() *EthereumProposedTransf
 	defer mock.mutState.RUnlock()
 
 	return mock.proposedTransfer
+}
+
+// BalanceAt -
+func (mock *EthereumChainMock) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
+	if mock.BalanceAtCalled != nil {
+		return mock.BalanceAtCalled(ctx, account, blockNumber)
+	}
+	return big.NewInt(0), nil
 }
 
 // IsInterfaceNil -
