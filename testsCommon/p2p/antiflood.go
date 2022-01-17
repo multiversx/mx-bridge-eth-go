@@ -12,7 +12,7 @@ func CreateAntifloodConfig() elrondConfig.AntifloodConfig {
 		SlowReacting:              createAntiFloodPreventerConfig(),
 		PeerMaxOutput: elrondConfig.AntifloodLimitsConfig{
 			BaseMessagesPerInterval: 100,
-			TotalSizePerInterval:    1000,
+			TotalSizePerInterval:    2000,
 			IncreaseFactor: elrondConfig.IncreaseFactorConfig{
 				Threshold: 10,
 				Factor:    1,
@@ -46,11 +46,11 @@ func createAntiFloodPreventerConfig() elrondConfig.FloodPreventerConfig {
 		IntervalInSeconds: 1,
 		PeerMaxInput: elrondConfig.AntifloodLimitsConfig{
 			BaseMessagesPerInterval: 100,
-			TotalSizePerInterval:    1000,
+			TotalSizePerInterval:    2000,
 		},
 		BlackList: elrondConfig.BlackListConfig{
 			ThresholdNumMessagesPerInterval: 100,
-			ThresholdSizePerInterval:        1000,
+			ThresholdSizePerInterval:        2000,
 			NumFloodingRounds:               10,
 			PeerBanDurationInSeconds:        10,
 		},
