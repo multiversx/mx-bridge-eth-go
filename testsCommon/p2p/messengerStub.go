@@ -20,6 +20,7 @@ type MessengerStub struct {
 	CloseCalled                    func() error
 }
 
+// SetPeerDenialEvaluator -
 func (stub *MessengerStub) SetPeerDenialEvaluator(handler p2p.PeerDenialEvaluator) error {
 	if stub.SetPeerDenialEvaluatorCalled != nil {
 		return stub.SetPeerDenialEvaluatorCalled(handler)
