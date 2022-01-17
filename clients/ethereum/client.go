@@ -242,8 +242,8 @@ func generateTransferArgs() (abi.Arguments, error) {
 	}
 
 	return abi.Arguments{
-		abi.Argument{Name: "tokens", Type: addressesType},
 		abi.Argument{Name: "recipients", Type: addressesType},
+		abi.Argument{Name: "tokens", Type: addressesType},
 		abi.Argument{Name: "amounts", Type: uint256ArrayType},
 		abi.Argument{Name: "nonces", Type: uint256ArrayType},
 		abi.Argument{Name: "nonce", Type: uint256Type},
