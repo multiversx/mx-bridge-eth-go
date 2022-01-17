@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 const (
@@ -32,7 +31,6 @@ type argListsBatch struct {
 
 // ArgsEthereumClient is the DTO used in the ethereum's client constructor
 type ArgsEthereumClient struct {
-	Ethclient                 *ethclient.Client
 	ClientWrapper             ClientWrapper
 	Erc20ContractsHandler     Erc20ContractsHolder
 	Log                       elrondCore.Logger
@@ -48,7 +46,6 @@ type ArgsEthereumClient struct {
 }
 
 type client struct {
-	ethclient                 *ethclient.Client
 	clientWrapper             ClientWrapper
 	erc20ContractsHandler     Erc20ContractsHolder
 	log                       elrondCore.Logger
@@ -406,7 +403,7 @@ func (c *client) checkRelayerFundsForFee(ctx context.Context, transferFee *big.I
 
 	ethereumRelayerAddress := crypto.PubkeyToAddress(*c.publicKey)
 
-	existingBalance, err := c.ethclient.BalanceAt(ctx, ethereumRelayerAddress, nil)
+	existingBalance, err := c.clientWrapper.BalanceAt(ctx, ethereumRelayerAddress, nil)
 	if err != nil {
 		return err
 	}
