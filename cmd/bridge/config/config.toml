@@ -42,14 +42,14 @@
             IntervalInSeconds = 1
             ReservedPercent   = 20.0
             [Antiflood.FastReacting.PeerMaxInput]
-                BaseMessagesPerInterval  = 140
-                TotalSizePerInterval = 4194304 #4MB/s
+                BaseMessagesPerInterval  = 10
+                TotalSizePerInterval = 1048576 #1MB/s
                 [Antiflood.FastReacting.PeerMaxInput.IncreaseFactor]
                     Threshold = 10 #if consensus size will exceed this value, then
                     Factor = 1.0   #increase the base value with [factor*consensus size]
             [Antiflood.FastReacting.BlackList]
-                ThresholdNumMessagesPerInterval = 1000
-                ThresholdSizePerInterval = 8388608 #8MB/s
+                ThresholdNumMessagesPerInterval = 70
+                ThresholdSizePerInterval = 2097154 #2MB/s
                 NumFloodingRounds = 10
                 PeerBanDurationInSeconds = 300
 
@@ -57,14 +57,14 @@
             IntervalInSeconds = 30
             ReservedPercent   = 20.0
             [Antiflood.SlowReacting.PeerMaxInput]
-                BaseMessagesPerInterval = 6000
-                TotalSizePerInterval = 18874368 # 18MB/interval
+                BaseMessagesPerInterval = 400
+                TotalSizePerInterval = 10485760 #10MB/interval
                 [Antiflood.SlowReacting.PeerMaxInput.IncreaseFactor]
                     Threshold = 10 #if consensus size will exceed this value, then
                     Factor = 0.0   #increase the base value with [factor*consensus size]
             [Antiflood.SlowReacting.BlackList]
-                ThresholdNumMessagesPerInterval = 10000
-                ThresholdSizePerInterval = 37748736 # 36MB/interval
+                ThresholdNumMessagesPerInterval = 800
+                ThresholdSizePerInterval = 20971540 #20MB/interval
                 NumFloodingRounds = 2
                 PeerBanDurationInSeconds = 3600
 
@@ -72,20 +72,20 @@
             IntervalInSeconds = 1
             ReservedPercent   = 0.0
             [Antiflood.OutOfSpecs.PeerMaxInput]
-                BaseMessagesPerInterval = 2000
-                TotalSizePerInterval = 10485760 # 10MB/interval
+                BaseMessagesPerInterval = 140
+                TotalSizePerInterval = 4194304 #4MB/s
                 [Antiflood.OutOfSpecs.PeerMaxInput.IncreaseFactor]
                     Threshold = 0 #if consensus size will exceed this value, then
                     Factor = 0.0     #increase the base value with [factor*consensus size]
             [Antiflood.OutOfSpecs.BlackList]
-                ThresholdNumMessagesPerInterval = 3600
-                ThresholdSizePerInterval = 12582912 # 12MB/interval
+                ThresholdNumMessagesPerInterval = 200
+                ThresholdSizePerInterval = 6291456 #6MB/s
                 NumFloodingRounds = 2
                 PeerBanDurationInSeconds = 3600
 
         [Antiflood.PeerMaxOutput]
-            BaseMessagesPerInterval  = 75
-            TotalSizePerInterval     = 2097152 #2MB/s
+            BaseMessagesPerInterval  = 5
+            TotalSizePerInterval     = 524288 #512KB/s
 
         [Antiflood.Cache]
             Name = "Antiflood"

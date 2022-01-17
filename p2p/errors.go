@@ -43,3 +43,12 @@ var ErrNilStatusHandler = errors.New("nil status handler")
 
 // ErrNilMessage signals that a nil status handler was provided
 var ErrNilMessage = errors.New("nil message")
+
+// ErrNilAntifloodComponents signals that a nil antiflood components was provided
+var ErrNilAntifloodComponents = errors.New("nil antiflood components")
+
+// ErrNilBlackListIDsCache signals that a nil blacklist cache was provided
+var ErrNilBlackListIDsCache = errors.New("nil blacklist cache")
+
+// ErrNilBlackListedPublicKeysCache signals that a nil blacklist public keys cache was provided
+var ErrNilBlackListedPublicKeysCache = errors.New("nil blacklist public keys cache")

@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"sync"
@@ -13,7 +12,6 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -28,31 +26,29 @@ const (
 
 // ArgsBroadcaster is the DTO used in the broadcaster constructor
 type ArgsBroadcaster struct {
-	Messenger              NetMessenger
-	Log                    logger.Logger
-	ElrondRoleProvider     ElrondRoleProvider
-	SignatureProcessor     SignatureProcessor
-	KeyGen                 crypto.KeyGenerator
-	SingleSigner           crypto.SingleSigner
-	PrivateKey             crypto.PrivateKey
-	Name                   string
-	AntifloodConfig        elrondConfig.AntifloodConfig
-	AntifloodStatusHandler elrondCore.AppStatusHandler
+	Messenger           NetMessenger
+	Log                 logger.Logger
+	ElrondRoleProvider  ElrondRoleProvider
+	SignatureProcessor  SignatureProcessor
+	KeyGen              crypto.KeyGenerator
+	SingleSigner        crypto.SingleSigner
+	PrivateKey          crypto.PrivateKey
+	Name                string
+	AntifloodComponents *factory.AntiFloodComponents
 }
 
 type broadcaster struct {
 	*relayerMessageHandler
 	*noncesOfPublicKeys
-	messenger              NetMessenger
-	log                    logger.Logger
-	elrondRoleProvider     ElrondRoleProvider
-	signatureProcessor     SignatureProcessor
-	name                   string
-	mutClients             sync.RWMutex
-	clients                []core.BroadcastClient
-	joinTopicName          string
-	signTopicName          string
-	antifloodStatusHandler elrondCore.AppStatusHandler
+	messenger          NetMessenger
+	log                logger.Logger
+	elrondRoleProvider ElrondRoleProvider
+	signatureProcessor SignatureProcessor
+	name               string
+	mutClients         sync.RWMutex
+	clients            []core.BroadcastClient
+	joinTopicName      string
+	signTopicName      string
 }
 
 // NewBroadcaster will create a new broadcaster able to pass messages and signatures
@@ -70,24 +66,19 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 		elrondRoleProvider: args.ElrondRoleProvider,
 		signatureProcessor: args.SignatureProcessor,
 		relayerMessageHandler: &relayerMessageHandler{
-			marshalizer:  &marshal.JsonMarshalizer{},
-			keyGen:       args.KeyGen,
-			singleSigner: args.SingleSigner,
-			counter:      uint64(time.Now().UnixNano()),
-			privateKey:   args.PrivateKey,
+			marshalizer:         &marshal.JsonMarshalizer{},
+			keyGen:              args.KeyGen,
+			singleSigner:        args.SingleSigner,
+			counter:             uint64(time.Now().UnixNano()),
+			privateKey:          args.PrivateKey,
+			antifloodComponents: args.AntifloodComponents,
 		},
-		clients:                make([]core.BroadcastClient, 0),
-		joinTopicName:          args.Name + joinTopicSuffix,
-		signTopicName:          args.Name + signTopicSuffix,
-		antifloodStatusHandler: args.AntifloodStatusHandler,
+		clients:       make([]core.BroadcastClient, 0),
+		joinTopicName: args.Name + joinTopicSuffix,
+		signTopicName: args.Name + signTopicSuffix,
 	}
 	pk := b.privateKey.GeneratePublic()
 	b.publicKeyBytes, err = pk.ToByteArray()
-	if err != nil {
-		return nil, err
-	}
-
-	b.relayerMessageHandler.antifloodComponents, err = b.createAntifloodComponents(args.AntifloodConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -120,30 +111,11 @@ func checkArgs(args ArgsBroadcaster) error {
 	if check.IfNil(args.SignatureProcessor) {
 		return ErrNilSignatureProcessor
 	}
-	if check.IfNil(args.AntifloodStatusHandler) {
-		return ErrNilStatusHandler
+	if args.AntifloodComponents == nil {
+		return ErrNilAntifloodComponents
 	}
 
 	return nil
-}
-
-func (b *broadcaster) createAntifloodComponents(antifloodConfig elrondConfig.AntifloodConfig) (*factory.AntiFloodComponents, error) {
-	var err error
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer func() {
-		if err != nil {
-			cancelFunc()
-		}
-	}()
-
-	cfg := elrondConfig.Config{
-		Antiflood: antifloodConfig,
-	}
-	antiFloodComponents, err := factory.NewP2PAntiFloodComponents(ctx, cfg, b.antifloodStatusHandler, b.messenger.ID())
-	if err != nil {
-		return nil, err
-	}
-	return antiFloodComponents, nil
 }
 
 // RegisterOnTopics will register the messenger on all required topics
