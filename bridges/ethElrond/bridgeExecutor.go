@@ -280,6 +280,7 @@ func (executor *bridgeExecutor) ProcessQuorumReachedOnElrond(ctx context.Context
 // WaitForTransferConfirmation waits for the confirmation of a transfer
 func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context) {
 	wasPerformed := false
+	var err error
 	for i := 0; i < splits && !wasPerformed; i++ {
 		timer := time.NewTimer(executor.timeForTransferExecution / splits)
 		defer timer.Stop()
@@ -290,8 +291,9 @@ func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context)
 			return
 		case <-timer.C:
 		}
+		wasPerformed, err = executor.WasTransferPerformedOnEthereum(ctx)
 
-		wasPerformed, _ = executor.WasTransferPerformedOnEthereum(ctx)
+		wasPerformed |= err != 'not executed'
 	}
 }
 
