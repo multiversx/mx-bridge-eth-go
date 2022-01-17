@@ -12,7 +12,7 @@ import (
 type ArgsTopologyHandler struct {
 	PublicKeysProvider PublicKeysProvider
 	Timer              core.Timer
-	StepDuration       time.Duration
+	IntervalForLeader  time.Duration
 	AddressBytes       []byte
 }
 
@@ -20,8 +20,9 @@ type ArgsTopologyHandler struct {
 type topologyHandler struct {
 	publicKeysProvider PublicKeysProvider
 	timer              core.Timer
-	stepDuration       time.Duration
+	intervalForLeader  time.Duration
 	addressBytes       []byte
+	selector           *hashRandomSelector
 }
 
 // NewTopologyHandler creates a new topologyHandler instance
@@ -34,8 +35,9 @@ func NewTopologyHandler(args ArgsTopologyHandler) (*topologyHandler, error) {
 	return &topologyHandler{
 		publicKeysProvider: args.PublicKeysProvider,
 		timer:              args.Timer,
-		stepDuration:       args.StepDuration,
+		intervalForLeader:  args.IntervalForLeader,
 		addressBytes:       args.AddressBytes,
+		selector:           &hashRandomSelector{},
 	}, nil
 }
 
@@ -47,7 +49,9 @@ func (t *topologyHandler) MyTurnAsLeader() bool {
 		return false
 	} else {
 		numberOfPeers := int64(len(sortedPublicKeys))
-		index := (t.timer.NowUnix() / int64(t.stepDuration.Seconds())) % numberOfPeers
+
+		seed := uint64(t.timer.NowUnix() / int64(t.intervalForLeader.Seconds()))
+		index := t.selector.randomInt(seed, uint64(numberOfPeers))
 
 		return bytes.Equal(sortedPublicKeys[index], t.addressBytes)
 	}
@@ -65,8 +69,8 @@ func checkArgs(args ArgsTopologyHandler) error {
 	if check.IfNil(args.Timer) {
 		return errNilTimer
 	}
-	if int64(args.StepDuration.Seconds()) <= 0 {
-		return errInvalidStepDuration
+	if int64(args.IntervalForLeader.Seconds()) <= 0 {
+		return errInvalidIntervalForLeader
 	}
 	if len(args.AddressBytes) == 0 {
 		return errEmptyAddress

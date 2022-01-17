@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExecutesignProposedTransferStep(t *testing.T) {
+func TestExecuteSignProposedTransferStep(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {

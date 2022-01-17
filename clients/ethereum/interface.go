@@ -55,6 +55,7 @@ type GasHandler interface {
 // SignaturesHolder defines the operations for a component that can hold and manage signatures
 type SignaturesHolder interface {
 	Signatures(messageHash []byte) [][]byte
+	ClearStoredSignatures()
 	IsInterfaceNil() bool
 }
 

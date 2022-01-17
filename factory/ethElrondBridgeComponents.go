@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/disabled"
 	elrondToEthSteps "github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps/elrondToEth"
 	ethToElrondSteps "github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/topology"
@@ -52,6 +53,7 @@ const (
 	ethClientLogId          = "EthElrond-EthClient"
 	elrondRoleProviderLogId = "EthElrond-ElrondRoleProvider"
 	ethRoleProviderLogId    = "EthElrond-EthRoleProvider"
+	broadcasterLogId        = "EthElrond-Broadcaster"
 )
 
 var suite = ed25519.NewEd25519()
@@ -90,10 +92,11 @@ type ethElrondBridgeComponents struct {
 	timeForBootstrap              time.Duration
 	metricsHolder                 core.MetricsHolder
 
-	ethToElrondMachineStates core.MachineStates
-	ethToElrondStepDuration  time.Duration
-	ethToElrondStatusHandler core.StatusHandler
-	ethToElrondStateMachine  StateMachine
+	ethToElrondMachineStates    core.MachineStates
+	ethToElrondStepDuration     time.Duration
+	ethToElrondStatusHandler    core.StatusHandler
+	ethToElrondStateMachine     StateMachine
+	ethToElrondSignaturesHolder ethElrond.SignaturesHolder
 
 	elrondToEthMachineStates core.MachineStates
 	elrondToEthStepDuration  time.Duration
@@ -139,12 +142,12 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
-	err = components.createElrondClient(args)
+	err = components.createElrondRoleProvider(args)
 	if err != nil {
 		return nil, err
 	}
 
-	err = components.createElrondRoleProvider(args)
+	err = components.createElrondClient(args)
 	if err != nil {
 		return nil, err
 	}
@@ -271,6 +274,7 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
 		MaxRetriesOnQuorumReached:    elrondConfigs.MaxRetriesOnQuorumReached,
+		RoleProvider:                 components.elrondRoleProvider,
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)
@@ -296,11 +300,9 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		return err
 	}
 
-	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId)
-
 	argsBroadcaster := p2p.ArgsBroadcaster{
 		Messenger:          args.Messenger,
-		Log:                log,
+		Log:                core.NewLoggerWithIdentifier(logger.GetOrCreate(broadcasterLogId), broadcasterLogId),
 		ElrondRoleProvider: components.elrondRoleProvider,
 		SignatureProcessor: components.ethereumRoleProvider,
 		KeyGen:             keyGen,
@@ -336,8 +338,9 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		return err
 	}
 
-	signatureHolder := ethElrond.NewSignatureHolder()
-	err = components.broadcaster.AddBroadcastClient(signatureHolder)
+	signaturesHolder := ethElrond.NewSignatureHolder()
+	components.ethToElrondSignaturesHolder = signaturesHolder
+	err = components.broadcaster.AddBroadcastClient(signaturesHolder)
 	if err != nil {
 		return err
 	}
@@ -352,12 +355,12 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	argsEthClient := ethereum.ArgsEthereumClient{
 		ClientWrapper:             args.ClientWrapper,
 		Erc20ContractsHandler:     args.Erc20ContractsHolder,
-		Log:                       log,
+		Log:                       core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
 		AddressConverter:          addressConverter,
 		Broadcaster:               components.broadcaster,
 		PrivateKey:                privateKey,
 		TokensMapper:              tokensMapper,
-		SignatureHolder:           signatureHolder,
+		SignatureHolder:           signaturesHolder,
 		SafeContractAddress:       safeContractAddress,
 		GasHandler:                gs,
 		TransferGasLimit:          ethereumConfigs.GasLimit,
@@ -450,7 +453,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 	argsTopologyHandler := topology.ArgsTopologyHandler{
 		PublicKeysProvider: components.broadcaster,
 		Timer:              components.timer,
-		StepDuration:       components.ethToElrondStepDuration,
+		IntervalForLeader:  time.Second * time.Duration(configs.IntervalForLeaderInSeconds),
 		AddressBytes:       components.elrondRelayerAddress.AddressBytes(),
 	}
 
@@ -477,6 +480,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		EthereumClient:           components.ethClient,
 		StatusHandler:            components.ethToElrondStatusHandler,
 		TimeForTransferExecution: timeForTransferExecution,
+		SignaturesHolder:         disabled.NewDisabledSignaturesHolder(),
 	}
 
 	bridge, err := ethElrond.NewBridgeExecutor(argsBridgeExecutor)
@@ -504,7 +508,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 	argsTopologyHandler := topology.ArgsTopologyHandler{
 		PublicKeysProvider: components.broadcaster,
 		Timer:              components.timer,
-		StepDuration:       components.elrondToEthStepDuration,
+		IntervalForLeader:  time.Second * time.Duration(configs.IntervalForLeaderInSeconds),
 		AddressBytes:       components.elrondRelayerAddress.AddressBytes(),
 	}
 
@@ -531,6 +535,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 		EthereumClient:           components.ethClient,
 		StatusHandler:            components.elrondToEthStatusHandler,
 		TimeForTransferExecution: timeForTransferExecution,
+		SignaturesHolder:         components.ethToElrondSignaturesHolder,
 	}
 
 	bridge, err := ethElrond.NewBridgeExecutor(argsBridgeExecutor)

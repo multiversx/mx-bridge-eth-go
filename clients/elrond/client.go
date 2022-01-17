@@ -39,6 +39,7 @@ type ClientArgs struct {
 	IntervalToResendTxsInSeconds uint64
 	TokensMapper                 TokensMapper
 	MaxRetriesOnQuorumReached    uint64
+	RoleProvider                 roleProvider
 }
 
 // client represents the Elrond Client implementation
@@ -57,27 +58,7 @@ type client struct {
 
 // NewClient returns a new Elrond Client instance
 func NewClient(args ClientArgs) (*client, error) {
-	if check.IfNil(args.Proxy) {
-		return nil, errNilProxy
-	}
-	if check.IfNil(args.RelayerPrivateKey) {
-		return nil, errNilPrivateKey
-	}
-	if check.IfNil(args.MultisigContractAddress) {
-		return nil, fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
-	}
-	if check.IfNil(args.Log) {
-		return nil, errNilLogger
-	}
-	if check.IfNil(args.TokensMapper) {
-		return nil, errNilTokensMapper
-	}
-	if args.MaxRetriesOnQuorumReached < minRetriesOnQuorum {
-		return nil, fmt.Errorf("%w for args.MaxRetriesOnQuorumReached, got: %d, minimum: %d",
-			errInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
-	}
-
-	err := checkGasMapValues(args.GasMapConfig)
+	err := checkArgs(args)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +99,7 @@ func NewClient(args ClientArgs) (*client, error) {
 			nonceTxHandler:          nonceTxsHandler,
 			relayerPrivateKey:       args.RelayerPrivateKey,
 			singleSigner:            &singlesig.Ed25519Signer{},
+			roleProvider:            args.RoleProvider,
 		},
 		elrondClientDataGetter:    getter,
 		relayerPublicKey:          publicKey,
@@ -135,6 +117,37 @@ func NewClient(args ClientArgs) (*client, error) {
 		"safe contract address", args.MultisigContractAddress.AddressAsBech32String())
 
 	return c, nil
+}
+
+func checkArgs(args ClientArgs) error {
+	if check.IfNil(args.Proxy) {
+		return errNilProxy
+	}
+	if check.IfNil(args.RelayerPrivateKey) {
+		return errNilPrivateKey
+	}
+	if check.IfNil(args.MultisigContractAddress) {
+		return fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
+	}
+	if check.IfNil(args.Log) {
+		return errNilLogger
+	}
+	if check.IfNil(args.TokensMapper) {
+		return errNilTokensMapper
+	}
+	if args.MaxRetriesOnQuorumReached < minRetriesOnQuorum {
+		return fmt.Errorf("%w for args.MaxRetriesOnQuorumReached, got: %d, minimum: %d",
+			errInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
+	}
+	if check.IfNil(args.RoleProvider) {
+		return errNilRoleProvider
+	}
+
+	err := checkGasMapValues(args.GasMapConfig)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func checkGasMapValues(gasMap config.ElrondGasMapConfig) error {

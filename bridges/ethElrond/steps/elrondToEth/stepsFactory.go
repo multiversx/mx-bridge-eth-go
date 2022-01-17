@@ -4,12 +4,13 @@ import (
 	"fmt"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 )
 
 // CreateSteps creates all machine states providing the bridge executor
-func CreateSteps(executor ethElrond.Executor) (core.MachineStates, error) {
+func CreateSteps(executor steps.Executor) (core.MachineStates, error) {
 	if check.IfNil(executor) {
 		return nil, ethElrond.ErrNilExecutor
 	}
@@ -17,10 +18,10 @@ func CreateSteps(executor ethElrond.Executor) (core.MachineStates, error) {
 	return createMachineStates(executor)
 }
 
-func createMachineStates(executor ethElrond.Executor) (core.MachineStates, error) {
+func createMachineStates(executor steps.Executor) (core.MachineStates, error) {
 	machineStates := make(core.MachineStates)
 
-	steps := []core.Step{
+	stepsSlice := []core.Step{
 		&getPendingStep{
 			bridge: executor,
 		},
@@ -53,7 +54,7 @@ func createMachineStates(executor ethElrond.Executor) (core.MachineStates, error
 		},
 	}
 
-	for _, s := range steps {
+	for _, s := range stepsSlice {
 		_, found := machineStates[s.Identifier()]
 		if found {
 			return nil, fmt.Errorf("%w for identifier '%s'", ethElrond.ErrDuplicatedStepIdentifier, s.Identifier())

@@ -12,6 +12,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// splits - represent the number of times we split the maximum interval
+// we wait for the transfer confirmation on Ethereum
+const splits = 10
+
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
 	Log                      logger.Logger
@@ -20,6 +24,7 @@ type ArgsBridgeExecutor struct {
 	TopologyProvider         TopologyProvider
 	TimeForTransferExecution time.Duration
 	StatusHandler            core.StatusHandler
+	SignaturesHolder         SignaturesHolder
 }
 
 type bridgeExecutor struct {
@@ -34,6 +39,7 @@ type bridgeExecutor struct {
 	retriesOnEthereum        uint64
 	timeForTransferExecution time.Duration
 	statusHandler            core.StatusHandler
+	sigsHolder               SignaturesHolder
 }
 
 // NewBridgeExecutor creates a bridge executor, which can be used for both half-bridges
@@ -66,6 +72,9 @@ func checkArgs(args ArgsBridgeExecutor) error {
 	if args.TimeForTransferExecution < durationLimit {
 		return ErrInvalidDuration
 	}
+	if check.IfNil(args.SignaturesHolder) {
+		return ErrNilSignaturesHolder
+	}
 	return nil
 }
 
@@ -77,6 +86,7 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 		topologyProvider:         args.TopologyProvider,
 		statusHandler:            args.StatusHandler,
 		timeForTransferExecution: args.TimeForTransferExecution,
+		sigsHolder:               args.SignaturesHolder,
 	}
 }
 
@@ -269,13 +279,19 @@ func (executor *bridgeExecutor) ProcessQuorumReachedOnElrond(ctx context.Context
 
 // WaitForTransferConfirmation waits for the confirmation of a transfer
 func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context) {
-	timer := time.NewTimer(executor.timeForTransferExecution)
-	defer timer.Stop()
+	wasPerformed := false
+	for i := 0; i < splits && !wasPerformed; i++ {
+		timer := time.NewTimer(executor.timeForTransferExecution / splits)
+		defer timer.Stop()
 
-	select {
-	case <-ctx.Done():
-		executor.log.Debug("closing due to context expiration")
-	case <-timer.C:
+		select {
+		case <-ctx.Done():
+			executor.log.Debug("closing due to context expiration")
+			return
+		case <-timer.C:
+		}
+
+		wasPerformed, _ = executor.WasTransferPerformedOnEthereum(ctx)
 	}
 }
 
@@ -425,6 +441,11 @@ func (executor *bridgeExecutor) ProcessMaxRetriesOnEthereum() bool {
 // ResetRetriesCountOnEthereum resets the number of retries on Ethereum
 func (executor *bridgeExecutor) ResetRetriesCountOnEthereum() {
 	executor.retriesOnEthereum = 0
+}
+
+// ClearStoredP2PSignaturesForEthereum deletes all stored P2P signatures used for Ethereum client
+func (executor *bridgeExecutor) ClearStoredP2PSignaturesForEthereum() {
+	executor.sigsHolder.ClearStoredSignatures()
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

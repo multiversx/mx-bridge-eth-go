@@ -3,12 +3,12 @@ package elrondToEth
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 )
 
 type waitTransferConfirmationStep struct {
-	bridge ethElrond.Executor
+	bridge steps.Executor
 }
 
 // Execute will execute this step returning the next step to be executed

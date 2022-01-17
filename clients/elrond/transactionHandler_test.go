@@ -9,6 +9,7 @@ import (
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	cryptoMock "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/crypto"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
 	"github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
@@ -36,6 +37,7 @@ func createTransactionHandlerWithMockComponents() *transactionHandler {
 		nonceTxHandler:          &bridgeTests.NonceTransactionsHandlerStub{},
 		relayerPrivateKey:       sk,
 		singleSigner:            testSigner,
+		roleProvider:            &roleProviders.ElrondRoleProviderStub{},
 	}
 }
 
@@ -92,6 +94,29 @@ func TestTransactionHandler_SendTransactionReturnHash(t *testing.T) {
 		hash, err := txHandlerInstance.SendTransactionReturnHash(context.Background(), builder, gasLimit)
 		assert.Empty(t, hash)
 		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("relayer not whitelisted", func(t *testing.T) {
+		wasWhiteListedCalled := false
+		wasSendTransactionCalled := false
+		txHandlerInstance := createTransactionHandlerWithMockComponents()
+		txHandlerInstance.roleProvider = &roleProviders.ElrondRoleProviderStub{
+			IsWhitelistedCalled: func(address core.AddressHandler) bool {
+				wasWhiteListedCalled = true
+				return false
+			},
+		}
+		txHandlerInstance.nonceTxHandler = &bridgeTests.NonceTransactionsHandlerStub{
+			SendTransactionCalled: func(ctx context.Context, tx *data.Transaction) (string, error) {
+				wasSendTransactionCalled = true
+				return "", nil
+			},
+		}
+
+		hash, err := txHandlerInstance.SendTransactionReturnHash(context.Background(), builder, gasLimit)
+		assert.Empty(t, hash)
+		assert.Equal(t, errRelayerNotWhitelisted, err)
+		assert.True(t, wasWhiteListedCalled)
+		assert.False(t, wasSendTransactionCalled)
 	})
 	t.Run("should work", func(t *testing.T) {
 		nonce := uint64(55273)
