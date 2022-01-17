@@ -114,6 +114,13 @@ func (wrapper *ethereumChainWrapper) GetStatusesAfterExecution(ctx context.Conte
 	return wrapper.multiSigContract.GetStatusesAfterExecution(&bind.CallOpts{Context: ctx}, batchID)
 }
 
+// BalanceAt returns the wei balance of the given account.
+// The block number can be nil, in which case the balance is taken from the latest known block.
+func (wrapper *ethereumChainWrapper) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.blockchainClient.BalanceAt(ctx, account, blockNumber)
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
 func (wrapper *ethereumChainWrapper) IsInterfaceNil() bool {
 	return wrapper == nil

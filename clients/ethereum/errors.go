@@ -5,6 +5,7 @@ import "errors"
 var (
 	errQuorumNotReached         = errors.New("quorum not reached")
 	errInsufficientErc20Balance = errors.New("insufficient ERC20 balance")
+	errInsufficientBalance      = errors.New("insufficient balance")
 	errPublicKeyCast            = errors.New("error casting public key to ECDSA")
 	errNilClientWrapper         = errors.New("nil client wrapper")
 	errNilERC20ContractsHandler = errors.New("nil ERC20 contracts handler")

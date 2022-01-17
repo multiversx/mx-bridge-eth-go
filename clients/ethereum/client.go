@@ -332,6 +332,13 @@ func (c *client) ExecuteTransfer(
 		return "", err
 	}
 
+	minimumForFee := big.NewInt(int64(auth.GasLimit))
+	minimumForFee.Mul(minimumForFee, auth.GasPrice)
+	err = c.checkRelayerFundsForFee(ctx, minimumForFee)
+	if err != nil {
+		return "", err
+	}
+
 	batchID := big.NewInt(0).SetUint64(batch.ID)
 	tx, err := c.clientWrapper.ExecuteTransfer(auth, argLists.tokens, argLists.recipients, argLists.amounts, argLists.nonces, batchID, signatures)
 	if err != nil {
@@ -388,6 +395,27 @@ func (c *client) checkCumulatedTransfers(ctx context.Context, transfers map[comm
 			"existing balance", existingBalance.String(),
 			"needed", value.String())
 	}
+
+	return nil
+}
+
+func (c *client) checkRelayerFundsForFee(ctx context.Context, transferFee *big.Int) error {
+
+	ethereumRelayerAddress := crypto.PubkeyToAddress(*c.publicKey)
+
+	existingBalance, err := c.clientWrapper.BalanceAt(ctx, ethereumRelayerAddress, nil)
+	if err != nil {
+		return err
+	}
+
+	if transferFee.Cmp(existingBalance) > 0 {
+		return fmt.Errorf("%w, existing: %s, required: %s",
+			errInsufficientBalance, existingBalance.String(), transferFee.String())
+	}
+
+	c.log.Debug("checked balance",
+		"existing balance", existingBalance.String(),
+		"needed", transferFee.String())
 
 	return nil
 }
