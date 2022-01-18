@@ -281,31 +281,17 @@ func (executor *bridgeExecutor) ProcessQuorumReachedOnElrond(ctx context.Context
 func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context) {
 	wasPerformed := false
 	for i := 0; i < splits && !wasPerformed; i++ {
-		timer := time.NewTimer(executor.timeForWaitOnEthereum / splits)
-		defer timer.Stop()
-
-		select {
-		case <-ctx.Done():
-			executor.log.Debug("closing due to context expiration")
-			return
-		case <-timer.C:
+		if executor.waitWithContextSucceeded(ctx) {
+			wasPerformed, _ = executor.WasTransferPerformedOnEthereum(ctx)
 		}
-
-		wasPerformed, _ = executor.WasTransferPerformedOnEthereum(ctx)
 	}
 }
 
 // WaitForFinalBatchStatuses waits for the statuses to be final
 func (executor *bridgeExecutor) WaitForFinalBatchStatuses(ctx context.Context) []byte {
 	for i := 0; i < splits; i++ {
-		timer := time.NewTimer(executor.timeForWaitOnEthereum / splits)
-		defer timer.Stop()
-
-		select {
-		case <-ctx.Done():
-			executor.log.Debug("closing due to context expiration")
+		if !executor.waitWithContextSucceeded(ctx) {
 			return nil
-		case <-timer.C:
 		}
 
 		statuses, err := executor.GetBatchStatusesFromEthereum(ctx)
@@ -316,6 +302,19 @@ func (executor *bridgeExecutor) WaitForFinalBatchStatuses(ctx context.Context) [
 		}
 	}
 	return nil
+}
+
+func (executor *bridgeExecutor) waitWithContextSucceeded(ctx context.Context) bool {
+	timer := time.NewTimer(executor.timeForWaitOnEthereum / splits)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		executor.log.Debug("closing due to context expiration")
+		return false
+	case <-timer.C:
+		return true
+	}
 }
 
 // GetBatchStatusesFromEthereum gets statuses for the batch
