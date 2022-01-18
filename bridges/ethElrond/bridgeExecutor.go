@@ -295,7 +295,7 @@ func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context)
 	}
 }
 
-// WaitForFinalBatchStatuses -
+// WaitForFinalBatchStatuses waits for the statuses to be final
 func (executor *bridgeExecutor) WaitForFinalBatchStatuses(ctx context.Context) []byte {
 	for i := 0; i < splits; i++ {
 		timer := time.NewTimer(executor.timeForWaitOnEthereum / splits)
