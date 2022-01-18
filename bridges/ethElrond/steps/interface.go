@@ -45,7 +45,7 @@ type Executor interface {
 	PerformTransferOnEthereum(ctx context.Context) error
 	ProcessQuorumReachedOnEthereum(ctx context.Context) (bool, error)
 	WaitForTransferConfirmation(ctx context.Context)
-	WaitForFinalBatchStatuses(ctx context.Context) []byte
+	WaitAndReturnFinalBatchStatuses(ctx context.Context) []byte
 	GetBatchStatusesFromEthereum(ctx context.Context) ([]byte, error)
 
 	ProcessMaxRetriesOnEthereum() bool

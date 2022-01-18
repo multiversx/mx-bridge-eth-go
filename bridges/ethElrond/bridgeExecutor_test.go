@@ -1311,7 +1311,7 @@ func TestGetBatchStatusesFromEthereum(t *testing.T) {
 		t.Parallel()
 
 		wasCalled := false
-		providedStatuses := []byte{1, 2, 3}
+		providedStatuses := []byte{clients.Executed, clients.Rejected}
 		args := createMockExecutorArgs()
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
 			GetTransactionsStatusesCalled: func(ctx context.Context, batchId uint64) ([]byte, error) {
@@ -1329,7 +1329,7 @@ func TestGetBatchStatusesFromEthereum(t *testing.T) {
 	})
 }
 
-func TestWaitForFinalBatchStatuses(t *testing.T) {
+func TestWaitAndReturnFinalBatchStatuses(t *testing.T) {
 	t.Parallel()
 
 	t.Run("normal expiration", func(t *testing.T) {
@@ -1340,7 +1340,7 @@ func TestWaitForFinalBatchStatuses(t *testing.T) {
 		executor, _ := NewBridgeExecutor(args)
 
 		start := time.Now()
-		statuses := executor.WaitForFinalBatchStatuses(context.Background())
+		statuses := executor.WaitAndReturnFinalBatchStatuses(context.Background())
 		elapsed := time.Since(start)
 
 		assert.True(t, elapsed >= args.TimeForWaitOnEthereum)
@@ -1357,7 +1357,7 @@ func TestWaitForFinalBatchStatuses(t *testing.T) {
 		defer cancel()
 
 		start := time.Now()
-		statuses := executor.WaitForFinalBatchStatuses(ctx)
+		statuses := executor.WaitAndReturnFinalBatchStatuses(ctx)
 		elapsed := time.Since(start)
 
 		assert.True(t, elapsed < args.TimeForWaitOnEthereum)
@@ -1382,7 +1382,7 @@ func TestWaitForFinalBatchStatuses(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		statuses := executor.WaitForFinalBatchStatuses(ctx)
+		statuses := executor.WaitAndReturnFinalBatchStatuses(ctx)
 
 		assert.Equal(t, 10, counter)
 		assert.Nil(t, statuses)
@@ -1391,7 +1391,7 @@ func TestWaitForFinalBatchStatuses(t *testing.T) {
 	t.Run("GetBatchStatusesFromEthereum always returns success+statuses only after 4 checks", func(t *testing.T) {
 		t.Parallel()
 
-		providedStatuses := []byte{1, 2, 3}
+		providedStatuses := []byte{clients.Executed, clients.Rejected}
 		args := createMockExecutorArgs()
 		args.TimeForWaitOnEthereum = 10 * time.Second
 		counter := 0
@@ -1412,7 +1412,7 @@ func TestWaitForFinalBatchStatuses(t *testing.T) {
 
 		start := time.Now()
 
-		statuses := executor.WaitForFinalBatchStatuses(ctx)
+		statuses := executor.WaitAndReturnFinalBatchStatuses(ctx)
 		elapsed := time.Since(start)
 
 		assert.True(t, elapsed < args.TimeForWaitOnEthereum)

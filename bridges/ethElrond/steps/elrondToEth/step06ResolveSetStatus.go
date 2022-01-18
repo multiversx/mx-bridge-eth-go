@@ -31,7 +31,7 @@ func (step *resolveSetStatusStep) Execute(ctx context.Context) core.StepIdentifi
 		return GettingPendingBatchFromElrond
 	}
 
-	statuses := step.bridge.WaitForFinalBatchStatuses(ctx)
+	statuses := step.bridge.WaitAndReturnFinalBatchStatuses(ctx)
 	if statuses == nil {
 		return GettingPendingBatchFromElrond
 	}
