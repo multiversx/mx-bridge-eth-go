@@ -31,9 +31,8 @@ func (step *resolveSetStatusStep) Execute(ctx context.Context) core.StepIdentifi
 		return GettingPendingBatchFromElrond
 	}
 
-	statuses, err := step.bridge.GetBatchStatusesFromEthereum(ctx)
-	if err != nil {
-		step.bridge.PrintInfo(logger.LogError, "error while fetching transaction statuses", "error", err)
+	statuses := step.bridge.WaitAndReturnFinalBatchStatuses(ctx)
+	if statuses == nil {
 		return GettingPendingBatchFromElrond
 	}
 

@@ -38,6 +38,7 @@ const (
 	getStoredBatch                                   = "GetStoredBatch"
 	myTurnAsLeader                                   = "MyTurnAsLeader"
 	waitForTransferConfirmation                      = "WaitForTransferConfirmation"
+	WaitAndReturnFinalBatchStatuses                  = "WaitAndReturnFinalBatchStatuses"
 	resolveNewDepositsStatuses                       = "ResolveNewDepositsStatuses"
 	getStoredActionID                                = "GetStoredActionID"
 )
@@ -138,6 +139,12 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 		stub.WasTransferPerformedOnEthereumCalled = func(ctx context.Context) (bool, error) {
 			return true, errHandler.storeAndReturnError(nil)
 		}
+	}
+	stub.WaitAndReturnFinalBatchStatusesCalled = func(ctx context.Context) []byte {
+		if args.failingStep == getBatchStatusesFromEthereum {
+			return nil
+		}
+		return []byte{}
 	}
 	stub.GetBatchStatusesFromEthereumCalled = func(ctx context.Context) ([]byte, error) {
 		if args.failingStep == getBatchStatusesFromEthereum {
@@ -249,7 +256,7 @@ func TestHappyCaseWhenLeaderSetStatusAlreadySigned(t *testing.T) {
 	assert.Equal(t, 1, executor.GetFunctionCounter(resolveNewDepositsStatuses))
 	assert.Equal(t, 1, executor.GetFunctionCounter(wasSetStatusProposedOnElrond))
 	assert.Equal(t, 1, executor.GetFunctionCounter(performTransferOnEthereum))
-	assert.Equal(t, 1, executor.GetFunctionCounter(getBatchStatusesFromEthereum))
+	assert.Equal(t, 1, executor.GetFunctionCounter(WaitAndReturnFinalBatchStatuses))
 	assert.Equal(t, 1, executor.GetFunctionCounter(proposeSetStatusOnElrond))
 	assert.Equal(t, 1, executor.GetFunctionCounter(getAndStoreActionIDForProposeSetStatusFromElrond))
 	assert.Equal(t, 2, executor.GetFunctionCounter(wasActionPerformedOnElrond))
@@ -268,7 +275,6 @@ func TestOneStepErrors_ShouldReturnToPendingBatch(t *testing.T) {
 		signTransferOnEthereum,
 		processQuorumReachedOnEthereum,
 		performTransferOnEthereum,
-		getBatchStatusesFromEthereum,
 		wasSetStatusProposedOnElrond,
 		proposeSetStatusOnElrond,
 		getAndStoreActionIDForProposeSetStatusFromElrond,

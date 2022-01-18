@@ -45,6 +45,7 @@ type BridgeExecutorStub struct {
 	PerformTransferOnEthereumCalled                        func(ctx context.Context) error
 	ProcessQuorumReachedOnEthereumCalled                   func(ctx context.Context) (bool, error)
 	WaitForTransferConfirmationCalled                      func(ctx context.Context)
+	WaitAndReturnFinalBatchStatusesCalled                  func(ctx context.Context) []byte
 	GetBatchStatusesFromEthereumCalled                     func(ctx context.Context) ([]byte, error)
 	ProcessMaxRetriesOnEthereumCalled                      func() bool
 	ResetRetriesCountOnEthereumCalled                      func()
@@ -305,6 +306,15 @@ func (stub *BridgeExecutorStub) WaitForTransferConfirmation(ctx context.Context)
 	if stub.WaitForTransferConfirmationCalled != nil {
 		stub.WaitForTransferConfirmationCalled(ctx)
 	}
+}
+
+// WaitAndReturnFinalBatchStatuses -
+func (stub *BridgeExecutorStub) WaitAndReturnFinalBatchStatuses(ctx context.Context) []byte {
+	stub.incrementFunctionCounter()
+	if stub.WaitAndReturnFinalBatchStatusesCalled != nil {
+		return stub.WaitAndReturnFinalBatchStatusesCalled(ctx)
+	}
+	return nil
 }
 
 // GetBatchStatusesFromEthereum -

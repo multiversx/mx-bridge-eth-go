@@ -498,13 +498,13 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 	argsBridgeExecutor := ethElrond.ArgsBridgeExecutor{
-		Log:                      log,
-		TopologyProvider:         topologyHandler,
-		ElrondClient:             components.elrondClient,
-		EthereumClient:           components.ethClient,
-		StatusHandler:            components.ethToElrondStatusHandler,
-		TimeForTransferExecution: timeForTransferExecution,
-		SignaturesHolder:         disabled.NewDisabledSignaturesHolder(),
+		Log:                   log,
+		TopologyProvider:      topologyHandler,
+		ElrondClient:          components.elrondClient,
+		EthereumClient:        components.ethClient,
+		StatusHandler:         components.ethToElrondStatusHandler,
+		TimeForWaitOnEthereum: timeForTransferExecution,
+		SignaturesHolder:      disabled.NewDisabledSignaturesHolder(),
 	}
 
 	bridge, err := ethElrond.NewBridgeExecutor(argsBridgeExecutor)
@@ -551,15 +551,15 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 		return err
 	}
 
-	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
+	timeForWaitOnEthereum := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 	argsBridgeExecutor := ethElrond.ArgsBridgeExecutor{
-		Log:                      log,
-		TopologyProvider:         topologyHandler,
-		ElrondClient:             components.elrondClient,
-		EthereumClient:           components.ethClient,
-		StatusHandler:            components.elrondToEthStatusHandler,
-		TimeForTransferExecution: timeForTransferExecution,
-		SignaturesHolder:         components.ethToElrondSignaturesHolder,
+		Log:                   log,
+		TopologyProvider:      topologyHandler,
+		ElrondClient:          components.elrondClient,
+		EthereumClient:        components.ethClient,
+		StatusHandler:         components.elrondToEthStatusHandler,
+		TimeForWaitOnEthereum: timeForWaitOnEthereum,
+		SignaturesHolder:      components.ethToElrondSignaturesHolder,
 	}
 
 	bridge, err := ethElrond.NewBridgeExecutor(argsBridgeExecutor)
