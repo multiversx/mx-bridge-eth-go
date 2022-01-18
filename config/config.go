@@ -51,6 +51,7 @@ type ConfigP2P struct {
 	Seed            string
 	InitialPeerList []string
 	ProtocolID      string
+	AntifloodConfig config.AntifloodConfig
 }
 
 // ConfigRelayer configuration for general relayer configuration

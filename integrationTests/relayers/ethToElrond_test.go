@@ -20,6 +20,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-go/testscommon/statusHandler"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -176,6 +177,7 @@ func createMockBridgeComponentsArgs(
 		TimeForBootstrap:     time.Second * 5,
 		TimeBeforeRepeatJoin: time.Second * 30,
 		MetricsHolder:        status.NewMetricsHolder(),
+		AppStatusHandler:     &statusHandler.AppStatusHandlerStub{},
 	}
 }
 

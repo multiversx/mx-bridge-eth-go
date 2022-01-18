@@ -28,12 +28,15 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519/singlesig"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
+	antifloodFactory "github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core/polling"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -71,6 +74,7 @@ type ArgsEthereumToElrondBridge struct {
 	TimeForBootstrap     time.Duration
 	TimeBeforeRepeatJoin time.Duration
 	MetricsHolder        core.MetricsHolder
+	AppStatusHandler     elrondCore.AppStatusHandler
 }
 
 type ethElrondBridgeComponents struct {
@@ -110,6 +114,7 @@ type ethElrondBridgeComponents struct {
 
 	timeBeforeRepeatJoin time.Duration
 	cancelFunc           func()
+	appStatusHandler     elrondCore.AppStatusHandler
 }
 
 // NewEthElrondBridgeComponents creates a new eth-elrond bridge components holder
@@ -129,6 +134,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		timeForBootstrap:     args.TimeForBootstrap,
 		timeBeforeRepeatJoin: args.TimeBeforeRepeatJoin,
 		metricsHolder:        args.MetricsHolder,
+		appStatusHandler:     args.AppStatusHandler,
 	}
 	components.addClosableComponent(components.timer)
 
@@ -216,6 +222,9 @@ func checkArgsEthereumToElrondBridge(args ArgsEthereumToElrondBridge) error {
 	if check.IfNil(args.MetricsHolder) {
 		return errNilMetricsHolder
 	}
+	if check.IfNil(args.AppStatusHandler) {
+		return errNilStatusHandler
+	}
 
 	return nil
 }
@@ -300,15 +309,30 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		return err
 	}
 
+	antifloodComponents, err := components.createAntifloodComponents(args.Configs.GeneralConfig.P2P.AntifloodConfig)
+	if err != nil {
+		return err
+	}
+
+	peerDenialEvaluator, err := p2p.NewPeerDenialEvaluator(antifloodComponents.BlacklistHandler, antifloodComponents.PubKeysCacher)
+	if err != nil {
+		return err
+	}
+	err = args.Messenger.SetPeerDenialEvaluator(peerDenialEvaluator)
+	if err != nil {
+		return err
+	}
+
 	argsBroadcaster := p2p.ArgsBroadcaster{
-		Messenger:          args.Messenger,
-		Log:                core.NewLoggerWithIdentifier(logger.GetOrCreate(broadcasterLogId), broadcasterLogId),
-		ElrondRoleProvider: components.elrondRoleProvider,
-		SignatureProcessor: components.ethereumRoleProvider,
-		KeyGen:             keyGen,
-		SingleSigner:       singleSigner,
-		PrivateKey:         components.elrondRelayerPrivateKey,
-		Name:               ethToElrondName,
+		Messenger:           args.Messenger,
+		Log:                 core.NewLoggerWithIdentifier(logger.GetOrCreate(broadcasterLogId), broadcasterLogId),
+		ElrondRoleProvider:  components.elrondRoleProvider,
+		SignatureProcessor:  components.ethereumRoleProvider,
+		KeyGen:              keyGen,
+		SingleSigner:        singleSigner,
+		PrivateKey:          components.elrondRelayerPrivateKey,
+		Name:                ethToElrondName,
+		AntifloodComponents: antifloodComponents,
 	}
 
 	components.broadcaster, err = p2p.NewBroadcaster(argsBroadcaster)
@@ -659,6 +683,25 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumStateMachine(
 	components.pollingHandlers = append(components.pollingHandlers, pollingHandler)
 
 	return nil
+}
+
+func (components *ethElrondBridgeComponents) createAntifloodComponents(antifloodConfig elrondConfig.AntifloodConfig) (*antifloodFactory.AntiFloodComponents, error) {
+	var err error
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer func() {
+		if err != nil {
+			cancelFunc()
+		}
+	}()
+
+	cfg := elrondConfig.Config{
+		Antiflood: antifloodConfig,
+	}
+	antiFloodComponents, err := antifloodFactory.NewP2PAntiFloodComponents(ctx, cfg, components.appStatusHandler, components.messenger.ID())
+	if err != nil {
+		return nil, err
+	}
+	return antiFloodComponents, nil
 }
 
 func (components *ethElrondBridgeComponents) startBroadcastJoinRetriesLoop() {

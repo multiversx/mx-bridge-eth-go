@@ -16,6 +16,7 @@ import (
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-go/testscommon/statusHandler"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,6 +82,7 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 		TimeForBootstrap:     minTimeForBootstrap,
 		TimeBeforeRepeatJoin: minTimeBeforeRepeatJoin,
 		MetricsHolder:        status.NewMetricsHolder(),
+		AppStatusHandler:     &statusHandler.AppStatusHandlerStub{},
 	}
 }
 
@@ -355,6 +357,7 @@ func TestEthElrondBridgeComponents_startBroadcastJoinRetriesLoop(t *testing.T) {
 		numberOfCalls := uint32(0)
 		args := createMockEthElrondBridgeArgs()
 		components, _ := NewEthElrondBridgeComponents(args)
+
 		components.broadcaster = &testsCommon.BroadcasterStub{
 			BroadcastJoinTopicCalled: func() {
 				atomic.AddUint32(&numberOfCalls, 1)

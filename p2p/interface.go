@@ -1,6 +1,8 @@
 package p2p
 
 import (
+	"time"
+
 	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
@@ -16,6 +18,7 @@ type NetMessenger interface {
 	CreateTopic(name string, createChannelForTopic bool) error
 	Broadcast(topic string, buff []byte)
 	SendToConnectedPeer(topic string, buff []byte, peerID elrondCore.PeerID) error
+	SetPeerDenialEvaluator(handler p2p.PeerDenialEvaluator) error
 	ConnectedAddresses() []string
 	Close() error
 	IsInterfaceNil() bool
@@ -30,5 +33,12 @@ type ElrondRoleProvider interface {
 // SignatureProcessor defines the operations needed to process signatures
 type SignatureProcessor interface {
 	VerifyEthSignature(signature []byte, messageHash []byte) error
+	IsInterfaceNil() bool
+}
+
+// PeerDenialEvaluator defines the behavior of a component that is able to decide if a peer ID is black listed or not
+type PeerDenialEvaluator interface {
+	IsDenied(pid elrondCore.PeerID) bool
+	UpsertPeerID(pid elrondCore.PeerID, duration time.Duration) error
 	IsInterfaceNil() bool
 }

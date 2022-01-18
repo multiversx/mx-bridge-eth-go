@@ -1,8 +1,10 @@
 package p2p
 
 import (
+	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -14,22 +16,30 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
+	"github.com/ElrondNetwork/elrond-go/testscommon/statusHandler"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func createMockArgsBroadcaster() ArgsBroadcaster {
+	cfg := elrondConfig.Config{
+		Antiflood: p2pMocks.CreateAntifloodConfig(),
+	}
+	ac, _ := factory.NewP2PAntiFloodComponents(context.Background(), cfg, &statusHandler.AppStatusHandlerStub{}, "")
 	return ArgsBroadcaster{
-		Messenger:          &p2pMocks.MessengerStub{},
-		Log:                logger.GetOrCreate("test"),
-		ElrondRoleProvider: &roleProvidersMock.ElrondRoleProviderStub{},
-		KeyGen:             &cryptoMocks.KeyGenStub{},
-		SingleSigner:       &cryptoMocks.SingleSignerStub{},
-		PrivateKey:         &cryptoMocks.PrivateKeyStub{},
-		SignatureProcessor: &testsCommon.SignatureProcessorStub{},
-		Name:               "test",
+		Messenger:           &p2pMocks.MessengerStub{},
+		Log:                 logger.GetOrCreate("test"),
+		ElrondRoleProvider:  &roleProvidersMock.ElrondRoleProviderStub{},
+		KeyGen:              &cryptoMocks.KeyGenStub{},
+		SingleSigner:        &cryptoMocks.SingleSignerStub{},
+		PrivateKey:          &cryptoMocks.PrivateKeyStub{},
+		SignatureProcessor:  &testsCommon.SignatureProcessorStub{},
+		Name:                "test",
+		AntifloodComponents: ac,
 	}
 }
 
@@ -116,6 +126,14 @@ func TestNewBroadcaster(t *testing.T) {
 		b, err := NewBroadcaster(args)
 		assert.True(t, check.IfNil(b))
 		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("nil antiflood components should error", func(t *testing.T) {
+		args := createMockArgsBroadcaster()
+		args.AntifloodComponents = nil
+
+		b, err := NewBroadcaster(args)
+		assert.True(t, check.IfNil(b))
+		assert.Equal(t, ErrNilAntifloodComponents, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
@@ -250,7 +268,6 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		}
 
 		sendWasCalled := false
-		pid := elrondCore.PeerID("pid1")
 		args.Messenger = &p2pMocks.MessengerStub{
 			SendToConnectedPeerCalled: func(topic string, buff []byte, peerID elrondCore.PeerID) error {
 				assert.Equal(t, args.Name+signTopicSuffix, topic)
@@ -261,6 +278,20 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 				return nil
 			},
 		}
+		cfg := elrondConfig.Config{
+			Antiflood: p2pMocks.CreateAntifloodConfig(),
+		}
+		cfg.Antiflood.Topic.MaxMessages = []elrondConfig.TopicMaxMessagesConfig{
+			{
+				Topic:             args.Name + signTopicSuffix,
+				NumMessagesPerSec: 10,
+			},
+			{
+				Topic:             args.Name + joinTopicSuffix,
+				NumMessagesPerSec: 10,
+			},
+		}
+		args.AntifloodComponents, _ = factory.NewP2PAntiFloodComponents(context.Background(), cfg, &statusHandler.AppStatusHandlerStub{}, pid)
 
 		b, _ := NewBroadcaster(args)
 		err := b.AddBroadcastClient(client)
@@ -291,6 +322,21 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		_, buff2 := createSignedMessageAndMarshaledBytes(1)
 		args.Messenger = &p2pMocks.MessengerStub{}
 		args.SignatureProcessor = &testsCommon.SignatureProcessorStub{}
+
+		cfg := elrondConfig.Config{
+			Antiflood: p2pMocks.CreateAntifloodConfig(),
+		}
+		cfg.Antiflood.Topic.MaxMessages = []elrondConfig.TopicMaxMessagesConfig{
+			{
+				Topic:             args.Name + signTopicSuffix,
+				NumMessagesPerSec: 10,
+			},
+			{
+				Topic:             args.Name + joinTopicSuffix,
+				NumMessagesPerSec: 10,
+			},
+		}
+		args.AntifloodComponents, _ = factory.NewP2PAntiFloodComponents(context.Background(), cfg, &statusHandler.AppStatusHandlerStub{}, pid)
 
 		b, _ := NewBroadcaster(args)
 		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
@@ -341,6 +387,50 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Equal(t, 1, len(b.SortedPublicKeys()))
+	})
+	t.Run("system busy on a topic", func(t *testing.T) {
+		args := createMockArgsBroadcaster()
+		_, buff1 := createSignedMessageForEthSig(0)
+		_, buff2 := createSignedMessageForEthSig(1)
+		args.Messenger = &p2pMocks.MessengerStub{}
+
+		cfg := elrondConfig.Config{
+			Antiflood: p2pMocks.CreateAntifloodConfig(),
+		}
+		cfg.Antiflood.Topic = elrondConfig.TopicAntifloodConfig{
+			DefaultMaxMessagesPerSec: 1,
+			MaxMessages: []elrondConfig.TopicMaxMessagesConfig{
+				{
+					Topic:             args.Name + signTopicSuffix,
+					NumMessagesPerSec: uint32(1),
+				},
+			},
+		}
+		args.AntifloodComponents, _ = factory.NewP2PAntiFloodComponents(context.Background(), cfg, &statusHandler.AppStatusHandlerStub{}, pid)
+
+		processedMessages := make([]*core.SignedMessage, 0)
+		b, err := NewBroadcaster(args)
+		print(err)
+		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
+			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+				processedMessages = append(processedMessages, msg)
+			},
+		})
+		p2pMsg := &p2pMocks.P2PMessageMock{
+			DataField:  buff2,
+			TopicField: args.Name + signTopicSuffix,
+		}
+
+		err = b.ProcessReceivedMessage(p2pMsg, "p1")
+		assert.Nil(t, err)
+
+		p2pMsg = &p2pMocks.P2PMessageMock{
+			DataField:  buff1,
+			TopicField: args.Name + signTopicSuffix,
+		}
+
+		err = b.ProcessReceivedMessage(p2pMsg, "p1")
+		assert.True(t, strings.Contains(err.Error(), "system busy"))
 	})
 	t.Run("sign should store message", func(t *testing.T) {
 		args := createMockArgsBroadcaster()

@@ -12,4 +12,5 @@ var (
 	errPublicKeyCast           = errors.New("error casting public key to ECDSA")
 	errInvalidValue            = errors.New("invalid value")
 	errNilMetricsHolder        = errors.New("nil metrics holder")
+	errNilStatusHandler        = errors.New("nil status handler")
 )
