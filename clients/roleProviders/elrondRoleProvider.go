@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
@@ -44,10 +45,10 @@ func NewElrondRoleProvider(args ArgsElrondRoleProvider) (*elrondRoleProvider, er
 
 func checkElrondRoleProviderSpecificArgs(args ArgsElrondRoleProvider) error {
 	if check.IfNil(args.DataGetter) {
-		return ErrNilDataGetter
+		return clients.ErrNilDataGetter
 	}
 	if check.IfNil(args.Log) {
-		return ErrNilLogger
+		return clients.ErrNilLogger
 	}
 
 	return nil

@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -40,7 +41,7 @@ func TestNewErc20SafeContractsHolder(t *testing.T) {
 
 		ch, err := NewErc20SafeContractsHolder(args)
 		assert.Nil(t, ch)
-		assert.Equal(t, errNilStatusHandler, err)
+		assert.Equal(t, clients.ErrNilStatusHandler, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockArgsContractsHolder()

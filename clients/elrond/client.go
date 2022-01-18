@@ -124,20 +124,20 @@ func checkArgs(args ClientArgs) error {
 		return errNilProxy
 	}
 	if check.IfNil(args.RelayerPrivateKey) {
-		return errNilPrivateKey
+		return clients.ErrNilPrivateKey
 	}
 	if check.IfNil(args.MultisigContractAddress) {
 		return fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
 	}
 	if check.IfNil(args.Log) {
-		return errNilLogger
+		return clients.ErrNilLogger
 	}
 	if check.IfNil(args.TokensMapper) {
-		return errNilTokensMapper
+		return clients.ErrNilTokensMapper
 	}
 	if args.MaxRetriesOnQuorumReached < minRetriesOnQuorum {
 		return fmt.Errorf("%w for args.MaxRetriesOnQuorumReached, got: %d, minimum: %d",
-			errInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
+			clients.ErrInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
 	}
 	if check.IfNil(args.RoleProvider) {
 		return errNilRoleProvider
@@ -243,7 +243,7 @@ func (c *client) createCommonTxDataBuilder(funcName string, id int64) builders.T
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
 func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error) {
 	if batch == nil {
-		return "", errNilBatch
+		return "", clients.ErrNilBatch
 	}
 
 	txBuilder := c.createCommonTxDataBuilder(proposeSetStatusFuncName, int64(batch.ID))
@@ -262,7 +262,7 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 // ResolveNewDeposits will try to add new statuses if the pending batch gets modified
 func (c *client) ResolveNewDeposits(ctx context.Context, batch *clients.TransferBatch) error {
 	if batch == nil {
-		return errNilBatch
+		return clients.ErrNilBatch
 	}
 
 	newBatch, err := c.GetPending(ctx)
@@ -278,7 +278,7 @@ func (c *client) ResolveNewDeposits(ctx context.Context, batch *clients.Transfer
 // ProposeTransfer will trigger the propose transfer operation
 func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error) {
 	if batch == nil {
-		return "", errNilBatch
+		return "", clients.ErrNilBatch
 	}
 
 	txBuilder := c.createCommonTxDataBuilder(proposeTransferFuncName, int64(batch.ID))
@@ -315,7 +315,7 @@ func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
 // PerformAction will trigger the execution of the provided action ID
 func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error) {
 	if batch == nil {
-		return "", errNilBatch
+		return "", clients.ErrNilBatch
 	}
 
 	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))

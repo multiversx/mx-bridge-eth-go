@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
@@ -39,7 +40,7 @@ func TestNewMultiSigContractWrapper(t *testing.T) {
 
 		wrapper, err := NewEthereumChainWrapper(args)
 		assert.True(t, check.IfNil(wrapper))
-		assert.Equal(t, errNilStatusHandler, err)
+		assert.Equal(t, clients.ErrNilStatusHandler, err)
 	})
 	t.Run("nil blockchain client", func(t *testing.T) {
 		t.Parallel()

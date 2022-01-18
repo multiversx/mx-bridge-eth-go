@@ -105,7 +105,7 @@ func checkArgs(args ArgsEthereumClient) error {
 		return errNilERC20ContractsHandler
 	}
 	if check.IfNil(args.Log) {
-		return errNilLogger
+		return clients.ErrNilLogger
 	}
 	if check.IfNil(args.AddressConverter) {
 		return clients.ErrNilAddressConverter
@@ -114,10 +114,10 @@ func checkArgs(args ArgsEthereumClient) error {
 		return errNilBroadcaster
 	}
 	if args.PrivateKey == nil {
-		return errNilPrivateKey
+		return clients.ErrNilPrivateKey
 	}
 	if check.IfNil(args.TokensMapper) {
-		return errNilTokensMapper
+		return clients.ErrNilTokensMapper
 	}
 	if check.IfNil(args.SignatureHolder) {
 		return errNilSignaturesHolder
@@ -130,7 +130,7 @@ func checkArgs(args ArgsEthereumClient) error {
 	}
 	if args.MaxRetriesOnQuorumReached < minRetriesOnQuorum {
 		return fmt.Errorf("%w for args.MaxRetriesOnQuorumReached, got: %d, minimum: %d",
-			errInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
+			clients.ErrInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
 	}
 
 	return nil
@@ -198,7 +198,7 @@ func (c *client) BroadcastSignatureForMessageHash(msgHash common.Hash) {
 // GenerateMessageHash will generate the message hash based on the provided batch
 func (c *client) GenerateMessageHash(batch *clients.TransferBatch) (common.Hash, error) {
 	if batch == nil {
-		return common.Hash{}, errNilBatch
+		return common.Hash{}, clients.ErrNilBatch
 	}
 
 	args, err := generateTransferArgs()
@@ -279,7 +279,7 @@ func (c *client) ExecuteTransfer(
 	quorum int,
 ) (string, error) {
 	if batch == nil {
-		return "", errNilBatch
+		return "", clients.ErrNilBatch
 	}
 
 	c.log.Info("executing transfer " + batch.String())
@@ -449,7 +449,7 @@ func (c *client) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool
 		return false, fmt.Errorf("%w in IsQuorumReached, Quorum call", err)
 	}
 	if quorum.Uint64() < minQuorumValue {
-		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %s", errInvalidValue, minQuorumValue, quorum.String())
+		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %s", clients.ErrInvalidValue, minQuorumValue, quorum.String())
 	}
 
 	return len(signatures) >= int(quorum.Int64()), nil

@@ -217,7 +217,7 @@ func (dg *elrondClientDataGetter) GetERC20AddressForTokenId(ctx context.Context,
 // WasProposedTransfer returns true if the transfer action proposed was triggered
 func (dg *elrondClientDataGetter) WasProposedTransfer(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	if batch == nil {
-		return false, errNilBatch
+		return false, clients.ErrNilBatch
 	}
 
 	builder := dg.createDefaultVmQueryBuilder()
@@ -238,7 +238,7 @@ func (dg *elrondClientDataGetter) WasExecuted(ctx context.Context, actionID uint
 // GetActionIDForProposeTransfer returns the action ID for the proposed transfer operation
 func (dg *elrondClientDataGetter) GetActionIDForProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
 	if batch == nil {
-		return 0, errNilBatch
+		return 0, clients.ErrNilBatch
 	}
 
 	builder := dg.createDefaultVmQueryBuilder()
@@ -251,7 +251,7 @@ func (dg *elrondClientDataGetter) GetActionIDForProposeTransfer(ctx context.Cont
 // WasProposedSetStatus returns true if the proposed set status was triggered
 func (dg *elrondClientDataGetter) WasProposedSetStatus(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	if batch == nil {
-		return false, errNilBatch
+		return false, clients.ErrNilBatch
 	}
 
 	builder := dg.createDefaultVmQueryBuilder()
@@ -302,7 +302,7 @@ func (dg *elrondClientDataGetter) GetTransactionsStatuses(ctx context.Context, b
 // GetActionIDForSetStatusOnPendingTransfer returns the action ID for setting the status on the pending transfer batch
 func (dg *elrondClientDataGetter) GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
 	if batch == nil {
-		return 0, errNilBatch
+		return 0, clients.ErrNilBatch
 	}
 
 	builder := dg.createDefaultVmQueryBuilder()
