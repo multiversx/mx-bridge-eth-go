@@ -72,16 +72,9 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		assert.True(t, clearWasCalled)
 	})
 
-	t.Run("error on GetBatchStatusesFromEthereum", func(t *testing.T) {
+	t.Run("WaitForFinalBatchStatusesCalled returns nil, should go to GettingPendingBatchFromElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
-		bridgeStub.GetBatchStatusesFromEthereumCalled = func(ctx context.Context) ([]byte, error) {
-			return nil, expectedError
-		}
-		clearWasCalled := false
-		bridgeStub.ClearStoredP2PSignaturesForEthereumCalled = func() {
-			clearWasCalled = true
-		}
 
 		step := resolveSetStatusStep{
 			bridge: bridgeStub,
@@ -89,14 +82,14 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
-		assert.True(t, clearWasCalled)
 	})
-	t.Run("should call ResolveNewDepositsStatuses and go to ProposingSetStatusOnElrond", func(t *testing.T) {
+	t.Run("WaitForFinalBatchStatusesCalled should finish with success and go to ProposingSetStatusOnElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
-		bridgeStub.GetBatchStatusesFromEthereumCalled = func(ctx context.Context) ([]byte, error) {
-			return []byte{clients.Executed, clients.Rejected}, nil
+		bridgeStub.WaitForFinalBatchStatusesCalled = func(ctx context.Context) []byte {
+			return []byte{1, 2, 3}
 		}
+
 		wasCalled := false
 		bridgeStub.ResolveNewDepositsStatusesCalled = func(numDeposits uint64) {
 			wasCalled = true

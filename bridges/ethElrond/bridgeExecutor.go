@@ -18,28 +18,28 @@ const splits = 10
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
-	Log                      logger.Logger
-	ElrondClient             ElrondClient
-	EthereumClient           EthereumClient
-	TopologyProvider         TopologyProvider
-	TimeForTransferExecution time.Duration
-	StatusHandler            core.StatusHandler
-	SignaturesHolder         SignaturesHolder
+	Log                   logger.Logger
+	ElrondClient          ElrondClient
+	EthereumClient        EthereumClient
+	TopologyProvider      TopologyProvider
+	TimeForWaitOnEthereum time.Duration
+	StatusHandler         core.StatusHandler
+	SignaturesHolder      SignaturesHolder
 }
 
 type bridgeExecutor struct {
-	log                      logger.Logger
-	topologyProvider         TopologyProvider
-	elrondClient             ElrondClient
-	ethereumClient           EthereumClient
-	batch                    *clients.TransferBatch
-	actionID                 uint64
-	msgHash                  common.Hash
-	retriesOnElrond          uint64
-	retriesOnEthereum        uint64
-	timeForTransferExecution time.Duration
-	statusHandler            core.StatusHandler
-	sigsHolder               SignaturesHolder
+	log                   logger.Logger
+	topologyProvider      TopologyProvider
+	elrondClient          ElrondClient
+	ethereumClient        EthereumClient
+	batch                 *clients.TransferBatch
+	actionID              uint64
+	msgHash               common.Hash
+	retriesOnElrond       uint64
+	retriesOnEthereum     uint64
+	timeForWaitOnEthereum time.Duration
+	statusHandler         core.StatusHandler
+	sigsHolder            SignaturesHolder
 }
 
 // NewBridgeExecutor creates a bridge executor, which can be used for both half-bridges
@@ -69,7 +69,7 @@ func checkArgs(args ArgsBridgeExecutor) error {
 	if check.IfNil(args.StatusHandler) {
 		return ErrNilStatusHandler
 	}
-	if args.TimeForTransferExecution < durationLimit {
+	if args.TimeForWaitOnEthereum < durationLimit {
 		return ErrInvalidDuration
 	}
 	if check.IfNil(args.SignaturesHolder) {
@@ -80,13 +80,13 @@ func checkArgs(args ArgsBridgeExecutor) error {
 
 func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 	return &bridgeExecutor{
-		log:                      args.Log,
-		elrondClient:             args.ElrondClient,
-		ethereumClient:           args.EthereumClient,
-		topologyProvider:         args.TopologyProvider,
-		statusHandler:            args.StatusHandler,
-		timeForTransferExecution: args.TimeForTransferExecution,
-		sigsHolder:               args.SignaturesHolder,
+		log:                   args.Log,
+		elrondClient:          args.ElrondClient,
+		ethereumClient:        args.EthereumClient,
+		topologyProvider:      args.TopologyProvider,
+		statusHandler:         args.StatusHandler,
+		timeForWaitOnEthereum: args.TimeForWaitOnEthereum,
+		sigsHolder:            args.SignaturesHolder,
 	}
 }
 
@@ -281,7 +281,7 @@ func (executor *bridgeExecutor) ProcessQuorumReachedOnElrond(ctx context.Context
 func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context) {
 	wasPerformed := false
 	for i := 0; i < splits && !wasPerformed; i++ {
-		timer := time.NewTimer(executor.timeForTransferExecution / splits)
+		timer := time.NewTimer(executor.timeForWaitOnEthereum / splits)
 		defer timer.Stop()
 
 		select {
@@ -293,6 +293,29 @@ func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context)
 
 		wasPerformed, _ = executor.WasTransferPerformedOnEthereum(ctx)
 	}
+}
+
+// WaitForFinalBatchStatuses -
+func (executor *bridgeExecutor) WaitForFinalBatchStatuses(ctx context.Context) []byte {
+	for i := 0; i < splits; i++ {
+		timer := time.NewTimer(executor.timeForWaitOnEthereum / splits)
+		defer timer.Stop()
+
+		select {
+		case <-ctx.Done():
+			executor.log.Debug("closing due to context expiration")
+			return nil
+		case <-timer.C:
+		}
+
+		statuses, err := executor.GetBatchStatusesFromEthereum(ctx)
+		if err != nil {
+			executor.log.Debug("got message while fetching batch statuses", "message", err)
+		} else {
+			return statuses
+		}
+	}
+	return nil
 }
 
 // GetBatchStatusesFromEthereum gets statuses for the batch
