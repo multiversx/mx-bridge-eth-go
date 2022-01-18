@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ func TestNewMapper(t *testing.T) {
 	{
 		t.Run("ElrondToErc20: nil dataGetter", func(t *testing.T) {
 			mapper, err := NewErc20ToElrondMapper(nil)
-			assert.Equal(t, errNilDataGetter, err)
+			assert.Equal(t, clients.ErrNilDataGetter, err)
 			assert.True(t, check.IfNil(mapper))
 		})
 		t.Run("ElrondToErc20: should work", func(t *testing.T) {
@@ -27,7 +28,7 @@ func TestNewMapper(t *testing.T) {
 	{
 		t.Run("Erc20ToElrond: nil dataGetter", func(t *testing.T) {
 			mapper, err := NewElrondToErc20Mapper(nil)
-			assert.Equal(t, errNilDataGetter, err)
+			assert.Equal(t, clients.ErrNilDataGetter, err)
 			assert.True(t, check.IfNil(mapper))
 		})
 		t.Run("Erc20ToElrond: should work", func(t *testing.T) {

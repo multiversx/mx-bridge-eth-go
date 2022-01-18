@@ -488,7 +488,7 @@ func TestDataGetter_WasProposedTransfer(t *testing.T) {
 
 		result, err := dg.WasProposedTransfer(context.Background(), nil)
 		assert.False(t, result)
-		assert.Equal(t, errNilBatch, err)
+		assert.Equal(t, clients.ErrNilBatch, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -609,7 +609,7 @@ func TestDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 
 		result, err := dg.GetActionIDForProposeTransfer(context.Background(), nil)
 		assert.Zero(t, result)
-		assert.Equal(t, errNilBatch, err)
+		assert.Equal(t, clients.ErrNilBatch, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -673,7 +673,7 @@ func TestDataGetter_WasProposedSetStatus(t *testing.T) {
 
 		result, err := dg.WasProposedSetStatus(context.Background(), nil)
 		assert.False(t, result)
-		assert.Equal(t, errNilBatch, err)
+		assert.Equal(t, clients.ErrNilBatch, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -851,7 +851,7 @@ func TestDataGetter_GetActionIDForSetStatusOnPendingTransfer(t *testing.T) {
 
 		result, err := dg.GetActionIDForSetStatusOnPendingTransfer(context.Background(), nil)
 		assert.Zero(t, result)
-		assert.Equal(t, errNilBatch, err)
+		assert.Equal(t, clients.ErrNilBatch, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()

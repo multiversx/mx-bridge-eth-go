@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,7 @@ func TestNewGasStation(t *testing.T) {
 
 		gs, err := NewGasStation(args)
 		assert.True(t, check.IfNil(gs))
-		assert.True(t, errors.Is(err, ErrInvalidValue))
+		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "checkArgs for value RequestPollingInterval"))
 	})
 	t.Run("invalid request time", func(t *testing.T) {
@@ -44,7 +45,7 @@ func TestNewGasStation(t *testing.T) {
 
 		gs, err := NewGasStation(args)
 		assert.True(t, check.IfNil(gs))
-		assert.True(t, errors.Is(err, ErrInvalidValue))
+		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "checkArgs for value RequestTime"))
 	})
 	t.Run("invalid gas price selector", func(t *testing.T) {

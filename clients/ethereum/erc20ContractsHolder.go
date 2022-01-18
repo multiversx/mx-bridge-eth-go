@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/wrappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -34,7 +35,7 @@ func NewErc20SafeContractsHolder(args ArgsErc20SafeContractsHolder) (*erc20SafeC
 		return nil, errNilEthClient
 	}
 	if check.IfNil(args.EthClientStatusHandler) {
-		return nil, errNilStatusHandler
+		return nil, clients.ErrNilStatusHandler
 	}
 	return &erc20SafeContractsHolder{
 		contracts:              make(map[ethCommon.Address]erc20ContractWrapper),

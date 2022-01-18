@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -41,7 +42,7 @@ func NewEthereumChainWrapper(args ArgsEthereumChainWrapper) (*ethereumChainWrapp
 
 func checkArgs(args ArgsEthereumChainWrapper) error {
 	if check.IfNil(args.StatusHandler) {
-		return errNilStatusHandler
+		return clients.ErrNilStatusHandler
 	}
 	if check.IfNilReflect(args.MultiSigContract) {
 		return errNilMultiSigContract
