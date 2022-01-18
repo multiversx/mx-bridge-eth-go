@@ -38,7 +38,7 @@ const (
 	getStoredBatch                                   = "GetStoredBatch"
 	myTurnAsLeader                                   = "MyTurnAsLeader"
 	waitForTransferConfirmation                      = "WaitForTransferConfirmation"
-	waitForFinalBatchStatuses                        = "WaitForFinalBatchStatuses"
+	WaitAndReturnFinalBatchStatuses                  = "WaitAndReturnFinalBatchStatuses"
 	resolveNewDepositsStatuses                       = "ResolveNewDepositsStatuses"
 	getStoredActionID                                = "GetStoredActionID"
 )
@@ -140,7 +140,7 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 			return true, errHandler.storeAndReturnError(nil)
 		}
 	}
-	stub.WaitForFinalBatchStatusesCalled = func(ctx context.Context) []byte {
+	stub.WaitAndReturnFinalBatchStatusesCalled = func(ctx context.Context) []byte {
 		if args.failingStep == getBatchStatusesFromEthereum {
 			return nil
 		}
@@ -256,7 +256,7 @@ func TestHappyCaseWhenLeaderSetStatusAlreadySigned(t *testing.T) {
 	assert.Equal(t, 1, executor.GetFunctionCounter(resolveNewDepositsStatuses))
 	assert.Equal(t, 1, executor.GetFunctionCounter(wasSetStatusProposedOnElrond))
 	assert.Equal(t, 1, executor.GetFunctionCounter(performTransferOnEthereum))
-	assert.Equal(t, 1, executor.GetFunctionCounter(waitForFinalBatchStatuses))
+	assert.Equal(t, 1, executor.GetFunctionCounter(WaitAndReturnFinalBatchStatuses))
 	assert.Equal(t, 1, executor.GetFunctionCounter(proposeSetStatusOnElrond))
 	assert.Equal(t, 1, executor.GetFunctionCounter(getAndStoreActionIDForProposeSetStatusFromElrond))
 	assert.Equal(t, 2, executor.GetFunctionCounter(wasActionPerformedOnElrond))

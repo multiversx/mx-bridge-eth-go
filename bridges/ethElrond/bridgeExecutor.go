@@ -287,8 +287,8 @@ func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context)
 	}
 }
 
-// WaitForFinalBatchStatuses waits for the statuses to be final
-func (executor *bridgeExecutor) WaitForFinalBatchStatuses(ctx context.Context) []byte {
+// WaitAndReturnFinalBatchStatuses waits for the statuses to be final
+func (executor *bridgeExecutor) WaitAndReturnFinalBatchStatuses(ctx context.Context) []byte {
 	for i := 0; i < splits; i++ {
 		if !executor.waitWithContextSucceeded(ctx) {
 			return nil

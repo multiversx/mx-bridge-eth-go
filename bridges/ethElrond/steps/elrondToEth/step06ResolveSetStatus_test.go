@@ -72,7 +72,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		assert.True(t, clearWasCalled)
 	})
 
-	t.Run("WaitForFinalBatchStatusesCalled returns nil, should go to GettingPendingBatchFromElrond", func(t *testing.T) {
+	t.Run("WaitAndReturnFinalBatchStatusesCalled returns nil, should go to GettingPendingBatchFromElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
 
@@ -83,11 +83,11 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
-	t.Run("WaitForFinalBatchStatusesCalled should finish with success and go to ProposingSetStatusOnElrond", func(t *testing.T) {
+	t.Run("WaitAndReturnFinalBatchStatusesCalled should finish with success and go to ProposingSetStatusOnElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
-		bridgeStub.WaitForFinalBatchStatusesCalled = func(ctx context.Context) []byte {
-			return []byte{1, 2, 3}
+		bridgeStub.WaitAndReturnFinalBatchStatusesCalled = func(ctx context.Context) []byte {
+			return []byte{clients.Executed, clients.Rejected}
 		}
 
 		wasCalled := false
