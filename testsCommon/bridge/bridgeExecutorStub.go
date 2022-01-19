@@ -29,6 +29,8 @@ type BridgeExecutorStub struct {
 	GetStoredActionIDCalled                                func() uint64
 	WasTransferProposedOnElrondCalled                      func(ctx context.Context) (bool, error)
 	ProposeTransferOnElrondCalled                          func(ctx context.Context) error
+	ProcessMaxRetriesOnWasTransferProposedOnElrondCalled   func() bool
+	ResetRetriesOnWasTransferProposedOnElrondCalled        func()
 	WasSetStatusProposedOnElrondCalled                     func(ctx context.Context) (bool, error)
 	ProposeSetStatusOnElrondCalled                         func(ctx context.Context) error
 	WasActionSignedOnElrondCalled                          func(ctx context.Context) (bool, error)
@@ -165,6 +167,23 @@ func (stub *BridgeExecutorStub) ProposeTransferOnElrond(ctx context.Context) err
 		return stub.ProposeTransferOnElrondCalled(ctx)
 	}
 	return notImplemented
+}
+
+// ProcessMaxRetriesOnWasTransferProposedOnElrond -
+func (stub *BridgeExecutorStub) ProcessMaxRetriesOnWasTransferProposedOnElrond() bool {
+	stub.incrementFunctionCounter()
+	if stub.ProcessMaxRetriesOnWasTransferProposedOnElrondCalled != nil {
+		return stub.ProcessMaxRetriesOnWasTransferProposedOnElrondCalled()
+	}
+	return false
+}
+
+// ResetRetriesOnWasTransferProposedOnElrond -
+func (stub *BridgeExecutorStub) ResetRetriesOnWasTransferProposedOnElrond() {
+	stub.incrementFunctionCounter()
+	if stub.ResetRetriesOnWasTransferProposedOnElrondCalled != nil {
+		stub.ResetRetriesOnWasTransferProposedOnElrondCalled()
+	}
 }
 
 // WasSetStatusProposedOnElrond -

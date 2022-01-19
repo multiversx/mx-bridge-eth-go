@@ -11,25 +11,26 @@ var errNotImplemented = errors.New("not implemented")
 
 // ElrondClientStub -
 type ElrondClientStub struct {
-	GetPendingCalled                               func(ctx context.Context) (*clients.TransferBatch, error)
-	GetCurrentBatchAsDataBytesCalled               func(ctx context.Context) ([][]byte, error)
-	WasProposedTransferCalled                      func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
-	QuorumReachedCalled                            func(ctx context.Context, actionID uint64) (bool, error)
-	WasExecutedCalled                              func(ctx context.Context, actionID uint64) (bool, error)
-	GetActionIDForProposeTransferCalled            func(ctx context.Context, batch *clients.TransferBatch) (uint64, error)
-	WasProposedSetStatusCalled                     func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
-	GetTransactionsStatusesCalled                  func(ctx context.Context, batchID uint64) ([]byte, error)
-	GetActionIDForSetStatusOnPendingTransferCalled func(ctx context.Context, batch *clients.TransferBatch) (uint64, error)
-	GetLastExecutedEthBatchIDCalled                func(ctx context.Context) (uint64, error)
-	GetLastExecutedEthTxIDCalled                   func(ctx context.Context) (uint64, error)
-	ProposeSetStatusCalled                         func(ctx context.Context, batch *clients.TransferBatch) (string, error)
-	ResolveNewDepositsCalled                       func(ctx context.Context, batch *clients.TransferBatch) error
-	ProposeTransferCalled                          func(ctx context.Context, batch *clients.TransferBatch) (string, error)
-	SignCalled                                     func(ctx context.Context, actionID uint64) (string, error)
-	WasSignedCalled                                func(ctx context.Context, actionID uint64) (bool, error)
-	PerformActionCalled                            func(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
-	GetMaxNumberOfRetriesOnQuorumReachedCalled     func() uint64
-	CloseCalled                                    func() error
+	GetPendingCalled                                 func(ctx context.Context) (*clients.TransferBatch, error)
+	GetCurrentBatchAsDataBytesCalled                 func(ctx context.Context) ([][]byte, error)
+	WasProposedTransferCalled                        func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
+	QuorumReachedCalled                              func(ctx context.Context, actionID uint64) (bool, error)
+	WasExecutedCalled                                func(ctx context.Context, actionID uint64) (bool, error)
+	GetActionIDForProposeTransferCalled              func(ctx context.Context, batch *clients.TransferBatch) (uint64, error)
+	WasProposedSetStatusCalled                       func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
+	GetTransactionsStatusesCalled                    func(ctx context.Context, batchID uint64) ([]byte, error)
+	GetActionIDForSetStatusOnPendingTransferCalled   func(ctx context.Context, batch *clients.TransferBatch) (uint64, error)
+	GetLastExecutedEthBatchIDCalled                  func(ctx context.Context) (uint64, error)
+	GetLastExecutedEthTxIDCalled                     func(ctx context.Context) (uint64, error)
+	ProposeSetStatusCalled                           func(ctx context.Context, batch *clients.TransferBatch) (string, error)
+	ResolveNewDepositsCalled                         func(ctx context.Context, batch *clients.TransferBatch) error
+	ProposeTransferCalled                            func(ctx context.Context, batch *clients.TransferBatch) (string, error)
+	SignCalled                                       func(ctx context.Context, actionID uint64) (string, error)
+	WasSignedCalled                                  func(ctx context.Context, actionID uint64) (bool, error)
+	PerformActionCalled                              func(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
+	GetMaxNumberOfRetriesOnQuorumReachedCalled       func() uint64
+	GetMaxNumberOfRetriesOnWasTransferProposedCalled func() uint64
+	CloseCalled                                      func() error
 }
 
 // GetPending -
@@ -189,6 +190,15 @@ func (stub *ElrondClientStub) PerformAction(ctx context.Context, actionID uint64
 func (stub *ElrondClientStub) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
 	if stub.GetMaxNumberOfRetriesOnQuorumReachedCalled != nil {
 		return stub.GetMaxNumberOfRetriesOnQuorumReachedCalled()
+	}
+
+	return 0
+}
+
+// GetMaxNumberOfRetriesOnWasTransferProposed -
+func (stub *ElrondClientStub) GetMaxNumberOfRetriesOnWasTransferProposed() uint64 {
+	if stub.GetMaxNumberOfRetriesOnWasTransferProposedCalled != nil {
+		return stub.GetMaxNumberOfRetriesOnWasTransferProposedCalled()
 	}
 
 	return 0
