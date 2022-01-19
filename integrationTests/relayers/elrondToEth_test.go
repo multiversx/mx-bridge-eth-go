@@ -59,6 +59,8 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1200)
 	defer cancel()
 	elrondChainMock.ProcessFinishedHandler = func() {
+		time.Sleep(time.Second * 5)
+
 		cancel()
 	}
 
@@ -150,6 +152,8 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1200)
 	defer cancel()
 	elrondChainMock.ProcessFinishedHandler = func() {
+		time.Sleep(time.Second * 5)
+
 		cancel()
 	}
 
