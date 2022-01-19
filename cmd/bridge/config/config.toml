@@ -21,7 +21,7 @@
     PrivateKeyFile = "keys/elrond.pem" # the path to the pem file containing the relayer elrond wallet
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
     MaxRetriesOnQuorumReached = 3
-	MaxRetriesOnWasTransferProposed = 3
+    MaxRetriesOnWasTransferProposed = 3
     ProxyCacherExpirationSeconds = 600 # the caching time in seconds
     [Elrond.GasMap]
         Sign = 8000000
