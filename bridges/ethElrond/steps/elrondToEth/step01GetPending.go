@@ -16,6 +16,7 @@ type getPendingStep struct {
 func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 	step.bridge.ResetRetriesCountOnEthereum()
 	step.bridge.ResetRetriesCountOnElrond()
+	step.bridge.ResetRetriesOnWasTransferProposedOnElrond()
 
 	batch, err := step.bridge.GetBatchFromElrond(ctx)
 	if err != nil {

@@ -49,8 +49,9 @@ func createMockClientArgs() ClientArgs {
 				return append([]byte("converted "), sourceBytes...), nil
 			},
 		},
-		MaxRetriesOnQuorumReached: 1,
-		RoleProvider:              &roleProviders.ElrondRoleProviderStub{},
+		MaxRetriesOnQuorumReached:       1,
+		MaxRetriesOnWasTransferProposed: 1,
+		RoleProvider:                    &roleProviders.ElrondRoleProviderStub{},
 	}
 }
 
@@ -172,6 +173,18 @@ func TestNewClient(t *testing.T) {
 		require.True(t, check.IfNil(c))
 		require.True(t, errors.Is(err, clients.ErrInvalidValue))
 		require.True(t, strings.Contains(err.Error(), "for args.MaxRetriesOnQuorumReached"))
+	})
+	t.Run("invalid MaxNumberOfRetriesOnWasTransferProposedOnElrond should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.MaxRetriesOnWasTransferProposed = 0
+
+		c, err := NewClient(args)
+
+		require.True(t, check.IfNil(c))
+		require.True(t, errors.Is(err, clients.ErrInvalidValue))
+		require.True(t, strings.Contains(err.Error(), "for args.MaxNumberOfRetriesOnWasTransferProposedOnElrond"))
 	})
 	t.Run("nil role provider should error", func(t *testing.T) {
 		t.Parallel()
@@ -605,6 +618,18 @@ func TestClient_GetMaxNumberOfRetriesOnQuorumReached(t *testing.T) {
 
 	result := c.GetMaxNumberOfRetriesOnQuorumReached()
 	assert.Equal(t, expectedMRQR, result)
+}
+
+func TestClient_GetMaxNumberOfRetriesOnWasTransferProposed(t *testing.T) {
+	t.Parallel()
+
+	expectedMR := uint64(1123)
+	args := createMockClientArgs()
+	args.MaxRetriesOnWasTransferProposed = expectedMR
+	c, _ := NewClient(args)
+
+	result := c.GetMaxNumberOfRetriesOnWasTransferProposed()
+	assert.Equal(t, expectedMR, result)
 }
 
 func TestClient_Close(t *testing.T) {

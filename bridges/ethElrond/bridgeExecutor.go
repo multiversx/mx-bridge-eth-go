@@ -37,6 +37,7 @@ type bridgeExecutor struct {
 	msgHash               common.Hash
 	retriesOnElrond       uint64
 	retriesOnEthereum     uint64
+	retriesOnWasProposed  uint64
 	timeForWaitOnEthereum time.Duration
 	statusHandler         core.StatusHandler
 	sigsHolder            SignaturesHolder
@@ -227,6 +228,22 @@ func (executor *bridgeExecutor) ProposeTransferOnElrond(ctx context.Context) err
 		"batch ID", executor.batch.ID, "action ID", executor.actionID)
 
 	return nil
+}
+
+// ProcessMaxRetriesOnWasTransferProposedOnElrond checks if the retries on Elrond were reached and increments the counter
+func (executor *bridgeExecutor) ProcessMaxRetriesOnWasTransferProposedOnElrond() bool {
+	maxNumberOfRetries := executor.elrondClient.GetMaxNumberOfRetriesOnWasTransferProposed()
+	if executor.retriesOnWasProposed < maxNumberOfRetries {
+		executor.retriesOnWasProposed++
+		return false
+	}
+
+	return true
+}
+
+// ResetRetriesOnWasTransferProposedOnElrond resets the number of retries on was transfer proposed
+func (executor *bridgeExecutor) ResetRetriesOnWasTransferProposedOnElrond() {
+	executor.retriesOnWasProposed = 0
 }
 
 // WasSetStatusProposedOnElrond checks if set status was proposed on Elrond

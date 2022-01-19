@@ -727,6 +727,30 @@ func TestEthToElrondBridgeExecutor_RetriesCountOnElrond(t *testing.T) {
 	assert.True(t, wasCalled)
 }
 
+func TestEthToElrondBridgeExecutor_RetriesCountOnWasTransferProposedOnElrond(t *testing.T) {
+	t.Parallel()
+
+	expectedMaxRetries := uint64(3)
+	args := createMockExecutorArgs()
+	wasCalled := false
+	args.ElrondClient = &bridgeTests.ElrondClientStub{
+		GetMaxNumberOfRetriesOnWasTransferProposedCalled: func() uint64 {
+			wasCalled = true
+			return expectedMaxRetries
+		},
+	}
+	executor, _ := NewBridgeExecutor(args)
+	for i := uint64(0); i < expectedMaxRetries; i++ {
+		assert.False(t, executor.ProcessMaxRetriesOnWasTransferProposedOnElrond())
+	}
+
+	assert.Equal(t, expectedMaxRetries, executor.retriesOnWasProposed)
+	assert.True(t, executor.ProcessMaxRetriesOnWasTransferProposedOnElrond())
+	executor.ResetRetriesOnWasTransferProposedOnElrond()
+	assert.Equal(t, uint64(0), executor.retriesOnWasProposed)
+	assert.True(t, wasCalled)
+}
+
 func TestElrondToEthBridgeExecutor_GetAndStoreBatchFromElrond(t *testing.T) {
 	t.Parallel()
 

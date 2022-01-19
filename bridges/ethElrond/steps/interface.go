@@ -24,6 +24,8 @@ type Executor interface {
 
 	WasTransferProposedOnElrond(ctx context.Context) (bool, error)
 	ProposeTransferOnElrond(ctx context.Context) error
+	ProcessMaxRetriesOnWasTransferProposedOnElrond() bool
+	ResetRetriesOnWasTransferProposedOnElrond()
 
 	WasSetStatusProposedOnElrond(ctx context.Context) (bool, error)
 	ProposeSetStatusOnElrond(ctx context.Context) error

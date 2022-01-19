@@ -275,15 +275,16 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 	}
 
 	clientArgs := elrond.ClientArgs{
-		GasMapConfig:                 elrondConfigs.GasMap,
-		Proxy:                        args.Proxy,
-		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondClientLogId), elrondClientLogId),
-		RelayerPrivateKey:            components.elrondRelayerPrivateKey,
-		MultisigContractAddress:      components.elrondMultisigContractAddress,
-		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
-		TokensMapper:                 tokensMapper,
-		MaxRetriesOnQuorumReached:    elrondConfigs.MaxRetriesOnQuorumReached,
-		RoleProvider:                 components.elrondRoleProvider,
+		GasMapConfig:                    elrondConfigs.GasMap,
+		Proxy:                           args.Proxy,
+		Log:                             core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondClientLogId), elrondClientLogId),
+		RelayerPrivateKey:               components.elrondRelayerPrivateKey,
+		MultisigContractAddress:         components.elrondMultisigContractAddress,
+		IntervalToResendTxsInSeconds:    elrondConfigs.IntervalToResendTxsInSeconds,
+		TokensMapper:                    tokensMapper,
+		MaxRetriesOnQuorumReached:       elrondConfigs.MaxRetriesOnQuorumReached,
+		MaxRetriesOnWasTransferProposed: elrondConfigs.MaxRetriesOnWasTransferProposed,
+		RoleProvider:                    components.elrondRoleProvider,
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)
