@@ -20,6 +20,11 @@ func (step *proposeSetStatusStep) Execute(ctx context.Context) core.StepIdentifi
 		return GettingPendingBatchFromElrond
 	}
 
+	if step.bridge.ProcessMaxRetriesOnWasTransferProposedOnElrond() {
+		step.bridge.PrintInfo(logger.LogDebug, "max number of retries reached, resetting counter")
+		return GettingPendingBatchFromElrond
+	}
+
 	wasSetStatusProposed, err := step.bridge.WasSetStatusProposedOnElrond(ctx)
 	if err != nil {
 		step.bridge.PrintInfo(logger.LogError, "error determining if the set status action was proposed or not on Elrond",
