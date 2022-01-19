@@ -15,8 +15,7 @@ type getPendingStep struct {
 // Execute will execute this step returning the next step to be executed
 func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 	step.bridge.ResetRetriesCountOnEthereum()
-	step.bridge.ResetRetriesCountOnElrond()
-	step.bridge.ResetRetriesOnWasTransferProposedOnElrond()
+	step.resetCountersOnElrond()
 
 	batch, err := step.bridge.GetBatchFromElrond(ctx)
 	if err != nil {
@@ -57,4 +56,9 @@ func (step *getPendingStep) Identifier() core.StepIdentifier {
 // IsInterfaceNil returns true if there is no value under the interface
 func (step *getPendingStep) IsInterfaceNil() bool {
 	return step == nil
+}
+
+func (step *getPendingStep) resetCountersOnElrond() {
+	step.bridge.ResetRetriesCountOnElrond()
+	step.bridge.ResetRetriesOnWasTransferProposedOnElrond()
 }
