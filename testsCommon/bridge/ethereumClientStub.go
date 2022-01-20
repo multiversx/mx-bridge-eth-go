@@ -10,15 +10,14 @@ import (
 
 // EthereumClientStub -
 type EthereumClientStub struct {
-	GetBatchCalled                             func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
-	WasExecutedCalled                          func(ctx context.Context, batchID uint64) (bool, error)
-	GenerateMessageHashCalled                  func(batch *clients.TransferBatch) (common.Hash, error)
-	BroadcastSignatureForMessageHashCalled     func(msgHash common.Hash)
-	ExecuteTransferCalled                      func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
-	GetMaxNumberOfRetriesOnQuorumReachedCalled func() uint64
-	GetTransactionsStatusesCalled              func(ctx context.Context, batchId uint64) ([]byte, error)
-	GetQuorumSizeCalled                        func(ctx context.Context) (*big.Int, error)
-	IsQuorumReachedCalled                      func(ctx context.Context, msgHash common.Hash) (bool, error)
+	GetBatchCalled                         func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
+	WasExecutedCalled                      func(ctx context.Context, batchID uint64) (bool, error)
+	GenerateMessageHashCalled              func(batch *clients.TransferBatch) (common.Hash, error)
+	BroadcastSignatureForMessageHashCalled func(msgHash common.Hash)
+	ExecuteTransferCalled                  func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
+	GetTransactionsStatusesCalled          func(ctx context.Context, batchId uint64) ([]byte, error)
+	GetQuorumSizeCalled                    func(ctx context.Context) (*big.Int, error)
+	IsQuorumReachedCalled                  func(ctx context.Context, msgHash common.Hash) (bool, error)
 }
 
 // GetBatch -
@@ -62,15 +61,6 @@ func (stub *EthereumClientStub) ExecuteTransfer(ctx context.Context, msgHash com
 	}
 
 	return "", errNotImplemented
-}
-
-// GetMaxNumberOfRetriesOnQuorumReached -
-func (stub *EthereumClientStub) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
-	if stub.GetMaxNumberOfRetriesOnQuorumReachedCalled != nil {
-		return stub.GetMaxNumberOfRetriesOnQuorumReachedCalled()
-	}
-
-	return 0
 }
 
 // GetTransactionsStatuses -
