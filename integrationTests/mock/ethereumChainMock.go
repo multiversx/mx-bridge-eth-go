@@ -26,15 +26,14 @@ type EthereumProposedTransfer struct {
 
 // EthereumChainMock -
 type EthereumChainMock struct {
-	mutState                         sync.RWMutex
-	nonces                           map[common.Address]uint64
-	batches                          map[uint64]*contract.Batch
-	proposedTransfer                 *EthereumProposedTransfer
-	GetStatusesAfterExecutionHandler func() []byte
-	ProcessFinishedHandler           func()
-	quorum                           int
-	relayers                         []common.Address
-
+	mutState                            sync.RWMutex
+	nonces                              map[common.Address]uint64
+	batches                             map[uint64]*contract.Batch
+	proposedTransfer                    *EthereumProposedTransfer
+	GetStatusesAfterExecutionHandler    func() []byte
+	ProcessFinishedHandler              func()
+	quorum                              int
+	relayers                            []common.Address
 	ProposeMultiTransferEsdtBatchCalled func()
 	BalanceAtCalled                     func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 }

@@ -94,9 +94,6 @@ func (mock *elrondContractStateMock) processTransaction(tx *data.Transaction) {
 	case "proposeEsdtSafeSetCurrentTransactionBatchStatus":
 		mock.proposeEsdtSafeSetCurrentTransactionBatchStatus(dataSplit, tx)
 
-		if mock.ProcessFinishedHandler != nil {
-			mock.ProcessFinishedHandler()
-		}
 		return
 	case "proposeMultiTransferEsdtBatch":
 		mock.proposeMultiTransferEsdtBatch(dataSplit, tx)
@@ -431,20 +428,24 @@ func (mock *elrondContractStateMock) setPendingBatch(pendingBatch *ElrondPending
 }
 
 func (mock *elrondContractStateMock) vmRequestSigned(request *data.VmValueRequest) *data.VmValuesResponseData {
-	address := request.Args[0]
-	actionID := request.Args[1]
+	hexAddress := request.Args[0]
+	actionID := getActionIDFromString(request.Args[1])
 
-	actionIDMap, found := mock.signedActionIDs[actionID]
+	actionIDMap, found := mock.signedActionIDs[actionID.String()]
 	if !found {
 		return createOkVmResponse([][]byte{BoolToByteSlice(false)})
 	}
 
-	addr, err := data.NewAddressFromBech32String(address)
+	addressBytes, err := hex.DecodeString(hexAddress)
 	if err != nil {
 		panic(err)
 	}
 
-	_, found = actionIDMap[hex.EncodeToString(addr.AddressBytes())]
+	address := data.NewAddressFromBytes(addressBytes)
+	_, found = actionIDMap[address.AddressAsBech32String()]
+	if !found {
+		log.Error("not found")
+	}
 
 	return createOkVmResponse([][]byte{BoolToByteSlice(found)})
 }
