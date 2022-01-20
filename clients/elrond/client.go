@@ -26,36 +26,31 @@ const (
 	proposeSetStatusFuncName = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
 	signFuncName             = "sign"
 	performActionFuncName    = "performAction"
-	minRetries               = 1
 )
 
 // ClientArgs represents the argument for the NewClient constructor function
 type ClientArgs struct {
-	GasMapConfig                    config.ElrondGasMapConfig
-	Proxy                           ElrondProxy
-	Log                             logger.Logger
-	RelayerPrivateKey               crypto.PrivateKey
-	MultisigContractAddress         core.AddressHandler
-	IntervalToResendTxsInSeconds    uint64
-	TokensMapper                    TokensMapper
-	MaxRetriesOnQuorumReached       uint64
-	MaxRetriesOnWasTransferProposed uint64
-	RoleProvider                    roleProvider
+	GasMapConfig                 config.ElrondGasMapConfig
+	Proxy                        ElrondProxy
+	Log                          logger.Logger
+	RelayerPrivateKey            crypto.PrivateKey
+	MultisigContractAddress      core.AddressHandler
+	IntervalToResendTxsInSeconds uint64
+	TokensMapper                 TokensMapper
+	RoleProvider                 roleProvider
 }
 
 // client represents the Elrond Client implementation
 type client struct {
 	*elrondClientDataGetter
-	txHandler                       txHandler
-	tokensMapper                    TokensMapper
-	relayerPublicKey                crypto.PublicKey
-	relayerAddress                  core.AddressHandler
-	multisigContractAddress         core.AddressHandler
-	log                             logger.Logger
-	gasMapConfig                    config.ElrondGasMapConfig
-	addressPublicKeyConverter       bridgeCore.AddressConverter
-	maxRetriesOnQuorumReached       uint64
-	maxRetriesOnWasTransferProposed uint64
+	txHandler                 txHandler
+	tokensMapper              TokensMapper
+	relayerPublicKey          crypto.PublicKey
+	relayerAddress            core.AddressHandler
+	multisigContractAddress   core.AddressHandler
+	log                       logger.Logger
+	gasMapConfig              config.ElrondGasMapConfig
+	addressPublicKeyConverter bridgeCore.AddressConverter
 }
 
 // NewClient returns a new Elrond Client instance
@@ -103,16 +98,14 @@ func NewClient(args ClientArgs) (*client, error) {
 			singleSigner:            &singlesig.Ed25519Signer{},
 			roleProvider:            args.RoleProvider,
 		},
-		elrondClientDataGetter:          getter,
-		relayerPublicKey:                publicKey,
-		relayerAddress:                  relayerAddress,
-		multisigContractAddress:         args.MultisigContractAddress,
-		log:                             args.Log,
-		gasMapConfig:                    args.GasMapConfig,
-		addressPublicKeyConverter:       addressConverter,
-		tokensMapper:                    args.TokensMapper,
-		maxRetriesOnQuorumReached:       args.MaxRetriesOnQuorumReached,
-		maxRetriesOnWasTransferProposed: args.MaxRetriesOnWasTransferProposed,
+		elrondClientDataGetter:    getter,
+		relayerPublicKey:          publicKey,
+		relayerAddress:            relayerAddress,
+		multisigContractAddress:   args.MultisigContractAddress,
+		log:                       args.Log,
+		gasMapConfig:              args.GasMapConfig,
+		addressPublicKeyConverter: addressConverter,
+		tokensMapper:              args.TokensMapper,
 	}
 
 	c.log.Info("NewElrondClient",
@@ -137,14 +130,6 @@ func checkArgs(args ClientArgs) error {
 	}
 	if check.IfNil(args.TokensMapper) {
 		return clients.ErrNilTokensMapper
-	}
-	if args.MaxRetriesOnQuorumReached < minRetries {
-		return fmt.Errorf("%w for args.MaxRetriesOnQuorumReached, got: %d, minimum: %d",
-			clients.ErrInvalidValue, args.MaxRetriesOnQuorumReached, minRetries)
-	}
-	if args.MaxRetriesOnWasTransferProposed < minRetries {
-		return fmt.Errorf("%w for args.MaxNumberOfRetriesOnWasTransferProposedOnElrond, got: %d, minimum: %d",
-			clients.ErrInvalidValue, args.MaxRetriesOnWasTransferProposed, minRetries)
 	}
 	if check.IfNil(args.RoleProvider) {
 		return errNilRoleProvider
@@ -335,16 +320,6 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	}
 
 	return hash, err
-}
-
-// GetMaxNumberOfRetriesOnQuorumReached returns the maximum number of retries allowed on quorum reached
-func (c *client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
-	return c.maxRetriesOnQuorumReached
-}
-
-// GetMaxNumberOfRetriesOnWasTransferProposed returns the maximum number of retries allowed on was transfer proposed
-func (c *client) GetMaxNumberOfRetriesOnWasTransferProposed() uint64 {
-	return c.maxRetriesOnWasTransferProposed
 }
 
 // Close will close any started go routines. It returns nil.

@@ -14,7 +14,7 @@ type waitForQuorumOnTransferStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *waitForQuorumOnTransferStep) Execute(ctx context.Context) core.StepIdentifier {
-	if step.bridge.ProcessMaxRetriesOnEthereum() {
+	if step.bridge.ProcessMaxQuorumRetriesOnEthereum() {
 		step.bridge.PrintInfo(logger.LogDebug, "max number of retries reached, resetting counter")
 		return GettingPendingBatchFromElrond
 	}

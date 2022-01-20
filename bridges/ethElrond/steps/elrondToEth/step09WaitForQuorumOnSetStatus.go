@@ -14,7 +14,7 @@ type waitForQuorumOnSetStatusStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *waitForQuorumOnSetStatusStep) Execute(ctx context.Context) core.StepIdentifier {
-	if step.bridge.ProcessMaxRetriesOnElrond() {
+	if step.bridge.ProcessMaxQuorumRetriesOnElrond() {
 		step.bridge.PrintInfo(logger.LogDebug, "max number of retries reached, resetting counter")
 		return GettingPendingBatchFromElrond
 	}
