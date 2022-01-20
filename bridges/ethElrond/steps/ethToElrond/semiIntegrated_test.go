@@ -23,7 +23,7 @@ const (
 	wasActionSignedOnElrond                       = "WasActionSignedOnElrond"
 	signActionOnElrond                            = "SignActionOnElrond"
 	getAndStoreActionIDForProposeTransferOnElrond = "GetAndStoreActionIDForProposeTransferOnElrond"
-	processMaxRetriesOnElrond                     = "ProcessMaxRetriesOnElrond"
+	ProcessMaxQuorumRetriesOnElrond               = "ProcessMaxQuorumRetriesOnElrond"
 	resetRetriesCountOnElrond                     = "ResetRetriesCountOnElrond"
 	processQuorumReachedOnElrond                  = "ProcessQuorumReachedOnElrond"
 	wasActionPerformedOnElrond                    = "WasActionPerformedOnElrond"
@@ -144,7 +144,7 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 
 		return errHandler.storeAndReturnError(nil)
 	}
-	stub.ProcessMaxRetriesOnElrondCalled = func() bool {
+	stub.ProcessMaxQuorumRetriesOnElrondCalled = func() bool {
 		return args.maxRetriesReachedHandler()
 	}
 
@@ -194,7 +194,7 @@ func TestHappyCaseWhenLeader(t *testing.T) {
 	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionSignedOnElrond))
 	assert.Equal(t, 4, executor.GetFunctionCounter(signActionOnElrond))
 
-	assert.Equal(t, 4, executor.GetFunctionCounter(processMaxRetriesOnElrond))
+	assert.Equal(t, 4, executor.GetFunctionCounter(ProcessMaxQuorumRetriesOnElrond))
 	assert.Equal(t, 4, executor.GetFunctionCounter(processQuorumReachedOnElrond))
 
 	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionPerformedOnElrond))
@@ -239,7 +239,7 @@ func TestHappyCaseWhenLeaderAndActionIdNotPerformed(t *testing.T) {
 	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionSignedOnElrond))
 	assert.Equal(t, 4, executor.GetFunctionCounter(signActionOnElrond))
 
-	assert.Equal(t, 4, executor.GetFunctionCounter(processMaxRetriesOnElrond))
+	assert.Equal(t, 4, executor.GetFunctionCounter(ProcessMaxQuorumRetriesOnElrond))
 	assert.Equal(t, 4, executor.GetFunctionCounter(processQuorumReachedOnElrond))
 
 	assert.Equal(t, 4, executor.GetFunctionCounter(wasActionPerformedOnElrond))

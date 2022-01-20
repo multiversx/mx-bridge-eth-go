@@ -48,11 +48,10 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 				return append([]byte("ERC20"), sourceBytes...), nil
 			},
 		},
-		SignatureHolder:           &testsCommon.SignaturesHolderStub{},
-		SafeContractAddress:       testsCommon.CreateRandomEthereumAddress(),
-		GasHandler:                &testsCommon.GasHandlerStub{},
-		TransferGasLimit:          100,
-		MaxRetriesOnQuorumReached: 1,
+		SignatureHolder:     &testsCommon.SignaturesHolderStub{},
+		SafeContractAddress: testsCommon.CreateRandomEthereumAddress(),
+		GasHandler:          &testsCommon.GasHandlerStub{},
+		TransferGasLimit:    100,
 	}
 }
 
@@ -168,14 +167,6 @@ func TestNewEthereumClient(t *testing.T) {
 		c, err := NewEthereumClient(args)
 
 		assert.Equal(t, errInvalidGasLimit, err)
-		assert.True(t, check.IfNil(c))
-	})
-	t.Run("invalid MaxRetriesOnQuorumReached", func(t *testing.T) {
-		args := createMockEthereumClientArgs()
-		args.MaxRetriesOnQuorumReached = minRetriesOnQuorum - 1
-		c, err := NewEthereumClient(args)
-
-		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -605,18 +596,6 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, wasCalled)
 	})
-}
-
-func TestClient_GetMaxNumberOfRetriesOnQuorumReached(t *testing.T) {
-	t.Parallel()
-
-	expectedMRQR := uint64(1123)
-	args := createMockEthereumClientArgs()
-	args.MaxRetriesOnQuorumReached = expectedMRQR
-	c, _ := NewEthereumClient(args)
-
-	result := c.GetMaxNumberOfRetriesOnQuorumReached()
-	assert.Equal(t, expectedMRQR, result)
 }
 
 func TestClient_GetTransactionsStatuses(t *testing.T) {

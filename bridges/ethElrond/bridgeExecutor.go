@@ -16,31 +16,39 @@ import (
 // we wait for the transfer confirmation on Ethereum
 const splits = 10
 
+const minRetries = 1
+
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
-	Log                   logger.Logger
-	ElrondClient          ElrondClient
-	EthereumClient        EthereumClient
-	TopologyProvider      TopologyProvider
-	TimeForWaitOnEthereum time.Duration
-	StatusHandler         core.StatusHandler
-	SignaturesHolder      SignaturesHolder
+	Log                        logger.Logger
+	ElrondClient               ElrondClient
+	EthereumClient             EthereumClient
+	TopologyProvider           TopologyProvider
+	TimeForWaitOnEthereum      time.Duration
+	StatusHandler              core.StatusHandler
+	SignaturesHolder           SignaturesHolder
+	MaxQuorumRetriesOnEthereum uint64
+	MaxQuorumRetriesOnElrond   uint64
+	MaxRestriesOnWasProposed   uint64
 }
 
 type bridgeExecutor struct {
-	log                   logger.Logger
-	topologyProvider      TopologyProvider
-	elrondClient          ElrondClient
-	ethereumClient        EthereumClient
-	batch                 *clients.TransferBatch
-	actionID              uint64
-	msgHash               common.Hash
-	retriesOnElrond       uint64
-	retriesOnEthereum     uint64
-	retriesOnWasProposed  uint64
-	timeForWaitOnEthereum time.Duration
-	statusHandler         core.StatusHandler
-	sigsHolder            SignaturesHolder
+	log                        logger.Logger
+	topologyProvider           TopologyProvider
+	elrondClient               ElrondClient
+	ethereumClient             EthereumClient
+	batch                      *clients.TransferBatch
+	actionID                   uint64
+	msgHash                    common.Hash
+	quorumRetriesOnEthereum    uint64
+	maxQuorumRetriesOnEthereum uint64
+	quorumRetriesOnElrond      uint64
+	maxQuorumRetriesOnElrond   uint64
+	retriesOnWasProposed       uint64
+	maxRetriesOnWasProposed    uint64
+	timeForWaitOnEthereum      time.Duration
+	statusHandler              core.StatusHandler
+	sigsHolder                 SignaturesHolder
 }
 
 // NewBridgeExecutor creates a bridge executor, which can be used for both half-bridges
@@ -76,18 +84,33 @@ func checkArgs(args ArgsBridgeExecutor) error {
 	if check.IfNil(args.SignaturesHolder) {
 		return ErrNilSignaturesHolder
 	}
+	if args.MaxQuorumRetriesOnEthereum < minRetries {
+		return fmt.Errorf("%w for args.MaxQuorumRetriesOnEthereum, got: %d, minimum: %d",
+			clients.ErrInvalidValue, args.MaxQuorumRetriesOnEthereum, minRetries)
+	}
+	if args.MaxQuorumRetriesOnElrond < minRetries {
+		return fmt.Errorf("%w for args.MaxQuorumRetriesOnElrond, got: %d, minimum: %d",
+			clients.ErrInvalidValue, args.MaxQuorumRetriesOnElrond, minRetries)
+	}
+	if args.MaxRestriesOnWasProposed < minRetries {
+		return fmt.Errorf("%w for args.MaxRestriesOnWasProposed, got: %d, minimum: %d",
+			clients.ErrInvalidValue, args.MaxRestriesOnWasProposed, minRetries)
+	}
 	return nil
 }
 
 func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 	return &bridgeExecutor{
-		log:                   args.Log,
-		elrondClient:          args.ElrondClient,
-		ethereumClient:        args.EthereumClient,
-		topologyProvider:      args.TopologyProvider,
-		statusHandler:         args.StatusHandler,
-		timeForWaitOnEthereum: args.TimeForWaitOnEthereum,
-		sigsHolder:            args.SignaturesHolder,
+		log:                        args.Log,
+		elrondClient:               args.ElrondClient,
+		ethereumClient:             args.EthereumClient,
+		topologyProvider:           args.TopologyProvider,
+		statusHandler:              args.StatusHandler,
+		timeForWaitOnEthereum:      args.TimeForWaitOnEthereum,
+		sigsHolder:                 args.SignaturesHolder,
+		maxQuorumRetriesOnEthereum: args.MaxQuorumRetriesOnEthereum,
+		maxQuorumRetriesOnElrond:   args.MaxQuorumRetriesOnElrond,
+		maxRetriesOnWasProposed:    args.MaxRestriesOnWasProposed,
 	}
 }
 
@@ -232,8 +255,7 @@ func (executor *bridgeExecutor) ProposeTransferOnElrond(ctx context.Context) err
 
 // ProcessMaxRetriesOnWasTransferProposedOnElrond checks if the retries on Elrond were reached and increments the counter
 func (executor *bridgeExecutor) ProcessMaxRetriesOnWasTransferProposedOnElrond() bool {
-	maxNumberOfRetries := executor.elrondClient.GetMaxNumberOfRetriesOnWasTransferProposed()
-	if executor.retriesOnWasProposed < maxNumberOfRetries {
+	if executor.retriesOnWasProposed < executor.maxRetriesOnWasProposed {
 		executor.retriesOnWasProposed++
 		return false
 	}
@@ -375,11 +397,10 @@ func (executor *bridgeExecutor) ResolveNewDepositsStatuses(numDeposits uint64) {
 	executor.batch.ResolveNewDeposits(int(numDeposits))
 }
 
-// ProcessMaxRetriesOnElrond checks if the retries on Elrond were reached and increments the counter
-func (executor *bridgeExecutor) ProcessMaxRetriesOnElrond() bool {
-	maxNumberOfRetries := executor.elrondClient.GetMaxNumberOfRetriesOnQuorumReached()
-	if executor.retriesOnElrond < maxNumberOfRetries {
-		executor.retriesOnElrond++
+// ProcessMaxQuorumRetriesOnElrond checks if the retries on Elrond were reached and increments the counter
+func (executor *bridgeExecutor) ProcessMaxQuorumRetriesOnElrond() bool {
+	if executor.quorumRetriesOnElrond < executor.maxQuorumRetriesOnElrond {
+		executor.quorumRetriesOnElrond++
 		return false
 	}
 
@@ -388,7 +409,7 @@ func (executor *bridgeExecutor) ProcessMaxRetriesOnElrond() bool {
 
 // ResetRetriesCountOnElrond resets the number of retries on Elrond
 func (executor *bridgeExecutor) ResetRetriesCountOnElrond() {
-	executor.retriesOnElrond = 0
+	executor.quorumRetriesOnElrond = 0
 }
 
 // GetAndStoreBatchFromEthereum fetches and stores the batch from the ethereum client
@@ -466,11 +487,10 @@ func (executor *bridgeExecutor) ProcessQuorumReachedOnEthereum(ctx context.Conte
 	return executor.ethereumClient.IsQuorumReached(ctx, executor.msgHash)
 }
 
-// ProcessMaxRetriesOnEthereum checks if the retries on Ethereum were reached and increments the counter
-func (executor *bridgeExecutor) ProcessMaxRetriesOnEthereum() bool {
-	maxNumberOfRetries := executor.ethereumClient.GetMaxNumberOfRetriesOnQuorumReached()
-	if executor.retriesOnEthereum < maxNumberOfRetries {
-		executor.retriesOnEthereum++
+// ProcessMaxQuorumRetriesOnEthereum checks if the retries on Ethereum were reached and increments the counter
+func (executor *bridgeExecutor) ProcessMaxQuorumRetriesOnEthereum() bool {
+	if executor.quorumRetriesOnEthereum < executor.maxQuorumRetriesOnEthereum {
+		executor.quorumRetriesOnEthereum++
 		return false
 	}
 
@@ -479,7 +499,7 @@ func (executor *bridgeExecutor) ProcessMaxRetriesOnEthereum() bool {
 
 // ResetRetriesCountOnEthereum resets the number of retries on Ethereum
 func (executor *bridgeExecutor) ResetRetriesCountOnEthereum() {
-	executor.retriesOnEthereum = 0
+	executor.quorumRetriesOnEthereum = 0
 }
 
 // ClearStoredP2PSignaturesForEthereum deletes all stored P2P signatures used for Ethereum client

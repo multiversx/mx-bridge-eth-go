@@ -30,7 +30,7 @@ func TestExecute_WaitForQuorumOnSetStatus(t *testing.T) {
 	t.Run("max retries reached", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorWaitForQuorumOnSetStatus()
-		bridgeStub.ProcessMaxRetriesOnElrondCalled = func() bool {
+		bridgeStub.ProcessMaxQuorumRetriesOnElrondCalled = func() bool {
 			return true
 		}
 
@@ -81,7 +81,7 @@ func TestExecute_WaitForQuorumOnSetStatus(t *testing.T) {
 
 func createStubExecutorWaitForQuorumOnSetStatus() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.ProcessMaxRetriesOnElrondCalled = func() bool {
+	stub.ProcessMaxQuorumRetriesOnElrondCalled = func() bool {
 		return false
 	}
 	return stub

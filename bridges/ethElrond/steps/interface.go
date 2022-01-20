@@ -38,7 +38,7 @@ type Executor interface {
 	PerformActionOnElrond(ctx context.Context) error
 	ResolveNewDepositsStatuses(numDeposits uint64)
 
-	ProcessMaxRetriesOnElrond() bool
+	ProcessMaxQuorumRetriesOnElrond() bool
 	ResetRetriesCountOnElrond()
 
 	GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error
@@ -50,7 +50,7 @@ type Executor interface {
 	WaitAndReturnFinalBatchStatuses(ctx context.Context) []byte
 	GetBatchStatusesFromEthereum(ctx context.Context) ([]byte, error)
 
-	ProcessMaxRetriesOnEthereum() bool
+	ProcessMaxQuorumRetriesOnEthereum() bool
 	ResetRetriesCountOnEthereum()
 	ClearStoredP2PSignaturesForEthereum()
 

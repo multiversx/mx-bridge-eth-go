@@ -20,7 +20,7 @@ const (
 	storeBatchFromElrond                             = "StoreBatchFromElrond"
 	wasTransferPerformedOnEthereum                   = "WasTransferPerformedOnEthereum"
 	signTransferOnEthereum                           = "SignTransferOnEthereum"
-	processMaxRetriesOnEthereum                      = "ProcessMaxRetriesOnEthereum"
+	ProcessMaxQuorumRetriesOnEthereum                = "ProcessMaxQuorumRetriesOnEthereum"
 	processQuorumReachedOnEthereum                   = "ProcessQuorumReachedOnEthereum"
 	performTransferOnEthereum                        = "PerformTransferOnEthereum"
 	getBatchStatusesFromEthereum                     = "GetBatchStatusesFromEthereum"
@@ -29,7 +29,7 @@ const (
 	getAndStoreActionIDForProposeSetStatusFromElrond = "GetAndStoreActionIDForProposeSetStatusFromElrond"
 	wasActionSignedOnElrond                          = "WasActionSignedOnElrond"
 	signActionOnElrond                               = "SignActionOnElrond"
-	processMaxRetriesOnElrond                        = "ProcessMaxRetriesOnElrond"
+	ProcessMaxQuorumRetriesOnElrond                  = "ProcessMaxQuorumRetriesOnElrond"
 	processQuorumReachedOnElrond                     = "ProcessQuorumReachedOnElrond"
 	wasActionPerformedOnElrond                       = "WasActionPerformedOnElrond"
 	performActionOnElrond                            = "PerformActionOnElrond"
@@ -203,10 +203,10 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 
 		return errHandler.storeAndReturnError(nil)
 	}
-	stub.ProcessMaxRetriesOnElrondCalled = func() bool {
+	stub.ProcessMaxQuorumRetriesOnElrondCalled = func() bool {
 		return args.maxRetriesReachedEthereumHandler()
 	}
-	stub.ProcessMaxRetriesOnEthereumCalled = func() bool {
+	stub.ProcessMaxQuorumRetriesOnEthereumCalled = func() bool {
 		return args.maxRetriesReachedElrondHandler()
 	}
 
@@ -247,10 +247,10 @@ func TestHappyCaseWhenLeaderSetStatusAlreadySigned(t *testing.T) {
 	assert.Equal(t, 4, executor.GetFunctionCounter(getStoredBatch))
 	assert.Equal(t, 1, executor.GetFunctionCounter(signTransferOnEthereum))
 	assert.Equal(t, 3, executor.GetFunctionCounter(wasTransferPerformedOnEthereum))
-	assert.Equal(t, 1, executor.GetFunctionCounter(processMaxRetriesOnEthereum))
+	assert.Equal(t, 1, executor.GetFunctionCounter(ProcessMaxQuorumRetriesOnEthereum))
 	assert.Equal(t, 1, executor.GetFunctionCounter(processQuorumReachedOnEthereum))
 	assert.Equal(t, 3, executor.GetFunctionCounter(myTurnAsLeader))
-	assert.Equal(t, 1, executor.GetFunctionCounter(processMaxRetriesOnElrond))
+	assert.Equal(t, 1, executor.GetFunctionCounter(ProcessMaxQuorumRetriesOnElrond))
 	assert.Equal(t, 1, executor.GetFunctionCounter(processQuorumReachedOnElrond))
 	assert.Equal(t, 1, executor.GetFunctionCounter(waitForTransferConfirmation))
 	assert.Equal(t, 1, executor.GetFunctionCounter(resolveNewDepositsStatuses))

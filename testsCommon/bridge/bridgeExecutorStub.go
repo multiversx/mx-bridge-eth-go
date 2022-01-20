@@ -39,7 +39,7 @@ type BridgeExecutorStub struct {
 	WasActionPerformedOnElrondCalled                       func(ctx context.Context) (bool, error)
 	PerformActionOnElrondCalled                            func(ctx context.Context) error
 	ResolveNewDepositsStatusesCalled                       func(numDeposits uint64)
-	ProcessMaxRetriesOnElrondCalled                        func() bool
+	ProcessMaxQuorumRetriesOnElrondCalled                  func() bool
 	ResetRetriesCountOnElrondCalled                        func()
 	GetAndStoreBatchFromEthereumCalled                     func(ctx context.Context, nonce uint64) error
 	WasTransferPerformedOnEthereumCalled                   func(ctx context.Context) (bool, error)
@@ -49,7 +49,7 @@ type BridgeExecutorStub struct {
 	WaitForTransferConfirmationCalled                      func(ctx context.Context)
 	WaitAndReturnFinalBatchStatusesCalled                  func(ctx context.Context) []byte
 	GetBatchStatusesFromEthereumCalled                     func(ctx context.Context) ([]byte, error)
-	ProcessMaxRetriesOnEthereumCalled                      func() bool
+	ProcessMaxQuorumRetriesOnEthereumCalled                func() bool
 	ResetRetriesCountOnEthereumCalled                      func()
 	ClearStoredP2PSignaturesForEthereumCalled              func()
 }
@@ -257,11 +257,11 @@ func (stub *BridgeExecutorStub) ResolveNewDepositsStatuses(numDeposits uint64) {
 	}
 }
 
-// ProcessMaxRetriesOnElrond -
-func (stub *BridgeExecutorStub) ProcessMaxRetriesOnElrond() bool {
+// ProcessMaxQuorumRetriesOnElrond -
+func (stub *BridgeExecutorStub) ProcessMaxQuorumRetriesOnElrond() bool {
 	stub.incrementFunctionCounter()
-	if stub.ProcessMaxRetriesOnElrondCalled != nil {
-		return stub.ProcessMaxRetriesOnElrondCalled()
+	if stub.ProcessMaxQuorumRetriesOnElrondCalled != nil {
+		return stub.ProcessMaxQuorumRetriesOnElrondCalled()
 	}
 	return false
 }
@@ -345,11 +345,11 @@ func (stub *BridgeExecutorStub) GetBatchStatusesFromEthereum(ctx context.Context
 	return nil, notImplemented
 }
 
-// ProcessMaxRetriesOnEthereum -
-func (stub *BridgeExecutorStub) ProcessMaxRetriesOnEthereum() bool {
+// ProcessMaxQuorumRetriesOnEthereum -
+func (stub *BridgeExecutorStub) ProcessMaxQuorumRetriesOnEthereum() bool {
 	stub.incrementFunctionCounter()
-	if stub.ProcessMaxRetriesOnEthereumCalled != nil {
-		return stub.ProcessMaxRetriesOnEthereumCalled()
+	if stub.ProcessMaxQuorumRetriesOnEthereumCalled != nil {
+		return stub.ProcessMaxQuorumRetriesOnEthereumCalled()
 	}
 	return false
 }
