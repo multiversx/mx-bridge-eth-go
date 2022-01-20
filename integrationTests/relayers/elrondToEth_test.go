@@ -12,10 +12,20 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var log = logger.GetOrCreate("integrationTests/relayers")
+
+func asyncCancelCall(cancelHandler func(), delay time.Duration) {
+	go func() {
+		time.Sleep(delay)
+		cancelHandler()
+	}()
+}
 
 func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	if testing.Short() {
@@ -29,8 +39,9 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	erc20ContractsHolder := createMockErc20ContractsHolder(tokens, safeContractEthAddress, availableBalances)
 
+	numRelayers := 3
 	ethereumChainMock := mock.NewEthereumChainMock()
-	ethereumChainMock.SetQuorum(3)
+	ethereumChainMock.SetQuorum(numRelayers)
 	expectedStatuses := []byte{clients.Executed, clients.Rejected}
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return expectedStatuses
@@ -45,8 +56,8 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	}
 
 	elrondChainMock.SetPendingBatch(&pendingBatch)
+	elrondChainMock.SetQuorum(numRelayers)
 
-	numRelayers := 3
 	relayers := make([]bridgeComponents, 0, numRelayers)
 	defer func() {
 		for _, r := range relayers {
@@ -59,9 +70,8 @@ func TestRelayersShouldExecuteTransferFromElrondToEth(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1200)
 	defer cancel()
 	elrondChainMock.ProcessFinishedHandler = func() {
-		time.Sleep(time.Second * 5)
-
-		cancel()
+		log.Info("elrondChainMock.ProcessFinishedHandler called")
+		asyncCancelCall(cancel, time.Second*5)
 	}
 
 	for i := 0; i < numRelayers; i++ {
@@ -117,8 +127,9 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 	tokens, availableBalances := availableTokensMapToSlices(erc20Map)
 	erc20ContractsHolder := createMockErc20ContractsHolder(tokens, safeContractEthAddress, availableBalances)
 
+	numRelayers := 3
 	ethereumChainMock := mock.NewEthereumChainMock()
-	ethereumChainMock.SetQuorum(3)
+	ethereumChainMock.SetQuorum(numRelayers)
 	expectedStatuses := []byte{clients.Executed, clients.Rejected}
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return expectedStatuses
@@ -132,6 +143,7 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 		ElrondDeposits: deposits,
 	}
 	elrondChainMock.SetPendingBatch(&pendingBatch)
+	elrondChainMock.SetQuorum(numRelayers)
 
 	ethereumChainMock.ProposeMultiTransferEsdtBatchCalled = func() {
 		deposit := deposits[0]
@@ -139,7 +151,6 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 		elrondChainMock.AddDepositToCurrentBatch(deposit)
 	}
 
-	numRelayers := 3
 	relayers := make([]bridgeComponents, 0, numRelayers)
 	defer func() {
 		for _, r := range relayers {
@@ -152,9 +163,8 @@ func TestRelayersShouldExecuteTransferFromElrondToEthIfTransactionsAppearInBatch
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1200)
 	defer cancel()
 	elrondChainMock.ProcessFinishedHandler = func() {
-		time.Sleep(time.Second * 5)
-
-		cancel()
+		log.Info("elrondChainMock.ProcessFinishedHandler called")
+		asyncCancelCall(cancel, time.Second*5)
 	}
 
 	for i := 0; i < numRelayers; i++ {
