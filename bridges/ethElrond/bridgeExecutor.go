@@ -329,15 +329,15 @@ func (executor *bridgeExecutor) WaitForTransferConfirmation(ctx context.Context)
 // WaitAndReturnFinalBatchStatuses waits for the statuses to be final
 func (executor *bridgeExecutor) WaitAndReturnFinalBatchStatuses(ctx context.Context) []byte {
 	for i := 0; i < splits; i++ {
-		if !executor.waitWithContextSucceeded(ctx) {
-			return nil
-		}
-
 		statuses, err := executor.GetBatchStatusesFromEthereum(ctx)
 		if err != nil {
 			executor.log.Debug("got message while fetching batch statuses", "message", err)
 		} else {
 			return statuses
+		}
+
+		if !executor.waitWithContextSucceeded(ctx) {
+			return nil
 		}
 	}
 	return nil
