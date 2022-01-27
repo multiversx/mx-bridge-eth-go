@@ -18,6 +18,7 @@ type dataGetter interface {
 type ElrondRoleProvider interface {
 	Execute(ctx context.Context) error
 	IsWhitelisted(address erdgoCore.AddressHandler) bool
+	SortedPublicKeys() [][]byte
 	IsInterfaceNil() bool
 }
 
