@@ -29,6 +29,8 @@ type BridgeExecutorStub struct {
 	GetStoredActionIDCalled                                func() uint64
 	WasTransferProposedOnElrondCalled                      func(ctx context.Context) (bool, error)
 	ProposeTransferOnElrondCalled                          func(ctx context.Context) error
+	ProcessMaxRetriesOnWasTransferProposedOnElrondCalled   func() bool
+	ResetRetriesOnWasTransferProposedOnElrondCalled        func()
 	WasSetStatusProposedOnElrondCalled                     func(ctx context.Context) (bool, error)
 	ProposeSetStatusOnElrondCalled                         func(ctx context.Context) error
 	WasActionSignedOnElrondCalled                          func(ctx context.Context) (bool, error)
@@ -37,7 +39,7 @@ type BridgeExecutorStub struct {
 	WasActionPerformedOnElrondCalled                       func(ctx context.Context) (bool, error)
 	PerformActionOnElrondCalled                            func(ctx context.Context) error
 	ResolveNewDepositsStatusesCalled                       func(numDeposits uint64)
-	ProcessMaxRetriesOnElrondCalled                        func() bool
+	ProcessMaxQuorumRetriesOnElrondCalled                  func() bool
 	ResetRetriesCountOnElrondCalled                        func()
 	GetAndStoreBatchFromEthereumCalled                     func(ctx context.Context, nonce uint64) error
 	WasTransferPerformedOnEthereumCalled                   func(ctx context.Context) (bool, error)
@@ -47,7 +49,7 @@ type BridgeExecutorStub struct {
 	WaitForTransferConfirmationCalled                      func(ctx context.Context)
 	WaitAndReturnFinalBatchStatusesCalled                  func(ctx context.Context) []byte
 	GetBatchStatusesFromEthereumCalled                     func(ctx context.Context) ([]byte, error)
-	ProcessMaxRetriesOnEthereumCalled                      func() bool
+	ProcessMaxQuorumRetriesOnEthereumCalled                func() bool
 	ResetRetriesCountOnEthereumCalled                      func()
 	ClearStoredP2PSignaturesForEthereumCalled              func()
 }
@@ -167,6 +169,23 @@ func (stub *BridgeExecutorStub) ProposeTransferOnElrond(ctx context.Context) err
 	return notImplemented
 }
 
+// ProcessMaxRetriesOnWasTransferProposedOnElrond -
+func (stub *BridgeExecutorStub) ProcessMaxRetriesOnWasTransferProposedOnElrond() bool {
+	stub.incrementFunctionCounter()
+	if stub.ProcessMaxRetriesOnWasTransferProposedOnElrondCalled != nil {
+		return stub.ProcessMaxRetriesOnWasTransferProposedOnElrondCalled()
+	}
+	return false
+}
+
+// ResetRetriesOnWasTransferProposedOnElrond -
+func (stub *BridgeExecutorStub) ResetRetriesOnWasTransferProposedOnElrond() {
+	stub.incrementFunctionCounter()
+	if stub.ResetRetriesOnWasTransferProposedOnElrondCalled != nil {
+		stub.ResetRetriesOnWasTransferProposedOnElrondCalled()
+	}
+}
+
 // WasSetStatusProposedOnElrond -
 func (stub *BridgeExecutorStub) WasSetStatusProposedOnElrond(ctx context.Context) (bool, error) {
 	stub.incrementFunctionCounter()
@@ -238,11 +257,11 @@ func (stub *BridgeExecutorStub) ResolveNewDepositsStatuses(numDeposits uint64) {
 	}
 }
 
-// ProcessMaxRetriesOnElrond -
-func (stub *BridgeExecutorStub) ProcessMaxRetriesOnElrond() bool {
+// ProcessMaxQuorumRetriesOnElrond -
+func (stub *BridgeExecutorStub) ProcessMaxQuorumRetriesOnElrond() bool {
 	stub.incrementFunctionCounter()
-	if stub.ProcessMaxRetriesOnElrondCalled != nil {
-		return stub.ProcessMaxRetriesOnElrondCalled()
+	if stub.ProcessMaxQuorumRetriesOnElrondCalled != nil {
+		return stub.ProcessMaxQuorumRetriesOnElrondCalled()
 	}
 	return false
 }
@@ -326,11 +345,11 @@ func (stub *BridgeExecutorStub) GetBatchStatusesFromEthereum(ctx context.Context
 	return nil, notImplemented
 }
 
-// ProcessMaxRetriesOnEthereum -
-func (stub *BridgeExecutorStub) ProcessMaxRetriesOnEthereum() bool {
+// ProcessMaxQuorumRetriesOnEthereum -
+func (stub *BridgeExecutorStub) ProcessMaxQuorumRetriesOnEthereum() bool {
 	stub.incrementFunctionCounter()
-	if stub.ProcessMaxRetriesOnEthereumCalled != nil {
-		return stub.ProcessMaxRetriesOnEthereumCalled()
+	if stub.ProcessMaxQuorumRetriesOnEthereumCalled != nil {
+		return stub.ProcessMaxQuorumRetriesOnEthereumCalled()
 	}
 	return false
 }

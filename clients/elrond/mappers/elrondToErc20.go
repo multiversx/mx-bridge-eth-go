@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 )
 
@@ -15,7 +16,7 @@ type elrondToErc20 struct {
 // NewElrondToErc20Mapper returns a new instance of erc20ToElrond
 func NewElrondToErc20Mapper(dg DataGetter) (*elrondToErc20, error) {
 	if check.IfNil(dg) {
-		return nil, errNilDataGetter
+		return nil, clients.ErrNilDataGetter
 	}
 
 	return &elrondToErc20{

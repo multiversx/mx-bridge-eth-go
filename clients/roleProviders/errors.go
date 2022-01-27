@@ -2,12 +2,6 @@ package roleProviders
 
 import "errors"
 
-// ErrNilDataGetter signals that a nil data getter was provided
-var ErrNilDataGetter = errors.New("nil data getter")
-
-// ErrNilLogger signals that a nil logger was provided
-var ErrNilLogger = errors.New("nil logger")
-
 // ErrNilEthereumChainInteractor signals that a nil Ethereum chain interactor was provided
 var ErrNilEthereumChainInteractor = errors.New("nil Ethereum chain interactor")
 

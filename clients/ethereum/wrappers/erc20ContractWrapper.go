@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -27,7 +28,7 @@ func NewErc20ContractWrapper(args ArgsErc20ContractWrapper) (*erc20ContractWrapp
 		return nil, errNilErc20Contract
 	}
 	if check.IfNil(args.StatusHandler) {
-		return nil, errNilStatusHandler
+		return nil, clients.ErrNilStatusHandler
 	}
 
 	return &erc20ContractWrapper{

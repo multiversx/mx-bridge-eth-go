@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/atomic"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -71,10 +72,10 @@ func NewGasStation(args ArgsGasStation) (*gasStation, error) {
 
 func checkArgs(args ArgsGasStation) error {
 	if args.RequestPollingInterval < minPollingInterval {
-		return fmt.Errorf("%w in checkArgs for value RequestPollingInterval", ErrInvalidValue)
+		return fmt.Errorf("%w in checkArgs for value RequestPollingInterval", clients.ErrInvalidValue)
 	}
 	if args.RequestTime < minRequestTime {
-		return fmt.Errorf("%w in checkArgs for value RequestTime", ErrInvalidValue)
+		return fmt.Errorf("%w in checkArgs for value RequestTime", clients.ErrInvalidValue)
 	}
 
 	switch args.GasPriceSelector {

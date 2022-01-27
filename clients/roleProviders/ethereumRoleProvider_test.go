@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -42,7 +43,7 @@ func TestNewEthereumRoleProvider(t *testing.T) {
 
 		erp, err := NewEthereumRoleProvider(args)
 		assert.True(t, check.IfNil(erp))
-		assert.Equal(t, ErrNilLogger, err)
+		assert.Equal(t, clients.ErrNilLogger, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()

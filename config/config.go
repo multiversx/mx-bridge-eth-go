@@ -128,13 +128,14 @@ type RoleProviderConfig struct {
 
 // ElrondConfig represents the Elrond Config parameters
 type ElrondConfig struct {
-	NetworkAddress               string
-	MultisigContractAddress      string
-	PrivateKeyFile               string
-	IntervalToResendTxsInSeconds uint64
-	GasMap                       ElrondGasMapConfig
-	MaxRetriesOnQuorumReached    uint64
-	ProxyCacherExpirationSeconds uint64
+	NetworkAddress                  string
+	MultisigContractAddress         string
+	PrivateKeyFile                  string
+	IntervalToResendTxsInSeconds    uint64
+	GasMap                          ElrondGasMapConfig
+	MaxRetriesOnQuorumReached       uint64
+	MaxRetriesOnWasTransferProposed uint64
+	ProxyCacherExpirationSeconds    uint64
 }
 
 // ElrondGasMapConfig represents the gas limits for Elrond operations

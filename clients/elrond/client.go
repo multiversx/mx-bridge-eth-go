@@ -26,7 +26,6 @@ const (
 	proposeSetStatusFuncName = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
 	signFuncName             = "sign"
 	performActionFuncName    = "performAction"
-	minRetriesOnQuorum       = 1
 )
 
 // ClientArgs represents the argument for the NewClient constructor function
@@ -38,7 +37,6 @@ type ClientArgs struct {
 	MultisigContractAddress      core.AddressHandler
 	IntervalToResendTxsInSeconds uint64
 	TokensMapper                 TokensMapper
-	MaxRetriesOnQuorumReached    uint64
 	RoleProvider                 roleProvider
 }
 
@@ -53,7 +51,6 @@ type client struct {
 	log                       logger.Logger
 	gasMapConfig              config.ElrondGasMapConfig
 	addressPublicKeyConverter bridgeCore.AddressConverter
-	maxRetriesOnQuorumReached uint64
 }
 
 // NewClient returns a new Elrond Client instance
@@ -109,7 +106,6 @@ func NewClient(args ClientArgs) (*client, error) {
 		gasMapConfig:              args.GasMapConfig,
 		addressPublicKeyConverter: addressConverter,
 		tokensMapper:              args.TokensMapper,
-		maxRetriesOnQuorumReached: args.MaxRetriesOnQuorumReached,
 	}
 
 	c.log.Info("NewElrondClient",
@@ -124,20 +120,16 @@ func checkArgs(args ClientArgs) error {
 		return errNilProxy
 	}
 	if check.IfNil(args.RelayerPrivateKey) {
-		return errNilPrivateKey
+		return clients.ErrNilPrivateKey
 	}
 	if check.IfNil(args.MultisigContractAddress) {
 		return fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
 	}
 	if check.IfNil(args.Log) {
-		return errNilLogger
+		return clients.ErrNilLogger
 	}
 	if check.IfNil(args.TokensMapper) {
-		return errNilTokensMapper
-	}
-	if args.MaxRetriesOnQuorumReached < minRetriesOnQuorum {
-		return fmt.Errorf("%w for args.MaxRetriesOnQuorumReached, got: %d, minimum: %d",
-			errInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
+		return clients.ErrNilTokensMapper
 	}
 	if check.IfNil(args.RoleProvider) {
 		return errNilRoleProvider
@@ -243,7 +235,7 @@ func (c *client) createCommonTxDataBuilder(funcName string, id int64) builders.T
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
 func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error) {
 	if batch == nil {
-		return "", errNilBatch
+		return "", clients.ErrNilBatch
 	}
 
 	txBuilder := c.createCommonTxDataBuilder(proposeSetStatusFuncName, int64(batch.ID))
@@ -262,7 +254,7 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 // ResolveNewDeposits will try to add new statuses if the pending batch gets modified
 func (c *client) ResolveNewDeposits(ctx context.Context, batch *clients.TransferBatch) error {
 	if batch == nil {
-		return errNilBatch
+		return clients.ErrNilBatch
 	}
 
 	newBatch, err := c.GetPending(ctx)
@@ -278,7 +270,7 @@ func (c *client) ResolveNewDeposits(ctx context.Context, batch *clients.Transfer
 // ProposeTransfer will trigger the propose transfer operation
 func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error) {
 	if batch == nil {
-		return "", errNilBatch
+		return "", clients.ErrNilBatch
 	}
 
 	txBuilder := c.createCommonTxDataBuilder(proposeTransferFuncName, int64(batch.ID))
@@ -315,7 +307,7 @@ func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
 // PerformAction will trigger the execution of the provided action ID
 func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error) {
 	if batch == nil {
-		return "", errNilBatch
+		return "", clients.ErrNilBatch
 	}
 
 	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))
@@ -328,11 +320,6 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	}
 
 	return hash, err
-}
-
-// GetMaxNumberOfRetriesOnQuorumReached returns the maximum number of retries allowed on quorum reached
-func (c *client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
-	return c.maxRetriesOnQuorumReached
 }
 
 // Close will close any started go routines. It returns nil.

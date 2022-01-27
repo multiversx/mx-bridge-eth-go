@@ -24,6 +24,8 @@ type Executor interface {
 
 	WasTransferProposedOnElrond(ctx context.Context) (bool, error)
 	ProposeTransferOnElrond(ctx context.Context) error
+	ProcessMaxRetriesOnWasTransferProposedOnElrond() bool
+	ResetRetriesOnWasTransferProposedOnElrond()
 
 	WasSetStatusProposedOnElrond(ctx context.Context) (bool, error)
 	ProposeSetStatusOnElrond(ctx context.Context) error
@@ -36,7 +38,7 @@ type Executor interface {
 	PerformActionOnElrond(ctx context.Context) error
 	ResolveNewDepositsStatuses(numDeposits uint64)
 
-	ProcessMaxRetriesOnElrond() bool
+	ProcessMaxQuorumRetriesOnElrond() bool
 	ResetRetriesCountOnElrond()
 
 	GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error
@@ -48,7 +50,7 @@ type Executor interface {
 	WaitAndReturnFinalBatchStatuses(ctx context.Context) []byte
 	GetBatchStatusesFromEthereum(ctx context.Context) ([]byte, error)
 
-	ProcessMaxRetriesOnEthereum() bool
+	ProcessMaxQuorumRetriesOnEthereum() bool
 	ResetRetriesCountOnEthereum()
 	ClearStoredP2PSignaturesForEthereum()
 

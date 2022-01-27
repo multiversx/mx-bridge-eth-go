@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ethereum/go-ethereum/common"
@@ -48,7 +49,7 @@ func checkEthereumRoleProviderSpecificArgs(args ArgsEthereumRoleProvider) error 
 		return ErrNilEthereumChainInteractor
 	}
 	if check.IfNil(args.Log) {
-		return ErrNilLogger
+		return clients.ErrNilLogger
 	}
 
 	return nil

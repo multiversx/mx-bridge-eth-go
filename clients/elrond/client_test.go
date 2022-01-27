@@ -49,8 +49,7 @@ func createMockClientArgs() ClientArgs {
 				return append([]byte("converted "), sourceBytes...), nil
 			},
 		},
-		MaxRetriesOnQuorumReached: 1,
-		RoleProvider:              &roleProviders.ElrondRoleProviderStub{},
+		RoleProvider: &roleProviders.ElrondRoleProviderStub{},
 	}
 }
 
@@ -102,7 +101,7 @@ func TestNewClient(t *testing.T) {
 		c, err := NewClient(args)
 
 		require.True(t, check.IfNil(c))
-		require.Equal(t, errNilPrivateKey, err)
+		require.Equal(t, clients.ErrNilPrivateKey, err)
 	})
 	t.Run("nil multisig contract address should error", func(t *testing.T) {
 		t.Parallel()
@@ -124,7 +123,7 @@ func TestNewClient(t *testing.T) {
 		c, err := NewClient(args)
 
 		require.True(t, check.IfNil(c))
-		require.Equal(t, errNilLogger, err)
+		require.Equal(t, clients.ErrNilLogger, err)
 	})
 	t.Run("nil tokens mapper should error", func(t *testing.T) {
 		t.Parallel()
@@ -135,7 +134,7 @@ func TestNewClient(t *testing.T) {
 		c, err := NewClient(args)
 
 		require.True(t, check.IfNil(c))
-		require.Equal(t, errNilTokensMapper, err)
+		require.Equal(t, clients.ErrNilTokensMapper, err)
 	})
 	t.Run("gas map invalid value should error", func(t *testing.T) {
 		t.Parallel()
@@ -160,18 +159,6 @@ func TestNewClient(t *testing.T) {
 		require.True(t, check.IfNil(c))
 		require.NotNil(t, err)
 		require.True(t, strings.Contains(err.Error(), "intervalToResend in NewNonceTransactionHandler"))
-	})
-	t.Run("invalid MaxRetriesOnQuorumReached should error", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockClientArgs()
-		args.MaxRetriesOnQuorumReached = 0
-
-		c, err := NewClient(args)
-
-		require.True(t, check.IfNil(c))
-		require.True(t, errors.Is(err, errInvalidValue))
-		require.True(t, strings.Contains(err.Error(), "for args.MaxRetriesOnQuorumReached"))
 	})
 	t.Run("nil role provider should error", func(t *testing.T) {
 		t.Parallel()
@@ -364,7 +351,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 
 		hash, err := c.ProposeSetStatus(context.Background(), nil)
 		assert.Empty(t, hash)
-		assert.Equal(t, errNilBatch, err)
+		assert.Equal(t, clients.ErrNilBatch, err)
 	})
 	t.Run("should propose set status", func(t *testing.T) {
 		t.Parallel()
@@ -415,7 +402,7 @@ func TestClient_ResolveNewDeposits(t *testing.T) {
 		c, _ := NewClient(args)
 
 		err := c.ResolveNewDeposits(context.Background(), nil)
-		assert.Equal(t, errNilBatch, err)
+		assert.Equal(t, clients.ErrNilBatch, err)
 	})
 	t.Run("no pending batch should error", func(t *testing.T) {
 		t.Parallel()
@@ -457,7 +444,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 
 		hash, err := c.ProposeTransfer(context.Background(), nil)
 		assert.Empty(t, hash)
-		assert.Equal(t, errNilBatch, err)
+		assert.Equal(t, clients.ErrNilBatch, err)
 	})
 	t.Run("should propose transfer", func(t *testing.T) {
 		t.Parallel()
@@ -556,7 +543,7 @@ func TestClient_PerformAction(t *testing.T) {
 
 		hash, err := c.PerformAction(context.Background(), actionID, nil)
 		assert.Empty(t, hash)
-		assert.Equal(t, errNilBatch, err)
+		assert.Equal(t, clients.ErrNilBatch, err)
 	})
 	t.Run("should perform action", func(t *testing.T) {
 		t.Parallel()
@@ -593,18 +580,6 @@ func TestClient_PerformAction(t *testing.T) {
 		assert.Equal(t, expectedHash, hash)
 		assert.True(t, sendWasCalled)
 	})
-}
-
-func TestClient_GetMaxNumberOfRetriesOnQuorumReached(t *testing.T) {
-	t.Parallel()
-
-	expectedMRQR := uint64(1123)
-	args := createMockClientArgs()
-	args.MaxRetriesOnQuorumReached = expectedMRQR
-	c, _ := NewClient(args)
-
-	result := c.GetMaxNumberOfRetriesOnQuorumReached()
-	assert.Equal(t, expectedMRQR, result)
 }
 
 func TestClient_Close(t *testing.T) {

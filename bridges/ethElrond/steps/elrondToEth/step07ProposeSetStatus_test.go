@@ -27,6 +27,21 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 		assert.Equal(t, initialStep, stepIdentifier)
 	})
 
+	t.Run("max retries reached", func(t *testing.T) {
+		t.Parallel()
+		bridgeStub := createStubExecutorProposeSetStatus()
+		bridgeStub.ProcessMaxRetriesOnWasTransferProposedOnElrondCalled = func() bool {
+			return true
+		}
+
+		step := proposeSetStatusStep{
+			bridge: bridgeStub,
+		}
+
+		stepIdentifier := step.Execute(context.Background())
+		assert.Equal(t, initialStep, stepIdentifier)
+	})
+
 	t.Run("error on WasSetStatusProposedOnElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorProposeSetStatus()

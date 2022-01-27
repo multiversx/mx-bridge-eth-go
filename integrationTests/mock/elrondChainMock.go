@@ -9,10 +9,13 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-go-core/core"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ethereum/go-ethereum/common"
 )
+
+var log = logger.GetOrCreate("integrationTests/mock")
 
 // ElrondChainMock -
 type ElrondChainMock struct {
@@ -57,6 +60,8 @@ func (mock *ElrondChainMock) SendTransaction(_ context.Context, transaction *dat
 	if err != nil {
 		panic(err)
 	}
+
+	log.Info("sent Elrond transaction", "sender", addrAsBech32, "data", string(transaction.Data))
 
 	mock.mutState.Lock()
 	defer mock.mutState.Unlock()

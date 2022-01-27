@@ -282,7 +282,6 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 		MultisigContractAddress:      components.elrondMultisigContractAddress,
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
-		MaxRetriesOnQuorumReached:    elrondConfigs.MaxRetriesOnQuorumReached,
 		RoleProvider:                 components.elrondRoleProvider,
 	}
 
@@ -377,18 +376,17 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	}
 
 	argsEthClient := ethereum.ArgsEthereumClient{
-		ClientWrapper:             args.ClientWrapper,
-		Erc20ContractsHandler:     args.Erc20ContractsHolder,
-		Log:                       core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
-		AddressConverter:          addressConverter,
-		Broadcaster:               components.broadcaster,
-		PrivateKey:                privateKey,
-		TokensMapper:              tokensMapper,
-		SignatureHolder:           signaturesHolder,
-		SafeContractAddress:       safeContractAddress,
-		GasHandler:                gs,
-		TransferGasLimit:          ethereumConfigs.GasLimit,
-		MaxRetriesOnQuorumReached: ethereumConfigs.MaxRetriesOnQuorumReached,
+		ClientWrapper:         args.ClientWrapper,
+		Erc20ContractsHandler: args.Erc20ContractsHolder,
+		Log:                   core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
+		AddressConverter:      addressConverter,
+		Broadcaster:           components.broadcaster,
+		PrivateKey:            privateKey,
+		TokensMapper:          tokensMapper,
+		SignatureHolder:       signaturesHolder,
+		SafeContractAddress:   safeContractAddress,
+		GasHandler:            gs,
+		TransferGasLimit:      ethereumConfigs.GasLimit,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)
@@ -475,7 +473,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 	components.ethToElrondStepDuration = time.Duration(configs.StepDurationInMillis) * time.Millisecond
 
 	argsTopologyHandler := topology.ArgsTopologyHandler{
-		PublicKeysProvider: components.broadcaster,
+		PublicKeysProvider: components.elrondRoleProvider,
 		Timer:              components.timer,
 		IntervalForLeader:  time.Second * time.Duration(configs.IntervalForLeaderInSeconds),
 		AddressBytes:       components.elrondRelayerAddress.AddressBytes(),
@@ -498,13 +496,16 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 	argsBridgeExecutor := ethElrond.ArgsBridgeExecutor{
-		Log:                   log,
-		TopologyProvider:      topologyHandler,
-		ElrondClient:          components.elrondClient,
-		EthereumClient:        components.ethClient,
-		StatusHandler:         components.ethToElrondStatusHandler,
-		TimeForWaitOnEthereum: timeForTransferExecution,
-		SignaturesHolder:      disabled.NewDisabledSignaturesHolder(),
+		Log:                        log,
+		TopologyProvider:           topologyHandler,
+		ElrondClient:               components.elrondClient,
+		EthereumClient:             components.ethClient,
+		StatusHandler:              components.ethToElrondStatusHandler,
+		TimeForWaitOnEthereum:      timeForTransferExecution,
+		SignaturesHolder:           disabled.NewDisabledSignaturesHolder(),
+		MaxQuorumRetriesOnEthereum: args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
+		MaxQuorumRetriesOnElrond:   args.Configs.GeneralConfig.Elrond.MaxRetriesOnQuorumReached,
+		MaxRestriesOnWasProposed:   args.Configs.GeneralConfig.Elrond.MaxRetriesOnWasTransferProposed,
 	}
 
 	bridge, err := ethElrond.NewBridgeExecutor(argsBridgeExecutor)
@@ -530,7 +531,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 
 	components.elrondToEthStepDuration = time.Duration(configs.StepDurationInMillis) * time.Millisecond
 	argsTopologyHandler := topology.ArgsTopologyHandler{
-		PublicKeysProvider: components.broadcaster,
+		PublicKeysProvider: components.elrondRoleProvider,
 		Timer:              components.timer,
 		IntervalForLeader:  time.Second * time.Duration(configs.IntervalForLeaderInSeconds),
 		AddressBytes:       components.elrondRelayerAddress.AddressBytes(),
@@ -553,13 +554,16 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 
 	timeForWaitOnEthereum := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 	argsBridgeExecutor := ethElrond.ArgsBridgeExecutor{
-		Log:                   log,
-		TopologyProvider:      topologyHandler,
-		ElrondClient:          components.elrondClient,
-		EthereumClient:        components.ethClient,
-		StatusHandler:         components.elrondToEthStatusHandler,
-		TimeForWaitOnEthereum: timeForWaitOnEthereum,
-		SignaturesHolder:      components.ethToElrondSignaturesHolder,
+		Log:                        log,
+		TopologyProvider:           topologyHandler,
+		ElrondClient:               components.elrondClient,
+		EthereumClient:             components.ethClient,
+		StatusHandler:              components.elrondToEthStatusHandler,
+		TimeForWaitOnEthereum:      timeForWaitOnEthereum,
+		SignaturesHolder:           components.ethToElrondSignaturesHolder,
+		MaxQuorumRetriesOnEthereum: args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
+		MaxQuorumRetriesOnElrond:   args.Configs.GeneralConfig.Elrond.MaxRetriesOnQuorumReached,
+		MaxRestriesOnWasProposed:   args.Configs.GeneralConfig.Elrond.MaxRetriesOnWasTransferProposed,
 	}
 
 	bridge, err := ethElrond.NewBridgeExecutor(argsBridgeExecutor)

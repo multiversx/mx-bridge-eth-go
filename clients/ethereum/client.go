@@ -17,9 +17,8 @@ import (
 )
 
 const (
-	messagePrefix      = "\u0019Ethereum Signed Message:\n32"
-	minRetriesOnQuorum = 1
-	minQuorumValue     = uint64(1)
+	messagePrefix  = "\u0019Ethereum Signed Message:\n32"
+	minQuorumValue = uint64(1)
 )
 
 type argListsBatch struct {
@@ -31,34 +30,32 @@ type argListsBatch struct {
 
 // ArgsEthereumClient is the DTO used in the ethereum's client constructor
 type ArgsEthereumClient struct {
-	ClientWrapper             ClientWrapper
-	Erc20ContractsHandler     Erc20ContractsHolder
-	Log                       elrondCore.Logger
-	AddressConverter          core.AddressConverter
-	Broadcaster               Broadcaster
-	PrivateKey                *ecdsa.PrivateKey
-	TokensMapper              TokensMapper
-	SignatureHolder           SignaturesHolder
-	SafeContractAddress       common.Address
-	GasHandler                GasHandler
-	TransferGasLimit          uint64
-	MaxRetriesOnQuorumReached uint64
+	ClientWrapper         ClientWrapper
+	Erc20ContractsHandler Erc20ContractsHolder
+	Log                   elrondCore.Logger
+	AddressConverter      core.AddressConverter
+	Broadcaster           Broadcaster
+	PrivateKey            *ecdsa.PrivateKey
+	TokensMapper          TokensMapper
+	SignatureHolder       SignaturesHolder
+	SafeContractAddress   common.Address
+	GasHandler            GasHandler
+	TransferGasLimit      uint64
 }
 
 type client struct {
-	clientWrapper             ClientWrapper
-	erc20ContractsHandler     Erc20ContractsHolder
-	log                       elrondCore.Logger
-	addressConverter          core.AddressConverter
-	broadcaster               Broadcaster
-	privateKey                *ecdsa.PrivateKey
-	publicKey                 *ecdsa.PublicKey
-	tokensMapper              TokensMapper
-	signatureHolder           SignaturesHolder
-	safeContractAddress       common.Address
-	gasHandler                GasHandler
-	transferGasLimit          uint64
-	maxRetriesOnQuorumReached uint64
+	clientWrapper         ClientWrapper
+	erc20ContractsHandler Erc20ContractsHolder
+	log                   elrondCore.Logger
+	addressConverter      core.AddressConverter
+	broadcaster           Broadcaster
+	privateKey            *ecdsa.PrivateKey
+	publicKey             *ecdsa.PublicKey
+	tokensMapper          TokensMapper
+	signatureHolder       SignaturesHolder
+	safeContractAddress   common.Address
+	gasHandler            GasHandler
+	transferGasLimit      uint64
 }
 
 // NewEthereumClient will create a new Ethereum client
@@ -75,19 +72,18 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 	}
 
 	c := &client{
-		clientWrapper:             args.ClientWrapper,
-		erc20ContractsHandler:     args.Erc20ContractsHandler,
-		log:                       args.Log,
-		addressConverter:          args.AddressConverter,
-		broadcaster:               args.Broadcaster,
-		privateKey:                args.PrivateKey,
-		publicKey:                 publicKeyECDSA,
-		tokensMapper:              args.TokensMapper,
-		signatureHolder:           args.SignatureHolder,
-		safeContractAddress:       args.SafeContractAddress,
-		gasHandler:                args.GasHandler,
-		transferGasLimit:          args.TransferGasLimit,
-		maxRetriesOnQuorumReached: args.MaxRetriesOnQuorumReached,
+		clientWrapper:         args.ClientWrapper,
+		erc20ContractsHandler: args.Erc20ContractsHandler,
+		log:                   args.Log,
+		addressConverter:      args.AddressConverter,
+		broadcaster:           args.Broadcaster,
+		privateKey:            args.PrivateKey,
+		publicKey:             publicKeyECDSA,
+		tokensMapper:          args.TokensMapper,
+		signatureHolder:       args.SignatureHolder,
+		safeContractAddress:   args.SafeContractAddress,
+		gasHandler:            args.GasHandler,
+		transferGasLimit:      args.TransferGasLimit,
 	}
 
 	c.log.Info("NewEthereumClient",
@@ -105,7 +101,7 @@ func checkArgs(args ArgsEthereumClient) error {
 		return errNilERC20ContractsHandler
 	}
 	if check.IfNil(args.Log) {
-		return errNilLogger
+		return clients.ErrNilLogger
 	}
 	if check.IfNil(args.AddressConverter) {
 		return clients.ErrNilAddressConverter
@@ -114,10 +110,10 @@ func checkArgs(args ArgsEthereumClient) error {
 		return errNilBroadcaster
 	}
 	if args.PrivateKey == nil {
-		return errNilPrivateKey
+		return clients.ErrNilPrivateKey
 	}
 	if check.IfNil(args.TokensMapper) {
-		return errNilTokensMapper
+		return clients.ErrNilTokensMapper
 	}
 	if check.IfNil(args.SignatureHolder) {
 		return errNilSignaturesHolder
@@ -127,10 +123,6 @@ func checkArgs(args ArgsEthereumClient) error {
 	}
 	if args.TransferGasLimit == 0 {
 		return errInvalidGasLimit
-	}
-	if args.MaxRetriesOnQuorumReached < minRetriesOnQuorum {
-		return fmt.Errorf("%w for args.MaxRetriesOnQuorumReached, got: %d, minimum: %d",
-			errInvalidValue, args.MaxRetriesOnQuorumReached, minRetriesOnQuorum)
 	}
 
 	return nil
@@ -198,7 +190,7 @@ func (c *client) BroadcastSignatureForMessageHash(msgHash common.Hash) {
 // GenerateMessageHash will generate the message hash based on the provided batch
 func (c *client) GenerateMessageHash(batch *clients.TransferBatch) (common.Hash, error) {
 	if batch == nil {
-		return common.Hash{}, errNilBatch
+		return common.Hash{}, clients.ErrNilBatch
 	}
 
 	args, err := generateTransferArgs()
@@ -279,7 +271,7 @@ func (c *client) ExecuteTransfer(
 	quorum int,
 ) (string, error) {
 	if batch == nil {
-		return "", errNilBatch
+		return "", clients.ErrNilBatch
 	}
 
 	c.log.Info("executing transfer " + batch.String())
@@ -349,11 +341,6 @@ func (c *client) ExecuteTransfer(
 	c.log.Info("Executed transfer transaction", "batchID", batchID, "hash", txHash)
 
 	return txHash, err
-}
-
-// GetMaxNumberOfRetriesOnQuorumReached returns the maximum number of retries allowed on quorum reached
-func (c *client) GetMaxNumberOfRetriesOnQuorumReached() uint64 {
-	return c.maxRetriesOnQuorumReached
 }
 
 func (c *client) checkAvailableTokens(ctx context.Context, tokens []common.Address, amounts []*big.Int) error {
@@ -449,7 +436,7 @@ func (c *client) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool
 		return false, fmt.Errorf("%w in IsQuorumReached, Quorum call", err)
 	}
 	if quorum.Uint64() < minQuorumValue {
-		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %s", errInvalidValue, minQuorumValue, quorum.String())
+		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %s", clients.ErrInvalidValue, minQuorumValue, quorum.String())
 	}
 
 	return len(signatures) >= int(quorum.Int64()), nil

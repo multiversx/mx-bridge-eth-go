@@ -48,11 +48,10 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 				return append([]byte("ERC20"), sourceBytes...), nil
 			},
 		},
-		SignatureHolder:           &testsCommon.SignaturesHolderStub{},
-		SafeContractAddress:       testsCommon.CreateRandomEthereumAddress(),
-		GasHandler:                &testsCommon.GasHandlerStub{},
-		TransferGasLimit:          100,
-		MaxRetriesOnQuorumReached: 1,
+		SignatureHolder:     &testsCommon.SignaturesHolderStub{},
+		SafeContractAddress: testsCommon.CreateRandomEthereumAddress(),
+		GasHandler:          &testsCommon.GasHandlerStub{},
+		TransferGasLimit:    100,
 	}
 }
 
@@ -111,7 +110,7 @@ func TestNewEthereumClient(t *testing.T) {
 		args.Log = nil
 		c, err := NewEthereumClient(args)
 
-		assert.Equal(t, errNilLogger, err)
+		assert.Equal(t, clients.ErrNilLogger, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("nil address converter", func(t *testing.T) {
@@ -135,7 +134,7 @@ func TestNewEthereumClient(t *testing.T) {
 		args.PrivateKey = nil
 		c, err := NewEthereumClient(args)
 
-		assert.Equal(t, errNilPrivateKey, err)
+		assert.Equal(t, clients.ErrNilPrivateKey, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("nil tokens mapper", func(t *testing.T) {
@@ -143,7 +142,7 @@ func TestNewEthereumClient(t *testing.T) {
 		args.TokensMapper = nil
 		c, err := NewEthereumClient(args)
 
-		assert.Equal(t, errNilTokensMapper, err)
+		assert.Equal(t, clients.ErrNilTokensMapper, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("nil signature holder", func(t *testing.T) {
@@ -168,14 +167,6 @@ func TestNewEthereumClient(t *testing.T) {
 		c, err := NewEthereumClient(args)
 
 		assert.Equal(t, errInvalidGasLimit, err)
-		assert.True(t, check.IfNil(c))
-	})
-	t.Run("invalid MaxRetriesOnQuorumReached", func(t *testing.T) {
-		args := createMockEthereumClientArgs()
-		args.MaxRetriesOnQuorumReached = minRetriesOnQuorum - 1
-		c, err := NewEthereumClient(args)
-
-		assert.True(t, errors.Is(err, errInvalidValue))
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -286,7 +277,7 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 		h, err := c.GenerateMessageHash(nil)
 
 		assert.Equal(t, common.Hash{}, h)
-		assert.True(t, errors.Is(err, errNilBatch))
+		assert.True(t, errors.Is(err, clients.ErrNilBatch))
 	})
 	t.Run("should work", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)
@@ -357,7 +348,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		c, _ := NewEthereumClient(args)
 		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, nil, 10)
 		assert.Equal(t, "", hash)
-		assert.True(t, errors.Is(err, errNilBatch))
+		assert.True(t, errors.Is(err, clients.ErrNilBatch))
 	})
 	t.Run("get block number fails", func(t *testing.T) {
 		expectedErr := errors.New("expected error get block number")
@@ -607,18 +598,6 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 	})
 }
 
-func TestClient_GetMaxNumberOfRetriesOnQuorumReached(t *testing.T) {
-	t.Parallel()
-
-	expectedMRQR := uint64(1123)
-	args := createMockEthereumClientArgs()
-	args.MaxRetriesOnQuorumReached = expectedMRQR
-	c, _ := NewEthereumClient(args)
-
-	result := c.GetMaxNumberOfRetriesOnQuorumReached()
-	assert.Equal(t, expectedMRQR, result)
-}
-
 func TestClient_GetTransactionsStatuses(t *testing.T) {
 	t.Parallel()
 
@@ -688,7 +667,7 @@ func TestClient_IsQuorumReached(t *testing.T) {
 
 		isReached, err := c.IsQuorumReached(context.Background(), common.Hash{})
 		assert.False(t, isReached)
-		assert.True(t, errors.Is(err, errInvalidValue))
+		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "in IsQuorumReached, minQuorum"))
 	})
 	t.Run("quorum values comparison", func(t *testing.T) {

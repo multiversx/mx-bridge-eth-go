@@ -21,16 +21,20 @@ import (
 
 var expectedErr = errors.New("expected error")
 var providedBatch = &clients.TransferBatch{}
+var expectedMaxRetries = uint64(3)
 
 func createMockExecutorArgs() ArgsBridgeExecutor {
 	return ArgsBridgeExecutor{
-		Log:                   logger.GetOrCreate("test"),
-		ElrondClient:          &bridgeTests.ElrondClientStub{},
-		EthereumClient:        &bridgeTests.EthereumClientStub{},
-		TopologyProvider:      &bridgeTests.TopologyProviderStub{},
-		StatusHandler:         testsCommon.NewStatusHandlerMock("test"),
-		TimeForWaitOnEthereum: time.Second,
-		SignaturesHolder:      &testsCommon.SignaturesHolderStub{},
+		Log:                        logger.GetOrCreate("test"),
+		ElrondClient:               &bridgeTests.ElrondClientStub{},
+		EthereumClient:             &bridgeTests.EthereumClientStub{},
+		TopologyProvider:           &bridgeTests.TopologyProviderStub{},
+		StatusHandler:              testsCommon.NewStatusHandlerMock("test"),
+		TimeForWaitOnEthereum:      time.Second,
+		SignaturesHolder:           &testsCommon.SignaturesHolderStub{},
+		MaxQuorumRetriesOnEthereum: minRetries,
+		MaxQuorumRetriesOnElrond:   minRetries,
+		MaxRestriesOnWasProposed:   minRetries,
 	}
 }
 
@@ -706,25 +710,33 @@ func TestEthToElrondBridgeExecutor_PerformActionOnElrond(t *testing.T) {
 func TestEthToElrondBridgeExecutor_RetriesCountOnElrond(t *testing.T) {
 	t.Parallel()
 
-	expectedMaxRetries := uint64(3)
 	args := createMockExecutorArgs()
-	wasCalled := false
-	args.ElrondClient = &bridgeTests.ElrondClientStub{
-		GetMaxNumberOfRetriesOnQuorumReachedCalled: func() uint64 {
-			wasCalled = true
-			return expectedMaxRetries
-		},
-	}
+	args.MaxQuorumRetriesOnElrond = expectedMaxRetries
 	executor, _ := NewBridgeExecutor(args)
 	for i := uint64(0); i < expectedMaxRetries; i++ {
-		assert.False(t, executor.ProcessMaxRetriesOnElrond())
+		assert.False(t, executor.ProcessMaxQuorumRetriesOnElrond())
 	}
 
-	assert.Equal(t, expectedMaxRetries, executor.retriesOnElrond)
-	assert.True(t, executor.ProcessMaxRetriesOnElrond())
+	assert.Equal(t, expectedMaxRetries, executor.quorumRetriesOnElrond)
+	assert.True(t, executor.ProcessMaxQuorumRetriesOnElrond())
 	executor.ResetRetriesCountOnElrond()
-	assert.Equal(t, uint64(0), executor.retriesOnElrond)
-	assert.True(t, wasCalled)
+	assert.Equal(t, uint64(0), executor.quorumRetriesOnElrond)
+}
+
+func TestEthToElrondBridgeExecutor_RetriesCountOnWasTransferProposedOnElrond(t *testing.T) {
+	t.Parallel()
+
+	args := createMockExecutorArgs()
+	args.MaxRestriesOnWasProposed = expectedMaxRetries
+	executor, _ := NewBridgeExecutor(args)
+	for i := uint64(0); i < expectedMaxRetries; i++ {
+		assert.False(t, executor.ProcessMaxRetriesOnWasTransferProposedOnElrond())
+	}
+
+	assert.Equal(t, expectedMaxRetries, executor.retriesOnWasProposed)
+	assert.True(t, executor.ProcessMaxRetriesOnWasTransferProposedOnElrond())
+	executor.ResetRetriesOnWasTransferProposedOnElrond()
+	assert.Equal(t, uint64(0), executor.retriesOnWasProposed)
 }
 
 func TestElrondToEthBridgeExecutor_GetAndStoreBatchFromElrond(t *testing.T) {
@@ -1173,25 +1185,17 @@ func TestElrondToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 func TestElrondToEthBridgeExecutor_RetriesCountOnEthereum(t *testing.T) {
 	t.Parallel()
 
-	expectedMaxRetries := uint64(3)
 	args := createMockExecutorArgs()
-	wasCalled := false
-	args.EthereumClient = &bridgeTests.EthereumClientStub{
-		GetMaxNumberOfRetriesOnQuorumReachedCalled: func() uint64 {
-			wasCalled = true
-			return expectedMaxRetries
-		},
-	}
+	args.MaxQuorumRetriesOnEthereum = expectedMaxRetries
 	executor, _ := NewBridgeExecutor(args)
 	for i := uint64(0); i < expectedMaxRetries; i++ {
-		assert.False(t, executor.ProcessMaxRetriesOnEthereum())
+		assert.False(t, executor.ProcessMaxQuorumRetriesOnEthereum())
 	}
 
-	assert.Equal(t, expectedMaxRetries, executor.retriesOnEthereum)
-	assert.True(t, executor.ProcessMaxRetriesOnEthereum())
+	assert.Equal(t, expectedMaxRetries, executor.quorumRetriesOnEthereum)
+	assert.True(t, executor.ProcessMaxQuorumRetriesOnEthereum())
 	executor.ResetRetriesCountOnEthereum()
-	assert.Equal(t, uint64(0), executor.retriesOnEthereum)
-	assert.True(t, wasCalled)
+	assert.Equal(t, uint64(0), executor.quorumRetriesOnEthereum)
 }
 
 func TestWaitForTransferConfirmation(t *testing.T) {
