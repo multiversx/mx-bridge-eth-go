@@ -289,7 +289,7 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 
 		h, err := c.GenerateMessageHash(batch)
 		assert.Nil(t, err)
-		assert.Equal(t, "f48899888719fcb70b37510cf226912dca18def7154c2b2810401b85581f5859", hex.EncodeToString(h.Bytes()))
+		assert.Equal(t, "c68190e0a3b8d7c6bd966272a11d618ceddc4b38662b0a1610621f4d30ec07ca", hex.EncodeToString(h.Bytes()))
 	})
 }
 
