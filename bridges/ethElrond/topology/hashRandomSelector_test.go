@@ -33,6 +33,17 @@ func TestHashRandomSelector_randomInt(t *testing.T) {
 	assert.Equal(t, uint64(9), selector.randomInt(seedValue+120, 10))
 }
 
+func TestHashRandomSelector_randomIntTemp(t *testing.T) {
+	t.Parallel()
+
+	selector := &hashRandomSelector{}
+	seedValue := uint64(1641988500)
+
+	for i := 0; i < 10000; i++ {
+		fmt.Println(selector.randomInt((seedValue + uint64(i)/120), 10))
+	}
+}
+
 func TestHashRandomSelector_randomIntDistribution(t *testing.T) {
 	t.Parallel()
 

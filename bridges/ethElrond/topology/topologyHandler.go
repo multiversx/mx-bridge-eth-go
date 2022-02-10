@@ -6,6 +6,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
 // ArgsTopologyHandler is the DTO used in the NewTopologyHandler constructor function
@@ -14,6 +15,8 @@ type ArgsTopologyHandler struct {
 	Timer              core.Timer
 	IntervalForLeader  time.Duration
 	AddressBytes       []byte
+	Log                logger.Logger
+	AddressConverter   core.AddressConverter
 }
 
 // topologyHandler implements topologyProvider for a specific relay
@@ -23,6 +26,8 @@ type topologyHandler struct {
 	intervalForLeader  time.Duration
 	addressBytes       []byte
 	selector           *hashRandomSelector
+	log                logger.Logger
+	addressConverter   core.AddressConverter
 }
 
 // NewTopologyHandler creates a new topologyHandler instance
@@ -38,6 +43,8 @@ func NewTopologyHandler(args ArgsTopologyHandler) (*topologyHandler, error) {
 		intervalForLeader:  args.IntervalForLeader,
 		addressBytes:       args.AddressBytes,
 		selector:           &hashRandomSelector{},
+		log:                args.Log,
+		addressConverter:   args.AddressConverter,
 	}, nil
 }
 
@@ -46,6 +53,7 @@ func (t *topologyHandler) MyTurnAsLeader() bool {
 	sortedPublicKeys := t.publicKeysProvider.SortedPublicKeys()
 
 	if len(sortedPublicKeys) == 0 {
+		t.log.Warn("topology handler: can not compute my turn as leader as the list is empty")
 		return false
 	} else {
 		numberOfPeers := int64(len(sortedPublicKeys))
@@ -53,7 +61,16 @@ func (t *topologyHandler) MyTurnAsLeader() bool {
 		seed := uint64(t.timer.NowUnix() / int64(t.intervalForLeader.Seconds()))
 		index := t.selector.randomInt(seed, uint64(numberOfPeers))
 
-		return bytes.Equal(sortedPublicKeys[index], t.addressBytes)
+		leaderAddress := sortedPublicKeys[index]
+		isLeader := bytes.Equal(leaderAddress, t.addressBytes)
+		msg := "topology handler"
+		if isLeader {
+			msg += " (my turn)"
+		}
+
+		t.log.Debug(msg, "leader", t.addressConverter.ToBech32String(leaderAddress), "index", index)
+
+		return isLeader
 	}
 }
 
@@ -75,6 +92,12 @@ func checkArgs(args ArgsTopologyHandler) error {
 	if len(args.AddressBytes) == 0 {
 		return errEmptyAddress
 	}
+	if check.IfNil(args.Log) {
+		return errNilLogger
+	}
+	if check.IfNil(args.AddressConverter) {
+		return errNilAddressConverter
+	} // TODO add tests
 
 	return nil
 }

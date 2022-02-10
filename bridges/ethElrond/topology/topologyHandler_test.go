@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/core/converters"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -126,6 +128,7 @@ func createTimerStubWithUnixValue(value int64) *testsCommon.TimerStub {
 }
 
 func createMockArgsTopologyHandler() ArgsTopologyHandler {
+	addressConverter, _ := converters.NewAddressConverter()
 	return ArgsTopologyHandler{
 		PublicKeysProvider: &testsCommon.BroadcasterStub{
 			SortedPublicKeysCalled: func() [][]byte {
@@ -135,5 +138,7 @@ func createMockArgsTopologyHandler() ArgsTopologyHandler {
 		Timer:             createTimerStubWithUnixValue(0),
 		IntervalForLeader: duration,
 		AddressBytes:      []byte("aaa"),
+		Log:               logger.GetOrCreate("test"),
+		AddressConverter:  addressConverter,
 	}
 }
