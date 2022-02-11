@@ -68,7 +68,10 @@ func (t *topologyHandler) MyTurnAsLeader() bool {
 			msg += " (my turn)"
 		}
 
-		t.log.Debug(msg, "leader", t.addressConverter.ToBech32String(leaderAddress), "index", index)
+		t.log.Debug(msg,
+			"leader", t.addressConverter.ToBech32String(leaderAddress),
+			"index", index,
+			"self address", t.addressConverter.ToBech32String(t.addressBytes))
 
 		return isLeader
 	}
@@ -97,7 +100,7 @@ func checkArgs(args ArgsTopologyHandler) error {
 	}
 	if check.IfNil(args.AddressConverter) {
 		return errNilAddressConverter
-	} // TODO add tests
+	}
 
 	return nil
 }
