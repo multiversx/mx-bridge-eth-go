@@ -28,8 +28,7 @@ func (step *performTransferStep) Execute(ctx context.Context) core.StepIdentifie
 	if step.bridge.MyTurnAsLeader() {
 		err = step.bridge.PerformTransferOnEthereum(ctx)
 		if err != nil {
-			step.bridge.PrintInfo(logger.LogError, "error performing action ID",
-				"action ID", step.bridge.GetStoredActionID(), "error", err)
+			step.bridge.PrintInfo(logger.LogError, "error performing transfer on Ethereum", "error", err)
 			return GettingPendingBatchFromElrond
 		}
 	} else {
