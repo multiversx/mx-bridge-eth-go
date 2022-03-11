@@ -12,6 +12,7 @@ import (
 
 func TestExecute_ResolveSetStatus(t *testing.T) {
 	t.Parallel()
+
 	t.Run("nil batch on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
@@ -31,7 +32,6 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		assert.Equal(t, initialStep, stepIdentifier)
 		assert.True(t, clearWasCalled)
 	})
-
 	t.Run("error on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
@@ -51,7 +51,6 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		assert.Equal(t, initialStep, stepIdentifier)
 		assert.True(t, clearWasCalled)
 	})
-
 	t.Run("nil batch on GetBatchFromElrond", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
@@ -71,10 +70,25 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		assert.Equal(t, initialStep, stepIdentifier)
 		assert.True(t, clearWasCalled)
 	})
-
 	t.Run("WaitAndReturnFinalBatchStatusesCalled returns nil, should go to GettingPendingBatchFromElrond", func(t *testing.T) {
 		t.Parallel()
+
 		bridgeStub := createStubExecutorResolveSetStatus()
+
+		step := resolveSetStatusStep{
+			bridge: bridgeStub,
+		}
+
+		stepIdentifier := step.Execute(context.Background())
+		assert.Equal(t, initialStep, stepIdentifier)
+	})
+	t.Run("WaitAndReturnFinalBatchStatusesCalled returns empty slice, should go to GettingPendingBatchFromElrond", func(t *testing.T) {
+		t.Parallel()
+
+		bridgeStub := createStubExecutorResolveSetStatus()
+		bridgeStub.WaitAndReturnFinalBatchStatusesCalled = func(ctx context.Context) []byte {
+			return make([]byte, 0)
+		}
 
 		step := resolveSetStatusStep{
 			bridge: bridgeStub,
