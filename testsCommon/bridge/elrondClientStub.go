@@ -139,15 +139,6 @@ func (stub *ElrondClientStub) ProposeSetStatus(ctx context.Context, batch *clien
 	return "", nil
 }
 
-// ResolveNewDeposits -
-func (stub *ElrondClientStub) ResolveNewDeposits(ctx context.Context, batch *clients.TransferBatch) error {
-	if stub.ResolveNewDepositsCalled != nil {
-		return stub.ResolveNewDepositsCalled(ctx, batch)
-	}
-
-	return nil
-}
-
 // ProposeTransfer -
 func (stub *ElrondClientStub) ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error) {
 	if stub.ProposeTransferCalled != nil {

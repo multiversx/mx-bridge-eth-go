@@ -251,22 +251,6 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 	return hash, err
 }
 
-// ResolveNewDeposits will try to add new statuses if the pending batch gets modified
-func (c *client) ResolveNewDeposits(ctx context.Context, batch *clients.TransferBatch) error {
-	if batch == nil {
-		return clients.ErrNilBatch
-	}
-
-	newBatch, err := c.GetPending(ctx)
-	if err != nil {
-		return fmt.Errorf("%w while getting new batch in ResolveNewDeposits method", err)
-	}
-
-	batch.ResolveNewDeposits(len(newBatch.Statuses))
-
-	return nil
-}
-
 // ProposeTransfer will trigger the propose transfer operation
 func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error) {
 	if batch == nil {

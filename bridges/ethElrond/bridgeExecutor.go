@@ -343,6 +343,7 @@ func (executor *bridgeExecutor) WaitAndReturnFinalBatchStatuses(ctx context.Cont
 			continue
 		}
 
+		executor.log.Debug("bridgeExecutor.WaitAndReturnFinalBatchStatuses", "statuses", statuses)
 		return statuses
 	}
 
