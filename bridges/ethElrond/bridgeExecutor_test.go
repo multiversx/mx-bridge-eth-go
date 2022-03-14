@@ -1367,7 +1367,6 @@ func TestWaitAndReturnFinalBatchStatuses(t *testing.T) {
 		assert.True(t, elapsed < args.TimeForWaitOnEthereum)
 		assert.Nil(t, statuses)
 	})
-
 	t.Run("GetBatchStatusesFromEthereum always returns err", func(t *testing.T) {
 		t.Parallel()
 
@@ -1391,7 +1390,6 @@ func TestWaitAndReturnFinalBatchStatuses(t *testing.T) {
 		assert.Equal(t, 10, counter)
 		assert.Nil(t, statuses)
 	})
-
 	t.Run("GetBatchStatusesFromEthereum always returns success+statuses only after 4 checks", func(t *testing.T) {
 		t.Parallel()
 
@@ -1406,6 +1404,37 @@ func TestWaitAndReturnFinalBatchStatuses(t *testing.T) {
 					return providedStatuses, nil
 				}
 				return nil, expectedErr
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		executor.batch = &clients.TransferBatch{}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		start := time.Now()
+
+		statuses := executor.WaitAndReturnFinalBatchStatuses(ctx)
+		elapsed := time.Since(start)
+
+		assert.True(t, elapsed < args.TimeForWaitOnEthereum)
+		assert.Equal(t, 5, counter)
+		assert.Equal(t, providedStatuses, statuses)
+	})
+	t.Run("GetBatchStatusesFromEthereum always returns success+statuses only after 4 checks, otherwise empty slice", func(t *testing.T) {
+		t.Parallel()
+
+		providedStatuses := []byte{clients.Executed, clients.Rejected}
+		args := createMockExecutorArgs()
+		args.TimeForWaitOnEthereum = 10 * time.Second
+		counter := 0
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetTransactionsStatusesCalled: func(ctx context.Context, batchId uint64) ([]byte, error) {
+				counter++
+				if counter >= 5 {
+					return providedStatuses, nil
+				}
+				return make([]byte, 0), nil
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)

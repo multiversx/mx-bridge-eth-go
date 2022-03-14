@@ -23,7 +23,6 @@ type ElrondClient interface {
 	GetLastExecutedEthTxID(ctx context.Context) (uint64, error)
 
 	ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error)
-	ResolveNewDeposits(ctx context.Context, batch *clients.TransferBatch) error
 	ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error)
 	Sign(ctx context.Context, actionID uint64) (string, error)
 	WasSigned(ctx context.Context, actionID uint64) (bool, error)
