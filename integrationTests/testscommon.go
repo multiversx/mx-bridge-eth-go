@@ -91,8 +91,9 @@ func printEncounteredErrors(encounteredErrors []error) {
 func CreateMessengerWithNoDiscovery() p2p.Messenger {
 	p2pConfig := config.P2PConfig{
 		Node: config.NodeConfig{
-			Port: "0",
-			Seed: "",
+			Port:                  "0",
+			Seed:                  "",
+			ConnectionWatcherType: "disabled",
 		},
 		KadDhtPeerDiscovery: config.KadDhtPeerDiscoveryConfig{
 			Enabled:    false,

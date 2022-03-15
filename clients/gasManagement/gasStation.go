@@ -88,8 +88,8 @@ func checkArgs(args ArgsGasStation) error {
 }
 
 func (gs *gasStation) processLoop(ctx context.Context) {
-	gs.loopStatus.Set()
-	defer gs.loopStatus.Unset()
+	gs.loopStatus.SetValue(true)
+	defer gs.loopStatus.SetValue(false)
 
 	timer := time.NewTimer(gs.requestPollingInterval)
 	defer timer.Stop()
