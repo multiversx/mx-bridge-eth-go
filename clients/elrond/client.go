@@ -60,7 +60,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	nonceTxsHandler, err := interactors.NewNonceTransactionHandler(args.Proxy, time.Second*time.Duration(args.IntervalToResendTxsInSeconds))
+	nonceTxsHandler, err := interactors.NewNonceTransactionHandler(args.Proxy, time.Second*time.Duration(args.IntervalToResendTxsInSeconds), true)
 	if err != nil {
 		return nil, err
 	}
