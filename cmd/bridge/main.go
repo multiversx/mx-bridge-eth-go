@@ -345,10 +345,5 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		NodeOperationMode:    elrondP2P.NormalOperation,
 	}
 
-	messenger, err := libp2p.NewNetworkMessenger(args)
-	if err != nil {
-		panic(err)
-	}
-
-	return messenger, nil
+	return libp2p.NewNetworkMessenger(args)
 }
