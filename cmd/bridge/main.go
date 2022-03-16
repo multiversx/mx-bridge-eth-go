@@ -43,6 +43,7 @@ const (
 	logFilePrefix            = "elrond-eth-bridge"
 	p2pPeerNetworkDiscoverer = "optimized"
 	nilListSharderType       = "NilListSharder"
+	disabledWatcher          = "disabled"
 	dbPath                   = "db"
 	timeForBootstrap         = time.Second * 20
 	timeBeforeRepeatJoin     = time.Minute * 5
@@ -312,6 +313,7 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		Seed:                       cfg.P2P.Seed,
 		MaximumExpectedPeerCount:   0,
 		ThresholdMinConnectedPeers: 0,
+		ConnectionWatcherType:      disabledWatcher,
 	}
 	peerDiscoveryConfig := elrondConfig.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
