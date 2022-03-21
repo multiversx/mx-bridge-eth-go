@@ -79,10 +79,12 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 
 	response, err := dg.proxy.ExecuteVMQuery(ctx, request)
 	if err != nil {
+		dg.log.Error("while query SC", "request", request, "error", err)
 		return nil, err
 	}
 
 	if response.Data.ReturnCode != okCodeAfterExecution {
+		dg.log.Error("while query SC", "request", request, "response", response)
 		return nil, NewQueryResponseError(
 			response.Data.ReturnCode,
 			response.Data.ReturnMessage,
@@ -91,6 +93,7 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 			request.Args...,
 		)
 	}
+	dg.log.Debug("SC queried", "request", request, "response", response)
 	return response.Data.ReturnData, nil
 }
 
@@ -98,15 +101,13 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 func (dg *elrondClientDataGetter) ExecuteQueryReturningBool(ctx context.Context, request *data.VmValueRequest) (bool, error) {
 	response, err := dg.ExecuteQueryReturningBytes(ctx, request)
 	if err != nil {
-		dg.log.Error("Getting error while querying SC", "request", fmt.Sprintf("%+v", request))
 		return false, err
 	}
 
 	if len(response) == 0 {
-		dg.log.Debug("Empty response for SC query", "request", fmt.Sprintf("%+v", request))
 		return false, nil
 	}
-	dg.log.Debug("SC queried", "request", fmt.Sprintf("%+v", request), "response", fmt.Sprintf("%+v", response[0]))
+
 	return dg.parseBool(response[0], request.FuncName, request.Address, request.Args...)
 }
 
@@ -137,14 +138,12 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningUint64(ctx context.Contex
 	}
 
 	if len(response) == 0 {
-		dg.log.Debug("empty response for SC query", "request", fmt.Sprintf("%+v", request))
 		return 0, nil
 	}
 	if len(response[0]) == 0 {
-		dg.log.Debug("empty response for SC query", "request", fmt.Sprintf("%+v", request))
 		return 0, nil
 	}
-	dg.log.Debug("SC queried", "request", fmt.Sprintf("%+v", request), "response", fmt.Sprintf("%+v", response[0]))
+
 	num, err := parseUInt64FromByteSlice(response[0])
 	if err != nil {
 		return 0, NewQueryResponseError(

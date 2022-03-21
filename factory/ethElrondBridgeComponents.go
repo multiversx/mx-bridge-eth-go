@@ -268,7 +268,7 @@ func (components *ethElrondBridgeComponents) createDataGetter() error {
 		MultisigContractAddress: components.elrondMultisigContractAddress,
 		RelayerAddress:          components.elrondRelayerAddress,
 		Proxy:                   components.proxy,
-		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondDataGetterLogId), elrondDataGetterLogId),
+		Log:                     logger.GetOrCreate(elrondDataGetterLogId),
 	}
 
 	var err error
