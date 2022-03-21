@@ -79,12 +79,11 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 
 	response, err := dg.proxy.ExecuteVMQuery(ctx, request)
 	if err != nil {
-		dg.log.Error("while query SC", "request", request, "error", err)
+		dg.log.Error("Getting error while query SC", "request", fmt.Sprintf("%+v", request))
 		return nil, err
 	}
-
+	dg.log.Debug("SC queried", "request", fmt.Sprintf("%+v", request), "response.ReturnData", fmt.Sprintf("%+v", response.Data.ReturnData))
 	if response.Data.ReturnCode != okCodeAfterExecution {
-		dg.log.Error("while query SC", "request", request, "response", response)
 		return nil, NewQueryResponseError(
 			response.Data.ReturnCode,
 			response.Data.ReturnMessage,
@@ -93,7 +92,6 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 			request.Args...,
 		)
 	}
-	dg.log.Debug("SC queried", "request", request, "response", response)
 	return response.Data.ReturnData, nil
 }
 
