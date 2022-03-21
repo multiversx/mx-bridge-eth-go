@@ -3,6 +3,7 @@ package elrond
 import "errors"
 
 var (
+	errNilLogger                = errors.New("nil logger")
 	errNilProxy                 = errors.New("nil ElrondProxy")
 	errNilAddressHandler        = errors.New("nil address handler")
 	errNilRequest               = errors.New("nil request")

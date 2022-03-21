@@ -8,6 +8,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -37,16 +38,21 @@ type ArgsDataGetter struct {
 	MultisigContractAddress core.AddressHandler
 	RelayerAddress          core.AddressHandler
 	Proxy                   ElrondProxy
+	Log                     logger.Logger
 }
 
 type elrondClientDataGetter struct {
 	multisigContractAddress core.AddressHandler
 	relayerAddress          core.AddressHandler
 	proxy                   ElrondProxy
+	log                     logger.Logger
 }
 
 // NewDataGetter creates a new instance of the dataGetter type
 func NewDataGetter(args ArgsDataGetter) (*elrondClientDataGetter, error) {
+	if check.IfNil(args.Log) {
+		return nil, errNilLogger
+	}
 	if check.IfNil(args.Proxy) {
 		return nil, errNilProxy
 	}
@@ -61,6 +67,7 @@ func NewDataGetter(args ArgsDataGetter) (*elrondClientDataGetter, error) {
 		multisigContractAddress: args.MultisigContractAddress,
 		relayerAddress:          args.RelayerAddress,
 		proxy:                   args.Proxy,
+		log:                     args.Log,
 	}, nil
 }
 
@@ -72,10 +79,12 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 
 	response, err := dg.proxy.ExecuteVMQuery(ctx, request)
 	if err != nil {
+		dg.log.Error("while query SC", "request", request, "error", err)
 		return nil, err
 	}
 
 	if response.Data.ReturnCode != okCodeAfterExecution {
+		dg.log.Error("while query SC", "request", request, "response", response)
 		return nil, NewQueryResponseError(
 			response.Data.ReturnCode,
 			response.Data.ReturnMessage,
@@ -84,7 +93,7 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 			request.Args...,
 		)
 	}
-
+	dg.log.Debug("SC queried", "request", request, "response", response)
 	return response.Data.ReturnData, nil
 }
 
