@@ -53,6 +53,7 @@ const (
 	elrondToEthName         = "ElrondToEth"
 	baseLogId               = "EthElrond-Base"
 	elrondClientLogId       = "EthElrond-ElrondClient"
+	elrondDataGetterLogId   = "EthElrond-ElrondDataGetter"
 	ethClientLogId          = "EthElrond-EthClient"
 	elrondRoleProviderLogId = "EthElrond-ElrondRoleProvider"
 	ethRoleProviderLogId    = "EthElrond-EthRoleProvider"
@@ -267,6 +268,7 @@ func (components *ethElrondBridgeComponents) createDataGetter() error {
 		MultisigContractAddress: components.elrondMultisigContractAddress,
 		RelayerAddress:          components.elrondRelayerAddress,
 		Proxy:                   components.proxy,
+		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondDataGetterLogId), elrondDataGetterLogId),
 	}
 
 	var err error

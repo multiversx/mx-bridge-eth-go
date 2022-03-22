@@ -8,6 +8,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -37,16 +38,21 @@ type ArgsDataGetter struct {
 	MultisigContractAddress core.AddressHandler
 	RelayerAddress          core.AddressHandler
 	Proxy                   ElrondProxy
+	Log                     logger.Logger
 }
 
 type elrondClientDataGetter struct {
 	multisigContractAddress core.AddressHandler
 	relayerAddress          core.AddressHandler
 	proxy                   ElrondProxy
+	log                     logger.Logger
 }
 
 // NewDataGetter creates a new instance of the dataGetter type
 func NewDataGetter(args ArgsDataGetter) (*elrondClientDataGetter, error) {
+	if check.IfNil(args.Log) {
+		return nil, errNilLogger
+	}
 	if check.IfNil(args.Proxy) {
 		return nil, errNilProxy
 	}
@@ -61,6 +67,7 @@ func NewDataGetter(args ArgsDataGetter) (*elrondClientDataGetter, error) {
 		multisigContractAddress: args.MultisigContractAddress,
 		relayerAddress:          args.RelayerAddress,
 		proxy:                   args.Proxy,
+		log:                     args.Log,
 	}, nil
 }
 
@@ -72,9 +79,13 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 
 	response, err := dg.proxy.ExecuteVMQuery(ctx, request)
 	if err != nil {
+		dg.log.Error("got error on VMQuery", "FuncName", request.FuncName,
+			"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr)
 		return nil, err
 	}
-
+	dg.log.Debug("executed VMQuery", "FuncName", request.FuncName,
+		"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr,
+		"response.ReturnData", fmt.Sprintf("%+v", response.Data.ReturnData))
 	if response.Data.ReturnCode != okCodeAfterExecution {
 		return nil, NewQueryResponseError(
 			response.Data.ReturnCode,
@@ -84,7 +95,6 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 			request.Args...,
 		)
 	}
-
 	return response.Data.ReturnData, nil
 }
 

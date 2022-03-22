@@ -13,6 +13,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/data/vm"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +29,7 @@ var calledArgs = []string{"args1", "args2"}
 
 func createMockArgsDataGetter() ArgsDataGetter {
 	args := ArgsDataGetter{
+		Log:   logger.GetOrCreate("test"),
 		Proxy: &interactors.ElrondProxyStub{},
 	}
 
@@ -84,6 +86,16 @@ func createMockBatch() *clients.TransferBatch {
 func TestNewDataGetter(t *testing.T) {
 	t.Parallel()
 
+	t.Run("nil logger", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsDataGetter()
+		args.Log = nil
+
+		dg, err := NewDataGetter(args)
+		assert.Equal(t, errNilLogger, err)
+		assert.True(t, check.IfNil(dg))
+	})
 	t.Run("nil proxy", func(t *testing.T) {
 		t.Parallel()
 

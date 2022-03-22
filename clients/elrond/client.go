@@ -26,6 +26,8 @@ const (
 	proposeSetStatusFuncName = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
 	signFuncName             = "sign"
 	performActionFuncName    = "performAction"
+
+	elrondDataGetterLogId = "ElrondEth-ElrondDataGetter"
 )
 
 // ClientArgs represents the argument for the NewClient constructor function
@@ -77,6 +79,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		MultisigContractAddress: args.MultisigContractAddress,
 		RelayerAddress:          relayerAddress,
 		Proxy:                   args.Proxy,
+		Log:                     bridgeCore.NewLoggerWithIdentifier(logger.GetOrCreate(elrondDataGetterLogId), elrondDataGetterLogId),
 	}
 	getter, err := NewDataGetter(argsDataGetter)
 	if err != nil {
