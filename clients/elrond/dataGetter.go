@@ -79,10 +79,13 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 
 	response, err := dg.proxy.ExecuteVMQuery(ctx, request)
 	if err != nil {
-		dg.log.Error("got error on VMQuery", "FuncName", request.FuncName, "Args", request.Args)
+		dg.log.Error("got error on VMQuery", "FuncName", request.FuncName,
+			"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr)
 		return nil, err
 	}
-	dg.log.Debug("executed VMQuery", "FuncName", request.FuncName, "Args", request.Args, "response.ReturnData", fmt.Sprintf("%+v", response.Data.ReturnData))
+	dg.log.Debug("executed VMQuery", "FuncName", request.FuncName,
+		"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr,
+		"response.ReturnData", fmt.Sprintf("%+v", response.Data.ReturnData))
 	if response.Data.ReturnCode != okCodeAfterExecution {
 		return nil, NewQueryResponseError(
 			response.Data.ReturnCode,
