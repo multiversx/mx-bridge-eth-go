@@ -75,12 +75,11 @@ func NewClient(args ClientArgs) (*client, error) {
 
 	relayerAddress := data.NewAddressFromBytes(publicKeyBytes)
 
-	log := logger.GetOrCreate(elrondDataGetterLogId)
 	argsDataGetter := ArgsDataGetter{
 		MultisigContractAddress: args.MultisigContractAddress,
 		RelayerAddress:          relayerAddress,
 		Proxy:                   args.Proxy,
-		Log:                     log,
+		Log:                     bridgeCore.NewLoggerWithIdentifier(logger.GetOrCreate(elrondDataGetterLogId), elrondDataGetterLogId),
 	}
 	getter, err := NewDataGetter(argsDataGetter)
 	if err != nil {
