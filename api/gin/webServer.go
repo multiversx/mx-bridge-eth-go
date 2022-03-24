@@ -144,6 +144,10 @@ func (ws *webServer) createGroups() error {
 
 // UpdateFacade will update webServer facade.
 func (ws *webServer) UpdateFacade(facade shared.FacadeHandler) error {
+	if check.IfNil(facade) {
+		return apiErrors.ErrNilFacade
+	}
+
 	ws.Lock()
 	defer ws.Unlock()
 
