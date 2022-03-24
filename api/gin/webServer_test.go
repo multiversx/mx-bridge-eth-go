@@ -41,6 +41,7 @@ func createMockArgsNewWebServer() ArgsNewWebServer {
 		},
 	}
 }
+
 func TestNewWebServerHandler(t *testing.T) {
 	t.Parallel()
 
