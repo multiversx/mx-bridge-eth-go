@@ -9,11 +9,11 @@ import (
 )
 
 type httpServer struct {
-	server *http.Server
+	server server
 }
 
 // NewHttpServer returns a new instance of httpServer
-func NewHttpServer(server *http.Server) (*httpServer, error) {
+func NewHttpServer(server server) (*httpServer, error) {
 	if server == nil {
 		return nil, apiErrors.ErrNilHttpServer
 	}

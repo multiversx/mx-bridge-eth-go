@@ -1,11 +1,13 @@
 package gin
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"testing"
-	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
+	apiErrors "github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
+	testsServer "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/server"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,13 +19,13 @@ func TestNewHttpServer(t *testing.T) {
 		t.Parallel()
 
 		hs, err := NewHttpServer(nil)
-		assert.Equal(t, errors.ErrNilHttpServer, err)
+		assert.Equal(t, apiErrors.ErrNilHttpServer, err)
 		assert.True(t, check.IfNil(hs))
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		hs, err := NewHttpServer(&http.Server{})
+		hs, err := NewHttpServer(&testsServer.ServerStub{})
 		assert.Nil(t, err)
 		assert.False(t, check.IfNil(hs))
 	})
@@ -32,37 +34,30 @@ func TestNewHttpServer(t *testing.T) {
 func TestNewHttpServer_Start(t *testing.T) {
 	t.Parallel()
 
-	t.Run("closed server", func(t *testing.T) {
+	t.Run("ListenAndServe returns closed server", func(t *testing.T) {
 		t.Parallel()
 
-		defer func() {
-			r := recover()
-			if r != nil {
-				assert.Fail(t, "should not panic")
-			}
-		}()
+		s := &testsServer.ServerStub{
+			ListenAndServeCalled: func() error {
+				return http.ErrServerClosed
+			},
+		}
 
-		server := &http.Server{}
-		_ = server.Close()
-
-		hs, _ := NewHttpServer(server)
+		hs, _ := NewHttpServer(s)
 		assert.False(t, check.IfNil(hs))
 
 		hs.Start()
 	})
-	t.Run("access denied", func(t *testing.T) {
+	t.Run("ListenAndServe returns other error", func(t *testing.T) {
 		t.Parallel()
 
-		defer func() {
-			r := recover()
-			if r != nil {
-				assert.Fail(t, "should not panic")
-			}
-		}()
+		s := &testsServer.ServerStub{
+			ListenAndServeCalled: func() error {
+				return http.ErrContentLength
+			},
+		}
 
-		server := &http.Server{}
-
-		hs, _ := NewHttpServer(server)
+		hs, _ := NewHttpServer(s)
 		assert.False(t, check.IfNil(hs))
 
 		hs.Start()
@@ -70,22 +65,18 @@ func TestNewHttpServer_Start(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		defer func() {
-			r := recover()
-			if r != nil {
-				assert.Fail(t, "should not panic")
-			}
-		}()
-
-		server := &http.Server{
-			Addr: "127.0.0.1:8080",
+		expectedErr := errors.New("expected err")
+		s := &testsServer.ServerStub{
+			ShutdownCalled: func(ctx context.Context) error {
+				return expectedErr
+			},
 		}
-		hs, _ := NewHttpServer(server)
+		hs, _ := NewHttpServer(s)
 		assert.False(t, check.IfNil(hs))
 
-		go hs.Start()
-		time.Sleep(3 * time.Second)
+		hs.Start()
+
 		err := hs.Close()
-		assert.Nil(t, err)
+		assert.Equal(t, expectedErr, err)
 	})
 }
