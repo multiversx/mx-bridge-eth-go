@@ -505,14 +505,8 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 	}
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
-	argsBatchValidator := batchValidatorManagement.ArgsBatchValidator{
-		SourceChain:      clients.Ethereum,
-		DestinationChain: clients.Elrond,
-		RequestURL:       args.Configs.GeneralConfig.BatchValidator.URL,
-		RequestTime:      time.Second * time.Duration(args.Configs.GeneralConfig.BatchValidator.RequestTimeInSeconds),
-	}
 
-	batchValidator, err := batchManagementFactory.CreateBatchValidator(argsBatchValidator, args.Configs.GeneralConfig.BatchValidator.Enabled)
+	batchValidator, err := components.createBatchValidator(clients.Ethereum, clients.Elrond, args.Configs.GeneralConfig.BatchValidator)
 	if err != nil {
 		return err
 	}
@@ -579,17 +573,11 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 
 	timeForWaitOnEthereum := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	argsBatchValidator := batchValidatorManagement.ArgsBatchValidator{
-		SourceChain:      clients.Elrond,
-		DestinationChain: clients.Ethereum,
-		RequestURL:       args.Configs.GeneralConfig.BatchValidator.URL,
-		RequestTime:      time.Second * time.Duration(args.Configs.GeneralConfig.BatchValidator.RequestTimeInSeconds),
-	}
-
-	batchValidator, err := batchManagementFactory.CreateBatchValidator(argsBatchValidator, args.Configs.GeneralConfig.BatchValidator.Enabled)
+	batchValidator, err := components.createBatchValidator(clients.Elrond, clients.Ethereum, args.Configs.GeneralConfig.BatchValidator)
 	if err != nil {
 		return err
 	}
+
 	argsBridgeExecutor := ethElrond.ArgsBridgeExecutor{
 		Log:                        log,
 		TopologyProvider:           topologyHandler,
@@ -653,6 +641,21 @@ func (components *ethElrondBridgeComponents) Start() error {
 	go components.startBroadcastJoinRetriesLoop()
 
 	return nil
+}
+
+func (components *ethElrondBridgeComponents) createBatchValidator(sourceChain clients.Chain, destinationChain clients.Chain, args config.BatchValidatorConfig) (clients.BatchValidator, error) {
+	argsBatchValidator := batchValidatorManagement.ArgsBatchValidator{
+		SourceChain:      sourceChain,
+		DestinationChain: destinationChain,
+		RequestURL:       args.URL,
+		RequestTime:      time.Second * time.Duration(args.RequestTimeInSeconds),
+	}
+
+	batchValidator, err := batchManagementFactory.CreateBatchValidator(argsBatchValidator, args.Enabled)
+	if err != nil {
+		return nil, err
+	}
+	return batchValidator, err
 }
 
 func (components *ethElrondBridgeComponents) createEthereumToElrondStateMachine() error {
