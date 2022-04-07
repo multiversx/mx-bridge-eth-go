@@ -21,12 +21,13 @@ const minRetries = 1
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
 	Log                        logger.Logger
+	TopologyProvider           TopologyProvider
 	ElrondClient               ElrondClient
 	EthereumClient             EthereumClient
-	TopologyProvider           TopologyProvider
 	TimeForWaitOnEthereum      time.Duration
 	StatusHandler              core.StatusHandler
 	SignaturesHolder           SignaturesHolder
+	BatchValidator             clients.BatchValidator
 	MaxQuorumRetriesOnEthereum uint64
 	MaxQuorumRetriesOnElrond   uint64
 	MaxRestriesOnWasProposed   uint64
@@ -37,18 +38,20 @@ type bridgeExecutor struct {
 	topologyProvider           TopologyProvider
 	elrondClient               ElrondClient
 	ethereumClient             EthereumClient
-	batch                      *clients.TransferBatch
-	actionID                   uint64
-	msgHash                    common.Hash
-	quorumRetriesOnEthereum    uint64
-	maxQuorumRetriesOnEthereum uint64
-	quorumRetriesOnElrond      uint64
-	maxQuorumRetriesOnElrond   uint64
-	retriesOnWasProposed       uint64
-	maxRetriesOnWasProposed    uint64
 	timeForWaitOnEthereum      time.Duration
 	statusHandler              core.StatusHandler
 	sigsHolder                 SignaturesHolder
+	batchValidator             clients.BatchValidator
+	maxQuorumRetriesOnEthereum uint64
+	maxQuorumRetriesOnElrond   uint64
+	maxRetriesOnWasProposed    uint64
+
+	batch                   *clients.TransferBatch
+	actionID                uint64
+	msgHash                 common.Hash
+	quorumRetriesOnEthereum uint64
+	quorumRetriesOnElrond   uint64
+	retriesOnWasProposed    uint64
 }
 
 // NewBridgeExecutor creates a bridge executor, which can be used for both half-bridges
@@ -84,6 +87,9 @@ func checkArgs(args ArgsBridgeExecutor) error {
 	if check.IfNil(args.SignaturesHolder) {
 		return ErrNilSignaturesHolder
 	}
+	if check.IfNil(args.BatchValidator) {
+		return ErrNilBatchValidator
+	}
 	if args.MaxQuorumRetriesOnEthereum < minRetries {
 		return fmt.Errorf("%w for args.MaxQuorumRetriesOnEthereum, got: %d, minimum: %d",
 			clients.ErrInvalidValue, args.MaxQuorumRetriesOnEthereum, minRetries)
@@ -108,6 +114,7 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 		statusHandler:              args.StatusHandler,
 		timeForWaitOnEthereum:      args.TimeForWaitOnEthereum,
 		sigsHolder:                 args.SignaturesHolder,
+		batchValidator:             args.BatchValidator,
 		maxQuorumRetriesOnEthereum: args.MaxQuorumRetriesOnEthereum,
 		maxQuorumRetriesOnElrond:   args.MaxQuorumRetriesOnElrond,
 		maxRetriesOnWasProposed:    args.MaxRestriesOnWasProposed,
@@ -514,12 +521,8 @@ func (executor *bridgeExecutor) ClearStoredP2PSignaturesForEthereum() {
 	executor.sigsHolder.ClearStoredSignatures()
 }
 
-func (executor *bridgeExecutor) ValidateElrondBatch(batch string) (bool, error) {
-	return executor.elrondClient.ValidateBatch(batch)
-}
-
-func (executor *bridgeExecutor) ValidateEthereumBatch(batch string) (bool, error) {
-	return executor.ethereumClient.ValidateBatch(batch)
+func (executor *bridgeExecutor) ValidateBatch(batch string) (bool, error) {
+	return executor.batchValidator.ValidateBatch(batch)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

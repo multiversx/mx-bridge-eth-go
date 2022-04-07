@@ -40,7 +40,6 @@ type ClientArgs struct {
 	IntervalToResendTxsInSeconds uint64
 	TokensMapper                 TokensMapper
 	RoleProvider                 roleProvider
-	BatchValidator               clients.BatchValidator
 }
 
 // client represents the Elrond Client implementation
@@ -54,7 +53,6 @@ type client struct {
 	log                       logger.Logger
 	gasMapConfig              config.ElrondGasMapConfig
 	addressPublicKeyConverter bridgeCore.AddressConverter
-	batchValidator            clients.BatchValidator
 }
 
 // NewClient returns a new Elrond Client instance
@@ -111,7 +109,6 @@ func NewClient(args ClientArgs) (*client, error) {
 		gasMapConfig:              args.GasMapConfig,
 		addressPublicKeyConverter: addressConverter,
 		tokensMapper:              args.TokensMapper,
-		batchValidator:            args.BatchValidator,
 	}
 
 	c.log.Info("NewElrondClient",
@@ -139,9 +136,6 @@ func checkArgs(args ClientArgs) error {
 	}
 	if check.IfNil(args.RoleProvider) {
 		return errNilRoleProvider
-	}
-	if check.IfNil(args.BatchValidator) {
-		return errNilBatchValidator
 	}
 
 	err := checkGasMapValues(args.GasMapConfig)
@@ -318,10 +312,6 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 // Close will close any started go routines. It returns nil.
 func (c *client) Close() error {
 	return c.txHandler.Close()
-}
-
-func (c *client) ValidateBatch(batch string) (bool, error) {
-	return c.batchValidator.ValidateBatch(clients.Elrond, batch)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

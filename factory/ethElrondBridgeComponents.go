@@ -129,16 +129,6 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
-	argsBatchValidator := batchValidatorManagement.ArgsBatchValidator{
-		RequestURL:  args.Configs.GeneralConfig.BatchValidator.URL,
-		RequestTime: time.Second * time.Duration(args.Configs.GeneralConfig.BatchValidator.RequestTimeInSeconds),
-	}
-
-	batchValidator, err := batchManagementFactory.CreateBatchValidator(argsBatchValidator, args.Configs.GeneralConfig.BatchValidator.Enabled)
-	if err != nil {
-		return nil, err
-	}
-
 	components := &ethElrondBridgeComponents{
 		baseLogger:           core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
 		messenger:            args.Messenger,
@@ -150,7 +140,6 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		timeBeforeRepeatJoin: args.TimeBeforeRepeatJoin,
 		metricsHolder:        args.MetricsHolder,
 		appStatusHandler:     args.AppStatusHandler,
-		batchValidator:       batchValidator,
 	}
 
 	addressConverter, err := converters.NewAddressConverter()
@@ -307,7 +296,6 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
 		RoleProvider:                 components.elrondRoleProvider,
-		BatchValidator:               components.batchValidator,
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)
@@ -407,7 +395,6 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		SafeContractAddress:   safeContractAddress,
 		GasHandler:            gs,
 		TransferGasLimit:      ethereumConfigs.GasLimit,
-		BatchValidator:        components.batchValidator,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)
@@ -518,6 +505,18 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 	}
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
+	argsBatchValidator := batchValidatorManagement.ArgsBatchValidator{
+		SourceChain:      clients.Ethereum,
+		DestinationChain: clients.Elrond,
+		RequestURL:       args.Configs.GeneralConfig.BatchValidator.URL,
+		RequestTime:      time.Second * time.Duration(args.Configs.GeneralConfig.BatchValidator.RequestTimeInSeconds),
+	}
+
+	batchValidator, err := batchManagementFactory.CreateBatchValidator(argsBatchValidator, args.Configs.GeneralConfig.BatchValidator.Enabled)
+	if err != nil {
+		return err
+	}
+
 	argsBridgeExecutor := ethElrond.ArgsBridgeExecutor{
 		Log:                        log,
 		TopologyProvider:           topologyHandler,
@@ -526,6 +525,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 		StatusHandler:              components.ethToElrondStatusHandler,
 		TimeForWaitOnEthereum:      timeForTransferExecution,
 		SignaturesHolder:           disabled.NewDisabledSignaturesHolder(),
+		BatchValidator:             batchValidator,
 		MaxQuorumRetriesOnEthereum: args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnElrond:   args.Configs.GeneralConfig.Elrond.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:   args.Configs.GeneralConfig.Elrond.MaxRetriesOnWasTransferProposed,
@@ -578,6 +578,18 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 	}
 
 	timeForWaitOnEthereum := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
+
+	argsBatchValidator := batchValidatorManagement.ArgsBatchValidator{
+		SourceChain:      clients.Elrond,
+		DestinationChain: clients.Ethereum,
+		RequestURL:       args.Configs.GeneralConfig.BatchValidator.URL,
+		RequestTime:      time.Second * time.Duration(args.Configs.GeneralConfig.BatchValidator.RequestTimeInSeconds),
+	}
+
+	batchValidator, err := batchManagementFactory.CreateBatchValidator(argsBatchValidator, args.Configs.GeneralConfig.BatchValidator.Enabled)
+	if err != nil {
+		return err
+	}
 	argsBridgeExecutor := ethElrond.ArgsBridgeExecutor{
 		Log:                        log,
 		TopologyProvider:           topologyHandler,
@@ -586,6 +598,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 		StatusHandler:              components.elrondToEthStatusHandler,
 		TimeForWaitOnEthereum:      timeForWaitOnEthereum,
 		SignaturesHolder:           components.ethToElrondSignaturesHolder,
+		BatchValidator:             batchValidator,
 		MaxQuorumRetriesOnEthereum: args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnElrond:   args.Configs.GeneralConfig.Elrond.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:   args.Configs.GeneralConfig.Elrond.MaxRetriesOnWasTransferProposed,

@@ -54,8 +54,7 @@ type Executor interface {
 	ResetRetriesCountOnEthereum()
 	ClearStoredP2PSignaturesForEthereum()
 
-	ValidateElrondBatch(batch string) (bool, error)
-	ValidateEthereumBatch(batch string) (bool, error)
+	ValidateBatch(batch string) (bool, error)
 
 	IsInterfaceNil() bool
 }

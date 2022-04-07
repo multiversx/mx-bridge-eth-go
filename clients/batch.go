@@ -51,7 +51,7 @@ func (tb *TransferBatch) Json() string {
 	str += "\"deposits\":["
 	numDeposits := len(tb.Deposits)
 	for i, dt := range tb.Deposits {
-		str += fmt.Sprintf("%s", dt.Json())
+		str += dt.Json()
 		if i < numDeposits-1 {
 			str += ","
 		}

@@ -12,7 +12,6 @@ var (
 	errNilBroadcaster           = errors.New("nil broadcaster")
 	errNilSignaturesHolder      = errors.New("nil signatures holder")
 	errNilGasHandler            = errors.New("nil gas handler")
-	errNilBatchValidator        = errors.New("nil batch validator")
 	errInvalidGasLimit          = errors.New("invalid gas limit")
 	errNilEthClient             = errors.New("nil eth client")
 )

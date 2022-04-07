@@ -18,8 +18,10 @@ const logPath = "BatchValidator"
 
 // ArgsBatchValidator is the DTO used for the creating a new batch validator instance
 type ArgsBatchValidator struct {
-	RequestURL  string
-	RequestTime time.Duration
+	SourceChain      clients.Chain
+	DestinationChain clients.Chain
+	RequestURL       string
+	RequestTime      time.Duration
 }
 
 type batchValidator struct {
@@ -37,7 +39,7 @@ func NewBatchValidator(args ArgsBatchValidator) (*batchValidator, error) {
 	}
 
 	bv := &batchValidator{
-		requestURL:  args.RequestURL,
+		requestURL:  args.RequestURL + "/" + string(args.SourceChain) + "/" + string(args.DestinationChain),
 		requestTime: args.RequestTime,
 		httpClient:  http.DefaultClient,
 	}
@@ -53,8 +55,8 @@ func checkArgs(args ArgsBatchValidator) error {
 	return nil
 }
 
-func (bv *batchValidator) ValidateBatch(chain clients.Chain, batch string) (bool, error) {
-	responseAsBytes, err := bv.doRequest(chain, []byte(batch))
+func (bv *batchValidator) ValidateBatch(batch string) (bool, error) {
+	responseAsBytes, err := bv.doRequest([]byte(batch))
 	response := &microserviceResponse{}
 	err = json.Unmarshal(responseAsBytes, response)
 	if err != nil {
@@ -63,10 +65,10 @@ func (bv *batchValidator) ValidateBatch(chain clients.Chain, batch string) (bool
 	return response.Valid, nil
 }
 
-func (bv *batchValidator) doRequest(validationChain clients.Chain, batch []byte) ([]byte, error) {
+func (bv *batchValidator) doRequest(batch []byte) ([]byte, error) {
 	requestContext, cancel := context.WithTimeout(context.Background(), bv.requestTime)
 	defer cancel()
-	responseAsBytes, err := bv.doRequestReturningBytes(validationChain, batch, requestContext)
+	responseAsBytes, err := bv.doRequestReturningBytes(batch, requestContext)
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +76,8 @@ func (bv *batchValidator) doRequest(validationChain clients.Chain, batch []byte)
 	return responseAsBytes, nil
 }
 
-func (bv *batchValidator) doRequestReturningBytes(validationChain clients.Chain, batch []byte, ctx context.Context) ([]byte, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, bv.requestURL+"/"+string(validationChain), bytes.NewBuffer(batch))
+func (bv *batchValidator) doRequestReturningBytes(batch []byte, ctx context.Context) ([]byte, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, bv.requestURL, bytes.NewBuffer(batch))
 	if err != nil {
 		return nil, err
 	}
