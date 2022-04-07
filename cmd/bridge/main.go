@@ -9,8 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	batchValidatorManagement "github.com/ElrondNetwork/elrond-eth-bridge/clients/batchValidator"
-	batchManagementFactory "github.com/ElrondNetwork/elrond-eth-bridge/clients/batchValidator/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/wrappers"
@@ -202,16 +200,6 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	argsBatchValidator := batchValidatorManagement.ArgsBatchValidator{
-		RequestURL:  configs.GeneralConfig.BatchValidator.URL,
-		RequestTime: time.Second * time.Duration(configs.GeneralConfig.BatchValidator.RequestTimeInSeconds),
-	}
-
-	batchValidator, err := batchManagementFactory.CreateBatchValidator(argsBatchValidator, configs.GeneralConfig.BatchValidator.Enabled)
-	if err != nil {
-		return err
-	}
-
 	args := factory.ArgsEthereumToElrondBridge{
 		Configs:              configs,
 		Messenger:            messenger,
@@ -223,7 +211,6 @@ func startRelay(ctx *cli.Context, version string) error {
 		TimeBeforeRepeatJoin: timeBeforeRepeatJoin,
 		MetricsHolder:        metricsHolder,
 		AppStatusHandler:     appStatusHandler.StatusHandler(),
-		BatchValidator:       batchValidator,
 	}
 
 	ethToElrondComponents, err := factory.NewEthElrondBridgeComponents(args)

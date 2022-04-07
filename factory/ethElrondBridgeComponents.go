@@ -15,6 +15,8 @@ import (
 	ethToElrondSteps "github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps/ethToElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/topology"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	batchValidatorManagement "github.com/ElrondNetwork/elrond-eth-bridge/clients/batchValidator"
+	batchManagementFactory "github.com/ElrondNetwork/elrond-eth-bridge/clients/batchValidator/factory"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/elrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/elrond/mappers"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum"
@@ -76,7 +78,6 @@ type ArgsEthereumToElrondBridge struct {
 	TimeBeforeRepeatJoin time.Duration
 	MetricsHolder        core.MetricsHolder
 	AppStatusHandler     elrondCore.AppStatusHandler
-	BatchValidator       clients.BatchValidator
 }
 
 type ethElrondBridgeComponents struct {
@@ -118,12 +119,22 @@ type ethElrondBridgeComponents struct {
 	timeBeforeRepeatJoin time.Duration
 	cancelFunc           func()
 	appStatusHandler     elrondCore.AppStatusHandler
-	BatchValidator       clients.BatchValidator
+	batchValidator       clients.BatchValidator
 }
 
 // NewEthElrondBridgeComponents creates a new eth-elrond bridge components holder
 func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBridgeComponents, error) {
 	err := checkArgsEthereumToElrondBridge(args)
+	if err != nil {
+		return nil, err
+	}
+
+	argsBatchValidator := batchValidatorManagement.ArgsBatchValidator{
+		RequestURL:  args.Configs.GeneralConfig.BatchValidator.URL,
+		RequestTime: time.Second * time.Duration(args.Configs.GeneralConfig.BatchValidator.RequestTimeInSeconds),
+	}
+
+	batchValidator, err := batchManagementFactory.CreateBatchValidator(argsBatchValidator, args.Configs.GeneralConfig.BatchValidator.Enabled)
 	if err != nil {
 		return nil, err
 	}
@@ -139,6 +150,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		timeBeforeRepeatJoin: args.TimeBeforeRepeatJoin,
 		metricsHolder:        args.MetricsHolder,
 		appStatusHandler:     args.AppStatusHandler,
+		batchValidator:       batchValidator,
 	}
 
 	addressConverter, err := converters.NewAddressConverter()
@@ -295,7 +307,7 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
 		RoleProvider:                 components.elrondRoleProvider,
-		BatchValidator:               components.BatchValidator,
+		BatchValidator:               components.batchValidator,
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)
@@ -395,7 +407,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		SafeContractAddress:   safeContractAddress,
 		GasHandler:            gs,
 		TransferGasLimit:      ethereumConfigs.GasLimit,
-		BatchValidator:        components.BatchValidator,
+		BatchValidator:        components.batchValidator,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)
