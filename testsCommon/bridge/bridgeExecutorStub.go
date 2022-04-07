@@ -54,6 +54,11 @@ type BridgeExecutorStub struct {
 	ClearStoredP2PSignaturesForEthereumCalled              func()
 }
 
+func (stub *BridgeExecutorStub) ValidateBatch(_ string) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // NewBridgeExecutorStub creates a new BridgeExecutorStub instance
 func NewBridgeExecutorStub() *BridgeExecutorStub {
 	return &BridgeExecutorStub{
