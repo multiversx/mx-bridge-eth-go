@@ -10,6 +10,6 @@ type GasHandler interface {
 
 // BatchValidator defines the operations for a component that can verify a batch
 type BatchValidator interface {
-	ValidateBatch(batch string) (bool, error)
+	ValidateBatch(batch *TransferBatch) (bool, error)
 	IsInterfaceNil() bool
 }

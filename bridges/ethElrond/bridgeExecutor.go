@@ -521,7 +521,7 @@ func (executor *bridgeExecutor) ClearStoredP2PSignaturesForEthereum() {
 	executor.sigsHolder.ClearStoredSignatures()
 }
 
-func (executor *bridgeExecutor) ValidateBatch(batch string) (bool, error) {
+func (executor *bridgeExecutor) ValidateBatch(batch *clients.TransferBatch) (bool, error) {
 	return executor.batchValidator.ValidateBatch(batch)
 }
 

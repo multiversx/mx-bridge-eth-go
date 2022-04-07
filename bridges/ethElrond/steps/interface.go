@@ -54,7 +54,7 @@ type Executor interface {
 	ResetRetriesCountOnEthereum()
 	ClearStoredP2PSignaturesForEthereum()
 
-	ValidateBatch(batch string) (bool, error)
+	ValidateBatch(batch *clients.TransferBatch) (bool, error)
 
 	IsInterfaceNil() bool
 }

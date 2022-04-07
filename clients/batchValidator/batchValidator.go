@@ -55,8 +55,12 @@ func checkArgs(args ArgsBatchValidator) error {
 	return nil
 }
 
-func (bv *batchValidator) ValidateBatch(batch string) (bool, error) {
-	responseAsBytes, err := bv.doRequest([]byte(batch))
+func (bv *batchValidator) ValidateBatch(batch *clients.TransferBatch) (bool, error) {
+	body, err := json.Marshal(batch)
+	if err != nil {
+		return false, err
+	}
+	responseAsBytes, err := bv.doRequest(body)
 	response := &microserviceResponse{}
 	err = json.Unmarshal(responseAsBytes, response)
 	if err != nil {
