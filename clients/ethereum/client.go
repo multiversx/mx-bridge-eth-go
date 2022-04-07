@@ -41,6 +41,7 @@ type ArgsEthereumClient struct {
 	SafeContractAddress   common.Address
 	GasHandler            GasHandler
 	TransferGasLimit      uint64
+	BatchValidator        clients.BatchValidator
 }
 
 type client struct {
@@ -56,6 +57,7 @@ type client struct {
 	safeContractAddress   common.Address
 	gasHandler            GasHandler
 	transferGasLimit      uint64
+	batchValidator        clients.BatchValidator
 }
 
 // NewEthereumClient will create a new Ethereum client
@@ -84,6 +86,7 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 		safeContractAddress:   args.SafeContractAddress,
 		gasHandler:            args.GasHandler,
 		transferGasLimit:      args.TransferGasLimit,
+		batchValidator:        args.BatchValidator,
 	}
 
 	c.log.Info("NewEthereumClient",
@@ -120,6 +123,9 @@ func checkArgs(args ArgsEthereumClient) error {
 	}
 	if check.IfNil(args.GasHandler) {
 		return errNilGasHandler
+	}
+	if check.IfNil(args.BatchValidator) {
+		return errNilBatchValidator
 	}
 	if args.TransferGasLimit == 0 {
 		return errInvalidGasLimit
@@ -440,6 +446,10 @@ func (c *client) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool
 	}
 
 	return len(signatures) >= int(quorum.Int64()), nil
+}
+
+func (c *client) ValidateBatch(batch string) (bool, error) {
+	return c.batchValidator.ValidateBatch(clients.Ethereum, batch)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

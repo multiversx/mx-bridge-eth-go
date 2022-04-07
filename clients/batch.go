@@ -44,6 +44,25 @@ func (tb *TransferBatch) String() string {
 	return str
 }
 
+// Json will convert the transfer batch to a string
+func (tb *TransferBatch) Json() string {
+	str := "{"
+	str += fmt.Sprintf("\"batchId\":%d,", tb.ID)
+	str += "\"deposits\":["
+	numDeposits := len(tb.Deposits)
+	for i, dt := range tb.Deposits {
+		str += fmt.Sprintf("%s", dt.Json())
+		if i < numDeposits-1 {
+			str += ","
+		}
+	}
+	str += "],"
+	str += fmt.Sprintf("\"statuses\":\"%s\"", hex.EncodeToString(tb.Statuses))
+	str += "}"
+
+	return str
+}
+
 // ResolveNewDeposits will add new statuses as rejected if the newNumDeposits exceeds the number of the deposits
 func (tb *TransferBatch) ResolveNewDeposits(newNumDeposits int) {
 	oldLen := len(tb.Statuses)
@@ -79,6 +98,12 @@ type DepositTransfer struct {
 // String will convert the deposit transfer to a string
 func (dt *DepositTransfer) String() string {
 	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %d",
+		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.Nonce)
+}
+
+// Json will convert the deposit transfer to a json-like string
+func (dt *DepositTransfer) Json() string {
+	return fmt.Sprintf("{\"to\":\"%s\",\"from\":\"%s\",\"tokenAddress\":\"%s\",\"amount\":\"%v\",\"depositNonce\":%d}",
 		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.Nonce)
 }
 

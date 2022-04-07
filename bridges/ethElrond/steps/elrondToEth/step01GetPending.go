@@ -33,6 +33,17 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 		return step.Identifier()
 	}
 
+	isValid, err := step.bridge.ValidateElrondBatch(batch.Json())
+	if err != nil {
+		step.bridge.PrintInfo(logger.LogError, "error validating Elrond batch", "error", err)
+		return step.Identifier()
+	}
+
+	if !isValid {
+		step.bridge.PrintInfo(logger.LogError, "batch not valid"+batch.String())
+		return step.Identifier()
+	}
+
 	step.bridge.PrintInfo(logger.LogInfo, "fetched new batch from Elrond "+batch.String())
 
 	wasPerformed, err := step.bridge.WasTransferPerformedOnEthereum(ctx)

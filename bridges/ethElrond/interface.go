@@ -29,6 +29,7 @@ type ElrondClient interface {
 	WasSigned(ctx context.Context, actionID uint64) (bool, error)
 	PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
 	Close() error
+	ValidateBatch(batch string) (bool, error)
 	IsInterfaceNil() bool
 }
 
@@ -43,6 +44,7 @@ type EthereumClient interface {
 	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
 	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
+	ValidateBatch(batch string) (bool, error)
 	IsInterfaceNil() bool
 }
 

@@ -507,6 +507,14 @@ func (executor *bridgeExecutor) ClearStoredP2PSignaturesForEthereum() {
 	executor.sigsHolder.ClearStoredSignatures()
 }
 
+func (executor *bridgeExecutor) ValidateElrondBatch(batch string) (bool, error) {
+	return executor.elrondClient.ValidateBatch(batch)
+}
+
+func (executor *bridgeExecutor) ValidateEthereumBatch(batch string) (bool, error) {
+	return executor.ethereumClient.ValidateBatch(batch)
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
 func (executor *bridgeExecutor) IsInterfaceNil() bool {
 	return executor == nil

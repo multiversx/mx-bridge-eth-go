@@ -75,6 +75,7 @@ type ArgsEthereumToElrondBridge struct {
 	TimeBeforeRepeatJoin time.Duration
 	MetricsHolder        core.MetricsHolder
 	AppStatusHandler     elrondCore.AppStatusHandler
+	BatchValidator       clients.BatchValidator
 }
 
 type ethElrondBridgeComponents struct {
@@ -115,6 +116,7 @@ type ethElrondBridgeComponents struct {
 	timeBeforeRepeatJoin time.Duration
 	cancelFunc           func()
 	appStatusHandler     elrondCore.AppStatusHandler
+	BatchValidator       clients.BatchValidator
 }
 
 // NewEthElrondBridgeComponents creates a new eth-elrond bridge components holder
@@ -283,6 +285,7 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
 		RoleProvider:                 components.elrondRoleProvider,
+		BatchValidator:               components.BatchValidator,
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)
@@ -387,6 +390,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		SafeContractAddress:   safeContractAddress,
 		GasHandler:            gs,
 		TransferGasLimit:      ethereumConfigs.GasLimit,
+		BatchValidator:        components.BatchValidator,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)
