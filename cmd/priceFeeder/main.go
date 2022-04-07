@@ -76,7 +76,7 @@ func runApp() error {
 		return err
 	}
 
-	txNonceHandler, err := interactors.NewNonceTransactionHandler(proxyWithCacher, time.Second*time.Duration(cfg.GeneralConfig.IntervalToResendTxsInSeconds))
+	txNonceHandler, err := interactors.NewNonceTransactionHandler(proxyWithCacher, time.Second*time.Duration(cfg.GeneralConfig.IntervalToResendTxsInSeconds), true)
 	if err != nil {
 		return err
 	}

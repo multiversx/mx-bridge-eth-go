@@ -1,9 +1,11 @@
 package roleProviders
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -100,6 +102,22 @@ func (erp *elrondRoleProvider) IsWhitelisted(address core.AddressHandler) bool {
 	_, exists := erp.whitelistedAddresses[string(address.AddressBytes())]
 
 	return exists
+}
+
+// SortedPublicKeys will return all the sorted public keys
+func (erp *elrondRoleProvider) SortedPublicKeys() [][]byte {
+	erp.mut.RLock()
+	defer erp.mut.RUnlock()
+
+	sortedPublicKeys := make([][]byte, 0, len(erp.whitelistedAddresses))
+	for addr := range erp.whitelistedAddresses {
+		sortedPublicKeys = append(sortedPublicKeys, []byte(addr))
+	}
+
+	sort.Slice(sortedPublicKeys, func(i, j int) bool {
+		return bytes.Compare(sortedPublicKeys[i], sortedPublicKeys[j]) < 0
+	})
+	return sortedPublicKeys
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

@@ -144,7 +144,7 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 		if args.failingStep == getBatchStatusesFromEthereum {
 			return nil
 		}
-		return []byte{}
+		return []byte{0x3}
 	}
 	stub.GetBatchStatusesFromEthereumCalled = func(ctx context.Context) ([]byte, error) {
 		if args.failingStep == getBatchStatusesFromEthereum {

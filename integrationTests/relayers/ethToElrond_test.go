@@ -17,7 +17,6 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests/mock"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/p2p"
 	"github.com/ElrondNetwork/elrond-go/testscommon/statusHandler"
@@ -30,9 +29,6 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
-
-	// TODO remove this
-	_ = logger.SetLogLevel("*:DEBUG")
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
@@ -80,9 +76,10 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 		},
 	}
 
+	numRelayers := 3
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.AddBatch(batch)
-	ethereumChainMock.SetQuorum(3)
+	ethereumChainMock.SetQuorum(numRelayers)
 
 	elrondChainMock := mock.NewElrondChainMock()
 	elrondChainMock.AddTokensPair(token1Erc20, ticker1)
@@ -92,8 +89,8 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	elrondChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return []byte{clients.Executed, clients.Rejected}
 	}
+	elrondChainMock.SetQuorum(numRelayers)
 
-	numRelayers := 3
 	relayers := make([]bridgeComponents, 0, numRelayers)
 	defer func() {
 		for _, r := range relayers {
@@ -105,14 +102,11 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*120)
 	defer cancel()
-	ethereumChainMock.ProcessFinishedHandler = func() {
-		cancel()
-	}
 	elrondChainMock.ProcessFinishedHandler = func() {
-		cancel()
+		log.Info("elrondChainMock.ProcessFinishedHandler called")
+		asyncCancelCall(cancel, time.Second*5)
 	}
 
-	elrondChainMock.SetQuorum(numRelayers)
 	for i := 0; i < numRelayers; i++ {
 		argsBridgeComponents := createMockBridgeComponentsArgs(i, messengers[i], elrondChainMock, ethereumChainMock)
 		argsBridgeComponents.Configs.GeneralConfig.Eth.SafeContractAddress = safeContractEthAddress.Hex()

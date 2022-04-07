@@ -53,6 +53,7 @@ const (
 	elrondToEthName         = "ElrondToEth"
 	baseLogId               = "EthElrond-Base"
 	elrondClientLogId       = "EthElrond-ElrondClient"
+	elrondDataGetterLogId   = "EthElrond-ElrondDataGetter"
 	ethClientLogId          = "EthElrond-EthClient"
 	elrondRoleProviderLogId = "EthElrond-ElrondRoleProvider"
 	ethRoleProviderLogId    = "EthElrond-EthRoleProvider"
@@ -96,6 +97,7 @@ type ethElrondBridgeComponents struct {
 	timer                         core.Timer
 	timeForBootstrap              time.Duration
 	metricsHolder                 core.MetricsHolder
+	addressConverter              core.AddressConverter
 
 	ethToElrondMachineStates    core.MachineStates
 	ethToElrondStepDuration     time.Duration
@@ -138,6 +140,13 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		metricsHolder:        args.MetricsHolder,
 		appStatusHandler:     args.AppStatusHandler,
 	}
+
+	addressConverter, err := converters.NewAddressConverter()
+	if err != nil {
+		return nil, clients.ErrNilAddressConverter
+	}
+	components.addressConverter = addressConverter
+
 	components.addClosableComponent(components.timer)
 
 	err = components.createElrondKeysAndAddresses(args.Configs.GeneralConfig.Elrond)
@@ -261,6 +270,7 @@ func (components *ethElrondBridgeComponents) createDataGetter() error {
 		MultisigContractAddress: components.elrondMultisigContractAddress,
 		RelayerAddress:          components.elrondRelayerAddress,
 		Proxy:                   components.proxy,
+		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondDataGetterLogId), elrondDataGetterLogId),
 	}
 
 	var err error
@@ -373,16 +383,11 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 
 	safeContractAddress := common.HexToAddress(ethereumConfigs.SafeContractAddress)
 
-	addressConverter, err := converters.NewAddressConverter()
-	if err != nil {
-		return clients.ErrNilAddressConverter
-	}
-
 	argsEthClient := ethereum.ArgsEthereumClient{
 		ClientWrapper:         args.ClientWrapper,
 		Erc20ContractsHandler: args.Erc20ContractsHolder,
 		Log:                   core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
-		AddressConverter:      addressConverter,
+		AddressConverter:      components.addressConverter,
 		Broadcaster:           components.broadcaster,
 		PrivateKey:            privateKey,
 		TokensMapper:          tokensMapper,
@@ -477,10 +482,12 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 	components.ethToElrondStepDuration = time.Duration(configs.StepDurationInMillis) * time.Millisecond
 
 	argsTopologyHandler := topology.ArgsTopologyHandler{
-		PublicKeysProvider: components.broadcaster,
+		PublicKeysProvider: components.elrondRoleProvider,
 		Timer:              components.timer,
 		IntervalForLeader:  time.Second * time.Duration(configs.IntervalForLeaderInSeconds),
 		AddressBytes:       components.elrondRelayerAddress.AddressBytes(),
+		Log:                log,
+		AddressConverter:   components.addressConverter,
 	}
 
 	topologyHandler, err := topology.NewTopologyHandler(argsTopologyHandler)
@@ -535,10 +542,12 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 
 	components.elrondToEthStepDuration = time.Duration(configs.StepDurationInMillis) * time.Millisecond
 	argsTopologyHandler := topology.ArgsTopologyHandler{
-		PublicKeysProvider: components.broadcaster,
+		PublicKeysProvider: components.elrondRoleProvider,
 		Timer:              components.timer,
 		IntervalForLeader:  time.Second * time.Duration(configs.IntervalForLeaderInSeconds),
 		AddressBytes:       components.elrondRelayerAddress.AddressBytes(),
+		Log:                log,
+		AddressConverter:   components.addressConverter,
 	}
 
 	topologyHandler, err := topology.NewTopologyHandler(argsTopologyHandler)

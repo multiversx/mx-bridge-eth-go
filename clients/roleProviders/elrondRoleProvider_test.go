@@ -78,15 +78,21 @@ func TestElrondProvider_ExecuteShouldWork(t *testing.T) {
 
 	whitelistedAddresses := [][]byte{
 		bytes.Repeat([]byte("1"), 32),
+		bytes.Repeat([]byte("3"), 32),
 		bytes.Repeat([]byte("2"), 32),
 	}
+	expectedSortedPublicKeys := [][]byte{
+		bytes.Repeat([]byte("1"), 32),
+		bytes.Repeat([]byte("2"), 32),
+		bytes.Repeat([]byte("3"), 32),
+	}
 
-	t.Run("nil whitelisted", testElrondExecuteShouldWork(nil))
-	t.Run("empty whitelisted", testElrondExecuteShouldWork(make([][]byte, 0)))
-	t.Run("with whitelisted", testElrondExecuteShouldWork(whitelistedAddresses))
+	t.Run("nil whitelisted", testElrondExecuteShouldWork(nil, make([][]byte, 0)))
+	t.Run("empty whitelisted", testElrondExecuteShouldWork(make([][]byte, 0), make([][]byte, 0)))
+	t.Run("with whitelisted", testElrondExecuteShouldWork(whitelistedAddresses, expectedSortedPublicKeys))
 }
 
-func testElrondExecuteShouldWork(whitelistedAddresses [][]byte) func(t *testing.T) {
+func testElrondExecuteShouldWork(whitelistedAddresses [][]byte, expectedSortedPublicKeys [][]byte) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
 
@@ -112,6 +118,8 @@ func testElrondExecuteShouldWork(whitelistedAddresses [][]byte) func(t *testing.
 		erp.mut.RLock()
 		assert.Equal(t, len(whitelistedAddresses), len(erp.whitelistedAddresses))
 		erp.mut.RUnlock()
+		sortedPublicKeys := erp.SortedPublicKeys()
+		assert.Equal(t, expectedSortedPublicKeys, sortedPublicKeys)
 	}
 }
 

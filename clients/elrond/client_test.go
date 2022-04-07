@@ -392,47 +392,6 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 	})
 }
 
-func TestClient_ResolveNewDeposits(t *testing.T) {
-	t.Parallel()
-
-	t.Run("nil batch", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockClientArgs()
-		c, _ := NewClient(args)
-
-		err := c.ResolveNewDeposits(context.Background(), nil)
-		assert.Equal(t, clients.ErrNilBatch, err)
-	})
-	t.Run("no pending batch should error", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockClientArgs()
-		args.Proxy = createMockProxy(make([][]byte, 0))
-		c, _ := NewClient(args)
-
-		batch := createMockBatch()
-
-		err := c.ResolveNewDeposits(context.Background(), batch)
-		assert.True(t, errors.Is(err, ErrNoPendingBatchAvailable))
-		assert.True(t, strings.Contains(err.Error(), "while getting new batch in ResolveNewDeposits method"))
-		assert.Equal(t, []byte{clients.Rejected, clients.Executed}, batch.Statuses)
-	})
-	t.Run("should add new statuses to the existing batch", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockClientArgs()
-		args.Proxy = createMockProxy(createMockPendingBatchBytes(3))
-		c, _ := NewClient(args)
-
-		batch := createMockBatch()
-
-		err := c.ResolveNewDeposits(context.Background(), batch)
-		assert.Nil(t, err)
-		assert.Equal(t, []byte{clients.Rejected, clients.Executed, clients.Rejected}, batch.Statuses)
-	})
-}
-
 func TestClient_ProposeTransfer(t *testing.T) {
 	t.Parallel()
 

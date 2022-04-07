@@ -37,6 +37,7 @@ func (step *proposeSetStatusStep) Execute(ctx context.Context) core.StepIdentifi
 	}
 
 	if !step.bridge.MyTurnAsLeader() {
+		step.bridge.PrintInfo(logger.LogDebug, "not my turn as leader in this round")
 		return step.Identifier()
 	}
 

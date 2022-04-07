@@ -289,7 +289,7 @@ func (executor *bridgeExecutor) ProposeSetStatusOnElrond(ctx context.Context) er
 	}
 
 	executor.log.Info("proposed set status", "hash", hash,
-		"batch ID", executor.batch.ID, "action ID", executor.actionID)
+		"batch ID", executor.batch.ID)
 
 	return nil
 }
@@ -336,10 +336,17 @@ func (executor *bridgeExecutor) WaitAndReturnFinalBatchStatuses(ctx context.Cont
 		statuses, err := executor.GetBatchStatusesFromEthereum(ctx)
 		if err != nil {
 			executor.log.Debug("got message while fetching batch statuses", "message", err)
-		} else {
-			return statuses
+			continue
 		}
+		if len(statuses) == 0 {
+			executor.log.Debug("no status available")
+			continue
+		}
+
+		executor.log.Debug("bridgeExecutor.WaitAndReturnFinalBatchStatuses", "statuses", statuses)
+		return statuses
 	}
+
 	return nil
 }
 
@@ -477,7 +484,7 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 	}
 
 	executor.log.Info("sent execute transfer", "hash", hash,
-		"batch ID", executor.batch.ID, "action ID")
+		"batch ID", executor.batch.ID)
 
 	return nil
 }

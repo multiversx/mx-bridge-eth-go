@@ -26,6 +26,8 @@ const (
 	proposeSetStatusFuncName = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
 	signFuncName             = "sign"
 	performActionFuncName    = "performAction"
+
+	elrondDataGetterLogId = "ElrondEth-ElrondDataGetter"
 )
 
 // ClientArgs represents the argument for the NewClient constructor function
@@ -62,7 +64,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	nonceTxsHandler, err := interactors.NewNonceTransactionHandler(args.Proxy, time.Second*time.Duration(args.IntervalToResendTxsInSeconds))
+	nonceTxsHandler, err := interactors.NewNonceTransactionHandler(args.Proxy, time.Second*time.Duration(args.IntervalToResendTxsInSeconds), true)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +81,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		MultisigContractAddress: args.MultisigContractAddress,
 		RelayerAddress:          relayerAddress,
 		Proxy:                   args.Proxy,
+		Log:                     bridgeCore.NewLoggerWithIdentifier(logger.GetOrCreate(elrondDataGetterLogId), elrondDataGetterLogId),
 	}
 	getter, err := NewDataGetter(argsDataGetter)
 	if err != nil {
@@ -255,22 +258,6 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 	}
 
 	return hash, err
-}
-
-// ResolveNewDeposits will try to add new statuses if the pending batch gets modified
-func (c *client) ResolveNewDeposits(ctx context.Context, batch *clients.TransferBatch) error {
-	if batch == nil {
-		return clients.ErrNilBatch
-	}
-
-	newBatch, err := c.GetPending(ctx)
-	if err != nil {
-		return fmt.Errorf("%w while getting new batch in ResolveNewDeposits method", err)
-	}
-
-	batch.ResolveNewDeposits(len(newBatch.Statuses))
-
-	return nil
 }
 
 // ProposeTransfer will trigger the propose transfer operation

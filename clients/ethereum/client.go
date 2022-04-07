@@ -209,7 +209,7 @@ func (c *client) GenerateMessageHash(batch *clients.TransferBatch) (common.Hash,
 		return common.Hash{}, err
 	}
 
-	pack, err := args.Pack(argLists.tokens, argLists.recipients, argLists.amounts, argLists.nonces, big.NewInt(0).SetUint64(batch.ID), "ExecuteBatchedTransfer")
+	pack, err := args.Pack(argLists.recipients, argLists.tokens, argLists.amounts, argLists.nonces, big.NewInt(0).SetUint64(batch.ID), "ExecuteBatchedTransfer")
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -240,8 +240,8 @@ func generateTransferArgs() (abi.Arguments, error) {
 	}
 
 	return abi.Arguments{
-		abi.Argument{Name: "tokens", Type: addressesType},
 		abi.Argument{Name: "recipients", Type: addressesType},
+		abi.Argument{Name: "tokens", Type: addressesType},
 		abi.Argument{Name: "amounts", Type: uint256ArrayType},
 		abi.Argument{Name: "nonces", Type: uint256ArrayType},
 		abi.Argument{Name: "nonce", Type: uint256Type},
