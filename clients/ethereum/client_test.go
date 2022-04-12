@@ -48,10 +48,11 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 				return append([]byte("ERC20"), sourceBytes...), nil
 			},
 		},
-		SignatureHolder:     &testsCommon.SignaturesHolderStub{},
-		SafeContractAddress: testsCommon.CreateRandomEthereumAddress(),
-		GasHandler:          &testsCommon.GasHandlerStub{},
-		TransferGasLimit:    100,
+		SignatureHolder:         &testsCommon.SignaturesHolderStub{},
+		SafeContractAddress:     testsCommon.CreateRandomEthereumAddress(),
+		GasHandler:              &testsCommon.GasHandlerStub{},
+		TransferGasLimitBase:    50,
+		TransferGasLimitForEach: 20,
 	}
 }
 
@@ -161,9 +162,17 @@ func TestNewEthereumClient(t *testing.T) {
 		assert.Equal(t, errNilGasHandler, err)
 		assert.True(t, check.IfNil(c))
 	})
-	t.Run("0 transfer gas limit", func(t *testing.T) {
+	t.Run("0 transfer gas limit base", func(t *testing.T) {
 		args := createMockEthereumClientArgs()
-		args.TransferGasLimit = 0
+		args.TransferGasLimitBase = 0
+		c, err := NewEthereumClient(args)
+
+		assert.Equal(t, errInvalidGasLimit, err)
+		assert.True(t, check.IfNil(c))
+	})
+	t.Run("0 transfer gas limit for each", func(t *testing.T) {
+		args := createMockEthereumClientArgs()
+		args.TransferGasLimitForEach = 0
 		c, err := NewEthereumClient(args)
 
 		assert.Equal(t, errInvalidGasLimit, err)
