@@ -53,31 +53,31 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	batchNonceOnEthereum := uint64(345)
 	txNonceOnEthereum := uint64(772634)
 	batch := contract.Batch{
-		Nonce:                  big.NewInt(int64(batchNonceOnEthereum) + 1),
-		Timestamp:              big.NewInt(0),
-		LastUpdatedBlockNumber: big.NewInt(0),
-		Deposits: []contract.Deposit{
-			{
-				Nonce:        big.NewInt(int64(txNonceOnEthereum) + 1),
-				TokenAddress: token1Erc20,
-				Amount:       value1,
-				Depositor:    depositor1,
-				Recipient:    destination1.AddressSlice(),
-				Status:       0,
-			},
-			{
-				Nonce:        big.NewInt(int64(txNonceOnEthereum) + 2),
-				TokenAddress: token2Erc20,
-				Amount:       value2,
-				Depositor:    depositor2,
-				Recipient:    destination2.AddressSlice(),
-				Status:       0,
-			},
-		},
+		Nonce:                big.NewInt(int64(batchNonceOnEthereum) + 1),
+		Timestamp:            big.NewInt(0),
+		LastUpdatedTimestamp: big.NewInt(0),
+		DepositsCount:        2,
 	}
 
 	numRelayers := 3
 	ethereumChainMock := mock.NewEthereumChainMock()
+	ethereumChainMock.AddBatch(batch)
+	ethereumChainMock.AddDepositToBatch(batchNonceOnEthereum+1, contract.Deposit{
+		Nonce:        big.NewInt(int64(txNonceOnEthereum) + 1),
+		TokenAddress: token1Erc20,
+		Amount:       value1,
+		Depositor:    depositor1,
+		Recipient:    destination1.AddressSlice(),
+		Status:       0,
+	})
+	ethereumChainMock.AddDepositToBatch(batchNonceOnEthereum+1, contract.Deposit{
+		Nonce:        big.NewInt(int64(txNonceOnEthereum) + 2),
+		TokenAddress: token2Erc20,
+		Amount:       value2,
+		Depositor:    depositor2,
+		Recipient:    destination2.AddressSlice(),
+		Status:       0,
+	})
 	ethereumChainMock.AddBatch(batch)
 	ethereumChainMock.SetQuorum(numRelayers)
 
