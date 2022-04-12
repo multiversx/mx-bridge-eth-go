@@ -195,6 +195,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		ID: batchID,
 	}
 
+	cachedTokens := make(map[string][]byte)
 	transferIndex := 0
 	for i := 1; i < dataLen; i += numFieldsForTransaction {
 		// blockNonce is the i-th element, let's ignore it for now
@@ -215,9 +216,15 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			Amount:           amount,
 		}
 
-		deposit.ConvertedTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.TokenBytes)
-		if err != nil {
-			return nil, fmt.Errorf("%w while converting token bytes, transfer index %d", err, transferIndex)
+		storedConvertedTokenBytes, exists := cachedTokens[deposit.DisplayableToken]
+		if !exists {
+			deposit.ConvertedTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.TokenBytes)
+			if err != nil {
+				return nil, fmt.Errorf("%w while converting token bytes, transfer index %d", err, transferIndex)
+			}
+			cachedTokens[deposit.DisplayableToken] = deposit.ConvertedTokenBytes
+		} else {
+			deposit.ConvertedTokenBytes = storedConvertedTokenBytes
 		}
 
 		batch.Deposits = append(batch.Deposits, deposit)
