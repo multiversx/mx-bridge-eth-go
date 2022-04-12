@@ -148,7 +148,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 		ID:       batch.Nonce.Uint64(),
 		Deposits: make([]*clients.DepositTransfer, 0, batch.DepositsCount),
 	}
-	tokens := make(map[string][]byte)
+	cachedTokens := make(map[string][]byte)
 	for i := range deposits {
 		deposit := deposits[i]
 		toBytes := deposit.Recipient[:]
@@ -165,15 +165,15 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 			DisplayableToken: c.addressConverter.ToHexString(tokenBytes),
 			Amount:           big.NewInt(0).Set(deposit.Amount),
 		}
-		contractAddress, exists := tokens[depositTransfer.DisplayableToken]
+		storedConvertedTokenBytes, exists := cachedTokens[depositTransfer.DisplayableToken]
 		if !exists {
 			depositTransfer.ConvertedTokenBytes, err = c.tokensMapper.ConvertToken(ctx, depositTransfer.TokenBytes)
 			if err != nil {
 				return nil, err
 			}
-			tokens[depositTransfer.DisplayableToken] = depositTransfer.ConvertedTokenBytes
+			cachedTokens[depositTransfer.DisplayableToken] = depositTransfer.ConvertedTokenBytes
 		} else {
-			depositTransfer.ConvertedTokenBytes = contractAddress
+			depositTransfer.ConvertedTokenBytes = storedConvertedTokenBytes
 		}
 
 		transferBatch.Deposits = append(transferBatch.Deposits, depositTransfer)
