@@ -7,6 +7,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 )
 
+// BatchValidatorStub -
 type BatchValidatorStub struct {
 	ValidateBatchCalled func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 }

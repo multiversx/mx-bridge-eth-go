@@ -66,6 +66,7 @@ func checkArgs(args ArgsBatchValidator) error {
 	return nil
 }
 
+// ValidateBatch checks whether the given batch is the same also on miscroservice side
 func (bv *batchValidator) ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	body, err := json.Marshal(batch)
 	if err != nil {
