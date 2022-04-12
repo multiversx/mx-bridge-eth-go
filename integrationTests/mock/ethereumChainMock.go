@@ -164,11 +164,6 @@ func (mock *EthereumChainMock) AddDepositToBatch(nonce uint64, deposit contract.
 		panic(fmt.Sprintf("programming error in tests: no batch found for nonce %d", nonce))
 	}
 
-	_, found = mock.deposits[nonce]
-	if !found {
-		mock.deposits[nonce] = make([]contract.Deposit, 0)
-	}
-
 	mock.deposits[nonce] = append(mock.deposits[nonce], deposit)
 	batch.DepositsCount++
 }
