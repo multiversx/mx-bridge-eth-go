@@ -19,6 +19,7 @@ const (
 	getAndStoreBatchFromEthereum                  = "GetAndStoreBatchFromEthereum"
 	getLastExecutedEthBatchIDFromElrond           = "GetLastExecutedEthBatchIDFromElrond"
 	verifyLastDepositNonceExecutedOnEthereumBatch = "VerifyLastDepositNonceExecutedOnEthereumBatch"
+	validateBatch                                 = "ValidateBatch"
 	wasTransferProposedOnElrond                   = "WasTransferProposedOnElrond"
 	wasActionSignedOnElrond                       = "WasActionSignedOnElrond"
 	signActionOnElrond                            = "SignActionOnElrond"
@@ -52,6 +53,7 @@ type argsBridgeStub struct {
 	isQuorumReachedHandler           func() bool
 	wasActionIDPerformedHandler      func() bool
 	maxRetriesReachedHandler         func() bool
+	validateBatchHandler             func() bool
 }
 
 func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *errorHandler) {
@@ -147,6 +149,12 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 	stub.ProcessMaxQuorumRetriesOnElrondCalled = func() bool {
 		return args.maxRetriesReachedHandler()
 	}
+	stub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+		if args.failingStep == validateBatch {
+			return false, errHandler.storeAndReturnError(expectedErr)
+		}
+		return args.validateBatchHandler(), errHandler.storeAndReturnError(nil)
+	}
 
 	return stub, errHandler
 }
@@ -169,6 +177,7 @@ func TestHappyCaseWhenLeader(t *testing.T) {
 		myTurnHandler:                    trueHandler,
 		isQuorumReachedHandler:           trueHandler,
 		wasActionIDPerformedHandler:      trueHandler,
+		validateBatchHandler:             trueHandler,
 		maxRetriesReachedHandler:         falseHandler,
 		wasProposedTransferSignedHandler: falseHandler,
 		wasTransferProposedHandler:       falseHandler,
@@ -210,6 +219,7 @@ func TestHappyCaseWhenLeaderAndActionIdNotPerformed(t *testing.T) {
 	args := argsBridgeStub{
 		myTurnHandler:          trueHandler,
 		isQuorumReachedHandler: trueHandler,
+		validateBatchHandler:   trueHandler,
 		wasActionIDPerformedHandler: func() bool {
 			numCalled++
 			return numCalled > 1
@@ -254,6 +264,7 @@ func TestOneStepErrors_ShouldReturnToPendingBatch(t *testing.T) {
 		getAndStoreBatchFromEthereum,
 		getLastExecutedEthBatchIDFromElrond,
 		verifyLastDepositNonceExecutedOnEthereumBatch,
+		validateBatch,
 		wasTransferProposedOnElrond,
 		proposeTransferOnElrond,
 		wasTransferProposedOnElrond,
@@ -274,6 +285,7 @@ func testErrorFlow(t *testing.T, stepThatErrors core.StepIdentifier) {
 		failingStep:            string(stepThatErrors),
 		myTurnHandler:          trueHandler,
 		isQuorumReachedHandler: trueHandler,
+		validateBatchHandler:   trueHandler,
 		wasActionIDPerformedHandler: func() bool {
 			numCalled++
 			return numCalled > 1

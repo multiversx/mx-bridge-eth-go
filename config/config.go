@@ -13,13 +13,14 @@ type Configs struct {
 
 // Config general configuration struct
 type Config struct {
-	Eth          EthereumConfig
-	Elrond       ElrondConfig
-	P2P          ConfigP2P
-	StateMachine map[string]ConfigStateMachine
-	Relayer      ConfigRelayer
-	Logs         LogsConfig
-	Antiflood    AntifloodConfig
+	Eth            EthereumConfig
+	Elrond         ElrondConfig
+	P2P            ConfigP2P
+	StateMachine   map[string]ConfigStateMachine
+	Relayer        ConfigRelayer
+	Logs           LogsConfig
+	Antiflood      AntifloodConfig
+	BatchValidator BatchValidatorConfig
 }
 
 // EthereumConfig represents the Ethereum Config parameters
@@ -92,6 +93,13 @@ type WebServerAntifloodConfig struct {
 type AntifloodConfig struct {
 	Enabled   bool
 	WebServer WebServerAntifloodConfig
+}
+
+// BatchValidatorConfig represents the configuration for the batch validator
+type BatchValidatorConfig struct {
+	Enabled              bool
+	URL                  string
+	RequestTimeInSeconds int
 }
 
 // ApiRoutesConfig holds the configuration related to Rest API routes

@@ -141,3 +141,8 @@
             SameSourceRequests = 10000
             # SameSourceResetIntervalInSec time frame between counter reset, in seconds
             SameSourceResetIntervalInSec = 1
+
+[BatchValidator]
+    Enabled = false
+    URL = "https://devnet-bridge-api.elrond.com/validateBatch" # batch validator URL.
+    RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the batch validation request
