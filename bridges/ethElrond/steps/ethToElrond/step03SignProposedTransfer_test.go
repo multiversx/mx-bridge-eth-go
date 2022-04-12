@@ -116,6 +116,28 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
+	t.Run("error on WasActionSignedOnElrond", func(t *testing.T) {
+		t.Parallel()
+		bridgeStub := createStubExecutor()
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+			return testBatch
+		}
+		bridgeStub.WasActionSignedOnElrondCalled = func(ctx context.Context) (bool, error) {
+			return false, expectedError
+		}
+		bridgeStub.GetAndStoreActionIDForProposeTransferOnElrondCalled = func(ctx context.Context) (uint64, error) {
+			return ethElrond.InvalidActionID, nil
+		}
+
+		step := signProposedTransferStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := core.StepIdentifier(GettingPendingBatchFromEthereum)
+		stepIdentifier := step.Execute(context.Background())
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
+
 	t.Run("should work - transfer was already signed", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
