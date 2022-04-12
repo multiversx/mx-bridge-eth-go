@@ -34,7 +34,8 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 			SafeContractAddress:          "5DdDe022a65F8063eE9adaC54F359CBF46166068",
 			PrivateKeyFile:               "testdata/grace.sk",
 			IntervalToResendTxsInSeconds: 0,
-			GasLimit:                     500000,
+			GasLimitBase:                 200000,
+			GasLimitForEach:              30000,
 			GasStation: config.GasStationConfig{
 				Enabled:                  true,
 				URL:                      "",

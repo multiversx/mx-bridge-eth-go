@@ -35,9 +35,10 @@ func createMockClientArgs() ClientArgs {
 			Sign:                   10,
 			ProposeTransferBase:    20,
 			ProposeTransferForEach: 30,
-			ProposeStatus:          40,
-			PerformActionBase:      50,
-			PerformActionForEach:   60,
+			ProposeStatusBase:      40,
+			ProposeStatusForEach:   50,
+			PerformActionBase:      60,
+			PerformActionForEach:   70,
 		},
 		Proxy:                        &interactors.ElrondProxyStub{},
 		Log:                          logger.GetOrCreate("test"),
@@ -379,7 +380,8 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 
 				expectedDataField := strings.Join(expectedArgs, "@")
 				assert.Equal(t, expectedDataField, dataField)
-				assert.Equal(t, c.gasMapConfig.ProposeStatus, gasLimit)
+				expectedGasLimit := c.gasMapConfig.ProposeStatusBase + uint64(len(expectedStatus))*c.gasMapConfig.ProposeStatusForEach
+				assert.Equal(t, gasLimit, expectedGasLimit)
 
 				return expectedHash, nil
 			},

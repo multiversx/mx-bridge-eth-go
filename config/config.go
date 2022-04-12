@@ -30,7 +30,8 @@ type EthereumConfig struct {
 	SafeContractAddress                string
 	PrivateKeyFile                     string
 	IntervalToResendTxsInSeconds       uint64
-	GasLimit                           uint64
+	GasLimitBase                       uint64
+	GasLimitForEach                    uint64
 	GasStation                         GasStationConfig
 	MaxRetriesOnQuorumReached          uint64
 	IntervalToWaitForTransferInSeconds uint64
@@ -151,7 +152,8 @@ type ElrondGasMapConfig struct {
 	Sign                   uint64
 	ProposeTransferBase    uint64
 	ProposeTransferForEach uint64
-	ProposeStatus          uint64
+	ProposeStatusBase      uint64
+	ProposeStatusForEach   uint64
 	PerformActionBase      uint64
 	PerformActionForEach   uint64
 }

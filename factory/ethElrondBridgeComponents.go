@@ -383,17 +383,18 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	safeContractAddress := common.HexToAddress(ethereumConfigs.SafeContractAddress)
 
 	argsEthClient := ethereum.ArgsEthereumClient{
-		ClientWrapper:         args.ClientWrapper,
-		Erc20ContractsHandler: args.Erc20ContractsHolder,
-		Log:                   core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
-		AddressConverter:      components.addressConverter,
-		Broadcaster:           components.broadcaster,
-		PrivateKey:            privateKey,
-		TokensMapper:          tokensMapper,
-		SignatureHolder:       signaturesHolder,
-		SafeContractAddress:   safeContractAddress,
-		GasHandler:            gs,
-		TransferGasLimit:      ethereumConfigs.GasLimit,
+		ClientWrapper:           args.ClientWrapper,
+		Erc20ContractsHandler:   args.Erc20ContractsHolder,
+		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
+		AddressConverter:        components.addressConverter,
+		Broadcaster:             components.broadcaster,
+		PrivateKey:              privateKey,
+		TokensMapper:            tokensMapper,
+		SignatureHolder:         signaturesHolder,
+		SafeContractAddress:     safeContractAddress,
+		GasHandler:              gs,
+		TransferGasLimitBase:    ethereumConfigs.GasLimitBase,
+		TransferGasLimitForEach: ethereumConfigs.GasLimitForEach,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)
