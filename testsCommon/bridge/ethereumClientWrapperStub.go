@@ -17,6 +17,7 @@ type EthereumClientWrapperStub struct {
 	core.StatusHandler
 
 	GetBatchCalled         func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error)
+	GetBatchDepositsCalled func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error)
 	GetRelayersCalled      func(ctx context.Context) ([]common.Address, error)
 	WasBatchExecutedCalled func(ctx context.Context, batchNonce *big.Int) (bool, error)
 	ChainIDCalled          func(ctx context.Context) (*big.Int, error)
@@ -36,6 +37,15 @@ func (stub *EthereumClientWrapperStub) GetBatch(ctx context.Context, batchNonce 
 	}
 
 	return contract.Batch{}, nil
+}
+
+// GetBatchDeposits -
+func (stub *EthereumClientWrapperStub) GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+	if stub.GetBatchCalled != nil {
+		return stub.GetBatchDepositsCalled(ctx, batchNonce)
+	}
+
+	return make([]contract.Deposit, 0), nil
 }
 
 // GetRelayers -

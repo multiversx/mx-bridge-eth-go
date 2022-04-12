@@ -60,6 +60,12 @@ func (wrapper *ethereumChainWrapper) GetBatch(ctx context.Context, batchNonce *b
 	return wrapper.multiSigContract.GetBatch(&bind.CallOpts{Context: ctx}, batchNonce)
 }
 
+// GetBatchDeposits returns the transactions of a batch by providing the batch nonce
+func (wrapper *ethereumChainWrapper) GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.multiSigContract.GetBatchDeposits(&bind.CallOpts{Context: ctx}, batchNonce)
+}
+
 // GetRelayers returns all whitelisted ethereum addresses
 func (wrapper *ethereumChainWrapper) GetRelayers(ctx context.Context) ([]common.Address, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)

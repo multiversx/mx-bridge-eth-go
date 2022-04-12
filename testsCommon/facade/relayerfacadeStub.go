@@ -41,7 +41,7 @@ func (stub *RelayerFacadeStub) RestApiInterface() string {
 // PprofEnabled -
 func (stub *RelayerFacadeStub) PprofEnabled() bool {
 	if stub.PprofEnabledCalled != nil {
-		stub.PprofEnabledCalled()
+		return stub.PprofEnabledCalled()
 	}
 	return false
 }
