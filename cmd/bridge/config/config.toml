@@ -29,7 +29,7 @@
         ProposeTransferBase = 11000000
         ProposeTransferForEach = 3000000
         ProposeStatusBase = 10000000
-        ProposeStatusForEach = 3000000
+        ProposeStatusForEach = 6666666
         PerformActionBase = 25000000
         PerformActionForEach = 2000000
 
