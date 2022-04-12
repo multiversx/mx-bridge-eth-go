@@ -246,7 +246,8 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 		txBuilder.ArgBytes([]byte{stat})
 	}
 
-	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.ProposeStatus)
+	gasLimit := c.gasMapConfig.ProposeStatusBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeStatusForEach
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
 		c.log.Info("proposed set statuses"+batch.String(), "transaction hash", hash)
 	}

@@ -30,32 +30,34 @@ type argListsBatch struct {
 
 // ArgsEthereumClient is the DTO used in the ethereum's client constructor
 type ArgsEthereumClient struct {
-	ClientWrapper         ClientWrapper
-	Erc20ContractsHandler Erc20ContractsHolder
-	Log                   elrondCore.Logger
-	AddressConverter      core.AddressConverter
-	Broadcaster           Broadcaster
-	PrivateKey            *ecdsa.PrivateKey
-	TokensMapper          TokensMapper
-	SignatureHolder       SignaturesHolder
-	SafeContractAddress   common.Address
-	GasHandler            GasHandler
-	TransferGasLimit      uint64
+	ClientWrapper           ClientWrapper
+	Erc20ContractsHandler   Erc20ContractsHolder
+	Log                     elrondCore.Logger
+	AddressConverter        core.AddressConverter
+	Broadcaster             Broadcaster
+	PrivateKey              *ecdsa.PrivateKey
+	TokensMapper            TokensMapper
+	SignatureHolder         SignaturesHolder
+	SafeContractAddress     common.Address
+	GasHandler              GasHandler
+	TransferGasLimitBase    uint64
+	TransferGasLimitForEach uint64
 }
 
 type client struct {
-	clientWrapper         ClientWrapper
-	erc20ContractsHandler Erc20ContractsHolder
-	log                   elrondCore.Logger
-	addressConverter      core.AddressConverter
-	broadcaster           Broadcaster
-	privateKey            *ecdsa.PrivateKey
-	publicKey             *ecdsa.PublicKey
-	tokensMapper          TokensMapper
-	signatureHolder       SignaturesHolder
-	safeContractAddress   common.Address
-	gasHandler            GasHandler
-	transferGasLimit      uint64
+	clientWrapper           ClientWrapper
+	erc20ContractsHandler   Erc20ContractsHolder
+	log                     elrondCore.Logger
+	addressConverter        core.AddressConverter
+	broadcaster             Broadcaster
+	privateKey              *ecdsa.PrivateKey
+	publicKey               *ecdsa.PublicKey
+	tokensMapper            TokensMapper
+	signatureHolder         SignaturesHolder
+	safeContractAddress     common.Address
+	gasHandler              GasHandler
+	transferGasLimitBase    uint64
+	transferGasLimitForEach uint64
 }
 
 // NewEthereumClient will create a new Ethereum client
@@ -72,18 +74,19 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 	}
 
 	c := &client{
-		clientWrapper:         args.ClientWrapper,
-		erc20ContractsHandler: args.Erc20ContractsHandler,
-		log:                   args.Log,
-		addressConverter:      args.AddressConverter,
-		broadcaster:           args.Broadcaster,
-		privateKey:            args.PrivateKey,
-		publicKey:             publicKeyECDSA,
-		tokensMapper:          args.TokensMapper,
-		signatureHolder:       args.SignatureHolder,
-		safeContractAddress:   args.SafeContractAddress,
-		gasHandler:            args.GasHandler,
-		transferGasLimit:      args.TransferGasLimit,
+		clientWrapper:           args.ClientWrapper,
+		erc20ContractsHandler:   args.Erc20ContractsHandler,
+		log:                     args.Log,
+		addressConverter:        args.AddressConverter,
+		broadcaster:             args.Broadcaster,
+		privateKey:              args.PrivateKey,
+		publicKey:               publicKeyECDSA,
+		tokensMapper:            args.TokensMapper,
+		signatureHolder:         args.SignatureHolder,
+		safeContractAddress:     args.SafeContractAddress,
+		gasHandler:              args.GasHandler,
+		transferGasLimitBase:    args.TransferGasLimitBase,
+		transferGasLimitForEach: args.TransferGasLimitForEach,
 	}
 
 	c.log.Info("NewEthereumClient",
@@ -121,7 +124,10 @@ func checkArgs(args ArgsEthereumClient) error {
 	if check.IfNil(args.GasHandler) {
 		return errNilGasHandler
 	}
-	if args.TransferGasLimit == 0 {
+	if args.TransferGasLimitBase == 0 {
+		return errInvalidGasLimit
+	}
+	if args.TransferGasLimitForEach == 0 {
 		return errInvalidGasLimit
 	}
 
@@ -300,7 +306,7 @@ func (c *client) ExecuteTransfer(
 
 	auth.Nonce = big.NewInt(nonce)
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = c.transferGasLimit
+	auth.GasLimit = c.transferGasLimitBase + uint64(len(batch.Deposits))*c.transferGasLimitForEach
 	auth.Context = ctx
 	auth.GasPrice = gasPrice
 
