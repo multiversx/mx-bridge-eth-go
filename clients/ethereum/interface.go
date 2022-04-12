@@ -15,6 +15,7 @@ import (
 type ClientWrapper interface {
 	core.StatusHandler
 	GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, error)
+	GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error)
 	GetRelayers(ctx context.Context) ([]common.Address, error)
 	WasBatchExecuted(ctx context.Context, batchNonce *big.Int) (bool, error)
 	ChainID(ctx context.Context) (*big.Int, error)
