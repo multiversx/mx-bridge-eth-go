@@ -131,18 +131,26 @@ func checkArgs(args ArgsEthereumClient) error {
 // GetBatch returns the batch (if existing) from the Ethereum contract by providing the nonce
 func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
 	c.log.Info("Getting batch", "nonce", nonce)
-	batch, err := c.clientWrapper.GetBatch(ctx, big.NewInt(0).SetUint64(nonce))
+	nonceAsBigInt := big.NewInt(0).SetUint64(nonce)
+	batch, err := c.clientWrapper.GetBatch(ctx, nonceAsBigInt)
 	if err != nil {
 		return nil, err
+	}
+	deposits, err := c.clientWrapper.GetBatchDeposits(ctx, nonceAsBigInt)
+	if err != nil {
+		return nil, err
+	}
+	if int(batch.DepositsCount) != len(deposits) {
+		return nil, errDepositsAndBatchDepositsCountDiffer
 	}
 
 	transferBatch := &clients.TransferBatch{
 		ID:       batch.Nonce.Uint64(),
-		Deposits: make([]*clients.DepositTransfer, 0, len(batch.Deposits)),
+		Deposits: make([]*clients.DepositTransfer, 0, batch.DepositsCount),
 	}
 
-	for i := range batch.Deposits {
-		deposit := batch.Deposits[i]
+	for i := range deposits {
+		deposit := deposits[i]
 		toBytes := deposit.Recipient[:]
 		fromBytes := deposit.Depositor[:]
 		tokenBytes := deposit.TokenAddress[:]

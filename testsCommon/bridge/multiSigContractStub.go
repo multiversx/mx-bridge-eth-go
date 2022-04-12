@@ -12,6 +12,7 @@ import (
 // MultiSigContractStub -
 type MultiSigContractStub struct {
 	GetBatchCalled         func(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, error)
+	GetBatchDepositsCalled func(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, error)
 	GetRelayersCalled      func(opts *bind.CallOpts) ([]common.Address, error)
 	WasBatchExecutedCalled func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	ExecuteTransferCalled  func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
@@ -27,6 +28,15 @@ func (stub *MultiSigContractStub) GetBatch(opts *bind.CallOpts, batchNonce *big.
 	}
 
 	return contract.Batch{}, nil
+}
+
+// GetBatchDeposits -
+func (stub *MultiSigContractStub) GetBatchDeposits(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, error) {
+	if stub.GetBatchCalled != nil {
+		return stub.GetBatchDepositsCalled(opts, batchNonce)
+	}
+
+	return make([]contract.Deposit, 0), nil
 }
 
 // GetRelayers -

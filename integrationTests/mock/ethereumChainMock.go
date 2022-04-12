@@ -29,6 +29,7 @@ type EthereumChainMock struct {
 	mutState                            sync.RWMutex
 	nonces                              map[common.Address]uint64
 	batches                             map[uint64]*contract.Batch
+	deposits                            map[uint64][]contract.Deposit
 	proposedTransfer                    *EthereumProposedTransfer
 	GetStatusesAfterExecutionHandler    func() []byte
 	ProcessFinishedHandler              func()
@@ -41,8 +42,9 @@ type EthereumChainMock struct {
 // NewEthereumChainMock -
 func NewEthereumChainMock() *EthereumChainMock {
 	return &EthereumChainMock{
-		nonces:  make(map[common.Address]uint64),
-		batches: make(map[uint64]*contract.Batch),
+		nonces:   make(map[common.Address]uint64),
+		batches:  make(map[uint64]*contract.Batch),
+		deposits: make(map[uint64][]contract.Deposit),
 	}
 }
 
@@ -76,6 +78,19 @@ func (mock *EthereumChainMock) GetBatch(_ context.Context, batchNonce *big.Int) 
 	}
 
 	return *batch, nil
+}
+
+// GetBatchDeposits -
+func (mock *EthereumChainMock) GetBatchDeposits(_ context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+	mock.mutState.RLock()
+	defer mock.mutState.RUnlock()
+
+	deposits, found := mock.deposits[batchNonce.Uint64()]
+	if !found {
+		return make([]contract.Deposit, 0), fmt.Errorf("deposits for batch %d not found", batchNonce)
+	}
+
+	return deposits, nil
 }
 
 // GetRelayers -
@@ -149,8 +164,8 @@ func (mock *EthereumChainMock) AddDepositToBatch(nonce uint64, deposit contract.
 		panic(fmt.Sprintf("programming error in tests: no batch found for nonce %d", nonce))
 	}
 
-	batch.Deposits = append(batch.Deposits, deposit)
-	mock.mutState.Unlock()
+	mock.deposits[nonce] = append(mock.deposits[nonce], deposit)
+	batch.DepositsCount++
 }
 
 // ExecuteTransfer -
