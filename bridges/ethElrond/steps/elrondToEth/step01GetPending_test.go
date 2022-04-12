@@ -69,6 +69,38 @@ func TestExecute_GetPending(t *testing.T) {
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
+	t.Run("error on ValidateBatch", func(t *testing.T) {
+		t.Parallel()
+		bridgeStub := createStubExecutorGetPending()
+		bridgeStub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+			return false, expectedError
+		}
+
+		step := getPendingStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := step.Identifier()
+		stepIdentifier := step.Execute(context.Background())
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
+
+	t.Run("batch not validated on ValidateBatch", func(t *testing.T) {
+		t.Parallel()
+		bridgeStub := createStubExecutorGetPending()
+		bridgeStub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+			return false, nil
+		}
+
+		step := getPendingStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := step.Identifier()
+		stepIdentifier := step.Execute(context.Background())
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
+
 	t.Run("error on WasTransferPerformedOnEthereum", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
@@ -129,6 +161,9 @@ func createStubExecutorGetPending() *bridgeTests.BridgeExecutorStub {
 	}
 	stub.StoreBatchFromElrondCalled = func(batch *clients.TransferBatch) error {
 		return nil
+	}
+	stub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+		return true, nil
 	}
 	return stub
 }

@@ -61,7 +61,7 @@ func TestNewGasStation(t *testing.T) {
 
 		gs, err := NewGasStation(args)
 		assert.False(t, check.IfNil(gs))
-		assert.Nil(t, err, ErrInvalidGasPriceSelector)
+		assert.Nil(t, err)
 
 		_ = gs.Close()
 	})

@@ -2,6 +2,7 @@ package elrondToEth
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -30,6 +31,18 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 	err = step.bridge.StoreBatchFromElrond(batch)
 	if err != nil {
 		step.bridge.PrintInfo(logger.LogError, "error storing Elrond batch", "error", err)
+		return step.Identifier()
+	}
+
+	isValid, err := step.bridge.ValidateBatch(ctx, batch)
+	if err != nil {
+		body, _ := json.Marshal(batch)
+		step.bridge.PrintInfo(logger.LogError, "error validating Elrond batch", "error", err, "batch", string(body))
+		return step.Identifier()
+	}
+
+	if !isValid {
+		step.bridge.PrintInfo(logger.LogError, "batch not valid "+batch.String())
 		return step.Identifier()
 	}
 

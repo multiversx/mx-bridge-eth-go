@@ -12,9 +12,9 @@ var log = logger.GetOrCreate("clients")
 
 // TransferBatch is the transfer batch structure agnostic of any chain implementation
 type TransferBatch struct {
-	ID       uint64
-	Deposits []*DepositTransfer
-	Statuses []byte
+	ID       uint64             `json:"batchId"`
+	Deposits []*DepositTransfer `json:"deposits"`
+	Statuses []byte             `json:"statuses"`
 }
 
 // Clone will deep clone the current TransferBatch instance
@@ -65,15 +65,15 @@ func (tb *TransferBatch) ResolveNewDeposits(newNumDeposits int) {
 
 // DepositTransfer is the deposit transfer structure agnostic of any chain implementation
 type DepositTransfer struct {
-	Nonce               uint64
-	ToBytes             []byte
-	DisplayableTo       string
-	FromBytes           []byte
-	DisplayableFrom     string
-	TokenBytes          []byte
-	ConvertedTokenBytes []byte
-	DisplayableToken    string
-	Amount              *big.Int
+	Nonce               uint64   `json:"nonce"`
+	ToBytes             []byte   `json:"-"`
+	DisplayableTo       string   `json:"to"`
+	FromBytes           []byte   `json:"-"`
+	DisplayableFrom     string   `json:"from"`
+	TokenBytes          []byte   `json:"-"`
+	ConvertedTokenBytes []byte   `json:"-"`
+	DisplayableToken    string   `json:"token"`
+	Amount              *big.Int `json:"amount"`
 }
 
 // String will convert the deposit transfer to a string
