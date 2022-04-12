@@ -40,7 +40,7 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 	}
 
 	if !isValid {
-		step.bridge.PrintInfo(logger.LogError, "batch not valid"+batch.String())
+		step.bridge.PrintInfo(logger.LogError, "batch not valid "+batch.String())
 		return step.Identifier()
 	}
 

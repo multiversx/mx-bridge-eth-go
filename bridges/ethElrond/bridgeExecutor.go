@@ -521,6 +521,7 @@ func (executor *bridgeExecutor) ClearStoredP2PSignaturesForEthereum() {
 	executor.sigsHolder.ClearStoredSignatures()
 }
 
+// ValidateBatch returns true if the given batch is validated on microservice side
 func (executor *bridgeExecutor) ValidateBatch(batch *clients.TransferBatch) (bool, error) {
 	return executor.batchValidator.ValidateBatch(batch)
 }

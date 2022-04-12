@@ -1,5 +1,6 @@
 package clients
 
+// Chain defines all the chains supported
 type Chain string
 
 const (
