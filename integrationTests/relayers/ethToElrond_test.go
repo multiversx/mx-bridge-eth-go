@@ -187,7 +187,7 @@ func createBridgeComponentsConfig(index int) config.Config {
 			MultisigContractAddress:      "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
 			PrivateKeyFile:               fmt.Sprintf("testdata/ethereum%d.sk", index),
 			IntervalToResendTxsInSeconds: 10,
-			GasLimitBase:                 50000,
+			GasLimitBase:                 200000,
 			GasLimitForEach:              30000,
 			GasStation: config.GasStationConfig{
 				Enabled: false,
