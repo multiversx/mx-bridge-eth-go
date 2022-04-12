@@ -69,26 +69,30 @@ func checkArgs(args ArgsBatchValidator) error {
 func (bv *batchValidator) ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	body, err := json.Marshal(batch)
 	if err != nil {
-		return false, errors.New("during marshal: " + err.Error())
+		return false, fmt.Errorf("%w during request marshal", err)
 	}
+
 	responseAsBytes, err := bv.doRequest(ctx, body)
 	if err != nil {
-		return false, errors.New("executing request: " + err.Error())
+		return false, fmt.Errorf("%w while executing request", err)
 	}
-	if responseAsBytes == nil {
+	if len(responseAsBytes) == 0 {
 		return false, errors.New("empty response")
 	}
+
 	response := &microserviceResponse{}
 	err = json.Unmarshal(responseAsBytes, response)
 	if err != nil {
-		return false, errors.New("during unmarshal: " + err.Error())
+		return false, fmt.Errorf("%w during response unmarshal", err)
 	}
+
 	return response.Valid, nil
 }
 
 func (bv *batchValidator) doRequest(ctx context.Context, batch []byte) ([]byte, error) {
 	requestContext, cancel := context.WithTimeout(ctx, bv.requestTime)
 	defer cancel()
+
 	responseAsBytes, err := bv.doRequestReturningBytes(batch, requestContext)
 	if err != nil {
 		return nil, err
@@ -107,6 +111,10 @@ func (bv *batchValidator) doRequestReturningBytes(batch []byte, ctx context.Cont
 	if err != nil {
 		return nil, err
 	}
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got status %s", response.Status)
+	}
+
 	defer func() {
 		_ = response.Body.Close()
 	}()
