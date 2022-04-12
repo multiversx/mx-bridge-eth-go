@@ -149,7 +149,7 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 	stub.ProcessMaxQuorumRetriesOnElrondCalled = func() bool {
 		return args.maxRetriesReachedHandler()
 	}
-	stub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+	stub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 		if args.failingStep == validateBatch {
 			return false, errHandler.storeAndReturnError(expectedErr)
 		}

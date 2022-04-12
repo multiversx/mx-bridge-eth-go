@@ -89,7 +89,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+		bridgeStub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 			return false, expectedError
 		}
 
@@ -114,7 +114,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+		bridgeStub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 			return false, nil
 		}
 
@@ -139,7 +139,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
-		bridgeStub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+		bridgeStub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 			return true, nil
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled = func(ctx context.Context) error {
@@ -170,7 +170,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled = func(ctx context.Context) error {
 			return nil
 		}
-		bridgeStub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+		bridgeStub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 			return true, nil
 		}
 

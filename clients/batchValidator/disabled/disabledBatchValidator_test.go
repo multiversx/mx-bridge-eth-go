@@ -1,6 +1,7 @@
 package disabled
 
 import (
+	"context"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -12,7 +13,7 @@ func TestNewDisabledGasStation(t *testing.T) {
 
 	assert.False(t, check.IfNil(dbv))
 
-	isValid, err := dbv.ValidateBatch(nil)
+	isValid, err := dbv.ValidateBatch(context.Background(), nil)
 	assert.True(t, isValid)
 	assert.Nil(t, err)
 }

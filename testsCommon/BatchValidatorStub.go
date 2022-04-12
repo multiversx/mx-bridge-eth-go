@@ -1,19 +1,20 @@
 package testsCommon
 
 import (
+	"context"
 	"errors"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 )
 
 type BatchValidatorStub struct {
-	ValidateBatchCalled func(batch *clients.TransferBatch) (bool, error)
+	ValidateBatchCalled func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 }
 
 // ValidateBatch -
-func (bvs *BatchValidatorStub) ValidateBatch(batch *clients.TransferBatch) (bool, error) {
+func (bvs *BatchValidatorStub) ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	if bvs.ValidateBatchCalled != nil {
-		return bvs.ValidateBatchCalled(batch)
+		return bvs.ValidateBatchCalled(ctx, batch)
 	}
 	return false, errors.New("method not implemented")
 }

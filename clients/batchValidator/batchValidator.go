@@ -66,12 +66,12 @@ func checkArgs(args ArgsBatchValidator) error {
 	return nil
 }
 
-func (bv *batchValidator) ValidateBatch(batch *clients.TransferBatch) (bool, error) {
+func (bv *batchValidator) ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	body, err := json.Marshal(batch)
 	if err != nil {
 		return false, errors.New("during marshal: " + err.Error())
 	}
-	responseAsBytes, err := bv.doRequest(body)
+	responseAsBytes, err := bv.doRequest(ctx, body)
 	if err != nil {
 		return false, errors.New("executing request: " + err.Error())
 	}
@@ -86,8 +86,8 @@ func (bv *batchValidator) ValidateBatch(batch *clients.TransferBatch) (bool, err
 	return response.Valid, nil
 }
 
-func (bv *batchValidator) doRequest(batch []byte) ([]byte, error) {
-	requestContext, cancel := context.WithTimeout(context.Background(), bv.requestTime)
+func (bv *batchValidator) doRequest(ctx context.Context, batch []byte) ([]byte, error) {
+	requestContext, cancel := context.WithTimeout(ctx, bv.requestTime)
 	defer cancel()
 	responseAsBytes, err := bv.doRequestReturningBytes(batch, requestContext)
 	if err != nil {

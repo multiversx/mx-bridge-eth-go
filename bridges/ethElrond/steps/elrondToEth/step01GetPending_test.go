@@ -72,7 +72,7 @@ func TestExecute_GetPending(t *testing.T) {
 	t.Run("error on ValidateBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
-		bridgeStub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+		bridgeStub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 			return false, expectedError
 		}
 
@@ -88,7 +88,7 @@ func TestExecute_GetPending(t *testing.T) {
 	t.Run("batch not validated on ValidateBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
-		bridgeStub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+		bridgeStub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 			return false, nil
 		}
 
@@ -162,7 +162,7 @@ func createStubExecutorGetPending() *bridgeTests.BridgeExecutorStub {
 	stub.StoreBatchFromElrondCalled = func(batch *clients.TransferBatch) error {
 		return nil
 	}
-	stub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+	stub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 		return true, nil
 	}
 	return stub

@@ -52,7 +52,7 @@ type BridgeExecutorStub struct {
 	ProcessMaxQuorumRetriesOnEthereumCalled                func() bool
 	ResetRetriesCountOnEthereumCalled                      func()
 	ClearStoredP2PSignaturesForEthereumCalled              func()
-	ValidateBatchCalled                                    func(batch *clients.TransferBatch) (bool, error)
+	ValidateBatchCalled                                    func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 }
 
 // NewBridgeExecutorStub creates a new BridgeExecutorStub instance
@@ -372,9 +372,9 @@ func (stub *BridgeExecutorStub) ClearStoredP2PSignaturesForEthereum() {
 }
 
 // ValidateBatch -
-func (stub *BridgeExecutorStub) ValidateBatch(batch *clients.TransferBatch) (bool, error) {
+func (stub *BridgeExecutorStub) ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	if stub.ValidateBatchCalled != nil {
-		return stub.ValidateBatchCalled(batch)
+		return stub.ValidateBatchCalled(ctx, batch)
 	}
 	return false, notImplemented
 }

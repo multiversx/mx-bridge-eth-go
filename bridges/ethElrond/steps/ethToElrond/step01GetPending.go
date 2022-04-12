@@ -2,6 +2,7 @@ package ethToElrond
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond/steps"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -33,9 +34,10 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 		return step.Identifier()
 	}
 
-	isValid, err := step.bridge.ValidateBatch(batch)
+	isValid, err := step.bridge.ValidateBatch(ctx, batch)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogError, "error validating Ethereum batch", "error", err)
+		body, _ := json.Marshal(batch)
+		step.bridge.PrintInfo(logger.LogError, "error validating Ethereum batch", "error", err, "batch", body)
 		return step.Identifier()
 	}
 
