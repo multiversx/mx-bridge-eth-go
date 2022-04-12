@@ -19,7 +19,7 @@ func stripSpaces(str string) string {
 	}, str)
 }
 
-func TestMicroserviceResponse_String(t *testing.T) {
+func TestGasStationResponse_String(t *testing.T) {
 	t.Parallel()
 
 	response := &gasStationResponse{
