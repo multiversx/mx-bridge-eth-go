@@ -32,6 +32,7 @@ func createMockExecutorArgs() ArgsBridgeExecutor {
 		StatusHandler:              testsCommon.NewStatusHandlerMock("test"),
 		TimeForWaitOnEthereum:      time.Second,
 		SignaturesHolder:           &testsCommon.SignaturesHolderStub{},
+		BatchValidator:             &testsCommon.BatchValidatorStub{},
 		MaxQuorumRetriesOnEthereum: minRetries,
 		MaxQuorumRetriesOnElrond:   minRetries,
 		MaxRestriesOnWasProposed:   minRetries,
