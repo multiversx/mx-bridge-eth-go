@@ -119,7 +119,6 @@ type ethElrondBridgeComponents struct {
 	timeBeforeRepeatJoin time.Duration
 	cancelFunc           func()
 	appStatusHandler     elrondCore.AppStatusHandler
-	batchValidator       clients.BatchValidator
 }
 
 // NewEthElrondBridgeComponents creates a new eth-elrond bridge components holder

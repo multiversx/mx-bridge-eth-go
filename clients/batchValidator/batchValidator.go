@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -48,6 +49,16 @@ func NewBatchValidator(args ArgsBatchValidator) (*batchValidator, error) {
 }
 
 func checkArgs(args ArgsBatchValidator) error {
+	switch args.SourceChain {
+	case clients.Ethereum, clients.Elrond:
+	default:
+		return fmt.Errorf("%w: %q", clients.ErrInvalidValue, args.SourceChain)
+	}
+	switch args.DestinationChain {
+	case clients.Ethereum, clients.Elrond:
+	default:
+		return fmt.Errorf("%w: %q", clients.ErrInvalidValue, args.DestinationChain)
+	}
 	if args.RequestTime < minRequestTime {
 		return fmt.Errorf("%w in checkArgs for value RequestTime", clients.ErrInvalidValue)
 	}
@@ -58,13 +69,19 @@ func checkArgs(args ArgsBatchValidator) error {
 func (bv *batchValidator) ValidateBatch(batch *clients.TransferBatch) (bool, error) {
 	body, err := json.Marshal(batch)
 	if err != nil {
-		return false, err
+		return false, errors.New("during marshal: " + err.Error())
 	}
 	responseAsBytes, err := bv.doRequest(body)
+	if err != nil {
+		return false, errors.New("executing request: " + err.Error())
+	}
+	if responseAsBytes == nil {
+		return false, errors.New("empty response")
+	}
 	response := &microserviceResponse{}
 	err = json.Unmarshal(responseAsBytes, response)
 	if err != nil {
-		return false, err
+		return false, errors.New("during unmarshal: " + err.Error())
 	}
 	return response.Valid, nil
 }

@@ -77,6 +77,56 @@ func TestExecuteGetPending(t *testing.T) {
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
+	t.Run("error on ValidateBatch", func(t *testing.T) {
+		t.Parallel()
+		bridgeStub := createStubExecutor()
+		bridgeStub.GetLastExecutedEthBatchIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+			return 1122, nil
+		}
+		bridgeStub.GetAndStoreBatchFromEthereumCalled = func(ctx context.Context, nonce uint64) error {
+			return nil
+		}
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+			return testBatch
+		}
+		bridgeStub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+			return false, expectedError
+		}
+
+		step := getPendingStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := step.Identifier()
+		stepIdentifier := step.Execute(context.Background())
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
+
+	t.Run("batch not validated on ValidateBatch", func(t *testing.T) {
+		t.Parallel()
+		bridgeStub := createStubExecutor()
+		bridgeStub.GetLastExecutedEthBatchIDFromElrondCalled = func(ctx context.Context) (uint64, error) {
+			return 1122, nil
+		}
+		bridgeStub.GetAndStoreBatchFromEthereumCalled = func(ctx context.Context, nonce uint64) error {
+			return nil
+		}
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+			return testBatch
+		}
+		bridgeStub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+			return false, nil
+		}
+
+		step := getPendingStep{
+			bridge: bridgeStub,
+		}
+
+		expectedStepIdentifier := step.Identifier()
+		stepIdentifier := step.Execute(context.Background())
+		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
+	})
+
 	t.Run("error on VerifyLastDepositNonceExecutedOnEthereumBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
@@ -88,6 +138,9 @@ func TestExecuteGetPending(t *testing.T) {
 		}
 		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
+		}
+		bridgeStub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+			return true, nil
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled = func(ctx context.Context) error {
 			return expectedError
@@ -116,6 +169,9 @@ func TestExecuteGetPending(t *testing.T) {
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled = func(ctx context.Context) error {
 			return nil
+		}
+		bridgeStub.ValidateBatchCalled = func(batch *clients.TransferBatch) (bool, error) {
+			return true, nil
 		}
 
 		step := getPendingStep{
