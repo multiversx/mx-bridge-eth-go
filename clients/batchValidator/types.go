@@ -9,6 +9,7 @@ type microserviceResponse struct {
 	Valid bool `json:"valid"`
 }
 
+// String will convert the microservice response to a string
 func (msr *microserviceResponse) String() string {
 	data, err := json.Marshal(msr)
 	if err != nil {

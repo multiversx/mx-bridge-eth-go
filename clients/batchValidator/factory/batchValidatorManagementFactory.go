@@ -11,5 +11,5 @@ func CreateBatchValidator(args batchValidatorManagement.ArgsBatchValidator, enab
 	if enabled {
 		return batchValidatorManagement.NewBatchValidator(args)
 	}
-	return &disabled.DisabledBatchValidator{}, nil
+	return disabled.NewDisabledBatchValidator(), nil
 }

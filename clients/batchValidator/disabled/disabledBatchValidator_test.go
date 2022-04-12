@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewDisabledGasStation(t *testing.T) {
-	dbv := &DisabledBatchValidator{}
+func TestNewDisabledBatchValidator(t *testing.T) {
+	dbv := NewDisabledBatchValidator()
 
 	assert.False(t, check.IfNil(dbv))
 

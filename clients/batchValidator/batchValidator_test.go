@@ -20,7 +20,7 @@ func createMockArgsBatchValidator() ArgsBatchValidator {
 	}
 }
 
-func TestNewGasStation(t *testing.T) {
+func TestNewBatchValidator(t *testing.T) {
 	t.Parallel()
 
 	t.Run("invalid SourceChain", func(t *testing.T) {
