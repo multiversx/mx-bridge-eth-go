@@ -321,7 +321,7 @@ func (c *client) ExecuteTransfer(
 	auth.Value = big.NewInt(0)
 	auth.GasLimit = c.transferGasLimitBase + uint64(len(batch.Deposits))*c.transferGasLimitForEach
 	auth.Context = ctx
-	auth.GasPrice = big.NewInt(0).Mul(gasPrice, big.NewInt(2))
+	auth.GasPrice = big.NewInt(0).Mul(gasPrice, big.NewInt(7))
 
 	signatures := c.signatureHolder.Signatures(msgHash.Bytes())
 	if len(signatures) < quorum {
