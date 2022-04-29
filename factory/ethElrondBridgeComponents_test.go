@@ -74,11 +74,16 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 		},
 	}
 
+	argsProxy := blockchain.ArgsElrondProxy{
+		ProxyURL:            cfg.Elrond.NetworkAddress,
+		CacheExpirationTime: time.Minute,
+	}
+	proxy, _ := blockchain.NewElrondProxy(argsProxy)
 	return ArgsEthereumToElrondBridge{
 		Configs:              configs,
 		Messenger:            &p2pMocks.MessengerStub{},
 		StatusStorer:         testsCommon.NewStorerMock(),
-		Proxy:                blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil),
+		Proxy:                proxy,
 		Erc20ContractsHolder: &bridgeTests.ERC20ContractsHolderStub{},
 		ClientWrapper:        &bridgeTests.EthereumClientWrapperStub{},
 		TimeForBootstrap:     minTimeForBootstrap,

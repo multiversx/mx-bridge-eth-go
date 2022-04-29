@@ -51,8 +51,15 @@ func runApp() error {
 		return fmt.Errorf("empty NetworkAddress in config file")
 	}
 
-	proxy := blockchain.NewElrondProxy(cfg.GeneralConfig.NetworkAddress, nil)
-	proxyWithCacher, err := blockchain.NewElrondProxyWithCache(proxy, time.Second*time.Duration(cfg.GeneralConfig.ProxyCacherExpirationSeconds))
+	args := blockchain.ArgsElrondProxy{
+		ProxyURL:            cfg.GeneralConfig.NetworkAddress,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       cfg.GeneralConfig.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.GeneralConfig.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.GeneralConfig.ProxyCacherExpirationSeconds),
+	}
+	proxy, err := blockchain.NewElrondProxy(args)
 	if err != nil {
 		return err
 	}
@@ -76,7 +83,7 @@ func runApp() error {
 		return err
 	}
 
-	txNonceHandler, err := interactors.NewNonceTransactionHandler(proxyWithCacher, time.Second*time.Duration(cfg.GeneralConfig.IntervalToResendTxsInSeconds), true)
+	txNonceHandler, err := interactors.NewNonceTransactionHandler(proxy, time.Second*time.Duration(cfg.GeneralConfig.IntervalToResendTxsInSeconds), true)
 	if err != nil {
 		return err
 	}
@@ -99,7 +106,7 @@ func runApp() error {
 		return err
 	}
 	argsElrondNotifee := notifees.ArgsElrondNotifee{
-		Proxy:           proxyWithCacher,
+		Proxy:           proxy,
 		TxBuilder:       txBuilder,
 		TxNonceHandler:  txNonceHandler,
 		ContractAddress: aggregatorAddress,

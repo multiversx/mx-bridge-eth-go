@@ -138,8 +138,15 @@ func startRelay(ctx *cli.Context, version string) error {
 		return fmt.Errorf("empty Elrond.NetworkAddress in config file")
 	}
 
-	proxy := blockchain.NewElrondProxy(cfg.Elrond.NetworkAddress, nil)
-	proxyWithCacher, err := blockchain.NewElrondProxyWithCache(proxy, time.Second*time.Duration(cfg.Elrond.ProxyCacherExpirationSeconds))
+	argsProxy := blockchain.ArgsElrondProxy{
+		ProxyURL:            cfg.Elrond.NetworkAddress,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       cfg.Elrond.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.Elrond.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.Elrond.ProxyCacherExpirationSeconds),
+	}
+	proxy, err := blockchain.NewElrondProxy(argsProxy)
 	if err != nil {
 		return err
 	}
@@ -204,7 +211,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		Configs:              configs,
 		Messenger:            messenger,
 		StatusStorer:         statusStorer,
-		Proxy:                proxyWithCacher,
+		Proxy:                proxy,
 		Erc20ContractsHolder: erc20ContractsHolder,
 		ClientWrapper:        clientWrapper,
 		TimeForBootstrap:     timeForBootstrap,
