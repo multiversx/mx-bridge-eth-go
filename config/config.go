@@ -145,6 +145,8 @@ type ElrondConfig struct {
 	MaxRetriesOnQuorumReached       uint64
 	MaxRetriesOnWasTransferProposed uint64
 	ProxyCacherExpirationSeconds    uint64
+	ProxyMaxNoncesDelta             int
+	ProxyFinalityCheck              bool
 }
 
 // ElrondGasMapConfig represents the gas limits for Elrond operations
@@ -176,6 +178,8 @@ type GeneralNotifierConfig struct {
 	MinResultsNum                int
 	PollIntervalInSeconds        uint64
 	AutoSendIntervalInSeconds    uint64
+	ProxyMaxNoncesDelta          int
+	ProxyFinalityCheck           bool
 }
 
 // Pair parameters for a pair

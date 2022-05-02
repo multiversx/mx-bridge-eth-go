@@ -147,7 +147,8 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 		return nil, err
 	}
 	if int(batch.DepositsCount) != len(deposits) {
-		return nil, errDepositsAndBatchDepositsCountDiffer
+		return nil, fmt.Errorf("%w, batch.DepositsCount: %d, fetched deposits len: %d",
+			errDepositsAndBatchDepositsCountDiffer, batch.DepositsCount, len(deposits))
 	}
 
 	transferBatch := &clients.TransferBatch{

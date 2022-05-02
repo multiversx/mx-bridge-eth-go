@@ -9,6 +9,8 @@
     MinResultsNum = 3 # min number of results waiting
     PollIntervalInSeconds = 2 # polling interval for fetchers
     AutoSendIntervalInSeconds = 10 # seconds before next send price when percent difference is not met
+    ProxyFinalityCheck = true
+    ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
 
 [[Pairs]]
     Base = "ETH"

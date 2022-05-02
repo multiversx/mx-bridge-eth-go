@@ -24,6 +24,8 @@
     MaxRetriesOnQuorumReached = 3
     MaxRetriesOnWasTransferProposed = 3
     ProxyCacherExpirationSeconds = 600 # the caching time in seconds
+    ProxyFinalityCheck = true
+    ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
     [Elrond.GasMap]
         Sign = 8000000
         ProposeTransferBase = 11000000
