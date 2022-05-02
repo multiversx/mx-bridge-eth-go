@@ -192,9 +192,9 @@ func TestClient_GetBatch(t *testing.T) {
 
 	args := createMockEthereumClientArgs()
 	c, _ := NewEthereumClient(args)
+	expectedErr := errors.New("expected error")
 
 	t.Run("error while getting batch", func(t *testing.T) {
-		expectedErr := errors.New("expected error")
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
 				return contract.Batch{}, expectedErr
@@ -203,6 +203,60 @@ func TestClient_GetBatch(t *testing.T) {
 		batch, err := c.GetBatch(context.Background(), 1)
 		assert.Nil(t, batch)
 		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("error while getting deposits", func(t *testing.T) {
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+				return contract.Batch{
+					Nonce:         batchNonce,
+					DepositsCount: 2,
+				}, nil
+			},
+			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+				return nil, expectedErr
+			},
+		}
+		batch, err := c.GetBatch(context.Background(), 1)
+		assert.Nil(t, batch)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("deposits mismatch - with 0", func(t *testing.T) {
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+				return contract.Batch{
+					Nonce:         batchNonce,
+					DepositsCount: 2,
+				}, nil
+			},
+			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+				return make([]contract.Deposit, 0), nil
+			},
+		}
+		batch, err := c.GetBatch(context.Background(), 1)
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, errDepositsAndBatchDepositsCountDiffer))
+		assert.True(t, strings.Contains(err.Error(), "batch.DepositsCount: 2, fetched deposits len: 0"))
+	})
+	t.Run("deposits mismatch - with non zero value", func(t *testing.T) {
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+				return contract.Batch{
+					Nonce:         batchNonce,
+					DepositsCount: 2,
+				}, nil
+			},
+			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+				return []contract.Deposit{
+					{
+						Nonce: big.NewInt(22),
+					},
+				}, nil
+			},
+		}
+		batch, err := c.GetBatch(context.Background(), 1)
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, errDepositsAndBatchDepositsCountDiffer))
+		assert.True(t, strings.Contains(err.Error(), "batch.DepositsCount: 2, fetched deposits len: 1"))
 	})
 	t.Run("returns batch should work", func(t *testing.T) {
 		from1 := testsCommon.CreateRandomEthereumAddress()
