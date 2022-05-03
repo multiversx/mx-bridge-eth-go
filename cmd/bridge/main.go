@@ -31,6 +31,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
 	"github.com/ElrondNetwork/elrond-go/update/disabled"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
+	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli"
@@ -145,6 +146,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		FinalityCheck:       cfg.Elrond.ProxyFinalityCheck,
 		AllowedDeltaToFinal: cfg.Elrond.ProxyMaxNoncesDelta,
 		CacheExpirationTime: time.Second * time.Duration(cfg.Elrond.ProxyCacherExpirationSeconds),
+		EntityType:          erdgoCore.RestAPIEntityType(cfg.Elrond.ProxyRestAPIEntityType),
 	}
 	proxy, err := blockchain.NewElrondProxy(argsProxy)
 	if err != nil {

@@ -9,6 +9,10 @@
     MinResultsNum = 3 # min number of results waiting
     PollIntervalInSeconds = 2 # polling interval for fetchers
     AutoSendIntervalInSeconds = 10 # seconds before next send price when percent difference is not met
+
+    # valid options for ProxyRestAPIEntityType are `observer` and `proxy`. Any other value will trigger an error.
+    # `observer` is useful when querying an observer, directly and `proxy` is useful when querying a squad's proxy
+    ProxyRestAPIEntityType = "observer"
     ProxyFinalityCheck = true
     ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
 

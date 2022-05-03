@@ -24,6 +24,10 @@
     MaxRetriesOnQuorumReached = 3
     MaxRetriesOnWasTransferProposed = 3
     ProxyCacherExpirationSeconds = 600 # the caching time in seconds
+
+    # valid options for ProxyRestAPIEntityType are `observer` and `proxy`. Any other value will trigger an error.
+    # `observer` is useful when querying an observer, directly and `proxy` is useful when querying a squad's proxy
+    ProxyRestAPIEntityType = "observer"
     ProxyFinalityCheck = true
     ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
     [Elrond.GasMap]

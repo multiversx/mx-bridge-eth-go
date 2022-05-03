@@ -18,6 +18,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/testscommon/statusHandler"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
+	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,6 +78,7 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 	argsProxy := blockchain.ArgsElrondProxy{
 		ProxyURL:            cfg.Elrond.NetworkAddress,
 		CacheExpirationTime: time.Minute,
+		EntityType:          erdgoCore.ObserverNode,
 	}
 	proxy, _ := blockchain.NewElrondProxy(argsProxy)
 	return ArgsEthereumToElrondBridge{
