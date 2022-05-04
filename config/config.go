@@ -145,6 +145,7 @@ type ElrondConfig struct {
 	MaxRetriesOnQuorumReached       uint64
 	MaxRetriesOnWasTransferProposed uint64
 	ProxyCacherExpirationSeconds    uint64
+	ProxyRestAPIEntityType          string
 	ProxyMaxNoncesDelta             int
 	ProxyFinalityCheck              bool
 }
@@ -178,6 +179,7 @@ type GeneralNotifierConfig struct {
 	MinResultsNum                int
 	PollIntervalInSeconds        uint64
 	AutoSendIntervalInSeconds    uint64
+	ProxyRestAPIEntityType       string
 	ProxyMaxNoncesDelta          int
 	ProxyFinalityCheck           bool
 }
