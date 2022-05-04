@@ -147,7 +147,11 @@ func (executor *bridgeExecutor) MyTurnAsLeader() bool {
 
 // GetBatchFromElrond fetches the pending batch from Elrond
 func (executor *bridgeExecutor) GetBatchFromElrond(ctx context.Context) (*clients.TransferBatch, error) {
-	return executor.elrondClient.GetPending(ctx)
+	batch, err := executor.elrondClient.GetPending(ctx)
+	if err == nil {
+		executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
+	}
+	return batch, err
 }
 
 // StoreBatchFromElrond saves the pending batch from Elrond
@@ -167,7 +171,11 @@ func (executor *bridgeExecutor) GetStoredBatch() *clients.TransferBatch {
 
 // GetLastExecutedEthBatchIDFromElrond returns the last executed batch ID that is stored on the Elrond SC
 func (executor *bridgeExecutor) GetLastExecutedEthBatchIDFromElrond(ctx context.Context) (uint64, error) {
-	return executor.elrondClient.GetLastExecutedEthBatchID(ctx)
+	batchID, err := executor.elrondClient.GetLastExecutedEthBatchID(ctx)
+	if err == nil {
+		executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batchID))
+	}
+	return batchID, err
 }
 
 // VerifyLastDepositNonceExecutedOnEthereumBatch will check the deposit nonces from the fetched batch from Ethereum client
