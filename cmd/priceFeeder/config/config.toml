@@ -12,8 +12,8 @@
 
     # valid options for ProxyRestAPIEntityType are `observer` and `proxy`. Any other value will trigger an error.
     # `observer` is useful when querying an observer, directly and `proxy` is useful when querying a squad's proxy
-    ProxyRestAPIEntityType = "observer"
-    ProxyFinalityCheck = true
+    ProxyRestAPIEntityType = "proxy"
+    ProxyFinalityCheck = false
     ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
 
 [[Pairs]]
@@ -22,3 +22,26 @@
     PercentDifferenceToNotify = 1 # percent difference to notify price change. 0 notifies for each change
     TrimPrecision = 0.01 # trim precision for prices
     DenominationFactor = 100 # denomination factor
+
+# Maiar Exchange token ids mappings
+# This should be a mapping between the above generic symbols pairs and their maiar token ids equivalents
+# The key in map must be uppercase and tokens should be separated by "-"
+# All available pairs can be found at https://api.elrond.com/mex-pairs
+# egs.
+#   "ETH-USD"
+#       Base  = "ETH-tbd000"   -> placeholder, not added yet
+#       Quote = "USDC-c76f1f"
+#   "EGLD-USD"
+#       Base  = "WEGLD-bd4d79"
+#       Quote = "USDC-c76f1f"
+[MexTokenIDsMappings]
+
+[MexTokenIDsMappings.EGLD-USD]
+    Base = "WEGLD-bd4d79"
+    Quote = "USDC-c76f1f"
+[MexTokenIDsMappings.MEX-EGLD]
+    Base = "MEX-455c57"
+    Quote = "WEGLD-bd4d79"
+[MexTokenIDsMappings.RIDE-EGLD]
+    Base = "RIDE-7d18e9"
+    Quote = "WEGLD-bd4d79"

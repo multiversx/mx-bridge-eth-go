@@ -17,6 +17,7 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator/notifees"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
+	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core/polling"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
@@ -47,6 +48,10 @@ func runApp() error {
 		return err
 	}
 
+	for key, val := range cfg.MexTokenIDsMappings {
+		println(fmt.Sprintf("key: %s, quote: %s, base: %s", key, val.Quote, val.Base))
+	}
+
 	if len(cfg.GeneralConfig.NetworkAddress) == 0 {
 		return fmt.Errorf("empty NetworkAddress in config file")
 	}
@@ -58,13 +63,14 @@ func runApp() error {
 		FinalityCheck:       cfg.GeneralConfig.ProxyFinalityCheck,
 		AllowedDeltaToFinal: cfg.GeneralConfig.ProxyMaxNoncesDelta,
 		CacheExpirationTime: time.Second * time.Duration(cfg.GeneralConfig.ProxyCacherExpirationSeconds),
+		EntityType:          erdgoCore.RestAPIEntityType(cfg.GeneralConfig.ProxyRestAPIEntityType),
 	}
 	proxy, err := blockchain.NewElrondProxy(args)
 	if err != nil {
 		return err
 	}
 
-	priceFetchers, err := createPriceFetchers()
+	priceFetchers, err := createPriceFetchers(cfg.MexTokenIDsMappings)
 	if err != nil {
 		return err
 	}
@@ -181,11 +187,11 @@ func loadConfig(filepath string) (config.PriceNotifierConfig, error) {
 	return cfg, nil
 }
 
-func createPriceFetchers() ([]aggregator.PriceFetcher, error) {
+func createPriceFetchers(tokenIdsMappings map[string]fetchers.MaiarTokensPair) ([]aggregator.PriceFetcher, error) {
 	exchanges := fetchers.ImplementedFetchers
 	priceFetchers := make([]aggregator.PriceFetcher, 0, len(exchanges))
 	for _, exchangeName := range exchanges {
-		priceFetcher, err := fetchers.NewPriceFetcher(exchangeName, &aggregator.HttpResponseGetter{})
+		priceFetcher, err := fetchers.NewPriceFetcher(exchangeName, &aggregator.HttpResponseGetter{}, tokenIdsMappings)
 		if err != nil {
 			return nil, err
 		}
