@@ -49,7 +49,7 @@ func runApp() error {
 	}
 
 	for key, val := range cfg.MexTokenIDsMappings {
-		println(fmt.Sprintf("key: %s, quote: %s, base: %s", key, val.Quote, val.Base))
+		log.Info(fmt.Sprintf("key: %s, quote: %s, base: %s", key, val.Quote, val.Base))
 	}
 
 	if len(cfg.GeneralConfig.NetworkAddress) == 0 {
