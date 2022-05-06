@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/ElrondNetwork/elrond-go/config"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator/fetchers"
 )
 
 // Configs is a holder for the relayer configuration parameters
@@ -163,8 +164,9 @@ type ElrondGasMapConfig struct {
 
 // PriceNotifierConfig price notifier configuration struct
 type PriceNotifierConfig struct {
-	GeneralConfig GeneralNotifierConfig
-	Pairs         []Pair
+	GeneralConfig       GeneralNotifierConfig
+	Pairs               []Pair
+	MexTokenIDsMappings map[string]fetchers.MaiarTokensPair
 }
 
 // GeneralNotifierConfig general price notifier configuration struct
