@@ -1070,3 +1070,110 @@ func TestDataGetter_GetAllStakedRelayers(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, providedRelayers, result)
 }
+
+func TestElrondClientDataGetter_GetShardCurrentNonce(t *testing.T) {
+	t.Parallel()
+
+	expectedErr := errors.New("expected error")
+	expectedNonce := uint64(33443)
+	t.Run("GetShardOfAddress errors", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsDataGetter()
+		args.Proxy = &interactors.ElrondProxyStub{
+			GetShardOfAddressCalled: func(ctx context.Context, bech32Address string) (uint32, error) {
+				return 0, expectedErr
+			},
+		}
+		dg, _ := NewDataGetter(args)
+
+		nonce, err := dg.GetCurrentNonce(context.Background())
+		assert.Equal(t, uint64(0), nonce)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("GetNetworkStatus errors", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsDataGetter()
+		args.Proxy = &interactors.ElrondProxyStub{
+			GetShardOfAddressCalled: func(ctx context.Context, bech32Address string) (uint32, error) {
+				return 0, nil
+			},
+			GetNetworkStatusCalled: func(ctx context.Context, shardID uint32) (*data.NetworkStatus, error) {
+				return nil, expectedErr
+			},
+		}
+		dg, _ := NewDataGetter(args)
+
+		nonce, err := dg.GetCurrentNonce(context.Background())
+		assert.Equal(t, uint64(0), nonce)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("GetNetworkStatus returns nil, nil", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsDataGetter()
+		args.Proxy = &interactors.ElrondProxyStub{
+			GetShardOfAddressCalled: func(ctx context.Context, bech32Address string) (uint32, error) {
+				return 0, nil
+			},
+			GetNetworkStatusCalled: func(ctx context.Context, shardID uint32) (*data.NetworkStatus, error) {
+				return nil, nil
+			},
+		}
+		dg, _ := NewDataGetter(args)
+
+		nonce, err := dg.GetCurrentNonce(context.Background())
+		assert.Equal(t, uint64(0), nonce)
+		assert.Equal(t, errNilNodeStatusResponse, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsDataGetter()
+		args.Proxy = &interactors.ElrondProxyStub{
+			GetShardOfAddressCalled: func(ctx context.Context, bech32Address string) (uint32, error) {
+				return 0, nil
+			},
+			GetNetworkStatusCalled: func(ctx context.Context, shardID uint32) (*data.NetworkStatus, error) {
+				return &data.NetworkStatus{
+					Nonce: expectedNonce,
+				}, nil
+			},
+		}
+		dg, _ := NewDataGetter(args)
+
+		nonce, err := dg.GetCurrentNonce(context.Background())
+		assert.Equal(t, expectedNonce, nonce)
+		assert.Nil(t, err)
+	})
+	t.Run("should work should buffer the shard ID", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsDataGetter()
+		numCallsGetShardOfAddress := 0
+		numCallsGetNetworkStatus := 0
+		args.Proxy = &interactors.ElrondProxyStub{
+			GetShardOfAddressCalled: func(ctx context.Context, bech32Address string) (uint32, error) {
+				numCallsGetShardOfAddress++
+				return 0, nil
+			},
+			GetNetworkStatusCalled: func(ctx context.Context, shardID uint32) (*data.NetworkStatus, error) {
+				numCallsGetNetworkStatus++
+				return &data.NetworkStatus{
+					Nonce: expectedNonce,
+				}, nil
+			},
+		}
+		dg, _ := NewDataGetter(args)
+
+		nonce, _ := dg.GetCurrentNonce(context.Background())
+		assert.Equal(t, expectedNonce, nonce)
+
+		nonce, _ = dg.GetCurrentNonce(context.Background())
+		assert.Equal(t, expectedNonce, nonce)
+
+		assert.Equal(t, 1, numCallsGetShardOfAddress)
+		assert.Equal(t, 2, numCallsGetNetworkStatus)
+	})
+}
