@@ -270,10 +270,10 @@ func TestClient_GetBatch(t *testing.T) {
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
 				return contract.Batch{
-					Nonce:                big.NewInt(112243),
-					Timestamp:            nil,
-					LastUpdatedTimestamp: nil,
-					DepositsCount:        2,
+					Nonce:                  big.NewInt(112243),
+					BlockNumber:            0,
+					LastUpdatedBlockNumber: 0,
+					DepositsCount:          2,
 				}, nil
 			},
 			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {

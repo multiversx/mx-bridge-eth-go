@@ -53,10 +53,10 @@ func TestRelayersShouldExecuteTransferFromEthToElrond(t *testing.T) {
 	batchNonceOnEthereum := uint64(345)
 	txNonceOnEthereum := uint64(772634)
 	batch := contract.Batch{
-		Nonce:                big.NewInt(int64(batchNonceOnEthereum) + 1),
-		Timestamp:            big.NewInt(0),
-		LastUpdatedTimestamp: big.NewInt(0),
-		DepositsCount:        2,
+		Nonce:                  big.NewInt(int64(batchNonceOnEthereum) + 1),
+		BlockNumber:            0,
+		LastUpdatedBlockNumber: 0,
+		DepositsCount:          2,
 	}
 
 	numRelayers := 3

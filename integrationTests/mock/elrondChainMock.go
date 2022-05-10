@@ -44,6 +44,16 @@ func (mock *ElrondChainMock) GetNetworkConfig(_ context.Context) (*data.NetworkC
 	}, nil
 }
 
+// GetNetworkStatus -
+func (mock *ElrondChainMock) GetNetworkStatus(_ context.Context, _ uint32) (*data.NetworkStatus, error) {
+	return &data.NetworkStatus{}, nil
+}
+
+// GetShardOfAddress -
+func (mock *ElrondChainMock) GetShardOfAddress(_ context.Context, _ string) (uint32, error) {
+	return 0, nil
+}
+
 // SendTransaction -
 func (mock *ElrondChainMock) SendTransaction(_ context.Context, transaction *data.Transaction) (string, error) {
 	if transaction == nil {

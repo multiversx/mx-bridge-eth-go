@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"sync"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -46,6 +47,9 @@ type elrondClientDataGetter struct {
 	relayerAddress          core.AddressHandler
 	proxy                   ElrondProxy
 	log                     logger.Logger
+	mutNodeStatus           sync.Mutex
+	wasShardIDFetched       bool
+	shardID                 uint32
 }
 
 // NewDataGetter creates a new instance of the dataGetter type
@@ -96,6 +100,41 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 		)
 	}
 	return response.Data.ReturnData, nil
+}
+
+// GetCurrentNonce will get from the shard containing the multisig contract the latest block's nonce
+func (dg *elrondClientDataGetter) GetCurrentNonce(ctx context.Context) (uint64, error) {
+	shardID, err := dg.getShardID(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	nodeStatus, err := dg.proxy.GetNetworkStatus(ctx, shardID)
+	if err != nil {
+		return 0, err
+	}
+	if nodeStatus == nil {
+		return 0, errNilNodeStatusResponse
+	}
+
+	return nodeStatus.Nonce, nil
+}
+
+func (dg *elrondClientDataGetter) getShardID(ctx context.Context) (uint32, error) {
+	dg.mutNodeStatus.Lock()
+	defer dg.mutNodeStatus.Unlock()
+
+	if dg.wasShardIDFetched {
+		return dg.shardID, nil
+	}
+
+	var err error
+	dg.shardID, err = dg.proxy.GetShardOfAddress(ctx, dg.multisigContractAddress.AddressAsBech32String())
+	if err == nil {
+		dg.wasShardIDFetched = true
+	}
+
+	return dg.shardID, err
 }
 
 // ExecuteQueryReturningBool will try to execute the provided query and return the result as bool
