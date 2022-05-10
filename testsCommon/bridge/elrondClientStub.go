@@ -22,6 +22,7 @@ type ElrondClientStub struct {
 	GetActionIDForSetStatusOnPendingTransferCalled func(ctx context.Context, batch *clients.TransferBatch) (uint64, error)
 	GetLastExecutedEthBatchIDCalled                func(ctx context.Context) (uint64, error)
 	GetLastExecutedEthTxIDCalled                   func(ctx context.Context) (uint64, error)
+	GetCurrentNonceCalled                          func(ctx context.Context) (uint64, error)
 	ProposeSetStatusCalled                         func(ctx context.Context, batch *clients.TransferBatch) (string, error)
 	ResolveNewDepositsCalled                       func(ctx context.Context, batch *clients.TransferBatch) error
 	ProposeTransferCalled                          func(ctx context.Context, batch *clients.TransferBatch) (string, error)
@@ -125,6 +126,15 @@ func (stub *ElrondClientStub) GetLastExecutedEthBatchID(ctx context.Context) (ui
 func (stub *ElrondClientStub) GetLastExecutedEthTxID(ctx context.Context) (uint64, error) {
 	if stub.GetLastExecutedEthTxIDCalled != nil {
 		return stub.GetLastExecutedEthTxIDCalled(ctx)
+	}
+
+	return 0, nil
+}
+
+// GetCurrentNonce -
+func (stub *ElrondClientStub) GetCurrentNonce(ctx context.Context) (uint64, error) {
+	if stub.GetCurrentNonceCalled != nil {
+		return stub.GetCurrentNonceCalled(ctx)
 	}
 
 	return 0, nil

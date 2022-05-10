@@ -21,6 +21,7 @@ type ElrondClient interface {
 	GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error)
 	GetLastExecutedEthBatchID(ctx context.Context) (uint64, error)
 	GetLastExecutedEthTxID(ctx context.Context) (uint64, error)
+	GetCurrentNonce(ctx context.Context) (uint64, error)
 
 	ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error)
 	ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error)

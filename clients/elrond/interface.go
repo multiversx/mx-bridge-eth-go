@@ -15,6 +15,8 @@ type ElrondProxy interface {
 	SendTransactions(ctx context.Context, txs []*data.Transaction) ([]string, error)
 	ExecuteVMQuery(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 	GetAccount(ctx context.Context, address core.AddressHandler) (*data.Account, error)
+	GetNetworkStatus(ctx context.Context, shardID uint32) (*data.NetworkStatus, error)
+	GetShardOfAddress(ctx context.Context, bech32Address string) (uint32, error)
 	IsInterfaceNil() bool
 }
 
