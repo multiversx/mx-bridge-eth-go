@@ -48,7 +48,6 @@ func TestNewNodeGroup(t *testing.T) {
 func TestGetStatus_Errors(t *testing.T) {
 	t.Parallel()
 
-	expectedError := errors.New("expected error")
 	facade := mockFacade.RelayerFacadeStub{
 		GetMetricsCalled: func(name string) (core.GeneralMetrics, error) {
 			return nil, expectedError

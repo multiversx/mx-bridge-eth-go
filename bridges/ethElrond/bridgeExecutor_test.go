@@ -112,6 +112,49 @@ func TestNewBridgeExecutor(t *testing.T) {
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilSignaturesHolder, err)
 	})
+	t.Run("nil batchValidator", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.BatchValidator = nil
+		executor, err := NewBridgeExecutor(args)
+
+		assert.True(t, check.IfNil(executor))
+		assert.Equal(t, ErrNilBatchValidator, err)
+	})
+	t.Run("MaxQuorumRetriesOnEthereum below minRetries", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.MaxQuorumRetriesOnEthereum = 0
+		executor, err := NewBridgeExecutor(args)
+
+		assert.True(t, check.IfNil(executor))
+		assert.True(t, strings.Contains(err.Error(), clients.ErrInvalidValue.Error()))
+		assert.True(t, strings.Contains(err.Error(), "MaxQuorumRetriesOnEthereum"))
+	})
+	t.Run("MaxQuorumRetriesOnElrond below minRetries", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.MaxQuorumRetriesOnElrond = 0
+		executor, err := NewBridgeExecutor(args)
+
+		assert.True(t, check.IfNil(executor))
+		assert.True(t, strings.Contains(err.Error(), clients.ErrInvalidValue.Error()))
+		assert.True(t, strings.Contains(err.Error(), "MaxQuorumRetriesOnElrond"))
+	})
+	t.Run("MaxRestriesOnWasProposed below minRetries", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.MaxRestriesOnWasProposed = 0
+		executor, err := NewBridgeExecutor(args)
+
+		assert.True(t, check.IfNil(executor))
+		assert.True(t, strings.Contains(err.Error(), clients.ErrInvalidValue.Error()))
+		assert.True(t, strings.Contains(err.Error(), "MaxRestriesOnWasProposed"))
+	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
@@ -1542,4 +1585,62 @@ func TestSignaturesHolder_ClearStoredSignatures(t *testing.T) {
 	executor.ClearStoredP2PSignaturesForEthereum()
 
 	assert.True(t, wasCalled)
+}
+
+func TestSignaturesHolder_BatchValidator(t *testing.T) {
+	t.Parallel()
+
+	args := createMockExecutorArgs()
+	wasCalled := false
+	args.BatchValidator = &testsCommon.BatchValidatorStub{
+		ValidateBatchCalled: func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+			wasCalled = true
+			return true, nil
+		},
+	}
+
+	executor, _ := NewBridgeExecutor(args)
+	isValid, err := executor.ValidateBatch(context.Background(), &clients.TransferBatch{})
+
+	assert.True(t, wasCalled)
+	assert.True(t, isValid)
+	assert.Nil(t, err)
+}
+
+func TestSignaturesHolder_CheckEthereumClientAvailability(t *testing.T) {
+	t.Parallel()
+
+	args := createMockExecutorArgs()
+	wasCalled := false
+	args.EthereumClient = &bridgeTests.EthereumClientStub{
+		CheckClientAvailabilityCalled: func(ctx context.Context) error {
+			wasCalled = true
+			return nil
+		},
+	}
+
+	executor, _ := NewBridgeExecutor(args)
+	err := executor.CheckEthereumClientAvailability(context.Background())
+
+	assert.True(t, wasCalled)
+	assert.Nil(t, err)
+}
+
+func TestSignaturesHolder_CheckElrondClientAvailability(t *testing.T) {
+	t.Parallel()
+
+	args := createMockExecutorArgs()
+	wasCalled := false
+	args.ElrondClient = &bridgeTests.ElrondClientStub{
+		CheckClientAvailabilityCalled: func(ctx context.Context) error {
+			wasCalled = true
+			return nil
+		},
+	}
+
+	executor, _ := NewBridgeExecutor(args)
+	err := executor.CheckElrondClientAvailability(context.Background())
+
+	assert.True(t, wasCalled)
+	assert.Nil(t, err)
 }

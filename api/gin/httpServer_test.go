@@ -2,7 +2,6 @@ package gin
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"testing"
 
@@ -65,7 +64,6 @@ func TestNewHttpServer_Start(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		expectedErr := errors.New("expected err")
 		s := &testsServer.ServerStub{
 			ShutdownCalled: func(ctx context.Context) error {
 				return expectedErr

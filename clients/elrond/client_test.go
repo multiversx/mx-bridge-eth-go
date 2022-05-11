@@ -9,8 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
+	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
@@ -21,6 +23,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	testsCommon2 "github.com/ElrondNetwork/elrond-sdk-erdgo/testsCommon"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -546,6 +549,59 @@ func TestClient_PerformAction(t *testing.T) {
 	})
 }
 
+func TestClient_CheckClientAvailability(t *testing.T) {
+	t.Parallel()
+	expectedErr := errors.New("expected error")
+	t.Run("client returns error", func(t *testing.T) {
+		t.Parallel()
+		args := createMockClientArgs()
+		SetStringMetricCalledValueMap := make(map[string]string)
+		SetStringMetricCalledCounterMap := make(map[string]int)
+		args.Proxy = &testsCommon2.ProxyStub{
+			GetNetworkStatusCalled: func(ctx context.Context, shardID uint32) (*data.NetworkStatus, error) {
+				return nil, expectedErr
+			},
+		}
+		args.AllowDelta = 3
+		args.StatusHandler = &testsCommon.StatusHandlerStub{
+			SetStringMetricCalled: func(metric string, val string) {
+				SetStringMetricCalledValueMap[metric] = val
+				SetStringMetricCalledCounterMap[metric]++
+			},
+		}
+		c, _ := NewClient(args)
+
+		err := c.CheckClientAvailability(context.Background())
+		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, SetStringMetricCalledValueMap[core.MetricElrondClientStatus], ethElrond.Unavailable.String())
+		assert.Equal(t, SetStringMetricCalledValueMap[core.MetricLastElrondClientError], expectedErr)
+		assert.Equal(t, SetStringMetricCalledCounterMap[core.MetricElrondClientStatus], 1)
+		assert.Equal(t, SetStringMetricCalledCounterMap[core.MetricLastElrondClientError], 1)
+	})
+	t.Run("client max allow retries reached", func(t *testing.T) {
+		t.Parallel()
+		args := createMockClientArgs()
+		SetStringMetricCalledValueMap := make(map[string]string)
+		SetStringMetricCalledCounterMap := make(map[string]int)
+		args.Proxy = &testsCommon2.ProxyStub{
+			GetNetworkStatusCalled: func(ctx context.Context, shardID uint32) (*data.NetworkStatus, error) {
+				return nil, expectedErr
+			},
+		}
+		args.AllowDelta = 1
+		args.StatusHandler = &testsCommon.StatusHandlerStub{
+			SetStringMetricCalled: func(metric string, val string) {
+				SetStringMetricCalledValueMap[metric] = val
+				SetStringMetricCalledCounterMap[metric]++
+			},
+		}
+		c, _ := NewClient(args)
+
+		err := c.CheckClientAvailability(context.Background())
+		assert.Equal(t, expectedErr, err)
+	})
+
+}
 func TestClient_Close(t *testing.T) {
 	t.Parallel()
 
