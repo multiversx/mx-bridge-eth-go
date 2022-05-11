@@ -164,14 +164,15 @@ func createMockBridgeComponentsArgs(
 				RestApiInterface: core.WebServerOffString,
 			},
 		},
-		Proxy:                elrondChainMock,
-		ClientWrapper:        ethereumChainMock,
-		Messenger:            messenger,
-		StatusStorer:         testsCommon.NewStorerMock(),
-		TimeForBootstrap:     time.Second * 5,
-		TimeBeforeRepeatJoin: time.Second * 30,
-		MetricsHolder:        status.NewMetricsHolder(),
-		AppStatusHandler:     &statusHandler.AppStatusHandlerStub{},
+		Proxy:                     elrondChainMock,
+		ClientWrapper:             ethereumChainMock,
+		Messenger:                 messenger,
+		StatusStorer:              testsCommon.NewStorerMock(),
+		TimeForBootstrap:          time.Second * 5,
+		TimeBeforeRepeatJoin:      time.Second * 30,
+		MetricsHolder:             status.NewMetricsHolder(),
+		AppStatusHandler:          &statusHandler.AppStatusHandlerStub{},
+		ElrondClientStatusHandler: &testsCommon.StatusHandlerStub{},
 	}
 }
 
@@ -185,7 +186,6 @@ func createBridgeComponentsConfig(index int) config.Config {
 		Eth: config.EthereumConfig{
 			NetworkAddress:               "mock",
 			MultisigContractAddress:      "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
-			SafeContractAddress:          "",
 			PrivateKeyFile:               fmt.Sprintf("testdata/ethereum%d.sk", index),
 			IntervalToResendTxsInSeconds: 10,
 			GasLimitBase:                 200000,
@@ -205,6 +205,7 @@ func createBridgeComponentsConfig(index int) config.Config {
 			GasMap:                          testsCommon.CreateTestElrondGasMap(),
 			MaxRetriesOnQuorumReached:       1,
 			MaxRetriesOnWasTransferProposed: 3,
+			ProxyMaxNoncesDelta:             5,
 		},
 		P2P: config.ConfigP2P{},
 		StateMachine: map[string]config.ConfigStateMachine{

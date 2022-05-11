@@ -52,9 +52,6 @@ type bridgeExecutor struct {
 	quorumRetriesOnEthereum uint64
 	quorumRetriesOnElrond   uint64
 	retriesOnWasProposed    uint64
-
-	lastElrondNonce                 uint64
-	retriesElrondClientAvailability uint64
 }
 
 // NewBridgeExecutor creates a bridge executor, which can be used for both half-bridges

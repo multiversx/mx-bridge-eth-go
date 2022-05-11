@@ -237,9 +237,6 @@ func checkArgsEthereumToElrondBridge(args ArgsEthereumToElrondBridge) error {
 	if check.IfNil(args.AppStatusHandler) {
 		return errNilStatusHandler
 	}
-	if check.IfNil(args.ElrondClientStatusHandler) {
-		return errNilStatusHandler
-	}
 
 	return nil
 }

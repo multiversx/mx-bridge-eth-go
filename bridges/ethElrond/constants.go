@@ -7,13 +7,21 @@ const InvalidActionID = uint64(0)
 
 const durationLimit = time.Duration(time.Second)
 
+// ClientStatus represents the possible statuses of a client
 type ClientStatus int
 
 const (
-	Available ClientStatus = 0
-	Unavailable
+	Available   ClientStatus = 0
+	Unavailable ClientStatus = 1
 )
 
 func (cs ClientStatus) String() string {
-	return []string{"Available", "Unavailable"}[cs]
+	switch cs {
+	case Available:
+		return "Available"
+	case Unavailable:
+		return "Unavailable"
+	default:
+		return "Invalid status"
+	}
 }

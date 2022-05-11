@@ -53,6 +53,8 @@ type BridgeExecutorStub struct {
 	ResetRetriesCountOnEthereumCalled                      func()
 	ClearStoredP2PSignaturesForEthereumCalled              func()
 	ValidateBatchCalled                                    func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
+	CheckElrondClientAvailabilityCalled                    func(ctx context.Context) error
+	CheckEthereumClientAvailabilityCalled                  func(ctx context.Context) error
 }
 
 // NewBridgeExecutorStub creates a new BridgeExecutorStub instance
@@ -377,6 +379,22 @@ func (stub *BridgeExecutorStub) ValidateBatch(ctx context.Context, batch *client
 		return stub.ValidateBatchCalled(ctx, batch)
 	}
 	return false, notImplemented
+}
+
+// CheckElrondClientAvailability -
+func (stub *BridgeExecutorStub) CheckElrondClientAvailability(ctx context.Context) error {
+	if stub.CheckElrondClientAvailabilityCalled != nil {
+		return stub.CheckElrondClientAvailabilityCalled(ctx)
+	}
+	return notImplemented
+}
+
+// CheckEthereumClientAvailability -
+func (stub *BridgeExecutorStub) CheckEthereumClientAvailability(ctx context.Context) error {
+	if stub.CheckEthereumClientAvailabilityCalled != nil {
+		return stub.CheckEthereumClientAvailabilityCalled(ctx)
+	}
+	return notImplemented
 }
 
 // IsInterfaceNil -

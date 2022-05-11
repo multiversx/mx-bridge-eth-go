@@ -50,17 +50,14 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 			MaxBlocksDelta:                     10,
 		},
 		Elrond: config.ElrondConfig{
-			NetworkAddress:                  "http://127.0.0.1:8079",
-			MultisigContractAddress:         "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 			PrivateKeyFile:                  "testdata/grace.pem",
 			IntervalToResendTxsInSeconds:    60,
+			NetworkAddress:                  "http://127.0.0.1:8079",
+			MultisigContractAddress:         "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 			GasMap:                          testsCommon.CreateTestElrondGasMap(),
 			MaxRetriesOnQuorumReached:       1,
 			MaxRetriesOnWasTransferProposed: 1,
-			ProxyCacherExpirationSeconds:    600,
-			ProxyRestAPIEntityType:          "observer",
 			ProxyMaxNoncesDelta:             5,
-			ProxyFinalityCheck:              false,
 		},
 		Relayer: config.ConfigRelayer{
 			RoleProvider: config.RoleProviderConfig{

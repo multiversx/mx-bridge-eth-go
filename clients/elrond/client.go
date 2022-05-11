@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
@@ -62,6 +63,7 @@ type client struct {
 
 	lastNonce                uint64
 	retriesAvailabilityCheck uint64
+	mut                      sync.RWMutex
 }
 
 // NewClient returns a new Elrond Client instance
@@ -333,20 +335,28 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	return hash, err
 }
 
+//CheckClientAvailability will check the client availability and will set the metric accordingly
 func (c *client) CheckClientAvailability(ctx context.Context) error {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
 	currentNonce, err := c.GetCurrentNonce(ctx)
 	if err != nil {
 		c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Unavailable.String())
+		c.statusHandler.SetStringMetric(bridgeCore.MetricLastEthereumClientError, err.Error())
 		return err
 	}
-	if currentNonce == c.lastNonce {
-		c.retriesAvailabilityCheck++
-		if c.retriesAvailabilityCheck >= c.allowDelta {
-			c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Unavailable.String())
-		}
+	c.statusHandler.SetStringMetric(bridgeCore.MetricLastEthereumClientError, "")
+
+	if currentNonce != c.lastNonce {
+		c.retriesAvailabilityCheck = 0
+		c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Available.String())
 	}
-	c.retriesAvailabilityCheck = 0
-	c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Available.String())
+	c.retriesAvailabilityCheck++
+	if c.retriesAvailabilityCheck >= c.allowDelta {
+		c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Unavailable.String())
+		c.statusHandler.SetStringMetric(bridgeCore.MetricLastEthereumClientError,
+			fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck))
+	}
 
 	return nil
 }

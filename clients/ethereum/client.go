@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
@@ -65,6 +66,7 @@ type client struct {
 
 	lastBlockNumber          uint64
 	retriesAvailabilityCheck uint64
+	mut                      sync.RWMutex
 }
 
 // NewEthereumClient will create a new Ethereum client
@@ -376,19 +378,26 @@ func (c *client) ExecuteTransfer(
 
 // CheckClientAvailability will check the client availability and set the metric accordingly
 func (c *client) CheckClientAvailability(ctx context.Context) error {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
 	currentBlock, err := c.clientWrapper.BlockNumber(ctx)
 	if err != nil {
 		c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Unavailable.String())
+		c.clientWrapper.SetStringMetric(core.MetricLastEthereumClientError, err.Error())
 		return err
 	}
-	if currentBlock == c.lastBlockNumber {
-		c.retriesAvailabilityCheck++
-		if c.retriesAvailabilityCheck >= c.allowDelta {
-			c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Unavailable.String())
-		}
+	c.clientWrapper.SetStringMetric(core.MetricLastEthereumClientError, "")
+
+	if currentBlock != c.lastBlockNumber {
+		c.retriesAvailabilityCheck = 0
+		c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Available.String())
 	}
-	c.retriesAvailabilityCheck = 0
-	c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Available.String())
+	c.retriesAvailabilityCheck++
+	if c.retriesAvailabilityCheck >= c.allowDelta {
+		c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Unavailable.String())
+		c.clientWrapper.SetStringMetric(core.MetricLastEthereumClientError,
+			fmt.Sprintf("block %d fetched for %d times in a row", currentBlock, c.retriesAvailabilityCheck))
+	}
 
 	return nil
 }
