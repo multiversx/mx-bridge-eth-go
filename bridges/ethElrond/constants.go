@@ -15,6 +15,7 @@ const (
 	Unavailable ClientStatus = 1
 )
 
+//String will return status as string based on the int value
 func (cs ClientStatus) String() string {
 	switch cs {
 	case Available:
