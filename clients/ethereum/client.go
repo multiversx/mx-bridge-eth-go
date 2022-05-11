@@ -380,26 +380,35 @@ func (c *client) ExecuteTransfer(
 func (c *client) CheckClientAvailability(ctx context.Context) error {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
+
 	currentBlock, err := c.clientWrapper.BlockNumber(ctx)
 	if err != nil {
-		c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Unavailable.String())
-		c.clientWrapper.SetStringMetric(core.MetricLastEthereumClientError, err.Error())
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, err.Error())
+
 		return err
 	}
-	c.clientWrapper.SetStringMetric(core.MetricLastEthereumClientError, "")
 
 	if currentBlock != c.lastBlockNumber {
 		c.retriesAvailabilityCheck = 0
-		c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Available.String())
+		c.setStatusForAvailabilityCheck(ethElrond.Available, "")
+		c.lastBlockNumber = currentBlock
+
+		return nil
 	}
+
 	c.retriesAvailabilityCheck++
-	if c.retriesAvailabilityCheck >= c.allowDelta {
-		c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Unavailable.String())
-		c.clientWrapper.SetStringMetric(core.MetricLastEthereumClientError,
-			fmt.Sprintf("block %d fetched for %d times in a row", currentBlock, c.retriesAvailabilityCheck))
+	if c.retriesAvailabilityCheck > c.allowDelta {
+		message := fmt.Sprintf("block %d fetched for %d times in a row", currentBlock, c.retriesAvailabilityCheck)
+
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message)
 	}
 
 	return nil
+}
+
+func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string) {
+	c.clientWrapper.SetStringMetric(core.MetricElrondClientStatus, status.String())
+	c.clientWrapper.SetStringMetric(core.MetricLastElrondClientError, message)
 }
 
 func (c *client) checkAvailableTokens(ctx context.Context, tokens []common.Address, amounts []*big.Int) error {

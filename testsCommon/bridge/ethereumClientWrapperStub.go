@@ -14,6 +14,7 @@ import (
 
 // EthereumClientWrapperStub -
 type EthereumClientWrapperStub struct {
+	core.StatusHandler
 	GetBatchCalled         func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error)
 	GetBatchDepositsCalled func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error)
 	GetRelayersCalled      func(ctx context.Context) ([]common.Address, error)
@@ -39,12 +40,18 @@ func (stub *EthereumClientWrapperStub) SetIntMetric(metric string, value int) {
 	if stub.SetIntMetricCalled != nil {
 		stub.SetIntMetricCalled(metric, value)
 	}
+	if stub.StatusHandler != nil {
+		stub.StatusHandler.SetIntMetric(metric, value)
+	}
 }
 
 // AddIntMetric -
 func (stub *EthereumClientWrapperStub) AddIntMetric(metric string, delta int) {
 	if stub.AddIntMetricCalled != nil {
 		stub.AddIntMetricCalled(metric, delta)
+	}
+	if stub.StatusHandler != nil {
+		stub.StatusHandler.AddIntMetric(metric, delta)
 	}
 }
 
@@ -53,13 +60,20 @@ func (stub *EthereumClientWrapperStub) SetStringMetric(metric string, val string
 	if stub.SetStringMetricCalled != nil {
 		stub.SetStringMetricCalled(metric, val)
 	}
+	if stub.StatusHandler != nil {
+		stub.StatusHandler.SetStringMetric(metric, val)
+	}
 }
 
 // GetAllMetrics -
 func (stub *EthereumClientWrapperStub) GetAllMetrics() core.GeneralMetrics {
 	if stub.GetAllMetricsCalled != nil {
-		stub.GetAllMetricsCalled()
+		return stub.GetAllMetricsCalled()
 	}
+	if stub.StatusHandler != nil {
+		return stub.StatusHandler.GetAllMetrics()
+	}
+
 	return make(core.GeneralMetrics)
 }
 
@@ -68,6 +82,10 @@ func (stub *EthereumClientWrapperStub) Name() string {
 	if stub.NameCalled != nil {
 		stub.NameCalled()
 	}
+	if stub.StatusHandler != nil {
+		return stub.StatusHandler.Name()
+	}
+
 	return ""
 }
 
