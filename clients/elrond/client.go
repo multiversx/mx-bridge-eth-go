@@ -342,10 +342,10 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 	currentNonce, err := c.GetCurrentNonce(ctx)
 	if err != nil {
 		c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Unavailable.String())
-		c.statusHandler.SetStringMetric(bridgeCore.MetricLastEthereumClientError, err.Error())
+		c.statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, err.Error())
 		return err
 	}
-	c.statusHandler.SetStringMetric(bridgeCore.MetricLastEthereumClientError, "")
+	c.statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, "")
 
 	if currentNonce != c.lastNonce {
 		c.retriesAvailabilityCheck = 0
@@ -354,7 +354,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 	c.retriesAvailabilityCheck++
 	if c.retriesAvailabilityCheck >= c.allowDelta {
 		c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Unavailable.String())
-		c.statusHandler.SetStringMetric(bridgeCore.MetricLastEthereumClientError,
+		c.statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError,
 			fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck))
 	}
 
