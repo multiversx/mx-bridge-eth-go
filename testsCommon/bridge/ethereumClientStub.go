@@ -15,6 +15,7 @@ type EthereumClientStub struct {
 	GenerateMessageHashCalled              func(batch *clients.TransferBatch) (common.Hash, error)
 	BroadcastSignatureForMessageHashCalled func(msgHash common.Hash)
 	ExecuteTransferCalled                  func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
+	CheckClientAvailabilityCalled          func(ctx context.Context) error
 	GetTransactionsStatusesCalled          func(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSizeCalled                    func(ctx context.Context) (*big.Int, error)
 	IsQuorumReachedCalled                  func(ctx context.Context, msgHash common.Hash) (bool, error)
@@ -61,6 +62,15 @@ func (stub *EthereumClientStub) ExecuteTransfer(ctx context.Context, msgHash com
 	}
 
 	return "", errNotImplemented
+}
+
+// CheckClientAvailability -
+func (stub *EthereumClientStub) CheckClientAvailability(ctx context.Context) error {
+	if stub.CheckClientAvailabilityCalled != nil {
+		return stub.CheckClientAvailabilityCalled(ctx)
+	}
+
+	return nil
 }
 
 // GetTransactionsStatuses -

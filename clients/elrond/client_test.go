@@ -11,6 +11,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
+	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
@@ -50,7 +51,9 @@ func createMockClientArgs() ClientArgs {
 				return append([]byte("converted "), sourceBytes...), nil
 			},
 		},
-		RoleProvider: &roleProviders.ElrondRoleProviderStub{},
+		RoleProvider:  &roleProviders.ElrondRoleProviderStub{},
+		StatusHandler: &testsCommon.StatusHandlerStub{},
+		AllowDelta:    5,
 	}
 }
 

@@ -24,7 +24,7 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 
 	err = step.bridge.GetAndStoreBatchFromEthereum(ctx, lastEthBatchExecuted+1)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogDebug, "error fetching eth batch", "batch ID", lastEthBatchExecuted+1, "error", err)
+		step.bridge.PrintInfo(logger.LogDebug, "cannot fetch eth batch", "batch ID", lastEthBatchExecuted+1, "message", err)
 		return step.Identifier()
 	}
 

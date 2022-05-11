@@ -36,6 +36,7 @@ type EthereumConfig struct {
 	GasStation                         GasStationConfig
 	MaxRetriesOnQuorumReached          uint64
 	IntervalToWaitForTransferInSeconds uint64
+	MaxBlocksDelta                     uint64
 }
 
 // GasStationConfig represents the configuration for the gas station handler

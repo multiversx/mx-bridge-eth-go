@@ -135,6 +135,15 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	elrondClientStatusHandler, err := status.NewStatusHandler(core.ElrondClientStatusHandlerName, statusStorer)
+	if err != nil {
+		return err
+	}
+	err = metricsHolder.AddStatusHandler(elrondClientStatusHandler)
+	if err != nil {
+		return err
+	}
+
 	if len(cfg.Elrond.NetworkAddress) == 0 {
 		return fmt.Errorf("empty Elrond.NetworkAddress in config file")
 	}

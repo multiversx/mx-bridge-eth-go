@@ -55,8 +55,8 @@ func TestNewStatusHandler(t *testing.T) {
 
 		existent := &statusHandlerPersistenceData{
 			IntMetrics: map[string]int{
-				"not-persistent-int":                5,
-				core.MetricNumTransactionsSucceeded: 6,
+				"not-persistent-int":  5,
+				core.MetricNumBatches: 6,
 			},
 			StringMetrics: map[string]string{
 				"not-persistent-string":                   "value1",
@@ -73,7 +73,7 @@ func TestNewStatusHandler(t *testing.T) {
 		require.Nil(t, err)
 
 		expected := make(core.GeneralMetrics)
-		expected[core.MetricNumTransactionsSucceeded] = 6
+		expected[core.MetricNumBatches] = 6
 		expected[core.MetricLastQueriedEthereumBlockNumber] = "value2"
 
 		assert.Equal(t, expected, sh.GetAllMetrics())

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
@@ -17,8 +18,9 @@ import (
 )
 
 const (
-	messagePrefix  = "\u0019Ethereum Signed Message:\n32"
-	minQuorumValue = uint64(1)
+	messagePrefix   = "\u0019Ethereum Signed Message:\n32"
+	minQuorumValue  = uint64(1)
+	minAllowedDelta = 1
 )
 
 type argListsBatch struct {
@@ -42,6 +44,7 @@ type ArgsEthereumClient struct {
 	GasHandler              GasHandler
 	TransferGasLimitBase    uint64
 	TransferGasLimitForEach uint64
+	AllowDelta              uint64
 }
 
 type client struct {
@@ -58,6 +61,10 @@ type client struct {
 	gasHandler              GasHandler
 	transferGasLimitBase    uint64
 	transferGasLimitForEach uint64
+	allowDelta              uint64
+
+	lastBlockNumber          uint64
+	retriesAvailabilityCheck uint64
 }
 
 // NewEthereumClient will create a new Ethereum client
@@ -87,6 +94,7 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 		gasHandler:              args.GasHandler,
 		transferGasLimitBase:    args.TransferGasLimitBase,
 		transferGasLimitForEach: args.TransferGasLimitForEach,
+		allowDelta:              args.AllowDelta,
 	}
 
 	c.log.Info("NewEthereumClient",
@@ -130,7 +138,10 @@ func checkArgs(args ArgsEthereumClient) error {
 	if args.TransferGasLimitForEach == 0 {
 		return errInvalidGasLimit
 	}
-
+	if args.AllowDelta < minAllowedDelta {
+		return fmt.Errorf("%w for args.AllowedDelta, got: %d, minimum: %d",
+			clients.ErrInvalidValue, args.AllowDelta, minAllowedDelta)
+	}
 	return nil
 }
 
@@ -361,6 +372,25 @@ func (c *client) ExecuteTransfer(
 	c.log.Info("Executed transfer transaction", "batchID", batchID, "hash", txHash)
 
 	return txHash, err
+}
+
+// CheckClientAvailability will check the client availability and set the metric accordingly
+func (c *client) CheckClientAvailability(ctx context.Context) error {
+	currentBlock, err := c.clientWrapper.BlockNumber(ctx)
+	if err != nil {
+		c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Unavailable.String())
+		return err
+	}
+	if currentBlock == c.lastBlockNumber {
+		c.retriesAvailabilityCheck++
+		if c.retriesAvailabilityCheck >= c.allowDelta {
+			c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Unavailable.String())
+		}
+	}
+	c.retriesAvailabilityCheck = 0
+	c.clientWrapper.SetStringMetric(core.MetricEthereumClientStatus, ethElrond.Available.String())
+
+	return nil
 }
 
 func (c *client) checkAvailableTokens(ctx context.Context, tokens []common.Address, amounts []*big.Int) error {

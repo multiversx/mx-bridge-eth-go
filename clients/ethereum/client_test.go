@@ -53,6 +53,7 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 		GasHandler:              &testsCommon.GasHandlerStub{},
 		TransferGasLimitBase:    50,
 		TransferGasLimitForEach: 20,
+		AllowDelta:              5,
 	}
 }
 

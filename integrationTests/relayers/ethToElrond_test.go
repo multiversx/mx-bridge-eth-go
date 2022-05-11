@@ -185,6 +185,7 @@ func createBridgeComponentsConfig(index int) config.Config {
 		Eth: config.EthereumConfig{
 			NetworkAddress:               "mock",
 			MultisigContractAddress:      "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
+			SafeContractAddress:          "",
 			PrivateKeyFile:               fmt.Sprintf("testdata/ethereum%d.sk", index),
 			IntervalToResendTxsInSeconds: 10,
 			GasLimitBase:                 200000,
@@ -194,6 +195,7 @@ func createBridgeComponentsConfig(index int) config.Config {
 			},
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,
+			MaxBlocksDelta:                     5,
 		},
 		Elrond: config.ElrondConfig{
 			NetworkAddress:                  "mock",

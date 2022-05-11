@@ -18,12 +18,6 @@ const (
 )
 
 const (
-	// MetricNumTransactionsSucceeded represents the metric used for counting executed transactions
-	MetricNumTransactionsSucceeded = "num transactions succeeded"
-
-	// MetricNumTransactionsRejected represents the metric used for counting rejected transactions
-	MetricNumTransactionsRejected = "num transactions rejected"
-
 	// MetricNumBatches represents the metric used for counting the number of executed batches
 	MetricNumBatches = "num batches"
 
@@ -32,9 +26,6 @@ const (
 
 	// MetricCurrentStateMachineStep represents the metric used to store the current running machine step
 	MetricCurrentStateMachineStep = "current state machine step"
-
-	// MetricErc20Balance represents the metric used for ERC20 balances. It will be suffixed by the ERC20 address
-	MetricErc20Balance = "ERC20 balance"
 
 	// MetricNumEthClientRequests represents the metric used to count the number of ethereum client requests
 	MetricNumEthClientRequests = "num ethereum client requests"
@@ -46,6 +37,16 @@ const (
 	// fetched from the ethereum client
 	MetricLastQueriedEthereumBlockNumber = "ethereum last queried block number"
 
+	// MetricEthereumClientStatus represents the metric used to store the status of the ethereum client
+	MetricEthereumClientStatus = "ethereum client status"
+
+	// MetricLastQueriedElrondBlockNumber represents the metric used to store the last elrond block number that was
+	// fetched from the elrond client
+	MetricLastQueriedElrondBlockNumber = "elrond last queried block number"
+
+	// MetricElrondClientStatus represents the metric used to store the status of the elrond client
+	MetricElrondClientStatus = "elrond client status"
+
 	// MetricRelayerP2PAddresses represents the metric used to store all the P2P addresses the messenger has bound to
 	MetricRelayerP2PAddresses = "relayer P2P addresses"
 
@@ -54,12 +55,15 @@ const (
 )
 
 // PersistedMetrics represents the array of metrics that should be persisted
-var PersistedMetrics = []string{MetricNumTransactionsSucceeded, MetricNumTransactionsRejected, MetricNumBatches,
-	MetricNumEthClientRequests, MetricNumEthClientTransactions, MetricLastQueriedEthereumBlockNumber}
+var PersistedMetrics = []string{MetricNumBatches, MetricNumEthClientRequests, MetricNumEthClientTransactions,
+	MetricLastQueriedEthereumBlockNumber, MetricLastQueriedElrondBlockNumber, MetricEthereumClientStatus, MetricElrondClientStatus}
 
 const (
 	// EthClientStatusHandlerName is the ethereum client status handler name
 	EthClientStatusHandlerName = "eth-client"
+
+	// ElrondClientStatusHandlerName is the elrond client status handler name
+	ElrondClientStatusHandlerName = "elrond-client"
 
 	// EthToElrondStatusHandlerName is the ethereum to elrond bridge status handler name
 	EthToElrondStatusHandlerName = "eth-to-elrond"

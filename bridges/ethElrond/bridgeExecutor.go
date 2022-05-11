@@ -52,6 +52,9 @@ type bridgeExecutor struct {
 	quorumRetriesOnEthereum uint64
 	quorumRetriesOnElrond   uint64
 	retriesOnWasProposed    uint64
+
+	lastElrondNonce                 uint64
+	retriesElrondClientAvailability uint64
 }
 
 // NewBridgeExecutor creates a bridge executor, which can be used for both half-bridges
@@ -532,6 +535,16 @@ func (executor *bridgeExecutor) ClearStoredP2PSignaturesForEthereum() {
 // ValidateBatch returns true if the given batch is validated on microservice side
 func (executor *bridgeExecutor) ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	return executor.batchValidator.ValidateBatch(ctx, batch)
+}
+
+// CheckElrondClientAvailability trigger a self availability check for the elrond client
+func (executor *bridgeExecutor) CheckElrondClientAvailability(ctx context.Context) error {
+	return executor.elrondClient.CheckClientAvailability(ctx)
+}
+
+// CheckEthereumClientAvailability trigger a self availability check for the ethereum client
+func (executor *bridgeExecutor) CheckEthereumClientAvailability(ctx context.Context) error {
+	return executor.ethereumClient.CheckClientAvailability(ctx)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

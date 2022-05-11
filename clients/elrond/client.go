@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	bridgeCore "github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -26,6 +27,7 @@ const (
 	proposeSetStatusFuncName = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
 	signFuncName             = "sign"
 	performActionFuncName    = "performAction"
+	minAllowedDelta          = 1
 
 	elrondDataGetterLogId = "ElrondEth-ElrondDataGetter"
 )
@@ -40,6 +42,8 @@ type ClientArgs struct {
 	IntervalToResendTxsInSeconds uint64
 	TokensMapper                 TokensMapper
 	RoleProvider                 roleProvider
+	StatusHandler                bridgeCore.StatusHandler
+	AllowDelta                   uint64
 }
 
 // client represents the Elrond Client implementation
@@ -53,6 +57,11 @@ type client struct {
 	log                       logger.Logger
 	gasMapConfig              config.ElrondGasMapConfig
 	addressPublicKeyConverter bridgeCore.AddressConverter
+	statusHandler             bridgeCore.StatusHandler
+	allowDelta                uint64
+
+	lastNonce                uint64
+	retriesAvailabilityCheck uint64
 }
 
 // NewClient returns a new Elrond Client instance
@@ -109,6 +118,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		gasMapConfig:              args.GasMapConfig,
 		addressPublicKeyConverter: addressConverter,
 		tokensMapper:              args.TokensMapper,
+		statusHandler:             args.StatusHandler,
 	}
 
 	c.log.Info("NewElrondClient",
@@ -137,7 +147,13 @@ func checkArgs(args ClientArgs) error {
 	if check.IfNil(args.RoleProvider) {
 		return errNilRoleProvider
 	}
-
+	if check.IfNil(args.StatusHandler) {
+		return clients.ErrNilStatusHandler
+	}
+	if args.AllowDelta < minAllowedDelta {
+		return fmt.Errorf("%w for args.AllowedDelta, got: %d, minimum: %d",
+			clients.ErrInvalidValue, args.AllowDelta, minAllowedDelta)
+	}
 	err := checkGasMapValues(args.GasMapConfig)
 	if err != nil {
 		return err
@@ -315,6 +331,24 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	}
 
 	return hash, err
+}
+
+func (c *client) CheckClientAvailability(ctx context.Context) error {
+	currentNonce, err := c.GetCurrentNonce(ctx)
+	if err != nil {
+		c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Unavailable.String())
+		return err
+	}
+	if currentNonce == c.lastNonce {
+		c.retriesAvailabilityCheck++
+		if c.retriesAvailabilityCheck >= c.allowDelta {
+			c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Unavailable.String())
+		}
+	}
+	c.retriesAvailabilityCheck = 0
+	c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Available.String())
+
+	return nil
 }
 
 // Close will close any started go routines. It returns nil.
