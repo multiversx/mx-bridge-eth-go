@@ -3,7 +3,7 @@ name: Create release
 on:
   push:
     branches:
-      - main
+      - main,test-create-release
 
 permissions:
   contents: write
