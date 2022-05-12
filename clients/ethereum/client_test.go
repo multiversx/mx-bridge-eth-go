@@ -9,8 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
+	bridgeCore "github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core/converters"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
@@ -178,6 +180,18 @@ func TestNewEthereumClient(t *testing.T) {
 
 		assert.Equal(t, errInvalidGasLimit, err)
 		assert.True(t, check.IfNil(c))
+	})
+	t.Run("invalid AllowDelta should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		args.AllowDelta = 0
+
+		c, err := NewEthereumClient(args)
+
+		assert.True(t, check.IfNil(c))
+		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
+		assert.True(t, strings.Contains(err.Error(), "for args.AllowedDelta"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockEthereumClientArgs()
@@ -774,4 +788,106 @@ func TestClient_IsQuorumReached(t *testing.T) {
 		assert.True(t, isReached)
 		assert.Nil(t, err)
 	})
+}
+
+func TestClient_CheckClientAvailability(t *testing.T) {
+	t.Parallel()
+
+	currentNonce := uint64(0)
+	incrementor := uint64(1)
+	args := createMockEthereumClientArgs()
+	statusHandler := testsCommon.NewStatusHandlerMock("test")
+	args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+		StatusHandler: statusHandler,
+		BlockNumberCalled: func(ctx context.Context) (uint64, error) {
+			currentNonce += incrementor
+			return currentNonce, nil
+		},
+	}
+	expectedErr := errors.New("expected error")
+
+	c, _ := NewEthereumClient(args)
+	t.Run("different current nonce should update - 10 times", func(t *testing.T) {
+		resetClient(c)
+		for i := 0; i < 10; i++ {
+			err := c.CheckClientAvailability(context.Background())
+			assert.Nil(t, err)
+			checkStatusHandler(t, statusHandler, ethElrond.Available, "")
+		}
+	})
+	t.Run("same current nonce should error after a while", func(t *testing.T) {
+		resetClient(c)
+		_ = c.CheckClientAvailability(context.Background())
+
+		incrementor = 0
+
+		// place a random message as to test it is reset
+		statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.ClientStatus(3).String())
+		statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, "random")
+
+		// this will just increment the retry counter
+		for i := 0; i < int(args.AllowDelta); i++ {
+			err := c.CheckClientAvailability(context.Background())
+			assert.Nil(t, err)
+			checkStatusHandler(t, statusHandler, ethElrond.Available, "")
+		}
+
+		for i := 0; i < 10; i++ {
+			message := fmt.Sprintf("block %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
+			err := c.CheckClientAvailability(context.Background())
+			assert.Nil(t, err)
+			checkStatusHandler(t, statusHandler, ethElrond.Unavailable, message)
+		}
+	})
+	t.Run("same current nonce should error after a while and then recovers", func(t *testing.T) {
+		resetClient(c)
+		_ = c.CheckClientAvailability(context.Background())
+
+		incrementor = 0
+
+		// this will just increment the retry counter
+		for i := 0; i < int(args.AllowDelta); i++ {
+			err := c.CheckClientAvailability(context.Background())
+			assert.Nil(t, err)
+			checkStatusHandler(t, statusHandler, ethElrond.Available, "")
+		}
+
+		for i := 0; i < 10; i++ {
+			message := fmt.Sprintf("block %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
+			err := c.CheckClientAvailability(context.Background())
+			assert.Nil(t, err)
+			checkStatusHandler(t, statusHandler, ethElrond.Unavailable, message)
+		}
+
+		incrementor = 1
+		err := c.CheckClientAvailability(context.Background())
+		assert.Nil(t, err)
+		checkStatusHandler(t, statusHandler, ethElrond.Available, "")
+	})
+	t.Run("get current nonce errors", func(t *testing.T) {
+		resetClient(c)
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			StatusHandler: statusHandler,
+			BlockNumberCalled: func(ctx context.Context) (uint64, error) {
+				return 0, expectedErr
+			},
+		}
+
+		err := c.CheckClientAvailability(context.Background())
+		checkStatusHandler(t, statusHandler, ethElrond.Unavailable, expectedErr.Error())
+		assert.Equal(t, expectedErr, err)
+	})
+}
+
+func resetClient(c *client) {
+	c.mut.Lock()
+	c.retriesAvailabilityCheck = 0
+	c.mut.Unlock()
+	c.clientWrapper.SetStringMetric(bridgeCore.MetricElrondClientStatus, "")
+	c.clientWrapper.SetStringMetric(bridgeCore.MetricLastElrondClientError, "")
+}
+
+func checkStatusHandler(t *testing.T, statusHandler *testsCommon.StatusHandlerMock, status ethElrond.ClientStatus, message string) {
+	assert.Equal(t, status.String(), statusHandler.GetStringMetric(bridgeCore.MetricElrondClientStatus))
+	assert.Equal(t, message, statusHandler.GetStringMetric(bridgeCore.MetricLastElrondClientError))
 }

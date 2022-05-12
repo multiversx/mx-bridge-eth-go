@@ -1,6 +1,9 @@
 package ethElrond
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // InvalidActionID represents an invalid id for an action on Elrond
 const InvalidActionID = uint64(0)
@@ -15,7 +18,7 @@ const (
 	Unavailable ClientStatus = 1
 )
 
-//String will return status as string based on the int value
+// String will return status as string based on the int value
 func (cs ClientStatus) String() string {
 	switch cs {
 	case Available:
@@ -23,6 +26,6 @@ func (cs ClientStatus) String() string {
 	case Unavailable:
 		return "Unavailable"
 	default:
-		return "Invalid status"
+		return fmt.Sprintf("Invalid status %d", cs)
 	}
 }

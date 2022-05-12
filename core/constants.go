@@ -71,10 +71,4 @@ const (
 
 	// ElrondClientStatusHandlerName is the elrond client status handler name
 	ElrondClientStatusHandlerName = "elrond-client"
-
-	// EthToElrondStatusHandlerName is the ethereum to elrond bridge status handler name
-	EthToElrondStatusHandlerName = "eth-to-elrond"
-
-	// ElrondToEthStatusHandlerName is the elrond to ethereum bridge status handler name
-	ElrondToEthStatusHandlerName = "elrond-to-eth"
 )

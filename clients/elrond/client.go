@@ -121,6 +121,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		addressPublicKeyConverter: addressConverter,
 		tokensMapper:              args.TokensMapper,
 		statusHandler:             args.StatusHandler,
+		allowDelta:                args.AllowDelta,
 	}
 
 	c.log.Info("NewElrondClient",
@@ -335,30 +336,45 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	return hash, err
 }
 
-//CheckClientAvailability will check the client availability and will set the metric accordingly
+// CheckClientAvailability will check the client availability and will set the metric accordingly
 func (c *client) CheckClientAvailability(ctx context.Context) error {
-	c.mut.RLock()
-	defer c.mut.RUnlock()
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
 	currentNonce, err := c.GetCurrentNonce(ctx)
 	if err != nil {
-		c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Unavailable.String())
-		c.statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, err.Error())
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, err.Error())
+
 		return err
 	}
-	c.statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, "")
 
 	if currentNonce != c.lastNonce {
 		c.retriesAvailabilityCheck = 0
-		c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Available.String())
-	}
-	c.retriesAvailabilityCheck++
-	if c.retriesAvailabilityCheck >= c.allowDelta {
-		c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.Unavailable.String())
-		c.statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError,
-			fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck))
+		c.lastNonce = currentNonce
 	}
 
+	// if we reached this point we will need to increment the retries counter
+	defer c.incrementRetriesAvailabilityCheck()
+
+	if c.retriesAvailabilityCheck > c.allowDelta {
+		message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck)
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message)
+
+		return nil
+	}
+
+	c.setStatusForAvailabilityCheck(ethElrond.Available, "")
+
 	return nil
+}
+
+func (c *client) incrementRetriesAvailabilityCheck() {
+	c.retriesAvailabilityCheck++
+}
+
+func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string) {
+	c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, status.String())
+	c.statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, message)
 }
 
 // Close will close any started go routines. It returns nil.
