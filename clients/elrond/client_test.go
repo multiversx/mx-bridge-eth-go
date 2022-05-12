@@ -665,7 +665,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 			checkStatusHandler(t, statusHandler, ethElrond.Unavailable, message)
 		}
 
-		incrementor++
+		incrementor = 1
 
 		err := c.CheckClientAvailability(context.Background())
 		assert.Nil(t, err)
