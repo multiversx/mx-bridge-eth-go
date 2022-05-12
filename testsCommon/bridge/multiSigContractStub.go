@@ -19,6 +19,7 @@ type MultiSigContractStub struct {
 		amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	QuorumCalled                    func(opts *bind.CallOpts) (*big.Int, error)
 	GetStatusesAfterExecutionCalled func(opts *bind.CallOpts, batchID *big.Int) ([]byte, error)
+	PausedCalled                    func(opts *bind.CallOpts) (bool, error)
 }
 
 // GetBatch -
@@ -90,4 +91,13 @@ func (stub *MultiSigContractStub) GetStatusesAfterExecution(opts *bind.CallOpts,
 	}
 
 	return make([]byte, 0), nil
+}
+
+// Paused -
+func (stub *MultiSigContractStub) Paused(opts *bind.CallOpts) (bool, error) {
+	if stub.PausedCalled != nil {
+		return stub.PausedCalled(opts)
+	}
+
+	return false, nil
 }

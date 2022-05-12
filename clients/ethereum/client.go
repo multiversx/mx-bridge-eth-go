@@ -307,6 +307,14 @@ func (c *client) ExecuteTransfer(
 		return "", clients.ErrNilBatch
 	}
 
+	isPaused, err := c.clientWrapper.IsPaused(ctx)
+	if err != nil {
+		return "", fmt.Errorf("%w in client.ExecuteTransfer", err)
+	}
+	if isPaused {
+		return "", fmt.Errorf("%w in client.ExecuteTransfer", clients.ErrMultisigContractPaused)
+	}
+
 	c.log.Info("executing transfer " + batch.String())
 
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)

@@ -19,6 +19,7 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/ElrondNetwork/elrond-go-core/data/vm"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing"
 	"github.com/ElrondNetwork/elrond-go-crypto/signing/ed25519"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -29,6 +30,7 @@ import (
 )
 
 var testKeyGen = signing.NewKeyGenerator(ed25519.NewEd25519())
+var pausedBytes = []byte{1}
 
 func createMockClientArgs() ClientArgs {
 	privateKey, _ := testKeyGen.PrivateKeyFromByteArray(bytes.Repeat([]byte{1}, 32))
@@ -383,6 +385,42 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		assert.Empty(t, hash)
 		assert.Equal(t, clients.ErrNilBatch, err)
 	})
+	t.Run("check is paused failed", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		expectedErr := errors.New("expected error")
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return nil, expectedErr
+			},
+		}
+		c, _ := NewClient(args)
+
+		hash, err := c.ProposeSetStatus(context.Background(), &clients.TransferBatch{})
+		assert.Empty(t, hash)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("contract is paused", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{pausedBytes},
+					},
+				}, nil
+			},
+		}
+		c, _ := NewClient(args)
+
+		hash, err := c.ProposeSetStatus(context.Background(), &clients.TransferBatch{})
+		assert.Empty(t, hash)
+		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
+	})
 	t.Run("should propose set status", func(t *testing.T) {
 		t.Parallel()
 
@@ -435,6 +473,42 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		hash, err := c.ProposeTransfer(context.Background(), nil)
 		assert.Empty(t, hash)
 		assert.Equal(t, clients.ErrNilBatch, err)
+	})
+	t.Run("check is paused failed", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		expectedErr := errors.New("expected error")
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return nil, expectedErr
+			},
+		}
+		c, _ := NewClient(args)
+
+		hash, err := c.ProposeTransfer(context.Background(), &clients.TransferBatch{})
+		assert.Empty(t, hash)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("contract is paused", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{pausedBytes},
+					},
+				}, nil
+			},
+		}
+		c, _ := NewClient(args)
+
+		hash, err := c.ProposeTransfer(context.Background(), &clients.TransferBatch{})
+		assert.Empty(t, hash)
+		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
 	t.Run("should propose transfer", func(t *testing.T) {
 		t.Parallel()
@@ -493,32 +567,70 @@ func depositToStrings(dt *clients.DepositTransfer) []string {
 func TestClient_Sign(t *testing.T) {
 	t.Parallel()
 
-	args := createMockClientArgs()
-	args.Proxy = createMockProxy(make([][]byte, 0))
-	expectedHash := "expected hash"
-	c, _ := NewClient(args)
-	sendWasCalled := false
 	actionID := uint64(662528)
+	t.Run("check is paused failed", func(t *testing.T) {
+		t.Parallel()
 
-	c.txHandler = &bridgeTests.TxHandlerStub{
-		SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
-			sendWasCalled = true
+		args := createMockClientArgs()
+		expectedErr := errors.New("expected error")
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return nil, expectedErr
+			},
+		}
+		c, _ := NewClient(args)
 
-			dataField, err := builder.ToDataString()
-			assert.Nil(t, err)
+		hash, err := c.Sign(context.Background(), actionID)
+		assert.Empty(t, hash)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("contract is paused", func(t *testing.T) {
+		t.Parallel()
 
-			expectedDataField := signFuncName + "@" + hex.EncodeToString(big.NewInt(int64(actionID)).Bytes())
-			assert.Equal(t, expectedDataField, dataField)
-			assert.Equal(t, c.gasMapConfig.Sign, gasLimit)
+		args := createMockClientArgs()
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{pausedBytes},
+					},
+				}, nil
+			},
+		}
+		c, _ := NewClient(args)
 
-			return expectedHash, nil
-		},
-	}
+		hash, err := c.Sign(context.Background(), actionID)
+		assert.Empty(t, hash)
+		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
+	})
+	t.Run("should work", func(t *testing.T) {
+		args := createMockClientArgs()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+		expectedHash := "expected hash"
+		c, _ := NewClient(args)
+		sendWasCalled := false
 
-	hash, err := c.Sign(context.Background(), actionID)
-	assert.Nil(t, err)
-	assert.Equal(t, expectedHash, hash)
-	assert.True(t, sendWasCalled)
+		c.txHandler = &bridgeTests.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+				sendWasCalled = true
+
+				dataField, err := builder.ToDataString()
+				assert.Nil(t, err)
+
+				expectedDataField := signFuncName + "@" + hex.EncodeToString(big.NewInt(int64(actionID)).Bytes())
+				assert.Equal(t, expectedDataField, dataField)
+				assert.Equal(t, c.gasMapConfig.Sign, gasLimit)
+
+				return expectedHash, nil
+			},
+		}
+
+		hash, err := c.Sign(context.Background(), actionID)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedHash, hash)
+		assert.True(t, sendWasCalled)
+	})
 }
 
 func TestClient_PerformAction(t *testing.T) {
@@ -534,6 +646,42 @@ func TestClient_PerformAction(t *testing.T) {
 		hash, err := c.PerformAction(context.Background(), actionID, nil)
 		assert.Empty(t, hash)
 		assert.Equal(t, clients.ErrNilBatch, err)
+	})
+	t.Run("check is paused failed", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		expectedErr := errors.New("expected error")
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return nil, expectedErr
+			},
+		}
+		c, _ := NewClient(args)
+
+		hash, err := c.PerformAction(context.Background(), actionID, &clients.TransferBatch{})
+		assert.Empty(t, hash)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("contract is paused", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = &interactors.ElrondProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{pausedBytes},
+					},
+				}, nil
+			},
+		}
+		c, _ := NewClient(args)
+
+		hash, err := c.PerformAction(context.Background(), actionID, &clients.TransferBatch{})
+		assert.Empty(t, hash)
+		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
 	t.Run("should perform action", func(t *testing.T) {
 		t.Parallel()

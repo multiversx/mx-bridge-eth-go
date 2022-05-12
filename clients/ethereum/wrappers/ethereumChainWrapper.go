@@ -128,6 +128,11 @@ func (wrapper *ethereumChainWrapper) BalanceAt(ctx context.Context, account comm
 	return wrapper.blockchainClient.BalanceAt(ctx, account, blockNumber)
 }
 
+// IsPaused returns true if the multisig contract is paused
+func (wrapper *ethereumChainWrapper) IsPaused(ctx context.Context) (bool, error) {
+	return wrapper.multiSigContract.Paused(&bind.CallOpts{Context: ctx})
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
 func (wrapper *ethereumChainWrapper) IsInterfaceNil() bool {
 	return wrapper == nil

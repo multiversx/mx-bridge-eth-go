@@ -275,3 +275,22 @@ func TestEthClientWrapper_GetStatusesAfterExecution(t *testing.T) {
 	assert.True(t, handlerCalled)
 	assert.Equal(t, 1, statusHandler.GetIntMetric(core.MetricNumEthClientRequests))
 }
+
+func TestEthereumChainWrapper_IsPaused(t *testing.T) {
+	t.Parallel()
+
+	args, _ := createMockArgsEthereumChainWrapper()
+	handlerCalled := false
+	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
+		PausedCalled: func(opts *bind.CallOpts) (bool, error) {
+			handlerCalled = true
+			return true, nil
+		},
+	}
+	wrapper, _ := NewEthereumChainWrapper(args)
+	result, err := wrapper.IsPaused(context.Background())
+
+	assert.Nil(t, err)
+	assert.True(t, result)
+	assert.True(t, handlerCalled)
+}

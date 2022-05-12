@@ -247,6 +247,8 @@ func (mock *elrondContractStateMock) processVmRequests(vmRequest *data.VmValueRe
 		return mock.vmRequestGetLastExecutedEthTxId(vmRequest), nil
 	case "signed":
 		return mock.vmRequestSigned(vmRequest), nil
+	case "isPaused":
+		return mock.vmRequestIsPaused(vmRequest), nil
 	}
 
 	panic("unimplemented function: " + vmRequest.FuncName)
@@ -444,10 +446,14 @@ func (mock *elrondContractStateMock) vmRequestSigned(request *data.VmValueReques
 	address := data.NewAddressFromBytes(addressBytes)
 	_, found = actionIDMap[address.AddressAsBech32String()]
 	if !found {
-		log.Error("not found")
+		log.Error("action ID not found", "address", address.AddressAsBech32String())
 	}
 
 	return createOkVmResponse([][]byte{BoolToByteSlice(found)})
+}
+
+func (mock *elrondContractStateMock) vmRequestIsPaused(_ *data.VmValueRequest) *data.VmValuesResponseData {
+	return createOkVmResponse([][]byte{BoolToByteSlice(false)})
 }
 
 func getActionIDFromString(data string) *big.Int {

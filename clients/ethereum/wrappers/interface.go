@@ -22,6 +22,7 @@ type multiSigContract interface {
 	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, depositNonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	Quorum(opts *bind.CallOpts) (*big.Int, error)
 	GetStatusesAfterExecution(opts *bind.CallOpts, batchID *big.Int) ([]byte, error)
+	Paused(opts *bind.CallOpts) (bool, error)
 }
 
 type blockchainClient interface {
