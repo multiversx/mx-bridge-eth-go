@@ -14,7 +14,7 @@ type SignedMessage struct {
 
 // UniqueID will return the string ID assembled from the public key bytes and the message nonce
 func (msg *SignedMessage) UniqueID() string {
-	return fmt.Sprintf("%s%d", string(msg.PublicKeyBytes), msg.Nonce)
+	return fmt.Sprintf("%s%s", string(msg.PublicKeyBytes), string(msg.Payload))
 }
 
 // EthereumSignature is the message used when the relayers will send an ethereum signature

@@ -527,6 +527,7 @@ func (executor *bridgeExecutor) ResetRetriesCountOnEthereum() {
 // ClearStoredP2PSignaturesForEthereum deletes all stored P2P signatures used for Ethereum client
 func (executor *bridgeExecutor) ClearStoredP2PSignaturesForEthereum() {
 	executor.sigsHolder.ClearStoredSignatures()
+	executor.log.Info("cleared stored P2P signatures")
 }
 
 // ValidateBatch returns true if the given batch is validated on microservice side
