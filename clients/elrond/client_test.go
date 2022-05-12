@@ -614,6 +614,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 	}
 	c, _ := NewClient(args)
 	t.Run("different current nonce should update - 10 times", func(t *testing.T) {
+		resetClient(c)
 		for i := 0; i < 10; i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
@@ -621,11 +622,16 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		}
 	})
 	t.Run("same current nonce should error after a while", func(t *testing.T) {
+		resetClient(c)
 		_ = c.CheckClientAvailability(context.Background())
 
 		incrementor = 0
 
-		// this will just increment tge retry counter
+		// place a random message as to test it is reset
+		statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.ClientStatus(3).String())
+		statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, "random")
+
+		// this will just increment the retry counter
 		for i := 0; i < int(args.AllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
@@ -639,7 +645,34 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 			checkStatusHandler(t, statusHandler, ethElrond.Unavailable, message)
 		}
 	})
+	t.Run("same current nonce should error after a while and then recovers", func(t *testing.T) {
+		resetClient(c)
+		_ = c.CheckClientAvailability(context.Background())
+
+		incrementor = 0
+
+		// this will just increment the retry counter
+		for i := 0; i < int(args.AllowDelta); i++ {
+			err := c.CheckClientAvailability(context.Background())
+			assert.Nil(t, err)
+			checkStatusHandler(t, statusHandler, ethElrond.Available, "")
+		}
+
+		for i := 0; i < 10; i++ {
+			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
+			err := c.CheckClientAvailability(context.Background())
+			assert.Nil(t, err)
+			checkStatusHandler(t, statusHandler, ethElrond.Unavailable, message)
+		}
+
+		incrementor++
+
+		err := c.CheckClientAvailability(context.Background())
+		assert.Nil(t, err)
+		checkStatusHandler(t, statusHandler, ethElrond.Available, "")
+	})
 	t.Run("get current nonce errors", func(t *testing.T) {
+		resetClient(c)
 		c.proxy = &interactors.ElrondProxyStub{
 			GetShardOfAddressCalled: func(ctx context.Context, bech32Address string) (uint32, error) {
 				return 0, nil
@@ -653,6 +686,14 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		checkStatusHandler(t, statusHandler, ethElrond.Unavailable, expectedErr.Error())
 		assert.Equal(t, expectedErr, err)
 	})
+}
+
+func resetClient(c *client) {
+	c.mut.Lock()
+	c.retriesAvailabilityCheck = 0
+	c.mut.Unlock()
+	c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, "")
+	c.statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, "")
 }
 
 func checkStatusHandler(t *testing.T, statusHandler *testsCommon.StatusHandlerMock, status ethElrond.ClientStatus, message string) {

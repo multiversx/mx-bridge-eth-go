@@ -338,8 +338,8 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 
 // CheckClientAvailability will check the client availability and will set the metric accordingly
 func (c *client) CheckClientAvailability(ctx context.Context) error {
-	c.mut.RLock()
-	defer c.mut.RUnlock()
+	c.mut.Lock()
+	defer c.mut.Unlock()
 
 	currentNonce, err := c.GetCurrentNonce(ctx)
 	if err != nil {
@@ -350,19 +350,26 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	if currentNonce != c.lastNonce {
 		c.retriesAvailabilityCheck = 0
-		c.setStatusForAvailabilityCheck(ethElrond.Available, "")
 		c.lastNonce = currentNonce
+	}
+
+	// if we reached this point we will need to increment the retries counter
+	defer c.incrementRetriesAvailabilityCheck()
+
+	if c.retriesAvailabilityCheck > c.allowDelta {
+		message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck)
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message)
 
 		return nil
 	}
 
-	c.retriesAvailabilityCheck++
-	if c.retriesAvailabilityCheck > c.allowDelta {
-		message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck)
-		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message)
-	}
+	c.setStatusForAvailabilityCheck(ethElrond.Available, "")
 
 	return nil
+}
+
+func (c *client) incrementRetriesAvailabilityCheck() {
+	c.retriesAvailabilityCheck++
 }
 
 func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string) {

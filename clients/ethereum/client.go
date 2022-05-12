@@ -378,8 +378,8 @@ func (c *client) ExecuteTransfer(
 
 // CheckClientAvailability will check the client availability and set the metric accordingly
 func (c *client) CheckClientAvailability(ctx context.Context) error {
-	c.mut.RLock()
-	defer c.mut.RUnlock()
+	c.mut.Lock()
+	defer c.mut.Unlock()
 
 	currentBlock, err := c.clientWrapper.BlockNumber(ctx)
 	if err != nil {
@@ -390,20 +390,26 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	if currentBlock != c.lastBlockNumber {
 		c.retriesAvailabilityCheck = 0
-		c.setStatusForAvailabilityCheck(ethElrond.Available, "")
 		c.lastBlockNumber = currentBlock
+	}
+
+	// if we reached this point we will need to increment the retries counter
+	defer c.incrementRetriesAvailabilityCheck()
+
+	if c.retriesAvailabilityCheck > c.allowDelta {
+		message := fmt.Sprintf("block %d fetched for %d times in a row", currentBlock, c.retriesAvailabilityCheck)
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message)
 
 		return nil
 	}
 
-	c.retriesAvailabilityCheck++
-	if c.retriesAvailabilityCheck > c.allowDelta {
-		message := fmt.Sprintf("block %d fetched for %d times in a row", currentBlock, c.retriesAvailabilityCheck)
-
-		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message)
-	}
+	c.setStatusForAvailabilityCheck(ethElrond.Available, "")
 
 	return nil
+}
+
+func (c *client) incrementRetriesAvailabilityCheck() {
+	c.retriesAvailabilityCheck++
 }
 
 func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string) {
