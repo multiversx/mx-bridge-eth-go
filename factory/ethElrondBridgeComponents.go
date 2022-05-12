@@ -68,16 +68,17 @@ var singleSigner = &singlesig.Ed25519Signer{}
 
 // ArgsEthereumToElrondBridge is the arguments DTO used for creating an Ethereum to Elrond bridge
 type ArgsEthereumToElrondBridge struct {
-	Configs              config.Configs
-	Messenger            p2p.NetMessenger
-	StatusStorer         core.Storer
-	Proxy                elrond.ElrondProxy
-	Erc20ContractsHolder ethereum.Erc20ContractsHolder
-	ClientWrapper        ethereum.ClientWrapper
-	TimeForBootstrap     time.Duration
-	TimeBeforeRepeatJoin time.Duration
-	MetricsHolder        core.MetricsHolder
-	AppStatusHandler     elrondCore.AppStatusHandler
+	Configs                   config.Configs
+	Messenger                 p2p.NetMessenger
+	StatusStorer              core.Storer
+	Proxy                     elrond.ElrondProxy
+	ElrondClientStatusHandler core.StatusHandler
+	Erc20ContractsHolder      ethereum.Erc20ContractsHolder
+	ClientWrapper             ethereum.ClientWrapper
+	TimeForBootstrap          time.Duration
+	TimeBeforeRepeatJoin      time.Duration
+	MetricsHolder             core.MetricsHolder
+	AppStatusHandler          elrondCore.AppStatusHandler
 }
 
 type ethElrondBridgeComponents struct {
@@ -295,6 +296,8 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
 		RoleProvider:                 components.elrondRoleProvider,
+		StatusHandler:                args.ElrondClientStatusHandler,
+		AllowDelta:                   uint64(elrondConfigs.ProxyMaxNoncesDelta),
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)
@@ -395,6 +398,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		GasHandler:              gs,
 		TransferGasLimitBase:    ethereumConfigs.GasLimitBase,
 		TransferGasLimitForEach: ethereumConfigs.GasLimitForEach,
+		AllowDelta:              ethereumConfigs.MaxBlocksDelta,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)

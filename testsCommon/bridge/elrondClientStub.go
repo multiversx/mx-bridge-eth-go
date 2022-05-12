@@ -29,6 +29,7 @@ type ElrondClientStub struct {
 	SignCalled                                     func(ctx context.Context, actionID uint64) (string, error)
 	WasSignedCalled                                func(ctx context.Context, actionID uint64) (bool, error)
 	PerformActionCalled                            func(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
+	CheckClientAvailabilityCalled                  func(ctx context.Context) error
 	CloseCalled                                    func() error
 }
 
@@ -183,6 +184,15 @@ func (stub *ElrondClientStub) PerformAction(ctx context.Context, actionID uint64
 	}
 
 	return "", nil
+}
+
+// CheckClientAvailability -
+func (stub *ElrondClientStub) CheckClientAvailability(ctx context.Context) error {
+	if stub.CheckClientAvailabilityCalled != nil {
+		return stub.CheckClientAvailabilityCalled(ctx)
+	}
+
+	return nil
 }
 
 // Close -

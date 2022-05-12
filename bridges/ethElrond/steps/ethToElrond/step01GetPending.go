@@ -15,6 +15,14 @@ type getPendingStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
+	err := step.bridge.CheckElrondClientAvailability(ctx)
+	if err != nil {
+		step.bridge.PrintInfo(logger.LogDebug, "elrond client unavailable", "message", err)
+	}
+	err = step.bridge.CheckEthereumClientAvailability(ctx)
+	if err != nil {
+		step.bridge.PrintInfo(logger.LogDebug, "ethereum client unavailable", "message", err)
+	}
 	step.bridge.ResetRetriesCountOnElrond()
 	lastEthBatchExecuted, err := step.bridge.GetLastExecutedEthBatchIDFromElrond(ctx)
 	if err != nil {
@@ -24,7 +32,7 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 
 	err = step.bridge.GetAndStoreBatchFromEthereum(ctx, lastEthBatchExecuted+1)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogDebug, "error fetching eth batch", "batch ID", lastEthBatchExecuted+1, "error", err)
+		step.bridge.PrintInfo(logger.LogDebug, "cannot fetch eth batch", "batch ID", lastEthBatchExecuted+1, "message", err)
 		return step.Identifier()
 	}
 

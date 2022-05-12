@@ -47,15 +47,17 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 			},
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,
+			MaxBlocksDelta:                     10,
 		},
 		Elrond: config.ElrondConfig{
-			IntervalToResendTxsInSeconds:    60,
 			PrivateKeyFile:                  "testdata/grace.pem",
+			IntervalToResendTxsInSeconds:    60,
 			NetworkAddress:                  "http://127.0.0.1:8079",
 			MultisigContractAddress:         "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 			GasMap:                          testsCommon.CreateTestElrondGasMap(),
 			MaxRetriesOnQuorumReached:       1,
 			MaxRetriesOnWasTransferProposed: 1,
+			ProxyMaxNoncesDelta:             5,
 		},
 		Relayer: config.ConfigRelayer{
 			RoleProvider: config.RoleProviderConfig{
@@ -82,16 +84,17 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 	}
 	proxy, _ := blockchain.NewElrondProxy(argsProxy)
 	return ArgsEthereumToElrondBridge{
-		Configs:              configs,
-		Messenger:            &p2pMocks.MessengerStub{},
-		StatusStorer:         testsCommon.NewStorerMock(),
-		Proxy:                proxy,
-		Erc20ContractsHolder: &bridgeTests.ERC20ContractsHolderStub{},
-		ClientWrapper:        &bridgeTests.EthereumClientWrapperStub{},
-		TimeForBootstrap:     minTimeForBootstrap,
-		TimeBeforeRepeatJoin: minTimeBeforeRepeatJoin,
-		MetricsHolder:        status.NewMetricsHolder(),
-		AppStatusHandler:     &statusHandler.AppStatusHandlerStub{},
+		Configs:                   configs,
+		Messenger:                 &p2pMocks.MessengerStub{},
+		StatusStorer:              testsCommon.NewStorerMock(),
+		Proxy:                     proxy,
+		ElrondClientStatusHandler: &testsCommon.StatusHandlerStub{},
+		Erc20ContractsHolder:      &bridgeTests.ERC20ContractsHolderStub{},
+		ClientWrapper:             &bridgeTests.EthereumClientWrapperStub{},
+		TimeForBootstrap:          minTimeForBootstrap,
+		TimeBeforeRepeatJoin:      minTimeBeforeRepeatJoin,
+		MetricsHolder:             status.NewMetricsHolder(),
+		AppStatusHandler:          &statusHandler.AppStatusHandlerStub{},
 	}
 }
 

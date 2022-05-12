@@ -55,6 +55,8 @@ type Executor interface {
 	ClearStoredP2PSignaturesForEthereum()
 
 	ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error)
+	CheckElrondClientAvailability(ctx context.Context) error
+	CheckEthereumClientAvailability(ctx context.Context) error
 
 	IsInterfaceNil() bool
 }
