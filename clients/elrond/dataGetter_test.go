@@ -2,6 +2,7 @@ package elrond
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -1176,4 +1177,37 @@ func TestElrondClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 		assert.Equal(t, 1, numCallsGetShardOfAddress)
 		assert.Equal(t, 2, numCallsGetNetworkStatus)
 	})
+}
+
+func TestElrondClientDataGetter_IsPaused(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsDataGetter()
+	proxyCalled := false
+	args.Proxy = &interactors.ElrondProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			proxyCalled = true
+			assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+			assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+			assert.Equal(t, "", vmRequest.CallValue)
+			assert.Equal(t, isPausedFuncName, vmRequest.FuncName)
+			assert.Empty(t, vmRequest.Args)
+
+			strResponse := "AQ=="
+			response, _ := base64.StdEncoding.DecodeString(strResponse)
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: okCodeAfterExecution,
+					ReturnData: [][]byte{response},
+				},
+			}, nil
+		},
+	}
+
+	dg, _ := NewDataGetter(args)
+
+	result, err := dg.IsPaused(context.Background())
+	assert.Nil(t, err)
+	assert.True(t, result)
+	assert.True(t, proxyCalled)
 }

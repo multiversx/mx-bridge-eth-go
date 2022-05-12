@@ -47,6 +47,7 @@ type GasStationConfig struct {
 	RequestTimeInSeconds     int
 	MaximumAllowedGasPrice   int
 	GasPriceSelector         string
+	GasPriceMultiplier       int
 }
 
 // ConfigP2P configuration for the P2P communication

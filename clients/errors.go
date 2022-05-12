@@ -26,4 +26,7 @@ var (
 
 	// ErrNilAddressConverter signals that a nil address converter was provided
 	ErrNilAddressConverter = errors.New("nil address converter")
+
+	// ErrMultisigContractPaused signals that the multisig contract is paused
+	ErrMultisigContractPaused = errors.New("multisig contract paused")
 )

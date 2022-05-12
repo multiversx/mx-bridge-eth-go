@@ -27,6 +27,7 @@ type ClientWrapper interface {
 	Quorum(ctx context.Context) (*big.Int, error)
 	GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, error)
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	IsPaused(ctx context.Context) (bool, error)
 }
 
 // Erc20ContractsHolder defines the Ethereum ERC20 contract operations

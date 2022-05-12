@@ -431,6 +431,29 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, clients.ErrNilBatch))
 	})
+	t.Run("check if the contract is paused fails", func(t *testing.T) {
+		expectedErr := errors.New("expected error is paused")
+		c, _ := NewEthereumClient(args)
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			IsPausedCalled: func(ctx context.Context) (bool, error) {
+				return false, expectedErr
+			},
+		}
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 10)
+		assert.Equal(t, "", hash)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("contract is paused should error", func(t *testing.T) {
+		c, _ := NewEthereumClient(args)
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			IsPausedCalled: func(ctx context.Context) (bool, error) {
+				return true, nil
+			},
+		}
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 10)
+		assert.Equal(t, "", hash)
+		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
+	})
 	t.Run("get block number fails", func(t *testing.T) {
 		expectedErr := errors.New("expected error get block number")
 		c, _ := NewEthereumClient(args)
@@ -814,6 +837,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 			assert.Nil(t, err)
 			checkStatusHandler(t, statusHandler, ethElrond.Available, "")
 		}
+		assert.True(t, statusHandler.GetIntMetric(bridgeCore.MetricLastBlockNonce) > 0)
 	})
 	t.Run("same current nonce should error after a while", func(t *testing.T) {
 		resetClient(c)

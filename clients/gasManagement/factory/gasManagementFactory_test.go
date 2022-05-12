@@ -17,6 +17,7 @@ func createMockArgsGasStation() gasManagement.ArgsGasStation {
 		RequestTime:            time.Second,
 		MaximumGasPrice:        1000,
 		GasPriceSelector:       "fast",
+		GasPriceMultiplier:     1,
 	}
 }
 

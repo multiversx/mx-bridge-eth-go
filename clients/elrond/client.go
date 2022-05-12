@@ -267,6 +267,11 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 		return "", clients.ErrNilBatch
 	}
 
+	err := c.checkIsPaused(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	txBuilder := c.createCommonTxDataBuilder(proposeSetStatusFuncName, int64(batch.ID))
 	for _, stat := range batch.Statuses {
 		txBuilder.ArgBytes([]byte{stat})
@@ -285,6 +290,11 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", clients.ErrNilBatch
+	}
+
+	err := c.checkIsPaused(ctx)
+	if err != nil {
+		return "", err
 	}
 
 	txBuilder := c.createCommonTxDataBuilder(proposeTransferFuncName, int64(batch.ID))
@@ -308,6 +318,11 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 
 // Sign will trigger the execution of a sign operation
 func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
+	err := c.checkIsPaused(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	txBuilder := c.createCommonTxDataBuilder(signFuncName, int64(actionID))
 
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.Sign)
@@ -324,6 +339,11 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 		return "", clients.ErrNilBatch
 	}
 
+	err := c.checkIsPaused(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))
 
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
@@ -336,6 +356,18 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	return hash, err
 }
 
+func (c *client) checkIsPaused(ctx context.Context) error {
+	isPaused, err := c.IsPaused(ctx)
+	if err != nil {
+		return fmt.Errorf("%w in client.ExecuteTransfer", err)
+	}
+	if isPaused {
+		return fmt.Errorf("%w in client.ExecuteTransfer", clients.ErrMultisigContractPaused)
+	}
+
+	return nil
+}
+
 // CheckClientAvailability will check the client availability and will set the metric accordingly
 func (c *client) CheckClientAvailability(ctx context.Context) error {
 	c.mut.Lock()
@@ -343,7 +375,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	currentNonce, err := c.GetCurrentNonce(ctx)
 	if err != nil {
-		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, err.Error())
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, err.Error(), currentNonce)
 
 		return err
 	}
@@ -358,12 +390,12 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	if c.retriesAvailabilityCheck > c.allowDelta {
 		message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck)
-		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message)
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message, currentNonce)
 
 		return nil
 	}
 
-	c.setStatusForAvailabilityCheck(ethElrond.Available, "")
+	c.setStatusForAvailabilityCheck(ethElrond.Available, "", currentNonce)
 
 	return nil
 }
@@ -372,9 +404,10 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 	c.retriesAvailabilityCheck++
 }
 
-func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string) {
+func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string, nonce uint64) {
 	c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, status.String())
 	c.statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, message)
+	c.statusHandler.SetIntMetric(bridgeCore.MetricLastBlockNonce, int(nonce))
 }
 
 // Close will close any started go routines. It returns nil.

@@ -33,6 +33,7 @@ type EthereumClientWrapperStub struct {
 	SetStringMetricCalled func(metric string, val string)
 	GetAllMetricsCalled   func() core.GeneralMetrics
 	NameCalled            func() string
+	IsPausedCalled        func(ctx context.Context) (bool, error)
 }
 
 // SetIntMetric -
@@ -186,6 +187,15 @@ func (stub *EthereumClientWrapperStub) BalanceAt(ctx context.Context, account co
 	}
 
 	return big.NewInt(0), nil
+}
+
+// IsPaused -
+func (stub *EthereumClientWrapperStub) IsPaused(ctx context.Context) (bool, error) {
+	if stub.IsPausedCalled != nil {
+		return stub.IsPausedCalled(ctx)
+	}
+
+	return false, nil
 }
 
 // IsInterfaceNil -

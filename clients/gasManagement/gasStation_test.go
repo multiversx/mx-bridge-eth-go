@@ -24,6 +24,7 @@ func createMockArgsGasStation() ArgsGasStation {
 		RequestTime:            time.Second,
 		MaximumGasPrice:        1000,
 		GasPriceSelector:       "fast",
+		GasPriceMultiplier:     100000000,
 	}
 }
 
@@ -55,6 +56,15 @@ func TestNewGasStation(t *testing.T) {
 		gs, err := NewGasStation(args)
 		assert.True(t, check.IfNil(gs))
 		assert.True(t, errors.Is(err, ErrInvalidGasPriceSelector))
+	})
+	t.Run("invalid gas price multiplier", func(t *testing.T) {
+		args := createMockArgsGasStation()
+		args.GasPriceMultiplier = 0
+
+		gs, err := NewGasStation(args)
+		assert.True(t, check.IfNil(gs))
+		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
+		assert.True(t, strings.Contains(err.Error(), "checkArgs for value GasPriceMultiplier"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockArgsGasStation()
@@ -178,6 +188,7 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 		FastestWait: 11,
 	}
 	args := createMockArgsGasStation()
+	gasPriceMultiplier := big.NewInt(int64(args.GasPriceMultiplier))
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusOK)
 

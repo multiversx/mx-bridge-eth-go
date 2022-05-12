@@ -252,6 +252,11 @@ func (mock *EthereumChainMock) BalanceAt(ctx context.Context, account common.Add
 	return big.NewInt(0), nil
 }
 
+// IsPaused -
+func (mock *EthereumChainMock) IsPaused(_ context.Context) (bool, error) {
+	return false, nil
+}
+
 // IsInterfaceNil -
 func (mock *EthereumChainMock) IsInterfaceNil() bool {
 	return mock == nil

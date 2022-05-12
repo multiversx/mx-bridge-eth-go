@@ -58,12 +58,15 @@ const (
 
 	// MetricConnectedP2PAddresses represents the metric used to store all the P2P addresses the messenger has connected to
 	MetricConnectedP2PAddresses = "connected P2P addresses"
+
+	// MetricLastBlockNonce represents the last block nonce queried
+	MetricLastBlockNonce = "last block nonce"
 )
 
 // PersistedMetrics represents the array of metrics that should be persisted
 var PersistedMetrics = []string{MetricNumBatches, MetricNumEthClientRequests, MetricNumEthClientTransactions,
 	MetricLastQueriedEthereumBlockNumber, MetricLastQueriedElrondBlockNumber, MetricEthereumClientStatus,
-	MetricElrondClientStatus, MetricLastEthereumClientError, MetricLastElrondClientError}
+	MetricElrondClientStatus, MetricLastEthereumClientError, MetricLastElrondClientError, MetricLastBlockNonce}
 
 const (
 	// EthClientStatusHandlerName is the ethereum client status handler name

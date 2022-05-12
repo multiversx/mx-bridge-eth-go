@@ -32,6 +32,7 @@ const (
 	getLastExecutedEthTxId                                    = "getLastExecutedEthTxId"
 	signedFuncName                                            = "signed"
 	getAllStakedRelayersFuncName                              = "getAllStakedRelayers"
+	isPausedFuncName                                          = "isPaused"
 )
 
 // ArgsDataGetter is the arguments DTO used in the NewDataGetter constructor
@@ -84,11 +85,12 @@ func (dg *elrondClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context
 	response, err := dg.proxy.ExecuteVMQuery(ctx, request)
 	if err != nil {
 		dg.log.Error("got error on VMQuery", "FuncName", request.FuncName,
-			"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr)
+			"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr, "error", err)
 		return nil, err
 	}
 	dg.log.Debug("executed VMQuery", "FuncName", request.FuncName,
 		"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr,
+		"response.ReturnCode", response.Data.ReturnCode,
 		"response.ReturnData", fmt.Sprintf("%+v", response.Data.ReturnData))
 	if response.Data.ReturnCode != okCodeAfterExecution {
 		return nil, NewQueryResponseError(
@@ -399,6 +401,14 @@ func (dg *elrondClientDataGetter) GetAllStakedRelayers(ctx context.Context) ([][
 	builder.Function(getAllStakedRelayersFuncName)
 
 	return dg.executeQueryFromBuilder(ctx, builder)
+}
+
+// IsPaused returns true if the multisig contract is paused
+func (dg *elrondClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
+	builder := dg.createDefaultVmQueryBuilder()
+	builder.Function(isPausedFuncName)
+
+	return dg.executeQueryBoolFromBuilder(ctx, builder)
 }
 
 func getStatusFromBuff(buff []byte) (byte, error) {
