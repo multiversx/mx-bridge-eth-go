@@ -32,6 +32,7 @@ const (
 	getLastExecutedEthTxId                                    = "getLastExecutedEthTxId"
 	signedFuncName                                            = "signed"
 	getAllStakedRelayersFuncName                              = "getAllStakedRelayers"
+	isPausedFuncName                                          = "isPaused"
 )
 
 // ArgsDataGetter is the arguments DTO used in the NewDataGetter constructor
@@ -399,6 +400,14 @@ func (dg *elrondClientDataGetter) GetAllStakedRelayers(ctx context.Context) ([][
 	builder.Function(getAllStakedRelayersFuncName)
 
 	return dg.executeQueryFromBuilder(ctx, builder)
+}
+
+// IsPaused returns true if the multisig contract is paused
+func (dg *elrondClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
+	builder := dg.createDefaultVmQueryBuilder()
+	builder.Function(isPausedFuncName)
+
+	return dg.executeQueryBoolFromBuilder(ctx, builder)
 }
 
 func getStatusFromBuff(buff []byte) (byte, error) {

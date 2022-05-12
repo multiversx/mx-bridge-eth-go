@@ -316,6 +316,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		RequestTime:            time.Duration(gasStationConfig.RequestTimeInSeconds) * time.Second,
 		MaximumGasPrice:        gasStationConfig.MaximumAllowedGasPrice,
 		GasPriceSelector:       core.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
+		GasPriceMultiplier:     gasStationConfig.GasPriceMultiplier,
 	}
 
 	gs, err := factory.CreateGasStation(argsGasStation, gasStationConfig.Enabled)

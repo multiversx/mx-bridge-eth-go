@@ -219,16 +219,17 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	args := factory.ArgsEthereumToElrondBridge{
-		Configs:              configs,
-		Messenger:            messenger,
-		StatusStorer:         statusStorer,
-		Proxy:                proxy,
-		Erc20ContractsHolder: erc20ContractsHolder,
-		ClientWrapper:        clientWrapper,
-		TimeForBootstrap:     timeForBootstrap,
-		TimeBeforeRepeatJoin: timeBeforeRepeatJoin,
-		MetricsHolder:        metricsHolder,
-		AppStatusHandler:     appStatusHandler.StatusHandler(),
+		Configs:                   configs,
+		Messenger:                 messenger,
+		StatusStorer:              statusStorer,
+		Proxy:                     proxy,
+		Erc20ContractsHolder:      erc20ContractsHolder,
+		ClientWrapper:             clientWrapper,
+		TimeForBootstrap:          timeForBootstrap,
+		TimeBeforeRepeatJoin:      timeBeforeRepeatJoin,
+		MetricsHolder:             metricsHolder,
+		AppStatusHandler:          appStatusHandler.StatusHandler(),
+		ElrondClientStatusHandler: elrondClientStatusHandler,
 	}
 
 	ethToElrondComponents, err := factory.NewEthElrondBridgeComponents(args)

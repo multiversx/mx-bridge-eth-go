@@ -383,7 +383,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	currentBlock, err := c.clientWrapper.BlockNumber(ctx)
 	if err != nil {
-		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, err.Error())
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, err.Error(), currentBlock)
 
 		return err
 	}
@@ -398,12 +398,12 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	if c.retriesAvailabilityCheck > c.allowDelta {
 		message := fmt.Sprintf("block %d fetched for %d times in a row", currentBlock, c.retriesAvailabilityCheck)
-		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message)
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message, currentBlock)
 
 		return nil
 	}
 
-	c.setStatusForAvailabilityCheck(ethElrond.Available, "")
+	c.setStatusForAvailabilityCheck(ethElrond.Available, "", currentBlock)
 
 	return nil
 }
@@ -412,9 +412,10 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 	c.retriesAvailabilityCheck++
 }
 
-func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string) {
+func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string, nonce uint64) {
 	c.clientWrapper.SetStringMetric(core.MetricElrondClientStatus, status.String())
 	c.clientWrapper.SetStringMetric(core.MetricLastElrondClientError, message)
+	c.clientWrapper.SetIntMetric(core.MetricLastBlockNonce, int(nonce))
 }
 
 func (c *client) checkAvailableTokens(ctx context.Context, tokens []common.Address, amounts []*big.Int) error {

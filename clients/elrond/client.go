@@ -343,7 +343,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	currentNonce, err := c.GetCurrentNonce(ctx)
 	if err != nil {
-		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, err.Error())
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, err.Error(), currentNonce)
 
 		return err
 	}
@@ -358,12 +358,12 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	if c.retriesAvailabilityCheck > c.allowDelta {
 		message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck)
-		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message)
+		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message, currentNonce)
 
 		return nil
 	}
 
-	c.setStatusForAvailabilityCheck(ethElrond.Available, "")
+	c.setStatusForAvailabilityCheck(ethElrond.Available, "", currentNonce)
 
 	return nil
 }
@@ -372,9 +372,10 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 	c.retriesAvailabilityCheck++
 }
 
-func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string) {
+func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string, nonce uint64) {
 	c.statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, status.String())
 	c.statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, message)
+	c.statusHandler.SetIntMetric(bridgeCore.MetricLastBlockNonce, int(nonce))
 }
 
 // Close will close any started go routines. It returns nil.

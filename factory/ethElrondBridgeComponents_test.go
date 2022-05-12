@@ -44,6 +44,7 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 				RequestTimeInSeconds:     1,
 				MaximumAllowedGasPrice:   1000,
 				GasPriceSelector:         "fast",
+				GasPriceMultiplier:       1,
 			},
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,

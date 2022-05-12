@@ -814,6 +814,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 			assert.Nil(t, err)
 			checkStatusHandler(t, statusHandler, ethElrond.Available, "")
 		}
+		assert.True(t, statusHandler.GetIntMetric(bridgeCore.MetricLastBlockNonce) > 0)
 	})
 	t.Run("same current nonce should error after a while", func(t *testing.T) {
 		resetClient(c)

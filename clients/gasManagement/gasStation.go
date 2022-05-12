@@ -19,8 +19,7 @@ import (
 const minPollingInterval = time.Second
 const minRequestTime = time.Millisecond
 const logPath = "EthClient/gasStation"
-
-var gasPriceMultiplier = big.NewInt(100000000)
+const minGasPriceMultiplier = 1
 
 // ArgsGasStation is the DTO used for the creating a new gas handler instance
 type ArgsGasStation struct {
@@ -29,6 +28,7 @@ type ArgsGasStation struct {
 	RequestTime            time.Duration
 	MaximumGasPrice        int
 	GasPriceSelector       core.EthGasPriceSelector
+	GasPriceMultiplier     int
 }
 
 type gasStation struct {
@@ -41,6 +41,7 @@ type gasStation struct {
 	cancel                 func()
 	gasPriceSelector       core.EthGasPriceSelector
 	loopStatus             *atomic.Flag
+	gasPriceMultiplier     *big.Int
 
 	mut            sync.RWMutex
 	latestResponse *gasStationResponse
@@ -61,6 +62,7 @@ func NewGasStation(args ArgsGasStation) (*gasStation, error) {
 		maximumGasPrice:        args.MaximumGasPrice,
 		gasPriceSelector:       args.GasPriceSelector,
 		loopStatus:             &atomic.Flag{},
+		gasPriceMultiplier:     big.NewInt(int64(args.GasPriceMultiplier)),
 	}
 	gs.log = logger.GetOrCreate(logPath)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -76,6 +78,9 @@ func checkArgs(args ArgsGasStation) error {
 	}
 	if args.RequestTime < minRequestTime {
 		return fmt.Errorf("%w in checkArgs for value RequestTime", clients.ErrInvalidValue)
+	}
+	if args.GasPriceMultiplier < minGasPriceMultiplier {
+		return fmt.Errorf("%w in checkArgs for value GasPriceMultiplier", clients.ErrInvalidValue)
 	}
 
 	switch args.GasPriceSelector {
@@ -188,7 +193,7 @@ func (gs *gasStation) GetCurrentGasPrice() (*big.Int, error) {
 	}
 
 	result := big.NewInt(int64(gasPrice))
-	return result.Mul(result, gasPriceMultiplier), nil
+	return result.Mul(result, gs.gasPriceMultiplier), nil
 }
 
 // Close will stop any started go routines
