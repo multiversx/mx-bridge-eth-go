@@ -1,0 +1,59 @@
+swagger: "2.0"
+info:
+  version: "1.0.0"
+  title: "Relayers API"
+  contact:
+    email: "contact@elrond.com"
+basePath: "/node"
+host: localhost:8080
+tags:
+- name: "node"
+  description: "Node"
+schemes:
+- "http"
+paths:
+  /status/list:
+    get:
+      tags:
+        - "node"
+      summary: "Gets the available metrics list"
+      operationId: "metrics-list"
+      responses:
+        '200':
+          description: A list of available metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#components/schemas/ElrondReply'
+  /status?name={metric}:
+    get:
+      tags:
+      - "node"
+      summary: "Gets the information about the given metric"
+      operationId: "status-by-metric"
+      parameters:
+        - in: path
+          name: metric
+          required: true
+          description: The wanted metric
+          type: string
+          enum: [ElrondToEth, EthToElrond, elrond-client, eth-client]
+      responses:
+        '200':
+          description: Information of the requested metric
+          content:
+            application/json:
+              schema:
+                $ref: '#components/schemas/ElrondReply'
+
+components:
+  schemas:
+    ElrondReply:
+      type: object
+      properties:
+        data:
+          type: object
+          error:
+            type: string
+          code:
+            type: string
