@@ -17,7 +17,7 @@ The `main` branch is the one to use
 Checkout `config.toml.example` for all the configuration needed:
 
 ### Step 4: monitoring your relayer node
-After your node is up and running. You can use relayer`s api routes to monitor the existing metrics.
+After your node is up and running. You can use relayer's api routes to monitor the existing metrics.
 For the documentation and how to setup swagger. Go to [README.md](api/swagger/README.md)
 
 
