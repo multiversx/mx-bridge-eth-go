@@ -93,7 +93,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 	}
 	expectedJsonString := `{"batchId":1,"deposits":[{"nonce":1,"to":"to1","from":"from1","token":"token1","amount":1000000000000000000001},{"nonce":2,"to":"to2","from":"from2","token":"token2","amount":1000000000000000000002}],"statuses":"AwQ="}`
 
-	t.Run("server errors with bad request and but empty reason", func(t *testing.T) {
+	t.Run("server errors with Bad Request, but no reason", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsBatchValidator()
@@ -117,7 +117,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Equal(t, "got status 400 Bad Request while executing request", err.Error())
 	})
-	t.Run("server errors with bad request and reason", func(t *testing.T) {
+	t.Run("server errors with Bad Request and reason", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsBatchValidator()
