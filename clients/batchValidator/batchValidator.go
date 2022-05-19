@@ -112,6 +112,15 @@ func (bv *batchValidator) doRequestReturningBytes(batch []byte, ctx context.Cont
 	if err != nil {
 		return nil, err
 	}
+	if response.StatusCode == http.StatusBadRequest {
+		data, _ := ioutil.ReadAll(response.Body)
+		badResponse := &microserviceBadRequestBody{}
+		err = json.Unmarshal(data, badResponse)
+		if err != nil {
+			return nil, fmt.Errorf("%w during bad response unmarshal", err)
+		}
+		return nil, fmt.Errorf("got status %s: %s", response.Status, badResponse.Message)
+	}
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("got status %s", response.Status)
 	}
