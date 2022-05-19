@@ -104,6 +104,7 @@ func (bv *batchValidator) doRequest(ctx context.Context, batch []byte) ([]byte, 
 
 func (bv *batchValidator) doRequestReturningBytes(batch []byte, ctx context.Context) ([]byte, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, bv.requestURL, bytes.NewBuffer(batch))
+	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +113,7 @@ func (bv *batchValidator) doRequestReturningBytes(batch []byte, ctx context.Cont
 	if err != nil {
 		return nil, err
 	}
-	if response.StatusCode == http.StatusBadRequest {
+	if response.StatusCode == http.StatusBadRequest && response.Body != http.NoBody {
 		data, _ := ioutil.ReadAll(response.Body)
 		badResponse := &microserviceBadRequestBody{}
 		err = json.Unmarshal(data, badResponse)
