@@ -6,17 +6,16 @@ import (
 )
 
 type gasStationResponse struct {
-	Fast        int     `json:"fast"`
-	Fastest     int     `json:"fastest"`
-	SafeLow     int     `json:"safeLow"`
-	Average     int     `json:"average"`
-	BlockTime   float64 `json:"block_time"`
-	BlockNum    int     `json:"blockNum"`
-	Speed       float64 `json:"speed"`
-	SafeLowWait float64 `json:"safeLowWait"`
-	AvgWait     float64 `json:"avgWait"`
-	FastWait    float64 `json:"fastWait"`
-	FastestWait float64 `json:"fastestWait"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+	Result  struct {
+		LastBlock       string `json:"LastBlock"`
+		SafeGasPrice    string `json:"SafeGasPrice"`
+		ProposeGasPrice string `json:"ProposeGasPrice"`
+		FastGasPrice    string `json:"FastGasPrice"`
+		SuggestBaseFee  string `json:"suggestBaseFee"`
+		GasUsedRatio    string `json:"gasUsedRatio"`
+	} `json:"result"`
 }
 
 func (gsr *gasStationResponse) String() string {

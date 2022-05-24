@@ -2,16 +2,13 @@ package core
 
 const (
 	// EthFastGasPrice represents the fast gas price value
-	EthFastGasPrice EthGasPriceSelector = "fast"
-
-	// EthFastestGasPrice represents the fastest gas price value
-	EthFastestGasPrice EthGasPriceSelector = "fastest"
+	EthFastGasPrice EthGasPriceSelector = "FastGasPrice"
 
 	// EthSafeLowGasPrice represents the lowest safe gat price value
-	EthSafeLowGasPrice EthGasPriceSelector = "safeLow"
+	EthSafeGasPrice EthGasPriceSelector = "SafeGasPrice"
 
 	// EthAverageGasPrice represents the average gas price value
-	EthAverageGasPrice EthGasPriceSelector = "average"
+	EthProposeGasPrice EthGasPriceSelector = "ProposeGasPrice"
 
 	// WebServerOffString represents the constant used to switch off the web server
 	WebServerOffString = "off"

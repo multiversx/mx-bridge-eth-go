@@ -10,13 +10,13 @@
     MaxBlocksDelta = 10
     [Eth.GasStation]
         Enabled = true
-        URL = "https://ethgasstation.info/api/ethgasAPI.json?" # gas station URL. Suggestion to provide the api-key here
+        URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
         GasPriceMultiplier = 100000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 100000000
         PollingIntervalInSeconds = 60 # number of seconds between gas price polling
         RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the gas price request
         MaximumAllowedGasPrice = 3000 # maximum value allowed for the fetched gas price value
-        # GasPriceSelector available options: "fast", "fastest", "safeLow", "average"
-        GasPriceSelector = "fastest" # selector used to provide the gas price
+        # GasPriceSelector available options: "SafeGasPrice", "ProposeGasPrice", "FastGasPrice"
+        GasPriceSelector = "SafeGasPrice" # selector used to provide the gas price
 
 [Elrond]
     NetworkAddress = "https://devnet-gateway.elrond.com" # the network address
