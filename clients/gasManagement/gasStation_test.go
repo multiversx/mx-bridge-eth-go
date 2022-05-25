@@ -3,6 +3,7 @@ package gasManagement
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -22,9 +23,9 @@ func createMockArgsGasStation() ArgsGasStation {
 		RequestURL:             "",
 		RequestPollingInterval: time.Second,
 		RequestTime:            time.Second,
-		MaximumGasPrice:        1000,
-		GasPriceSelector:       "fast",
-		GasPriceMultiplier:     100000000,
+		MaximumGasPrice:        100,
+		GasPriceSelector:       "SafeGasPrice",
+		GasPriceMultiplier:     1000000000,
 	}
 }
 
@@ -126,7 +127,7 @@ func TestGasStation_InvalidJsonResponse(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 500)
 	assert.False(t, gs.loopStatus.IsSet())
-	assert.Nil(t, gs.GetLatestResponse())
+	assert.Equal(t, gs.GetLatestGasPrice(), -1)
 	gasPrice, err := gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
@@ -135,19 +136,7 @@ func TestGasStation_InvalidJsonResponse(t *testing.T) {
 func TestGasStation_GoodResponseShouldSave(t *testing.T) {
 	t.Parallel()
 
-	gsResponse := gasStationResponse{
-		Fast:        1,
-		Fastest:     2,
-		SafeLow:     3,
-		Average:     4,
-		BlockTime:   5,
-		BlockNum:    6,
-		Speed:       7,
-		SafeLowWait: 8,
-		AvgWait:     9,
-		FastWait:    10,
-		FastestWait: 11,
-	}
+	gsResponse := createMockGasStationResponse()
 	args := createMockArgsGasStation()
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusOK)
@@ -168,25 +157,16 @@ func TestGasStation_GoodResponseShouldSave(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 500)
 	assert.False(t, gs.loopStatus.IsSet())
-	assert.Equal(t, gsResponse, *gs.GetLatestResponse())
+	var expectedPrice = -1
+	_, err = fmt.Sscanf(gsResponse.Result.SafeGasPrice, "%d", &expectedPrice)
+	assert.NotEqual(t, expectedPrice, -1)
+	assert.Equal(t, gs.GetLatestGasPrice(), expectedPrice)
 }
 
 func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	t.Parallel()
 
-	gsResponse := gasStationResponse{
-		Fast:        1,
-		Fastest:     2,
-		SafeLow:     3,
-		Average:     4,
-		BlockTime:   5,
-		BlockNum:    6,
-		Speed:       7,
-		SafeLowWait: 8,
-		AvgWait:     9,
-		FastWait:    10,
-		FastestWait: 11,
-	}
+	gsResponse := createMockGasStationResponse()
 	args := createMockArgsGasStation()
 	gasPriceMultiplier := big.NewInt(int64(args.GasPriceMultiplier))
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -202,46 +182,55 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 1100)
 	assert.True(t, gs.loopStatus.IsSet())
-	_ = gs.Close()
 
 	gs.SetSelector(core.EthFastGasPrice)
+	time.Sleep(time.Millisecond * 1100)
 	price, err := gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	expected := big.NewInt(0).Mul(big.NewInt(int64(gsResponse.Fast)), gasPriceMultiplier)
+	expectedPrice := -1
+	_, err = fmt.Sscanf(gsResponse.Result.FastGasPrice, "%d", &expectedPrice)
+	require.Nil(t, err)
+	assert.NotEqual(t, expectedPrice, -1)
+	expected := big.NewInt(0).Mul(big.NewInt(int64(expectedPrice)), gasPriceMultiplier)
 	assert.Equal(t, expected, price)
 
-	gs.SetSelector(core.EthFastestGasPrice)
+	gs.SetSelector(core.EthProposeGasPrice)
+	time.Sleep(time.Millisecond * 1100)
 	price, err = gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	expected = big.NewInt(0).Mul(big.NewInt(int64(gsResponse.Fastest)), gasPriceMultiplier)
+	expectedPrice = -1
+	_, err = fmt.Sscanf(gsResponse.Result.ProposeGasPrice, "%d", &expectedPrice)
+	require.Nil(t, err)
+	assert.NotEqual(t, expectedPrice, -1)
+	expected = big.NewInt(0).Mul(big.NewInt(int64(expectedPrice)), gasPriceMultiplier)
 	assert.Equal(t, expected, price)
 
-	gs.SetSelector(core.EthAverageGasPrice)
+	gs.SetSelector(core.EthSafeGasPrice)
+	time.Sleep(time.Millisecond * 1100)
 	price, err = gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	expected = big.NewInt(0).Mul(big.NewInt(int64(gsResponse.Average)), gasPriceMultiplier)
-	assert.Equal(t, expected, price)
-
-	gs.SetSelector(core.EthSafeLowGasPrice)
-	price, err = gs.GetCurrentGasPrice()
+	expectedPrice = -1
+	_, err = fmt.Sscanf(gsResponse.Result.SafeGasPrice, "%d", &expectedPrice)
 	require.Nil(t, err)
-	expected = big.NewInt(0).Mul(big.NewInt(int64(gsResponse.SafeLow)), gasPriceMultiplier)
+	assert.NotEqual(t, expectedPrice, -1)
+	expected = big.NewInt(0).Mul(big.NewInt(int64(expectedPrice)), gasPriceMultiplier)
 	assert.Equal(t, expected, price)
 
 	gs.SetSelector("invalid")
+	time.Sleep(time.Millisecond * 1100)
 	price, err = gs.GetCurrentGasPrice()
-	require.True(t, errors.Is(err, ErrInvalidGasPriceSelector))
+	require.True(t, errors.Is(err, ErrLatestGasPricesWereNotFetched))
 	assert.Equal(t, big.NewInt(0), price)
+	_ = gs.Close()
 }
 
 func TestGasStation_GetCurrentGasPriceExceededMaximum(t *testing.T) {
 	t.Parallel()
 
-	gsResponse := gasStationResponse{
-		Fast: 1001,
-	}
+	gsResponse := createMockGasStationResponse()
+	gsResponse.Result.SafeGasPrice = "101"
 	args := createMockArgsGasStation()
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusOK)
@@ -258,9 +247,31 @@ func TestGasStation_GetCurrentGasPriceExceededMaximum(t *testing.T) {
 
 	time.Sleep(time.Second * 2)
 	assert.True(t, gs.loopStatus.IsSet())
-	_ = gs.Close()
 
 	price, err := gs.GetCurrentGasPrice()
 	require.True(t, errors.Is(err, ErrGasPriceIsHigherThanTheMaximumSet))
 	assert.Equal(t, big.NewInt(0), price)
+	_ = gs.Close()
+}
+
+func createMockGasStationResponse() gasStationResponse {
+	return gasStationResponse{
+		Status:  "1",
+		Message: "OK-Missing/Invalid API Key, rate limit of 1/5sec applied",
+		Result: struct {
+			LastBlock       string `json:"LastBlock"`
+			SafeGasPrice    string `json:"SafeGasPrice"`
+			ProposeGasPrice string `json:"ProposeGasPrice"`
+			FastGasPrice    string `json:"FastGasPrice"`
+			SuggestBaseFee  string `json:"suggestBaseFee"`
+			GasUsedRatio    string `json:"gasUsedRatio"`
+		}{
+			LastBlock:       "14836699",
+			SafeGasPrice:    "81",
+			ProposeGasPrice: "82",
+			FastGasPrice:    "83",
+			SuggestBaseFee:  "80.856621497",
+			GasUsedRatio:    "0.0422401857919075,0.636178148305543,0.399708304558626,0.212555933333333,0.645151576152554",
+		},
+	}
 }

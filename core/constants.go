@@ -4,10 +4,10 @@ const (
 	// EthFastGasPrice represents the fast gas price value
 	EthFastGasPrice EthGasPriceSelector = "FastGasPrice"
 
-	// EthSafeLowGasPrice represents the lowest safe gat price value
+	// EthSafeGasPrice represents the safe gas price value
 	EthSafeGasPrice EthGasPriceSelector = "SafeGasPrice"
 
-	// EthAverageGasPrice represents the average gas price value
+	// EthProposeGasPrice represents the proposed gas price value
 	EthProposeGasPrice EthGasPriceSelector = "ProposeGasPrice"
 
 	// WebServerOffString represents the constant used to switch off the web server

@@ -44,7 +44,7 @@ type gasStation struct {
 	gasPriceMultiplier     *big.Int
 
 	mut            sync.RWMutex
-	latestResponse int
+	latestGasPrice int
 }
 
 // NewGasStation returns a new gas handler instance for the gas station service
@@ -63,7 +63,7 @@ func NewGasStation(args ArgsGasStation) (*gasStation, error) {
 		gasPriceSelector:       args.GasPriceSelector,
 		loopStatus:             &atomic.Flag{},
 		gasPriceMultiplier:     big.NewInt(int64(args.GasPriceMultiplier)),
-		latestResponse:         -1,
+		latestGasPrice:         -1,
 	}
 	gs.log = logger.GetOrCreate(logPath)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -135,20 +135,21 @@ func (gs *gasStation) doRequest(ctx context.Context) error {
 	gs.log.Debug("gas station: fetched new response", "response data", response)
 
 	gs.mut.Lock()
+	gs.latestGasPrice = -1
 	switch gs.gasPriceSelector {
 	case core.EthFastGasPrice:
-		_, err = fmt.Sscanf(response.Result.FastGasPrice, "%d", &gs.latestResponse)
+		_, err = fmt.Sscanf(response.Result.FastGasPrice, "%d", &gs.latestGasPrice)
 	case core.EthProposeGasPrice:
-		_, err = fmt.Sscanf(response.Result.ProposeGasPrice, "%d", &gs.latestResponse)
+		_, err = fmt.Sscanf(response.Result.ProposeGasPrice, "%d", &gs.latestGasPrice)
 	case core.EthSafeGasPrice:
-		_, err = fmt.Sscanf(response.Result.SafeGasPrice, "%d", &gs.latestResponse)
+		_, err = fmt.Sscanf(response.Result.SafeGasPrice, "%d", &gs.latestGasPrice)
 	default:
-		return fmt.Errorf("%w: %q", ErrInvalidGasPriceSelector, gs.gasPriceSelector)
+		err = fmt.Errorf("%w: %q", ErrInvalidGasPriceSelector, gs.gasPriceSelector)
 	}
+	gs.mut.Unlock()
 	if err != nil {
 		return err
 	}
-	gs.mut.Unlock()
 
 	return nil
 }
@@ -182,16 +183,16 @@ func (gs *gasStation) GetCurrentGasPrice() (*big.Int, error) {
 	gs.mut.RLock()
 	defer gs.mut.RUnlock()
 
-	if gs.latestResponse == -1 {
+	if gs.latestGasPrice == -1 {
 		return big.NewInt(0), ErrLatestGasPricesWereNotFetched
 	}
 
-	if gs.latestResponse > gs.maximumGasPrice {
+	if gs.latestGasPrice > gs.maximumGasPrice {
 		return big.NewInt(0), fmt.Errorf("%w maximum value: %d, fetched value: %d, gas price selector: %s",
-			ErrGasPriceIsHigherThanTheMaximumSet, gs.maximumGasPrice, gs.latestResponse, gs.gasPriceSelector)
+			ErrGasPriceIsHigherThanTheMaximumSet, gs.maximumGasPrice, gs.latestGasPrice, gs.gasPriceSelector)
 	}
 
-	result := big.NewInt(int64(gs.latestResponse))
+	result := big.NewInt(int64(gs.latestGasPrice))
 	return result.Mul(result, gs.gasPriceMultiplier), nil
 }
 

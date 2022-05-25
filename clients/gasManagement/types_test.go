@@ -22,32 +22,19 @@ func stripSpaces(str string) string {
 func TestGasStationResponse_String(t *testing.T) {
 	t.Parallel()
 
-	response := &gasStationResponse{
-		Fast:        370,
-		Fastest:     400,
-		SafeLow:     270,
-		Average:     300,
-		BlockTime:   15.380281690140846,
-		BlockNum:    14460250,
-		Speed:       0.5719409845737478,
-		SafeLowWait: 17.5,
-		AvgWait:     3.1,
-		FastWait:    0.5,
-		FastestWait: 0.5,
-	}
+	response := createMockGasStationResponse()
 	expectedTrueString := `{
-		"fast": 370,
-		"fastest": 400,
-		"safeLow": 270,
-		"average": 300,
-		"block_time": 15.380281690140846,
-		"blockNum": 14460250,
-		"speed": 0.5719409845737478,
-		"safeLowWait": 17.5,
-		"avgWait": 3.1,
-		"fastWait": 0.5,
-		"fastestWait": 0.5
-	}`
+        "status":"1",
+        "message":"OK-Missing/Invalid API Key, rate limit of 1/5sec applied",
+        "result":{
+            "LastBlock":"14836699",
+            "SafeGasPrice":"81",
+            "ProposeGasPrice":"82",
+            "FastGasPrice":"83",
+            "suggestBaseFee":"80.856621497",
+            "gasUsedRatio":"0.0422401857919075,0.636178148305543,0.399708304558626,0.212555933333333,0.645151576152554"
+        }
+}`
 
 	assert.Equal(t, stripSpaces(expectedTrueString), stripSpaces(response.String()))
 }
