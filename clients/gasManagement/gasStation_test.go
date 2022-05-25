@@ -159,6 +159,7 @@ func TestGasStation_GoodResponseShouldSave(t *testing.T) {
 	assert.False(t, gs.loopStatus.IsSet())
 	var expectedPrice = -1
 	_, err = fmt.Sscanf(gsResponse.Result.SafeGasPrice, "%d", &expectedPrice)
+	require.Nil(t, err)
 	assert.NotEqual(t, expectedPrice, -1)
 	assert.Equal(t, gs.GetLatestGasPrice(), expectedPrice)
 }
