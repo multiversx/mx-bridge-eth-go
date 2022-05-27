@@ -128,6 +128,8 @@ func (gs *gasStation) processLoop(ctx context.Context) {
 				gs.log.Debug("gasHandler.processLoop", "message", err.Error())
 				nextRequestPoolingInterval = gs.requestRetryDelay
 			}
+		} else {
+			gs.fetchRetries = 0
 		}
 		cancel()
 
