@@ -235,7 +235,7 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
 
-	time.Sleep(args.RequestPollingInterval - 500)
+	time.Sleep(args.RequestRetryDelay + 1)
 	assert.True(t, gs.loopStatus.IsSet())
 	assert.Equal(t, gs.GetLatestGasPrice(), -1)
 	assert.Equal(t, numCalled, 4)
@@ -244,7 +244,16 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
 
-	time.Sleep(500 + 1)
+	time.Sleep(args.RequestRetryDelay + 1)
+	assert.True(t, gs.loopStatus.IsSet())
+	assert.Equal(t, gs.GetLatestGasPrice(), -1)
+	assert.Equal(t, numCalled, 4)
+	assert.Equal(t, gs.fetchRetries, 0)
+	gasPrice, err = gs.GetCurrentGasPrice()
+	assert.Equal(t, big.NewInt(0), gasPrice)
+	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
+
+	time.Sleep(args.RequestRetryDelay + 1)
 	assert.True(t, gs.loopStatus.IsSet())
 	assert.Equal(t, gs.GetLatestGasPrice(), 81)
 	assert.Equal(t, numCalled, 5)
