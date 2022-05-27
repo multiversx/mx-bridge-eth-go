@@ -13,6 +13,8 @@
         URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
         GasPriceMultiplier = 1000000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 1000000000
         PollingIntervalInSeconds = 60 # number of seconds between gas price polling
+        RequestRetryDelayInSeconds = 5 # number of seconds of delay after one failed request
+        MaxFetchRetries = 3 # number of fetch retries before printing an error
         RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the gas price request
         MaximumAllowedGasPrice = 300 # maximum value allowed for the fetched gas price value
         # GasPriceSelector available options: "SafeGasPrice", "ProposeGasPrice", "FastGasPrice"

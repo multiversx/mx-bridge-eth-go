@@ -22,6 +22,8 @@ func createMockArgsGasStation() ArgsGasStation {
 	return ArgsGasStation{
 		RequestURL:             "",
 		RequestPollingInterval: time.Second,
+		RequestRetryDelay:      time.Second,
+		MaximumFetchRetries:    3,
 		RequestTime:            time.Second,
 		MaximumGasPrice:        100,
 		GasPriceSelector:       "SafeGasPrice",
