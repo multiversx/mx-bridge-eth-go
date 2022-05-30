@@ -20,11 +20,14 @@ const minPollingInterval = time.Second
 const minRequestTime = time.Millisecond
 const logPath = "EthClient/gasStation"
 const minGasPriceMultiplier = 1
+const minFetchRetries = 2
 
 // ArgsGasStation is the DTO used for the creating a new gas handler instance
 type ArgsGasStation struct {
 	RequestURL             string
 	RequestPollingInterval time.Duration
+	RequestRetryDelay      time.Duration
+	MaximumFetchRetries    int
 	RequestTime            time.Duration
 	MaximumGasPrice        int
 	GasPriceSelector       core.EthGasPriceSelector
@@ -35,6 +38,8 @@ type gasStation struct {
 	requestURL             string
 	requestTime            time.Duration
 	requestPollingInterval time.Duration
+	requestRetryDelay      time.Duration
+	maximumFetchRetries    int
 	log                    logger.Logger
 	httpClient             HTTPClient
 	maximumGasPrice        int
@@ -45,6 +50,7 @@ type gasStation struct {
 
 	mut            sync.RWMutex
 	latestGasPrice int
+	fetchRetries   int
 }
 
 // NewGasStation returns a new gas handler instance for the gas station service
@@ -58,12 +64,15 @@ func NewGasStation(args ArgsGasStation) (*gasStation, error) {
 		requestURL:             args.RequestURL,
 		requestTime:            args.RequestTime,
 		requestPollingInterval: args.RequestPollingInterval,
+		requestRetryDelay:      args.RequestRetryDelay,
+		maximumFetchRetries:    args.MaximumFetchRetries,
 		httpClient:             http.DefaultClient,
 		maximumGasPrice:        args.MaximumGasPrice,
 		gasPriceSelector:       args.GasPriceSelector,
 		loopStatus:             &atomic.Flag{},
 		gasPriceMultiplier:     big.NewInt(int64(args.GasPriceMultiplier)),
 		latestGasPrice:         -1,
+		fetchRetries:           0,
 	}
 	gs.log = logger.GetOrCreate(logPath)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -77,11 +86,17 @@ func checkArgs(args ArgsGasStation) error {
 	if args.RequestPollingInterval < minPollingInterval {
 		return fmt.Errorf("%w in checkArgs for value RequestPollingInterval", clients.ErrInvalidValue)
 	}
+	if args.RequestRetryDelay < minPollingInterval {
+		return fmt.Errorf("%w in checkArgs for value RequestRetryDelay", clients.ErrInvalidValue)
+	}
 	if args.RequestTime < minRequestTime {
 		return fmt.Errorf("%w in checkArgs for value RequestTime", clients.ErrInvalidValue)
 	}
 	if args.GasPriceMultiplier < minGasPriceMultiplier {
 		return fmt.Errorf("%w in checkArgs for value GasPriceMultiplier", clients.ErrInvalidValue)
+	}
+	if args.MaximumFetchRetries < minFetchRetries {
+		return fmt.Errorf("%w in checkArgs for value MaximumFetchRetries", clients.ErrInvalidValue)
 	}
 
 	switch args.GasPriceSelector {
@@ -101,15 +116,8 @@ func (gs *gasStation) processLoop(ctx context.Context) {
 	defer timer.Stop()
 
 	for {
-		requestContext, cancel := context.WithTimeout(ctx, gs.requestTime)
-
-		err := gs.doRequest(requestContext)
-		if err != nil {
-			gs.log.Error("gasHandler.processLoop", "error", err.Error())
-		}
-		cancel()
-
-		timer.Reset(gs.requestPollingInterval)
+		nextRequestPoolingInterval := gs.doRequestWithRetryMechanism(ctx)
+		timer.Reset(nextRequestPoolingInterval)
 
 		select {
 		case <-ctx.Done():
@@ -120,16 +128,36 @@ func (gs *gasStation) processLoop(ctx context.Context) {
 	}
 }
 
+func (gs *gasStation) doRequestWithRetryMechanism(ctx context.Context) time.Duration {
+	requestContext, cancel := context.WithTimeout(ctx, gs.requestTime)
+	defer cancel()
+	err := gs.doRequest(requestContext)
+	if err == nil {
+		gs.fetchRetries = 0
+		return gs.requestPollingInterval
+	}
+
+	gs.fetchRetries++
+	if gs.fetchRetries <= gs.maximumFetchRetries {
+		gs.log.Debug("gasHandler.processLoop", "message", err.Error())
+		return gs.requestRetryDelay
+	}
+
+	gs.log.Error("gasHandler.processLoop", "error", err.Error())
+	gs.fetchRetries = 0
+	return gs.requestPollingInterval
+}
+
 func (gs *gasStation) doRequest(ctx context.Context) error {
 	bytes, err := gs.doRequestReturningBytes(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %q", err, string(bytes))
 	}
 
 	response := &gasStationResponse{}
 	err = json.Unmarshal(bytes, response)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %q", err, string(bytes))
 	}
 
 	gs.log.Debug("gas station: fetched new response", "response data", response)
@@ -148,7 +176,7 @@ func (gs *gasStation) doRequest(ctx context.Context) error {
 	}
 	gs.mut.Unlock()
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %q", err, string(bytes))
 	}
 
 	return nil

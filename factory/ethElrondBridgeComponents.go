@@ -313,6 +313,8 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	argsGasStation := gasManagement.ArgsGasStation{
 		RequestURL:             gasStationConfig.URL,
 		RequestPollingInterval: time.Duration(gasStationConfig.PollingIntervalInSeconds) * time.Second,
+		RequestRetryDelay:      time.Duration(gasStationConfig.RequestRetryDelayInSeconds) * time.Second,
+		MaximumFetchRetries:    gasStationConfig.MaxFetchRetries,
 		RequestTime:            time.Duration(gasStationConfig.RequestTimeInSeconds) * time.Second,
 		MaximumGasPrice:        gasStationConfig.MaximumAllowedGasPrice,
 		GasPriceSelector:       core.EthGasPriceSelector(gasStationConfig.GasPriceSelector),

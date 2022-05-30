@@ -22,6 +22,8 @@ func createMockArgsGasStation() ArgsGasStation {
 	return ArgsGasStation{
 		RequestURL:             "",
 		RequestPollingInterval: time.Second,
+		RequestRetryDelay:      time.Second,
+		MaximumFetchRetries:    3,
 		RequestTime:            time.Second,
 		MaximumGasPrice:        100,
 		GasPriceSelector:       "SafeGasPrice",
@@ -40,6 +42,24 @@ func TestNewGasStation(t *testing.T) {
 		assert.True(t, check.IfNil(gs))
 		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "checkArgs for value RequestPollingInterval"))
+	})
+	t.Run("invalid polling time for retry delay", func(t *testing.T) {
+		args := createMockArgsGasStation()
+		args.RequestRetryDelay = time.Duration(minPollingInterval.Nanoseconds() - 1)
+
+		gs, err := NewGasStation(args)
+		assert.True(t, check.IfNil(gs))
+		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
+		assert.True(t, strings.Contains(err.Error(), "checkArgs for value RequestRetryDelay"))
+	})
+	t.Run("invalid maximum fetch retries", func(t *testing.T) {
+		args := createMockArgsGasStation()
+		args.MaximumFetchRetries = 0
+
+		gs, err := NewGasStation(args)
+		assert.True(t, check.IfNil(gs))
+		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
+		assert.True(t, strings.Contains(err.Error(), "checkArgs for value MaximumFetchRetries"))
 	})
 	t.Run("invalid request time", func(t *testing.T) {
 		args := createMockArgsGasStation()
@@ -162,6 +182,138 @@ func TestGasStation_GoodResponseShouldSave(t *testing.T) {
 	require.Nil(t, err)
 	assert.NotEqual(t, expectedPrice, -1)
 	assert.Equal(t, gs.GetLatestGasPrice(), expectedPrice)
+}
+
+func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsGasStation()
+	args.RequestRetryDelay = time.Second
+	args.RequestPollingInterval = 2 * time.Second
+	numCalled := 0
+	gsResponse := createMockGasStationResponse()
+	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+		if numCalled <= args.MaximumFetchRetries {
+			_, _ = rw.Write([]byte("invalid json response"))
+		} else {
+			resp, _ := json.Marshal(&gsResponse)
+			_, _ = rw.Write(resp)
+		}
+		numCalled++
+	}))
+	defer httpServer.Close()
+
+	args.RequestURL = httpServer.URL
+
+	gs, err := NewGasStation(args)
+	require.Nil(t, err)
+	time.Sleep(args.RequestRetryDelay + 1)
+	assert.True(t, gs.loopStatus.IsSet())
+	assert.Equal(t, gs.GetLatestGasPrice(), -1)
+	assert.Equal(t, numCalled, 1)
+	assert.Equal(t, gs.fetchRetries, 1)
+	gasPrice, err := gs.GetCurrentGasPrice()
+	assert.Equal(t, big.NewInt(0), gasPrice)
+	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
+
+	time.Sleep(args.RequestRetryDelay + 1)
+	assert.True(t, gs.loopStatus.IsSet())
+	assert.Equal(t, gs.GetLatestGasPrice(), -1)
+	assert.Equal(t, numCalled, 2)
+	assert.Equal(t, gs.fetchRetries, 2)
+	gasPrice, err = gs.GetCurrentGasPrice()
+	assert.Equal(t, big.NewInt(0), gasPrice)
+	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
+
+	time.Sleep(args.RequestRetryDelay + 1)
+	assert.True(t, gs.loopStatus.IsSet())
+	assert.Equal(t, gs.GetLatestGasPrice(), -1)
+	assert.Equal(t, numCalled, 3)
+	assert.Equal(t, gs.fetchRetries, 3)
+	gasPrice, err = gs.GetCurrentGasPrice()
+	assert.Equal(t, big.NewInt(0), gasPrice)
+	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
+
+	time.Sleep(args.RequestRetryDelay + 1)
+	assert.True(t, gs.loopStatus.IsSet())
+	assert.Equal(t, gs.GetLatestGasPrice(), -1)
+	assert.Equal(t, numCalled, 4)
+	assert.Equal(t, gs.fetchRetries, 0)
+	gasPrice, err = gs.GetCurrentGasPrice()
+	assert.Equal(t, big.NewInt(0), gasPrice)
+	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
+
+	time.Sleep(args.RequestRetryDelay + 1)
+	assert.True(t, gs.loopStatus.IsSet())
+	assert.Equal(t, gs.GetLatestGasPrice(), -1)
+	assert.Equal(t, numCalled, 4)
+	assert.Equal(t, gs.fetchRetries, 0)
+	gasPrice, err = gs.GetCurrentGasPrice()
+	assert.Equal(t, big.NewInt(0), gasPrice)
+	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
+
+	time.Sleep(args.RequestRetryDelay + 1)
+	assert.True(t, gs.loopStatus.IsSet())
+	assert.Equal(t, gs.GetLatestGasPrice(), 81)
+	assert.Equal(t, numCalled, 5)
+	assert.Equal(t, gs.fetchRetries, 0)
+	gasPrice, err = gs.GetCurrentGasPrice()
+	assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*args.GasPriceMultiplier)), gasPrice)
+	assert.Nil(t, err)
+	_ = gs.Close()
+
+	time.Sleep(args.RequestPollingInterval + 1)
+	assert.False(t, gs.loopStatus.IsSet())
+}
+
+func TestGasStation_RetryMechanism_IntermitentFails(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsGasStation()
+	args.RequestRetryDelay = time.Second
+	args.RequestPollingInterval = 2 * time.Second
+	numCalled := 0
+	gsResponse := createMockGasStationResponse()
+	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+		if numCalled != 0 && numCalled%3 == 0 {
+			_, _ = rw.Write([]byte("invalid json response"))
+		} else {
+			resp, _ := json.Marshal(&gsResponse)
+			_, _ = rw.Write(resp)
+		}
+		numCalled++
+	}))
+	defer httpServer.Close()
+
+	args.RequestURL = httpServer.URL
+
+	gs, err := NewGasStation(args)
+	require.Nil(t, err)
+
+	time.Sleep(args.RequestPollingInterval*3 + args.RequestRetryDelay + 1)
+	assert.True(t, gs.loopStatus.IsSet())
+	assert.Equal(t, gs.GetLatestGasPrice(), 81)
+	assert.Equal(t, numCalled, 4)
+	assert.Equal(t, gs.fetchRetries, 1)
+	gasPrice, err := gs.GetCurrentGasPrice()
+	assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*args.GasPriceMultiplier)), gasPrice)
+	assert.Nil(t, err)
+
+	time.Sleep(args.RequestRetryDelay + 1)
+	assert.True(t, gs.loopStatus.IsSet())
+	assert.Equal(t, gs.GetLatestGasPrice(), 81)
+	assert.Equal(t, numCalled, 5)
+	assert.Equal(t, gs.fetchRetries, 0)
+	gasPrice, err = gs.GetCurrentGasPrice()
+	assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*args.GasPriceMultiplier)), gasPrice)
+	assert.Nil(t, err)
+
+	_ = gs.Close()
+
+	time.Sleep(args.RequestPollingInterval + 1)
+	assert.False(t, gs.loopStatus.IsSet())
 }
 
 func TestGasStation_GetCurrentGasPrice(t *testing.T) {
