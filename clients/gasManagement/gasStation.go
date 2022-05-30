@@ -116,23 +116,7 @@ func (gs *gasStation) processLoop(ctx context.Context) {
 	defer timer.Stop()
 
 	for {
-		requestContext, cancel := context.WithTimeout(ctx, gs.requestTime)
-		nextRequestPoolingInterval := gs.requestPollingInterval
-		err := gs.doRequest(requestContext)
-		if err != nil {
-			gs.fetchRetries++
-			if gs.fetchRetries > gs.maximumFetchRetries {
-				gs.log.Error("gasHandler.processLoop", "error", err.Error())
-				gs.fetchRetries = 0
-			} else {
-				gs.log.Debug("gasHandler.processLoop", "message", err.Error())
-				nextRequestPoolingInterval = gs.requestRetryDelay
-			}
-		} else {
-			gs.fetchRetries = 0
-		}
-		cancel()
-
+		nextRequestPoolingInterval := gs.doRequestWithRetryMechanism(ctx)
 		timer.Reset(nextRequestPoolingInterval)
 
 		select {
@@ -142,6 +126,26 @@ func (gs *gasStation) processLoop(ctx context.Context) {
 		case <-timer.C:
 		}
 	}
+}
+
+func (gs *gasStation) doRequestWithRetryMechanism(ctx context.Context) time.Duration {
+	requestContext, cancel := context.WithTimeout(ctx, gs.requestTime)
+	defer cancel()
+	err := gs.doRequest(requestContext)
+	if err == nil {
+		gs.fetchRetries = 0
+		return gs.requestPollingInterval
+	}
+
+	gs.fetchRetries++
+	if gs.fetchRetries <= gs.maximumFetchRetries {
+		gs.log.Debug("gasHandler.processLoop", "message", err.Error())
+		return gs.requestRetryDelay
+	}
+
+	gs.log.Error("gasHandler.processLoop", "error", err.Error())
+	gs.fetchRetries = 0
+	return gs.requestPollingInterval
 }
 
 func (gs *gasStation) doRequest(ctx context.Context) error {
