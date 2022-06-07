@@ -13,6 +13,7 @@ import (
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 )
 
@@ -25,14 +26,15 @@ const (
 
 // ArgsBroadcaster is the DTO used in the broadcaster constructor
 type ArgsBroadcaster struct {
-	Messenger          NetMessenger
-	Log                logger.Logger
-	ElrondRoleProvider ElrondRoleProvider
-	SignatureProcessor SignatureProcessor
-	KeyGen             crypto.KeyGenerator
-	SingleSigner       crypto.SingleSigner
-	PrivateKey         crypto.PrivateKey
-	Name               string
+	Messenger           NetMessenger
+	Log                 logger.Logger
+	ElrondRoleProvider  ElrondRoleProvider
+	SignatureProcessor  SignatureProcessor
+	KeyGen              crypto.KeyGenerator
+	SingleSigner        crypto.SingleSigner
+	PrivateKey          crypto.PrivateKey
+	Name                string
+	AntifloodComponents *factory.AntiFloodComponents
 }
 
 type broadcaster struct {
@@ -64,17 +66,17 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 		elrondRoleProvider: args.ElrondRoleProvider,
 		signatureProcessor: args.SignatureProcessor,
 		relayerMessageHandler: &relayerMessageHandler{
-			marshalizer:  &marshal.JsonMarshalizer{},
-			keyGen:       args.KeyGen,
-			singleSigner: args.SingleSigner,
-			counter:      uint64(time.Now().UnixNano()),
-			privateKey:   args.PrivateKey,
+			marshalizer:         &marshal.JsonMarshalizer{},
+			keyGen:              args.KeyGen,
+			singleSigner:        args.SingleSigner,
+			counter:             uint64(time.Now().UnixNano()),
+			privateKey:          args.PrivateKey,
+			antifloodComponents: args.AntifloodComponents,
 		},
 		clients:       make([]core.BroadcastClient, 0),
 		joinTopicName: args.Name + joinTopicSuffix,
 		signTopicName: args.Name + signTopicSuffix,
 	}
-
 	pk := b.privateKey.GeneratePublic()
 	b.publicKeyBytes, err = pk.ToByteArray()
 	if err != nil {
@@ -109,6 +111,9 @@ func checkArgs(args ArgsBroadcaster) error {
 	if check.IfNil(args.SignatureProcessor) {
 		return ErrNilSignatureProcessor
 	}
+	if args.AntifloodComponents == nil {
+		return ErrNilAntifloodComponents
+	}
 
 	return nil
 }
@@ -134,8 +139,8 @@ func (b *broadcaster) RegisterOnTopics() error {
 }
 
 // ProcessReceivedMessage will be called by the network messenger whenever a new message is received
-func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ elrondCore.PeerID) error {
-	msg, err := b.preProcessMessage(message)
+func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
+	msg, err := b.preProcessMessage(message, fromConnectedPeer)
 	if err != nil {
 		b.log.Debug("got message", "topic", message.Topic(), "error", err)
 		return err
@@ -154,6 +159,13 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, _ elrondCor
 	if err != nil {
 		// someone might try to send old, already seen by the network, messages
 		// drop the message and do not resend-it to other relayers
+		return err
+	}
+
+	err = b.canProcessMessage(message, fromConnectedPeer)
+	if err != nil {
+		b.log.Debug("can't process message", "peer", fromConnectedPeer, "topic", message.Topic(), "msg.Payload", msg.Payload,
+			"msg.Nonce", msg.Nonce, "msg.PublicKey", addr.AddressAsBech32String(), "error", err)
 		return err
 	}
 

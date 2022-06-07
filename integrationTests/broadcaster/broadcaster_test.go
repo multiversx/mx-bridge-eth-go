@@ -2,6 +2,7 @@ package broadcaster
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -10,9 +11,13 @@ import (
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
+	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
 	mockRoleProviders "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	elrondP2P "github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
+	"github.com/ElrondNetwork/elrond-go/testscommon/statusHandler"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/stretchr/testify/require"
 )
@@ -191,15 +196,22 @@ func createBroadcaster(
 	roleProvider *mockRoleProviders.ElrondRoleProviderStub,
 	privateKey crypto.PrivateKey,
 ) (integrationTests.Broadcaster, *testsCommon.SignaturesHolderMock) {
+	cfg := elrondConfig.Config{
+		Antiflood: p2pMocks.CreateAntifloodConfig(),
+	}
+	ac, err := factory.NewP2PAntiFloodComponents(context.Background(), cfg, &statusHandler.AppStatusHandlerStub{}, "pid")
+	require.Nil(t, err)
+
 	args := p2p.ArgsBroadcaster{
-		Messenger:          messenger,
-		Log:                integrationTests.Log,
-		ElrondRoleProvider: roleProvider,
-		KeyGen:             integrationTests.TestKeyGenerator,
-		SingleSigner:       integrationTests.TestSingleSigner,
-		PrivateKey:         privateKey,
-		SignatureProcessor: &testsCommon.SignatureProcessorStub{},
-		Name:               "test",
+		Messenger:           messenger,
+		Log:                 integrationTests.Log,
+		ElrondRoleProvider:  roleProvider,
+		KeyGen:              integrationTests.TestKeyGenerator,
+		SingleSigner:        integrationTests.TestSingleSigner,
+		PrivateKey:          privateKey,
+		SignatureProcessor:  &testsCommon.SignatureProcessorStub{},
+		Name:                "test",
+		AntifloodComponents: ac,
 	}
 
 	b, err := p2p.NewBroadcaster(args)

@@ -1,15 +1,18 @@
 package testsCommon
 
-import "github.com/ElrondNetwork/elrond-eth-bridge/bridge"
+import (
+	"github.com/ElrondNetwork/elrond-eth-bridge/config"
+)
 
 // CreateTestElrondGasMap will create a testing gas map for Elrond client
-func CreateTestElrondGasMap() bridge.ElrondGasMapConfig {
-	return bridge.ElrondGasMapConfig{
+func CreateTestElrondGasMap() config.ElrondGasMapConfig {
+	return config.ElrondGasMapConfig{
 		Sign:                   101,
 		ProposeTransferBase:    102,
 		ProposeTransferForEach: 103,
-		ProposeStatus:          104,
-		PerformActionBase:      105,
-		PerformActionForEach:   106,
+		ProposeStatusBase:      104,
+		ProposeStatusForEach:   105,
+		PerformActionBase:      106,
+		PerformActionForEach:   107,
 	}
 }

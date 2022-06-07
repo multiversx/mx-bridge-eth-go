@@ -1,37 +1,111 @@
 [Eth]
     NetworkAddress = "http://127.0.0.1:8545" # a network address
-    BridgeAddress = "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c" # the eth address for the bridge contract
+    MultisigContractAddress = "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c" # the eth address for the bridge contract
     SafeContractAddress = "A6504Cc508889bbDBd4B748aFf6EA6b5D0d2684c"
-    PrivateKeyFile = "config/ethereum.sk" # the path to the file containing the relayer eth private key
-    GasLimit = 500000
-    ERC20Contracts = ["d1135C0307CEB01FD4728db8e5B8D38fbf984F9a"]
+    PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
+    GasLimitBase = 350000
+    GasLimitForEach = 30000
+    IntervalToWaitForTransferInSeconds = 600 #10 minutes
+    MaxRetriesOnQuorumReached = 3
+    MaxBlocksDelta = 10
     [Eth.GasStation]
         Enabled = true
-        URL = "https://ethgasstation.info/api/ethgasAPI.json?" # gas station URL. Suggestion to provide the api-key here
+        URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
+        GasPriceMultiplier = 1000000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 1000000000
         PollingIntervalInSeconds = 60 # number of seconds between gas price polling
         RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the gas price request
-        MaximumAllowedGasPrice = 3000 # maximum value allowed for the fetched gas price value
-        # GasPriceSelector available options: "fast", "fastest", "safeLow", "average"
-        GasPriceSelector = "safeLow" # selector used to provide the gas price
+        MaximumAllowedGasPrice = 300 # maximum value allowed for the fetched gas price value
+        # GasPriceSelector available options: "SafeGasPrice", "ProposeGasPrice", "FastGasPrice"
+        GasPriceSelector = "SafeGasPrice" # selector used to provide the gas price
 
 [Elrond]
     NetworkAddress = "https://devnet-gateway.elrond.com" # the network address
-    BridgeAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the elrond address for the bridge contract
-    PrivateKeyFile = "config/elrond.pem" # the path to the pem file containing the relayer elrond wallet
+    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the elrond address for the bridge contract
+    PrivateKeyFile = "keys/elrond.pem" # the path to the pem file containing the relayer elrond wallet
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
+    MaxRetriesOnQuorumReached = 3
+    MaxRetriesOnWasTransferProposed = 3
+    ProxyCacherExpirationSeconds = 600 # the caching time in seconds
+
+    # valid options for ProxyRestAPIEntityType are `observer` and `proxy`. Any other value will trigger an error.
+    # `observer` is useful when querying an observer, directly and `proxy` is useful when querying a squad's proxy
+    ProxyRestAPIEntityType = "observer"
+    ProxyFinalityCheck = true
+    ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
     [Elrond.GasMap]
         Sign = 8000000
         ProposeTransferBase = 11000000
-        ProposeTransferForEach = 3000000
-        ProposeStatus = 30000000
-        PerformActionBase = 25000000
-        PerformActionForEach = 2000000
+        ProposeTransferForEach = 5500000
+        ProposeStatusBase = 10000000
+        ProposeStatusForEach = 7000000
+        PerformActionBase = 40000000
+        PerformActionForEach = 5500000
 
 [P2P]
     Port = "10010"
     Seed = ""
     InitialPeerList = []
     ProtocolID = "/erd/relay/1.0.0"
+    [AntifloodConfig]
+        Enabled = true
+        NumConcurrentResolverJobs = 50
+        [Antiflood.FastReacting]
+            IntervalInSeconds = 1
+            ReservedPercent   = 20.0
+            [Antiflood.FastReacting.PeerMaxInput]
+                BaseMessagesPerInterval  = 10
+                TotalSizePerInterval = 1048576 #1MB/s
+                [Antiflood.FastReacting.PeerMaxInput.IncreaseFactor]
+                    Threshold = 10 #if consensus size will exceed this value, then
+                    Factor = 1.0   #increase the base value with [factor*consensus size]
+            [Antiflood.FastReacting.BlackList]
+                ThresholdNumMessagesPerInterval = 70
+                ThresholdSizePerInterval = 2097154 #2MB/s
+                NumFloodingRounds = 10
+                PeerBanDurationInSeconds = 300
+
+        [Antiflood.SlowReacting]
+            IntervalInSeconds = 30
+            ReservedPercent   = 20.0
+            [Antiflood.SlowReacting.PeerMaxInput]
+                BaseMessagesPerInterval = 400
+                TotalSizePerInterval = 10485760 #10MB/interval
+                [Antiflood.SlowReacting.PeerMaxInput.IncreaseFactor]
+                    Threshold = 10 #if consensus size will exceed this value, then
+                    Factor = 0.0   #increase the base value with [factor*consensus size]
+            [Antiflood.SlowReacting.BlackList]
+                ThresholdNumMessagesPerInterval = 800
+                ThresholdSizePerInterval = 20971540 #20MB/interval
+                NumFloodingRounds = 2
+                PeerBanDurationInSeconds = 3600
+
+        [Antiflood.OutOfSpecs]
+            IntervalInSeconds = 1
+            ReservedPercent   = 0.0
+            [Antiflood.OutOfSpecs.PeerMaxInput]
+                BaseMessagesPerInterval = 140
+                TotalSizePerInterval = 4194304 #4MB/s
+                [Antiflood.OutOfSpecs.PeerMaxInput.IncreaseFactor]
+                    Threshold = 0 #if consensus size will exceed this value, then
+                    Factor = 0.0     #increase the base value with [factor*consensus size]
+            [Antiflood.OutOfSpecs.BlackList]
+                ThresholdNumMessagesPerInterval = 200
+                ThresholdSizePerInterval = 6291456 #6MB/s
+                NumFloodingRounds = 2
+                PeerBanDurationInSeconds = 3600
+
+        [Antiflood.PeerMaxOutput]
+            BaseMessagesPerInterval  = 5
+            TotalSizePerInterval     = 524288 #512KB/s
+
+        [Antiflood.Cache]
+            Name = "Antiflood"
+            Capacity = 7000
+            Type = "LRU"
+        [Antiflood.Topic]
+            DefaultMaxMessagesPerSec = 300 # default number of messages per interval for a topic
+            MaxMessages = [{ Topic = "EthToElrond_join", NumMessagesPerSec = 100 },
+                           { Topic = "EthToElrond_sign", NumMessagesPerSec = 100 }]
 
 [Relayer]
     [Relayer.Marshalizer]
@@ -54,27 +128,13 @@
 
 [StateMachine]
     [StateMachine.EthToElrond]
-        StepDurationInMillis = 6000
-        Steps = [
-            { Name = "getting the pending transactions", DurationInMillis = 12000 },
-            { Name = "proposing transfer", DurationInMillis = 12000 },
-            { Name = "waiting signatures for propose transfer", DurationInMillis = 12000 },
-            { Name = "executing transfer", DurationInMillis = 12000 },
-            { Name = "proposing set status", DurationInMillis = 600000 }, # 10 minutes
-            { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
-            { Name = "executing set status", DurationInMillis = 12000 }
-        ]
+        StepDurationInMillis = 12000 #12 seconds
+        IntervalForLeaderInSeconds = 120 #2 minutes
+
     [StateMachine.ElrondToEth]
-        StepDurationInMillis = 6000
-        Steps = [
-            { Name = "getting the pending transactions", DurationInMillis = 12000 },
-            { Name = "proposing transfer", DurationInMillis = 12000 },
-            { Name = "waiting signatures for propose transfer", DurationInMillis = 12000 },
-            { Name = "executing transfer", DurationInMillis = 600000 }, # 10 minutes
-            { Name = "proposing set status", DurationInMillis = 12000 },
-            { Name = "waiting signatures for propose set status", DurationInMillis = 12000 },
-            { Name = "executing set status", DurationInMillis = 12000 }
-        ]
+        StepDurationInMillis = 12000 #12 seconds
+        IntervalForLeaderInSeconds = 720 #12 minutes
+
 [Logs]
     LogFileLifeSpanInSec = 86400 # 24h
 
@@ -89,3 +149,8 @@
             SameSourceRequests = 10000
             # SameSourceResetIntervalInSec time frame between counter reset, in seconds
             SameSourceResetIntervalInSec = 1
+
+[BatchValidator]
+    Enabled = false
+    URL = "https://devnet-bridge-api.elrond.com/validateBatch" # batch validator URL.
+    RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the batch validation request

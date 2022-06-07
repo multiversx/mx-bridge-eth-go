@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"time"
 )
 
 // StepIdentifier defines a step name
@@ -13,7 +12,7 @@ type MachineStates map[StepIdentifier]Step
 
 // Step defines a state machine step
 type Step interface {
-	Execute(ctx context.Context) (StepIdentifier, error)
+	Execute(ctx context.Context) StepIdentifier
 	Identifier() StepIdentifier
 	IsInterfaceNil() bool
 }
@@ -23,10 +22,17 @@ type EthGasPriceSelector string
 
 // Timer defines operations related to time
 type Timer interface {
-	After(d time.Duration) <-chan time.Time
 	NowUnix() int64
 	Start()
 	Close() error
+	IsInterfaceNil() bool
+}
+
+// AddressConverter can convert a provided address bytes to its string representation
+type AddressConverter interface {
+	ToHexString(addressBytes []byte) string
+	ToHexStringWithPrefix(addressBytes []byte) string
+	ToBech32String(addressBytes []byte) string
 	IsInterfaceNil() bool
 }
 

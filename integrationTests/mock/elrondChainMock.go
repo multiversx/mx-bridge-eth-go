@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -8,10 +9,13 @@ import (
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ElrondNetwork/elrond-go-core/core"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
 	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ethereum/go-ethereum/common"
 )
+
+var log = logger.GetOrCreate("integrationTests/mock")
 
 // ElrondChainMock -
 type ElrondChainMock struct {
@@ -31,7 +35,7 @@ func NewElrondChainMock() *ElrondChainMock {
 }
 
 // GetNetworkConfig -
-func (mock *ElrondChainMock) GetNetworkConfig() (*data.NetworkConfig, error) {
+func (mock *ElrondChainMock) GetNetworkConfig(_ context.Context) (*data.NetworkConfig, error) {
 	return &data.NetworkConfig{
 		ChainID:                  "t",
 		LatestTagSoftwareVersion: "",
@@ -40,8 +44,18 @@ func (mock *ElrondChainMock) GetNetworkConfig() (*data.NetworkConfig, error) {
 	}, nil
 }
 
+// GetNetworkStatus -
+func (mock *ElrondChainMock) GetNetworkStatus(_ context.Context, _ uint32) (*data.NetworkStatus, error) {
+	return &data.NetworkStatus{}, nil
+}
+
+// GetShardOfAddress -
+func (mock *ElrondChainMock) GetShardOfAddress(_ context.Context, _ string) (uint32, error) {
+	return 0, nil
+}
+
 // SendTransaction -
-func (mock *ElrondChainMock) SendTransaction(transaction *data.Transaction) (string, error) {
+func (mock *ElrondChainMock) SendTransaction(_ context.Context, transaction *data.Transaction) (string, error) {
 	if transaction == nil {
 		panic("nil transaction")
 	}
@@ -57,6 +71,8 @@ func (mock *ElrondChainMock) SendTransaction(transaction *data.Transaction) (str
 		panic(err)
 	}
 
+	log.Info("sent Elrond transaction", "sender", addrAsBech32, "data", string(transaction.Data))
+
 	mock.mutState.Lock()
 	defer mock.mutState.Unlock()
 
@@ -69,10 +85,10 @@ func (mock *ElrondChainMock) SendTransaction(transaction *data.Transaction) (str
 }
 
 // SendTransactions -
-func (mock *ElrondChainMock) SendTransactions(txs []*data.Transaction) ([]string, error) {
+func (mock *ElrondChainMock) SendTransactions(ctx context.Context, txs []*data.Transaction) ([]string, error) {
 	hashes := make([]string, 0, len(txs))
 	for _, tx := range txs {
-		hash, _ := mock.SendTransaction(tx)
+		hash, _ := mock.SendTransaction(ctx, tx)
 		hashes = append(hashes, hash)
 	}
 
@@ -80,7 +96,7 @@ func (mock *ElrondChainMock) SendTransactions(txs []*data.Transaction) ([]string
 }
 
 // GetAllSentTransactions -
-func (mock *ElrondChainMock) GetAllSentTransactions() map[string]*data.Transaction {
+func (mock *ElrondChainMock) GetAllSentTransactions(_ context.Context) map[string]*data.Transaction {
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()
 
@@ -93,7 +109,7 @@ func (mock *ElrondChainMock) GetAllSentTransactions() map[string]*data.Transacti
 }
 
 // ExecuteVMQuery -
-func (mock *ElrondChainMock) ExecuteVMQuery(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+func (mock *ElrondChainMock) ExecuteVMQuery(_ context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 	mock.mutState.Lock()
 	defer mock.mutState.Unlock()
 
@@ -101,7 +117,7 @@ func (mock *ElrondChainMock) ExecuteVMQuery(vmRequest *data.VmValueRequest) (*da
 }
 
 // GetAccount -
-func (mock *ElrondChainMock) GetAccount(address erdgoCore.AddressHandler) (*data.Account, error) {
+func (mock *ElrondChainMock) GetAccount(_ context.Context, address erdgoCore.AddressHandler) (*data.Account, error) {
 	mock.mutState.Lock()
 	defer mock.mutState.Unlock()
 
@@ -114,6 +130,22 @@ func (mock *ElrondChainMock) AddRelayer(address erdgoCore.AddressHandler) {
 	defer mock.mutState.Unlock()
 
 	mock.relayers = append(mock.relayers, address.AddressBytes())
+}
+
+// SetLastExecutedEthBatchID -
+func (mock *ElrondChainMock) SetLastExecutedEthBatchID(lastExecutedEthBatchId uint64) {
+	mock.mutState.Lock()
+	defer mock.mutState.Unlock()
+
+	mock.lastExecutedEthBatchId = lastExecutedEthBatchId
+}
+
+// SetLastExecutedEthTxId -
+func (mock *ElrondChainMock) SetLastExecutedEthTxId(lastExecutedEthTxId uint64) {
+	mock.mutState.Lock()
+	defer mock.mutState.Unlock()
+
+	mock.lastExecutedEthTxId = lastExecutedEthTxId
 }
 
 // AddTokensPair -
@@ -162,6 +194,13 @@ func (mock *ElrondChainMock) ProposedTransfer() *ElrondProposedTransfer {
 func (mock *ElrondChainMock) SetPendingBatch(pendingBatch *ElrondPendingBatch) {
 	mock.mutState.Lock()
 	mock.setPendingBatch(pendingBatch)
+	mock.mutState.Unlock()
+}
+
+// AddDepositToCurrentBatch -
+func (mock *ElrondChainMock) AddDepositToCurrentBatch(deposit ElrondDeposit) {
+	mock.mutState.Lock()
+	mock.pendingBatch.ElrondDeposits = append(mock.pendingBatch.ElrondDeposits, deposit)
 	mock.mutState.Unlock()
 }
 

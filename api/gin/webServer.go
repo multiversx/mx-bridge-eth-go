@@ -105,8 +105,9 @@ func (ws *webServer) StartHttpServer() error {
 		return err
 	}
 
-	for _, proc := range processors {
+	for idx, proc := range processors {
 		if check.IfNil(proc) {
+			log.Error("got nil middleware processor, skipping it...", "index", idx)
 			continue
 		}
 
@@ -144,6 +145,10 @@ func (ws *webServer) createGroups() error {
 
 // UpdateFacade will update webServer facade.
 func (ws *webServer) UpdateFacade(facade shared.FacadeHandler) error {
+	if check.IfNil(facade) {
+		return apiErrors.ErrNilFacade
+	}
+
 	ws.Lock()
 	defer ws.Unlock()
 
@@ -233,9 +238,14 @@ func (ws *webServer) createMiddlewareLimiters() ([]elrondShared.MiddlewareProces
 
 func (ws *webServer) sourceLimiterReset(ctx context.Context, reset resetHandler) {
 	betweenResetDuration := time.Second * time.Duration(ws.antiFloodConfig.SameSourceResetIntervalInSec)
+	timer := time.NewTimer(betweenResetDuration)
+	defer timer.Stop()
+
 	for {
+		timer.Reset(betweenResetDuration)
+
 		select {
-		case <-time.After(betweenResetDuration):
+		case <-timer.C:
 			log.Trace("calling reset on WS source limiter")
 			reset.Reset()
 		case <-ctx.Done():
@@ -251,8 +261,11 @@ func (ws *webServer) Close() error {
 		ws.cancelFunc()
 	}
 
+	var err error
 	ws.Lock()
-	err := ws.httpServer.Close()
+	if ws.httpServer != nil {
+		err = ws.httpServer.Close()
+	}
 	ws.Unlock()
 
 	if err != nil {

@@ -52,7 +52,7 @@ func NewNodeGroup(facade shared.FacadeHandler) (*nodeGroup, error) {
 	return ng, nil
 }
 
-// peerInfo returns the information of a provided p2p peer ID
+// statusListMetrics returns a list of available metrics
 func (ng *nodeGroup) statusListMetrics(c *gin.Context) {
 	list := ng.getFacade().GetMetricsList()
 
@@ -66,7 +66,7 @@ func (ng *nodeGroup) statusListMetrics(c *gin.Context) {
 	)
 }
 
-// peerInfo returns the information of a provided p2p peer ID
+// statusMetrics returns the information of a provided metric
 func (ng *nodeGroup) statusMetrics(c *gin.Context) {
 	queryVals := c.Request.URL.Query()
 	params := queryVals[clientQueryParam]

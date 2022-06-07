@@ -7,17 +7,110 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/crypto"
 	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
+	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
 	crypto "github.com/ElrondNetwork/elrond-go-crypto"
+	"github.com/ElrondNetwork/elrond-go/p2p"
+	"github.com/ElrondNetwork/elrond-go/process/mock"
+	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var marshalizer = &testsCommon.MarshalizerMock{}
+
+const fromPeer = elrondCore.PeerID("from-peer")
+const pid = elrondCore.PeerID("pid1")
+
+func TestRelayerMessageHandler_canProcess(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil message should error", func(t *testing.T) {
+		t.Parallel()
+
+		rmh := &relayerMessageHandler{}
+		err := rmh.canProcessMessage(nil, fromPeer)
+		assert.Equal(t, ErrNilMessage, err)
+	})
+
+	t.Run("CanProcessMessageCalled returns error", func(t *testing.T) {
+		t.Parallel()
+
+		providedMessage := &p2pMocks.P2PMessageMock{}
+		expectedErr := errors.New("expected error")
+		rmh := &relayerMessageHandler{
+			antifloodComponents: &factory.AntiFloodComponents{
+				AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
+					CanProcessMessageCalled: func(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
+						return expectedErr
+					},
+				},
+			},
+		}
+		err := rmh.canProcessMessage(providedMessage, fromPeer)
+		assert.True(t, strings.Contains(err.Error(), expectedErr.Error()))
+	})
+
+	t.Run("CanProcessMessagesOnTopicCalled returns error", func(t *testing.T) {
+		t.Parallel()
+
+		providedMessage := &p2pMocks.P2PMessageMock{}
+		expectedErr := errors.New("expected error")
+		rmh := &relayerMessageHandler{
+			antifloodComponents: &factory.AntiFloodComponents{
+				AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
+					CanProcessMessagesOnTopicCalled: func(peer elrondCore.PeerID, topic string, numMessages uint32, totalSize uint64, sequence []byte) error {
+						return expectedErr
+					},
+				},
+			},
+		}
+		err := rmh.canProcessMessage(providedMessage, fromPeer)
+		assert.True(t, strings.Contains(err.Error(), expectedErr.Error()))
+	})
+
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		providedMessage := &p2pMocks.P2PMessageMock{
+			DataField:  []byte("provided"),
+			SeqNoField: []byte("123"),
+			TopicField: "provided-topic",
+			PeerField:  pid,
+		}
+		wasCanProcessCalled := false
+		wasCanProcessOnTopicCalled := false
+		rmh := &relayerMessageHandler{
+			antifloodComponents: &factory.AntiFloodComponents{
+				AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
+					CanProcessMessageCalled: func(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
+						assert.Equal(t, fromPeer, fromConnectedPeer)
+						assert.Equal(t, providedMessage, message)
+						wasCanProcessCalled = true
+						return nil
+					},
+					CanProcessMessagesOnTopicCalled: func(peer elrondCore.PeerID, topic string, numMessages uint32, totalSize uint64, sequence []byte) error {
+						assert.Equal(t, fromPeer, peer)
+						assert.Equal(t, providedMessage.Topic(), topic)
+						assert.Equal(t, uint64(len(providedMessage.DataField)), totalSize)
+						assert.Equal(t, providedMessage.SeqNo(), sequence)
+						wasCanProcessOnTopicCalled = true
+						return nil
+					},
+				},
+			},
+		}
+		err := rmh.canProcessMessage(providedMessage, fromPeer)
+		assert.Nil(t, err)
+		assert.True(t, wasCanProcessCalled)
+		assert.True(t, wasCanProcessOnTopicCalled)
+	})
+}
 
 func TestRelayerMessageHandler_preProcess(t *testing.T) {
 	t.Parallel()
@@ -30,17 +123,34 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 }
 
 func preProcessUnmarshal(t *testing.T) {
+	blackList := make(map[elrondCore.PeerID]string)
 	rmh := &relayerMessageHandler{
 		marshalizer:  &testsCommon.MarshalizerMock{},
 		singleSigner: &cryptoMocks.SingleSignerStub{},
+		antifloodComponents: &factory.AntiFloodComponents{
+			AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
+				BlacklistPeerCalled: func(peer elrondCore.PeerID, reason string, duration time.Duration) {
+					blackList[peer] = reason
+				},
+			},
+		},
 	}
 	p2pmsg := &p2pMocks.P2PMessageMock{
+		PeerField: pid,
 		DataField: []byte("gibberish"),
 	}
 
-	msg, err := rmh.preProcessMessage(p2pmsg)
+	msg, err := rmh.preProcessMessage(p2pmsg, fromPeer)
 	assert.Nil(t, msg)
 	assert.NotNil(t, err)
+
+	assert.Equal(t, 2, len(blackList))
+	reason, ok := blackList[pid]
+	assert.True(t, ok)
+	assert.True(t, strings.Contains(reason, "unmarshalable data"))
+	reason, ok = blackList[fromPeer]
+	assert.True(t, ok)
+	assert.True(t, strings.Contains(reason, "unmarshalable data"))
 }
 
 func preProcessLimits(t *testing.T) {
@@ -83,7 +193,7 @@ func preProcessMessageInvalidLimits(
 		DataField: buff,
 	}
 
-	msg, err := rmh.preProcessMessage(p2pmsg)
+	msg, err := rmh.preProcessMessage(p2pmsg, fromPeer)
 	require.Nil(t, msg)
 	assert.True(t, errors.Is(err, ErrInvalidSize))
 
@@ -107,12 +217,13 @@ func preProcessKeygenFails(t *testing.T) {
 		DataField: buff,
 	}
 
-	msg, err := rmh.preProcessMessage(p2pmsg)
+	msg, err := rmh.preProcessMessage(p2pmsg, fromPeer)
 	assert.Nil(t, msg)
 	assert.Equal(t, expectedErr, err)
 }
 
 func preProcessVerifyFails(t *testing.T) {
+	blackList := make(map[elrondCore.PeerID]string)
 	expectedErr := errors.New("expected error")
 	rmh := &relayerMessageHandler{
 		marshalizer: &testsCommon.MarshalizerMock{},
@@ -122,16 +233,32 @@ func preProcessVerifyFails(t *testing.T) {
 			},
 		},
 		keyGen: &cryptoMocks.KeyGenStub{},
+		antifloodComponents: &factory.AntiFloodComponents{
+			AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
+				BlacklistPeerCalled: func(peer elrondCore.PeerID, reason string, duration time.Duration) {
+					blackList[peer] = reason
+				},
+			},
+		},
 	}
 	_, buff := createSignedMessageAndMarshaledBytes(0)
 
 	p2pmsg := &p2pMocks.P2PMessageMock{
+		PeerField: pid,
 		DataField: buff,
 	}
 
-	msg, err := rmh.preProcessMessage(p2pmsg)
+	msg, err := rmh.preProcessMessage(p2pmsg, fromPeer)
 	assert.Nil(t, msg)
 	assert.Equal(t, expectedErr, err)
+
+	assert.Equal(t, 2, len(blackList))
+	reason, ok := blackList[pid]
+	assert.True(t, ok)
+	assert.True(t, strings.Contains(reason, "unverifiable signature"))
+	reason, ok = blackList[fromPeer]
+	assert.True(t, ok)
+	assert.True(t, strings.Contains(reason, "unverifiable signature"))
 }
 
 func preProcessShouldWork(t *testing.T) {
@@ -159,7 +286,7 @@ func preProcessShouldWork(t *testing.T) {
 		DataField: buff,
 	}
 
-	msg, err := rmh.preProcessMessage(p2pmsg)
+	msg, err := rmh.preProcessMessage(p2pmsg, fromPeer)
 	assert.Equal(t, originalMsg, msg)
 	assert.Nil(t, err)
 	assert.True(t, verifyCalled)

@@ -17,6 +17,5 @@ func CreateUnitStorer(config config.StorageConfig, workingDir string) (core.Stor
 
 	return storageUnit.NewStorageUnitFromConf(
 		factory.GetCacherFromConfig(config.Cache),
-		statusMetricsDbConfig,
-		factory.GetBloomFromConfig(config.Bloom))
+		statusMetricsDbConfig)
 }

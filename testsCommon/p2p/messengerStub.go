@@ -15,8 +15,18 @@ type MessengerStub struct {
 	CreateTopicCalled              func(name string, createChannelForTopic bool) error
 	BroadcastCalled                func(topic string, buff []byte)
 	SendToConnectedPeerCalled      func(topic string, buff []byte, peerID core.PeerID) error
+	SetPeerDenialEvaluatorCalled   func(handler p2p.PeerDenialEvaluator) error
 	ConnectedAddressesCalled       func() []string
 	CloseCalled                    func() error
+}
+
+// SetPeerDenialEvaluator -
+func (stub *MessengerStub) SetPeerDenialEvaluator(handler p2p.PeerDenialEvaluator) error {
+	if stub.SetPeerDenialEvaluatorCalled != nil {
+		return stub.SetPeerDenialEvaluatorCalled(handler)
+	}
+
+	return nil
 }
 
 // ID -

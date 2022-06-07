@@ -1,5 +1,9 @@
 # Elrond<->Eth Bridge
-The relayer code implemented in go and the smart contracts that power the bridge between elrond and eth.
+The relayer code implemented in go that uses the smart contracts and powers the bridge between Elrond and Ethereum.
+
+Smart contracts for both blockchains:
+- https://github.com/ElrondNetwork/sc-bridge-elrond
+- https://github.com/ElrondNetwork/sc-bridge-ethereum-sol
 
 ## Installation and running for the relayer
 
@@ -11,6 +15,11 @@ The `main` branch is the one to use
 
 ### Step 3: configure the relay
 Checkout `config.toml.example` for all the configuration needed:
+
+### Step 4: monitoring your relayer node
+After your node is up and running. You can use relayer's api routes to monitor the existing metrics.
+For the documentation and how to setup swagger. Go to [README.md](api/swagger/README.md)
+
 
 ## Contribution
 Thank you for considering to help out with the source code! We welcome contributions from anyone on the internet, and are grateful for even the smallest of fixes to Elrond!

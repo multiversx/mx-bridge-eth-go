@@ -1,26 +1,53 @@
 package config
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridge"
 	"github.com/ElrondNetwork/elrond-go/config"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator/fetchers"
 )
 
 // Configs is a holder for the relayer configuration parameters
 type Configs struct {
-	GeneralConfig   *Config
-	ApiRoutesConfig *ApiRoutesConfig
-	FlagsConfig     *ContextFlagsConfig
+	GeneralConfig   Config
+	ApiRoutesConfig ApiRoutesConfig
+	FlagsConfig     ContextFlagsConfig
 }
 
 // Config general configuration struct
 type Config struct {
-	Eth          bridge.EthereumConfig
-	Elrond       bridge.ElrondConfig
-	P2P          ConfigP2P
-	StateMachine map[string]ConfigStateMachine
-	Relayer      ConfigRelayer
-	Logs         LogsConfig
-	Antiflood    AntifloodConfig
+	Eth            EthereumConfig
+	Elrond         ElrondConfig
+	P2P            ConfigP2P
+	StateMachine   map[string]ConfigStateMachine
+	Relayer        ConfigRelayer
+	Logs           LogsConfig
+	Antiflood      AntifloodConfig
+	BatchValidator BatchValidatorConfig
+}
+
+// EthereumConfig represents the Ethereum Config parameters
+type EthereumConfig struct {
+	NetworkAddress                     string
+	MultisigContractAddress            string
+	SafeContractAddress                string
+	PrivateKeyFile                     string
+	IntervalToResendTxsInSeconds       uint64
+	GasLimitBase                       uint64
+	GasLimitForEach                    uint64
+	GasStation                         GasStationConfig
+	MaxRetriesOnQuorumReached          uint64
+	IntervalToWaitForTransferInSeconds uint64
+	MaxBlocksDelta                     uint64
+}
+
+// GasStationConfig represents the configuration for the gas station handler
+type GasStationConfig struct {
+	Enabled                  bool
+	URL                      string
+	PollingIntervalInSeconds int
+	RequestTimeInSeconds     int
+	MaximumAllowedGasPrice   int
+	GasPriceSelector         string
+	GasPriceMultiplier       int
 }
 
 // ConfigP2P configuration for the P2P communication
@@ -29,6 +56,7 @@ type ConfigP2P struct {
 	Seed            string
 	InitialPeerList []string
 	ProtocolID      string
+	AntifloodConfig config.AntifloodConfig
 }
 
 // ConfigRelayer configuration for general relayer configuration
@@ -40,14 +68,8 @@ type ConfigRelayer struct {
 
 // ConfigStateMachine the configuration for the state machine
 type ConfigStateMachine struct {
-	StepDurationInMillis uint64
-	Steps                []StepConfig
-}
-
-// StepConfig defines a step configuration
-type StepConfig struct {
-	Name             string
-	DurationInMillis uint64
+	StepDurationInMillis       uint64
+	IntervalForLeaderInSeconds uint64
 }
 
 // ContextFlagsConfig the configuration for flags
@@ -74,6 +96,13 @@ type WebServerAntifloodConfig struct {
 type AntifloodConfig struct {
 	Enabled   bool
 	WebServer WebServerAntifloodConfig
+}
+
+// BatchValidatorConfig represents the configuration for the batch validator
+type BatchValidatorConfig struct {
+	Enabled              bool
+	URL                  string
+	RequestTimeInSeconds int
 }
 
 // ApiRoutesConfig holds the configuration related to Rest API routes
@@ -107,4 +136,63 @@ type LogsConfig struct {
 // RoleProviderConfig is the configuration for the role provider component
 type RoleProviderConfig struct {
 	PollingIntervalInMillis uint64
+}
+
+// ElrondConfig represents the Elrond Config parameters
+type ElrondConfig struct {
+	NetworkAddress                  string
+	MultisigContractAddress         string
+	PrivateKeyFile                  string
+	IntervalToResendTxsInSeconds    uint64
+	GasMap                          ElrondGasMapConfig
+	MaxRetriesOnQuorumReached       uint64
+	MaxRetriesOnWasTransferProposed uint64
+	ProxyCacherExpirationSeconds    uint64
+	ProxyRestAPIEntityType          string
+	ProxyMaxNoncesDelta             int
+	ProxyFinalityCheck              bool
+}
+
+// ElrondGasMapConfig represents the gas limits for Elrond operations
+type ElrondGasMapConfig struct {
+	Sign                   uint64
+	ProposeTransferBase    uint64
+	ProposeTransferForEach uint64
+	ProposeStatusBase      uint64
+	ProposeStatusForEach   uint64
+	PerformActionBase      uint64
+	PerformActionForEach   uint64
+}
+
+// PriceNotifierConfig price notifier configuration struct
+type PriceNotifierConfig struct {
+	GeneralConfig       GeneralNotifierConfig
+	Pairs               []Pair
+	MexTokenIDsMappings map[string]fetchers.MaiarTokensPair
+}
+
+// GeneralNotifierConfig general price notifier configuration struct
+type GeneralNotifierConfig struct {
+	NetworkAddress               string
+	PrivateKeyFile               string
+	IntervalToResendTxsInSeconds uint64
+	ProxyCacherExpirationSeconds uint64
+	AggregatorContractAddress    string
+	BaseGasLimit                 uint64
+	GasLimitForEach              uint64
+	MinResultsNum                int
+	PollIntervalInSeconds        uint64
+	AutoSendIntervalInSeconds    uint64
+	ProxyRestAPIEntityType       string
+	ProxyMaxNoncesDelta          int
+	ProxyFinalityCheck           bool
+}
+
+// Pair parameters for a pair
+type Pair struct {
+	Base                      string
+	Quote                     string
+	PercentDifferenceToNotify uint32
+	TrimPrecision             float64
+	DenominationFactor        uint64
 }
