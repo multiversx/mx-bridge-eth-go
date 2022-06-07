@@ -32,6 +32,8 @@
     ProxyRestAPIEntityType = "observer"
     ProxyFinalityCheck = true
     ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
+    BlacklistAddresses = []
+    RecoverAddress = ""
     [Elrond.GasMap]
         Sign = 8000000
         ProposeTransferBase = 11000000
@@ -40,9 +42,6 @@
         ProposeStatusForEach = 7000000
         PerformActionBase = 40000000
         PerformActionForEach = 5500000
-    BlackList = []
-    RecoverAddress = ""
-
 [P2P]
     Port = "10010"
     Seed = ""

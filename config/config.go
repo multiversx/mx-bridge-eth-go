@@ -3,7 +3,6 @@ package config
 import (
 	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator/fetchers"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 )
 
 // Configs is a holder for the relayer configuration parameters
@@ -153,7 +152,7 @@ type ElrondConfig struct {
 	ProxyMaxNoncesDelta             int
 	ProxyFinalityCheck              bool
 	BlacklistAddresses              []string
-	RecoverAddress                  core.AddressHandler
+	RecoverAddress                  string
 }
 
 // ElrondGasMapConfig represents the gas limits for Elrond operations

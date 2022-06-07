@@ -21,6 +21,7 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -46,7 +47,7 @@ type ClientArgs struct {
 	StatusHandler                bridgeCore.StatusHandler
 	AllowDelta                   uint64
 	BlacklistAddresses           []string
-	RecoverAddress               core.AddressHandler
+	RecoverAddress               string
 }
 
 // client represents the Elrond Client implementation
@@ -63,7 +64,7 @@ type client struct {
 	statusHandler             bridgeCore.StatusHandler
 	allowDelta                uint64
 	blacklistAddresses        []string
-	recoverAddress            core.AddressHandler
+	recoverAddress            common.Address
 
 	lastNonce                uint64
 	retriesAvailabilityCheck uint64
@@ -127,7 +128,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		statusHandler:             args.StatusHandler,
 		allowDelta:                args.AllowDelta,
 		blacklistAddresses:        args.BlacklistAddresses,
-		recoverAddress:            args.RecoverAddress,
+		recoverAddress:            common.HexToAddress(args.RecoverAddress),
 	}
 
 	c.log.Info("NewElrondClient",
@@ -243,8 +244,8 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 
 		for _, blacklistAddress := range c.blacklistAddresses {
 			if deposit.DisplayableFrom == blacklistAddress {
-				deposit.ToBytes = c.recoverAddress.AddressBytes()
-				deposit.DisplayableTo = c.addressPublicKeyConverter.ToHexStringWithPrefix(c.recoverAddress.AddressBytes())
+				deposit.ToBytes = c.recoverAddress.Bytes()
+				deposit.DisplayableTo = c.addressPublicKeyConverter.ToHexStringWithPrefix(c.recoverAddress.Bytes())
 			}
 		}
 
