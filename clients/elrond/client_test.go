@@ -35,7 +35,6 @@ var pausedBytes = []byte{1}
 func createMockClientArgs() ClientArgs {
 	privateKey, _ := testKeyGen.PrivateKeyFromByteArray(bytes.Repeat([]byte{1}, 32))
 	multisigContractAddress, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
-	recoverAddress := data.NewAddressFromBytes(bytes.Repeat([]byte{9}, 20))
 	return ClientArgs{
 		GasMapConfig: config.ElrondGasMapConfig{
 			Sign:                   10,
@@ -60,7 +59,7 @@ func createMockClientArgs() ClientArgs {
 		StatusHandler:      &testsCommon.StatusHandlerStub{},
 		AllowDelta:         5,
 		BlacklistAddresses: make([]string, 0),
-		RecoverAddress:     recoverAddress,
+		RecoverAddress:     "0909090909090909090909090909090909090909",
 	}
 }
 
@@ -387,7 +386,7 @@ func TestClient_GetPending(t *testing.T) {
 		blacklistAddresses = append(blacklistAddresses, "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn")
 		args.BlacklistAddresses = blacklistAddresses
 		recoverAddressBytes := bytes.Repeat([]byte{9}, 20)
-		args.RecoverAddress = data.NewAddressFromBytes(recoverAddressBytes)
+		args.RecoverAddress = "0909090909090909090909090909090909090909"
 
 		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
 		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
