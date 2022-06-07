@@ -298,6 +298,8 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 		RoleProvider:                 components.elrondRoleProvider,
 		StatusHandler:                args.ElrondClientStatusHandler,
 		AllowDelta:                   uint64(elrondConfigs.ProxyMaxNoncesDelta),
+		BlacklistAddresses:           elrondConfigs.BlacklistAddresses,
+		RecoverAddress:               elrondConfigs.RecoverAddress,
 	}
 
 	components.elrondClient, err = elrond.NewClient(clientArgs)

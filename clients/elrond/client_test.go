@@ -35,7 +35,7 @@ var pausedBytes = []byte{1}
 func createMockClientArgs() ClientArgs {
 	privateKey, _ := testKeyGen.PrivateKeyFromByteArray(bytes.Repeat([]byte{1}, 32))
 	multisigContractAddress, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
-
+	recoverAddress := data.NewAddressFromBytes(bytes.Repeat([]byte{9}, 20))
 	return ClientArgs{
 		GasMapConfig: config.ElrondGasMapConfig{
 			Sign:                   10,
@@ -56,9 +56,11 @@ func createMockClientArgs() ClientArgs {
 				return append([]byte("converted "), sourceBytes...), nil
 			},
 		},
-		RoleProvider:  &roleProviders.ElrondRoleProviderStub{},
-		StatusHandler: &testsCommon.StatusHandlerStub{},
-		AllowDelta:    5,
+		RoleProvider:       &roleProviders.ElrondRoleProviderStub{},
+		StatusHandler:      &testsCommon.StatusHandlerStub{},
+		AllowDelta:         5,
+		BlacklistAddresses: make([]string, 0),
+		RecoverAddress:     recoverAddress,
 	}
 }
 
@@ -348,6 +350,65 @@ func TestClient_GetPending(t *testing.T) {
 					Nonce:               5001,
 					ToBytes:             bytes.Repeat([]byte{5}, 20),
 					DisplayableTo:       "0x0505050505050505050505050505050505050505",
+					FromBytes:           bytes.Repeat([]byte{4}, 32),
+					DisplayableFrom:     "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn",
+					TokenBytes:          tokenBytes2,
+					ConvertedTokenBytes: append([]byte("converted_"), tokenBytes2...),
+					DisplayableToken:    string(tokenBytes2),
+					Amount:              big.NewInt(20000),
+				},
+			},
+			Statuses: make([]byte, 2),
+		}
+
+		c, _ := NewClient(args)
+		batch, err := c.GetPending(context.Background())
+		assert.Nil(t, err)
+
+		args.Log.Info("expected batch\n" + expectedBatch.String())
+		args.Log.Info("batch\n" + batch.String())
+
+		assert.Equal(t, expectedBatch, batch)
+		assert.Nil(t, err)
+	})
+	t.Run("should create pending batch", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.TokensMapper = &bridgeTests.TokensMapperStub{
+			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
+				return append([]byte("converted_"), sourceBytes...), nil
+			},
+		}
+		args.Proxy = createMockProxy(createMockPendingBatchBytes(2))
+
+		blacklistAddresses := make([]string, 0)
+		blacklistAddresses = append(blacklistAddresses, "erd1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsl6e0p7")
+		blacklistAddresses = append(blacklistAddresses, "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn")
+		args.BlacklistAddresses = blacklistAddresses
+		recoverAddressBytes := bytes.Repeat([]byte{9}, 20)
+		args.RecoverAddress = data.NewAddressFromBytes(recoverAddressBytes)
+
+		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
+		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
+		expectedBatch := &clients.TransferBatch{
+			ID: 44562,
+			Deposits: []*clients.DepositTransfer{
+				{
+					Nonce:               5000,
+					ToBytes:             recoverAddressBytes,
+					DisplayableTo:       "0x0909090909090909090909090909090909090909",
+					FromBytes:           bytes.Repeat([]byte{1}, 32),
+					DisplayableFrom:     "erd1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsl6e0p7",
+					TokenBytes:          tokenBytes1,
+					ConvertedTokenBytes: append([]byte("converted_"), tokenBytes1...),
+					DisplayableToken:    string(tokenBytes1),
+					Amount:              big.NewInt(10000),
+				},
+				{
+					Nonce:               5001,
+					ToBytes:             recoverAddressBytes,
+					DisplayableTo:       "0x0909090909090909090909090909090909090909",
 					FromBytes:           bytes.Repeat([]byte{4}, 32),
 					DisplayableFrom:     "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn",
 					TokenBytes:          tokenBytes2,

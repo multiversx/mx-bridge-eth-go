@@ -45,6 +45,8 @@ type ClientArgs struct {
 	RoleProvider                 roleProvider
 	StatusHandler                bridgeCore.StatusHandler
 	AllowDelta                   uint64
+	BlacklistAddresses           []string
+	RecoverAddress               core.AddressHandler
 }
 
 // client represents the Elrond Client implementation
@@ -60,6 +62,8 @@ type client struct {
 	addressPublicKeyConverter bridgeCore.AddressConverter
 	statusHandler             bridgeCore.StatusHandler
 	allowDelta                uint64
+	blacklistAddresses        []string
+	recoverAddress            core.AddressHandler
 
 	lastNonce                uint64
 	retriesAvailabilityCheck uint64
@@ -122,6 +126,8 @@ func NewClient(args ClientArgs) (*client, error) {
 		tokensMapper:              args.TokensMapper,
 		statusHandler:             args.StatusHandler,
 		allowDelta:                args.AllowDelta,
+		blacklistAddresses:        args.BlacklistAddresses,
+		recoverAddress:            args.RecoverAddress,
 	}
 
 	c.log.Info("NewElrondClient",
@@ -233,6 +239,13 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			TokenBytes:       responseData[i+4],
 			DisplayableToken: string(responseData[i+4]),
 			Amount:           amount,
+		}
+
+		for _, blacklistAddress := range c.blacklistAddresses {
+			if deposit.DisplayableFrom == blacklistAddress {
+				deposit.ToBytes = c.recoverAddress.AddressBytes()
+				deposit.DisplayableTo = c.addressPublicKeyConverter.ToHexStringWithPrefix(c.recoverAddress.AddressBytes())
+			}
 		}
 
 		storedConvertedTokenBytes, exists := cachedTokens[deposit.DisplayableToken]

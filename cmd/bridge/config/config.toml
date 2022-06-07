@@ -40,6 +40,8 @@
         ProposeStatusForEach = 7000000
         PerformActionBase = 40000000
         PerformActionForEach = 5500000
+    BlackList = []
+    RecoverAddress = ""
 
 [P2P]
     Port = "10010"
