@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ElrondNetwork/elrond-eth-bridge/status"
@@ -32,7 +32,7 @@ func createMockEthElrondBridgeArgs() ArgsEthereumToElrondBridge {
 
 	cfg := config.Config{
 		Eth: config.EthereumConfig{
-			Chain:                        clients.Ethereum,
+			Chain:                        chain.Ethereum,
 			NetworkAddress:               "http://127.0.0.1:8545",
 			SafeContractAddress:          "5DdDe022a65F8063eE9adaC54F359CBF46166068",
 			PrivateKeyFile:               "testdata/grace.sk",
@@ -212,7 +212,7 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 
 		components, err := NewEthElrondBridgeComponents(args)
 		assert.True(t, errors.Is(err, errMissingConfig))
-		assert.True(t, strings.Contains(err.Error(), ethToElrondName(args.Configs.GeneralConfig.Eth.Chain)))
+		assert.True(t, strings.Contains(err.Error(), args.Configs.GeneralConfig.Eth.Chain.EthToElrondName()))
 		assert.Nil(t, components)
 	})
 	t.Run("invalid time for bootstrap", func(t *testing.T) {

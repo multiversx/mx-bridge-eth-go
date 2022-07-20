@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
 	"github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/aggregator/fetchers"
 )
@@ -27,7 +27,7 @@ type Config struct {
 
 // EthereumConfig represents the Ethereum Config parameters
 type EthereumConfig struct {
-	Chain                              clients.Chain
+	Chain                              chain.Chain
 	NetworkAddress                     string
 	MultisigContractAddress            string
 	SafeContractAddress                string

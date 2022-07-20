@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/stretchr/testify/assert"
@@ -22,8 +23,8 @@ import (
 
 func createMockArgsBatchValidator() ArgsBatchValidator {
 	return ArgsBatchValidator{
-		SourceChain:      clients.Ethereum,
-		DestinationChain: clients.Elrond,
+		SourceChain:      chain.Chain(chain.Ethereum),
+		DestinationChain: chain.Elrond,
 		RequestURL:       "",
 		RequestTime:      time.Second,
 	}
