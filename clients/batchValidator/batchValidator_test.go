@@ -99,7 +99,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 
 				writer.WriteHeader(http.StatusBadRequest)
@@ -128,7 +128,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		}
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 
 				writer.WriteHeader(http.StatusBadRequest)
@@ -154,7 +154,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 
 				writer.WriteHeader(http.StatusForbidden)
@@ -178,7 +178,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 
 				writer.WriteHeader(http.StatusOK)
@@ -203,7 +203,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 
 				writer.WriteHeader(http.StatusOK)
@@ -228,7 +228,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 			},
 		}
@@ -253,7 +253,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 
 				defer func() {

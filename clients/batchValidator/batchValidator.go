@@ -40,7 +40,7 @@ func NewBatchValidator(args ArgsBatchValidator) (*batchValidator, error) {
 	}
 
 	bv := &batchValidator{
-		requestURL:  fmt.Sprintf("%s/%s/%s", args.RequestURL, args.SourceChain, args.DestinationChain),
+		requestURL:  fmt.Sprintf("%s/%s/%s", args.RequestURL, args.SourceChain.ToLower(), args.DestinationChain.ToLower()),
 		requestTime: args.RequestTime,
 		httpClient:  http.DefaultClient,
 	}
