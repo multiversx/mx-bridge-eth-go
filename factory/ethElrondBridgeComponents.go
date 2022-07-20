@@ -121,8 +121,10 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
+	ethToElrondName := evmCompatibleChain.EthToElrondName()
+	baseLogId := evmCompatibleChain.BaseLogId()
 	components := &ethElrondBridgeComponents{
-		baseLogger:           core.NewLoggerWithIdentifier(logger.GetOrCreate(evmCompatibleChain.EthToElrondName()), evmCompatibleChain.BaseLogId()),
+		baseLogger:           core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
 		messenger:            args.Messenger,
 		statusStorer:         args.StatusStorer,
 		closableHandlers:     make([]io.Closer, 0),
@@ -335,6 +337,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	if err != nil {
 		return err
 	}
+
 	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
 	broadcasterLogId := evmCompatibleChain.BroadcasterLogId()
 	ethToElrondName := evmCompatibleChain.EthToElrondName()

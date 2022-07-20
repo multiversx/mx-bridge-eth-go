@@ -23,7 +23,7 @@ import (
 
 func createMockArgsBatchValidator() ArgsBatchValidator {
 	return ArgsBatchValidator{
-		SourceChain:      chain.Chain(chain.Ethereum),
+		SourceChain:      chain.Ethereum,
 		DestinationChain: chain.Elrond,
 		RequestURL:       "",
 		RequestTime:      time.Second,
