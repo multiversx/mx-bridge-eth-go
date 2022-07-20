@@ -50,12 +50,12 @@ func NewBatchValidator(args ArgsBatchValidator) (*batchValidator, error) {
 
 func checkArgs(args ArgsBatchValidator) error {
 	switch args.SourceChain {
-	case clients.Ethereum, clients.Elrond:
+	case clients.Ethereum, clients.Bsc, clients.Elrond:
 	default:
 		return fmt.Errorf("%w: %q", clients.ErrInvalidValue, args.SourceChain)
 	}
 	switch args.DestinationChain {
-	case clients.Ethereum, clients.Elrond:
+	case clients.Ethereum, clients.Bsc, clients.Elrond:
 	default:
 		return fmt.Errorf("%w: %q", clients.ErrInvalidValue, args.DestinationChain)
 	}

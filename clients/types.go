@@ -6,4 +6,5 @@ type Chain string
 const (
 	Elrond   Chain = "elrond"
 	Ethereum Chain = "ethereum"
+	Bsc      Chain = "bsc"
 )

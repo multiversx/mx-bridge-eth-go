@@ -51,15 +51,6 @@ const (
 	minTimeForBootstrap     = time.Millisecond * 100
 	minTimeBeforeRepeatJoin = time.Second * 30
 	pollingDurationOnError  = time.Second * 5
-	ethToElrondName         = "EthToElrond"
-	elrondToEthName         = "ElrondToEth"
-	baseLogId               = "EthElrond-Base"
-	elrondClientLogId       = "EthElrond-ElrondClient"
-	elrondDataGetterLogId   = "EthElrond-ElrondDataGetter"
-	ethClientLogId          = "EthElrond-EthClient"
-	elrondRoleProviderLogId = "EthElrond-ElrondRoleProvider"
-	ethRoleProviderLogId    = "EthElrond-EthRoleProvider"
-	broadcasterLogId        = "EthElrond-Broadcaster"
 )
 
 var suite = ed25519.NewEd25519()
@@ -128,9 +119,9 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 	if err != nil {
 		return nil, err
 	}
-
+	chain := args.Configs.GeneralConfig.Eth.Chain
 	components := &ethElrondBridgeComponents{
-		baseLogger:           core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
+		baseLogger:           core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName(chain)), baseLogId(chain)),
 		messenger:            args.Messenger,
 		statusStorer:         args.StatusStorer,
 		closableHandlers:     make([]io.Closer, 0),
@@ -155,7 +146,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
-	err = components.createDataGetter()
+	err = components.createDataGetter(args)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +176,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
-	err = components.createEthereumToElrondStateMachine()
+	err = components.createEthereumToElrondStateMachine(args)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +186,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
-	err = components.createElrondToEthereumStateMachine()
+	err = components.createElrondToEthereumStateMachine(args)
 	if err != nil {
 		return nil, err
 	}
@@ -266,16 +257,17 @@ func (components *ethElrondBridgeComponents) createElrondKeysAndAddresses(elrond
 	return nil
 }
 
-func (components *ethElrondBridgeComponents) createDataGetter() error {
-	args := elrond.ArgsDataGetter{
+func (components *ethElrondBridgeComponents) createDataGetter(args ArgsEthereumToElrondBridge) error {
+	chain := args.Configs.GeneralConfig.Eth.Chain
+	argsDataGetter := elrond.ArgsDataGetter{
 		MultisigContractAddress: components.elrondMultisigContractAddress,
 		RelayerAddress:          components.elrondRelayerAddress,
 		Proxy:                   components.proxy,
-		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondDataGetterLogId), elrondDataGetterLogId),
+		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondDataGetterLogId(chain)), elrondDataGetterLogId(chain)),
 	}
 
 	var err error
-	components.dataGetter, err = elrond.NewDataGetter(args)
+	components.dataGetter, err = elrond.NewDataGetter(argsDataGetter)
 
 	return err
 }
@@ -286,11 +278,12 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 	if err != nil {
 		return err
 	}
+	chain := args.Configs.GeneralConfig.Eth.Chain
 
 	clientArgs := elrond.ClientArgs{
 		GasMapConfig:                 elrondConfigs.GasMap,
 		Proxy:                        args.Proxy,
-		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondClientLogId), elrondClientLogId),
+		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondClientLogId(chain)), elrondClientLogId(chain)),
 		RelayerPrivateKey:            components.elrondRelayerPrivateKey,
 		MultisigContractAddress:      components.elrondMultisigContractAddress,
 		IntervalToResendTxsInSeconds: elrondConfigs.IntervalToResendTxsInSeconds,
@@ -339,16 +332,16 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	if err != nil {
 		return err
 	}
-
+	chain := args.Configs.GeneralConfig.Eth.Chain
 	argsBroadcaster := p2p.ArgsBroadcaster{
 		Messenger:           args.Messenger,
-		Log:                 core.NewLoggerWithIdentifier(logger.GetOrCreate(broadcasterLogId), broadcasterLogId),
+		Log:                 core.NewLoggerWithIdentifier(logger.GetOrCreate(broadcasterLogId(chain)), broadcasterLogId(chain)),
 		ElrondRoleProvider:  components.elrondRoleProvider,
 		SignatureProcessor:  components.ethereumRoleProvider,
 		KeyGen:              keyGen,
 		SingleSigner:        singleSigner,
 		PrivateKey:          components.elrondRelayerPrivateKey,
-		Name:                ethToElrondName,
+		Name:                ethToElrondName(chain),
 		AntifloodComponents: antifloodComponents,
 	}
 
@@ -391,7 +384,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 	argsEthClient := ethereum.ArgsEthereumClient{
 		ClientWrapper:           args.ClientWrapper,
 		Erc20ContractsHandler:   args.Erc20ContractsHolder,
-		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
+		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId(chain)), ethClientLogId(chain)),
 		AddressConverter:        components.addressConverter,
 		Broadcaster:             components.broadcaster,
 		PrivateKey:              privateKey,
@@ -411,7 +404,8 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 
 func (components *ethElrondBridgeComponents) createElrondRoleProvider(args ArgsEthereumToElrondBridge) error {
 	configs := args.Configs.GeneralConfig
-	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondRoleProviderLogId), elrondRoleProviderLogId)
+	chain := args.Configs.GeneralConfig.Eth.Chain
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondRoleProviderLogId(chain)), elrondRoleProviderLogId(chain))
 
 	argsRoleProvider := roleProviders.ArgsElrondRoleProvider{
 		DataGetter: components.dataGetter,
@@ -445,8 +439,8 @@ func (components *ethElrondBridgeComponents) createElrondRoleProvider(args ArgsE
 
 func (components *ethElrondBridgeComponents) createEthereumRoleProvider(args ArgsEthereumToElrondBridge) error {
 	configs := args.Configs.GeneralConfig
-
-	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethRoleProviderLogId), ethRoleProviderLogId)
+	chain := args.Configs.GeneralConfig.Eth.Chain
+	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethRoleProviderLogId(chain)), ethRoleProviderLogId(chain))
 	argsRoleProvider := roleProviders.ArgsEthereumRoleProvider{
 		EthereumChainInteractor: args.ClientWrapper,
 		Log:                     log,
@@ -460,7 +454,7 @@ func (components *ethElrondBridgeComponents) createEthereumRoleProvider(args Arg
 
 	argsPollingHandler := polling.ArgsPollingHandler{
 		Log:              log,
-		Name:             "Ethereum role provider",
+		Name:             string(chain + " role provider"),
 		PollingInterval:  time.Duration(configs.Relayer.RoleProvider.PollingIntervalInMillis) * time.Millisecond,
 		PollingWhenError: pollingDurationOnError,
 		Executor:         components.ethereumRoleProvider,
@@ -478,6 +472,8 @@ func (components *ethElrondBridgeComponents) createEthereumRoleProvider(args Arg
 }
 
 func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args ArgsEthereumToElrondBridge) error {
+	chain := args.Configs.GeneralConfig.Eth.Chain
+	ethToElrondName := ethToElrondName(chain)
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
 
 	configs, found := args.Configs.GeneralConfig.StateMachine[ethToElrondName]
@@ -513,7 +509,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	batchValidator, err := components.createBatchValidator(clients.Ethereum, clients.Elrond, args.Configs.GeneralConfig.BatchValidator)
+	batchValidator, err := components.createBatchValidator(args.Configs.GeneralConfig.Eth.Chain, clients.Elrond, args.Configs.GeneralConfig.BatchValidator)
 	if err != nil {
 		return err
 	}
@@ -546,6 +542,8 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 }
 
 func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args ArgsEthereumToElrondBridge) error {
+	chain := args.Configs.GeneralConfig.Eth.Chain
+	elrondToEthName := elrondToEthName(chain)
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondToEthName), elrondToEthName)
 
 	configs, found := args.Configs.GeneralConfig.StateMachine[elrondToEthName]
@@ -580,7 +578,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 
 	timeForWaitOnEthereum := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	batchValidator, err := components.createBatchValidator(clients.Elrond, clients.Ethereum, args.Configs.GeneralConfig.BatchValidator)
+	batchValidator, err := components.createBatchValidator(clients.Elrond, args.Configs.GeneralConfig.Eth.Chain, args.Configs.GeneralConfig.BatchValidator)
 	if err != nil {
 		return err
 	}
@@ -665,7 +663,9 @@ func (components *ethElrondBridgeComponents) createBatchValidator(sourceChain cl
 	return batchValidator, err
 }
 
-func (components *ethElrondBridgeComponents) createEthereumToElrondStateMachine() error {
+func (components *ethElrondBridgeComponents) createEthereumToElrondStateMachine(args ArgsEthereumToElrondBridge) error {
+	chain := args.Configs.GeneralConfig.Eth.Chain
+	ethToElrondName := ethToElrondName(chain)
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
 
 	argsStateMachine := stateMachine.ArgsStateMachine{
@@ -684,7 +684,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondStateMachine(
 
 	argsPollingHandler := polling.ArgsPollingHandler{
 		Log:              log,
-		Name:             "Eth->Elrond State machine",
+		Name:             ethToElrondName + " State machine",
 		PollingInterval:  components.ethToElrondStepDuration,
 		PollingWhenError: pollingDurationOnError,
 		Executor:         components.ethToElrondStateMachine,
@@ -701,7 +701,9 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondStateMachine(
 	return nil
 }
 
-func (components *ethElrondBridgeComponents) createElrondToEthereumStateMachine() error {
+func (components *ethElrondBridgeComponents) createElrondToEthereumStateMachine(args ArgsEthereumToElrondBridge) error {
+	chain := args.Configs.GeneralConfig.Eth.Chain
+	elrondToEthName := elrondToEthName(chain)
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondToEthName), elrondToEthName)
 
 	argsStateMachine := stateMachine.ArgsStateMachine{
@@ -720,7 +722,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumStateMachine(
 
 	argsPollingHandler := polling.ArgsPollingHandler{
 		Log:              log,
-		Name:             "Elrond->Eth State machine",
+		Name:             elrondToEthName + " State machine",
 		PollingInterval:  components.elrondToEthStepDuration,
 		PollingWhenError: pollingDurationOnError,
 		Executor:         components.elrondToEthStateMachine,
