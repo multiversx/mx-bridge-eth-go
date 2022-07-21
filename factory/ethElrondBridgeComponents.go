@@ -447,7 +447,6 @@ func (components *ethElrondBridgeComponents) createElrondRoleProvider(args ArgsE
 
 func (components *ethElrondBridgeComponents) createEthereumRoleProvider(args ArgsEthereumToElrondBridge) error {
 	configs := args.Configs.GeneralConfig
-	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
 	ethRoleProviderLogId := components.evmCompatibleChain.EvmCompatibleChainRoleProviderLogId()
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethRoleProviderLogId), ethRoleProviderLogId)
 	argsRoleProvider := roleProviders.ArgsEthereumRoleProvider{
@@ -463,7 +462,7 @@ func (components *ethElrondBridgeComponents) createEthereumRoleProvider(args Arg
 
 	argsPollingHandler := polling.ArgsPollingHandler{
 		Log:              log,
-		Name:             string(evmCompatibleChain) + " role provider",
+		Name:             string(components.evmCompatibleChain) + " role provider",
 		PollingInterval:  time.Duration(configs.Relayer.RoleProvider.PollingIntervalInMillis) * time.Millisecond,
 		PollingWhenError: pollingDurationOnError,
 		Executor:         components.ethereumRoleProvider,
@@ -517,7 +516,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	batchValidator, err := components.createBatchValidator(args.Configs.GeneralConfig.Eth.Chain, chain.Elrond, args.Configs.GeneralConfig.BatchValidator)
+	batchValidator, err := components.createBatchValidator(components.evmCompatibleChain, chain.Elrond, args.Configs.GeneralConfig.BatchValidator)
 	if err != nil {
 		return err
 	}
@@ -585,7 +584,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 
 	timeForWaitOnEthereum := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	batchValidator, err := components.createBatchValidator(chain.Elrond, args.Configs.GeneralConfig.Eth.Chain, args.Configs.GeneralConfig.BatchValidator)
+	batchValidator, err := components.createBatchValidator(chain.Elrond, components.evmCompatibleChain, args.Configs.GeneralConfig.BatchValidator)
 	if err != nil {
 		return err
 	}
