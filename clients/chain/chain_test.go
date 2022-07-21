@@ -7,13 +7,13 @@ import (
 )
 
 func Test_ethToElrondName(t *testing.T) {
-	assert.Equal(t, Ethereum.EthToElrondName(), "EthereumToElrond")
-	assert.Equal(t, Bsc.EthToElrondName(), "BscToElrond")
+	assert.Equal(t, Ethereum.EvmCompatibleChainToElrondName(), "EthereumToElrond")
+	assert.Equal(t, Bsc.EvmCompatibleChainToElrondName(), "BscToElrond")
 }
 
 func Test_elrondToEthName(t *testing.T) {
-	assert.Equal(t, Ethereum.ElrondToEthName(), "ElrondToEthereum")
-	assert.Equal(t, Bsc.ElrondToEthName(), "ElrondToBsc")
+	assert.Equal(t, Ethereum.ElrondToEvmCompatibleChainName(), "ElrondToEthereum")
+	assert.Equal(t, Bsc.ElrondToEvmCompatibleChainName(), "ElrondToBsc")
 }
 
 func Test_baseLogId(t *testing.T) {
@@ -32,8 +32,8 @@ func Test_elrondDataGetterLogId(t *testing.T) {
 }
 
 func Test_ethClientLogId(t *testing.T) {
-	assert.Equal(t, Ethereum.EthClientLogId(), "EthereumElrond-EthereumClient")
-	assert.Equal(t, Bsc.EthClientLogId(), "BscElrond-BscClient")
+	assert.Equal(t, Ethereum.EvmCompatibleChainClientLogId(), "EthereumElrond-EthereumClient")
+	assert.Equal(t, Bsc.EvmCompatibleChainClientLogId(), "BscElrond-BscClient")
 }
 
 func Test_elrondRoleProviderLogId(t *testing.T) {
@@ -42,8 +42,8 @@ func Test_elrondRoleProviderLogId(t *testing.T) {
 }
 
 func Test_ethRoleProviderLogId(t *testing.T) {
-	assert.Equal(t, Ethereum.EthRoleProviderLogId(), "EthereumElrond-EthereumRoleProvider")
-	assert.Equal(t, Bsc.EthRoleProviderLogId(), "BscElrond-BscRoleProvider")
+	assert.Equal(t, Ethereum.EvmCompatibleChainRoleProviderLogId(), "EthereumElrond-EthereumRoleProvider")
+	assert.Equal(t, Bsc.EvmCompatibleChainRoleProviderLogId(), "BscElrond-BscRoleProvider")
 }
 
 func Test_broadcasterLogId(t *testing.T) {

@@ -6,24 +6,29 @@ import (
 )
 
 const (
-	ethToElrondNameTemplate         = "%sToElrond"
-	elrondToEthNameTemplate         = "ElrondTo%s"
-	baseLogIdTemplate               = "%sElrond-Base"
-	elrondClientLogIdTemplate       = "%sElrond-ElrondClient"
-	elrondDataGetterLogIdTemplate   = "%sElrond-ElrondDataGetter"
-	ethClientLogIdTemplate          = "%sElrond-%sClient"
-	elrondRoleProviderLogIdTemplate = "%sElrond-ElrondRoleProvider"
-	ethRoleProviderLogIdTemplate    = "%sElrond-%sRoleProvider"
-	broadcasterLogIdTemplate        = "%sElrond-Broadcaster"
+	evmCompatibleChainToElrondNameTemplate      = "%sToElrond"
+	elrondToEvmCompatibleChainNameTemplate      = "ElrondTo%s"
+	baseLogIdTemplate                           = "%sElrond-Base"
+	elrondClientLogIdTemplate                   = "%sElrond-ElrondClient"
+	elrondDataGetterLogIdTemplate               = "%sElrond-ElrondDataGetter"
+	evmCompatibleChainClientLogIdTemplate       = "%sElrond-%sClient"
+	elrondRoleProviderLogIdTemplate             = "%sElrond-ElrondRoleProvider"
+	evmCompatibleChainRoleProviderLogIdTemplate = "%sElrond-%sRoleProvider"
+	broadcasterLogIdTemplate                    = "%sElrond-Broadcaster"
 )
 
 // Chain defines all the chain supported
 type Chain string
 
 const (
-	Elrond   Chain = "Elrond"
+	// Elrond is the string representation of the Elrond chain
+	Elrond Chain = "Elrond"
+
+	// Ethereum is the string representation of the Ethereum chain
 	Ethereum Chain = "Ethereum"
-	Bsc      Chain = "Bsc"
+
+	// Bsc is the string representation of the Binance smart chain
+	Bsc Chain = "Bsc"
 )
 
 // ToLower returns the lowercase string of chain
@@ -31,47 +36,47 @@ func (c Chain) ToLower() string {
 	return strings.ToLower(string(c))
 }
 
-// EthToElrondName return the string using chain value and ethToElrondNameTemplate
-func (c Chain) EthToElrondName() string {
-	return fmt.Sprintf(ethToElrondNameTemplate, c)
+// EvmCompatibleChainToElrondName returns the string using chain value and evmCompatibleChainToElrondNameTemplate
+func (c Chain) EvmCompatibleChainToElrondName() string {
+	return fmt.Sprintf(evmCompatibleChainToElrondNameTemplate, c)
 }
 
-// ElrondToEthName return the string using chain value and elrondToEthNameTemplate
-func (c Chain) ElrondToEthName() string {
-	return fmt.Sprintf(elrondToEthNameTemplate, c)
+// ElrondToEvmCompatibleChainName returns the string using chain value and elrondToEvmCompatibleChainNameTemplate
+func (c Chain) ElrondToEvmCompatibleChainName() string {
+	return fmt.Sprintf(elrondToEvmCompatibleChainNameTemplate, c)
 }
 
-// BaseLogId return the string using chain value and baseLogIdTemplate
+// BaseLogId returns the string using chain value and baseLogIdTemplate
 func (c Chain) BaseLogId() string {
 	return fmt.Sprintf(baseLogIdTemplate, c)
 }
 
-// ElrondClientLogId return the string using chain value and elrondClientLogIdTemplate
+// ElrondClientLogId returns the string using chain value and elrondClientLogIdTemplate
 func (c Chain) ElrondClientLogId() string {
 	return fmt.Sprintf(elrondClientLogIdTemplate, c)
 }
 
-// ElrondDataGetterLogId return the string using chain value and elrondDataGetterLogIdTemplate
+// ElrondDataGetterLogId returns the string using chain value and elrondDataGetterLogIdTemplate
 func (c Chain) ElrondDataGetterLogId() string {
 	return fmt.Sprintf(elrondDataGetterLogIdTemplate, c)
 }
 
-// EthClientLogId return the string using chain value and ethClientLogIdTemplate
-func (c Chain) EthClientLogId() string {
-	return fmt.Sprintf(ethClientLogIdTemplate, c, c)
+// EvmCompatibleChainClientLogId returns the string using chain value and evmCompatibleChainClientLogIdTemplate
+func (c Chain) EvmCompatibleChainClientLogId() string {
+	return fmt.Sprintf(evmCompatibleChainClientLogIdTemplate, c, c)
 }
 
-// ElrondRoleProviderLogId return the string using chain value and elrondRoleProviderLogIdTemplate
+// ElrondRoleProviderLogId returns the string using chain value and elrondRoleProviderLogIdTemplate
 func (c Chain) ElrondRoleProviderLogId() string {
 	return fmt.Sprintf(elrondRoleProviderLogIdTemplate, c)
 }
 
-// EthRoleProviderLogId return the string using chain value and ethRoleProviderLogIdTemplate
-func (c Chain) EthRoleProviderLogId() string {
-	return fmt.Sprintf(ethRoleProviderLogIdTemplate, c, c)
+// EvmCompatibleChainRoleProviderLogId returns the string using chain value and evmCompatibleChainRoleProviderLogIdTemplate
+func (c Chain) EvmCompatibleChainRoleProviderLogId() string {
+	return fmt.Sprintf(evmCompatibleChainRoleProviderLogIdTemplate, c, c)
 }
 
-// BroadcasterLogId return the string using chain value and broadcasterLogIdTemplate
+// BroadcasterLogId returns the string using chain value and broadcasterLogIdTemplate
 func (c Chain) BroadcasterLogId() string {
 	return fmt.Sprintf(broadcasterLogIdTemplate, c)
 }

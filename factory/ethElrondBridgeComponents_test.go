@@ -212,7 +212,7 @@ func TestNewEthElrondBridgeComponents(t *testing.T) {
 
 		components, err := NewEthElrondBridgeComponents(args)
 		assert.True(t, errors.Is(err, errMissingConfig))
-		assert.True(t, strings.Contains(err.Error(), args.Configs.GeneralConfig.Eth.Chain.EthToElrondName()))
+		assert.True(t, strings.Contains(err.Error(), args.Configs.GeneralConfig.Eth.Chain.EvmCompatibleChainToElrondName()))
 		assert.Nil(t, components)
 	})
 	t.Run("invalid time for bootstrap", func(t *testing.T) {

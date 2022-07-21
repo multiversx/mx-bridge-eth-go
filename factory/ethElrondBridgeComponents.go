@@ -79,6 +79,7 @@ type ethElrondBridgeComponents struct {
 	statusStorer                  core.Storer
 	elrondClient                  ethElrond.ElrondClient
 	ethClient                     ethElrond.EthereumClient
+	evmCompatibleChain            chain.Chain
 	elrondMultisigContractAddress erdgoCore.AddressHandler
 	elrondRelayerPrivateKey       crypto.PrivateKey
 	elrondRelayerAddress          erdgoCore.AddressHandler
@@ -121,10 +122,11 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
-	ethToElrondName := evmCompatibleChain.EthToElrondName()
+	ethToElrondName := evmCompatibleChain.EvmCompatibleChainToElrondName()
 	baseLogId := evmCompatibleChain.BaseLogId()
 	components := &ethElrondBridgeComponents{
 		baseLogger:           core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), baseLogId),
+		evmCompatibleChain:   evmCompatibleChain,
 		messenger:            args.Messenger,
 		statusStorer:         args.StatusStorer,
 		closableHandlers:     make([]io.Closer, 0),
@@ -149,7 +151,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
-	err = components.createDataGetter(args)
+	err = components.createDataGetter()
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +181,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
-	err = components.createEthereumToElrondStateMachine(args)
+	err = components.createEthereumToElrondStateMachine()
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +191,7 @@ func NewEthElrondBridgeComponents(args ArgsEthereumToElrondBridge) (*ethElrondBr
 		return nil, err
 	}
 
-	err = components.createElrondToEthereumStateMachine(args)
+	err = components.createElrondToEthereumStateMachine()
 	if err != nil {
 		return nil, err
 	}
@@ -260,9 +262,8 @@ func (components *ethElrondBridgeComponents) createElrondKeysAndAddresses(elrond
 	return nil
 }
 
-func (components *ethElrondBridgeComponents) createDataGetter(args ArgsEthereumToElrondBridge) error {
-	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
-	elrondDataGetterLogId := evmCompatibleChain.ElrondDataGetterLogId()
+func (components *ethElrondBridgeComponents) createDataGetter() error {
+	elrondDataGetterLogId := components.evmCompatibleChain.ElrondDataGetterLogId()
 	argsDataGetter := elrond.ArgsDataGetter{
 		MultisigContractAddress: components.elrondMultisigContractAddress,
 		RelayerAddress:          components.elrondRelayerAddress,
@@ -282,8 +283,7 @@ func (components *ethElrondBridgeComponents) createElrondClient(args ArgsEthereu
 	if err != nil {
 		return err
 	}
-	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
-	elrondClientLogId := evmCompatibleChain.ElrondClientLogId()
+	elrondClientLogId := components.evmCompatibleChain.ElrondClientLogId()
 
 	clientArgs := elrond.ClientArgs{
 		GasMapConfig:                 elrondConfigs.GasMap,
@@ -338,9 +338,8 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 		return err
 	}
 
-	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
-	broadcasterLogId := evmCompatibleChain.BroadcasterLogId()
-	ethToElrondName := evmCompatibleChain.EthToElrondName()
+	broadcasterLogId := components.evmCompatibleChain.BroadcasterLogId()
+	ethToElrondName := components.evmCompatibleChain.EvmCompatibleChainToElrondName()
 	argsBroadcaster := p2p.ArgsBroadcaster{
 		Messenger:           args.Messenger,
 		Log:                 core.NewLoggerWithIdentifier(logger.GetOrCreate(broadcasterLogId), broadcasterLogId),
@@ -389,7 +388,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 
 	safeContractAddress := common.HexToAddress(ethereumConfigs.SafeContractAddress)
 
-	ethClientLogId := evmCompatibleChain.EthClientLogId()
+	ethClientLogId := components.evmCompatibleChain.EvmCompatibleChainClientLogId()
 	argsEthClient := ethereum.ArgsEthereumClient{
 		ClientWrapper:           args.ClientWrapper,
 		Erc20ContractsHandler:   args.Erc20ContractsHolder,
@@ -413,8 +412,7 @@ func (components *ethElrondBridgeComponents) createEthereumClient(args ArgsEther
 
 func (components *ethElrondBridgeComponents) createElrondRoleProvider(args ArgsEthereumToElrondBridge) error {
 	configs := args.Configs.GeneralConfig
-	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
-	elrondRoleProviderLogId := evmCompatibleChain.ElrondRoleProviderLogId()
+	elrondRoleProviderLogId := components.evmCompatibleChain.ElrondRoleProviderLogId()
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondRoleProviderLogId), elrondRoleProviderLogId)
 
 	argsRoleProvider := roleProviders.ArgsElrondRoleProvider{
@@ -450,7 +448,7 @@ func (components *ethElrondBridgeComponents) createElrondRoleProvider(args ArgsE
 func (components *ethElrondBridgeComponents) createEthereumRoleProvider(args ArgsEthereumToElrondBridge) error {
 	configs := args.Configs.GeneralConfig
 	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
-	ethRoleProviderLogId := evmCompatibleChain.EthRoleProviderLogId()
+	ethRoleProviderLogId := components.evmCompatibleChain.EvmCompatibleChainRoleProviderLogId()
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethRoleProviderLogId), ethRoleProviderLogId)
 	argsRoleProvider := roleProviders.ArgsEthereumRoleProvider{
 		EthereumChainInteractor: args.ClientWrapper,
@@ -483,8 +481,7 @@ func (components *ethElrondBridgeComponents) createEthereumRoleProvider(args Arg
 }
 
 func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args ArgsEthereumToElrondBridge) error {
-	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
-	ethToElrondName := evmCompatibleChain.EthToElrondName()
+	ethToElrondName := components.evmCompatibleChain.EvmCompatibleChainToElrondName()
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
 
 	configs, found := args.Configs.GeneralConfig.StateMachine[ethToElrondName]
@@ -553,8 +550,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 }
 
 func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args ArgsEthereumToElrondBridge) error {
-	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
-	elrondToEthName := evmCompatibleChain.ElrondToEthName()
+	elrondToEthName := components.evmCompatibleChain.ElrondToEvmCompatibleChainName()
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondToEthName), elrondToEthName)
 
 	configs, found := args.Configs.GeneralConfig.StateMachine[elrondToEthName]
@@ -674,9 +670,8 @@ func (components *ethElrondBridgeComponents) createBatchValidator(sourceChain ch
 	return batchValidator, err
 }
 
-func (components *ethElrondBridgeComponents) createEthereumToElrondStateMachine(args ArgsEthereumToElrondBridge) error {
-	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
-	ethToElrondName := evmCompatibleChain.EthToElrondName()
+func (components *ethElrondBridgeComponents) createEthereumToElrondStateMachine() error {
+	ethToElrondName := components.evmCompatibleChain.EvmCompatibleChainToElrondName()
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(ethToElrondName), ethToElrondName)
 
 	argsStateMachine := stateMachine.ArgsStateMachine{
@@ -712,9 +707,8 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondStateMachine(
 	return nil
 }
 
-func (components *ethElrondBridgeComponents) createElrondToEthereumStateMachine(args ArgsEthereumToElrondBridge) error {
-	evmCompatibleChain := args.Configs.GeneralConfig.Eth.Chain
-	elrondToEthName := evmCompatibleChain.ElrondToEthName()
+func (components *ethElrondBridgeComponents) createElrondToEthereumStateMachine() error {
+	elrondToEthName := components.evmCompatibleChain.ElrondToEvmCompatibleChainName()
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(elrondToEthName), elrondToEthName)
 
 	argsStateMachine := stateMachine.ArgsStateMachine{
