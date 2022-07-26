@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
 	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/ElrondNetwork/elrond-eth-bridge/core"
@@ -184,6 +185,7 @@ func createBridgeComponentsConfig(index int) config.Config {
 
 	return config.Config{
 		Eth: config.EthereumConfig{
+			Chain:                        chain.Ethereum,
 			NetworkAddress:               "mock",
 			MultisigContractAddress:      "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
 			PrivateKeyFile:               fmt.Sprintf("testdata/ethereum%d.sk", index),
@@ -209,8 +211,8 @@ func createBridgeComponentsConfig(index int) config.Config {
 		},
 		P2P: config.ConfigP2P{},
 		StateMachine: map[string]config.ConfigStateMachine{
-			"EthToElrond": stateMachineConfig,
-			"ElrondToEth": stateMachineConfig,
+			"EthereumToElrond": stateMachineConfig,
+			"ElrondToEthereum": stateMachineConfig,
 		},
 		Relayer: config.ConfigRelayer{
 			Marshalizer: elrondConfig.MarshalizerConfig{
