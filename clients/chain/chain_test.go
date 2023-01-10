@@ -52,7 +52,7 @@ func Test_broadcasterLogId(t *testing.T) {
 }
 
 func TestToLower(t *testing.T) {
-	assert.Equal(t, Elrond.ToLower(), "elrond")
+	assert.Equal(t, MultiversX.ToLower(), "msx")
 	assert.Equal(t, Ethereum.ToLower(), "ethereum")
 	assert.Equal(t, Bsc.ToLower(), "bsc")
 }
