@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Ask a question about elrond-eth-bridge
+about: Ask a question about mx-bridge-eth-go
 title: "[QUESTION]"
 labels: ''
 assignees: ''
