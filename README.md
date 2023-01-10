@@ -1,9 +1,9 @@
-# Elrond<->Eth Bridge
-The relayer code implemented in go that uses the smart contracts and powers the bridge between Elrond and Ethereum.
+# MultiversX<->Eth Bridge
+The relayer code implemented in go that uses the smart contracts and powers the bridge between MultiversX and Ethereum.
 
 Smart contracts for both blockchains:
-- https://github.com/ElrondNetwork/sc-bridge-elrond
-- https://github.com/ElrondNetwork/sc-bridge-ethereum-sol
+- https://github.com/multiversx/mx-bridge-eth-sc-rs
+- https://github.com/multiversx/mx-bridge-eth-sc-sol
 
 ## Installation and running for the relayer
 
@@ -34,4 +34,4 @@ Please make sure your contributions adhere to our coding guidelines:
 - Commit messages should be prefixed with the package(s) they modify.
     - E.g. "core/indexer: fixed a typo"
 
-Please see the [documentation](https://docs.elrond.com/) for more details on the Elrond project.
+Please see the [documentation](https://docs.elrond.com/) for more details on the MultiversX project.
