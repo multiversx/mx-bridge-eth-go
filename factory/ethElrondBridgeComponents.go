@@ -516,7 +516,7 @@ func (components *ethElrondBridgeComponents) createEthereumToElrondBridge(args A
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	batchValidator, err := components.createBatchValidator(components.evmCompatibleChain, chain.Elrond, args.Configs.GeneralConfig.BatchValidator)
+	batchValidator, err := components.createBatchValidator(components.evmCompatibleChain, chain.MultiversX, args.Configs.GeneralConfig.BatchValidator)
 	if err != nil {
 		return err
 	}
@@ -584,7 +584,7 @@ func (components *ethElrondBridgeComponents) createElrondToEthereumBridge(args A
 
 	timeForWaitOnEthereum := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	batchValidator, err := components.createBatchValidator(chain.Elrond, components.evmCompatibleChain, args.Configs.GeneralConfig.BatchValidator)
+	batchValidator, err := components.createBatchValidator(chain.MultiversX, components.evmCompatibleChain, args.Configs.GeneralConfig.BatchValidator)
 	if err != nil {
 		return err
 	}

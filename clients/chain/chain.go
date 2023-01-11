@@ -21,8 +21,8 @@ const (
 type Chain string
 
 const (
-	// Elrond is the string representation of the Elrond chain
-	Elrond Chain = "Elrond"
+	// MultiversX is the string representation of the MultiversX chain
+	MultiversX Chain = "msx"
 
 	// Ethereum is the string representation of the Ethereum chain
 	Ethereum Chain = "Ethereum"
