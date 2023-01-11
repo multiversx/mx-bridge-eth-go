@@ -24,7 +24,7 @@ For the documentation and how to setup swagger. Go to [README.md](api/swagger/RE
 ## Contribution
 Thank you for considering to help out with the source code! We welcome contributions from anyone on the internet, and are grateful for even the smallest of fixes to MultiversX!
 
-If you'd like to contribute to MultiversX, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base. If you wish to submit more complex changes though, please check up with the core developers first on our [telegram channel](https://t.me/ElrondNetwork) to ensure those changes are in line with the general philosophy of the project and/or get some early feedback which can make both your efforts much lighter as well as our review and merge procedures quick and simple.
+If you'd like to contribute to MultiversX, please fork, fix, commit and send a pull request for the maintainers to review and merge into the main code base. If you wish to submit more complex changes though, please check up with the core developers first on our [telegram channel](https://t.me/MultiversX) to ensure those changes are in line with the general philosophy of the project and/or get some early feedback which can make both your efforts much lighter as well as our review and merge procedures quick and simple.
 
 Please make sure your contributions adhere to our coding guidelines:
 
