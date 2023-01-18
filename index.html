@@ -310,6 +310,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#multiversx-to-ethereum" class="md-nav__link">
+    MultiversX to Ethereum
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -399,6 +406,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#multiversx-to-ethereum" class="md-nav__link">
+    MultiversX to Ethereum
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -467,6 +481,15 @@
 <li>The relayers propose, vote, and perform the transfer using the <strong>Bridge (4)</strong> contract with a consensus of 7/10 votes.</li>
 <li>The user receives the equivalent amount of ESDT tokens on their recipient address on the MultiversX network.</li>
 <li>On the MultiversX network, the same amount of ESDT tokens are minted as were deposited on the Ethereum network.</li>
+</ol>
+<h3 id="multiversx-to-ethereum">MultiversX to Ethereum<a class="headerlink" href="#multiversx-to-ethereum" title="Permanent link">¶</a></h3>
+<ol>
+<li>A user deposits the ESDT tokens that they want to transfer back to the Ethereum network on the <strong>Safe(3)</strong> contract.</li>
+<li>The <strong>Safe(3)</strong> contract groups multiple deposits into batches.</li>
+<li>After a certain period of time, each batch becomes final and is processed by the relayers.</li>
+<li>The relayers propose, vote, and perform the transfer using the <strong>Bridge (2)</strong> contract with a consensus of 7/10 votes.</li>
+<li>The user receives the equivalent amount of ERC20 tokens on their recipient address on the Ethereum network.</li>
+<li>On the MultiversX network, the ESDT tokens that were transferred are burned.</li>
 </ol>
 <h2 id="support-for-multiple-chains-for-the-same-token">Support for Multiple Chains for the Same Token<a class="headerlink" href="#support-for-multiple-chains-for-the-same-token" title="Permanent link">¶</a></h2>
 <p>The <strong>BridgedTokensWrapper (6)</strong> contract facilitates the use case of having the same token on multiple chains. It accepts the chain-specific ESDT token and mints a universal ESDT token that can be used on any application within the MultiversX network. The universal ESDT token can be converted back to the chain-specific ESDT token using the <strong>BridgedTokensWrapper (6)</strong> contract. This process burns the given universal tokens and sends the chain-specific ESDT tokens to the user.</p>
