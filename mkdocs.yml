@@ -1,0 +1,329 @@
+# https://gitlab.com/pages/mkdocs
+
+site_name: 'Ad-Astra Bridge'
+site_author: MultiversX team <contact@multiversx.com>
+site_url: https://docs.ad-astra.multiversx.com/
+repo_url: https://github.com/multiversx/mx-bridge-eth-go.git
+repo_name: multiversx/mx-bridge-eth-go
+# TODO: make the edit icon smaller, the rest of the content is now smaller
+edit_uri: edit/master/docs
+docs_dir: docs
+site_dir: html
+# gh-deploy command settings
+remote_branch: gh-pages
+remote_name: origin
+
+# pip install mkdocs-bootstrap386
+# https://gitlab.com/lramage94/mkdocs-bootstrap386
+# ISSUE: doesn't renfer most elements
+# theme:
+#   name: 'bootstrap386'
+
+# pip install mkdocs-windmill
+# https://gristlabs.github.io/mkdocs-windmill/##installation
+# ISSUE: doesn't render pymdownx extensions
+# theme:
+#   name: 'windmill'
+
+# ISSUE: mermaid conflict with readthedocs theme due to opacity: 0.2 in .section element
+# ISSUE: doesn't render grouped code blocks
+# theme:
+#   name: 'readthedocs'
+
+# https://squidfunk.github.io/mkdocs-material/getting-started/
+# pip install mkdocs-material
+theme:
+  name: 'material'
+  # Material theme favicon doesn't use the stock mkdocs favicon workflow
+  # Default: assets/images/favicon.png
+  # https://icons8.com/icon/set/heli/all
+  favicon: 'assets/favicon.ico'
+  # logo: 'assets/logo.svg'
+  language: 'en'
+  palette:
+    - scheme: default
+      primary: black
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - scheme: slate
+      # https://github.com/squidfunk/mkdocs-material/blob/master/src/assets/stylesheets/application-palette.scss#L65
+      primary: 'blue grey'
+      # https://github.com/squidfunk/mkdocs-material/blob/master/src/assets/stylesheets/application-palette.scss#L229
+      accent: 'teal'
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+  font:
+    text: 'Roboto'
+    code: 'Oxygen Mono'
+  features:
+    - navigation.tracking
+    # WARNING: enable only if site has two or more nesting levels
+    #- navigation.tabs
+    #- navigation.sections
+    # expand all collapsible subsections by default on the left sidebar
+    - navigation.expand
+    - navigation.indexes
+    # combine site ToC with page Toc
+    #- toc.integrate
+    # Insiders only, enable once merged to public repo
+    #- toc.follow
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - search.share
+  # Static files
+  # TODO: add not found page
+  #static_templates:
+  #  - 404.html
+
+# TODO: add https://squidfunk.github.io/mkdocs-material/setup/adding-a-comment-system/
+
+# To use a different favicon, create an assets subdirectory in your docs_dir
+# and copy your custom favicon.ico file to that directory.
+# Material theme uses a different way of settings this
+# site_favicon: 'assets/favicon.ico'
+
+# If nothing is specified, navigation will be implicitly created using
+# capitalized directory names and the H1 of each file, sorted alphanumerically
+# used to be done using 'pages', now deprecated, new syntax is 'nav'
+#nav:
+# If using the regular nav section, please create a separate file
+INHERIT: docs/.pages.yml
+# Nav section replaced by awesome pages plugin .pages files in each dir
+# https://github.com/lukasgeiter/mkdocs-awesome-pages-plugin
+
+markdown_extensions:
+  # ========================================
+  # python-markdown
+  # https://python-markdown.github.io/
+  # ========================================
+
+  # ----------------------------------------
+  # mkdocs material official support
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown/
+  # ----------------------------------------
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown/#abbreviations
+  # https://python-markdown.github.io/extensions/abbreviations/
+  # define abbreviations, then add a small tooltip to an element
+  - abbr
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown/#admonition  # add block-styled side content, e.g. summaries, notes, hints or warnings
+  # https://squidfunk.github.io/mkdocs-material/extensions/admonition/
+  - admonition
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown/#attribute-lists
+  # https://python-markdown.github.io/extensions/attr_list/
+  # define attributes on the various HTML elements in Markdown’s output
+  # DEPENDENCY: allows modifying style for progress bars
+  - attr_list
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown/#definition-lists
+  # https://python-markdown.github.io/extensions/definition_lists/
+  # add definition lists, more commonly known as description lists – dl in HTML
+  - def_list
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown/#footnotes
+  # https://squidfunk.github.io/mkdocs-material/extensions/footnotes/
+  # define inline footnotes, which are then rendered below all Markdown content
+  - footnotes
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown/#metadata
+  # https://python-markdown.github.io/extensions/meta_data/
+  # attach key-value pairs to a document via YAML front matter written before the Markdown
+  - meta
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown/#markdown-in-html
+  # https://python-markdown.github.io/extensions/md_in_html/
+  # write Markdown inside of HTML, useful for wrapping Markdown with custom elements
+  - md_in_html
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown/#table-of-contents
+  # https://python-markdown.github.io/extensions/toc/
+  - markdown.extensions.toc:
+      # inserts anchor at end of each headline to provide link to a subpart of the document
+      permalink: true
+      # range of section levels to include in the table of contents
+      #toc_depth: 1-6
+      # custom slug function, for some languages the default may produce unreadable identifiers
+      slugify: !!python/name:pymdownx.slugs.uslugify
+
+        # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown/#tables
+      # https://python-markdown.github.io/extensions/tables/
+  - tables
+
+  # ----------------------------------------
+  # NO mkdocs material official support
+  # ----------------------------------------
+
+  # https://python-markdown.github.io/extensions/smarty/
+  - markdown.extensions.smarty:
+    # TODO: see if this should be false
+    #smart_quotes: false
+
+  # ========================================
+  # python-markdown extensions
+  # https://facelessuser.github.io/pymdown-extensions/
+  # ========================================
+
+  # ----------------------------------------
+  # mkdocs material official support
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/
+  # ----------------------------------------
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#arithmatex
+  # https://squidfunk.github.io/mkdocs-material/reference/mathjax/
+  # TODO: investigate
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#betterem
+  # https://facelessuser.github.io/pymdown-extensions/extensions/betterem/
+  # improve emphasis (bold and italic) handling
+  # TODO: test all scenarios
+  - pymdownx.betterem:
+      smart_enable: "all"
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#caret-mark-tilde
+  # highlight text and define sub- and superscript using a simple syntax
+  # NOTICE - replaces basic Markdown ~text~ strikethrough with ~~text~~
+  # https://facelessuser.github.io/pymdown-extensions/extensions/caret/
+  - pymdownx.caret
+  # https://facelessuser.github.io/pymdown-extensions/extensions/tilde/
+  - pymdownx.tilde
+  # https://facelessuser.github.io/pymdown-extensions/extensions/mark/
+  - pymdownx.mark
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#critic
+  # https://facelessuser.github.io/pymdown-extensions/extensions/critic/
+  # TODO: investigate
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#details
+  # https://facelessuser.github.io/pymdown-extensions/extensions/details/
+  # supercharges the Admonition extension, making the resulting call-outs collapsible
+  - pymdownx.details
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#emoji
+  # https://facelessuser.github.io/pymdown-extensions/extensions/emoji/
+  # inlines bundled and custom icons and emojis in *.svg file format into output HTML
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+      alt: short
+      options:
+        attributes:
+          align: top
+          #align: absmiddle
+          height: 20px
+          width: 20px
+        #image_path: https://assets-cdn.github.com/images/icons/emoji/unicode/
+        #non_standard_image_path: https://assets-cdn.github.com/images/icons/emoji/
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#highlight
+  # https://facelessuser.github.io/pymdown-extensions/extensions/highlight/
+  # syntax highlighting of code blocks, with the help of SuperFences
+  # syntax highlighting of inline code blocks, with the help of InlineHilite
+  - pymdownx.highlight:
+      # TODO: test before enabling
+      #guess_lang: true
+      # php fix so code is not required to start with <? or <?php
+      extend_pygments_lang:
+        - name: php
+          lang: php
+          options:
+            startinline: true
+        - name: pycon3
+          lang: pycon
+          options:
+            python3: true
+      anchor_linenums: true
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#inlinehilite
+  # https://facelessuser.github.io/pymdown-extensions/extensions/inlinehilite/
+  # syntax highlighting of inline code blocks
+  - pymdownx.inlinehilite
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#keys
+  # https://facelessuser.github.io/pymdown-extensions/extensions/keys/
+  - pymdownx.keys:
+      # TODO: see why using the unicode makes a difference
+      # inspired from https://github.com/facelessuser/PyMdown/blob/master/mkdocs.yml
+      # inspired from https://github.com/facelessuser/pyspelling/blob/master/mkdocs.yml
+      separator: "\uff0b"
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#smartsymbols
+  # https://facelessuser.github.io/pymdown-extensions/extensions/smartsymbols/
+  - pymdownx.smartsymbols
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#snippets
+  # https://facelessuser.github.io/pymdown-extensions/extensions/snippets/
+  # TODO: add corresponding section in documentation for both files and URLs
+  - pymdownx.snippets
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#superfences
+  # https://facelessuser.github.io/pymdown-extensions/extensions/superfences/
+  # nesting of code and content blocks inside each other e.g., admonitions, tabs, lists
+  # custom fences for flowcharts, sequence diagrams, or other custom blocks
+  - pymdownx.superfences:
+      # Mermaid integration: https://squidfunk.github.io/mkdocs-material/reference/diagrams
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+            # old renderer
+            # https://github.com/squidfunk/mkdocs-material/issues/693#issuecomment-411885426
+            #format: !!python/name:pymdownx.superfences.fence_div_format
+
+            # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#tabbed
+          # https://facelessuser.github.io/pymdown-extensions/extensions/tabbed/
+  - pymdownx.tabbed:
+      # WARNING: do not change, mandatory for mkdocs material
+      alternate_style: true
+
+  # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/#tasklist
+  #  https://facelessuser.github.io/pymdown-extensions/extensions/tasklist/
+  - pymdownx.tasklist:
+      custom_checkbox: true
+      # WARNING: the state is not persisted, disabled to prevent confusion
+      clickable_checkbox: false
+
+  # ----------------------------------------
+  # NO mkdocs material official support
+  # ----------------------------------------
+
+  # https://facelessuser.github.io/pymdown-extensions/extensions/magiclink/
+  # used in https://github.com/squidfunk/mkdocs-material/blob/master/mkdocs.yml
+  # TODO: research before enabling, add corresponding section in documentation
+  #- pymdownx.magiclink
+
+  # https://facelessuser.github.io/pymdown-extensions/extensions/progressbar/
+  # disabled until support is added: https://github.com/squidfunk/mkdocs-material/issues/862
+  #- pymdownx.progressbar
+
+plugins:
+  - search
+  # previously enabled for markmap support, before mermaid was integrated in mkdocs material
+  # - mermaid2:
+  #     arguments:
+  #       theme: 'dark'
+  - markmap:
+  # TODO: use the .pages feature
+  - awesome-pages:
+      filename: .meta.yml
+  # TODO: research mkdocs-minify-plugin https://github.com/byrnereese/mkdocs-minify-plugin
+
+# https://cdnjs.com/libraries/mermaid
+extra_css:
+  # the .css file is no longer used after 7.0.11, used here for readthedocs fix
+  #- https://unpkg.com/mermaid@7.0.11/dist/mermaid.css
+  # using version 7.0.11 so the fix for readthedocs below can be applied
+  #- stylesheets/mermaid-fix.css
+  # Custom CSS, file should be in /docs/ or the custom documents directory
+  - stylesheets/extra.css
+extra_javascript:
+  # https://squidfunk.github.io/mkdocs-material/reference/data-tables/#sortable-tables
+  # http://tristen.ca/tablesort/demo/
+  - https://unpkg.com/tablesort@5.3.0/dist/tablesort.min.js
+  - javascripts/tablesort.js
+  - https://unpkg.com/mermaid/dist/mermaid.min.js
