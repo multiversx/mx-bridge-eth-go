@@ -1,4 +1,5 @@
 [Eth]
+    Chain = "Ethereum"
     NetworkAddress = "http://127.0.0.1:8545" # a network address
     MultisigContractAddress = "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c" # the eth address for the bridge contract
     SafeContractAddress = "A6504Cc508889bbDBd4B748aFf6EA6b5D0d2684c"
@@ -10,13 +11,15 @@
     MaxBlocksDelta = 10
     [Eth.GasStation]
         Enabled = true
-        URL = "https://ethgasstation.info/api/ethgasAPI.json?" # gas station URL. Suggestion to provide the api-key here
-        GasPriceMultiplier = 100000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 100000000
+        URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
+        GasPriceMultiplier = 1000000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 1000000000
         PollingIntervalInSeconds = 60 # number of seconds between gas price polling
+        RequestRetryDelayInSeconds = 5 # number of seconds of delay after one failed request
+        MaxFetchRetries = 3 # number of fetch retries before printing an error
         RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the gas price request
-        MaximumAllowedGasPrice = 3000 # maximum value allowed for the fetched gas price value
-        # GasPriceSelector available options: "fast", "fastest", "safeLow", "average"
-        GasPriceSelector = "fastest" # selector used to provide the gas price
+        MaximumAllowedGasPrice = 300 # maximum value allowed for the fetched gas price value
+        # GasPriceSelector available options: "SafeGasPrice", "ProposeGasPrice", "FastGasPrice"
+        GasPriceSelector = "SafeGasPrice" # selector used to provide the gas price
 
 [Elrond]
     NetworkAddress = "https://devnet-gateway.elrond.com" # the network address
@@ -104,8 +107,8 @@
             Type = "LRU"
         [Antiflood.Topic]
             DefaultMaxMessagesPerSec = 300 # default number of messages per interval for a topic
-            MaxMessages = [{ Topic = "EthToElrond_join", NumMessagesPerSec = 100 },
-                           { Topic = "EthToElrond_sign", NumMessagesPerSec = 100 }]
+            MaxMessages = [{ Topic = "EthereumToElrond_join", NumMessagesPerSec = 100 },
+                           { Topic = "EthereumToElrond_sign", NumMessagesPerSec = 100 }]
 
 [Relayer]
     [Relayer.Marshalizer]
@@ -127,11 +130,11 @@
             MaxOpenFiles = 10
 
 [StateMachine]
-    [StateMachine.EthToElrond]
+    [StateMachine.EthereumToElrond]
         StepDurationInMillis = 12000 #12 seconds
         IntervalForLeaderInSeconds = 120 #2 minutes
 
-    [StateMachine.ElrondToEth]
+    [StateMachine.ElrondToEthereum]
         StepDurationInMillis = 12000 #12 seconds
         IntervalForLeaderInSeconds = 720 #12 minutes
 

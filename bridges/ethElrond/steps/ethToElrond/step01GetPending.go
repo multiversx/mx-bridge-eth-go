@@ -45,7 +45,7 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 	isValid, err := step.bridge.ValidateBatch(ctx, batch)
 	if err != nil {
 		body, _ := json.Marshal(batch)
-		step.bridge.PrintInfo(logger.LogError, "error validating Ethereum batch", "error", err, "batch", body)
+		step.bridge.PrintInfo(logger.LogError, "error validating Ethereum batch", "error", err, "batch", string(body))
 		return step.Identifier()
 	}
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
@@ -19,8 +20,8 @@ const logPath = "BatchValidator"
 
 // ArgsBatchValidator is the DTO used for the creating a new batch validator instance
 type ArgsBatchValidator struct {
-	SourceChain      clients.Chain
-	DestinationChain clients.Chain
+	SourceChain      chain.Chain
+	DestinationChain chain.Chain
 	RequestURL       string
 	RequestTime      time.Duration
 }
@@ -40,7 +41,7 @@ func NewBatchValidator(args ArgsBatchValidator) (*batchValidator, error) {
 	}
 
 	bv := &batchValidator{
-		requestURL:  fmt.Sprintf("%s/%s/%s", args.RequestURL, args.SourceChain, args.DestinationChain),
+		requestURL:  fmt.Sprintf("%s/%s/%s", args.RequestURL, args.SourceChain.ToLower(), args.DestinationChain.ToLower()),
 		requestTime: args.RequestTime,
 		httpClient:  http.DefaultClient,
 	}
@@ -50,12 +51,12 @@ func NewBatchValidator(args ArgsBatchValidator) (*batchValidator, error) {
 
 func checkArgs(args ArgsBatchValidator) error {
 	switch args.SourceChain {
-	case clients.Ethereum, clients.Elrond:
+	case chain.Ethereum, chain.Bsc, chain.MultiversX:
 	default:
 		return fmt.Errorf("%w: %q", clients.ErrInvalidValue, args.SourceChain)
 	}
 	switch args.DestinationChain {
-	case clients.Ethereum, clients.Elrond:
+	case chain.Ethereum, chain.Bsc, chain.MultiversX:
 	default:
 		return fmt.Errorf("%w: %q", clients.ErrInvalidValue, args.DestinationChain)
 	}
@@ -104,6 +105,7 @@ func (bv *batchValidator) doRequest(ctx context.Context, batch []byte) ([]byte, 
 
 func (bv *batchValidator) doRequestReturningBytes(batch []byte, ctx context.Context) ([]byte, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, bv.requestURL, bytes.NewBuffer(batch))
+	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +113,15 @@ func (bv *batchValidator) doRequestReturningBytes(batch []byte, ctx context.Cont
 	response, err := bv.httpClient.Do(request)
 	if err != nil {
 		return nil, err
+	}
+	if response.StatusCode == http.StatusBadRequest && response.Body != http.NoBody {
+		data, _ := ioutil.ReadAll(response.Body)
+		badResponse := &microserviceBadRequestBody{}
+		err = json.Unmarshal(data, badResponse)
+		if err != nil {
+			return nil, fmt.Errorf("%w during bad response unmarshal", err)
+		}
+		return nil, fmt.Errorf("got status %s: %s", response.Status, badResponse.Message)
 	}
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("got status %s", response.Status)

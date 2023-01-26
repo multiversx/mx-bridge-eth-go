@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
 	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/stretchr/testify/assert"
@@ -22,8 +23,8 @@ import (
 
 func createMockArgsBatchValidator() ArgsBatchValidator {
 	return ArgsBatchValidator{
-		SourceChain:      clients.Ethereum,
-		DestinationChain: clients.Elrond,
+		SourceChain:      chain.Ethereum,
+		DestinationChain: chain.MultiversX,
 		RequestURL:       "",
 		RequestTime:      time.Second,
 	}
@@ -93,13 +94,13 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 	}
 	expectedJsonString := `{"batchId":1,"deposits":[{"nonce":1,"to":"to1","from":"from1","token":"token1","amount":1000000000000000000001},{"nonce":2,"to":"to2","from":"from2","token":"token2","amount":1000000000000000000002}],"statuses":"AwQ="}`
 
-	t.Run("server errors", func(t *testing.T) {
+	t.Run("server errors with Bad Request, but no reason", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 
 				writer.WriteHeader(http.StatusBadRequest)
@@ -117,13 +118,68 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Equal(t, "got status 400 Bad Request while executing request", err.Error())
 	})
+	t.Run("server errors with Bad Request and reason", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsBatchValidator()
+		bodyJson := microserviceBadRequestBody{
+			StatusCode: 400,
+			Message:    "different number of swaps. given: 2, stored: 3",
+			Error:      "Bad Request",
+		}
+		responseHandler := &testsCommon.HTTPHandlerStub{
+			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
+				require.Equal(t, expectedURL, request.URL.String())
+
+				writer.WriteHeader(http.StatusBadRequest)
+				body, _ := json.Marshal(bodyJson)
+				_, _ = writer.Write(body)
+			},
+		}
+
+		server := httptest.NewServer(responseHandler)
+		defer server.Close()
+
+		args.RequestURL = server.URL
+		bv, _ := NewBatchValidator(args)
+
+		isValid, err := bv.ValidateBatch(context.Background(), batch)
+		assert.False(t, isValid)
+		assert.NotNil(t, err)
+		assert.Equal(t, fmt.Sprintf("got status 400 Bad Request: %s while executing request", bodyJson.Message), err.Error())
+	})
+	t.Run("server errors with other than Bad Request", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsBatchValidator()
+		responseHandler := &testsCommon.HTTPHandlerStub{
+			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
+				require.Equal(t, expectedURL, request.URL.String())
+
+				writer.WriteHeader(http.StatusForbidden)
+			},
+		}
+
+		server := httptest.NewServer(responseHandler)
+		defer server.Close()
+
+		args.RequestURL = server.URL
+		bv, _ := NewBatchValidator(args)
+
+		isValid, err := bv.ValidateBatch(context.Background(), batch)
+		assert.False(t, isValid)
+		assert.NotNil(t, err)
+		assert.Equal(t, "got status 403 Forbidden while executing request", err.Error())
+	})
 	t.Run("empty response", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 
 				writer.WriteHeader(http.StatusOK)
@@ -148,7 +204,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 
 				writer.WriteHeader(http.StatusOK)
@@ -173,7 +229,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 			},
 		}
@@ -198,7 +254,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		args := createMockArgsBatchValidator()
 		responseHandler := &testsCommon.HTTPHandlerStub{
 			ServeHTTPCalled: func(writer http.ResponseWriter, request *http.Request) {
-				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain, args.DestinationChain)
+				expectedURL := fmt.Sprintf("/%s/%s", args.SourceChain.ToLower(), args.DestinationChain.ToLower())
 				require.Equal(t, expectedURL, request.URL.String())
 
 				defer func() {

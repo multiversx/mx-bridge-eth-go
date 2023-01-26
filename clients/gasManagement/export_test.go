@@ -2,12 +2,12 @@ package gasManagement
 
 import "github.com/ElrondNetwork/elrond-eth-bridge/core"
 
-// GetLatestResponse -
-func (gs *gasStation) GetLatestResponse() *gasStationResponse {
+// GetLatestGasPrice -
+func (gs *gasStation) GetLatestGasPrice() int {
 	gs.mut.RLock()
 	defer gs.mut.RUnlock()
 
-	return gs.latestResponse
+	return gs.latestGasPrice
 }
 
 // SetSelector -

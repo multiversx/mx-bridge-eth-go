@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
 	"github.com/ElrondNetwork/elrond-go/config"
 )
 
@@ -25,6 +26,7 @@ type Config struct {
 
 // EthereumConfig represents the Ethereum Config parameters
 type EthereumConfig struct {
+	Chain                              chain.Chain
 	NetworkAddress                     string
 	MultisigContractAddress            string
 	SafeContractAddress                string
@@ -40,13 +42,15 @@ type EthereumConfig struct {
 
 // GasStationConfig represents the configuration for the gas station handler
 type GasStationConfig struct {
-	Enabled                  bool
-	URL                      string
-	PollingIntervalInSeconds int
-	RequestTimeInSeconds     int
-	MaximumAllowedGasPrice   int
-	GasPriceSelector         string
-	GasPriceMultiplier       int
+	Enabled                    bool
+	URL                        string
+	PollingIntervalInSeconds   int
+	RequestRetryDelayInSeconds int
+	MaxFetchRetries            int
+	RequestTimeInSeconds       int
+	MaximumAllowedGasPrice     int
+	GasPriceSelector           string
+	GasPriceMultiplier         int
 }
 
 // ConfigP2P configuration for the P2P communication

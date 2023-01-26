@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in elrond-eth-bridge node
+about: Report a bug in mx-bridge-eth-go node
 title: "[BUG]"
 labels: bug
 assignees: ''
