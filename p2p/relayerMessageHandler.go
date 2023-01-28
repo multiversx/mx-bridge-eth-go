@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
-	crypto "github.com/ElrondNetwork/elrond-go-crypto"
-	"github.com/ElrondNetwork/elrond-go/common"
-	"github.com/ElrondNetwork/elrond-go/p2p"
-	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	chainCore "github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/marshal"
+	crypto "github.com/multiversx/mx-chain-crypto-go"
+	"github.com/multiversx/mx-chain-go/common"
+	"github.com/multiversx/mx-chain-go/p2p"
+	"github.com/multiversx/mx-chain-go/process/throttle/antiflood/factory"
 )
 
 const absolutMaxSliceSize = 1024
@@ -28,7 +28,7 @@ type relayerMessageHandler struct {
 }
 
 // canProcessMessage will check if a specific message can be processed
-func (rmh *relayerMessageHandler) canProcessMessage(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
+func (rmh *relayerMessageHandler) canProcessMessage(message p2p.MessageP2P, fromConnectedPeer chainCore.PeerID) error {
 	if check.IfNil(message) {
 		return ErrNilMessage
 	}
@@ -44,7 +44,7 @@ func (rmh *relayerMessageHandler) canProcessMessage(message p2p.MessageP2P, from
 }
 
 // preProcessMessage is able to preprocess the received p2p message
-func (rmh *relayerMessageHandler) preProcessMessage(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) (*core.SignedMessage, error) {
+func (rmh *relayerMessageHandler) preProcessMessage(message p2p.MessageP2P, fromConnectedPeer chainCore.PeerID) (*core.SignedMessage, error) {
 	msg := &core.SignedMessage{}
 	err := rmh.marshalizer.Unmarshal(msg, message.Data())
 	if err != nil {

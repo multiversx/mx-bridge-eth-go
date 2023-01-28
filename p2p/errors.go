@@ -17,8 +17,8 @@ var ErrNilPrivateKey = errors.New("nil private key")
 // ErrNilSingleSigner signals that a nil single signer was provided
 var ErrNilSingleSigner = errors.New("nil single signer")
 
-// ErrNilElrondRoleProvider signals that a nil Elrond role provider was given
-var ErrNilElrondRoleProvider = errors.New("nil Elrond role provider")
+// ErrNilMultiversXRoleProvider signals that a nil MultiversX role provider was given
+var ErrNilMultiversXRoleProvider = errors.New("nil MultiversX role provider")
 
 // ErrNilMessenger signals that a nil network messenger was provided
 var ErrNilMessenger = errors.New("nil network messenger")

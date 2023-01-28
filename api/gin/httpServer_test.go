@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	apiErrors "github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
-	testsServer "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/server"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	apiErrors "github.com/multiversx/mx-bridge-eth-go/api/errors"
+	testsServer "github.com/multiversx/mx-bridge-eth-go/testsCommon/server"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/stretchr/testify/assert"
 )
 

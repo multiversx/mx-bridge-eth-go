@@ -9,39 +9,46 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/wrappers"
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/factory"
-	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
-	"github.com/ElrondNetwork/elrond-eth-bridge/status"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go-core/data/typeConverters/uint64ByteSlice"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
-	factoryMarshalizer "github.com/ElrondNetwork/elrond-go-core/marshal/factory"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
-	elrondCommon "github.com/ElrondNetwork/elrond-go/common"
-	"github.com/ElrondNetwork/elrond-go/common/logging"
-	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
-	elrondP2P "github.com/ElrondNetwork/elrond-go/p2p"
-	"github.com/ElrondNetwork/elrond-go/p2p/libp2p"
-	"github.com/ElrondNetwork/elrond-go/update/disabled"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
-	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
+	"github.com/multiversx/mx-bridge-eth-go/config"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/factory"
+	"github.com/multiversx/mx-bridge-eth-go/p2p"
+	"github.com/multiversx/mx-bridge-eth-go/status"
+	chainCore "github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/data/typeConverters/uint64ByteSlice"
+	"github.com/multiversx/mx-chain-core-go/marshal"
+	factoryMarshaller "github.com/multiversx/mx-chain-core-go/marshal/factory"
+	"github.com/multiversx/mx-chain-crypto-go/signing"
+	"github.com/multiversx/mx-chain-crypto-go/signing/secp256k1"
+	"github.com/multiversx/mx-chain-crypto-go/signing/secp256k1/singlesig"
+	chainFactory "github.com/multiversx/mx-chain-go/cmd/node/factory"
+	chainCommon "github.com/multiversx/mx-chain-go/common"
+	"github.com/multiversx/mx-chain-go/factory/crypto"
+	chainP2P "github.com/multiversx/mx-chain-go/p2p"
+	p2pConfig "github.com/multiversx/mx-chain-go/p2p/config"
+	p2pFactory "github.com/multiversx/mx-chain-go/p2p/factory"
+	"github.com/multiversx/mx-chain-go/statusHandler"
+	"github.com/multiversx/mx-chain-go/statusHandler/persister"
+	"github.com/multiversx/mx-chain-go/storage/cache"
+	"github.com/multiversx/mx-chain-go/update/disabled"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-logger-go/file"
+	"github.com/multiversx/mx-chain-p2p-go/libp2p"
+	"github.com/multiversx/mx-sdk-go/blockchain"
+	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/urfave/cli"
-	_ "github.com/urfave/cli"
 )
 
 const (
 	filePathPlaceholder      = "[path]"
 	defaultLogsPath          = "logs"
-	logFilePrefix            = "elrond-eth-bridge"
+	logFilePrefix            = "multiversx-eth-bridge"
 	p2pPeerNetworkDiscoverer = "optimized"
 	nilListSharderType       = "NilListSharder"
 	disabledWatcher          = "disabled"
@@ -59,19 +66,19 @@ var log = logger.GetOrCreate("main")
 // windows:
 //            for /f %i in ('git describe --tags --long --dirty') do set VERS=%i
 //            go build -i -v -ldflags="-X main.appVersion=%VERS%"
-var appVersion = elrondCommon.UnVersionedAppString
+var appVersion = chainCommon.UnVersionedAppString
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "Relay CLI app"
 	app.Usage = "This is the entry point for the bridge relay"
 	app.Flags = getFlags()
-	machineID := elrondCore.GetAnonymizedMachineID(app.Name)
+	machineID := chainCore.GetAnonymizedMachineID(app.Name)
 	app.Version = fmt.Sprintf("%s/%s/%s-%s/%s", appVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH, machineID)
 	app.Authors = []cli.Author{
 		{
-			Name:  "The Elrond Team",
-			Email: "contact@elrond.com",
+			Name:  "The MultiversX Team",
+			Email: "contact@multiversx.com",
 		},
 	}
 
@@ -113,7 +120,9 @@ func startRelay(ctx *cli.Context, version string) error {
 	log.Debug("config", "file", flagsConfig.ConfigurationApiFile)
 
 	if !check.IfNil(fileLogging) {
-		err = fileLogging.ChangeFileLifeSpan(time.Second * time.Duration(cfg.Logs.LogFileLifeSpanInSec))
+		timeLogLifeSpan := time.Second * time.Duration(cfg.Logs.LogFileLifeSpanInSec)
+		sizeLogLifeSpanInMB := uint64(cfg.Logs.LogFileLifeSpanInMB)
+		err = fileLogging.ChangeFileLifeSpan(timeLogLifeSpan, sizeLogLifeSpanInMB)
 		if err != nil {
 			return err
 		}
@@ -135,29 +144,29 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	elrondClientStatusHandler, err := status.NewStatusHandler(core.ElrondClientStatusHandlerName, statusStorer)
+	multiversXClientStatusHandler, err := status.NewStatusHandler(core.MultiversXClientStatusHandlerName, statusStorer)
 	if err != nil {
 		return err
 	}
-	err = metricsHolder.AddStatusHandler(elrondClientStatusHandler)
+	err = metricsHolder.AddStatusHandler(multiversXClientStatusHandler)
 	if err != nil {
 		return err
 	}
 
-	if len(cfg.Elrond.NetworkAddress) == 0 {
-		return fmt.Errorf("empty Elrond.NetworkAddress in config file")
+	if len(cfg.MultiversX.NetworkAddress) == 0 {
+		return fmt.Errorf("empty MultiversX.NetworkAddress in config file")
 	}
 
-	argsProxy := blockchain.ArgsElrondProxy{
-		ProxyURL:            cfg.Elrond.NetworkAddress,
+	argsProxy := blockchain.ArgsProxy{
+		ProxyURL:            cfg.MultiversX.NetworkAddress,
 		SameScState:         false,
 		ShouldBeSynced:      false,
-		FinalityCheck:       cfg.Elrond.ProxyFinalityCheck,
-		AllowedDeltaToFinal: cfg.Elrond.ProxyMaxNoncesDelta,
-		CacheExpirationTime: time.Second * time.Duration(cfg.Elrond.ProxyCacherExpirationSeconds),
-		EntityType:          erdgoCore.RestAPIEntityType(cfg.Elrond.ProxyRestAPIEntityType),
+		FinalityCheck:       cfg.MultiversX.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.MultiversX.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.MultiversX.ProxyCacherExpirationSeconds),
+		EntityType:          sdkCore.RestAPIEntityType(cfg.MultiversX.ProxyRestAPIEntityType),
 	}
-	proxy, err := blockchain.NewElrondProxy(argsProxy)
+	proxy, err := blockchain.NewProxy(argsProxy)
 	if err != nil {
 		return err
 	}
@@ -182,12 +191,12 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	marshalizer, err := factoryMarshalizer.NewMarshalizer(cfg.Relayer.Marshalizer.Type)
+	marshaller, err := factoryMarshaller.NewMarshalizer(cfg.Relayer.Marshalizer.Type)
 	if err != nil {
 		return err
 	}
 
-	messenger, err := buildNetMessenger(cfg, marshalizer)
+	messenger, err := buildNetMessenger(cfg, marshaller)
 	if err != nil {
 		return err
 	}
@@ -209,30 +218,35 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	statusHandlersFactory, err := elrondFactory.NewStatusHandlersFactory()
+	var appStatusHandlers []chainCore.AppStatusHandler
+	statusMetrics := statusHandler.NewStatusMetrics()
+	appStatusHandlers = append(appStatusHandlers, statusMetrics)
+
+	persistentHandler, err := persister.NewPersistentStatusHandler(marshaller, uint64ByteSlice.NewBigEndianConverter())
 	if err != nil {
 		return err
 	}
-	appStatusHandler, err := statusHandlersFactory.Create(marshalizer, uint64ByteSlice.NewBigEndianConverter())
+	appStatusHandlers = append(appStatusHandlers, persistentHandler)
+	appStatusHandler, err := statusHandler.NewAppStatusFacadeWithHandlers(appStatusHandlers...)
 	if err != nil {
 		return err
 	}
 
-	args := factory.ArgsEthereumToElrondBridge{
-		Configs:                   configs,
-		Messenger:                 messenger,
-		StatusStorer:              statusStorer,
-		Proxy:                     proxy,
-		Erc20ContractsHolder:      erc20ContractsHolder,
-		ClientWrapper:             clientWrapper,
-		TimeForBootstrap:          timeForBootstrap,
-		TimeBeforeRepeatJoin:      timeBeforeRepeatJoin,
-		MetricsHolder:             metricsHolder,
-		AppStatusHandler:          appStatusHandler.StatusHandler(),
-		ElrondClientStatusHandler: elrondClientStatusHandler,
+	args := factory.ArgsEthereumToMultiversXBridge{
+		Configs:                       configs,
+		Messenger:                     messenger,
+		StatusStorer:                  statusStorer,
+		Proxy:                         proxy,
+		Erc20ContractsHolder:          erc20ContractsHolder,
+		ClientWrapper:                 clientWrapper,
+		TimeForBootstrap:              timeForBootstrap,
+		TimeBeforeRepeatJoin:          timeBeforeRepeatJoin,
+		MetricsHolder:                 metricsHolder,
+		AppStatusHandler:              appStatusHandler,
+		MultiversXClientStatusHandler: multiversXClientStatusHandler,
 	}
 
-	ethToElrondComponents, err := factory.NewEthElrondBridgeComponents(args)
+	ethToMultiversXComponents, err := factory.NewEthMultiversXBridgeComponents(args)
 	if err != nil {
 		return err
 	}
@@ -244,7 +258,7 @@ func startRelay(ctx *cli.Context, version string) error {
 
 	log.Info("Starting relay")
 
-	err = ethToElrondComponents.Start()
+	err = ethToMultiversXComponents.Start()
 	if err != nil {
 		return err
 	}
@@ -257,7 +271,7 @@ func startRelay(ctx *cli.Context, version string) error {
 	log.Info("application closing, calling Close on all subcomponents...")
 
 	var lastErr error
-	err = ethToElrondComponents.Close()
+	err = ethToMultiversXComponents.Close()
 	if err != nil {
 		lastErr = err
 	}
@@ -272,7 +286,7 @@ func startRelay(ctx *cli.Context, version string) error {
 
 func loadConfig(filepath string) (config.Config, error) {
 	cfg := config.Config{}
-	err := elrondCore.LoadTomlFile(&cfg, filepath)
+	err := chainCore.LoadTomlFile(&cfg, filepath)
 	if err != nil {
 		return config.Config{}, err
 	}
@@ -283,7 +297,7 @@ func loadConfig(filepath string) (config.Config, error) {
 // LoadApiConfig returns a ApiRoutesConfig by reading the config file provided
 func loadApiConfig(filepath string) (config.ApiRoutesConfig, error) {
 	cfg := config.ApiRoutesConfig{}
-	err := elrondCore.LoadTomlFile(&cfg, filepath)
+	err := chainCore.LoadTomlFile(&cfg, filepath)
 	if err != nil {
 		return config.ApiRoutesConfig{}, err
 	}
@@ -291,11 +305,16 @@ func loadApiConfig(filepath string) (config.ApiRoutesConfig, error) {
 	return cfg, nil
 }
 
-func attachFileLogger(log logger.Logger, flagsConfig config.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
-	var fileLogging elrondFactory.FileLoggingHandler
+func attachFileLogger(log logger.Logger, flagsConfig config.ContextFlagsConfig) (chainFactory.FileLoggingHandler, error) {
+	var fileLogging chainFactory.FileLoggingHandler
 	var err error
 	if flagsConfig.SaveLogFile {
-		fileLogging, err = logging.NewFileLogging(flagsConfig.WorkingDir, defaultLogsPath, logFilePrefix)
+		argsFileLogging := file.ArgsFileLogging{
+			WorkingDir:      flagsConfig.WorkingDir,
+			DefaultLogsPath: defaultLogsPath,
+			LogFilePrefix:   logFilePrefix,
+		}
+		fileLogging, err = file.NewFileLogging(argsFileLogging)
 		if err != nil {
 			return nil, fmt.Errorf("%w creating a log file", err)
 		}
@@ -327,14 +346,12 @@ func attachFileLogger(log logger.Logger, flagsConfig config.ContextFlagsConfig) 
 }
 
 func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.NetMessenger, error) {
-	nodeConfig := elrondConfig.NodeConfig{
+	nodeConfig := p2pConfig.NodeConfig{
 		Port:                       cfg.P2P.Port,
-		Seed:                       cfg.P2P.Seed,
 		MaximumExpectedPeerCount:   0,
 		ThresholdMinConnectedPeers: 0,
-		ConnectionWatcherType:      disabledWatcher,
 	}
-	peerDiscoveryConfig := elrondConfig.KadDhtPeerDiscoveryConfig{
+	peerDiscoveryConfig := p2pConfig.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
 		RefreshIntervalInSec:             5,
 		ProtocolID:                       cfg.P2P.ProtocolID,
@@ -344,10 +361,10 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		Type:                             p2pPeerNetworkDiscoverer,
 	}
 
-	p2pConfig := elrondConfig.P2PConfig{
+	p2pCfg := p2pConfig.P2PConfig{
 		Node:                nodeConfig,
 		KadDhtPeerDiscovery: peerDiscoveryConfig,
-		Sharding: elrondConfig.ShardingConfig{
+		Sharding: p2pConfig.ShardingConfig{
 			TargetPeerCount:         0,
 			MaxIntraShardValidators: 0,
 			MaxCrossShardValidators: 0,
@@ -357,13 +374,43 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		},
 	}
 
+	topRatedCache, err := cache.NewLRUCache(cfg.PeersRatingConfig.TopRatedCacheCapacity)
+	if err != nil {
+		return nil, err
+	}
+	badRatedCache, err := cache.NewLRUCache(cfg.PeersRatingConfig.BadRatedCacheCapacity)
+	if err != nil {
+		return nil, err
+	}
+	argsPeersRatingHandler := p2pFactory.ArgPeersRatingHandler{
+		TopRatedCache: topRatedCache,
+		BadRatedCache: badRatedCache,
+	}
+	peersRatingHandler, err := p2pFactory.NewPeersRatingHandler(argsPeersRatingHandler)
+	if err != nil {
+		return nil, err
+	}
+
+	p2pSingleSigner := &singlesig.Secp256k1Signer{}
+	p2pKeyGen := signing.NewKeyGenerator(secp256k1.NewSecp256k1())
+
+	privKey, _, err := crypto.CreateP2pKeyPair(cfg.MultiversX.PrivateKeyFile, p2pKeyGen, log)
+	if err != nil {
+		return nil, err
+	}
+
 	args := libp2p.ArgsNetworkMessenger{
-		Marshalizer:          marshalizer,
-		ListenAddress:        libp2p.ListenAddrWithIp4AndTcp,
-		P2pConfig:            p2pConfig,
-		SyncTimer:            &libp2p.LocalSyncTimer{},
-		PreferredPeersHolder: disabled.NewPreferredPeersHolder(),
-		NodeOperationMode:    elrondP2P.NormalOperation,
+		ListenAddress:         chainP2P.ListenAddrWithIp4AndTcp,
+		Marshalizer:           marshalizer,
+		P2pConfig:             p2pCfg,
+		SyncTimer:             &libp2p.LocalSyncTimer{},
+		PreferredPeersHolder:  disabled.NewPreferredPeersHolder(),
+		NodeOperationMode:     chainP2P.NormalOperation,
+		PeersRatingHandler:    peersRatingHandler,
+		ConnectionWatcherType: disabledWatcher,
+		P2pPrivateKey:         privKey,
+		P2pSingleSigner:       p2pSingleSigner,
+		P2pKeyGenerator:       p2pKeyGen,
 	}
 
 	return libp2p.NewNetworkMessenger(args)

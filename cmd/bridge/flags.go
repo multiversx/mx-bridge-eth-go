@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/facade"
+	"github.com/multiversx/mx-bridge-eth-go/config"
+	"github.com/multiversx/mx-chain-go/facade"
+	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/urfave/cli"
 )
 

@@ -3,8 +3,8 @@ package factory
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	sdkCore "github.com/multiversx/mx-sdk-go/core"
 )
 
 type dataGetter interface {
@@ -14,10 +14,10 @@ type dataGetter interface {
 	IsInterfaceNil() bool
 }
 
-// ElrondRoleProvider defines the operations for the Elrond role provider
-type ElrondRoleProvider interface {
+// MultiversXRoleProvider defines the operations for the MultiversX role provider
+type MultiversXRoleProvider interface {
 	Execute(ctx context.Context) error
-	IsWhitelisted(address erdgoCore.AddressHandler) bool
+	IsWhitelisted(address sdkCore.AddressHandler) bool
 	SortedPublicKeys() [][]byte
 	IsInterfaceNil() bool
 }

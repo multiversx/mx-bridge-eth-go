@@ -43,7 +43,7 @@ jobs:
           GOOS=$(go env GOOS)
           GOARCH=$(go env GOARCH)
           GOPATH=$(go env GOPATH)
-          ARCHIVE="elrond_eth_bridge""$APP_VER_SHORT""_""$GOOS""_""$GOARCH"".tgz"
+          ARCHIVE="multiversx_eth_bridge""$APP_VER_SHORT""_""$GOOS""_""$GOARCH"".tgz"
           BUILD_DIR=${GITHUB_WORKSPACE}/build
 
           echo "GOOS=${GOOS}" >> $GITHUB_ENV

@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
+	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
 const minRequestTime = time.Millisecond

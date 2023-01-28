@@ -3,32 +3,32 @@ package mock
 import (
 	"encoding/hex"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 )
 
 // tokensRegistryMock is not concurrent safe
 type tokensRegistryMock struct {
-	ethToElrond map[common.Address]string
-	elrondToEth map[string]common.Address
+	ethToMultiversX map[common.Address]string
+	multiversXToEth map[string]common.Address
 }
 
 func (mock *tokensRegistryMock) addTokensPair(erc20Address common.Address, ticker string) {
 	integrationTests.Log.Info("added tokens pair", "ticker", ticker, "erc20 address", erc20Address.String())
 
-	mock.ethToElrond[erc20Address] = ticker
+	mock.ethToMultiversX[erc20Address] = ticker
 
 	hexedTicker := hex.EncodeToString([]byte(ticker))
-	mock.elrondToEth[hexedTicker] = erc20Address
+	mock.multiversXToEth[hexedTicker] = erc20Address
 }
 
 func (mock *tokensRegistryMock) clearTokens() {
-	mock.ethToElrond = make(map[common.Address]string)
-	mock.elrondToEth = make(map[string]common.Address)
+	mock.ethToMultiversX = make(map[common.Address]string)
+	mock.multiversXToEth = make(map[string]common.Address)
 }
 
 func (mock *tokensRegistryMock) getTicker(erc20Address common.Address) string {
-	ticker, found := mock.ethToElrond[erc20Address]
+	ticker, found := mock.ethToMultiversX[erc20Address]
 	if !found {
 		panic("tiker for erc20 address " + erc20Address.String() + " not found")
 	}
@@ -37,7 +37,7 @@ func (mock *tokensRegistryMock) getTicker(erc20Address common.Address) string {
 }
 
 func (mock *tokensRegistryMock) getErc20Address(ticker string) common.Address {
-	addr, found := mock.elrondToEth[ticker]
+	addr, found := mock.multiversXToEth[ticker]
 	if !found {
 		panic("erc20 address for ticker " + ticker + " not found")
 	}

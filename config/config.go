@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
-	"github.com/ElrondNetwork/elrond-go/config"
+	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
+	"github.com/multiversx/mx-chain-go/config"
 )
 
 // Configs is a holder for the relayer configuration parameters
@@ -14,14 +14,15 @@ type Configs struct {
 
 // Config general configuration struct
 type Config struct {
-	Eth            EthereumConfig
-	Elrond         ElrondConfig
-	P2P            ConfigP2P
-	StateMachine   map[string]ConfigStateMachine
-	Relayer        ConfigRelayer
-	Logs           LogsConfig
-	Antiflood      AntifloodConfig
-	BatchValidator BatchValidatorConfig
+	Eth               EthereumConfig
+	MultiversX        MultiversXConfig
+	P2P               ConfigP2P
+	StateMachine      map[string]ConfigStateMachine
+	Relayer           ConfigRelayer
+	Logs              LogsConfig
+	Antiflood         AntifloodConfig
+	BatchValidator    BatchValidatorConfig
+	PeersRatingConfig PeersRatingConfig
 }
 
 // EthereumConfig represents the Ethereum Config parameters
@@ -56,7 +57,6 @@ type GasStationConfig struct {
 // ConfigP2P configuration for the P2P communication
 type ConfigP2P struct {
 	Port            string
-	Seed            string
 	InitialPeerList []string
 	ProtocolID      string
 	AntifloodConfig config.AntifloodConfig
@@ -134,6 +134,7 @@ type RouteConfig struct {
 // LogsConfig will hold settings related to the logging sub-system
 type LogsConfig struct {
 	LogFileLifeSpanInSec int
+	LogFileLifeSpanInMB  int
 }
 
 // RoleProviderConfig is the configuration for the role provider component
@@ -141,13 +142,13 @@ type RoleProviderConfig struct {
 	PollingIntervalInMillis uint64
 }
 
-// ElrondConfig represents the Elrond Config parameters
-type ElrondConfig struct {
+// MultiversXConfig represents the MultiversX Config parameters
+type MultiversXConfig struct {
 	NetworkAddress                  string
 	MultisigContractAddress         string
 	PrivateKeyFile                  string
 	IntervalToResendTxsInSeconds    uint64
-	GasMap                          ElrondGasMapConfig
+	GasMap                          MultiversXGasMapConfig
 	MaxRetriesOnQuorumReached       uint64
 	MaxRetriesOnWasTransferProposed uint64
 	ProxyCacherExpirationSeconds    uint64
@@ -156,8 +157,8 @@ type ElrondConfig struct {
 	ProxyFinalityCheck              bool
 }
 
-// ElrondGasMapConfig represents the gas limits for Elrond operations
-type ElrondGasMapConfig struct {
+// MultiversXGasMapConfig represents the gas limits for MultiversX operations
+type MultiversXGasMapConfig struct {
 	Sign                   uint64
 	ProposeTransferBase    uint64
 	ProposeTransferForEach uint64
@@ -165,4 +166,10 @@ type ElrondGasMapConfig struct {
 	ProposeStatusForEach   uint64
 	PerformActionBase      uint64
 	PerformActionForEach   uint64
+}
+
+// PeersRatingConfig will hold settings related to peers rating
+type PeersRatingConfig struct {
+	TopRatedCacheCapacity int
+	BadRatedCacheCapacity int
 }

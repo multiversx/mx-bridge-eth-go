@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/api/shared"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go/api/errors"
-	elrondApiShared "github.com/ElrondNetwork/elrond-go/api/shared"
 	"github.com/gin-gonic/gin"
+	"github.com/multiversx/mx-bridge-eth-go/api/shared"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-go/api/errors"
+	chainAPIShared "github.com/multiversx/mx-chain-go/api/shared"
 )
 
 const (
@@ -35,7 +35,7 @@ func NewNodeGroup(facade shared.FacadeHandler) (*nodeGroup, error) {
 		baseGroup: &baseGroup{},
 	}
 
-	endpoints := []*elrondApiShared.EndpointHandlerData{
+	endpoints := []*chainAPIShared.EndpointHandlerData{
 		{
 			Path:    statusPath,
 			Method:  http.MethodGet,
@@ -58,10 +58,10 @@ func (ng *nodeGroup) statusListMetrics(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		elrondApiShared.GenericAPIResponse{
+		chainAPIShared.GenericAPIResponse{
 			Data:  list,
 			Error: "",
-			Code:  elrondApiShared.ReturnCodeSuccess,
+			Code:  chainAPIShared.ReturnCodeSuccess,
 		},
 	)
 }
@@ -80,10 +80,10 @@ func (ng *nodeGroup) statusMetrics(c *gin.Context) {
 	if err != nil {
 		c.JSON(
 			http.StatusInternalServerError,
-			elrondApiShared.GenericAPIResponse{
+			chainAPIShared.GenericAPIResponse{
 				Data:  nil,
 				Error: fmt.Sprintf("%s: %s", ErrGettingMetrics.Error(), err.Error()),
-				Code:  elrondApiShared.ReturnCodeInternalError,
+				Code:  chainAPIShared.ReturnCodeInternalError,
 			},
 		)
 		return
@@ -91,10 +91,10 @@ func (ng *nodeGroup) statusMetrics(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		elrondApiShared.GenericAPIResponse{
+		chainAPIShared.GenericAPIResponse{
 			Data:  info,
 			Error: "",
-			Code:  elrondApiShared.ReturnCodeSuccess,
+			Code:  chainAPIShared.ReturnCodeSuccess,
 		},
 	)
 }

@@ -1,12 +1,12 @@
 package relayers
 
 import (
-	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ethereum/go-ethereum/common"
+	sdkCore "github.com/multiversx/mx-sdk-go/core"
 )
 
 type bridgeComponents interface {
-	ElrondRelayerAddress() erdgoCore.AddressHandler
+	MultiversXRelayerAddress() sdkCore.AddressHandler
 	EthereumRelayerAddress() common.Address
 	Start() error
 	Close() error

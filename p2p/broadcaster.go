@@ -6,15 +6,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
-	crypto "github.com/ElrondNetwork/elrond-go-crypto"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/p2p"
-	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	chainCore "github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/marshal"
+	crypto "github.com/multiversx/mx-chain-crypto-go"
+	"github.com/multiversx/mx-chain-go/p2p"
+	"github.com/multiversx/mx-chain-go/process/throttle/antiflood/factory"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-sdk-go/data"
 )
 
 const (
@@ -26,29 +26,29 @@ const (
 
 // ArgsBroadcaster is the DTO used in the broadcaster constructor
 type ArgsBroadcaster struct {
-	Messenger           NetMessenger
-	Log                 logger.Logger
-	ElrondRoleProvider  ElrondRoleProvider
-	SignatureProcessor  SignatureProcessor
-	KeyGen              crypto.KeyGenerator
-	SingleSigner        crypto.SingleSigner
-	PrivateKey          crypto.PrivateKey
-	Name                string
-	AntifloodComponents *factory.AntiFloodComponents
+	Messenger              NetMessenger
+	Log                    logger.Logger
+	MultiversXRoleProvider MultiversXRoleProvider
+	SignatureProcessor     SignatureProcessor
+	KeyGen                 crypto.KeyGenerator
+	SingleSigner           crypto.SingleSigner
+	PrivateKey             crypto.PrivateKey
+	Name                   string
+	AntifloodComponents    *factory.AntiFloodComponents
 }
 
 type broadcaster struct {
 	*relayerMessageHandler
 	*noncesOfPublicKeys
-	messenger          NetMessenger
-	log                logger.Logger
-	elrondRoleProvider ElrondRoleProvider
-	signatureProcessor SignatureProcessor
-	name               string
-	mutClients         sync.RWMutex
-	clients            []core.BroadcastClient
-	joinTopicName      string
-	signTopicName      string
+	messenger             NetMessenger
+	log                   logger.Logger
+	multiversRoleProvider MultiversXRoleProvider
+	signatureProcessor    SignatureProcessor
+	name                  string
+	mutClients            sync.RWMutex
+	clients               []core.BroadcastClient
+	joinTopicName         string
+	signTopicName         string
 }
 
 // NewBroadcaster will create a new broadcaster able to pass messages and signatures
@@ -59,12 +59,12 @@ func NewBroadcaster(args ArgsBroadcaster) (*broadcaster, error) {
 	}
 
 	b := &broadcaster{
-		name:               args.Name,
-		messenger:          args.Messenger,
-		noncesOfPublicKeys: newNoncesOfPublicKeys(),
-		log:                args.Log,
-		elrondRoleProvider: args.ElrondRoleProvider,
-		signatureProcessor: args.SignatureProcessor,
+		name:                  args.Name,
+		messenger:             args.Messenger,
+		noncesOfPublicKeys:    newNoncesOfPublicKeys(),
+		log:                   args.Log,
+		multiversRoleProvider: args.MultiversXRoleProvider,
+		signatureProcessor:    args.SignatureProcessor,
 		relayerMessageHandler: &relayerMessageHandler{
 			marshalizer:         &marshal.JsonMarshalizer{},
 			keyGen:              args.KeyGen,
@@ -102,8 +102,8 @@ func checkArgs(args ArgsBroadcaster) error {
 	if check.IfNil(args.SingleSigner) {
 		return ErrNilSingleSigner
 	}
-	if check.IfNil(args.ElrondRoleProvider) {
-		return ErrNilElrondRoleProvider
+	if check.IfNil(args.MultiversXRoleProvider) {
+		return ErrNilMultiversXRoleProvider
 	}
 	if check.IfNil(args.Messenger) {
 		return ErrNilMessenger
@@ -139,7 +139,7 @@ func (b *broadcaster) RegisterOnTopics() error {
 }
 
 // ProcessReceivedMessage will be called by the network messenger whenever a new message is received
-func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
+func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnectedPeer chainCore.PeerID) error {
 	msg, err := b.preProcessMessage(message, fromConnectedPeer)
 	if err != nil {
 		b.log.Debug("got message", "topic", message.Topic(), "error", err)
@@ -148,7 +148,7 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnect
 
 	addr := data.NewAddressFromBytes(msg.PublicKeyBytes)
 	hexPkBytes := hex.EncodeToString(msg.PublicKeyBytes)
-	if !b.elrondRoleProvider.IsWhitelisted(addr) {
+	if !b.multiversRoleProvider.IsWhitelisted(addr) {
 		return fmt.Errorf("%w for peer: %s", ErrPeerNotWhitelisted, hexPkBytes)
 	}
 
@@ -220,7 +220,7 @@ func (b *broadcaster) notifyClients(msg *core.SignedMessage, ethMsg *core.Ethere
 	}
 }
 
-func (b *broadcaster) broadcastCurrentSignatures(peerId elrondCore.PeerID) error {
+func (b *broadcaster) broadcastCurrentSignatures(peerId chainCore.PeerID) error {
 	allMessages := b.retrieveUniqueMessages()
 
 	for _, msg := range allMessages {
@@ -246,7 +246,7 @@ func (b *broadcaster) retrieveUniqueMessages() map[string]*core.SignedMessage {
 	return allMessages
 }
 
-func (b *broadcaster) sendSignedMessageToPeer(msg *core.SignedMessage, peerId elrondCore.PeerID) error {
+func (b *broadcaster) sendSignedMessageToPeer(msg *core.SignedMessage, peerId chainCore.PeerID) error {
 	buff, err := b.marshalizer.Marshal(msg)
 	if err != nil {
 		return err

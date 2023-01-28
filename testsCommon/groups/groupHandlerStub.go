@@ -1,9 +1,9 @@
 package groups
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/api/shared"
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/gin-gonic/gin"
+	"github.com/multiversx/mx-bridge-eth-go/api/shared"
+	"github.com/multiversx/mx-bridge-eth-go/config"
 )
 
 // GroupHandlerStub -

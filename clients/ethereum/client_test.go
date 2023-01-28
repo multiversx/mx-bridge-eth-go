@@ -9,19 +9,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
-	bridgeCore "github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core/converters"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -276,11 +276,11 @@ func TestClient_GetBatch(t *testing.T) {
 	t.Run("returns batch should work", func(t *testing.T) {
 		from1 := testsCommon.CreateRandomEthereumAddress()
 		token1 := testsCommon.CreateRandomEthereumAddress()
-		recipient1 := testsCommon.CreateRandomElrondAddress()
+		recipient1 := testsCommon.CreateRandomMultiversXAddress()
 
 		from2 := testsCommon.CreateRandomEthereumAddress()
 		token2 := testsCommon.CreateRandomEthereumAddress()
-		recipient2 := testsCommon.CreateRandomElrondAddress()
+		recipient2 := testsCommon.CreateRandomMultiversXAddress()
 
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
@@ -835,7 +835,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethElrond.Available, "")
+			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
 		}
 		assert.True(t, statusHandler.GetIntMetric(bridgeCore.MetricLastBlockNonce) > 0)
 	})
@@ -846,21 +846,21 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		incrementor = 0
 
 		// place a random message as to test it is reset
-		statusHandler.SetStringMetric(bridgeCore.MetricElrondClientStatus, ethElrond.ClientStatus(3).String())
-		statusHandler.SetStringMetric(bridgeCore.MetricLastElrondClientError, "random")
+		statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, ethmultiversx.ClientStatus(3).String())
+		statusHandler.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, "random")
 
 		// this will just increment the retry counter
 		for i := 0; i < int(args.AllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethElrond.Available, "")
+			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
 			message := fmt.Sprintf("block %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethElrond.Unavailable, message)
+			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
 		}
 	})
 	t.Run("same current nonce should error after a while and then recovers", func(t *testing.T) {
@@ -873,20 +873,20 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		for i := 0; i < int(args.AllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethElrond.Available, "")
+			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
 			message := fmt.Sprintf("block %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethElrond.Unavailable, message)
+			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
 		}
 
 		incrementor = 1
 		err := c.CheckClientAvailability(context.Background())
 		assert.Nil(t, err)
-		checkStatusHandler(t, statusHandler, ethElrond.Available, "")
+		checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
 	})
 	t.Run("get current nonce errors", func(t *testing.T) {
 		resetClient(c)
@@ -898,7 +898,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		}
 
 		err := c.CheckClientAvailability(context.Background())
-		checkStatusHandler(t, statusHandler, ethElrond.Unavailable, expectedErr.Error())
+		checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, expectedErr.Error())
 		assert.Equal(t, expectedErr, err)
 	})
 }
@@ -907,11 +907,11 @@ func resetClient(c *client) {
 	c.mut.Lock()
 	c.retriesAvailabilityCheck = 0
 	c.mut.Unlock()
-	c.clientWrapper.SetStringMetric(bridgeCore.MetricElrondClientStatus, "")
-	c.clientWrapper.SetStringMetric(bridgeCore.MetricLastElrondClientError, "")
+	c.clientWrapper.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, "")
+	c.clientWrapper.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, "")
 }
 
-func checkStatusHandler(t *testing.T, statusHandler *testsCommon.StatusHandlerMock, status ethElrond.ClientStatus, message string) {
-	assert.Equal(t, status.String(), statusHandler.GetStringMetric(bridgeCore.MetricElrondClientStatus))
-	assert.Equal(t, message, statusHandler.GetStringMetric(bridgeCore.MetricLastElrondClientError))
+func checkStatusHandler(t *testing.T, statusHandler *testsCommon.StatusHandlerMock, status ethmultiversx.ClientStatus, message string) {
+	assert.Equal(t, status.String(), statusHandler.GetStringMetric(bridgeCore.MetricMultiversXClientStatus))
+	assert.Equal(t, message, statusHandler.GetStringMetric(bridgeCore.MetricLastMultiversXClientError))
 }

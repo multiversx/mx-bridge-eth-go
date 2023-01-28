@@ -1,7 +1,7 @@
 package timer
 
 import (
-	"github.com/ElrondNetwork/elrond-go/ntp"
+	"github.com/multiversx/mx-chain-go/ntp"
 )
 
 func newNTPTimerWithInnerSyncTimer(ntpSyncTimer ntp.SyncTimer) *ntpTimer {

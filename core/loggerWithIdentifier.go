@@ -1,7 +1,7 @@
 package core
 
 import (
-	logger "github.com/ElrondNetwork/elrond-go-logger"
+	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
 // loggerWithIdentifier is a decorator for the logger

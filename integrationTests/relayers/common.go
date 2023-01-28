@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
-	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
 	"github.com/ethereum/go-ethereum/common"
+	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 )
 
 func createMockErc20ContractsHolder(tokens []common.Address, safeContractEthAddress common.Address, availableBalances []*big.Int) *bridgeTests.ERC20ContractsHolderStub {

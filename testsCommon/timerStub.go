@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-var fullPathTimerStub = "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon.(*TimerStub)."
+var fullPathTimerStub = "github.com/multiversx/mx-bridge-eth-go/testsCommon.(*TimerStub)."
 
 // TimerStub -
 type TimerStub struct {

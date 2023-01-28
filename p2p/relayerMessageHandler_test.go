@@ -9,23 +9,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/crypto"
-	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
-	crypto "github.com/ElrondNetwork/elrond-go-crypto"
-	"github.com/ElrondNetwork/elrond-go/p2p"
-	"github.com/ElrondNetwork/elrond-go/process/mock"
-	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	cryptoMocks "github.com/multiversx/mx-bridge-eth-go/testsCommon/crypto"
+	p2pMocks "github.com/multiversx/mx-bridge-eth-go/testsCommon/p2p"
+	chainCore "github.com/multiversx/mx-chain-core-go/core"
+	crypto "github.com/multiversx/mx-chain-crypto-go"
+	"github.com/multiversx/mx-chain-go/p2p"
+	"github.com/multiversx/mx-chain-go/process/mock"
+	"github.com/multiversx/mx-chain-go/process/throttle/antiflood/factory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 var marshalizer = &testsCommon.MarshalizerMock{}
 
-const fromPeer = elrondCore.PeerID("from-peer")
-const pid = elrondCore.PeerID("pid1")
+const fromPeer = chainCore.PeerID("from-peer")
+const pid = chainCore.PeerID("pid1")
 
 func TestRelayerMessageHandler_canProcess(t *testing.T) {
 	t.Parallel()
@@ -46,7 +46,7 @@ func TestRelayerMessageHandler_canProcess(t *testing.T) {
 		rmh := &relayerMessageHandler{
 			antifloodComponents: &factory.AntiFloodComponents{
 				AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
-					CanProcessMessageCalled: func(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
+					CanProcessMessageCalled: func(message p2p.MessageP2P, fromConnectedPeer chainCore.PeerID) error {
 						return expectedErr
 					},
 				},
@@ -64,7 +64,7 @@ func TestRelayerMessageHandler_canProcess(t *testing.T) {
 		rmh := &relayerMessageHandler{
 			antifloodComponents: &factory.AntiFloodComponents{
 				AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
-					CanProcessMessagesOnTopicCalled: func(peer elrondCore.PeerID, topic string, numMessages uint32, totalSize uint64, sequence []byte) error {
+					CanProcessMessagesOnTopicCalled: func(peer chainCore.PeerID, topic string, numMessages uint32, totalSize uint64, sequence []byte) error {
 						return expectedErr
 					},
 				},
@@ -88,13 +88,13 @@ func TestRelayerMessageHandler_canProcess(t *testing.T) {
 		rmh := &relayerMessageHandler{
 			antifloodComponents: &factory.AntiFloodComponents{
 				AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
-					CanProcessMessageCalled: func(message p2p.MessageP2P, fromConnectedPeer elrondCore.PeerID) error {
+					CanProcessMessageCalled: func(message p2p.MessageP2P, fromConnectedPeer chainCore.PeerID) error {
 						assert.Equal(t, fromPeer, fromConnectedPeer)
 						assert.Equal(t, providedMessage, message)
 						wasCanProcessCalled = true
 						return nil
 					},
-					CanProcessMessagesOnTopicCalled: func(peer elrondCore.PeerID, topic string, numMessages uint32, totalSize uint64, sequence []byte) error {
+					CanProcessMessagesOnTopicCalled: func(peer chainCore.PeerID, topic string, numMessages uint32, totalSize uint64, sequence []byte) error {
 						assert.Equal(t, fromPeer, peer)
 						assert.Equal(t, providedMessage.Topic(), topic)
 						assert.Equal(t, uint64(len(providedMessage.DataField)), totalSize)
@@ -123,13 +123,13 @@ func TestRelayerMessageHandler_preProcess(t *testing.T) {
 }
 
 func preProcessUnmarshal(t *testing.T) {
-	blackList := make(map[elrondCore.PeerID]string)
+	blackList := make(map[chainCore.PeerID]string)
 	rmh := &relayerMessageHandler{
 		marshalizer:  &testsCommon.MarshalizerMock{},
 		singleSigner: &cryptoMocks.SingleSignerStub{},
 		antifloodComponents: &factory.AntiFloodComponents{
 			AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
-				BlacklistPeerCalled: func(peer elrondCore.PeerID, reason string, duration time.Duration) {
+				BlacklistPeerCalled: func(peer chainCore.PeerID, reason string, duration time.Duration) {
 					blackList[peer] = reason
 				},
 			},
@@ -223,7 +223,7 @@ func preProcessKeygenFails(t *testing.T) {
 }
 
 func preProcessVerifyFails(t *testing.T) {
-	blackList := make(map[elrondCore.PeerID]string)
+	blackList := make(map[chainCore.PeerID]string)
 	expectedErr := errors.New("expected error")
 	rmh := &relayerMessageHandler{
 		marshalizer: &testsCommon.MarshalizerMock{},
@@ -235,7 +235,7 @@ func preProcessVerifyFails(t *testing.T) {
 		keyGen: &cryptoMocks.KeyGenStub{},
 		antifloodComponents: &factory.AntiFloodComponents{
 			AntiFloodHandler: &mock.P2PAntifloodHandlerStub{
-				BlacklistPeerCalled: func(peer elrondCore.PeerID, reason string, duration time.Duration) {
+				BlacklistPeerCalled: func(peer chainCore.PeerID, reason string, duration time.Duration) {
 					blackList[peer] = reason
 				},
 			},

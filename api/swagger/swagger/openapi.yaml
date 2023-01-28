@@ -3,7 +3,7 @@ info:
   version: "1.0.0"
   title: "Relayers API"
   contact:
-    email: "contact@elrond.com"
+    email: "contact@multiversx.com"
 basePath: "/node"
 host: localhost:8080
 tags:
@@ -24,7 +24,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#components/schemas/ElrondReply'
+                $ref: '#components/schemas/MultiversXReply'
   /status?name={metric}:
     get:
       tags:
@@ -37,18 +37,18 @@ paths:
           required: true
           description: The wanted metric
           type: string
-          enum: [ElrondToEth, EthToElrond, elrond-client, eth-client]
+          enum: [MultiversXToEth, EthToMultiversX, multiversx-client, eth-client]
       responses:
         '200':
           description: Information of the requested metric
           content:
             application/json:
               schema:
-                $ref: '#components/schemas/ElrondReply'
+                $ref: '#components/schemas/MultiversXReply'
 
 components:
   schemas:
-    ElrondReply:
+    MultiversXReply:
       type: object
       properties:
         data:

@@ -1,9 +1,9 @@
 package shared
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/gin-gonic/gin"
+	"github.com/multiversx/mx-bridge-eth-go/config"
+	"github.com/multiversx/mx-bridge-eth-go/core"
 )
 
 // GroupHandler defines the actions needed to be performed by an gin API group

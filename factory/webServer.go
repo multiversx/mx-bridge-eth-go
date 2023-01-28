@@ -3,10 +3,10 @@ package factory
 import (
 	"io"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/api/gin"
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/facade"
+	"github.com/multiversx/mx-bridge-eth-go/api/gin"
+	"github.com/multiversx/mx-bridge-eth-go/config"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/facade"
 )
 
 // StartWebServer creates and starts a web server able to respond with the metrics holder information

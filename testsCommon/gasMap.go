@@ -1,12 +1,12 @@
 package testsCommon
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
+	"github.com/multiversx/mx-bridge-eth-go/config"
 )
 
-// CreateTestElrondGasMap will create a testing gas map for Elrond client
-func CreateTestElrondGasMap() config.ElrondGasMapConfig {
-	return config.ElrondGasMapConfig{
+// CreateTestMultiversXGasMap will create a testing gas map for MultiversX client
+func CreateTestMultiversXGasMap() config.MultiversXGasMapConfig {
+	return config.MultiversXGasMapConfig{
 		Sign:                   101,
 		ProposeTransferBase:    102,
 		ProposeTransferForEach: 103,

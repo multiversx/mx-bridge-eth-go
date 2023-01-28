@@ -8,17 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
-	"github.com/ElrondNetwork/elrond-eth-bridge/p2p"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
-	mockRoleProviders "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
-	crypto "github.com/ElrondNetwork/elrond-go-crypto"
-	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
-	elrondP2P "github.com/ElrondNetwork/elrond-go/p2p"
-	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
-	"github.com/ElrondNetwork/elrond-go/testscommon/statusHandler"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
+	"github.com/multiversx/mx-bridge-eth-go/p2p"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	p2pMocks "github.com/multiversx/mx-bridge-eth-go/testsCommon/p2p"
+	mockRoleProviders "github.com/multiversx/mx-bridge-eth-go/testsCommon/roleProviders"
+	crypto "github.com/multiversx/mx-chain-crypto-go"
+	chainConfig "github.com/multiversx/mx-chain-go/config"
+	chainP2P "github.com/multiversx/mx-chain-go/p2p"
+	"github.com/multiversx/mx-chain-go/process/throttle/antiflood/factory"
+	"github.com/multiversx/mx-chain-go/testscommon/statusHandler"
+	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +35,7 @@ func TestNetworkOfBroadcastersShouldPassTheSignatures(t *testing.T) {
 
 	privateKeys, publicKeysBytes := createKeys(t, numBroadcasters)
 
-	roleProvider := &mockRoleProviders.ElrondRoleProviderStub{
+	roleProvider := &mockRoleProviders.MultiversXRoleProviderStub{
 		IsWhitelistedCalled: func(address core.AddressHandler) bool {
 			for _, pkBytes := range publicKeysBytes {
 				if bytes.Equal(address.AddressBytes(), pkBytes) {
@@ -89,7 +89,7 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenNotJoining(t *
 
 	privateKeys, publicKeysBytes := createKeys(t, numBroadcasters)
 
-	roleProvider := &mockRoleProviders.ElrondRoleProviderStub{
+	roleProvider := &mockRoleProviders.MultiversXRoleProviderStub{
 		IsWhitelistedCalled: func(address core.AddressHandler) bool {
 			for _, pkBytes := range publicKeysBytes {
 				if bytes.Equal(address.AddressBytes(), pkBytes) {
@@ -131,7 +131,7 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 
 	privateKeys, publicKeysBytes := createKeys(t, numBroadcasters)
 
-	roleProvider := &mockRoleProviders.ElrondRoleProviderStub{
+	roleProvider := &mockRoleProviders.MultiversXRoleProviderStub{
 		IsWhitelistedCalled: func(address core.AddressHandler) bool {
 			for _, pkBytes := range publicKeysBytes {
 				if bytes.Equal(address.AddressBytes(), pkBytes) {
@@ -174,8 +174,8 @@ func TestNetworkOfBroadcastersShouldBootstrapOnLateBroadcasterWhenLateConnecting
 func createBroadcasters(
 	t *testing.T,
 	numBroadcasters int,
-	messengers []elrondP2P.Messenger,
-	roleProvider *mockRoleProviders.ElrondRoleProviderStub,
+	messengers []chainP2P.Messenger,
+	roleProvider *mockRoleProviders.MultiversXRoleProviderStub,
 	privateKeys []crypto.PrivateKey,
 ) ([]integrationTests.Broadcaster, []*testsCommon.SignaturesHolderMock) {
 	broadcasters := make([]integrationTests.Broadcaster, 0, numBroadcasters)
@@ -192,26 +192,26 @@ func createBroadcasters(
 
 func createBroadcaster(
 	t *testing.T,
-	messenger elrondP2P.Messenger,
-	roleProvider *mockRoleProviders.ElrondRoleProviderStub,
+	messenger chainP2P.Messenger,
+	roleProvider *mockRoleProviders.MultiversXRoleProviderStub,
 	privateKey crypto.PrivateKey,
 ) (integrationTests.Broadcaster, *testsCommon.SignaturesHolderMock) {
-	cfg := elrondConfig.Config{
+	cfg := chainConfig.Config{
 		Antiflood: p2pMocks.CreateAntifloodConfig(),
 	}
 	ac, err := factory.NewP2PAntiFloodComponents(context.Background(), cfg, &statusHandler.AppStatusHandlerStub{}, "pid")
 	require.Nil(t, err)
 
 	args := p2p.ArgsBroadcaster{
-		Messenger:           messenger,
-		Log:                 integrationTests.Log,
-		ElrondRoleProvider:  roleProvider,
-		KeyGen:              integrationTests.TestKeyGenerator,
-		SingleSigner:        integrationTests.TestSingleSigner,
-		PrivateKey:          privateKey,
-		SignatureProcessor:  &testsCommon.SignatureProcessorStub{},
-		Name:                "test",
-		AntifloodComponents: ac,
+		Messenger:              messenger,
+		Log:                    integrationTests.Log,
+		MultiversXRoleProvider: roleProvider,
+		KeyGen:                 integrationTests.TestKeyGenerator,
+		SingleSigner:           integrationTests.TestSingleSigner,
+		PrivateKey:             privateKey,
+		SignatureProcessor:     &testsCommon.SignatureProcessorStub{},
+		Name:                   "test",
+		AntifloodComponents:    ac,
 	}
 
 	b, err := p2p.NewBroadcaster(args)

@@ -1,6 +1,6 @@
 # Swagger setup for the relayer node
 The relayer node exposes some api routes in order to monitor the health of it:
-- connection status between ethereum and elrond clients
+- connection status between ethereum and multiversx clients
 - information for each half-bridge regarding the current status
 
 In order to setup the swagger for interacting with those routes we will use `docker`
