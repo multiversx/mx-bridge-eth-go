@@ -84,7 +84,7 @@ type ethMultiversXBridgeComponents struct {
 	multiversXRelayerPrivateKey       crypto.PrivateKey
 	multiversXRelayerAddress          sdkCore.AddressHandler
 	ethereumRelayerAddress            common.Address
-	dataGetter                        dataGetter
+	mxDataGetter                      dataGetter
 	proxy                             multiversx.Proxy
 	multiversXRoleProvider            MultiversXRoleProvider
 	ethereumRoleProvider              EthereumRoleProvider
@@ -264,7 +264,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXKeysAndAddresse
 
 func (components *ethMultiversXBridgeComponents) createDataGetter() error {
 	multiversXDataGetterLogId := components.evmCompatibleChain.MultiversXDataGetterLogId()
-	argsDataGetter := multiversx.ArgsDataGetter{
+	argsMXClientDataGetter := multiversx.ArgsMXClientDataGetter{
 		MultisigContractAddress: components.multiversXMultisigContractAddress,
 		RelayerAddress:          components.multiversXRelayerAddress,
 		Proxy:                   components.proxy,
@@ -272,14 +272,14 @@ func (components *ethMultiversXBridgeComponents) createDataGetter() error {
 	}
 
 	var err error
-	components.dataGetter, err = multiversx.NewDataGetter(argsDataGetter)
+	components.mxDataGetter, err = multiversx.NewMXClientDataGetter(argsMXClientDataGetter)
 
 	return err
 }
 
 func (components *ethMultiversXBridgeComponents) createMultiversXClient(args ArgsEthereumToMultiversXBridge) error {
 	chainConfigs := args.Configs.GeneralConfig.MultiversX
-	tokensMapper, err := mappers.NewMultiversXToErc20Mapper(components.dataGetter)
+	tokensMapper, err := mappers.NewMultiversXToErc20Mapper(components.mxDataGetter)
 	if err != nil {
 		return err
 	}
@@ -374,7 +374,7 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 	}
 	components.ethereumRelayerAddress = ethCrypto.PubkeyToAddress(*publicKeyECDSA)
 
-	tokensMapper, err := mappers.NewErc20ToMultiversXMapper(components.dataGetter)
+	tokensMapper, err := mappers.NewErc20ToMultiversXMapper(components.mxDataGetter)
 	if err != nil {
 		return err
 	}
@@ -416,7 +416,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXRoleProvider(ar
 	log := core.NewLoggerWithIdentifier(logger.GetOrCreate(multiversXRoleProviderLogId), multiversXRoleProviderLogId)
 
 	argsRoleProvider := roleproviders.ArgsMultiversXRoleProvider{
-		DataGetter: components.dataGetter,
+		DataGetter: components.mxDataGetter,
 		Log:        log,
 	}
 

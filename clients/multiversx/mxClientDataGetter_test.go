@@ -28,8 +28,8 @@ const (
 
 var calledArgs = []string{"args1", "args2"}
 
-func createMockArgsDataGetter() ArgsDataGetter {
-	args := ArgsDataGetter{
+func createMockArgsMXClientDataGetter() ArgsMXClientDataGetter {
+	args := ArgsMXClientDataGetter{
 		Log:   logger.GetOrCreate("test"),
 		Proxy: &interactors.ProxyStub{},
 	}
@@ -84,36 +84,36 @@ func createMockBatch() *clients.TransferBatch {
 	}
 }
 
-func TestNewDataGetter(t *testing.T) {
+func TestNewMXClientDataGetter(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil logger", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Log = nil
 
-		dg, err := NewDataGetter(args)
+		dg, err := NewMXClientDataGetter(args)
 		assert.Equal(t, errNilLogger, err)
 		assert.True(t, check.IfNil(dg))
 	})
 	t.Run("nil proxy", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Proxy = nil
 
-		dg, err := NewDataGetter(args)
+		dg, err := NewMXClientDataGetter(args)
 		assert.Equal(t, errNilProxy, err)
 		assert.True(t, check.IfNil(dg))
 	})
 	t.Run("nil multisig contact address", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.MultisigContractAddress = nil
 
-		dg, err := NewDataGetter(args)
+		dg, err := NewMXClientDataGetter(args)
 		assert.True(t, errors.Is(err, errNilAddressHandler))
 		assert.True(t, strings.Contains(err.Error(), "MultisigContractAddress"))
 		assert.True(t, check.IfNil(dg))
@@ -121,10 +121,10 @@ func TestNewDataGetter(t *testing.T) {
 	t.Run("nil relayer address", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.RelayerAddress = nil
 
-		dg, err := NewDataGetter(args)
+		dg, err := NewMXClientDataGetter(args)
 		assert.True(t, errors.Is(err, errNilAddressHandler))
 		assert.True(t, strings.Contains(err.Error(), "RelayerAddress"))
 		assert.True(t, check.IfNil(dg))
@@ -132,22 +132,22 @@ func TestNewDataGetter(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 
-		dg, err := NewDataGetter(args)
+		dg, err := NewMXClientDataGetter(args)
 		assert.Nil(t, err)
 		assert.False(t, check.IfNil(dg))
 	})
 }
 
-func TestDataGetter_ExecuteQueryReturningBytes(t *testing.T) {
+func TestMXClientDataGetter_ExecuteQueryReturningBytes(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	t.Run("nil vm ", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.ExecuteQueryReturningBytes(context.Background(), nil)
 		assert.Nil(t, result)
@@ -156,7 +156,7 @@ func TestDataGetter_ExecuteQueryReturningBytes(t *testing.T) {
 	t.Run("proxy errors", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 		expectedErr := errors.New("expected error")
 		dg.proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -171,7 +171,7 @@ func TestDataGetter_ExecuteQueryReturningBytes(t *testing.T) {
 	t.Run("return code not ok", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		expectedErr := NewQueryResponseError(returnCode, returnMessage, calledFunction, dg.multisigContractAddress.AddressAsBech32String(), calledArgs...)
 		dg.proxy = &interactors.ProxyStub{
@@ -207,7 +207,7 @@ func TestDataGetter_ExecuteQueryReturningBytes(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		retData := [][]byte{[]byte("response 1"), []byte("response 2")}
 		dg.proxy = &interactors.ProxyStub{
@@ -242,14 +242,14 @@ func TestDataGetter_ExecuteQueryReturningBytes(t *testing.T) {
 	})
 }
 
-func TestDataGetter_ExecuteQueryReturningBool(t *testing.T) {
+func TestMXClientDataGetter_ExecuteQueryReturningBool(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	t.Run("nil request", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.ExecuteQueryReturningBool(context.Background(), nil)
 		assert.False(t, result)
@@ -258,7 +258,7 @@ func TestDataGetter_ExecuteQueryReturningBool(t *testing.T) {
 	t.Run("empty response", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 		dg.proxy = createMockProxy(make([][]byte, 0))
 
 		result, err := dg.ExecuteQueryReturningBool(context.Background(), &data.VmValueRequest{})
@@ -268,7 +268,7 @@ func TestDataGetter_ExecuteQueryReturningBool(t *testing.T) {
 	t.Run("empty byte slice on first element", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 		dg.proxy = createMockProxy([][]byte{make([]byte, 0)})
 
 		result, err := dg.ExecuteQueryReturningBool(context.Background(), &data.VmValueRequest{})
@@ -278,7 +278,7 @@ func TestDataGetter_ExecuteQueryReturningBool(t *testing.T) {
 	t.Run("not a bool result", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 		dg.proxy = createMockProxy([][]byte{[]byte("random bytes")})
 
 		expectedError := NewQueryResponseError(
@@ -295,7 +295,7 @@ func TestDataGetter_ExecuteQueryReturningBool(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 		dg.proxy = createMockProxy([][]byte{{1}})
 
 		result, err := dg.ExecuteQueryReturningBool(context.Background(), &data.VmValueRequest{})
@@ -310,14 +310,14 @@ func TestDataGetter_ExecuteQueryReturningBool(t *testing.T) {
 	})
 }
 
-func TestDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
+func TestMXClientDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	t.Run("nil request", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.ExecuteQueryReturningUint64(context.Background(), nil)
 		assert.Zero(t, result)
@@ -326,7 +326,7 @@ func TestDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
 	t.Run("empty response", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 		dg.proxy = createMockProxy(make([][]byte, 0))
 
 		result, err := dg.ExecuteQueryReturningUint64(context.Background(), &data.VmValueRequest{})
@@ -336,7 +336,7 @@ func TestDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
 	t.Run("empty byte slice on first element", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 		dg.proxy = createMockProxy([][]byte{make([]byte, 0)})
 
 		result, err := dg.ExecuteQueryReturningUint64(context.Background(), &data.VmValueRequest{})
@@ -346,7 +346,7 @@ func TestDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
 	t.Run("large buffer", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 		dg.proxy = createMockProxy([][]byte{[]byte("random bytes")})
 
 		expectedError := NewQueryResponseError(
@@ -363,7 +363,7 @@ func TestDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 		dg.proxy = createMockProxy([][]byte{{1}})
 
 		result, err := dg.ExecuteQueryReturningUint64(context.Background(), &data.VmValueRequest{})
@@ -378,10 +378,10 @@ func TestDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
 	})
 }
 
-func TestDataGetter_GetCurrentBatchAsDataBytes(t *testing.T) {
+func TestMXClientDataGetter_GetCurrentBatchAsDataBytes(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	returningBytes := [][]byte{[]byte("buff0"), []byte("buff1"), []byte("buff2")}
 	args.Proxy = &interactors.ProxyStub{
 		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -398,7 +398,7 @@ func TestDataGetter_GetCurrentBatchAsDataBytes(t *testing.T) {
 			}, nil
 		},
 	}
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	result, err := dg.GetCurrentBatchAsDataBytes(context.Background())
 
@@ -409,7 +409,7 @@ func TestDataGetter_GetCurrentBatchAsDataBytes(t *testing.T) {
 func TestExecuteQueryFromBuilderReturnErr(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	expectedError := errors.New("expected error")
 	erc20Address := "erc20Address"
 	args.Proxy = &interactors.ProxyStub{
@@ -422,16 +422,16 @@ func TestExecuteQueryFromBuilderReturnErr(t *testing.T) {
 			}, expectedError
 		},
 	}
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	_, err := dg.GetTokenIdForErc20Address(context.Background(), []byte(erc20Address))
 	assert.Equal(t, expectedError, err)
 }
 
-func TestDataGetter_GetTokenIdForErc20Address(t *testing.T) {
+func TestMXClientDataGetter_GetTokenIdForErc20Address(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	erdAddress := "erdAddress"
 	erc20Address := "erc20Address"
 	returningBytes := [][]byte{[]byte(erdAddress)}
@@ -451,7 +451,7 @@ func TestDataGetter_GetTokenIdForErc20Address(t *testing.T) {
 			}, nil
 		},
 	}
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	result, err := dg.GetTokenIdForErc20Address(context.Background(), []byte(erc20Address))
 
@@ -459,10 +459,10 @@ func TestDataGetter_GetTokenIdForErc20Address(t *testing.T) {
 	assert.Equal(t, returningBytes, result)
 }
 
-func TestDataGetter_GetERC20AddressForTokenId(t *testing.T) {
+func TestMXClientDataGetter_GetERC20AddressForTokenId(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	erdAddress := "erdAddress"
 	erc20Address := "erc20Address"
 	returningBytes := [][]byte{[]byte(erc20Address)}
@@ -482,7 +482,7 @@ func TestDataGetter_GetERC20AddressForTokenId(t *testing.T) {
 			}, nil
 		},
 	}
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	result, err := dg.GetERC20AddressForTokenId(context.Background(), []byte(erdAddress))
 
@@ -490,14 +490,14 @@ func TestDataGetter_GetERC20AddressForTokenId(t *testing.T) {
 	assert.Equal(t, returningBytes, result)
 }
 
-func TestDataGetter_WasProposedTransfer(t *testing.T) {
+func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
-		dg, _ := NewDataGetter(args)
+		args := createMockArgsMXClientDataGetter()
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.WasProposedTransfer(context.Background(), nil)
 		assert.False(t, result)
@@ -506,7 +506,7 @@ func TestDataGetter_WasProposedTransfer(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		proxyCalled := false
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -543,7 +543,7 @@ func TestDataGetter_WasProposedTransfer(t *testing.T) {
 			},
 		}
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		batch := createMockBatch()
 
@@ -554,10 +554,10 @@ func TestDataGetter_WasProposedTransfer(t *testing.T) {
 	})
 }
 
-func TestDataGetter_WasExecuted(t *testing.T) {
+func TestMXClientDataGetter_WasExecuted(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	proxyCalled := false
 	args.Proxy = &interactors.ProxyStub{
 		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -579,7 +579,7 @@ func TestDataGetter_WasExecuted(t *testing.T) {
 		},
 	}
 
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	result, err := dg.WasExecuted(context.Background(), 112233)
 	assert.Nil(t, err)
@@ -587,13 +587,13 @@ func TestDataGetter_WasExecuted(t *testing.T) {
 	assert.True(t, result)
 }
 
-func TestDataGetter_executeQueryWithErroredBuilder(t *testing.T) {
+func TestMXClientDataGetter_executeQueryWithErroredBuilder(t *testing.T) {
 	t.Parallel()
 
 	builder := builders.NewVMQueryBuilder().ArgBytes(nil)
 
-	args := createMockArgsDataGetter()
-	dg, _ := NewDataGetter(args)
+	args := createMockArgsMXClientDataGetter()
+	dg, _ := NewMXClientDataGetter(args)
 
 	resultBytes, err := dg.executeQueryFromBuilder(context.Background(), builder)
 	assert.Nil(t, resultBytes)
@@ -611,14 +611,14 @@ func TestDataGetter_executeQueryWithErroredBuilder(t *testing.T) {
 	assert.True(t, strings.Contains(err.Error(), "builder.ArgBytes"))
 }
 
-func TestDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
+func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
-		dg, _ := NewDataGetter(args)
+		args := createMockArgsMXClientDataGetter()
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.GetActionIDForProposeTransfer(context.Background(), nil)
 		assert.Zero(t, result)
@@ -627,7 +627,7 @@ func TestDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		proxyCalled := false
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -664,7 +664,7 @@ func TestDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 			},
 		}
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		batch := createMockBatch()
 
@@ -675,14 +675,14 @@ func TestDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 	})
 }
 
-func TestDataGetter_WasProposedSetStatus(t *testing.T) {
+func TestMXClientDataGetter_WasProposedSetStatus(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
-		dg, _ := NewDataGetter(args)
+		args := createMockArgsMXClientDataGetter()
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.WasProposedSetStatus(context.Background(), nil)
 		assert.False(t, result)
@@ -691,7 +691,7 @@ func TestDataGetter_WasProposedSetStatus(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		proxyCalled := false
 		batch := createMockBatch()
 		args.Proxy = &interactors.ProxyStub{
@@ -720,7 +720,7 @@ func TestDataGetter_WasProposedSetStatus(t *testing.T) {
 			},
 		}
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.WasProposedSetStatus(context.Background(), batch)
 		assert.True(t, result)
@@ -729,14 +729,14 @@ func TestDataGetter_WasProposedSetStatus(t *testing.T) {
 	})
 }
 
-func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
+func TestMXClientDataGetter_GetTransactionsStatuses(t *testing.T) {
 	t.Parallel()
 
 	batchID := uint64(112233)
 	t.Run("proxy errors", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		expectedErr := errors.New("expected error")
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -744,7 +744,7 @@ func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
 			},
 		}
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
 		assert.Nil(t, result)
@@ -753,10 +753,10 @@ func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
 	t.Run("empty response", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Proxy = createMockProxy(make([][]byte, 0))
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
 		assert.Nil(t, result)
@@ -766,10 +766,10 @@ func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
 	t.Run("malformed batch finished status", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Proxy = createMockProxy([][]byte{{56}})
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
 		assert.Nil(t, result)
@@ -780,10 +780,10 @@ func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
 	t.Run("batch not finished", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Proxy = createMockProxy([][]byte{{0}})
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
 		assert.Nil(t, result)
@@ -792,10 +792,10 @@ func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
 	t.Run("missing status", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Proxy = createMockProxy([][]byte{{1}, {}})
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
 		assert.Nil(t, result)
@@ -805,10 +805,10 @@ func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
 	t.Run("batch finished without response", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Proxy = createMockProxy([][]byte{{1}})
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
 		assert.Nil(t, result)
@@ -818,7 +818,7 @@ func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		proxyCalled := false
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -843,7 +843,7 @@ func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
 			},
 		}
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
 		assert.Equal(t, []byte{2, 3, 4}, result)
@@ -853,14 +853,14 @@ func TestDataGetter_GetTransactionsStatuses(t *testing.T) {
 
 }
 
-func TestDataGetter_GetActionIDForSetStatusOnPendingTransfer(t *testing.T) {
+func TestMXClientDataGetter_GetActionIDForSetStatusOnPendingTransfer(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil batch", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
-		dg, _ := NewDataGetter(args)
+		args := createMockArgsMXClientDataGetter()
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.GetActionIDForSetStatusOnPendingTransfer(context.Background(), nil)
 		assert.Zero(t, result)
@@ -869,7 +869,7 @@ func TestDataGetter_GetActionIDForSetStatusOnPendingTransfer(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		proxyCalled := false
 		batch := createMockBatch()
 		args.Proxy = &interactors.ProxyStub{
@@ -898,7 +898,7 @@ func TestDataGetter_GetActionIDForSetStatusOnPendingTransfer(t *testing.T) {
 			},
 		}
 
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.GetActionIDForSetStatusOnPendingTransfer(context.Background(), batch)
 		assert.Equal(t, uint64(1132), result)
@@ -907,10 +907,10 @@ func TestDataGetter_GetActionIDForSetStatusOnPendingTransfer(t *testing.T) {
 	})
 }
 
-func TestDataGetter_QuorumReached(t *testing.T) {
+func TestMXClientDataGetter_QuorumReached(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	proxyCalled := false
 	actionID := big.NewInt(112233)
 	args.Proxy = &interactors.ProxyStub{
@@ -933,7 +933,7 @@ func TestDataGetter_QuorumReached(t *testing.T) {
 		},
 	}
 
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	result, err := dg.QuorumReached(context.Background(), actionID.Uint64())
 	assert.Nil(t, err)
@@ -941,10 +941,10 @@ func TestDataGetter_QuorumReached(t *testing.T) {
 	assert.True(t, result)
 }
 
-func TestDataGetter_GetLastExecutedEthBatchID(t *testing.T) {
+func TestMXClientDataGetter_GetLastExecutedEthBatchID(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	proxyCalled := false
 	val := big.NewInt(45372)
 	args.Proxy = &interactors.ProxyStub{
@@ -965,7 +965,7 @@ func TestDataGetter_GetLastExecutedEthBatchID(t *testing.T) {
 		},
 	}
 
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	result, err := dg.GetLastExecutedEthBatchID(context.Background())
 	assert.Nil(t, err)
@@ -973,10 +973,10 @@ func TestDataGetter_GetLastExecutedEthBatchID(t *testing.T) {
 	assert.Equal(t, val.Uint64(), result)
 }
 
-func TestDataGetter_GetLastExecutedEthTxID(t *testing.T) {
+func TestMXClientDataGetter_GetLastExecutedEthTxID(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	proxyCalled := false
 	val := big.NewInt(45372)
 	args.Proxy = &interactors.ProxyStub{
@@ -997,7 +997,7 @@ func TestDataGetter_GetLastExecutedEthTxID(t *testing.T) {
 		},
 	}
 
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	result, err := dg.GetLastExecutedEthTxID(context.Background())
 	assert.Nil(t, err)
@@ -1005,10 +1005,10 @@ func TestDataGetter_GetLastExecutedEthTxID(t *testing.T) {
 	assert.Equal(t, val.Uint64(), result)
 }
 
-func TestDataGetter_WasSigned(t *testing.T) {
+func TestMXClientDataGetter_WasSigned(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	proxyCalled := false
 	actionID := big.NewInt(112233)
 	args.Proxy = &interactors.ProxyStub{
@@ -1034,7 +1034,7 @@ func TestDataGetter_WasSigned(t *testing.T) {
 		},
 	}
 
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	result, err := dg.WasSigned(context.Background(), actionID.Uint64())
 	assert.Nil(t, err)
@@ -1042,10 +1042,10 @@ func TestDataGetter_WasSigned(t *testing.T) {
 	assert.True(t, result)
 }
 
-func TestDataGetter_GetAllStakedRelayers(t *testing.T) {
+func TestMXClientDataGetter_GetAllStakedRelayers(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	providedRelayers := [][]byte{[]byte("relayer1"), []byte("relayer2")}
 	args.Proxy = &interactors.ProxyStub{
 		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -1065,7 +1065,7 @@ func TestDataGetter_GetAllStakedRelayers(t *testing.T) {
 		},
 	}
 
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	result, err := dg.GetAllStakedRelayers(context.Background())
 	assert.Nil(t, err)
@@ -1080,13 +1080,13 @@ func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 	t.Run("GetShardOfAddress errors", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Proxy = &interactors.ProxyStub{
 			GetShardOfAddressCalled: func(ctx context.Context, bech32Address string) (uint32, error) {
 				return 0, expectedErr
 			},
 		}
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		nonce, err := dg.GetCurrentNonce(context.Background())
 		assert.Equal(t, uint64(0), nonce)
@@ -1095,7 +1095,7 @@ func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 	t.Run("GetNetworkStatus errors", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Proxy = &interactors.ProxyStub{
 			GetShardOfAddressCalled: func(ctx context.Context, bech32Address string) (uint32, error) {
 				return 0, nil
@@ -1104,7 +1104,7 @@ func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 				return nil, expectedErr
 			},
 		}
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		nonce, err := dg.GetCurrentNonce(context.Background())
 		assert.Equal(t, uint64(0), nonce)
@@ -1113,7 +1113,7 @@ func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 	t.Run("GetNetworkStatus returns nil, nil", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Proxy = &interactors.ProxyStub{
 			GetShardOfAddressCalled: func(ctx context.Context, bech32Address string) (uint32, error) {
 				return 0, nil
@@ -1122,7 +1122,7 @@ func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 				return nil, nil
 			},
 		}
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		nonce, err := dg.GetCurrentNonce(context.Background())
 		assert.Equal(t, uint64(0), nonce)
@@ -1131,7 +1131,7 @@ func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		args.Proxy = &interactors.ProxyStub{
 			GetShardOfAddressCalled: func(ctx context.Context, bech32Address string) (uint32, error) {
 				return 0, nil
@@ -1142,7 +1142,7 @@ func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 				}, nil
 			},
 		}
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		nonce, err := dg.GetCurrentNonce(context.Background())
 		assert.Equal(t, expectedNonce, nonce)
@@ -1151,7 +1151,7 @@ func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 	t.Run("should work should buffer the shard ID", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsDataGetter()
+		args := createMockArgsMXClientDataGetter()
 		numCallsGetShardOfAddress := 0
 		numCallsGetNetworkStatus := 0
 		args.Proxy = &interactors.ProxyStub{
@@ -1166,7 +1166,7 @@ func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 				}, nil
 			},
 		}
-		dg, _ := NewDataGetter(args)
+		dg, _ := NewMXClientDataGetter(args)
 
 		nonce, _ := dg.GetCurrentNonce(context.Background())
 		assert.Equal(t, expectedNonce, nonce)
@@ -1182,7 +1182,7 @@ func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 func TestMultiversXClientDataGetter_IsPaused(t *testing.T) {
 	t.Parallel()
 
-	args := createMockArgsDataGetter()
+	args := createMockArgsMXClientDataGetter()
 	proxyCalled := false
 	args.Proxy = &interactors.ProxyStub{
 		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -1204,7 +1204,7 @@ func TestMultiversXClientDataGetter_IsPaused(t *testing.T) {
 		},
 	}
 
-	dg, _ := NewDataGetter(args)
+	dg, _ := NewMXClientDataGetter(args)
 
 	result, err := dg.IsPaused(context.Background())
 	assert.Nil(t, err)

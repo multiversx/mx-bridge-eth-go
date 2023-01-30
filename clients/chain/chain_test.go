@@ -7,52 +7,52 @@ import (
 )
 
 func Test_ethToMultiversXName(t *testing.T) {
-	assert.Equal(t, Ethereum.EvmCompatibleChainToMultiversXName(), "EthereumToMultiversX")
-	assert.Equal(t, Bsc.EvmCompatibleChainToMultiversXName(), "BscToMultiversX")
+	assert.Equal(t, "EthereumToMultiversX", Ethereum.EvmCompatibleChainToMultiversXName())
+	assert.Equal(t, "BscToMultiversX", Bsc.EvmCompatibleChainToMultiversXName())
 }
 
 func Test_multiversXToEthName(t *testing.T) {
-	assert.Equal(t, Ethereum.MultiversXToEvmCompatibleChainName(), "MultiversXToEthereum")
-	assert.Equal(t, Bsc.MultiversXToEvmCompatibleChainName(), "MultiversXToBsc")
+	assert.Equal(t, "MultiversXToEthereum", Ethereum.MultiversXToEvmCompatibleChainName())
+	assert.Equal(t, "MultiversXToBsc", Bsc.MultiversXToEvmCompatibleChainName())
 }
 
 func Test_baseLogId(t *testing.T) {
-	assert.Equal(t, Ethereum.BaseLogId(), "EthereumMultiversX-Base")
-	assert.Equal(t, Bsc.BaseLogId(), "BscMultiversX-Base")
+	assert.Equal(t, "EthereumMultiversX-Base", Ethereum.BaseLogId())
+	assert.Equal(t, "BscMultiversX-Base", Bsc.BaseLogId())
 }
 
 func Test_multiversXClientLogId(t *testing.T) {
-	assert.Equal(t, Ethereum.MultiversXClientLogId(), "EthereumMultiversX-MultiversXClient")
-	assert.Equal(t, Bsc.MultiversXClientLogId(), "BscMultiversX-MultiversXClient")
+	assert.Equal(t, "EthereumMultiversX-MultiversXClient", Ethereum.MultiversXClientLogId())
+	assert.Equal(t, "BscMultiversX-MultiversXClient", Bsc.MultiversXClientLogId())
 }
 
 func Test_multiversXDataGetterLogId(t *testing.T) {
-	assert.Equal(t, Ethereum.MultiversXDataGetterLogId(), "EthereumMultiversX-MultiversXDataGetter")
-	assert.Equal(t, Bsc.MultiversXDataGetterLogId(), "BscMultiversX-MultiversXDataGetter")
+	assert.Equal(t, "EthereumMultiversX-MultiversXDataGetter", Ethereum.MultiversXDataGetterLogId())
+	assert.Equal(t, "BscMultiversX-MultiversXDataGetter", Bsc.MultiversXDataGetterLogId())
 }
 
 func Test_ethClientLogId(t *testing.T) {
-	assert.Equal(t, Ethereum.EvmCompatibleChainClientLogId(), "EthereumMultiversX-EthereumClient")
-	assert.Equal(t, Bsc.EvmCompatibleChainClientLogId(), "BscMultiversX-BscClient")
+	assert.Equal(t, "EthereumMultiversX-EthereumClient", Ethereum.EvmCompatibleChainClientLogId())
+	assert.Equal(t, "BscMultiversX-BscClient", Bsc.EvmCompatibleChainClientLogId())
 }
 
 func Test_multiversXRoleProviderLogId(t *testing.T) {
-	assert.Equal(t, Ethereum.MultiversXRoleProviderLogId(), "EthereumMultiversX-MultiversXRoleProvider")
-	assert.Equal(t, Bsc.MultiversXRoleProviderLogId(), "BscMultiversX-MultiversXRoleProvider")
+	assert.Equal(t, "EthereumMultiversX-MultiversXRoleProvider", Ethereum.MultiversXRoleProviderLogId())
+	assert.Equal(t, "BscMultiversX-MultiversXRoleProvider", Bsc.MultiversXRoleProviderLogId())
 }
 
 func Test_ethRoleProviderLogId(t *testing.T) {
-	assert.Equal(t, Ethereum.EvmCompatibleChainRoleProviderLogId(), "EthereumMultiversX-EthereumRoleProvider")
-	assert.Equal(t, Bsc.EvmCompatibleChainRoleProviderLogId(), "BscMultiversX-BscRoleProvider")
+	assert.Equal(t, "EthereumMultiversX-EthereumRoleProvider", Ethereum.EvmCompatibleChainRoleProviderLogId())
+	assert.Equal(t, "BscMultiversX-BscRoleProvider", Bsc.EvmCompatibleChainRoleProviderLogId())
 }
 
 func Test_broadcasterLogId(t *testing.T) {
-	assert.Equal(t, Ethereum.BroadcasterLogId(), "EthereumMultiversX-Broadcaster")
-	assert.Equal(t, Bsc.BroadcasterLogId(), "BscMultiversX-Broadcaster")
+	assert.Equal(t, "EthereumMultiversX-Broadcaster", Ethereum.BroadcasterLogId())
+	assert.Equal(t, "BscMultiversX-Broadcaster", Bsc.BroadcasterLogId())
 }
 
 func TestToLower(t *testing.T) {
-	assert.Equal(t, MultiversX.ToLower(), "msx")
-	assert.Equal(t, Ethereum.ToLower(), "ethereum")
-	assert.Equal(t, Bsc.ToLower(), "bsc")
+	assert.Equal(t, "msx", MultiversX.ToLower())
+	assert.Equal(t, "ethereum", Ethereum.ToLower())
+	assert.Equal(t, "bsc", Bsc.ToLower())
 }

@@ -35,15 +35,15 @@ const (
 	isPausedFuncName                                          = "isPaused"
 )
 
-// ArgsDataGetter is the arguments DTO used in the NewDataGetter constructor
-type ArgsDataGetter struct {
+// ArgsMXClientDataGetter is the arguments DTO used in the NewMXClientDataGetter constructor
+type ArgsMXClientDataGetter struct {
 	MultisigContractAddress core.AddressHandler
 	RelayerAddress          core.AddressHandler
 	Proxy                   Proxy
 	Log                     logger.Logger
 }
 
-type multiversXClientDataGetter struct {
+type mxClientDataGetter struct {
 	multisigContractAddress core.AddressHandler
 	relayerAddress          core.AddressHandler
 	proxy                   Proxy
@@ -53,8 +53,8 @@ type multiversXClientDataGetter struct {
 	shardID                 uint32
 }
 
-// NewDataGetter creates a new instance of the dataGetter type
-func NewDataGetter(args ArgsDataGetter) (*multiversXClientDataGetter, error) {
+// NewMXClientDataGetter creates a new instance of the dataGetter type
+func NewMXClientDataGetter(args ArgsMXClientDataGetter) (*mxClientDataGetter, error) {
 	if check.IfNil(args.Log) {
 		return nil, errNilLogger
 	}
@@ -68,7 +68,7 @@ func NewDataGetter(args ArgsDataGetter) (*multiversXClientDataGetter, error) {
 		return nil, fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
 	}
 
-	return &multiversXClientDataGetter{
+	return &mxClientDataGetter{
 		multisigContractAddress: args.MultisigContractAddress,
 		relayerAddress:          args.RelayerAddress,
 		proxy:                   args.Proxy,
@@ -77,18 +77,18 @@ func NewDataGetter(args ArgsDataGetter) (*multiversXClientDataGetter, error) {
 }
 
 // ExecuteQueryReturningBytes will try to execute the provided query and return the result as slice of byte slices
-func (dg *multiversXClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context, request *data.VmValueRequest) ([][]byte, error) {
+func (dataGetter *mxClientDataGetter) ExecuteQueryReturningBytes(ctx context.Context, request *data.VmValueRequest) ([][]byte, error) {
 	if request == nil {
 		return nil, errNilRequest
 	}
 
-	response, err := dg.proxy.ExecuteVMQuery(ctx, request)
+	response, err := dataGetter.proxy.ExecuteVMQuery(ctx, request)
 	if err != nil {
-		dg.log.Error("got error on VMQuery", "FuncName", request.FuncName,
+		dataGetter.log.Error("got error on VMQuery", "FuncName", request.FuncName,
 			"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr, "error", err)
 		return nil, err
 	}
-	dg.log.Debug("executed VMQuery", "FuncName", request.FuncName,
+	dataGetter.log.Debug("executed VMQuery", "FuncName", request.FuncName,
 		"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr,
 		"response.ReturnCode", response.Data.ReturnCode,
 		"response.ReturnData", fmt.Sprintf("%+v", response.Data.ReturnData))
@@ -105,13 +105,13 @@ func (dg *multiversXClientDataGetter) ExecuteQueryReturningBytes(ctx context.Con
 }
 
 // GetCurrentNonce will get from the shard containing the multisig contract the latest block's nonce
-func (dg *multiversXClientDataGetter) GetCurrentNonce(ctx context.Context) (uint64, error) {
-	shardID, err := dg.getShardID(ctx)
+func (dataGetter *mxClientDataGetter) GetCurrentNonce(ctx context.Context) (uint64, error) {
+	shardID, err := dataGetter.getShardID(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	nodeStatus, err := dg.proxy.GetNetworkStatus(ctx, shardID)
+	nodeStatus, err := dataGetter.proxy.GetNetworkStatus(ctx, shardID)
 	if err != nil {
 		return 0, err
 	}
@@ -122,26 +122,26 @@ func (dg *multiversXClientDataGetter) GetCurrentNonce(ctx context.Context) (uint
 	return nodeStatus.Nonce, nil
 }
 
-func (dg *multiversXClientDataGetter) getShardID(ctx context.Context) (uint32, error) {
-	dg.mutNodeStatus.Lock()
-	defer dg.mutNodeStatus.Unlock()
+func (dataGetter *mxClientDataGetter) getShardID(ctx context.Context) (uint32, error) {
+	dataGetter.mutNodeStatus.Lock()
+	defer dataGetter.mutNodeStatus.Unlock()
 
-	if dg.wasShardIDFetched {
-		return dg.shardID, nil
+	if dataGetter.wasShardIDFetched {
+		return dataGetter.shardID, nil
 	}
 
 	var err error
-	dg.shardID, err = dg.proxy.GetShardOfAddress(ctx, dg.multisigContractAddress.AddressAsBech32String())
+	dataGetter.shardID, err = dataGetter.proxy.GetShardOfAddress(ctx, dataGetter.multisigContractAddress.AddressAsBech32String())
 	if err == nil {
-		dg.wasShardIDFetched = true
+		dataGetter.wasShardIDFetched = true
 	}
 
-	return dg.shardID, err
+	return dataGetter.shardID, err
 }
 
 // ExecuteQueryReturningBool will try to execute the provided query and return the result as bool
-func (dg *multiversXClientDataGetter) ExecuteQueryReturningBool(ctx context.Context, request *data.VmValueRequest) (bool, error) {
-	response, err := dg.ExecuteQueryReturningBytes(ctx, request)
+func (dataGetter *mxClientDataGetter) ExecuteQueryReturningBool(ctx context.Context, request *data.VmValueRequest) (bool, error) {
+	response, err := dataGetter.ExecuteQueryReturningBytes(ctx, request)
 	if err != nil {
 		return false, err
 	}
@@ -150,10 +150,10 @@ func (dg *multiversXClientDataGetter) ExecuteQueryReturningBool(ctx context.Cont
 		return false, nil
 	}
 
-	return dg.parseBool(response[0], request.FuncName, request.Address, request.Args...)
+	return dataGetter.parseBool(response[0], request.FuncName, request.Address, request.Args...)
 }
 
-func (dg *multiversXClientDataGetter) parseBool(buff []byte, funcName string, address string, args ...string) (bool, error) {
+func (dataGetter *mxClientDataGetter) parseBool(buff []byte, funcName string, address string, args ...string) (bool, error) {
 	if len(buff) == 0 {
 		return false, nil
 	}
@@ -173,8 +173,8 @@ func (dg *multiversXClientDataGetter) parseBool(buff []byte, funcName string, ad
 }
 
 // ExecuteQueryReturningUint64 will try to execute the provided query and return the result as uint64
-func (dg *multiversXClientDataGetter) ExecuteQueryReturningUint64(ctx context.Context, request *data.VmValueRequest) (uint64, error) {
-	response, err := dg.ExecuteQueryReturningBytes(ctx, request)
+func (dataGetter *mxClientDataGetter) ExecuteQueryReturningUint64(ctx context.Context, request *data.VmValueRequest) (uint64, error) {
+	response, err := dataGetter.ExecuteQueryReturningBytes(ctx, request)
 	if err != nil {
 		return 0, err
 	}
@@ -209,117 +209,117 @@ func parseUInt64FromByteSlice(bytes []byte) (uint64, error) {
 	return num.Uint64(), nil
 }
 
-func (dg *multiversXClientDataGetter) executeQueryFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) ([][]byte, error) {
+func (dataGetter *mxClientDataGetter) executeQueryFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) ([][]byte, error) {
 	vmValuesRequest, err := builder.ToVmValueRequest()
 	if err != nil {
 		return nil, err
 	}
 
-	return dg.ExecuteQueryReturningBytes(ctx, vmValuesRequest)
+	return dataGetter.ExecuteQueryReturningBytes(ctx, vmValuesRequest)
 }
 
-func (dg *multiversXClientDataGetter) executeQueryUint64FromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (uint64, error) {
+func (dataGetter *mxClientDataGetter) executeQueryUint64FromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (uint64, error) {
 	vmValuesRequest, err := builder.ToVmValueRequest()
 	if err != nil {
 		return 0, err
 	}
 
-	return dg.ExecuteQueryReturningUint64(ctx, vmValuesRequest)
+	return dataGetter.ExecuteQueryReturningUint64(ctx, vmValuesRequest)
 }
 
-func (dg *multiversXClientDataGetter) executeQueryBoolFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (bool, error) {
+func (dataGetter *mxClientDataGetter) executeQueryBoolFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (bool, error) {
 	vmValuesRequest, err := builder.ToVmValueRequest()
 	if err != nil {
 		return false, err
 	}
 
-	return dg.ExecuteQueryReturningBool(ctx, vmValuesRequest)
+	return dataGetter.ExecuteQueryReturningBool(ctx, vmValuesRequest)
 }
 
-func (dg *multiversXClientDataGetter) createDefaultVmQueryBuilder() builders.VMQueryBuilder {
-	return builders.NewVMQueryBuilder().Address(dg.multisigContractAddress).CallerAddress(dg.relayerAddress)
+func (dataGetter *mxClientDataGetter) createDefaultVmQueryBuilder() builders.VMQueryBuilder {
+	return builders.NewVMQueryBuilder().Address(dataGetter.multisigContractAddress).CallerAddress(dataGetter.relayerAddress)
 }
 
 // GetCurrentBatchAsDataBytes will assemble a builder and query the proxy for the current pending batch
-func (dg *multiversXClientDataGetter) GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error) {
-	builder := dg.createDefaultVmQueryBuilder()
+func (dataGetter *mxClientDataGetter) GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getCurrentTxBatchFuncName)
 
-	return dg.executeQueryFromBuilder(ctx, builder)
+	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }
 
 // GetTokenIdForErc20Address will assemble a builder and query the proxy for a token id given a specific erc20 address
-func (dg *multiversXClientDataGetter) GetTokenIdForErc20Address(ctx context.Context, erc20Address []byte) ([][]byte, error) {
-	builder := dg.createDefaultVmQueryBuilder()
+func (dataGetter *mxClientDataGetter) GetTokenIdForErc20Address(ctx context.Context, erc20Address []byte) ([][]byte, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getTokenIdForErc20AddressFuncName)
 	builder.ArgBytes(erc20Address)
 
-	return dg.executeQueryFromBuilder(ctx, builder)
+	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }
 
 // GetERC20AddressForTokenId will assemble a builder and query the proxy for an erc20 address given a specific token id
-func (dg *multiversXClientDataGetter) GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
-	builder := dg.createDefaultVmQueryBuilder()
+func (dataGetter *mxClientDataGetter) GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getErc20AddressForTokenIdFuncName)
 	builder.ArgBytes(tokenId)
-	return dg.executeQueryFromBuilder(ctx, builder)
+	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }
 
 // WasProposedTransfer returns true if the transfer action proposed was triggered
-func (dg *multiversXClientDataGetter) WasProposedTransfer(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+func (dataGetter *mxClientDataGetter) WasProposedTransfer(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	if batch == nil {
 		return false, clients.ErrNilBatch
 	}
 
-	builder := dg.createDefaultVmQueryBuilder()
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(wasTransferActionProposedFuncName).ArgInt64(int64(batch.ID))
 	addBatchInfo(builder, batch)
 
-	return dg.executeQueryBoolFromBuilder(ctx, builder)
+	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
 // WasExecuted returns true if the provided actionID was executed or not
-func (dg *multiversXClientDataGetter) WasExecuted(ctx context.Context, actionID uint64) (bool, error) {
-	builder := dg.createDefaultVmQueryBuilder()
+func (dataGetter *mxClientDataGetter) WasExecuted(ctx context.Context, actionID uint64) (bool, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(wasActionExecutedFuncName).ArgInt64(int64(actionID))
 
-	return dg.executeQueryBoolFromBuilder(ctx, builder)
+	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
 // GetActionIDForProposeTransfer returns the action ID for the proposed transfer operation
-func (dg *multiversXClientDataGetter) GetActionIDForProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
+func (dataGetter *mxClientDataGetter) GetActionIDForProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
 	if batch == nil {
 		return 0, clients.ErrNilBatch
 	}
 
-	builder := dg.createDefaultVmQueryBuilder()
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getActionIdForTransferBatchFuncName).ArgInt64(int64(batch.ID))
 	addBatchInfo(builder, batch)
 
-	return dg.executeQueryUint64FromBuilder(ctx, builder)
+	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
 
 // WasProposedSetStatus returns true if the proposed set status was triggered
-func (dg *multiversXClientDataGetter) WasProposedSetStatus(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+func (dataGetter *mxClientDataGetter) WasProposedSetStatus(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
 	if batch == nil {
 		return false, clients.ErrNilBatch
 	}
 
-	builder := dg.createDefaultVmQueryBuilder()
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(wasSetCurrentTransactionBatchStatusActionProposedFuncName).ArgInt64(int64(batch.ID))
 	for _, stat := range batch.Statuses {
 		builder.ArgBytes([]byte{stat})
 	}
 
-	return dg.executeQueryBoolFromBuilder(ctx, builder)
+	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
 // GetTransactionsStatuses will return the transactions statuses from the batch ID
-func (dg *multiversXClientDataGetter) GetTransactionsStatuses(ctx context.Context, batchID uint64) ([]byte, error) {
-	builder := dg.createDefaultVmQueryBuilder()
+func (dataGetter *mxClientDataGetter) GetTransactionsStatuses(ctx context.Context, batchID uint64) ([]byte, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getStatusesAfterExecutionFuncName).ArgInt64(int64(batchID))
 
-	values, err := dg.executeQueryFromBuilder(ctx, builder)
+	values, err := dataGetter.executeQueryFromBuilder(ctx, builder)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func (dg *multiversXClientDataGetter) GetTransactionsStatuses(ctx context.Contex
 		return nil, fmt.Errorf("%w for batch ID %v", errNoStatusForBatchID, batchID)
 	}
 
-	isFinished, err := dg.parseBool(values[0], getStatusesAfterExecutionFuncName, dg.multisigContractAddress.AddressAsBech32String())
+	isFinished, err := dataGetter.parseBool(values[0], getStatusesAfterExecutionFuncName, dataGetter.multisigContractAddress.AddressAsBech32String())
 	if err != nil {
 		return nil, err
 	}
@@ -351,64 +351,64 @@ func (dg *multiversXClientDataGetter) GetTransactionsStatuses(ctx context.Contex
 }
 
 // GetActionIDForSetStatusOnPendingTransfer returns the action ID for setting the status on the pending transfer batch
-func (dg *multiversXClientDataGetter) GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
+func (dataGetter *mxClientDataGetter) GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
 	if batch == nil {
 		return 0, clients.ErrNilBatch
 	}
 
-	builder := dg.createDefaultVmQueryBuilder()
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getActionIdForSetCurrentTransactionBatchStatusFuncName).ArgInt64(int64(batch.ID))
 	for _, stat := range batch.Statuses {
 		builder.ArgBytes([]byte{stat})
 	}
 
-	return dg.executeQueryUint64FromBuilder(ctx, builder)
+	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
 
 // QuorumReached returns true if the provided action ID reached the set quorum
-func (dg *multiversXClientDataGetter) QuorumReached(ctx context.Context, actionID uint64) (bool, error) {
-	builder := dg.createDefaultVmQueryBuilder()
+func (dataGetter *mxClientDataGetter) QuorumReached(ctx context.Context, actionID uint64) (bool, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(quorumReachedFuncName).ArgInt64(int64(actionID))
 
-	return dg.executeQueryBoolFromBuilder(ctx, builder)
+	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
 // GetLastExecutedEthBatchID returns the last executed Ethereum batch ID
-func (dg *multiversXClientDataGetter) GetLastExecutedEthBatchID(ctx context.Context) (uint64, error) {
-	builder := dg.createDefaultVmQueryBuilder().Function(getLastExecutedEthBatchIdFuncName)
+func (dataGetter *mxClientDataGetter) GetLastExecutedEthBatchID(ctx context.Context) (uint64, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder().Function(getLastExecutedEthBatchIdFuncName)
 
-	return dg.executeQueryUint64FromBuilder(ctx, builder)
+	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
 
 // GetLastExecutedEthTxID returns the last executed Ethereum deposit ID
-func (dg *multiversXClientDataGetter) GetLastExecutedEthTxID(ctx context.Context) (uint64, error) {
-	builder := dg.createDefaultVmQueryBuilder().Function(getLastExecutedEthTxId)
+func (dataGetter *mxClientDataGetter) GetLastExecutedEthTxID(ctx context.Context) (uint64, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder().Function(getLastExecutedEthTxId)
 
-	return dg.executeQueryUint64FromBuilder(ctx, builder)
+	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
 
 // WasSigned returns true if the action was already signed by the current relayer
-func (dg *multiversXClientDataGetter) WasSigned(ctx context.Context, actionID uint64) (bool, error) {
-	builder := dg.createDefaultVmQueryBuilder()
-	builder.Function(signedFuncName).ArgAddress(dg.relayerAddress).ArgInt64(int64(actionID))
+func (dataGetter *mxClientDataGetter) WasSigned(ctx context.Context, actionID uint64) (bool, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder.Function(signedFuncName).ArgAddress(dataGetter.relayerAddress).ArgInt64(int64(actionID))
 
-	return dg.executeQueryBoolFromBuilder(ctx, builder)
+	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
 // GetAllStakedRelayers returns all staked relayers defined in MultiversX SC
-func (dg *multiversXClientDataGetter) GetAllStakedRelayers(ctx context.Context) ([][]byte, error) {
-	builder := dg.createDefaultVmQueryBuilder()
+func (dataGetter *mxClientDataGetter) GetAllStakedRelayers(ctx context.Context) ([][]byte, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getAllStakedRelayersFuncName)
 
-	return dg.executeQueryFromBuilder(ctx, builder)
+	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }
 
 // IsPaused returns true if the multisig contract is paused
-func (dg *multiversXClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
-	builder := dg.createDefaultVmQueryBuilder()
+func (dataGetter *mxClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(isPausedFuncName)
 
-	return dg.executeQueryBoolFromBuilder(ctx, builder)
+	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
 func getStatusFromBuff(buff []byte) (byte, error) {
@@ -430,6 +430,6 @@ func addBatchInfo(builder builders.VMQueryBuilder, batch *clients.TransferBatch)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
-func (dg *multiversXClientDataGetter) IsInterfaceNil() bool {
-	return dg == nil
+func (dataGetter *mxClientDataGetter) IsInterfaceNil() bool {
+	return dataGetter == nil
 }

@@ -49,7 +49,7 @@ type ClientArgs struct {
 
 // client represents the MultiversX Client implementation
 type client struct {
-	*multiversXClientDataGetter
+	*mxClientDataGetter
 	txHandler                 txHandler
 	tokensMapper              TokensMapper
 	relayerPublicKey          crypto.PublicKey
@@ -86,13 +86,13 @@ func NewClient(args ClientArgs) (*client, error) {
 
 	relayerAddress := data.NewAddressFromBytes(publicKeyBytes)
 
-	argsDataGetter := ArgsDataGetter{
+	argsMXClientDataGetter := ArgsMXClientDataGetter{
 		MultisigContractAddress: args.MultisigContractAddress,
 		RelayerAddress:          relayerAddress,
 		Proxy:                   args.Proxy,
 		Log:                     bridgeCore.NewLoggerWithIdentifier(logger.GetOrCreate(multiversXDataGetterLogId), multiversXDataGetterLogId),
 	}
-	getter, err := NewDataGetter(argsDataGetter)
+	getter, err := NewMXClientDataGetter(argsMXClientDataGetter)
 	if err != nil {
 		return nil, err
 	}
@@ -112,16 +112,16 @@ func NewClient(args ClientArgs) (*client, error) {
 			singleSigner:            &singlesig.Ed25519Signer{},
 			roleProvider:            args.RoleProvider,
 		},
-		multiversXClientDataGetter: getter,
-		relayerPublicKey:           publicKey,
-		relayerAddress:             relayerAddress,
-		multisigContractAddress:    args.MultisigContractAddress,
-		log:                        args.Log,
-		gasMapConfig:               args.GasMapConfig,
-		addressPublicKeyConverter:  addressConverter,
-		tokensMapper:               args.TokensMapper,
-		statusHandler:              args.StatusHandler,
-		allowDelta:                 args.AllowDelta,
+		mxClientDataGetter:        getter,
+		relayerPublicKey:          publicKey,
+		relayerAddress:            relayerAddress,
+		multisigContractAddress:   args.MultisigContractAddress,
+		log:                       args.Log,
+		gasMapConfig:              args.GasMapConfig,
+		addressPublicKeyConverter: addressConverter,
+		tokensMapper:              args.TokensMapper,
+		statusHandler:             args.StatusHandler,
+		allowDelta:                args.AllowDelta,
 	}
 
 	c.log.Info("NewMultiversXClient",

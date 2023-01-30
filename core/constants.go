@@ -42,13 +42,13 @@ const (
 
 	// MetricLastQueriedMultiversXBlockNumber represents the metric used to store the last MultiversX block number that was
 	// fetched from the MultiversX client
-	MetricLastQueriedMultiversXBlockNumber = "elrond last queried block number"
+	MetricLastQueriedMultiversXBlockNumber = "multiversx last queried block number"
 
 	// MetricMultiversXClientStatus represents the metric used to store the status of the MultiversX client
-	MetricMultiversXClientStatus = "elrond client status"
+	MetricMultiversXClientStatus = "multiversx client status"
 
 	// MetricLastMultiversXClientError represents the metric used to store the last encountered error from the MultiversX client
-	MetricLastMultiversXClientError = "elrond client last encountered error"
+	MetricLastMultiversXClientError = "multiversx client last encountered error"
 
 	// MetricRelayerP2PAddresses represents the metric used to store all the P2P addresses the messenger has bound to
 	MetricRelayerP2PAddresses = "relayer P2P addresses"

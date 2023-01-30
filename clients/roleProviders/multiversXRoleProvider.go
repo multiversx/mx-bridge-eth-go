@@ -31,7 +31,7 @@ type multiversXRoleProvider struct {
 
 // NewMultiversXRoleProvider creates a new multiversXRoleProvider instance able to fetch the whitelisted addresses
 func NewMultiversXRoleProvider(args ArgsMultiversXRoleProvider) (*multiversXRoleProvider, error) {
-	err := checkmultiversXRoleProviderSpecificArgs(args)
+	err := checkMultiversXRoleProviderSpecificArgs(args)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func NewMultiversXRoleProvider(args ArgsMultiversXRoleProvider) (*multiversXRole
 	return erp, nil
 }
 
-func checkmultiversXRoleProviderSpecificArgs(args ArgsMultiversXRoleProvider) error {
+func checkMultiversXRoleProviderSpecificArgs(args ArgsMultiversXRoleProvider) error {
 	if check.IfNil(args.DataGetter) {
 		return clients.ErrNilDataGetter
 	}
