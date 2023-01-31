@@ -29,7 +29,6 @@ import (
 	"github.com/multiversx/mx-chain-crypto-go/signing/secp256k1/singlesig"
 	chainFactory "github.com/multiversx/mx-chain-go/cmd/node/factory"
 	chainCommon "github.com/multiversx/mx-chain-go/common"
-	"github.com/multiversx/mx-chain-go/factory/crypto"
 	chainP2P "github.com/multiversx/mx-chain-go/p2p"
 	p2pConfig "github.com/multiversx/mx-chain-go/p2p/config"
 	p2pFactory "github.com/multiversx/mx-chain-go/p2p/factory"
@@ -393,11 +392,7 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 
 	p2pSingleSigner := &singlesig.Secp256k1Signer{}
 	p2pKeyGen := signing.NewKeyGenerator(secp256k1.NewSecp256k1())
-
-	privKey, _, err := crypto.CreateP2pKeyPair(cfg.MultiversX.PrivateKeyFile, p2pKeyGen, log)
-	if err != nil {
-		return nil, err
-	}
+	p2pPrivKey, _ := p2pKeyGen.GeneratePair()
 
 	args := libp2p.ArgsNetworkMessenger{
 		ListenAddress:         chainP2P.ListenAddrWithIp4AndTcp,
@@ -408,7 +403,7 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		NodeOperationMode:     chainP2P.NormalOperation,
 		PeersRatingHandler:    peersRatingHandler,
 		ConnectionWatcherType: disabledWatcher,
-		P2pPrivateKey:         privKey,
+		P2pPrivateKey:         p2pPrivKey,
 		P2pSingleSigner:       p2pSingleSigner,
 		P2pKeyGenerator:       p2pKeyGen,
 	}
