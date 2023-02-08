@@ -139,6 +139,7 @@
 
 [Logs]
     LogFileLifeSpanInSec = 86400 # 24h
+    LogFileLifeSpanInMB = 1024 # 1GB
 
 [Antiflood]
     Enabled = true
