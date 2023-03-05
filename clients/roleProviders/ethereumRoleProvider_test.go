@@ -1,4 +1,4 @@
-package roleProviders
+package roleproviders
 
 import (
 	"context"
@@ -6,11 +6,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -72,7 +72,7 @@ func TestEthereumRoleProvider_ExecuteErrorsInInteractor(t *testing.T) {
 	assert.Equal(t, expectedErr, err)
 }
 
-func TestEthereumProvider_ExecuteShouldWork(t *testing.T) {
+func TestEthereumRoleProvider_ExecuteShouldWork(t *testing.T) {
 	t.Parallel()
 
 	whitelistedAddresses := []common.Address{

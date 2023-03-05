@@ -3,8 +3,8 @@ package bridge
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	"github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-sdk-go/data"
 )
 
 // NonceTransactionsHandlerStub -

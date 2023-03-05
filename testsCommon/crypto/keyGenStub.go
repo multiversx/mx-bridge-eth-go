@@ -1,6 +1,6 @@
 package crypto
 
-import crypto "github.com/ElrondNetwork/elrond-go-crypto"
+import crypto "github.com/multiversx/mx-chain-crypto-go"
 
 // KeyGenStub -
 type KeyGenStub struct {

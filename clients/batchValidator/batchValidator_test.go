@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

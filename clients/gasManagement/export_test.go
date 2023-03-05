@@ -1,6 +1,6 @@
 package gasManagement
 
-import "github.com/ElrondNetwork/elrond-eth-bridge/core"
+import "github.com/multiversx/mx-bridge-eth-go/core"
 
 // GetLatestGasPrice -
 func (gs *gasStation) GetLatestGasPrice() int {

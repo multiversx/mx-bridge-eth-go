@@ -1,8 +1,8 @@
 package timer
 
 import (
-	"github.com/ElrondNetwork/elrond-go/config"
-	"github.com/ElrondNetwork/elrond-go/ntp"
+	"github.com/multiversx/mx-chain-go/config"
+	"github.com/multiversx/mx-chain-go/ntp"
 )
 
 var defaultNTPConfig = config.NTPConfig{

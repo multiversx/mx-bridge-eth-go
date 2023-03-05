@@ -1,12 +1,12 @@
 package status
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-chain-core-go/marshal"
 )
 
-// only json marshalizer is supported because we used maps
-var marshalizer = &marshal.JsonMarshalizer{}
+// only json marshaller is supported because we used maps
+var marshaller = &marshal.JsonMarshalizer{}
 
 type statusHandlerPersistenceData struct {
 	IntMetrics    core.IntMetrics    `json:"intMetrics"`
@@ -15,7 +15,7 @@ type statusHandlerPersistenceData struct {
 
 func loadFromBuff(buff []byte) (*statusHandlerPersistenceData, error) {
 	data := &statusHandlerPersistenceData{}
-	err := marshalizer.Unmarshal(data, buff)
+	err := marshaller.Unmarshal(data, buff)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func convertToBuff(persistence *statusHandlerPersistenceData) ([]byte, int, erro
 	}
 
 	numMetrics := len(neededData.StringMetrics) + len(neededData.IntMetrics)
-	buff, err := marshalizer.Marshal(neededData)
+	buff, err := marshaller.Marshal(neededData)
 
 	return buff, numMetrics, err
 }

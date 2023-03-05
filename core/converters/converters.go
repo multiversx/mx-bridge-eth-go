@@ -4,10 +4,10 @@ import (
 	"encoding/hex"
 	"strings"
 
-	"github.com/ElrondNetwork/elrond-go-core/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	"github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	sdkCore "github.com/multiversx/mx-sdk-go/core"
 )
 
 var log = logger.GetOrCreate("core")
@@ -22,7 +22,7 @@ type addressConverter struct {
 func NewAddressConverter() (*addressConverter, error) {
 	var err error
 	ac := &addressConverter{}
-	ac.converter, err = pubkeyConverter.NewBech32PubkeyConverter(erdgoCore.AddressBytesLen, log)
+	ac.converter, err = pubkeyConverter.NewBech32PubkeyConverter(sdkCore.AddressBytesLen, log)
 	if err != nil {
 		return nil, err
 	}

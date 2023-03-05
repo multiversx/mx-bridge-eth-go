@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/gasManagement"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/gasManagement/disabled"
+	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement"
+	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement/disabled"
 	"github.com/stretchr/testify/assert"
 )
 

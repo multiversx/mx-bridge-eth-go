@@ -1,4 +1,4 @@
-package roleProviders
+package roleproviders
 
 import "errors"
 

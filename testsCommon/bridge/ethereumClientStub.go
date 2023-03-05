@@ -4,8 +4,8 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
 )
 
 // EthereumClientStub -

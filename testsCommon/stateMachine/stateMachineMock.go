@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 // StateMachineMock -

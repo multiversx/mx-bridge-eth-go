@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/chain"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
+	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
 const minRequestTime = time.Millisecond
@@ -51,12 +51,12 @@ func NewBatchValidator(args ArgsBatchValidator) (*batchValidator, error) {
 
 func checkArgs(args ArgsBatchValidator) error {
 	switch args.SourceChain {
-	case chain.Ethereum, chain.Bsc, chain.MultiversX:
+	case chain.Ethereum, chain.Bsc, chain.Polygon, chain.MultiversX:
 	default:
 		return fmt.Errorf("%w: %q", clients.ErrInvalidValue, args.SourceChain)
 	}
 	switch args.DestinationChain {
-	case chain.Ethereum, chain.Bsc, chain.MultiversX:
+	case chain.Ethereum, chain.Bsc, chain.Polygon, chain.MultiversX:
 	default:
 		return fmt.Errorf("%w: %q", clients.ErrInvalidValue, args.DestinationChain)
 	}

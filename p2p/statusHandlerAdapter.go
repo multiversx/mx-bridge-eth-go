@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 // ArgsStatusHandlerAdapter is the DTO used to construct a new instance of type statusHandlerAdapter

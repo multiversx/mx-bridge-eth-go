@@ -6,11 +6,11 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
-var fullPath = "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/stateMachine.(*BridgeExecutorMock)."
+var fullPath = "github.com/multiversx/mx-bridge-eth-go/testsCommon/stateMachine.(*BridgeExecutorMock)."
 
 // BridgeExecutorMock -
 type BridgeExecutorMock struct {

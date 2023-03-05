@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
 )
 
 // BatchValidatorStub -

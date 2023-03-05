@@ -3,9 +3,9 @@ package status
 import (
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,7 +64,7 @@ func TestNewStatusHandler(t *testing.T) {
 			},
 		}
 
-		buffExistent, err := marshalizer.Marshal(existent)
+		buffExistent, err := marshaller.Marshal(existent)
 		require.Nil(t, err)
 
 		_ = storer.Put([]byte(name), buffExistent)
@@ -169,7 +169,7 @@ func TestStatusHandler_SetMetricsWithStorer(t *testing.T) {
 	assert.Nil(t, err)
 
 	persistence := &statusHandlerPersistenceData{}
-	err = marshalizer.Unmarshal(persistence, buff)
+	err = marshaller.Unmarshal(persistence, buff)
 	assert.Nil(t, err)
 
 	expectedPeristence := &statusHandlerPersistenceData{

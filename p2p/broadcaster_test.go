@@ -7,39 +7,39 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	cryptoMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/crypto"
-	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
-	roleProvidersMock "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/roleProviders"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	crypto "github.com/ElrondNetwork/elrond-go-crypto"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
-	"github.com/ElrondNetwork/elrond-go/p2p"
-	"github.com/ElrondNetwork/elrond-go/process/throttle/antiflood/factory"
-	"github.com/ElrondNetwork/elrond-go/testscommon/statusHandler"
-	erdgoCore "github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	cryptoMocks "github.com/multiversx/mx-bridge-eth-go/testsCommon/crypto"
+	p2pMocks "github.com/multiversx/mx-bridge-eth-go/testsCommon/p2p"
+	roleProvidersMock "github.com/multiversx/mx-bridge-eth-go/testsCommon/roleProviders"
+	chainCore "github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	crypto "github.com/multiversx/mx-chain-crypto-go"
+	chainConfig "github.com/multiversx/mx-chain-go/config"
+	"github.com/multiversx/mx-chain-go/p2p"
+	"github.com/multiversx/mx-chain-go/process/throttle/antiflood/factory"
+	"github.com/multiversx/mx-chain-go/testscommon/statusHandler"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func createMockArgsBroadcaster() ArgsBroadcaster {
-	cfg := elrondConfig.Config{
+	cfg := chainConfig.Config{
 		Antiflood: p2pMocks.CreateAntifloodConfig(),
 	}
 	ac, _ := factory.NewP2PAntiFloodComponents(context.Background(), cfg, &statusHandler.AppStatusHandlerStub{}, "")
 	return ArgsBroadcaster{
-		Messenger:           &p2pMocks.MessengerStub{},
-		Log:                 logger.GetOrCreate("test"),
-		ElrondRoleProvider:  &roleProvidersMock.ElrondRoleProviderStub{},
-		KeyGen:              &cryptoMocks.KeyGenStub{},
-		SingleSigner:        &cryptoMocks.SingleSignerStub{},
-		PrivateKey:          &cryptoMocks.PrivateKeyStub{},
-		SignatureProcessor:  &testsCommon.SignatureProcessorStub{},
-		Name:                "test",
-		AntifloodComponents: ac,
+		Messenger:              &p2pMocks.MessengerStub{},
+		Log:                    logger.GetOrCreate("test"),
+		MultiversXRoleProvider: &roleProvidersMock.MultiversXRoleProviderStub{},
+		KeyGen:                 &cryptoMocks.KeyGenStub{},
+		SingleSigner:           &cryptoMocks.SingleSignerStub{},
+		PrivateKey:             &cryptoMocks.PrivateKeyStub{},
+		SignatureProcessor:     &testsCommon.SignatureProcessorStub{},
+		Name:                   "test",
+		AntifloodComponents:    ac,
 	}
 }
 
@@ -86,13 +86,13 @@ func TestNewBroadcaster(t *testing.T) {
 		assert.True(t, check.IfNil(b))
 		assert.Equal(t, ErrNilSingleSigner, err)
 	})
-	t.Run("nil Elrond role provider should error", func(t *testing.T) {
+	t.Run("nil MultiversX role provider should error", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
-		args.ElrondRoleProvider = nil
+		args.MultiversXRoleProvider = nil
 
 		b, err := NewBroadcaster(args)
 		assert.True(t, check.IfNil(b))
-		assert.Equal(t, ErrNilElrondRoleProvider, err)
+		assert.Equal(t, ErrNilMultiversXRoleProvider, err)
 	})
 	t.Run("nil messenger should error", func(t *testing.T) {
 		args := createMockArgsBroadcaster()
@@ -221,8 +221,8 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		isWhiteListedCalled := false
 		msg, buff := createSignedMessageAndMarshaledBytes(0)
 
-		args.ElrondRoleProvider = &roleProvidersMock.ElrondRoleProviderStub{
-			IsWhitelistedCalled: func(address erdgoCore.AddressHandler) bool {
+		args.MultiversXRoleProvider = &roleProvidersMock.MultiversXRoleProviderStub{
+			IsWhitelistedCalled: func(address sdkCore.AddressHandler) bool {
 				assert.Equal(t, msg.PublicKeyBytes, address.AddressBytes())
 				isWhiteListedCalled = true
 				return false
@@ -242,7 +242,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		args := createMockArgsBroadcaster()
 		msg, buff := createSignedMessageAndMarshaledBytes(0)
 
-		args.ElrondRoleProvider = &roleProvidersMock.ElrondRoleProviderStub{}
+		args.MultiversXRoleProvider = &roleProvidersMock.MultiversXRoleProviderStub{}
 
 		b, _ := NewBroadcaster(args)
 		b.nonces[string(msg.PublicKeyBytes)] = msg.Nonce + 1
@@ -269,7 +269,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 
 		sendWasCalled := false
 		args.Messenger = &p2pMocks.MessengerStub{
-			SendToConnectedPeerCalled: func(topic string, buff []byte, peerID elrondCore.PeerID) error {
+			SendToConnectedPeerCalled: func(topic string, buff []byte, peerID chainCore.PeerID) error {
 				assert.Equal(t, args.Name+signTopicSuffix, topic)
 				assert.Equal(t, pid, peerID)
 				assert.Equal(t, buff1, buff) // test that the original, stored message is sent
@@ -278,10 +278,10 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 				return nil
 			},
 		}
-		cfg := elrondConfig.Config{
+		cfg := chainConfig.Config{
 			Antiflood: p2pMocks.CreateAntifloodConfig(),
 		}
-		cfg.Antiflood.Topic.MaxMessages = []elrondConfig.TopicMaxMessagesConfig{
+		cfg.Antiflood.Topic.MaxMessages = []chainConfig.TopicMaxMessagesConfig{
 			{
 				Topic:             args.Name + signTopicSuffix,
 				NumMessagesPerSec: 10,
@@ -323,10 +323,10 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		args.Messenger = &p2pMocks.MessengerStub{}
 		args.SignatureProcessor = &testsCommon.SignatureProcessorStub{}
 
-		cfg := elrondConfig.Config{
+		cfg := chainConfig.Config{
 			Antiflood: p2pMocks.CreateAntifloodConfig(),
 		}
-		cfg.Antiflood.Topic.MaxMessages = []elrondConfig.TopicMaxMessagesConfig{
+		cfg.Antiflood.Topic.MaxMessages = []chainConfig.TopicMaxMessagesConfig{
 			{
 				Topic:             args.Name + signTopicSuffix,
 				NumMessagesPerSec: 10,
@@ -394,12 +394,12 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		_, buff2 := createSignedMessageForEthSig(1)
 		args.Messenger = &p2pMocks.MessengerStub{}
 
-		cfg := elrondConfig.Config{
+		cfg := chainConfig.Config{
 			Antiflood: p2pMocks.CreateAntifloodConfig(),
 		}
-		cfg.Antiflood.Topic = elrondConfig.TopicAntifloodConfig{
+		cfg.Antiflood.Topic = chainConfig.TopicAntifloodConfig{
 			DefaultMaxMessagesPerSec: 1,
-			MaxMessages: []elrondConfig.TopicMaxMessagesConfig{
+			MaxMessages: []chainConfig.TopicMaxMessagesConfig{
 				{
 					Topic:             args.Name + signTopicSuffix,
 					NumMessagesPerSec: uint32(1),

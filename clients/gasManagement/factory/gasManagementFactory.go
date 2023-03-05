@@ -1,9 +1,9 @@
 package factory
 
 import (
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/gasManagement"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/gasManagement/disabled"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement"
+	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement/disabled"
 )
 
 // CreateGasStation generates an implementation of GasHandler

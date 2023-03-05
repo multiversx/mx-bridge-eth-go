@@ -4,11 +4,11 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	"github.com/multiversx/mx-bridge-eth-go/core"
 )
 
 // ClientWrapper represents the Ethereum client wrapper that the ethereum client can rely on

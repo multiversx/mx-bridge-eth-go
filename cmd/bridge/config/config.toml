@@ -21,10 +21,10 @@
         # GasPriceSelector available options: "SafeGasPrice", "ProposeGasPrice", "FastGasPrice"
         GasPriceSelector = "SafeGasPrice" # selector used to provide the gas price
 
-[Elrond]
-    NetworkAddress = "https://devnet-gateway.elrond.com" # the network address
-    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the elrond address for the bridge contract
-    PrivateKeyFile = "keys/elrond.pem" # the path to the pem file containing the relayer elrond wallet
+[MultiversX]
+    NetworkAddress = "https://devnet-gateway.multiversx.com" # the network address
+    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the multiversx address for the bridge contract
+    PrivateKeyFile = "keys/multiversx.pem" # the path to the pem file containing the relayer multiversx wallet
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
     MaxRetriesOnQuorumReached = 3
     MaxRetriesOnWasTransferProposed = 3
@@ -35,7 +35,7 @@
     ProxyRestAPIEntityType = "observer"
     ProxyFinalityCheck = true
     ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
-    [Elrond.GasMap]
+    [MultiversX.GasMap]
         Sign = 8000000
         ProposeTransferBase = 11000000
         ProposeTransferForEach = 5500000
@@ -46,7 +46,6 @@
 
 [P2P]
     Port = "10010"
-    Seed = ""
     InitialPeerList = []
     ProtocolID = "/erd/relay/1.0.0"
     [AntifloodConfig]
@@ -107,8 +106,8 @@
             Type = "LRU"
         [Antiflood.Topic]
             DefaultMaxMessagesPerSec = 300 # default number of messages per interval for a topic
-            MaxMessages = [{ Topic = "EthereumToElrond_join", NumMessagesPerSec = 100 },
-                           { Topic = "EthereumToElrond_sign", NumMessagesPerSec = 100 }]
+            MaxMessages = [{ Topic = "EthereumToMultiversX_join", NumMessagesPerSec = 100 },
+                           { Topic = "EthereumToMultiversX_sign", NumMessagesPerSec = 100 }]
 
 [Relayer]
     [Relayer.Marshalizer]
@@ -130,16 +129,17 @@
             MaxOpenFiles = 10
 
 [StateMachine]
-    [StateMachine.EthereumToElrond]
+    [StateMachine.EthereumToMultiversX]
         StepDurationInMillis = 12000 #12 seconds
         IntervalForLeaderInSeconds = 120 #2 minutes
 
-    [StateMachine.ElrondToEthereum]
+    [StateMachine.MultiversXToEthereum]
         StepDurationInMillis = 12000 #12 seconds
         IntervalForLeaderInSeconds = 720 #12 minutes
 
 [Logs]
     LogFileLifeSpanInSec = 86400 # 24h
+    LogFileLifeSpanInMB = 1024 # 1GB
 
 [Antiflood]
     Enabled = true
@@ -155,5 +155,9 @@
 
 [BatchValidator]
     Enabled = false
-    URL = "https://devnet-bridge-api.elrond.com/validateBatch" # batch validator URL.
+    URL = "https://devnet-bridge-api.multiversx.com/validateBatch" # batch validator URL.
     RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the batch validation request
+
+[PeersRatingConfig]
+    TopRatedCacheCapacity = 5000
+    BadRatedCacheCapacity = 5000

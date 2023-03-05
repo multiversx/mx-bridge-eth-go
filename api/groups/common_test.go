@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/api/shared"
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/multiversx/mx-bridge-eth-go/api/shared"
+	"github.com/multiversx/mx-bridge-eth-go/config"
 )
 
 type generalResponse struct {

@@ -4,13 +4,13 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 // ArgsEthereumChainWrapper is the DTO used to construct a ethereumChainWrapper instance

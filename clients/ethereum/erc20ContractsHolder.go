@@ -6,13 +6,13 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/wrappers"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 // ArgsErc20SafeContractsHolder is the argument DTO used in the NewErc20SafeContractsHolder function

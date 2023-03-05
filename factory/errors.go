@@ -3,7 +3,7 @@ package factory
 import "errors"
 
 var (
-	errNilProxy                = errors.New("nil ElrondProxy")
+	errNilProxy                = errors.New("nil proxy")
 	errNilEthClient            = errors.New("nil eth client")
 	errNilMessenger            = errors.New("nil network messenger")
 	errNilStatusStorer         = errors.New("nil status storer")

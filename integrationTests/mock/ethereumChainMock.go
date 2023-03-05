@@ -6,12 +6,12 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/integrationTests"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 )
 
 // EthereumProposedTransfer -

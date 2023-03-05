@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
-	apiErrors "github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
-	"github.com/ElrondNetwork/elrond-eth-bridge/api/shared"
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/facade"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/groups"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go/api/middleware"
+	apiErrors "github.com/multiversx/mx-bridge-eth-go/api/errors"
+	"github.com/multiversx/mx-bridge-eth-go/api/shared"
+	"github.com/multiversx/mx-bridge-eth-go/config"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon/facade"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon/groups"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-go/api/middleware"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
+	"github.com/multiversx/mx-bridge-eth-go/core"
 )
 
 type metricsHolder struct {

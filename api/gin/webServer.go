@@ -7,21 +7,21 @@ import (
 	"sync"
 	"time"
 
-	apiErrors "github.com/ElrondNetwork/elrond-eth-bridge/api/errors"
-	"github.com/ElrondNetwork/elrond-eth-bridge/api/groups"
-	"github.com/ElrondNetwork/elrond-eth-bridge/api/shared"
-	"github.com/ElrondNetwork/elrond-eth-bridge/config"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/api/logs"
-	"github.com/ElrondNetwork/elrond-go/api/middleware"
-	elrondShared "github.com/ElrondNetwork/elrond-go/api/shared"
 	"github.com/btcsuite/websocket"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
+	apiErrors "github.com/multiversx/mx-bridge-eth-go/api/errors"
+	"github.com/multiversx/mx-bridge-eth-go/api/groups"
+	"github.com/multiversx/mx-bridge-eth-go/api/shared"
+	"github.com/multiversx/mx-bridge-eth-go/config"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/marshal"
+	"github.com/multiversx/mx-chain-go/api/logs"
+	"github.com/multiversx/mx-chain-go/api/middleware"
+	chainShared "github.com/multiversx/mx-chain-go/api/shared"
+	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
 var log = logger.GetOrCreate("api")
@@ -38,7 +38,7 @@ type webServer struct {
 	facade          shared.FacadeHandler
 	apiConfig       config.ApiRoutesConfig
 	antiFloodConfig config.WebServerAntifloodConfig
-	httpServer      elrondShared.HttpServerCloser
+	httpServer      chainShared.HttpServerCloser
 	groups          map[string]shared.GroupHandler
 	cancelFunc      func()
 }
@@ -206,8 +206,8 @@ func registerLoggerWsRoute(ws *gin.Engine, marshalizer marshal.Marshalizer) {
 	})
 }
 
-func (ws *webServer) createMiddlewareLimiters() ([]elrondShared.MiddlewareProcessor, error) {
-	middlewares := make([]elrondShared.MiddlewareProcessor, 0)
+func (ws *webServer) createMiddlewareLimiters() ([]chainShared.MiddlewareProcessor, error) {
+	middlewares := make([]chainShared.MiddlewareProcessor, 0)
 
 	if ws.apiConfig.Logging.LoggingEnabled {
 		responseLoggerMiddleware := middleware.NewResponseLoggerMiddleware(time.Duration(ws.apiConfig.Logging.ThresholdInMicroSeconds) * time.Microsecond)

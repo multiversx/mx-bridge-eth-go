@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/stateMachine"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/stateMachine"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
 )
 

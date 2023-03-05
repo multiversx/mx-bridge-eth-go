@@ -1,6 +1,6 @@
 package stateMachine
 
-import "github.com/ElrondNetwork/elrond-eth-bridge/core"
+import "github.com/multiversx/mx-bridge-eth-go/core"
 
 // GetCurrentStep -
 func (sm *stateMachine) GetCurrentStepIdentifier() core.StepIdentifier {

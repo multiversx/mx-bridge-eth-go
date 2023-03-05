@@ -7,15 +7,15 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/bridges/ethElrond"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	elrondCore "github.com/ElrondNetwork/elrond-go-core/core"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	chainCore "github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 const (
@@ -35,7 +35,7 @@ type argListsBatch struct {
 type ArgsEthereumClient struct {
 	ClientWrapper           ClientWrapper
 	Erc20ContractsHandler   Erc20ContractsHolder
-	Log                     elrondCore.Logger
+	Log                     chainCore.Logger
 	AddressConverter        core.AddressConverter
 	Broadcaster             Broadcaster
 	PrivateKey              *ecdsa.PrivateKey
@@ -51,7 +51,7 @@ type ArgsEthereumClient struct {
 type client struct {
 	clientWrapper           ClientWrapper
 	erc20ContractsHandler   Erc20ContractsHolder
-	log                     elrondCore.Logger
+	log                     chainCore.Logger
 	addressConverter        core.AddressConverter
 	broadcaster             Broadcaster
 	privateKey              *ecdsa.PrivateKey
@@ -391,7 +391,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	currentBlock, err := c.clientWrapper.BlockNumber(ctx)
 	if err != nil {
-		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, err.Error(), currentBlock)
+		c.setStatusForAvailabilityCheck(ethmultiversx.Unavailable, err.Error(), currentBlock)
 
 		return err
 	}
@@ -406,12 +406,12 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	if c.retriesAvailabilityCheck > c.allowDelta {
 		message := fmt.Sprintf("block %d fetched for %d times in a row", currentBlock, c.retriesAvailabilityCheck)
-		c.setStatusForAvailabilityCheck(ethElrond.Unavailable, message, currentBlock)
+		c.setStatusForAvailabilityCheck(ethmultiversx.Unavailable, message, currentBlock)
 
 		return nil
 	}
 
-	c.setStatusForAvailabilityCheck(ethElrond.Available, "", currentBlock)
+	c.setStatusForAvailabilityCheck(ethmultiversx.Available, "", currentBlock)
 
 	return nil
 }
@@ -420,9 +420,9 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 	c.retriesAvailabilityCheck++
 }
 
-func (c *client) setStatusForAvailabilityCheck(status ethElrond.ClientStatus, message string, nonce uint64) {
-	c.clientWrapper.SetStringMetric(core.MetricElrondClientStatus, status.String())
-	c.clientWrapper.SetStringMetric(core.MetricLastElrondClientError, message)
+func (c *client) setStatusForAvailabilityCheck(status ethmultiversx.ClientStatus, message string, nonce uint64) {
+	c.clientWrapper.SetStringMetric(core.MetricMultiversXClientStatus, status.String())
+	c.clientWrapper.SetStringMetric(core.MetricLastMultiversXClientError, message)
 	c.clientWrapper.SetIntMetric(core.MetricLastBlockNonce, int(nonce))
 }
 

@@ -3,7 +3,7 @@ package bridge
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
+	"github.com/multiversx/mx-sdk-go/builders"
 )
 
 // TxHandlerStub -

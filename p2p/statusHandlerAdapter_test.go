@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	p2pMocks "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/p2p"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	p2pMocks "github.com/multiversx/mx-bridge-eth-go/testsCommon/p2p"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -7,22 +7,22 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	mockFacade "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/facade"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
-	elrondApiErrors "github.com/ElrondNetwork/elrond-go/api/errors"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	mockFacade "github.com/multiversx/mx-bridge-eth-go/testsCommon/facade"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/marshal"
+	apiErrors "github.com/multiversx/mx-chain-go/api/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var marshalizer = &marshal.JsonMarshalizer{}
+var marshaller = &marshal.JsonMarshalizer{}
 
 func equalStructsThroughJsonSerialization(t *testing.T, expected interface{}, got interface{}) {
-	expectedBuff, err := marshalizer.Marshal(expected)
+	expectedBuff, err := marshaller.Marshal(expected)
 	require.Nil(t, err)
 
-	gotBuff, err := marshalizer.Marshal(got)
+	gotBuff, err := marshaller.Marshal(got)
 	require.Nil(t, err)
 
 	assert.Equal(t, string(expectedBuff), string(gotBuff))
@@ -35,7 +35,7 @@ func TestNewNodeGroup(t *testing.T) {
 		ng, err := NewNodeGroup(nil)
 
 		assert.True(t, check.IfNil(ng))
-		assert.True(t, errors.Is(err, elrondApiErrors.ErrNilFacadeHandler))
+		assert.True(t, errors.Is(err, apiErrors.ErrNilFacadeHandler))
 	})
 	t.Run("should work", func(t *testing.T) {
 		ng, err := NewNodeGroup(&mockFacade.RelayerFacadeStub{})
@@ -138,7 +138,7 @@ func TestNodeGroup_UpdateFacade(t *testing.T) {
 		ng, _ := NewNodeGroup(&mockFacade.RelayerFacadeStub{})
 
 		err := ng.UpdateFacade(nil)
-		assert.Equal(t, elrondApiErrors.ErrNilFacadeHandler, err)
+		assert.Equal(t, apiErrors.ErrNilFacadeHandler, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		ng, _ := NewNodeGroup(&mockFacade.RelayerFacadeStub{})

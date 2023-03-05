@@ -40,15 +40,15 @@ const (
 	// MetricLastEthereumClientError represents the metric used to store the last encountered error from the ethereum client
 	MetricLastEthereumClientError = "ethereum client last encountered error"
 
-	// MetricLastQueriedElrondBlockNumber represents the metric used to store the last elrond block number that was
-	// fetched from the elrond client
-	MetricLastQueriedElrondBlockNumber = "elrond last queried block number"
+	// MetricLastQueriedMultiversXBlockNumber represents the metric used to store the last MultiversX block number that was
+	// fetched from the MultiversX client
+	MetricLastQueriedMultiversXBlockNumber = "multiversx last queried block number"
 
-	// MetricElrondClientStatus represents the metric used to store the status of the elrond client
-	MetricElrondClientStatus = "elrond client status"
+	// MetricMultiversXClientStatus represents the metric used to store the status of the MultiversX client
+	MetricMultiversXClientStatus = "multiversx client status"
 
-	// MetricLastElrondClientError represents the metric used to store the last encountered error from the elrond client
-	MetricLastElrondClientError = "elrond client last encountered error"
+	// MetricLastMultiversXClientError represents the metric used to store the last encountered error from the MultiversX client
+	MetricLastMultiversXClientError = "multiversx client last encountered error"
 
 	// MetricRelayerP2PAddresses represents the metric used to store all the P2P addresses the messenger has bound to
 	MetricRelayerP2PAddresses = "relayer P2P addresses"
@@ -62,13 +62,13 @@ const (
 
 // PersistedMetrics represents the array of metrics that should be persisted
 var PersistedMetrics = []string{MetricNumBatches, MetricNumEthClientRequests, MetricNumEthClientTransactions,
-	MetricLastQueriedEthereumBlockNumber, MetricLastQueriedElrondBlockNumber, MetricEthereumClientStatus,
-	MetricElrondClientStatus, MetricLastEthereumClientError, MetricLastElrondClientError, MetricLastBlockNonce}
+	MetricLastQueriedEthereumBlockNumber, MetricLastQueriedMultiversXBlockNumber, MetricEthereumClientStatus,
+	MetricMultiversXClientStatus, MetricLastEthereumClientError, MetricLastMultiversXClientError, MetricLastBlockNonce}
 
 const (
-	// EthClientStatusHandlerName is the ethereum client status handler name
+	// EthClientStatusHandlerName is the Ethereum client status handler name
 	EthClientStatusHandlerName = "eth-client"
 
-	// ElrondClientStatusHandlerName is the elrond client status handler name
-	ElrondClientStatusHandlerName = "elrond-client"
+	// MultiversXClientStatusHandlerName is the MultiversX client status handler name
+	MultiversXClientStatusHandlerName = "multiversx-client"
 )

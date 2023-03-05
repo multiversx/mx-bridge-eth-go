@@ -8,7 +8,7 @@ Smart contracts for both blockchains:
 ## Installation and running for the relayer
 
 ### Step 1: install & configure go:
-The installation of go should proceed as shown in official golang installation guide https://golang.org/doc/install . In order to run the node, minimum golang version should be 1.14.7.
+The installation of go should proceed as shown in official golang installation guide https://golang.org/doc/install . In order to run the node, minimum golang version should be 1.17.6.
 
 ### Step 2: clone the repository and build the binaries:
 The `main` branch is the one to use

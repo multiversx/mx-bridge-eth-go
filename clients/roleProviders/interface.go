@@ -1,4 +1,4 @@
-package roleProviders
+package roleproviders
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// DataGetter defines the interface able to handle get requests for Elrond blockchain
+// DataGetter defines the interface able to handle get requests for MultiversX blockchain
 type DataGetter interface {
 	GetAllStakedRelayers(ctx context.Context) ([][]byte, error)
 	IsInterfaceNil() bool

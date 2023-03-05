@@ -6,16 +6,16 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients"
-	"github.com/ElrondNetwork/elrond-eth-bridge/clients/ethereum/contract"
-	"github.com/ElrondNetwork/elrond-eth-bridge/core"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon"
-	bridgeTests "github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/bridge"
-	"github.com/ElrondNetwork/elrond-eth-bridge/testsCommon/interactors"
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -263,7 +263,7 @@ func TestEthClientWrapper_GetStatusesAfterExecution(t *testing.T) {
 	args, statusHandler := createMockArgsEthereumChainWrapper()
 	handlerCalled := false
 	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
-		GetStatusesAfterExecutionCalled: func(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error) {
+		GetStatusesAfterExecutionCalled: func(opts *bind.CallOpts, batchNonceMultiversXETH *big.Int) ([]uint8, error) {
 			handlerCalled = true
 			return nil, nil
 		},
