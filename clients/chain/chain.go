@@ -29,6 +29,9 @@ const (
 
 	// Bsc is the string representation of the Binance smart chain
 	Bsc Chain = "Bsc"
+
+	// Polygon is the string representation of the Polygon chain
+	Polygon Chain = "Polygon"
 )
 
 // ToLower returns the lowercase string of chain
