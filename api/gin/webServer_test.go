@@ -34,10 +34,13 @@ func createMockArgsNewWebServer() ArgsNewWebServer {
 			},
 			APIPackages: make(map[string]config.APIPackageConfig),
 		},
-		AntiFloodConfig: config.WebServerAntifloodConfig{
-			SimultaneousRequests:         1,
-			SameSourceRequests:           1,
-			SameSourceResetIntervalInSec: 1,
+		AntiFloodConfig: config.AntifloodConfig{
+			Enabled: true,
+			WebServer: config.WebServerAntifloodConfig{
+				SimultaneousRequests:         1,
+				SameSourceRequests:           1,
+				SameSourceResetIntervalInSec: 1,
+			},
 		},
 	}
 }
@@ -81,7 +84,7 @@ func TestWebServer_StartHttpServer(t *testing.T) {
 	})
 	t.Run("createMiddlewareLimiters returns error due to middleware.NewSourceThrottler error", func(t *testing.T) {
 		args := createMockArgsNewWebServer()
-		args.AntiFloodConfig = config.WebServerAntifloodConfig{
+		args.AntiFloodConfig.WebServer = config.WebServerAntifloodConfig{
 			SimultaneousRequests:         1,
 			SameSourceRequests:           0,
 			SameSourceResetIntervalInSec: 1,
@@ -94,7 +97,7 @@ func TestWebServer_StartHttpServer(t *testing.T) {
 	})
 	t.Run("createMiddlewareLimiters returns error due to middleware.NewGlobalThrottler error", func(t *testing.T) {
 		args := createMockArgsNewWebServer()
-		args.AntiFloodConfig = config.WebServerAntifloodConfig{
+		args.AntiFloodConfig.WebServer = config.WebServerAntifloodConfig{
 			SimultaneousRequests:         0,
 			SameSourceRequests:           1,
 			SameSourceResetIntervalInSec: 1,
