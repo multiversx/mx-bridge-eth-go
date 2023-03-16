@@ -214,27 +214,42 @@ func (ws *webServer) createMiddlewareLimiters() ([]chainShared.MiddlewareProcess
 		middlewares = append(middlewares, responseLoggerMiddleware)
 	}
 
-	if ws.antiFloodConfig.Enabled {
-		wsAntifloodCfg := ws.antiFloodConfig.WebServer
-		sourceLimiter, err := middleware.NewSourceThrottler(wsAntifloodCfg.SameSourceRequests)
-		if err != nil {
-			return nil, err
-		}
-
-		var ctx context.Context
-		ctx, ws.cancelFunc = context.WithCancel(context.Background())
-
-		go ws.sourceLimiterReset(ctx, sourceLimiter)
-
-		middlewares = append(middlewares, sourceLimiter)
-
-		globalLimiter, err := middleware.NewGlobalThrottler(wsAntifloodCfg.SimultaneousRequests)
-		if err != nil {
-			return nil, err
-		}
-
-		middlewares = append(middlewares, globalLimiter)
+	antiFloodLimiters, err := ws.createAntifloodLimiters()
+	if err != nil {
+		return nil, err
 	}
+
+	middlewares = append(middlewares, antiFloodLimiters...)
+
+	return middlewares, nil
+}
+
+func (ws *webServer) createAntifloodLimiters() ([]chainShared.MiddlewareProcessor, error) {
+	if !ws.antiFloodConfig.Enabled {
+		return make([]chainShared.MiddlewareProcessor, 0), nil
+	}
+
+	middlewares := make([]chainShared.MiddlewareProcessor, 0)
+
+	wsAntifloodCfg := ws.antiFloodConfig.WebServer
+	sourceLimiter, err := middleware.NewSourceThrottler(wsAntifloodCfg.SameSourceRequests)
+	if err != nil {
+		return nil, err
+	}
+
+	var ctx context.Context
+	ctx, ws.cancelFunc = context.WithCancel(context.Background())
+
+	go ws.sourceLimiterReset(ctx, sourceLimiter)
+
+	middlewares = append(middlewares, sourceLimiter)
+
+	globalLimiter, err := middleware.NewGlobalThrottler(wsAntifloodCfg.SimultaneousRequests)
+	if err != nil {
+		return nil, err
+	}
+
+	middlewares = append(middlewares, globalLimiter)
 
 	return middlewares, nil
 }
