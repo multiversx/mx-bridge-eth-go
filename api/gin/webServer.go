@@ -30,14 +30,14 @@ var log = logger.GetOrCreate("api")
 type ArgsNewWebServer struct {
 	Facade          shared.FacadeHandler
 	ApiConfig       config.ApiRoutesConfig
-	AntiFloodConfig config.WebServerAntifloodConfig
+	AntiFloodConfig config.AntifloodConfig
 }
 
 type webServer struct {
 	sync.RWMutex
 	facade          shared.FacadeHandler
 	apiConfig       config.ApiRoutesConfig
-	antiFloodConfig config.WebServerAntifloodConfig
+	antiFloodConfig config.AntifloodConfig
 	httpServer      chainShared.HttpServerCloser
 	groups          map[string]shared.GroupHandler
 	cancelFunc      func()
@@ -214,7 +214,25 @@ func (ws *webServer) createMiddlewareLimiters() ([]chainShared.MiddlewareProcess
 		middlewares = append(middlewares, responseLoggerMiddleware)
 	}
 
-	sourceLimiter, err := middleware.NewSourceThrottler(ws.antiFloodConfig.SameSourceRequests)
+	antiFloodLimiters, err := ws.createAntifloodLimiters()
+	if err != nil {
+		return nil, err
+	}
+
+	middlewares = append(middlewares, antiFloodLimiters...)
+
+	return middlewares, nil
+}
+
+func (ws *webServer) createAntifloodLimiters() ([]chainShared.MiddlewareProcessor, error) {
+	if !ws.antiFloodConfig.Enabled {
+		return make([]chainShared.MiddlewareProcessor, 0), nil
+	}
+
+	middlewares := make([]chainShared.MiddlewareProcessor, 0)
+
+	wsAntifloodCfg := ws.antiFloodConfig.WebServer
+	sourceLimiter, err := middleware.NewSourceThrottler(wsAntifloodCfg.SameSourceRequests)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +244,7 @@ func (ws *webServer) createMiddlewareLimiters() ([]chainShared.MiddlewareProcess
 
 	middlewares = append(middlewares, sourceLimiter)
 
-	globalLimiter, err := middleware.NewGlobalThrottler(ws.antiFloodConfig.SimultaneousRequests)
+	globalLimiter, err := middleware.NewGlobalThrottler(wsAntifloodCfg.SimultaneousRequests)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +255,7 @@ func (ws *webServer) createMiddlewareLimiters() ([]chainShared.MiddlewareProcess
 }
 
 func (ws *webServer) sourceLimiterReset(ctx context.Context, reset resetHandler) {
-	betweenResetDuration := time.Second * time.Duration(ws.antiFloodConfig.SameSourceResetIntervalInSec)
+	betweenResetDuration := time.Second * time.Duration(ws.antiFloodConfig.WebServer.SameSourceResetIntervalInSec)
 	timer := time.NewTimer(betweenResetDuration)
 	defer timer.Stop()
 
