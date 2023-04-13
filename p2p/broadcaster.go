@@ -152,7 +152,7 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnect
 		return fmt.Errorf("%w for peer: %s", ErrPeerNotWhitelisted, hexPkBytes)
 	}
 
-	b.log.Debug("got message", "topic", message.Topic(),
+	b.log.Trace("got message", "topic", message.Topic(),
 		"msg.Payload", msg.Payload, "msg.Nonce", msg.Nonce, "msg.PublicKey", addr.AddressAsBech32String())
 
 	err = b.processNonce(msg)
