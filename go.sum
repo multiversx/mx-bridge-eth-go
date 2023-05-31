@@ -767,8 +767,8 @@ github.com/multiversx/mx-chain-vm-v1_2-go v1.2.50/go.mod h1:e3uYdgoKzs3puaznbmSj
 github.com/multiversx/mx-chain-vm-v1_3-go v1.3.51/go.mod h1:oKj32V2nkd+KGNOL6emnwVkDRPpciwHHDqBmeorcL8k=
 github.com/multiversx/mx-chain-vm-v1_4-go v1.4.77/go.mod h1:3IaAOHc1JfxL5ywQZIrcaHQu5+CVdZNDaoY64NGOtUE=
 github.com/multiversx/mx-components-big-int v0.1.1/go.mod h1:0QrcFdfeLgJ/am10HGBeH0G0DNF+0Qx1E4DS/iozQls=
-github.com/multiversx/mx-sdk-go v1.3.1-0.20230531105616-c4dd3e07ac14 h1:S/+vkLn8znu1cHCTuuEF7QYhpZNiYORoZA8++B1+Dm8=
-github.com/multiversx/mx-sdk-go v1.3.1-0.20230531105616-c4dd3e07ac14/go.mod h1:xVDCcASI456+TQDYGPdaD8GLzLhDVVXfnlrANSiRmz8=
+github.com/multiversx/mx-sdk-go v1.3.2 h1:eMp2YszrNoPSBQWpVFL/w+dRdMeZsTVzYq4teCdk/8Q=
+github.com/multiversx/mx-sdk-go v1.3.2/go.mod h1:xVDCcASI456+TQDYGPdaD8GLzLhDVVXfnlrANSiRmz8=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/naoina/go-stringutil v0.1.0/go.mod h1:XJ2SJL9jCtBh+P9q5btrd/Ylo8XwT/h1USek5+NqSA0=

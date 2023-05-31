@@ -13,7 +13,7 @@ require (
 	github.com/multiversx/mx-chain-go v1.4.15
 	github.com/multiversx/mx-chain-logger-go v1.0.11
 	github.com/multiversx/mx-chain-p2p-go v1.0.10
-	github.com/multiversx/mx-sdk-go v1.3.1-0.20230531105616-c4dd3e07ac14
+	github.com/multiversx/mx-sdk-go v1.3.2
 	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli v1.22.10
 )
