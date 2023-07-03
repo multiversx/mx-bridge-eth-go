@@ -5,10 +5,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	crypto "github.com/multiversx/mx-chain-crypto-go"
 	"github.com/multiversx/mx-sdk-go/builders"
 	"github.com/multiversx/mx-sdk-go/core"
-	"github.com/multiversx/mx-sdk-go/data"
 )
 
 type transactionHandler struct {
@@ -34,7 +34,7 @@ func (txHandler *transactionHandler) SendTransactionReturnHash(ctx context.Conte
 	return txHandler.nonceTxHandler.SendTransaction(context.Background(), tx)
 }
 
-func (txHandler *transactionHandler) signTransaction(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (*data.Transaction, error) {
+func (txHandler *transactionHandler) signTransaction(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (*transaction.FrontendTransaction, error) {
 	networkConfig, err := txHandler.proxy.GetNetworkConfig(ctx)
 	if err != nil {
 		return nil, err
@@ -50,15 +50,15 @@ func (txHandler *transactionHandler) signTransaction(ctx context.Context, builde
 		return nil, err
 	}
 
-	tx := &data.Transaction{
+	tx := &transaction.FrontendTransaction{
 		ChainID:  networkConfig.ChainID,
 		Version:  networkConfig.MinTransactionVersion,
 		GasLimit: gasLimit,
 		GasPrice: networkConfig.MinGasPrice,
 		Nonce:    nonce,
 		Data:     dataBytes,
-		SndAddr:  txHandler.relayerAddress.AddressAsBech32String(),
-		RcvAddr:  txHandler.multisigAddressAsBech32,
+		Sender:   txHandler.relayerAddress.AddressAsBech32String(),
+		Receiver: txHandler.multisigAddressAsBech32,
 		Value:    "0",
 	}
 
@@ -71,7 +71,7 @@ func (txHandler *transactionHandler) signTransaction(ctx context.Context, builde
 }
 
 // signTransactionWithPrivateKey signs a transaction with the client's private key
-func (txHandler *transactionHandler) signTransactionWithPrivateKey(tx *data.Transaction) error {
+func (txHandler *transactionHandler) signTransactionWithPrivateKey(tx *transaction.FrontendTransaction) error {
 	tx.Signature = ""
 	bytes, err := json.Marshal(&tx)
 	if err != nil {
