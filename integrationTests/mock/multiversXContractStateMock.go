@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-chain-core-go/data/vm"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
@@ -85,7 +86,7 @@ func (mock *multiversXContractStateMock) cleanState() {
 	mock.pendingBatch = nil
 }
 
-func (mock *multiversXContractStateMock) processTransaction(tx *data.Transaction) {
+func (mock *multiversXContractStateMock) processTransaction(tx *transaction.FrontendTransaction) {
 	dataSplit := strings.Split(string(tx.Data), "@")
 	funcName := dataSplit[0]
 	switch funcName {
@@ -111,13 +112,13 @@ func (mock *multiversXContractStateMock) processTransaction(tx *data.Transaction
 	panic("can not execute transaction that calls function: " + funcName)
 }
 
-func (mock *multiversXContractStateMock) proposeEsdtSafeSetCurrentTransactionBatchStatus(dataSplit []string, _ *data.Transaction) {
+func (mock *multiversXContractStateMock) proposeEsdtSafeSetCurrentTransactionBatchStatus(dataSplit []string, _ *transaction.FrontendTransaction) {
 	status, hash := mock.createProposedStatus(dataSplit)
 
 	mock.proposedStatus[hash] = status
 }
 
-func (mock *multiversXContractStateMock) proposeMultiTransferEsdtBatch(dataSplit []string, _ *data.Transaction) {
+func (mock *multiversXContractStateMock) proposeMultiTransferEsdtBatch(dataSplit []string, _ *transaction.FrontendTransaction) {
 	transfer, hash := mock.createProposedTransfer(dataSplit)
 
 	mock.proposedTransfers[hash] = transfer
@@ -306,7 +307,7 @@ func (mock *multiversXContractStateMock) vmRequestGetStatusesAfterExecution(_ *d
 	return createOkVmResponse(args)
 }
 
-func (mock *multiversXContractStateMock) sign(dataSplit []string, tx *data.Transaction) {
+func (mock *multiversXContractStateMock) sign(dataSplit []string, tx *transaction.FrontendTransaction) {
 	actionID := getActionIDFromString(dataSplit[1])
 	if !mock.actionIDExists(actionID) {
 		panic(fmt.Sprintf("attempted to sign on a missing action ID: %v as big int, raw: %s", actionID, dataSplit[1]))
@@ -317,10 +318,10 @@ func (mock *multiversXContractStateMock) sign(dataSplit []string, tx *data.Trans
 		m = make(map[string]struct{})
 		mock.signedActionIDs[actionID.String()] = m
 	}
-	m[tx.SndAddr] = struct{}{}
+	m[tx.Sender] = struct{}{}
 }
 
-func (mock *multiversXContractStateMock) performAction(dataSplit []string, _ *data.Transaction) {
+func (mock *multiversXContractStateMock) performAction(dataSplit []string, _ *transaction.FrontendTransaction) {
 	actionID := getActionIDFromString(dataSplit[1])
 	if !mock.actionIDExists(actionID) {
 		panic(fmt.Sprintf("attempted to perform on a missing action ID: %v as big int, raw: %s", actionID, dataSplit[1]))

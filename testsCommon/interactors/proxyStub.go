@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
 )
@@ -11,8 +12,8 @@ import (
 // ProxyStub -
 type ProxyStub struct {
 	GetNetworkConfigCalled  func(ctx context.Context) (*data.NetworkConfig, error)
-	SendTransactionCalled   func(ctx context.Context, transaction *data.Transaction) (string, error)
-	SendTransactionsCalled  func(ctx context.Context, txs []*data.Transaction) ([]string, error)
+	SendTransactionCalled   func(ctx context.Context, transaction *transaction.FrontendTransaction) (string, error)
+	SendTransactionsCalled  func(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error)
 	ExecuteVMQueryCalled    func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
 	GetAccountCalled        func(ctx context.Context, address core.AddressHandler) (*data.Account, error)
 	GetNetworkStatusCalled  func(ctx context.Context, shardID uint32) (*data.NetworkStatus, error)
@@ -29,7 +30,7 @@ func (eps *ProxyStub) GetNetworkConfig(ctx context.Context) (*data.NetworkConfig
 }
 
 // SendTransaction -
-func (eps *ProxyStub) SendTransaction(ctx context.Context, transaction *data.Transaction) (string, error) {
+func (eps *ProxyStub) SendTransaction(ctx context.Context, transaction *transaction.FrontendTransaction) (string, error) {
 	if eps.SendTransactionCalled != nil {
 		return eps.SendTransactionCalled(ctx, transaction)
 	}
@@ -38,7 +39,7 @@ func (eps *ProxyStub) SendTransaction(ctx context.Context, transaction *data.Tra
 }
 
 // SendTransactions -
-func (eps *ProxyStub) SendTransactions(ctx context.Context, txs []*data.Transaction) ([]string, error) {
+func (eps *ProxyStub) SendTransactions(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error) {
 	if eps.SendTransactionCalled != nil {
 		return eps.SendTransactionsCalled(ctx, txs)
 	}

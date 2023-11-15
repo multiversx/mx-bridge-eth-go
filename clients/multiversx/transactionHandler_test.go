@@ -10,6 +10,7 @@ import (
 	cryptoMock "github.com/multiversx/mx-bridge-eth-go/testsCommon/crypto"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/roleProviders"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-chain-crypto-go"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519/singlesig"
 	"github.com/multiversx/mx-sdk-go/builders"
@@ -106,7 +107,7 @@ func TestTransactionHandler_SendTransactionReturnHash(t *testing.T) {
 			},
 		}
 		txHandlerInstance.nonceTxHandler = &bridgeTests.NonceTransactionsHandlerStub{
-			SendTransactionCalled: func(ctx context.Context, tx *data.Transaction) (string, error) {
+			SendTransactionCalled: func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {
 				wasSendTransactionCalled = true
 				return "", nil
 			},
@@ -146,10 +147,10 @@ func TestTransactionHandler_SendTransactionReturnHash(t *testing.T) {
 
 				return 0, errors.New("unexpected address to fetch the nonce")
 			},
-			SendTransactionCalled: func(ctx context.Context, tx *data.Transaction) (string, error) {
+			SendTransactionCalled: func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {
 				sendWasCalled = true
-				assert.Equal(t, relayerAddress, tx.SndAddr)
-				assert.Equal(t, testMultisigAddress, tx.RcvAddr)
+				assert.Equal(t, relayerAddress, tx.Sender)
+				assert.Equal(t, testMultisigAddress, tx.Receiver)
 				assert.Equal(t, nonce, tx.Nonce)
 				assert.Equal(t, "0", tx.Value)
 				assert.Equal(t, "function@62756666@16", string(tx.Data))

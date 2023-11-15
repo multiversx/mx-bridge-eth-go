@@ -3,14 +3,14 @@ package bridge
 import (
 	"context"
 
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-sdk-go/core"
-	"github.com/multiversx/mx-sdk-go/data"
 )
 
 // NonceTransactionsHandlerStub -
 type NonceTransactionsHandlerStub struct {
 	GetNonceCalled        func(ctx context.Context, address core.AddressHandler) (uint64, error)
-	SendTransactionCalled func(ctx context.Context, tx *data.Transaction) (string, error)
+	SendTransactionCalled func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
 	CloseCalled           func() error
 }
 
@@ -24,7 +24,7 @@ func (stub *NonceTransactionsHandlerStub) GetNonce(ctx context.Context, address 
 }
 
 // SendTransaction -
-func (stub *NonceTransactionsHandlerStub) SendTransaction(ctx context.Context, tx *data.Transaction) (string, error) {
+func (stub *NonceTransactionsHandlerStub) SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {
 	if stub.SendTransactionCalled != nil {
 		return stub.SendTransactionCalled(ctx, tx)
 	}

@@ -410,7 +410,8 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 
 		processedMessages := make([]*core.SignedMessage, 0)
 		b, err := NewBroadcaster(args)
-		print(err)
+		require.Nil(t, err)
+
 		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
 			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
 				processedMessages = append(processedMessages, msg)

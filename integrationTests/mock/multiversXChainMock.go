@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
@@ -21,7 +22,7 @@ var log = logger.GetOrCreate("integrationTests/mock")
 type MultiversXChainMock struct {
 	*multiversXContractStateMock
 	mutState         sync.RWMutex
-	sentTransactions map[string]*data.Transaction
+	sentTransactions map[string]*transaction.FrontendTransaction
 	accounts         *multiversXAccountsMock
 }
 
@@ -29,7 +30,7 @@ type MultiversXChainMock struct {
 func NewMultiversXChainMock() *MultiversXChainMock {
 	return &MultiversXChainMock{
 		multiversXContractStateMock: newMultiversXContractStateMock(),
-		sentTransactions:            make(map[string]*data.Transaction),
+		sentTransactions:            make(map[string]*transaction.FrontendTransaction),
 		accounts:                    newMultiversXAccountsMock(),
 	}
 }
@@ -55,12 +56,12 @@ func (mock *MultiversXChainMock) GetShardOfAddress(_ context.Context, _ string) 
 }
 
 // SendTransaction -
-func (mock *MultiversXChainMock) SendTransaction(_ context.Context, transaction *data.Transaction) (string, error) {
+func (mock *MultiversXChainMock) SendTransaction(_ context.Context, transaction *transaction.FrontendTransaction) (string, error) {
 	if transaction == nil {
 		panic("nil transaction")
 	}
 
-	addrAsBech32 := transaction.SndAddr
+	addrAsBech32 := transaction.Sender
 	addressHandler, err := data.NewAddressFromBech32String(addrAsBech32)
 	if err != nil {
 		panic(fmt.Sprintf("%v while creating address handler for string %s", err, addrAsBech32))
@@ -85,7 +86,7 @@ func (mock *MultiversXChainMock) SendTransaction(_ context.Context, transaction 
 }
 
 // SendTransactions -
-func (mock *MultiversXChainMock) SendTransactions(ctx context.Context, txs []*data.Transaction) ([]string, error) {
+func (mock *MultiversXChainMock) SendTransactions(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error) {
 	hashes := make([]string, 0, len(txs))
 	for _, tx := range txs {
 		hash, _ := mock.SendTransaction(ctx, tx)
@@ -96,11 +97,11 @@ func (mock *MultiversXChainMock) SendTransactions(ctx context.Context, txs []*da
 }
 
 // GetAllSentTransactions -
-func (mock *MultiversXChainMock) GetAllSentTransactions(_ context.Context) map[string]*data.Transaction {
+func (mock *MultiversXChainMock) GetAllSentTransactions(_ context.Context) map[string]*transaction.FrontendTransaction {
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()
 
-	txs := make(map[string]*data.Transaction)
+	txs := make(map[string]*transaction.FrontendTransaction)
 	for hash, tx := range mock.sentTransactions {
 		txs[hash] = tx
 	}
