@@ -24,13 +24,6 @@ const (
 	minAllowedDelta = 1
 )
 
-type argListsBatch struct {
-	tokens     []common.Address
-	recipients []common.Address
-	amounts    []*big.Int
-	nonces     []*big.Int
-}
-
 // ArgsEthereumClient is the DTO used in the ethereum's client constructor
 type ArgsEthereumClient struct {
 	ClientWrapper           ClientWrapper
@@ -221,7 +214,7 @@ func (c *client) BroadcastSignatureForMessageHash(msgHash common.Hash) {
 }
 
 // GenerateMessageHash will generate the message hash based on the provided batch
-func (c *client) GenerateMessageHash(batch *clients.TransferBatch) (common.Hash, error) {
+func (c *client) GenerateMessageHash(batch *ethmultiversx.ArgListsBatch, batchId uint64) (common.Hash, error) {
 	if batch == nil {
 		return common.Hash{}, clients.ErrNilBatch
 	}
@@ -231,12 +224,7 @@ func (c *client) GenerateMessageHash(batch *clients.TransferBatch) (common.Hash,
 		return common.Hash{}, err
 	}
 
-	argLists, err := c.extractList(batch)
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	pack, err := args.Pack(argLists.recipients, argLists.tokens, argLists.amounts, argLists.nonces, big.NewInt(0).SetUint64(batch.ID), "ExecuteBatchedTransfer")
+	pack, err := args.Pack(batch.Recipients, batch.Tokens, batch.Amounts, batch.Nonces, big.NewInt(0).SetUint64(batchId), "ExecuteBatchedTransfer")
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -274,26 +262,6 @@ func generateTransferArgs() (abi.Arguments, error) {
 		abi.Argument{Name: "nonce", Type: uint256Type},
 		abi.Argument{Name: "executeTransfer", Type: stringType},
 	}, nil
-}
-
-func (c *client) extractList(batch *clients.TransferBatch) (argListsBatch, error) {
-	arg := argListsBatch{}
-
-	for _, dt := range batch.Deposits {
-		recipient := common.BytesToAddress(dt.ToBytes)
-		arg.recipients = append(arg.recipients, recipient)
-
-		token := common.BytesToAddress(dt.ConvertedTokenBytes)
-		arg.tokens = append(arg.tokens, token)
-
-		amount := big.NewInt(0).Set(dt.Amount)
-		arg.amounts = append(arg.amounts, amount)
-
-		nonce := big.NewInt(0).SetUint64(dt.Nonce)
-		arg.nonces = append(arg.nonces, nonce)
-	}
-
-	return arg, nil
 }
 
 // ExecuteTransfer will initiate and send the transaction from the transfer batch struct
@@ -353,16 +321,6 @@ func (c *client) ExecuteTransfer(
 		c.log.Debug("reducing the size of the signatures set",
 			"quorum", quorum, "total signatures", len(signatures))
 		signatures = signatures[:quorum]
-	}
-
-	argLists, err := c.extractList(batch)
-	if err != nil {
-		return "", err
-	}
-
-	err = c.checkAvailableTokens(ctx, argLists.tokens, argLists.amounts)
-	if err != nil {
-		return "", err
 	}
 
 	minimumForFee := big.NewInt(int64(auth.GasLimit))
@@ -426,45 +384,22 @@ func (c *client) setStatusForAvailabilityCheck(status ethmultiversx.ClientStatus
 	c.clientWrapper.SetIntMetric(core.MetricLastBlockNonce, int(nonce))
 }
 
-func (c *client) checkAvailableTokens(ctx context.Context, tokens []common.Address, amounts []*big.Int) error {
-	transfers := c.getCumulatedTransfers(tokens, amounts)
-
-	return c.checkCumulatedTransfers(ctx, transfers)
-}
-
-func (c *client) getCumulatedTransfers(tokens []common.Address, amounts []*big.Int) map[common.Address]*big.Int {
-	transfers := make(map[common.Address]*big.Int)
-	for i, token := range tokens {
-		existing, found := transfers[token]
-		if !found {
-			existing = big.NewInt(0)
-			transfers[token] = existing
-		}
-
-		existing.Add(existing, amounts[i])
+func (c *client) CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error {
+	existingBalance, err := c.erc20ContractsHandler.BalanceOf(ctx, erc20Address, c.safeContractAddress)
+	if err != nil {
+		return fmt.Errorf("%w for address %s for ERC20 token %s", err, c.safeContractAddress.String(), erc20Address.String())
 	}
 
-	return transfers
-}
-
-func (c *client) checkCumulatedTransfers(ctx context.Context, transfers map[common.Address]*big.Int) error {
-	for erc20Address, value := range transfers {
-		existingBalance, err := c.erc20ContractsHandler.BalanceOf(ctx, erc20Address, c.safeContractAddress)
-		if err != nil {
-			return fmt.Errorf("%w for address %s for ERC20 token %s", err, c.safeContractAddress.String(), erc20Address.String())
-		}
-
-		if value.Cmp(existingBalance) > 0 {
-			return fmt.Errorf("%w, existing: %s, required: %s for ERC20 token %s and address %s",
-				errInsufficientErc20Balance, existingBalance.String(), value.String(), erc20Address.String(), c.safeContractAddress.String())
-		}
-
-		c.log.Debug("checked ERC20 balance",
-			"ERC20 token", erc20Address.String(),
-			"address", c.safeContractAddress.String(),
-			"existing balance", existingBalance.String(),
-			"needed", value.String())
+	if value.Cmp(existingBalance) > 0 {
+		return fmt.Errorf("%w, existing: %s, required: %s for ERC20 token %s and address %s",
+			errInsufficientErc20Balance, existingBalance.String(), value.String(), erc20Address.String(), c.safeContractAddress.String())
 	}
+
+	c.log.Debug("checked ERC20 balance",
+		"ERC20 token", erc20Address.String(),
+		"address", c.safeContractAddress.String(),
+		"existing balance", existingBalance.String(),
+		"needed", value.String())
 
 	return nil
 }

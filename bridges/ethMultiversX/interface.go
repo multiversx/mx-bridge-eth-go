@@ -37,7 +37,7 @@ type MultiversXClient interface {
 type EthereumClient interface {
 	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
 	WasExecuted(ctx context.Context, batchID uint64) (bool, error)
-	GenerateMessageHash(batch *clients.TransferBatch) (common.Hash, error)
+	GenerateMessageHash(batch *ArgListsBatch, batchId uint64) (common.Hash, error)
 
 	BroadcastSignatureForMessageHash(msgHash common.Hash)
 	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
@@ -45,6 +45,7 @@ type EthereumClient interface {
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
 	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
 	CheckClientAvailability(ctx context.Context) error
+	CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error
 	IsInterfaceNil() bool
 }
 

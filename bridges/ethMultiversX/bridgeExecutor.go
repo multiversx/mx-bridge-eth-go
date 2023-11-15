@@ -3,6 +3,7 @@ package ethmultiversx
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -17,6 +18,14 @@ import (
 const splits = 10
 
 const minRetries = 1
+
+type ArgListsBatch struct {
+	Tokens              []common.Address
+	Recipients          []common.Address
+	ConvertedTokenBytes [][]byte
+	Amounts             []*big.Int
+	Nonces              []*big.Int
+}
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
@@ -178,7 +187,7 @@ func (executor *bridgeExecutor) GetLastExecutedEthBatchIDFromMultiversX(ctx cont
 	return batchID, err
 }
 
-// VerifyLastDepositNonceExecutedOnEthereumBatch will check the deposit nonces from the fetched batch from Ethereum client
+// VerifyLastDepositNonceExecutedOnEthereumBatch will check the deposit Nonces from the fetched batch from Ethereum client
 func (executor *bridgeExecutor) VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error {
 	if executor.batch == nil {
 		return ErrNilBatch
@@ -467,7 +476,12 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		return ErrNilBatch
 	}
 
-	hash, err := executor.ethereumClient.GenerateMessageHash(executor.batch)
+	argLists, err := executor.extractList(executor.batch)
+	if err != nil {
+		return err
+	}
+
+	hash, err := executor.ethereumClient.GenerateMessageHash(argLists, executor.batch.ID)
 	if err != nil {
 		return err
 	}
@@ -493,6 +507,16 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 
 	executor.log.Debug("fetched quorum size", "quorum", quorumSize.Int64())
 
+	argLists, err := executor.extractList(executor.batch)
+	if err != nil {
+		return err
+	}
+
+	err = executor.checkAvailableTokens(ctx, argLists.Tokens, argLists.ConvertedTokenBytes, argLists.Amounts)
+	if err != nil {
+		return err
+	}
+
 	hash, err := executor.ethereumClient.ExecuteTransfer(ctx, executor.msgHash, executor.batch, int(quorumSize.Int64()))
 	if err != nil {
 		return err
@@ -502,6 +526,61 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 		"batch ID", executor.batch.ID)
 
 	return nil
+}
+
+func (executor *bridgeExecutor) checkCumulatedTransfers(ctx context.Context, transfers map[common.Address]*big.Int) error {
+	for erc20Address, value := range transfers {
+		err := executor.ethereumClient.CheckRequiredBalance(ctx, erc20Address, value)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (executor *bridgeExecutor) checkAvailableTokens(ctx context.Context, tokens []common.Address, convertedTokens [][]byte, amounts []*big.Int) error {
+	transfers := executor.getCumulatedTransfers(tokens, convertedTokens, amounts)
+
+	return executor.checkCumulatedTransfers(ctx, transfers)
+}
+
+func (executor *bridgeExecutor) extractList(batch *clients.TransferBatch) (*ArgListsBatch, error) {
+	arg := ArgListsBatch{}
+
+	for _, dt := range batch.Deposits {
+		recipient := common.BytesToAddress(dt.ToBytes)
+		arg.Recipients = append(arg.Recipients, recipient)
+
+		token := common.BytesToAddress(dt.ConvertedTokenBytes)
+		arg.Tokens = append(arg.Tokens, token)
+
+		amount := big.NewInt(0).Set(dt.Amount)
+		arg.Amounts = append(arg.Amounts, amount)
+
+		nonce := big.NewInt(0).SetUint64(dt.Nonce)
+		arg.Nonces = append(arg.Nonces, nonce)
+
+		arg.ConvertedTokenBytes = append(arg.ConvertedTokenBytes, dt.ConvertedTokenBytes)
+	}
+
+	return &arg, nil
+}
+
+func (executor *bridgeExecutor) getCumulatedTransfers(tokens []common.Address, convertedTokens [][]byte, amounts []*big.Int) map[common.Address]*big.Int {
+	transfers := make(map[common.Address]*big.Int)
+	for i, token := range tokens {
+		// check if token is MintBurn
+		// if not, then we need to check the cumulated transfers
+		existing, found := transfers[token]
+		if !found {
+			existing = big.NewInt(0)
+			transfers[token] = existing
+		}
+
+		existing.Add(existing, amounts[i])
+	}
+
+	return transfers
 }
 
 // ProcessQuorumReachedOnEthereum returns true if the proposed transfer reached the set quorum
