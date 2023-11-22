@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -338,7 +339,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		assert.Nil(t, executor.GetStoredBatch())
 		assert.Nil(t, executor.batch)
 	})
-	t.Run("should work", func(t *testing.T) {
+	t.Run("different deposits and statuses lengths should error", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
@@ -358,9 +359,92 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		executor, _ := NewBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
 
+		assert.True(t, errors.Is(err, ErrBatchNotFound))
+		assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("%d", providedNonce)))
+		assert.Nil(t, executor.GetStoredBatch())
+		assert.Nil(t, executor.batch)
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		providedNonce := uint64(8346)
+		expectedBatch := &clients.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*clients.DepositTransfer{
+				{},
+			},
+			Statuses: []byte{0},
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return expectedBatch, nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
 		assert.True(t, expectedBatch == executor.batch)
+	})
+
+	t.Run("should correctly separate deposits by transfers and sc calls", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+
+		scCalls := []*clients.DepositTransfer{
+			{
+				Nonce:     0,
+				FromBytes: []byte("sc"),
+			},
+			{
+				Nonce:     12,
+				FromBytes: []byte("sc"),
+			},
+		}
+		transfers := []*clients.DepositTransfer{
+			{
+				Nonce:     1,
+				FromBytes: []byte("addr"),
+			},
+			{
+				Nonce:     13,
+				FromBytes: []byte("addr"),
+			},
+		}
+
+		providedNonce := uint64(8346)
+		fullBatch := &clients.TransferBatch{
+			ID:       providedNonce,
+			Deposits: append(scCalls, transfers...),
+			Statuses: []byte{0, 0, 0, 0},
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return fullBatch, nil
+			},
+			IsDepositSCCallCalled: func(deposit *clients.DepositTransfer) bool {
+				for _, n := range scCalls {
+					if deposit.Nonce == n.Nonce {
+						return true
+					}
+				}
+
+				return false
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+		assert.Nil(t, err)
+		assert.True(t, fullBatch == executor.GetStoredBatch()) // pointer testing
+		assert.True(t, reflect.DeepEqual(executor.GetSCExecStoredBatch().Deposits, scCalls))
+		assert.True(t, reflect.DeepEqual(executor.GetTransfersStoredBatch().Deposits, transfers))
+		assert.True(t, fullBatch == executor.batch)
 	})
 }
 
@@ -521,6 +605,17 @@ func TestEthToMultiversXBridgeExecutor_WasTransferProposedOnMultiversX(t *testin
 		assert.False(t, wasTransfered)
 		assert.Equal(t, ErrNilBatch, err)
 	})
+	t.Run("nil transfers batch should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		executor, _ := NewBridgeExecutor(args)
+		executor.batch = providedBatch
+
+		wasTransfered, err := executor.WasTransferProposedOnMultiversX(context.Background())
+		assert.False(t, wasTransfered)
+		assert.Equal(t, ErrNilBatch, err)
+	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
@@ -536,8 +631,57 @@ func TestEthToMultiversXBridgeExecutor_WasTransferProposedOnMultiversX(t *testin
 
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
+		executor.transfersBatch = providedBatch
 
 		wasProposed, err := executor.WasTransferProposedOnMultiversX(context.Background())
+		assert.True(t, wasProposed)
+		assert.Nil(t, err)
+		assert.True(t, wasCalled)
+	})
+}
+
+func TestEthToMultiversXBridgeExecutor_WasSCTransferProposedOnMultiversX(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil batch should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		executor, _ := NewBridgeExecutor(args)
+
+		wasTransfered, err := executor.WasSCTransferProposedOnMultiversX(context.Background())
+		assert.False(t, wasTransfered)
+		assert.Equal(t, ErrNilBatch, err)
+	})
+	t.Run("nil sc transfers batch should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		executor, _ := NewBridgeExecutor(args)
+		executor.batch = providedBatch
+
+		wasTransfered, err := executor.WasSCTransferProposedOnMultiversX(context.Background())
+		assert.False(t, wasTransfered)
+		assert.Equal(t, ErrNilBatch, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		wasCalled := false
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			WasProposedTransferCalled: func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+				assert.True(t, providedBatch == batch)
+				wasCalled = true
+				return true, nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+		executor.batch = providedBatch
+		executor.scExecutionTransfersBatch = providedBatch
+
+		wasProposed, err := executor.WasSCTransferProposedOnMultiversX(context.Background())
 		assert.True(t, wasProposed)
 		assert.Nil(t, err)
 		assert.True(t, wasCalled)
@@ -569,6 +713,7 @@ func TestEthToMultiversXBridgeExecutor_ProposeTransferOnMultiversX(t *testing.T)
 		}
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
+		executor.transfersBatch = providedBatch
 
 		err := executor.ProposeTransferOnMultiversX(context.Background())
 		assert.Equal(t, expectedErr, err)
@@ -588,6 +733,7 @@ func TestEthToMultiversXBridgeExecutor_ProposeTransferOnMultiversX(t *testing.T)
 		}
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
+		executor.transfersBatch = providedBatch
 
 		err := executor.ProposeTransferOnMultiversX(context.Background())
 		assert.Nil(t, err)
@@ -1654,4 +1800,9 @@ func TestBridgeExecutor_ValidateBatch(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, result)
 	assert.True(t, validateBatchCalled)
+}
+
+func TestBridgeExecutor_GetBatchSCMetadata(t *testing.T) {
+	t.Parallel()
+
 }

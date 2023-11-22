@@ -15,6 +15,9 @@ type Executor interface {
 	GetBatchFromMultiversX(ctx context.Context) (*clients.TransferBatch, error)
 	StoreBatchFromMultiversX(batch *clients.TransferBatch) error
 	GetStoredBatch() *clients.TransferBatch
+	GetTransfersStoredBatch() *clients.TransferBatch
+	GetSCExecStoredBatch() *clients.TransferBatch
+
 	GetLastExecutedEthBatchIDFromMultiversX(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error
 
@@ -23,7 +26,9 @@ type Executor interface {
 	GetStoredActionID() uint64
 
 	WasTransferProposedOnMultiversX(ctx context.Context) (bool, error)
+	WasSCTransferProposedOnMultiversX(ctx context.Context) (bool, error)
 	ProposeTransferOnMultiversX(ctx context.Context) error
+	ProposeSCTransferOnMultiversX(ctx context.Context) error
 	ProcessMaxRetriesOnWasTransferProposedOnMultiversX() bool
 	ResetRetriesOnWasTransferProposedOnMultiversX()
 
@@ -57,6 +62,7 @@ type Executor interface {
 	ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 	CheckMultiversXClientAvailability(ctx context.Context) error
 	CheckEthereumClientAvailability(ctx context.Context) error
+	GetBatchSCMetadata(ctx context.Context) (*clients.SCBatch, error)
 
 	IsInterfaceNil() bool
 }

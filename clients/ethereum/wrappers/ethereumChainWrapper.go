@@ -2,6 +2,7 @@ package wrappers
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -15,15 +16,17 @@ import (
 
 // ArgsEthereumChainWrapper is the DTO used to construct a ethereumChainWrapper instance
 type ArgsEthereumChainWrapper struct {
-	StatusHandler    core.StatusHandler
-	MultiSigContract multiSigContract
-	BlockchainClient blockchainClient
+	StatusHandler       core.StatusHandler
+	MultiSigContract    multiSigContract
+	SCExecProxyContract scExecProxyContract
+	BlockchainClient    blockchainClient
 }
 
 type ethereumChainWrapper struct {
 	core.StatusHandler
-	multiSigContract multiSigContract
-	blockchainClient blockchainClient
+	multiSigContract    multiSigContract
+	scExecProxyContract scExecProxyContract
+	blockchainClient    blockchainClient
 }
 
 // NewEthereumChainWrapper creates a new instance of type ethereumChainWrapper
@@ -34,9 +37,10 @@ func NewEthereumChainWrapper(args ArgsEthereumChainWrapper) (*ethereumChainWrapp
 	}
 
 	return &ethereumChainWrapper{
-		StatusHandler:    args.StatusHandler,
-		multiSigContract: args.MultiSigContract,
-		blockchainClient: args.BlockchainClient,
+		StatusHandler:       args.StatusHandler,
+		multiSigContract:    args.MultiSigContract,
+		scExecProxyContract: args.SCExecProxyContract,
+		blockchainClient:    args.BlockchainClient,
 	}, nil
 }
 
@@ -46,6 +50,9 @@ func checkArgs(args ArgsEthereumChainWrapper) error {
 	}
 	if check.IfNilReflect(args.MultiSigContract) {
 		return errNilMultiSigContract
+	}
+	if check.IfNilReflect(args.SCExecProxyContract) {
+		return errNilSCExecProxyContract
 	}
 	if check.IfNilReflect(args.BlockchainClient) {
 		return errNilBlockchainClient
@@ -82,6 +89,12 @@ func (wrapper *ethereumChainWrapper) WasBatchExecuted(ctx context.Context, batch
 func (wrapper *ethereumChainWrapper) ChainID(ctx context.Context) (*big.Int, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.blockchainClient.ChainID(ctx)
+}
+
+// FilterLogs executes a query and returns matching logs and events
+func (wrapper *ethereumChainWrapper) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.blockchainClient.FilterLogs(ctx, q)
 }
 
 // BlockNumber returns the current ethereum block number

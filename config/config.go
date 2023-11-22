@@ -31,6 +31,7 @@ type EthereumConfig struct {
 	NetworkAddress                     string
 	MultisigContractAddress            string
 	SafeContractAddress                string
+	SCExecProxyAddress                 string
 	PrivateKeyFile                     string
 	IntervalToResendTxsInSeconds       uint64
 	GasLimitBase                       uint64

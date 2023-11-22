@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"context"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -19,6 +20,8 @@ type EthereumClientStub struct {
 	GetTransactionsStatusesCalled          func(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSizeCalled                    func(ctx context.Context) (*big.Int, error)
 	IsQuorumReachedCalled                  func(ctx context.Context, msgHash common.Hash) (bool, error)
+	IsDepositSCCallCalled                  func(deposit *clients.DepositTransfer) bool
+	GetBatchSCMetadataCalled               func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error)
 }
 
 // GetBatch -
@@ -98,6 +101,22 @@ func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash com
 	}
 
 	return false, errNotImplemented
+}
+
+func (stub *EthereumClientStub) IsDepositSCCall(deposit *clients.DepositTransfer) bool {
+	if stub.IsDepositSCCallCalled != nil {
+		return stub.IsDepositSCCallCalled(deposit)
+	}
+
+	return false
+}
+
+func (stub *EthereumClientStub) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+	if stub.GetBatchSCMetadataCalled != nil {
+		return stub.GetBatchSCMetadataCalled(ctx, nonce)
+	}
+
+	return []*contract.SCExecProxyERC20SCDeposit{}, nil
 }
 
 // IsInterfaceNil -

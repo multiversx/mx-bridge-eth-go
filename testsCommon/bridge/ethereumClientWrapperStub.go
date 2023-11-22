@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"errors"
+	"github.com/ethereum/go-ethereum"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -34,6 +35,7 @@ type EthereumClientWrapperStub struct {
 	GetAllMetricsCalled   func() core.GeneralMetrics
 	NameCalled            func() string
 	IsPausedCalled        func(ctx context.Context) (bool, error)
+	FilterLogsCalled      func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 }
 
 // SetIntMetric -
@@ -187,6 +189,15 @@ func (stub *EthereumClientWrapperStub) BalanceAt(ctx context.Context, account co
 	}
 
 	return big.NewInt(0), nil
+}
+
+// FilterLogs -
+func (stub *EthereumClientWrapperStub) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+	if stub.FilterLogsCalled != nil {
+		return stub.FilterLogsCalled(ctx, q)
+	}
+
+	return []types.Log{}, nil
 }
 
 // IsPaused -

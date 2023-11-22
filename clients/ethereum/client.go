@@ -1,9 +1,12 @@
 package ethereum
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"math/big"
 	"sync"
 
@@ -42,6 +45,7 @@ type ArgsEthereumClient struct {
 	TokensMapper            TokensMapper
 	SignatureHolder         SignaturesHolder
 	SafeContractAddress     common.Address
+	SCExecProxyAddress      common.Address
 	GasHandler              GasHandler
 	TransferGasLimitBase    uint64
 	TransferGasLimitForEach uint64
@@ -59,6 +63,7 @@ type client struct {
 	tokensMapper            TokensMapper
 	signatureHolder         SignaturesHolder
 	safeContractAddress     common.Address
+	scExecProxyAddress      common.Address
 	gasHandler              GasHandler
 	transferGasLimitBase    uint64
 	transferGasLimitForEach uint64
@@ -93,6 +98,7 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 		tokensMapper:            args.TokensMapper,
 		signatureHolder:         args.SignatureHolder,
 		safeContractAddress:     args.SafeContractAddress,
+		scExecProxyAddress:      args.SCExecProxyAddress,
 		gasHandler:              args.GasHandler,
 		transferGasLimitBase:    args.TransferGasLimitBase,
 		transferGasLimitForEach: args.TransferGasLimitForEach,
@@ -204,6 +210,40 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 	return transferBatch, nil
 }
 
+// GetBatchSCMetadata returns the emitted logs in a batch that hold metadata for SC execution on MVX
+func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+	scExecAbi, err := contract.SCExecProxyMetaData.GetAbi()
+	if err != nil {
+		return nil, err
+	}
+
+	query := ethereum.FilterQuery{
+		Addresses: []common.Address{c.scExecProxyAddress},
+		Topics: [][]common.Hash{
+			{scExecAbi.Events["ERC20SCDeposit"].ID},
+			{common.BytesToHash(new(big.Int).SetUint64(nonce).Bytes())},
+		},
+	}
+
+	logs, err := c.clientWrapper.FilterLogs(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	depositEvents := make([]*contract.SCExecProxyERC20SCDeposit, 0)
+	for _, vLog := range logs {
+		event := new(contract.SCExecProxyERC20SCDeposit) // Assuming ERC20Deposit is the struct for the event in Go
+		err = scExecAbi.UnpackIntoInterface(event, "SCExecProxyERC20SCDeposit", vLog.Data)
+		if err != nil {
+			return nil, err
+		}
+
+		depositEvents = append(depositEvents, event)
+	}
+
+	return depositEvents, nil
+}
+
 // WasExecuted returns true if the batch ID was executed
 func (c *client) WasExecuted(ctx context.Context, batchID uint64) (bool, error) {
 	return c.clientWrapper.WasBatchExecuted(ctx, big.NewInt(0).SetUint64(batchID))
@@ -243,6 +283,14 @@ func (c *client) GenerateMessageHash(batch *clients.TransferBatch) (common.Hash,
 
 	hash := crypto.Keccak256Hash(pack)
 	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
+}
+
+func (c *client) IsDepositSCCall(deposit *clients.DepositTransfer) bool {
+	if deposit == nil {
+		return false
+	}
+
+	return bytes.Equal(deposit.FromBytes, c.scExecProxyAddress.Bytes())
 }
 
 func generateTransferArgs() (abi.Arguments, error) {

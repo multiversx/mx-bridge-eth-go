@@ -14,10 +14,15 @@ type proposeTransferStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *proposeTransferStep) Execute(ctx context.Context) core.StepIdentifier {
-	batch := step.bridge.GetStoredBatch()
+	batch := step.bridge.GetTransfersStoredBatch()
 	if batch == nil {
 		step.bridge.PrintInfo(logger.LogDebug, "no batch found")
 		return GettingPendingBatchFromEthereum
+	}
+
+	if len(batch.Deposits) == 0 {
+		step.bridge.PrintInfo(logger.LogDebug, "no transfers found, moving to SC calls")
+		return ProposingSCTransfersOnMultiversX
 	}
 
 	wasTransferProposed, err := step.bridge.WasTransferProposedOnMultiversX(ctx)
@@ -28,7 +33,7 @@ func (step *proposeTransferStep) Execute(ctx context.Context) core.StepIdentifie
 	}
 
 	if wasTransferProposed {
-		return SigningProposedTransferOnMultiversX
+		return ProposingSCTransfersOnMultiversX
 	}
 
 	if !step.bridge.MyTurnAsLeader() {
@@ -43,7 +48,7 @@ func (step *proposeTransferStep) Execute(ctx context.Context) core.StepIdentifie
 		return GettingPendingBatchFromEthereum
 	}
 
-	return SigningProposedTransferOnMultiversX
+	return ProposingSCTransfersOnMultiversX
 }
 
 // Identifier returns the step's identifier

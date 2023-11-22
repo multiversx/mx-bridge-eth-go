@@ -63,6 +63,36 @@ func (tb *TransferBatch) ResolveNewDeposits(newNumDeposits int) {
 	log.Warn("recovered num statuses", "len statuses", oldLen, "new num deposits", newNumDeposits)
 }
 
+// DepositSCMetadata contains extra information needed for cross chain SC execution
+type DepositSCMetadata struct {
+	BatchNonce   uint64 `json:"batchNonce"`
+	DepositNonce uint64 `json:"depositNonce"`
+	CallData     string `json:"callData"`
+}
+
+// String will convert the deposit metadata transfer to a string
+func (ds *DepositSCMetadata) String() string {
+	return fmt.Sprintf("batch nonce: %d, deposit nonce: %d, call data: %s",
+		ds.BatchNonce, ds.DepositNonce, ds.CallData)
+}
+
+// Clone will deep clone the current DepositSCMetadata instance
+func (ds *DepositSCMetadata) Clone() *DepositSCMetadata {
+	cloned := &DepositSCMetadata{
+		BatchNonce:   ds.BatchNonce,
+		DepositNonce: ds.DepositNonce,
+		CallData:     ds.CallData,
+	}
+
+	return cloned
+}
+
+// SCBatch -
+type SCBatch struct {
+	ID       uint64               `json:"batchId"`
+	Deposits []*DepositSCMetadata `json:"deposits"`
+}
+
 // DepositTransfer is the deposit transfer structure agnostic of any chain implementation
 type DepositTransfer struct {
 	Nonce               uint64   `json:"nonce"`

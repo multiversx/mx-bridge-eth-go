@@ -2,6 +2,8 @@ package interactors
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -13,6 +15,7 @@ type BlockchainClientStub struct {
 	NonceAtCalled     func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	ChainIDCalled     func(ctx context.Context) (*big.Int, error)
 	BalanceAtCalled   func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	FilterLogsCalled  func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 }
 
 // BlockNumber -
@@ -49,6 +52,15 @@ func (bcs *BlockchainClientStub) BalanceAt(ctx context.Context, account common.A
 	}
 
 	return big.NewInt(0), nil
+}
+
+// FilterLogs -
+func (bcs *BlockchainClientStub) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+	if bcs.FilterLogsCalled != nil {
+		return bcs.FilterLogsCalled(ctx, q)
+	}
+
+	return nil, nil
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

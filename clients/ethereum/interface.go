@@ -2,6 +2,7 @@ package ethereum
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -28,6 +29,7 @@ type ClientWrapper interface {
 	GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, error)
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 	IsPaused(ctx context.Context) (bool, error)
+	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 }
 
 // Erc20ContractsHolder defines the Ethereum ERC20 contract operations

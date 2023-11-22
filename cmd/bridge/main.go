@@ -61,10 +61,13 @@ var log = logger.GetOrCreate("main")
 // appVersion should be populated at build time using ldflags
 // Usage examples:
 // linux/mac:
-//            go build -i -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)"
+//
+//	go build -i -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)"
+//
 // windows:
-//            for /f %i in ('git describe --tags --long --dirty') do set VERS=%i
-//            go build -i -v -ldflags="-X main.appVersion=%VERS%"
+//
+//	for /f %i in ('git describe --tags --long --dirty') do set VERS=%i
+//	go build -i -v -ldflags="-X main.appVersion=%VERS%"
 var appVersion = chainCommon.UnVersionedAppString
 
 func main() {
@@ -181,6 +184,9 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	scExecProxyAddr := ethCommon.HexToAddress(cfg.Eth.SCExecProxyAddress)
+	scExecProxy, err := contract.NewSCExecProxy(scExecProxyAddr, ethClient)
+
 	argsContractsHolder := ethereum.ArgsErc20SafeContractsHolder{
 		EthClient:              ethClient,
 		EthClientStatusHandler: ethClientStatusHandler,
@@ -207,9 +213,10 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	argsClientWrapper := wrappers.ArgsEthereumChainWrapper{
-		StatusHandler:    ethClientStatusHandler,
-		MultiSigContract: multiSigInstance,
-		BlockchainClient: ethClient,
+		StatusHandler:       ethClientStatusHandler,
+		MultiSigContract:    multiSigInstance,
+		BlockchainClient:    ethClient,
+		SCExecProxyContract: scExecProxy,
 	}
 
 	clientWrapper, err := wrappers.NewEthereumChainWrapper(argsClientWrapper)

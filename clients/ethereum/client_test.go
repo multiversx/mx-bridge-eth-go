@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
 	"strings"
 	"testing"
@@ -52,6 +54,7 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 		},
 		SignatureHolder:         &testsCommon.SignaturesHolderStub{},
 		SafeContractAddress:     testsCommon.CreateRandomEthereumAddress(),
+		SCExecProxyAddress:      testsCommon.CreateRandomEthereumAddress(),
 		GasHandler:              &testsCommon.GasHandlerStub{},
 		TransferGasLimitBase:    50,
 		TransferGasLimitForEach: 20,
@@ -813,6 +816,43 @@ func TestClient_IsQuorumReached(t *testing.T) {
 	})
 }
 
+func TestClient_IsDepositSCCall(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil deposit returns false", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		c, _ := NewEthereumClient(args)
+
+		assert.False(t, c.IsDepositSCCall(nil))
+	})
+
+	t.Run("returns true for matching addresses", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		c, _ := NewEthereumClient(args)
+
+		deposit := &clients.DepositTransfer{
+			FromBytes: args.SCExecProxyAddress.Bytes(),
+		}
+		assert.True(t, c.IsDepositSCCall(deposit))
+	})
+
+	t.Run("returns false for non matching addresses", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		c, _ := NewEthereumClient(args)
+
+		deposit := &clients.DepositTransfer{
+			FromBytes: []byte("different_addr"),
+		}
+		assert.False(t, c.IsDepositSCCall(deposit))
+	})
+}
+
 func TestClient_CheckClientAvailability(t *testing.T) {
 	t.Parallel()
 
@@ -901,6 +941,39 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, expectedErr.Error())
 		assert.Equal(t, expectedErr, err)
 	})
+}
+
+func TestClient_GetBatchSCMetadata(t *testing.T) {
+	t.Parallel()
+
+	t.Run("test remote", func(t *testing.T) {
+		scExecAbi, _ := contract.SCExecProxyMetaData.GetAbi()
+		scExecProxyAddr := common.HexToAddress("5526Ef117015fF63B62E4Fb40aA94be78e26d620")
+		query := ethereum.FilterQuery{
+			Addresses: []common.Address{scExecProxyAddr},
+			Topics: [][]common.Hash{
+				{scExecAbi.Events["ERC20SCDeposit"].ID},
+				{common.BytesToHash(new(big.Int).SetUint64(3).Bytes())},
+			},
+		}
+
+		fmt.Println(scExecAbi.Events["ERC20SCDeposit"].ID)
+		ethClient, _ := ethclient.Dial("https://sepolia.infura.io/v3/93473db9432643be907cdbd9810530b2")
+		logs, _ := ethClient.FilterLogs(context.Background(), query)
+
+		depositEvents := make([]*contract.SCExecProxyERC20SCDeposit, 0)
+		for _, vLog := range logs {
+			event := new(contract.SCExecProxyERC20SCDeposit)
+			_ = scExecAbi.UnpackIntoInterface(event, "ERC20SCDeposit", vLog.Data)
+
+			fmt.Println(event.CallData)
+			depositEvents = append(depositEvents, event)
+		}
+
+		fmt.Println(depositEvents)
+	})
+
+	// TODO: Write full test suite
 }
 
 func resetClient(c *client) {

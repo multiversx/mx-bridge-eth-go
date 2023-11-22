@@ -46,7 +46,11 @@ type bridgeExecutor struct {
 	maxQuorumRetriesOnMultiversX uint64
 	maxRetriesOnWasProposed      uint64
 
+	// TODO: when implementing MVX->ETH direction, batch should be removed
 	batch                     *clients.TransferBatch
+	transfersBatch            *clients.TransferBatch
+	scExecutionTransfersBatch *clients.TransferBatch
+	scExecutionMetadataBatch  *clients.SCBatch
 	actionID                  uint64
 	msgHash                   common.Hash
 	quorumRetriesOnEthereum   uint64
@@ -169,6 +173,16 @@ func (executor *bridgeExecutor) GetStoredBatch() *clients.TransferBatch {
 	return executor.batch
 }
 
+// GetTransfersStoredBatch filters out SC calls from the current batch and only returns regular transfers
+func (executor *bridgeExecutor) GetTransfersStoredBatch() *clients.TransferBatch {
+	return executor.transfersBatch
+}
+
+// GetSCExecStoredBatch returns only SC calls from the current bridge
+func (executor *bridgeExecutor) GetSCExecStoredBatch() *clients.TransferBatch {
+	return executor.scExecutionTransfersBatch
+}
+
 // GetLastExecutedEthBatchIDFromMultiversX returns the last executed batch ID that is stored on the MultiversX SC
 func (executor *bridgeExecutor) GetLastExecutedEthBatchIDFromMultiversX(ctx context.Context) (uint64, error) {
 	batchID, err := executor.multiversXClient.GetLastExecutedEthBatchID(ctx)
@@ -244,16 +258,26 @@ func (executor *bridgeExecutor) GetStoredActionID() uint64 {
 
 // WasTransferProposedOnMultiversX checks if the transfer was proposed on MultiversX
 func (executor *bridgeExecutor) WasTransferProposedOnMultiversX(ctx context.Context) (bool, error) {
-	if executor.batch == nil {
+	if executor.batch == nil || executor.transfersBatch == nil {
+		fmt.Println("returning false")
 		return false, ErrNilBatch
 	}
 
-	return executor.multiversXClient.WasProposedTransfer(ctx, executor.batch)
+	return executor.multiversXClient.WasProposedTransfer(ctx, executor.transfersBatch)
+}
+
+// WasSCTransferProposedOnMultiversX checks if the transfer containing sc calls was proposed on MultiversX
+func (executor *bridgeExecutor) WasSCTransferProposedOnMultiversX(ctx context.Context) (bool, error) {
+	if executor.batch == nil || executor.scExecutionTransfersBatch == nil {
+		return false, ErrNilBatch
+	}
+
+	return executor.multiversXClient.WasProposedTransfer(ctx, executor.scExecutionTransfersBatch)
 }
 
 // ProposeTransferOnMultiversX propose the transfer on MultiversX
 func (executor *bridgeExecutor) ProposeTransferOnMultiversX(ctx context.Context) error {
-	if executor.batch == nil {
+	if executor.batch == nil || executor.transfersBatch == nil {
 		return ErrNilBatch
 	}
 
@@ -264,6 +288,15 @@ func (executor *bridgeExecutor) ProposeTransferOnMultiversX(ctx context.Context)
 
 	executor.log.Info("proposed transfer", "hash", hash,
 		"batch ID", executor.batch.ID, "action ID", executor.actionID)
+
+	return nil
+}
+
+// ProposeSCTransferOnMultiversX sends the proposal for smart contract transfers to the MultiversX bridge smart contract
+func (executor *bridgeExecutor) ProposeSCTransferOnMultiversX(ctx context.Context) error {
+	if executor.batch == nil || executor.scExecutionMetadataBatch == nil {
+		return ErrNilBatch
+	}
 
 	return nil
 }
@@ -441,7 +474,7 @@ func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context
 		return err
 	}
 
-	isBatchInvalid := batch.ID != nonce || len(batch.Deposits) == 0
+	isBatchInvalid := batch.ID != nonce || len(batch.Deposits) == 0 || len(batch.Deposits) != len(batch.Statuses)
 	if isBatchInvalid {
 		return fmt.Errorf("%w, requested nonce: %d, fetched nonce: %d, num deposits: %d",
 			ErrBatchNotFound, nonce, batch.ID, len(batch.Deposits))
@@ -449,7 +482,70 @@ func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context
 
 	executor.batch = batch
 
+	transfers := &clients.TransferBatch{
+		ID:       executor.batch.ID,
+		Statuses: make([]byte, 0),
+		Deposits: make([]*clients.DepositTransfer, 0),
+	}
+	scCalls := &clients.TransferBatch{
+		ID:       executor.batch.ID,
+		Statuses: make([]byte, 0),
+		Deposits: make([]*clients.DepositTransfer, 0),
+	}
+
+	for i := 0; i < len(executor.batch.Deposits); i++ {
+		if executor.ethereumClient.IsDepositSCCall(executor.batch.Deposits[i]) {
+			scCalls.Statuses = append(scCalls.Statuses, executor.batch.Statuses[i])
+			scCalls.Deposits = append(scCalls.Deposits, executor.batch.Deposits[i])
+		} else {
+			transfers.Statuses = append(transfers.Statuses, executor.batch.Statuses[i])
+			transfers.Deposits = append(transfers.Deposits, executor.batch.Deposits[i])
+		}
+	}
+
+	executor.transfersBatch = transfers
+	executor.scExecutionTransfersBatch = scCalls
+
 	return nil
+}
+
+// GetBatchSCMetadata fetches the logs containing sc calls metadata for the current batch
+func (executor *bridgeExecutor) GetBatchSCMetadata(ctx context.Context) (*clients.SCBatch, error) {
+	if executor.scExecutionTransfersBatch == nil {
+		return nil, ErrNilBatch
+	}
+
+	if executor.scExecutionMetadataBatch != nil && executor.scExecutionMetadataBatch.ID == executor.scExecutionTransfersBatch.ID {
+		return executor.scExecutionMetadataBatch, nil
+	}
+
+	depositsMetadata := &clients.SCBatch{
+		ID:       executor.scExecutionTransfersBatch.ID,
+		Deposits: make([]*clients.DepositSCMetadata, 0),
+	}
+
+	if len(executor.scExecutionTransfersBatch.Deposits) == 0 {
+		return depositsMetadata, nil
+	}
+
+	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, executor.scExecutionTransfersBatch.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, event := range events {
+		dm := &clients.DepositSCMetadata{
+			BatchNonce:   event.BatchNonce,
+			DepositNonce: event.DepositNonce,
+			CallData:     event.CallData,
+		}
+
+		depositsMetadata.Deposits = append(depositsMetadata.Deposits, dm)
+	}
+
+	executor.scExecutionMetadataBatch = depositsMetadata
+
+	return depositsMetadata, nil
 }
 
 // WasTransferPerformedOnEthereum returns true if the batch was performed on Ethereum

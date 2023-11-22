@@ -3,6 +3,7 @@ package mock
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
 	"math/big"
 	"sync"
 
@@ -37,6 +38,7 @@ type EthereumChainMock struct {
 	relayers                            []common.Address
 	ProposeMultiTransferEsdtBatchCalled func()
 	BalanceAtCalled                     func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	FilterLogsCalled                    func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 }
 
 // NewEthereumChainMock -
@@ -250,6 +252,14 @@ func (mock *EthereumChainMock) BalanceAt(ctx context.Context, account common.Add
 		return mock.BalanceAtCalled(ctx, account, blockNumber)
 	}
 	return big.NewInt(0), nil
+}
+
+func (mock *EthereumChainMock) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+	if mock.FilterLogsCalled != nil {
+		return mock.FilterLogsCalled(ctx, q)
+	}
+
+	return []types.Log{}, nil
 }
 
 // IsPaused -

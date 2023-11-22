@@ -13,9 +13,11 @@ import (
 
 var expectedError = errors.New("expected error")
 var testBatch = &clients.TransferBatch{
-	ID:       112233,
-	Deposits: nil,
-	Statuses: nil,
+	ID: 112233,
+	Deposits: []*clients.DepositTransfer{
+		{},
+	},
+	Statuses: []byte{0},
 }
 
 func TestExecuteGetPending(t *testing.T) {
