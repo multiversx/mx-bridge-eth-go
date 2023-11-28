@@ -327,6 +327,14 @@ func (executor *bridgeExecutor) ProposeSCTransferOnMultiversX(ctx context.Contex
 		return ErrNilBatch
 	}
 
+	hash, err := executor.multiversXClient.ProposeSCTransfer(ctx, executor.scExecutionTransfersBatch, executor.scExecutionMetadataBatch)
+	if err != nil {
+		return err
+	}
+
+	executor.log.Info("proposed transfer", "hash", hash,
+		"batch ID", executor.batch.ID, "action ID", executor.actionID)
+
 	return nil
 }
 

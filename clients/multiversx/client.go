@@ -316,6 +316,37 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 	return hash, err
 }
 
+// ProposeSCTransfer will trigger the proposing of sc transfers operation
+func (c *client) ProposeSCTransfer(ctx context.Context, batch *clients.TransferBatch, metadata *clients.SCBatch) (string, error) {
+	if batch == nil {
+		return "", clients.ErrNilBatch
+	}
+
+	err := c.checkIsPaused(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	txBuilder := c.createCommonTxDataBuilder(proposeTransferFuncName, int64(batch.ID))
+
+	for id, dt := range batch.Deposits {
+		_ = metadata.Deposits[id] // TODO: get metadata but not like this!
+		txBuilder.ArgBytes(dt.FromBytes).
+			ArgBytes(dt.ToBytes).
+			ArgBytes(dt.ConvertedTokenBytes).
+			ArgBigInt(dt.Amount).
+			ArgInt64(int64(dt.Nonce))
+	}
+
+	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
+	if err == nil {
+		c.log.Info("proposed sc transfer"+batch.String(), "transaction hash", hash)
+	}
+
+	return hash, err
+}
+
 // Sign will trigger the execution of a sign operation
 func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
 	err := c.checkIsPaused(ctx)

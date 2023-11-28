@@ -26,6 +26,7 @@ type MultiversXClient interface {
 
 	ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error)
 	ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error)
+	ProposeSCTransfer(ctx context.Context, batch *clients.TransferBatch, metadata *clients.SCBatch) (string, error)
 	Sign(ctx context.Context, actionID uint64) (string, error)
 	WasSigned(ctx context.Context, actionID uint64) (bool, error)
 	PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)

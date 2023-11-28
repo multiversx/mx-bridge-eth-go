@@ -68,6 +68,7 @@ type DepositSCMetadata struct {
 	BatchNonce   uint64 `json:"batchNonce"`
 	DepositNonce uint64 `json:"depositNonce"`
 	CallData     string `json:"callData"`
+	GasLimit     uint64 `json:"gasLimit"`
 }
 
 // String will convert the deposit metadata transfer to a string
@@ -82,6 +83,7 @@ func (ds *DepositSCMetadata) Clone() *DepositSCMetadata {
 		BatchNonce:   ds.BatchNonce,
 		DepositNonce: ds.DepositNonce,
 		CallData:     ds.CallData,
+		GasLimit:     ds.GasLimit,
 	}
 
 	return cloned

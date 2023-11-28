@@ -26,6 +26,7 @@ type MultiversXClientStub struct {
 	ProposeSetStatusCalled                         func(ctx context.Context, batch *clients.TransferBatch) (string, error)
 	ResolveNewDepositsCalled                       func(ctx context.Context, batch *clients.TransferBatch) error
 	ProposeTransferCalled                          func(ctx context.Context, batch *clients.TransferBatch) (string, error)
+	ProposeSCTransferCalled                        func(ctx context.Context, batch *clients.TransferBatch, metadata *clients.SCBatch) (string, error)
 	SignCalled                                     func(ctx context.Context, actionID uint64) (string, error)
 	WasSignedCalled                                func(ctx context.Context, actionID uint64) (bool, error)
 	PerformActionCalled                            func(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
@@ -154,6 +155,15 @@ func (stub *MultiversXClientStub) ProposeSetStatus(ctx context.Context, batch *c
 func (stub *MultiversXClientStub) ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error) {
 	if stub.ProposeTransferCalled != nil {
 		return stub.ProposeTransferCalled(ctx, batch)
+	}
+
+	return "", nil
+}
+
+// ProposeSCTransfer -
+func (stub *MultiversXClientStub) ProposeSCTransfer(ctx context.Context, batch *clients.TransferBatch, metadata *clients.SCBatch) (string, error) {
+	if stub.ProposeSCTransferCalled != nil {
+		return stub.ProposeSCTransferCalled(ctx, batch, metadata)
 	}
 
 	return "", nil
