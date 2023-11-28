@@ -52,6 +52,7 @@ type bridgeExecutor struct {
 	scExecutionTransfersBatch *clients.TransferBatch
 	scExecutionMetadataBatch  *clients.SCBatch
 	actionID                  uint64
+	batchTypeExecutionStep    core.StepIdentifier
 	msgHash                   common.Hash
 	quorumRetriesOnEthereum   uint64
 	quorumRetriesOnMultiversX uint64
@@ -270,6 +271,18 @@ func (executor *bridgeExecutor) GetAndStoreActionIDForProposeSetStatusFromMultiv
 // GetStoredActionID returns the stored action ID
 func (executor *bridgeExecutor) GetStoredActionID() uint64 {
 	return executor.actionID
+}
+
+// GetBatchTypeExecutionStep returns the current batch type execution step - we could be either
+//
+//	processing transactions, either smart contract calls
+func (executor *bridgeExecutor) GetBatchTypeExecutionStep() core.StepIdentifier {
+	return executor.batchTypeExecutionStep
+}
+
+// SetBatchTypeExecutionStep sets the progress of the tx type being executed from the current batch
+func (executor *bridgeExecutor) SetBatchTypeExecutionStep(identifier core.StepIdentifier) {
+	executor.batchTypeExecutionStep = identifier
 }
 
 // WasTransferProposedOnMultiversX checks if the transfer was proposed on MultiversX

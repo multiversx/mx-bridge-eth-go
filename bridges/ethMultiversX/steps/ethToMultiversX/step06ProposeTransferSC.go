@@ -13,6 +13,8 @@ type proposeSCTransferStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *proposeSCTransferStep) Execute(ctx context.Context) core.StepIdentifier {
+	step.bridge.SetBatchTypeExecutionStep(ProposingSCTransfersOnMultiversX)
+
 	batch := step.bridge.GetSCExecStoredBatch()
 
 	if batch == nil {

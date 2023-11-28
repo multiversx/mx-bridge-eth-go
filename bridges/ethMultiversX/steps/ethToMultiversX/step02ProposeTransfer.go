@@ -14,6 +14,8 @@ type proposeTransferStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *proposeTransferStep) Execute(ctx context.Context) core.StepIdentifier {
+	step.bridge.SetBatchTypeExecutionStep(ProposingTransferOnMultiversX)
+
 	batch := step.bridge.GetTransfersStoredBatch()
 	if batch == nil {
 		step.bridge.PrintInfo(logger.LogDebug, "no batch found")

@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"fmt"
+	"github.com/multiversx/mx-bridge-eth-go/core"
 	"runtime"
 	"strings"
 	"sync"
@@ -61,6 +62,8 @@ type BridgeExecutorStub struct {
 	CheckMultiversXClientAvailabilityCalled                    func(ctx context.Context) error
 	CheckEthereumClientAvailabilityCalled                      func(ctx context.Context) error
 	GetBatchSCMetadataCalled                                   func(ctx context.Context) (*clients.SCBatch, error)
+	GetBatchTypeExecutionStepCalled                            func() core.StepIdentifier
+	SetBatchTypeExecutionStepCalled                            func(identifier core.StepIdentifier)
 }
 
 // NewBridgeExecutorStub creates a new BridgeExecutorStub instance
@@ -454,6 +457,22 @@ func (stub *BridgeExecutorStub) GetBatchSCMetadata(ctx context.Context) (*client
 	}
 
 	return nil, notImplemented
+}
+
+// GetBatchTypeExecutionStep -
+func (stub *BridgeExecutorStub) GetBatchTypeExecutionStep() core.StepIdentifier {
+	if stub.GetBatchTypeExecutionStepCalled != nil {
+		return stub.GetBatchTypeExecutionStepCalled()
+	}
+
+	return ""
+}
+
+// SetBatchTypeExecutionStep -
+func (stub *BridgeExecutorStub) SetBatchTypeExecutionStep(identifier core.StepIdentifier) {
+	if stub.SetBatchTypeExecutionStepCalled != nil {
+		stub.SetBatchTypeExecutionStepCalled(identifier)
+	}
 }
 
 // IsInterfaceNil -

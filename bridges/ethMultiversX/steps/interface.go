@@ -2,6 +2,7 @@ package steps
 
 import (
 	"context"
+	"github.com/multiversx/mx-bridge-eth-go/core"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -25,6 +26,8 @@ type Executor interface {
 	GetAndStoreActionIDForProposeSCTransferOnMultiversX(ctx context.Context) (uint64, error)
 	GetAndStoreActionIDForProposeSetStatusFromMultiversX(ctx context.Context) (uint64, error)
 	GetStoredActionID() uint64
+	GetBatchTypeExecutionStep() core.StepIdentifier
+	SetBatchTypeExecutionStep(identifier core.StepIdentifier)
 
 	WasTransferProposedOnMultiversX(ctx context.Context) (bool, error)
 	WasSCTransferProposedOnMultiversX(ctx context.Context) (bool, error)
