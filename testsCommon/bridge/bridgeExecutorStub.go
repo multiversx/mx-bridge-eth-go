@@ -32,6 +32,7 @@ type BridgeExecutorStub struct {
 	WasTransferProposedOnMultiversXCalled                      func(ctx context.Context) (bool, error)
 	WasSCTransferProposedOnMultiversXCalled                    func(ctx context.Context) (bool, error)
 	ProposeTransferOnMultiversXCalled                          func(ctx context.Context) error
+	ProposeSCTransferOnMultiversXCalled                        func(ctx context.Context) error
 	ProcessMaxRetriesOnWasTransferProposedOnMultiversXCalled   func() bool
 	ResetRetriesOnWasTransferProposedOnMultiversXCalled        func()
 	WasSetStatusProposedOnMultiversXCalled                     func(ctx context.Context) (bool, error)
@@ -199,6 +200,15 @@ func (stub *BridgeExecutorStub) ProposeTransferOnMultiversX(ctx context.Context)
 	stub.incrementFunctionCounter()
 	if stub.ProposeTransferOnMultiversXCalled != nil {
 		return stub.ProposeTransferOnMultiversXCalled(ctx)
+	}
+	return notImplemented
+}
+
+// ProposeSCTransferOnMultiversX -
+func (stub *BridgeExecutorStub) ProposeSCTransferOnMultiversX(ctx context.Context) error {
+	stub.incrementFunctionCounter()
+	if stub.ProposeSCTransferOnMultiversXCalled != nil {
+		return stub.ProposeSCTransferOnMultiversXCalled(ctx)
 	}
 	return notImplemented
 }

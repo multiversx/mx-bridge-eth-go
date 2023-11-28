@@ -155,7 +155,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(WaitingForQuorum)
+		expectedStepIdentifier := core.StepIdentifier(SigningProposedSCTransferOnMultiversX)
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
@@ -185,7 +185,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 		// Test IsInterfaceNil
 		assert.NotNil(t, step.IsInterfaceNil())
 
-		expectedStepIdentifier = WaitingForQuorum
+		expectedStepIdentifier = SigningProposedSCTransferOnMultiversX
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})

@@ -9,19 +9,19 @@ import (
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
-type signProposedTransferStep struct {
+type signProposedSCTransferStep struct {
 	bridge steps.Executor
 }
 
 // Execute will execute this step returning the next step to be executed
-func (step *signProposedTransferStep) Execute(ctx context.Context) core.StepIdentifier {
-	batch := step.bridge.GetStoredBatch()
+func (step *signProposedSCTransferStep) Execute(ctx context.Context) core.StepIdentifier {
+	batch := step.bridge.GetSCExecStoredBatch()
 	if batch == nil {
 		step.bridge.PrintInfo(logger.LogDebug, "no batch found")
 		return GettingPendingBatchFromEthereum
 	}
 
-	actionID, err := step.bridge.GetAndStoreActionIDForProposeTransferOnMultiversX(ctx)
+	actionID, err := step.bridge.GetAndStoreActionIDForProposeSCTransferOnMultiversX(ctx)
 	if err != nil {
 		step.bridge.PrintInfo(logger.LogError, "error fetching action ID", "batch ID", batch.ID, "error", err)
 		return GettingPendingBatchFromEthereum
@@ -36,7 +36,7 @@ func (step *signProposedTransferStep) Execute(ctx context.Context) core.StepIden
 
 	wasSigned, err := step.bridge.WasActionSignedOnMultiversX(ctx)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogError, "error determining if the proposed transfer was signed or not",
+		step.bridge.PrintInfo(logger.LogError, "error determining if the proposed sc transfer was signed or not",
 			"batch ID", batch.ID, "error", err)
 		return GettingPendingBatchFromEthereum
 	}
@@ -52,15 +52,15 @@ func (step *signProposedTransferStep) Execute(ctx context.Context) core.StepIden
 		return GettingPendingBatchFromEthereum
 	}
 
-	return SigningProposedSCTransferOnMultiversX
+	return WaitingForQuorum
 }
 
 // Identifier returns the step's identifier
-func (step *signProposedTransferStep) Identifier() core.StepIdentifier {
+func (step *signProposedSCTransferStep) Identifier() core.StepIdentifier {
 	return SigningProposedTransferOnMultiversX
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
-func (step *signProposedTransferStep) IsInterfaceNil() bool {
+func (step *signProposedSCTransferStep) IsInterfaceNil() bool {
 	return step == nil
 }

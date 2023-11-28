@@ -235,6 +235,22 @@ func (executor *bridgeExecutor) GetAndStoreActionIDForProposeTransferOnMultivers
 	return actionID, nil
 }
 
+// GetAndStoreActionIDForProposeSCTransferOnMultiversX fetches the action ID for ProposeSCTransfer by using the stored batch. Stores the action ID and returns it
+func (executor *bridgeExecutor) GetAndStoreActionIDForProposeSCTransferOnMultiversX(ctx context.Context) (uint64, error) {
+	if executor.scExecutionTransfersBatch == nil {
+		return InvalidActionID, ErrNilBatch
+	}
+
+	actionID, err := executor.multiversXClient.GetActionIDForProposeTransfer(ctx, executor.scExecutionTransfersBatch)
+	if err != nil {
+		return InvalidActionID, err
+	}
+
+	executor.actionID = actionID
+
+	return actionID, nil
+}
+
 // GetAndStoreActionIDForProposeSetStatusFromMultiversX fetches the action ID for SetStatus by using the stored batch. Stores the action ID and returns it
 func (executor *bridgeExecutor) GetAndStoreActionIDForProposeSetStatusFromMultiversX(ctx context.Context) (uint64, error) {
 	if executor.batch == nil {

@@ -22,6 +22,7 @@ type Executor interface {
 	VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error
 
 	GetAndStoreActionIDForProposeTransferOnMultiversX(ctx context.Context) (uint64, error)
+	GetAndStoreActionIDForProposeSCTransferOnMultiversX(ctx context.Context) (uint64, error)
 	GetAndStoreActionIDForProposeSetStatusFromMultiversX(ctx context.Context) (uint64, error)
 	GetStoredActionID() uint64
 
