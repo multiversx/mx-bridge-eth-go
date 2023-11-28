@@ -22,7 +22,7 @@ func (step *proposeSCTransferStep) Execute(ctx context.Context) core.StepIdentif
 
 	if len(batch.Deposits) == 0 {
 		step.bridge.PrintInfo(logger.LogDebug, "no sc transfers found")
-		return SigningProposedTransferOnMultiversX
+		return GettingPendingBatchFromEthereum
 	}
 
 	wasTransferProposed, err := step.bridge.WasSCTransferProposedOnMultiversX(ctx)
@@ -33,7 +33,7 @@ func (step *proposeSCTransferStep) Execute(ctx context.Context) core.StepIdentif
 	}
 
 	if wasTransferProposed {
-		return SigningProposedTransferOnMultiversX
+		return SigningProposedSCTransferOnMultiversX
 	}
 
 	batchSCMetadata, err := step.bridge.GetBatchSCMetadata(ctx)
@@ -60,7 +60,7 @@ func (step *proposeSCTransferStep) Execute(ctx context.Context) core.StepIdentif
 		return GettingPendingBatchFromEthereum
 	}
 
-	return SigningProposedTransferOnMultiversX
+	return SigningProposedSCTransferOnMultiversX
 }
 
 // Identifier returns the step's identifier

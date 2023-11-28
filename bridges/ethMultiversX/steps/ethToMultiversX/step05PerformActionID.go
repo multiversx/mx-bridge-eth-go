@@ -24,7 +24,7 @@ func (step *performActionIDStep) Execute(ctx context.Context) core.StepIdentifie
 	if wasPerformed {
 		step.bridge.PrintInfo(logger.LogInfo, "action ID performed",
 			"action ID", step.bridge.GetStoredActionID())
-		return GettingPendingBatchFromEthereum
+		return ProposingSCTransfersOnMultiversX
 	}
 
 	if !step.bridge.MyTurnAsLeader() {

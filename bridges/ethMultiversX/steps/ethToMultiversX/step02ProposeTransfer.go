@@ -33,7 +33,7 @@ func (step *proposeTransferStep) Execute(ctx context.Context) core.StepIdentifie
 	}
 
 	if wasTransferProposed {
-		return ProposingSCTransfersOnMultiversX
+		return SigningProposedTransferOnMultiversX
 	}
 
 	if !step.bridge.MyTurnAsLeader() {
@@ -48,7 +48,7 @@ func (step *proposeTransferStep) Execute(ctx context.Context) core.StepIdentifie
 		return GettingPendingBatchFromEthereum
 	}
 
-	return ProposingSCTransfersOnMultiversX
+	return SigningProposedTransferOnMultiversX
 }
 
 // Identifier returns the step's identifier

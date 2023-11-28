@@ -27,6 +27,7 @@ type BridgeExecutorStub struct {
 	GetLastExecutedEthBatchIDFromMultiversXCalled              func(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatchCalled        func(ctx context.Context) error
 	GetAndStoreActionIDForProposeTransferOnMultiversXCalled    func(ctx context.Context) (uint64, error)
+	GetAndStoreActionIDForProposeSCTransferOnMultiversXCalled  func(ctx context.Context) (uint64, error)
 	GetAndStoreActionIDForProposeSetStatusFromMultiversXCalled func(ctx context.Context) (uint64, error)
 	GetStoredActionIDCalled                                    func() uint64
 	WasTransferProposedOnMultiversXCalled                      func(ctx context.Context) (bool, error)
@@ -155,6 +156,15 @@ func (stub *BridgeExecutorStub) GetAndStoreActionIDForProposeTransferOnMultivers
 	stub.incrementFunctionCounter()
 	if stub.GetAndStoreActionIDForProposeTransferOnMultiversXCalled != nil {
 		return stub.GetAndStoreActionIDForProposeTransferOnMultiversXCalled(ctx)
+	}
+	return 0, notImplemented
+}
+
+// GetAndStoreActionIDForProposeSCTransferOnMultiversX -
+func (stub *BridgeExecutorStub) GetAndStoreActionIDForProposeSCTransferOnMultiversX(ctx context.Context) (uint64, error) {
+	stub.incrementFunctionCounter()
+	if stub.GetAndStoreActionIDForProposeSCTransferOnMultiversXCalled != nil {
+		return stub.GetAndStoreActionIDForProposeSCTransferOnMultiversXCalled(ctx)
 	}
 	return 0, notImplemented
 }

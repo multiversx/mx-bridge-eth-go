@@ -52,7 +52,7 @@ func (step *signProposedTransferStep) Execute(ctx context.Context) core.StepIden
 		return GettingPendingBatchFromEthereum
 	}
 
-	return SigningProposedSCTransferOnMultiversX
+	return WaitingForQuorum
 }
 
 // Identifier returns the step's identifier
