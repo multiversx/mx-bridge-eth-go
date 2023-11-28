@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/config"
@@ -366,6 +367,24 @@ func (c *client) checkIsPaused(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// IsMintBurnAllowed returns true if the provided token is whitelisted for mint/burn operations
+func (c *client) IsMintBurnAllowed(ctx context.Context, token []byte) (bool, error) {
+	esdtToken, err := c.tokensMapper.ConvertToken(ctx, token)
+	if err != nil {
+		return false, err
+	}
+	return c.isMintBurnAllowed(ctx, esdtToken)
+}
+
+// AccumulatedBurnedTokens returns the accumulated burned tokens
+func (c *client) AccumulatedBurnedTokens(ctx context.Context, token common.Address) (uint64, error) {
+	esdtToken, err := c.tokensMapper.ConvertToken(ctx, token.Bytes())
+	if err != nil {
+		return 0, err
+	}
+	return c.getAccumulatedBurnedTokens(ctx, esdtToken)
 }
 
 // CheckClientAvailability will check the client availability and will set the metric accordingly

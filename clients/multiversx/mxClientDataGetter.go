@@ -33,6 +33,8 @@ const (
 	signedFuncName                                            = "signed"
 	getAllStakedRelayersFuncName                              = "getAllStakedRelayers"
 	isPausedFuncName                                          = "isPaused"
+	isMintBurnAllowedFuncName                                 = "isMintBurnAllowed"
+	getAccumulatedBurnedTokensFuncName                        = "getAccumulatedBurnedTokens"
 )
 
 // ArgsMXClientDataGetter is the arguments DTO used in the NewMXClientDataGetter constructor
@@ -409,6 +411,20 @@ func (dataGetter *mxClientDataGetter) IsPaused(ctx context.Context) (bool, error
 	builder.Function(isPausedFuncName)
 
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
+}
+
+func (dataGetter *mxClientDataGetter) isMintBurnAllowed(ctx context.Context, token []byte) (bool, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder.Function(isMintBurnAllowedFuncName).ArgBytes(token)
+
+	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
+}
+
+func (dataGetter *mxClientDataGetter) getAccumulatedBurnedTokens(ctx context.Context, token []byte) (uint64, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder.Function(getAccumulatedBurnedTokensFuncName).ArgBytes(token)
+
+	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
 
 func getStatusFromBuff(buff []byte) (byte, error) {

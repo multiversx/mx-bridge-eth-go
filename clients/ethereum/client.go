@@ -268,10 +268,11 @@ func generateTransferArgs() (abi.Arguments, error) {
 func (c *client) ExecuteTransfer(
 	ctx context.Context,
 	msgHash common.Hash,
-	batch *clients.TransferBatch,
+	argLists *ethmultiversx.ArgListsBatch,
+	batchId uint64,
 	quorum int,
 ) (string, error) {
-	if batch == nil {
+	if argLists == nil {
 		return "", clients.ErrNilBatch
 	}
 
@@ -282,8 +283,6 @@ func (c *client) ExecuteTransfer(
 	if isPaused {
 		return "", fmt.Errorf("%w in client.ExecuteTransfer", clients.ErrMultisigContractPaused)
 	}
-
-	c.log.Info("executing transfer " + batch.String())
 
 	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
 
@@ -309,7 +308,7 @@ func (c *client) ExecuteTransfer(
 
 	auth.Nonce = big.NewInt(nonce)
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = c.transferGasLimitBase + uint64(len(batch.Deposits))*c.transferGasLimitForEach
+	auth.GasLimit = c.transferGasLimitBase + uint64(len(argLists.Tokens))*c.transferGasLimitForEach
 	auth.Context = ctx
 	auth.GasPrice = gasPrice
 
@@ -330,8 +329,8 @@ func (c *client) ExecuteTransfer(
 		return "", err
 	}
 
-	batchID := big.NewInt(0).SetUint64(batch.ID)
-	tx, err := c.clientWrapper.ExecuteTransfer(auth, argLists.tokens, argLists.recipients, argLists.amounts, argLists.nonces, batchID, signatures)
+	batchID := big.NewInt(0).SetUint64(batchId)
+	tx, err := c.clientWrapper.ExecuteTransfer(auth, argLists.Tokens, argLists.Recipients, argLists.Amounts, argLists.Nonces, batchID, signatures)
 	if err != nil {
 		return "", err
 	}
@@ -402,6 +401,16 @@ func (c *client) CheckRequiredBalance(ctx context.Context, erc20Address common.A
 		"needed", value.String())
 
 	return nil
+}
+
+// TokenMintedBalances returns the minted balance of the given token
+func (c *client) TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	return c.clientWrapper.TokenMintedBalances(ctx, token)
+}
+
+// WhitelistedTokensMintBurn returns true if the token is whitelisted as a mintBurn token
+func (c *client) WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error) {
+	return c.clientWrapper.WhitelistedTokensMintBurn(ctx, token)
 }
 
 func (c *client) checkRelayerFundsForFee(ctx context.Context, transferFee *big.Int) error {

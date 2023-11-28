@@ -17,12 +17,14 @@ import (
 type ArgsEthereumChainWrapper struct {
 	StatusHandler    core.StatusHandler
 	MultiSigContract multiSigContract
+	SafeContract     safeContract
 	BlockchainClient blockchainClient
 }
 
 type ethereumChainWrapper struct {
 	core.StatusHandler
 	multiSigContract multiSigContract
+	safeContract     safeContract
 	blockchainClient blockchainClient
 }
 
@@ -36,6 +38,7 @@ func NewEthereumChainWrapper(args ArgsEthereumChainWrapper) (*ethereumChainWrapp
 	return &ethereumChainWrapper{
 		StatusHandler:    args.StatusHandler,
 		multiSigContract: args.MultiSigContract,
+		safeContract:     args.SafeContract,
 		blockchainClient: args.BlockchainClient,
 	}, nil
 }
@@ -46,6 +49,9 @@ func checkArgs(args ArgsEthereumChainWrapper) error {
 	}
 	if check.IfNilReflect(args.MultiSigContract) {
 		return errNilMultiSigContract
+	}
+	if check.IfNilReflect(args.SafeContract) {
+		return errNilSafeContract
 	}
 	if check.IfNilReflect(args.BlockchainClient) {
 		return errNilBlockchainClient
@@ -126,6 +132,18 @@ func (wrapper *ethereumChainWrapper) GetStatusesAfterExecution(ctx context.Conte
 func (wrapper *ethereumChainWrapper) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.blockchainClient.BalanceAt(ctx, account, blockNumber)
+}
+
+// TokenMintedBalances retuns the minted balance of the given token
+func (wrapper *ethereumChainWrapper) TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.TokenMintedBalances(&bind.CallOpts{Context: ctx}, token)
+}
+
+// WhitelistedTokensMintBurn returns true if the token is whitelisted as a mintBurn token
+func (wrapper *ethereumChainWrapper) WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.WhitelistedTokensMintBurn(&bind.CallOpts{Context: ctx}, token)
 }
 
 // IsPaused returns true if the multisig contract is paused

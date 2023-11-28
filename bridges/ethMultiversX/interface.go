@@ -29,6 +29,8 @@ type MultiversXClient interface {
 	WasSigned(ctx context.Context, actionID uint64) (bool, error)
 	PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
 	CheckClientAvailability(ctx context.Context) error
+	IsMintBurnAllowed(ctx context.Context, token []byte) (bool, error)
+	AccumulatedBurnedTokens(ctx context.Context, token common.Address) (uint64, error)
 	Close() error
 	IsInterfaceNil() bool
 }
@@ -40,12 +42,14 @@ type EthereumClient interface {
 	GenerateMessageHash(batch *ArgListsBatch, batchId uint64) (common.Hash, error)
 
 	BroadcastSignatureForMessageHash(msgHash common.Hash)
-	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
+	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *ArgListsBatch, batchId uint64, quorum int) (string, error)
 	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
 	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
 	CheckClientAvailability(ctx context.Context) error
 	CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error
+	TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error)
+	WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error)
 	IsInterfaceNil() bool
 }
 
