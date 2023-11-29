@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRelayersShouldExecuteTransferFromEthToMultiversX(t *testing.T) {
+func TestRelayersShouldExecuteSimpleTransfersFromEthToMultiversX(t *testing.T) {
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
@@ -93,11 +93,7 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversX(t *testing.T) {
 	multiversXChainMock.SetQuorum(numRelayers)
 
 	relayers := make([]bridgeComponents, 0, numRelayers)
-	defer func() {
-		for _, r := range relayers {
-			_ = r.Close()
-		}
-	}()
+	defer closeRelayers(relayers)
 
 	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
 
