@@ -3,10 +3,11 @@ package bridge
 import (
 	"context"
 	"fmt"
-	"github.com/multiversx/mx-bridge-eth-go/core"
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/multiversx/mx-bridge-eth-go/core"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -23,18 +24,13 @@ type BridgeExecutorStub struct {
 	GetBatchFromMultiversXCalled                               func(ctx context.Context) (*clients.TransferBatch, error)
 	StoreBatchFromMultiversXCalled                             func(batch *clients.TransferBatch) error
 	GetStoredBatchCalled                                       func() *clients.TransferBatch
-	GetTransfersStoredBatchCalled                              func() *clients.TransferBatch
-	GetSCExecStoredBatchCalled                                 func() *clients.TransferBatch
 	GetLastExecutedEthBatchIDFromMultiversXCalled              func(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatchCalled        func(ctx context.Context) error
 	GetAndStoreActionIDForProposeTransferOnMultiversXCalled    func(ctx context.Context) (uint64, error)
-	GetAndStoreActionIDForProposeSCTransferOnMultiversXCalled  func(ctx context.Context) (uint64, error)
 	GetAndStoreActionIDForProposeSetStatusFromMultiversXCalled func(ctx context.Context) (uint64, error)
 	GetStoredActionIDCalled                                    func() uint64
 	WasTransferProposedOnMultiversXCalled                      func(ctx context.Context) (bool, error)
-	WasSCTransferProposedOnMultiversXCalled                    func(ctx context.Context) (bool, error)
 	ProposeTransferOnMultiversXCalled                          func(ctx context.Context) error
-	ProposeSCTransferOnMultiversXCalled                        func(ctx context.Context) error
 	ProcessMaxRetriesOnWasTransferProposedOnMultiversXCalled   func() bool
 	ResetRetriesOnWasTransferProposedOnMultiversXCalled        func()
 	WasSetStatusProposedOnMultiversXCalled                     func(ctx context.Context) (bool, error)
@@ -61,7 +57,6 @@ type BridgeExecutorStub struct {
 	ValidateBatchCalled                                        func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 	CheckMultiversXClientAvailabilityCalled                    func(ctx context.Context) error
 	CheckEthereumClientAvailabilityCalled                      func(ctx context.Context) error
-	GetBatchSCMetadataCalled                                   func(ctx context.Context) (*clients.SCBatch, error)
 	GetBatchTypeExecutionStepCalled                            func() core.StepIdentifier
 	SetBatchTypeExecutionStepCalled                            func(identifier core.StepIdentifier)
 }
@@ -118,24 +113,6 @@ func (stub *BridgeExecutorStub) GetStoredBatch() *clients.TransferBatch {
 	return nil
 }
 
-// GetTransfersStoredBatch -
-func (stub *BridgeExecutorStub) GetTransfersStoredBatch() *clients.TransferBatch {
-	stub.incrementFunctionCounter()
-	if stub.GetTransfersStoredBatchCalled != nil {
-		return stub.GetTransfersStoredBatchCalled()
-	}
-	return nil
-}
-
-// GetSCExecStoredBatch -
-func (stub *BridgeExecutorStub) GetSCExecStoredBatch() *clients.TransferBatch {
-	stub.incrementFunctionCounter()
-	if stub.GetSCExecStoredBatchCalled != nil {
-		return stub.GetSCExecStoredBatchCalled()
-	}
-	return nil
-}
-
 // GetLastExecutedEthBatchIDFromMultiversX -
 func (stub *BridgeExecutorStub) GetLastExecutedEthBatchIDFromMultiversX(ctx context.Context) (uint64, error) {
 	stub.incrementFunctionCounter()
@@ -159,15 +136,6 @@ func (stub *BridgeExecutorStub) GetAndStoreActionIDForProposeTransferOnMultivers
 	stub.incrementFunctionCounter()
 	if stub.GetAndStoreActionIDForProposeTransferOnMultiversXCalled != nil {
 		return stub.GetAndStoreActionIDForProposeTransferOnMultiversXCalled(ctx)
-	}
-	return 0, notImplemented
-}
-
-// GetAndStoreActionIDForProposeSCTransferOnMultiversX -
-func (stub *BridgeExecutorStub) GetAndStoreActionIDForProposeSCTransferOnMultiversX(ctx context.Context) (uint64, error) {
-	stub.incrementFunctionCounter()
-	if stub.GetAndStoreActionIDForProposeSCTransferOnMultiversXCalled != nil {
-		return stub.GetAndStoreActionIDForProposeSCTransferOnMultiversXCalled(ctx)
 	}
 	return 0, notImplemented
 }
@@ -199,29 +167,11 @@ func (stub *BridgeExecutorStub) WasTransferProposedOnMultiversX(ctx context.Cont
 	return false, notImplemented
 }
 
-// WasSCTransferProposedOnMultiversX -
-func (stub *BridgeExecutorStub) WasSCTransferProposedOnMultiversX(ctx context.Context) (bool, error) {
-	stub.incrementFunctionCounter()
-	if stub.WasSCTransferProposedOnMultiversXCalled != nil {
-		return stub.WasSCTransferProposedOnMultiversXCalled(ctx)
-	}
-	return false, notImplemented
-}
-
 // ProposeTransferOnMultiversX -
 func (stub *BridgeExecutorStub) ProposeTransferOnMultiversX(ctx context.Context) error {
 	stub.incrementFunctionCounter()
 	if stub.ProposeTransferOnMultiversXCalled != nil {
 		return stub.ProposeTransferOnMultiversXCalled(ctx)
-	}
-	return notImplemented
-}
-
-// ProposeSCTransferOnMultiversX -
-func (stub *BridgeExecutorStub) ProposeSCTransferOnMultiversX(ctx context.Context) error {
-	stub.incrementFunctionCounter()
-	if stub.ProposeSCTransferOnMultiversXCalled != nil {
-		return stub.ProposeSCTransferOnMultiversXCalled(ctx)
 	}
 	return notImplemented
 }
@@ -449,14 +399,6 @@ func (stub *BridgeExecutorStub) CheckEthereumClientAvailability(ctx context.Cont
 		return stub.CheckEthereumClientAvailabilityCalled(ctx)
 	}
 	return notImplemented
-}
-
-func (stub *BridgeExecutorStub) GetBatchSCMetadata(ctx context.Context) (*clients.SCBatch, error) {
-	if stub.GetBatchSCMetadataCalled != nil {
-		return stub.GetBatchSCMetadataCalled(ctx)
-	}
-
-	return nil, notImplemented
 }
 
 // GetBatchTypeExecutionStep -

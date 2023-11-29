@@ -15,7 +15,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("nil batch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetTransfersStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return nil
 		}
 
@@ -28,26 +28,10 @@ func TestExecuteProposeTransfer(t *testing.T) {
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
 
-	t.Run("only sc calls in this batch, no simple transfers", func(t *testing.T) {
-		t.Parallel()
-		bridgeStub := createStubExecutor()
-		bridgeStub.GetTransfersStoredBatchCalled = func() *clients.TransferBatch {
-			return &clients.TransferBatch{}
-		}
-
-		step := proposeTransferStep{
-			bridge: bridgeStub,
-		}
-
-		expectedStepIdentifier := core.StepIdentifier(ProposingSCTransfersOnMultiversX)
-		stepIdentifier := step.Execute(context.Background())
-		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
-	})
-
 	t.Run("error on WasTransferProposedOnMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetTransfersStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -66,7 +50,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("not leader", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetTransfersStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -88,7 +72,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("error on ProposeTransferOnMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetTransfersStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -113,7 +97,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("should work - transfer already proposed", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetTransfersStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -124,7 +108,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 			bridge: bridgeStub,
 		}
 
-		expectedStepIdentifier := core.StepIdentifier(ProposingSCTransfersOnMultiversX)
+		expectedStepIdentifier := core.StepIdentifier(SigningProposedTransferOnMultiversX)
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
@@ -132,7 +116,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetTransfersStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -151,34 +135,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 		// Test IsInterfaceNil
 		assert.NotNil(t, step.IsInterfaceNil())
 
-		expectedStepIdentifier := core.StepIdentifier(ProposingSCTransfersOnMultiversX)
-		stepIdentifier := step.Execute(context.Background())
-		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
-	})
-
-	t.Run("should work and call propose only with simple transfers", func(t *testing.T) {
-		t.Parallel()
-		bridgeStub := createStubExecutor()
-		bridgeStub.GetTransfersStoredBatchCalled = func() *clients.TransferBatch {
-			return testBatch
-		}
-		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
-			return false, nil
-		}
-		bridgeStub.MyTurnAsLeaderCalled = func() bool {
-			return true
-		}
-		bridgeStub.ProposeTransferOnMultiversXCalled = func(ctx context.Context) error {
-			return nil
-		}
-
-		step := proposeTransferStep{
-			bridge: bridgeStub,
-		}
-		// Test IsInterfaceNil
-		assert.NotNil(t, step.IsInterfaceNil())
-
-		expectedStepIdentifier := core.StepIdentifier(ProposingSCTransfersOnMultiversX)
+		expectedStepIdentifier := core.StepIdentifier(SigningProposedTransferOnMultiversX)
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})

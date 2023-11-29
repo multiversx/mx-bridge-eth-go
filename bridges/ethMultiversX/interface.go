@@ -2,8 +2,9 @@ package ethmultiversx
 
 import (
 	"context"
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"math/big"
+
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
@@ -26,7 +27,6 @@ type MultiversXClient interface {
 
 	ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error)
 	ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error)
-	ProposeSCTransfer(ctx context.Context, batch *clients.TransferBatch, metadata *clients.SCBatch) (string, error)
 	Sign(ctx context.Context, actionID uint64) (string, error)
 	WasSigned(ctx context.Context, actionID uint64) (bool, error)
 	PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)

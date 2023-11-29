@@ -63,38 +63,6 @@ func (tb *TransferBatch) ResolveNewDeposits(newNumDeposits int) {
 	log.Warn("recovered num statuses", "len statuses", oldLen, "new num deposits", newNumDeposits)
 }
 
-// DepositSCMetadata contains extra information needed for cross chain SC execution
-type DepositSCMetadata struct {
-	BatchNonce   uint64 `json:"batchNonce"`
-	DepositNonce uint64 `json:"depositNonce"`
-	CallData     string `json:"callData"`
-	GasLimit     uint64 `json:"gasLimit"`
-}
-
-// String will convert the deposit metadata transfer to a string
-func (ds *DepositSCMetadata) String() string {
-	return fmt.Sprintf("batch nonce: %d, deposit nonce: %d, call data: %s",
-		ds.BatchNonce, ds.DepositNonce, ds.CallData)
-}
-
-// Clone will deep clone the current DepositSCMetadata instance
-func (ds *DepositSCMetadata) Clone() *DepositSCMetadata {
-	cloned := &DepositSCMetadata{
-		BatchNonce:   ds.BatchNonce,
-		DepositNonce: ds.DepositNonce,
-		CallData:     ds.CallData,
-		GasLimit:     ds.GasLimit,
-	}
-
-	return cloned
-}
-
-// SCBatch -
-type SCBatch struct {
-	ID       uint64               `json:"batchId"`
-	Deposits []*DepositSCMetadata `json:"deposits"`
-}
-
 // DepositTransfer is the deposit transfer structure agnostic of any chain implementation
 type DepositTransfer struct {
 	Nonce               uint64   `json:"nonce"`
@@ -106,12 +74,15 @@ type DepositTransfer struct {
 	ConvertedTokenBytes []byte   `json:"-"`
 	DisplayableToken    string   `json:"token"`
 	Amount              *big.Int `json:"amount"`
+	GasLimit            uint64   `json:"gasLimit"`
+	Data                []byte   `json:"-"`
+	DisplayableData     string   `json:"data"`
 }
 
 // String will convert the deposit transfer to a string
 func (dt *DepositTransfer) String() string {
-	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %d",
-		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.Nonce)
+	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %d, gas limit: %d, data: %s",
+		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.Nonce, dt.GasLimit, dt.DisplayableData)
 }
 
 // Clone will deep clone the current DepositTransfer instance
@@ -126,12 +97,15 @@ func (dt *DepositTransfer) Clone() *DepositTransfer {
 		ConvertedTokenBytes: make([]byte, len(dt.ConvertedTokenBytes)),
 		DisplayableToken:    dt.DisplayableToken,
 		Amount:              big.NewInt(0),
+		Data:                make([]byte, len(dt.Data)),
+		DisplayableData:     dt.DisplayableData,
 	}
 
 	copy(cloned.ToBytes, dt.ToBytes)
 	copy(cloned.FromBytes, dt.FromBytes)
 	copy(cloned.TokenBytes, dt.TokenBytes)
 	copy(cloned.ConvertedTokenBytes, dt.ConvertedTokenBytes)
+	copy(cloned.Data, dt.Data)
 	if dt.Amount != nil {
 		cloned.Amount.Set(dt.Amount)
 	}

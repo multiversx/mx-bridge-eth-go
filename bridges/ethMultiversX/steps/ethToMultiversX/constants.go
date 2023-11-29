@@ -7,14 +7,8 @@ const (
 	// ProposingTransferOnMultiversX is the step identifier for proposing transfer on MultiversX
 	ProposingTransferOnMultiversX = "propose transfer"
 
-	// ProposingSCTransfersOnMultiversX is the step identifier for proposing smart contract executions on MultiversX
-	ProposingSCTransfersOnMultiversX = "propose sc transfer"
-
 	// SigningProposedTransferOnMultiversX is the step identifier for signing proposed transfer
 	SigningProposedTransferOnMultiversX = "sign proposed transfer"
-
-	// SigningProposedSCTransferOnMultiversX is the step identifier for signing proposed smart contract transfers
-	SigningProposedSCTransferOnMultiversX = "sign proposed transfer"
 
 	// WaitingForQuorum is the step identifier for waiting until the quorum is reached
 	WaitingForQuorum = "wait for quorum"

@@ -14,17 +14,10 @@ type proposeTransferStep struct {
 
 // Execute will execute this step returning the next step to be executed
 func (step *proposeTransferStep) Execute(ctx context.Context) core.StepIdentifier {
-	step.bridge.SetBatchTypeExecutionStep(ProposingTransferOnMultiversX)
-
-	batch := step.bridge.GetTransfersStoredBatch()
+	batch := step.bridge.GetStoredBatch()
 	if batch == nil {
 		step.bridge.PrintInfo(logger.LogDebug, "no batch found")
 		return GettingPendingBatchFromEthereum
-	}
-
-	if len(batch.Deposits) == 0 {
-		step.bridge.PrintInfo(logger.LogDebug, "no transfers found, moving to SC calls")
-		return ProposingSCTransfersOnMultiversX
 	}
 
 	wasTransferProposed, err := step.bridge.WasTransferProposedOnMultiversX(ctx)
