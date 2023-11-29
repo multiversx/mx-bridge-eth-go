@@ -5,10 +5,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/ethereum/go-ethereum"
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"math/big"
 	"sync"
+
+	"github.com/ethereum/go-ethereum"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
