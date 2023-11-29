@@ -2,7 +2,6 @@ package ethmultiversx
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -48,10 +47,8 @@ type bridgeExecutor struct {
 	maxQuorumRetriesOnMultiversX uint64
 	maxRetriesOnWasProposed      uint64
 
-	// TODO: when implementing MVX->ETH direction, batch should be removed
 	batch                     *clients.TransferBatch
 	actionID                  uint64
-	batchTypeExecutionStep    core.StepIdentifier
 	msgHash                   common.Hash
 	quorumRetriesOnEthereum   uint64
 	quorumRetriesOnMultiversX uint64
@@ -244,18 +241,6 @@ func (executor *bridgeExecutor) GetAndStoreActionIDForProposeSetStatusFromMultiv
 // GetStoredActionID returns the stored action ID
 func (executor *bridgeExecutor) GetStoredActionID() uint64 {
 	return executor.actionID
-}
-
-// GetBatchTypeExecutionStep returns the current batch type execution step - we could be either
-//
-//	processing transactions, either smart contract calls
-func (executor *bridgeExecutor) GetBatchTypeExecutionStep() core.StepIdentifier {
-	return executor.batchTypeExecutionStep
-}
-
-// SetBatchTypeExecutionStep sets the progress of the tx type being executed from the current batch
-func (executor *bridgeExecutor) SetBatchTypeExecutionStep(identifier core.StepIdentifier) {
-	executor.batchTypeExecutionStep = identifier
 }
 
 // WasTransferProposedOnMultiversX checks if the transfer was proposed on MultiversX
@@ -457,7 +442,7 @@ func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context
 		return err
 	}
 
-	isBatchInvalid := batch.ID != nonce || len(batch.Deposits) == 0 || len(batch.Deposits) != len(batch.Statuses)
+	isBatchInvalid := batch.ID != nonce || len(batch.Deposits) == 0
 	if isBatchInvalid {
 		return fmt.Errorf("%w, requested nonce: %d, fetched nonce: %d, num deposits: %d",
 			ErrBatchNotFound, nonce, batch.ID, len(batch.Deposits))
@@ -488,30 +473,21 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 	}
 
 	for i, t := range transfers.Deposits {
-		fullTransfer, metadataErr := executor.addMetadataToTransfer(t, events)
-		if metadataErr != nil {
-			return nil, metadataErr
-		}
-		transfers.Deposits[i] = fullTransfer
+		transfers.Deposits[i] = executor.addMetadataToTransfer(t, events)
 	}
 
 	return transfers, nil
 }
 
-func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositTransfer, events []*contract.SCExecProxyERC20SCDeposit) (*clients.DepositTransfer, error) {
+func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositTransfer, events []*contract.SCExecProxyERC20SCDeposit) *clients.DepositTransfer {
 	for _, event := range events {
 		if event.DepositNonce == transfer.Nonce {
 			transfer.GasLimit = event.MvxGasLimit
-			data, err := hex.DecodeString(event.CallData)
-			if err != nil {
-				return nil, err
-			}
-
-			transfer.Data = data
-			return transfer, nil
+			transfer.Data = []byte(event.CallData)
+			return transfer
 		}
 	}
-	return transfer, nil
+	return transfer
 }
 
 func (executor *bridgeExecutor) hasSCCalls(transfers *clients.TransferBatch) bool {
