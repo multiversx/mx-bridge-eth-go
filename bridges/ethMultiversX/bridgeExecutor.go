@@ -464,6 +464,9 @@ func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context
 	}
 
 	batch, err = executor.addBatchSCMetadata(ctx, batch)
+	if err != nil {
+		return err
+	}
 	executor.batch = batch
 
 	return nil

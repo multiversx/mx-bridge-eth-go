@@ -3,10 +3,11 @@ package wrappers
 import (
 	"context"
 	"errors"
-	"github.com/ethereum/go-ethereum"
 	"math/big"
 	"reflect"
 	"testing"
+
+	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -323,7 +324,7 @@ func TestEthereumChainWrapper_FilterLogs(t *testing.T) {
 
 		wrapper, _ := NewEthereumChainWrapper(args)
 
-		logs, err := wrapper.FilterLogs(nil, ethereum.FilterQuery{})
+		logs, err := wrapper.FilterLogs(context.Background(), ethereum.FilterQuery{})
 
 		assert.Nil(t, logs)
 		assert.Equal(t, expectedError, err)
@@ -342,7 +343,7 @@ func TestEthereumChainWrapper_FilterLogs(t *testing.T) {
 		}
 
 		wrapper, _ := NewEthereumChainWrapper(args)
-		logs, err := wrapper.FilterLogs(nil, ethereum.FilterQuery{})
+		logs, err := wrapper.FilterLogs(context.Background(), ethereum.FilterQuery{})
 
 		assert.Nil(t, err)
 		assert.True(t, reflect.DeepEqual(expectedLogs, logs))
