@@ -3,7 +3,7 @@ package bridge
 import (
 	"context"
 	"errors"
-
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 )
 
@@ -30,6 +30,8 @@ type MultiversXClientStub struct {
 	WasSignedCalled                                func(ctx context.Context, actionID uint64) (bool, error)
 	PerformActionCalled                            func(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
 	CheckClientAvailabilityCalled                  func(ctx context.Context) error
+	IsMintBurnAllowedCalled                        func(ctx context.Context, token []byte) (bool, error)
+	AccumulatedBurnedTokensCalled                  func(ctx context.Context, token common.Address) (uint64, error)
 	CloseCalled                                    func() error
 }
 
@@ -193,6 +195,22 @@ func (stub *MultiversXClientStub) CheckClientAvailability(ctx context.Context) e
 	}
 
 	return nil
+}
+
+// IsMintBurnAllowed -
+func (stub *MultiversXClientStub) IsMintBurnAllowed(ctx context.Context, token []byte) (bool, error) {
+	if stub.IsMintBurnAllowedCalled != nil {
+		return stub.IsMintBurnAllowedCalled(ctx, token)
+	}
+	return false, nil
+}
+
+// AccumulatedBurnedTokens -
+func (stub *MultiversXClientStub) AccumulatedBurnedTokens(ctx context.Context, token common.Address) (uint64, error) {
+	if stub.AccumulatedBurnedTokensCalled != nil {
+		return stub.AccumulatedBurnedTokensCalled(ctx, token)
+	}
+	return 0, nil
 }
 
 // Close -
