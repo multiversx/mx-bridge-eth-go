@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-chain-go/config"
+	p2pConfig "github.com/multiversx/mx-chain-go/p2p/config"
 )
 
 // Configs is a holder for the relayer configuration parameters
@@ -60,6 +61,7 @@ type ConfigP2P struct {
 	InitialPeerList []string
 	ProtocolID      string
 	AntifloodConfig config.AntifloodConfig
+	Transport       p2pConfig.P2PTCPTransport
 }
 
 // ConfigRelayer configuration for general relayer configuration

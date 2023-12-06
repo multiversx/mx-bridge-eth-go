@@ -48,6 +48,9 @@
     Port = "10010"
     InitialPeerList = []
     ProtocolID = "/erd/relay/1.0.0"
+    [P2P.Transport]
+        ListenAddress = "/ip4/0.0.0.0/tcp/%d" # TCP listen address
+        PreventPortReuse = false
     [AntifloodConfig]
         Enabled = true
         NumConcurrentResolverJobs = 50

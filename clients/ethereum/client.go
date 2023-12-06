@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"math/big"
 	"sync"
 
@@ -214,7 +215,7 @@ func (c *client) BroadcastSignatureForMessageHash(msgHash common.Hash) {
 }
 
 // GenerateMessageHash will generate the message hash based on the provided batch
-func (c *client) GenerateMessageHash(batch *ethmultiversx.ArgListsBatch, batchId uint64) (common.Hash, error) {
+func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error) {
 	if batch == nil {
 		return common.Hash{}, clients.ErrNilBatch
 	}
@@ -268,7 +269,7 @@ func generateTransferArgs() (abi.Arguments, error) {
 func (c *client) ExecuteTransfer(
 	ctx context.Context,
 	msgHash common.Hash,
-	argLists *ethmultiversx.ArgListsBatch,
+	argLists *batchProcessor.ArgListsBatch,
 	batchId uint64,
 	quorum int,
 ) (string, error) {

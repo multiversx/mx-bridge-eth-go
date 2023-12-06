@@ -2,7 +2,7 @@ package bridge
 
 import (
 	"context"
-	ethmultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -13,9 +13,9 @@ import (
 type EthereumClientStub struct {
 	GetBatchCalled                         func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
 	WasExecutedCalled                      func(ctx context.Context, batchID uint64) (bool, error)
-	GenerateMessageHashCalled              func(batch *ethmultiversx.ArgListsBatch, batchID uint64) (common.Hash, error)
+	GenerateMessageHashCalled              func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error)
 	BroadcastSignatureForMessageHashCalled func(msgHash common.Hash)
-	ExecuteTransferCalled                  func(ctx context.Context, msgHash common.Hash, batch *ethmultiversx.ArgListsBatch, batchId uint64, quorum int) (string, error)
+	ExecuteTransferCalled                  func(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error)
 	CheckClientAvailabilityCalled          func(ctx context.Context) error
 	GetTransactionsStatusesCalled          func(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSizeCalled                    func(ctx context.Context) (*big.Int, error)
@@ -44,7 +44,7 @@ func (stub *EthereumClientStub) WasExecuted(ctx context.Context, batchID uint64)
 }
 
 // GenerateMessageHash -
-func (stub *EthereumClientStub) GenerateMessageHash(batch *ethmultiversx.ArgListsBatch, batchID uint64) (common.Hash, error) {
+func (stub *EthereumClientStub) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error) {
 	if stub.GenerateMessageHashCalled != nil {
 		return stub.GenerateMessageHashCalled(batch, batchID)
 	}
@@ -60,7 +60,7 @@ func (stub *EthereumClientStub) BroadcastSignatureForMessageHash(msgHash common.
 }
 
 // ExecuteTransfer -
-func (stub *EthereumClientStub) ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *ethmultiversx.ArgListsBatch, batchId uint64, quorum int) (string, error) {
+func (stub *EthereumClientStub) ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error) {
 	if stub.ExecuteTransferCalled != nil {
 		return stub.ExecuteTransferCalled(ctx, msgHash, batch, batchId, quorum)
 	}

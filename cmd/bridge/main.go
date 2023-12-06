@@ -61,10 +61,13 @@ var log = logger.GetOrCreate("main")
 // appVersion should be populated at build time using ldflags
 // Usage examples:
 // linux/mac:
-//            go build -i -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)"
+//
+//	go build -i -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)"
+//
 // windows:
-//            for /f %i in ('git describe --tags --long --dirty') do set VERS=%i
-//            go build -i -v -ldflags="-X main.appVersion=%VERS%"
+//
+//	for /f %i in ('git describe --tags --long --dirty') do set VERS=%i
+//	go build -i -v -ldflags="-X main.appVersion=%VERS%"
 var appVersion = chainCommon.UnVersionedAppString
 
 func main() {
@@ -356,6 +359,9 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		Port:                       cfg.P2P.Port,
 		MaximumExpectedPeerCount:   0,
 		ThresholdMinConnectedPeers: 0,
+		Transports: p2pConfig.P2PTransportConfig{
+			TCP: cfg.P2P.Transport,
+		},
 	}
 	peerDiscoveryConfig := p2pConfig.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
@@ -402,7 +408,6 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 	p2pPrivKey, _ := p2pKeyGen.GeneratePair()
 
 	args := libp2p.ArgsNetworkMessenger{
-		ListenAddress:         chainP2P.ListenAddrWithIp4AndTcp,
 		Marshalizer:           marshalizer,
 		P2pConfig:             p2pCfg,
 		SyncTimer:             &libp2p.LocalSyncTimer{},

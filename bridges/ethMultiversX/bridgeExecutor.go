@@ -3,6 +3,7 @@ package ethmultiversx
 import (
 	"context"
 	"fmt"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"math/big"
 	"time"
 
@@ -18,14 +19,6 @@ import (
 const splits = 10
 
 const minRetries = 1
-
-type ArgListsBatch struct {
-	Tokens              []common.Address
-	Recipients          []common.Address
-	ConvertedTokenBytes [][]byte
-	Amounts             []*big.Int
-	Nonces              []*big.Int
-}
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
@@ -477,7 +470,7 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		return ErrNilBatch
 	}
 
-	argLists, err := executor.extractList(executor.batch)
+	argLists, err := batchProcessor.ExtractList(executor.batch)
 	if err != nil {
 		return err
 	}
@@ -508,7 +501,7 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 
 	executor.log.Debug("fetched quorum size", "quorum", quorumSize.Int64())
 
-	argLists, err := executor.extractList(executor.batch)
+	argLists, err := batchProcessor.ExtractList(executor.batch)
 	if err != nil {
 		return err
 	}
@@ -600,28 +593,6 @@ func (executor *bridgeExecutor) checkAvailableTokens(ctx context.Context, tokens
 	transfers := executor.getCumulatedTransfers(tokens, amounts)
 
 	return executor.checkCumulatedTransfers(ctx, transfers)
-}
-
-func (executor *bridgeExecutor) extractList(batch *clients.TransferBatch) (*ArgListsBatch, error) {
-	arg := ArgListsBatch{}
-
-	for _, dt := range batch.Deposits {
-		recipient := common.BytesToAddress(dt.ToBytes)
-		arg.Recipients = append(arg.Recipients, recipient)
-
-		token := common.BytesToAddress(dt.ConvertedTokenBytes)
-		arg.Tokens = append(arg.Tokens, token)
-
-		amount := big.NewInt(0).Set(dt.Amount)
-		arg.Amounts = append(arg.Amounts, amount)
-
-		nonce := big.NewInt(0).SetUint64(dt.Nonce)
-		arg.Nonces = append(arg.Nonces, nonce)
-
-		arg.ConvertedTokenBytes = append(arg.ConvertedTokenBytes, dt.ConvertedTokenBytes)
-	}
-
-	return &arg, nil
 }
 
 func (executor *bridgeExecutor) getCumulatedTransfers(tokens []common.Address, amounts []*big.Int) map[common.Address]*big.Int {

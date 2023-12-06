@@ -2,6 +2,7 @@ package ethmultiversx
 
 import (
 	"context"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -39,10 +40,10 @@ type MultiversXClient interface {
 type EthereumClient interface {
 	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
 	WasExecuted(ctx context.Context, batchID uint64) (bool, error)
-	GenerateMessageHash(batch *ArgListsBatch, batchId uint64) (common.Hash, error)
+	GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error)
 
 	BroadcastSignatureForMessageHash(msgHash common.Hash)
-	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *ArgListsBatch, batchId uint64, quorum int) (string, error)
+	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error)
 	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
 	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)

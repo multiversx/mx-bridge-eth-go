@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"math/big"
 	"strings"
 	"testing"
@@ -1083,7 +1084,7 @@ func TestMultiversXToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GenerateMessageHashCalled: func(batch *clients.TransferBatch) (common.Hash, error) {
+			GenerateMessageHashCalled: func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error) {
 				return common.Hash{}, expectedErr
 			},
 		}
@@ -1100,7 +1101,7 @@ func TestMultiversXToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 		wasCalledBroadcastSignatureForMessageHashCalled := false
 		args := createMockExecutorArgs()
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GenerateMessageHashCalled: func(batch *clients.TransferBatch) (common.Hash, error) {
+			GenerateMessageHashCalled: func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error) {
 				wasCalledGenerateMessageHashCalled = true
 				return common.Hash{}, nil
 			},
@@ -1153,7 +1154,7 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 			GetQuorumSizeCalled: func(ctx context.Context) (*big.Int, error) {
 				return big.NewInt(0), nil
 			},
-			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error) {
+			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error) {
 				return "", expectedErr
 			},
 		}
@@ -1176,9 +1177,16 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 				wasCalledGetQuorumSizeCalled = true
 				return big.NewInt(int64(providedQuorum)), nil
 			},
-			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error) {
+			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error) {
 				assert.True(t, providedHash == msgHash)
-				assert.True(t, providedBatch == batch)
+				assert.True(t, providedBatch.ID == batchId)
+				for i := 0; i < len(providedBatch.Deposits); i++ {
+					assert.True(t, providedBatch.Deposits[i].Amount == batch.Amounts[i])
+					assert.True(t, providedBatch.Deposits[i].Nonce == batch.Nonces[i].Uint64())
+					assert.True(t, CompareBytes(providedBatch.Deposits[i].ToBytes, batch.Recipients[i].Bytes()))
+					assert.True(t, CompareBytes(providedBatch.Deposits[i].TokenBytes, batch.Tokens[i].Bytes()))
+					assert.True(t, CompareBytes(providedBatch.Deposits[i].ConvertedTokenBytes, batch.ConvertedTokenBytes[i]))
+				}
 				assert.True(t, providedQuorum == quorum)
 
 				wasCalledExecuteTransferCalled = true
@@ -1196,6 +1204,9 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 	})
 }
 
+func TestMultiversXToEthBridgeExecutor_checkAvailableTokens(t *testing.T) {
+
+}
 func TestMultiversXToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 	t.Parallel()
 
@@ -1654,4 +1665,17 @@ func TestBridgeExecutor_ValidateBatch(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, result)
 	assert.True(t, validateBatchCalled)
+}
+
+// CompareBytes compares two byte slices and returns true if they are equal.
+func CompareBytes(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

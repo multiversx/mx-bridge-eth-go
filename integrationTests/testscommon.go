@@ -93,6 +93,12 @@ func CreateMessengerWithNoDiscovery() p2p.Messenger {
 	p2pCfg := p2pConfig.P2PConfig{
 		Node: p2pConfig.NodeConfig{
 			Port: "0",
+			Transports: p2pConfig.P2PTransportConfig{
+				TCP: p2pConfig.P2PTCPTransport{
+					ListenAddress:    "/ip4/0.0.0.0/tcp/%d",
+					PreventPortReuse: false,
+				},
+			},
 		},
 		KadDhtPeerDiscovery: p2pConfig.KadDhtPeerDiscoveryConfig{
 			Enabled:    false,
@@ -110,7 +116,6 @@ func CreateMessengerWithNoDiscovery() p2p.Messenger {
 func CreateMessengerFromConfig(p2pConfig p2pConfig.P2PConfig) p2p.Messenger {
 	arg := libp2p.ArgsNetworkMessenger{
 		Marshalizer:           &marshal.JsonMarshalizer{},
-		ListenAddress:         p2p.ListenLocalhostAddrWithIp4AndTcp,
 		P2pConfig:             p2pConfig,
 		SyncTimer:             &libp2p.LocalSyncTimer{},
 		PreferredPeersHolder:  &p2pmocks.PeersHolderStub{},
