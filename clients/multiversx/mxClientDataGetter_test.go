@@ -423,9 +423,12 @@ func TestMXClientDataGetter_ExecuteQueryReturningBigInt(t *testing.T) {
 		assert.Equal(t, largeNumber, result)
 		assert.Nil(t, err)
 
-		dg.proxy = createMockProxy([][]byte{{0xFF, 0xFF}})
+		dg.proxy = createMockProxy([][]byte{{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}})
 
 		result, err = dg.ExecuteQueryReturningBigInt(context.Background(), &data.VmValueRequest{})
+		largeNumber.SetString("79228162514264337593543950335", 10)
+		assert.Equal(t, largeNumber, result)
+		assert.Nil(t, err)
 	})
 }
 
