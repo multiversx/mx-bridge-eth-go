@@ -384,6 +384,7 @@ func (c *client) setStatusForAvailabilityCheck(status ethmultiversx.ClientStatus
 	c.clientWrapper.SetIntMetric(core.MetricLastBlockNonce, int(nonce))
 }
 
+// CheckRequiredBalance will check if the safe has enough balance for the transfer
 func (c *client) CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error {
 	existingBalance, err := c.erc20ContractsHandler.BalanceOf(ctx, erc20Address, c.safeContractAddress)
 	if err != nil {

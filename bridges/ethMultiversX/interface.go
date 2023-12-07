@@ -31,7 +31,7 @@ type MultiversXClient interface {
 	PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
 	CheckClientAvailability(ctx context.Context) error
 	IsMintBurnAllowed(ctx context.Context, token []byte) (bool, error)
-	AccumulatedBurnedTokens(ctx context.Context, token common.Address) (uint64, error)
+	AccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error)
 	Close() error
 	IsInterfaceNil() bool
 }

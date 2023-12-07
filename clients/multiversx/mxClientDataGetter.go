@@ -202,6 +202,24 @@ func (dataGetter *mxClientDataGetter) ExecuteQueryReturningUint64(ctx context.Co
 	return num, nil
 }
 
+// ExecuteQueryReturningBigInt will try to execute the provided query and return the result as big.Int
+func (dataGetter *mxClientDataGetter) ExecuteQueryReturningBigInt(ctx context.Context, request *data.VmValueRequest) (*big.Int, error) {
+	response, err := dataGetter.ExecuteQueryReturningBytes(ctx, request)
+	if err != nil {
+		return big.NewInt(0), err
+	}
+
+	if len(response) == 0 {
+		return big.NewInt(0), nil
+	}
+	if len(response[0]) == 0 {
+		return big.NewInt(0), nil
+	}
+
+	num := big.NewInt(0).SetBytes(response[0])
+	return num, nil
+}
+
 func parseUInt64FromByteSlice(bytes []byte) (uint64, error) {
 	num := big.NewInt(0).SetBytes(bytes)
 	if !num.IsUint64() {
@@ -227,6 +245,15 @@ func (dataGetter *mxClientDataGetter) executeQueryUint64FromBuilder(ctx context.
 	}
 
 	return dataGetter.ExecuteQueryReturningUint64(ctx, vmValuesRequest)
+}
+
+func (dataGetter *mxClientDataGetter) executeQueryBigIntFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (*big.Int, error) {
+	vmValuesRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		return big.NewInt(0), err
+	}
+
+	return dataGetter.ExecuteQueryReturningBigInt(ctx, vmValuesRequest)
 }
 
 func (dataGetter *mxClientDataGetter) executeQueryBoolFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (bool, error) {
@@ -420,11 +447,11 @@ func (dataGetter *mxClientDataGetter) isMintBurnAllowed(ctx context.Context, tok
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
-func (dataGetter *mxClientDataGetter) getAccumulatedBurnedTokens(ctx context.Context, token []byte) (uint64, error) {
+func (dataGetter *mxClientDataGetter) getAccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error) {
 	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getAccumulatedBurnedTokensFuncName).ArgBytes(token)
 
-	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
+	return dataGetter.executeQueryBigIntFromBuilder(ctx, builder)
 }
 
 func getStatusFromBuff(buff []byte) (byte, error) {
