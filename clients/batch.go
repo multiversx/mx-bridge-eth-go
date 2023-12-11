@@ -74,7 +74,7 @@ type DepositTransfer struct {
 	ConvertedTokenBytes []byte   `json:"-"`
 	DisplayableToken    string   `json:"token"`
 	Amount              *big.Int `json:"amount"`
-	GasLimit            uint64   `json:"gasLimit"`
+	ExtraGasLimit       uint64   `json:"gasLimit"`
 	Data                []byte   `json:"-"`
 	DisplayableData     string   `json:"data"`
 }
@@ -82,7 +82,7 @@ type DepositTransfer struct {
 // String will convert the deposit transfer to a string
 func (dt *DepositTransfer) String() string {
 	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %d, gas limit: %d, data: %s",
-		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.Nonce, dt.GasLimit, dt.DisplayableData)
+		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.Nonce, dt.ExtraGasLimit, dt.DisplayableData)
 }
 
 // Clone will deep clone the current DepositTransfer instance

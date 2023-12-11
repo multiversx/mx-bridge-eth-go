@@ -307,7 +307,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 			ArgInt64(int64(dt.Nonce))
 		if len(dt.Data) > 0 {
 			txBuilder.ArgBytes(dt.Data).
-				ArgInt64(int64(dt.GasLimit))
+				ArgInt64(int64(dt.ExtraGasLimit))
 		}
 	}
 

@@ -4,10 +4,9 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 )
 
 // MultiversXClient defines the behavior of the MultiversX client able to communicate with the MultiversX chain

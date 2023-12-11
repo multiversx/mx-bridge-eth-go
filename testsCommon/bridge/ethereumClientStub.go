@@ -2,11 +2,11 @@ package bridge
 
 import (
 	"context"
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 )
 
 // EthereumClientStub -
@@ -103,6 +103,7 @@ func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash com
 	return false, errNotImplemented
 }
 
+// IsDepositSCCall -
 func (stub *EthereumClientStub) IsDepositSCCall(deposit *clients.DepositTransfer) bool {
 	if stub.IsDepositSCCallCalled != nil {
 		return stub.IsDepositSCCallCalled(deposit)
@@ -111,6 +112,7 @@ func (stub *EthereumClientStub) IsDepositSCCall(deposit *clients.DepositTransfer
 	return false
 }
 
+// GetBatchSCMetadata -
 func (stub *EthereumClientStub) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
 	if stub.GetBatchSCMetadataCalled != nil {
 		return stub.GetBatchSCMetadataCalled(ctx, nonce)

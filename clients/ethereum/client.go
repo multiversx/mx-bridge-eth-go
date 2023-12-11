@@ -9,14 +9,13 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -286,6 +285,7 @@ func (c *client) GenerateMessageHash(batch *clients.TransferBatch) (common.Hash,
 	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
 }
 
+// IsDepositSCCall checks whether a deposit should be treated as a SC interaction
 func (c *client) IsDepositSCCall(deposit *clients.DepositTransfer) bool {
 	if deposit == nil {
 		return false

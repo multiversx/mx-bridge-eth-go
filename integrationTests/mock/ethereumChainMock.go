@@ -3,10 +3,10 @@ package mock
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum"
 	"math/big"
 	"sync"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -254,6 +254,7 @@ func (mock *EthereumChainMock) BalanceAt(ctx context.Context, account common.Add
 	return big.NewInt(0), nil
 }
 
+// FilterLogs -
 func (mock *EthereumChainMock) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 	if mock.FilterLogsCalled != nil {
 		return mock.FilterLogsCalled(ctx, q)

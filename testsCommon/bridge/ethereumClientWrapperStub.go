@@ -3,9 +3,9 @@ package bridge
 import (
 	"context"
 	"errors"
-	"github.com/ethereum/go-ethereum"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
