@@ -30,14 +30,14 @@ var log = logger.GetOrCreate("api")
 type ArgsNewWebServer struct {
 	Facade          shared.FacadeHandler
 	ApiConfig       config.ApiRoutesConfig
-	AntiFloodConfig config.AntifloodConfig
+	AntiFloodConfig config.WebAntifloodConfig
 }
 
 type webServer struct {
 	sync.RWMutex
 	facade          shared.FacadeHandler
 	apiConfig       config.ApiRoutesConfig
-	antiFloodConfig config.AntifloodConfig
+	antiFloodConfig config.WebAntifloodConfig
 	httpServer      chainShared.HttpServerCloser
 	groups          map[string]shared.GroupHandler
 	cancelFunc      func()
@@ -116,9 +116,9 @@ func (ws *webServer) StartHttpServer() error {
 
 	ws.registerRoutes(engine)
 
-	server := &http.Server{Addr: ws.facade.RestApiInterface(), Handler: engine}
+	serverInstance := &http.Server{Addr: ws.facade.RestApiInterface(), Handler: engine}
 	log.Debug("creating gin web sever", "interface", ws.facade.RestApiInterface())
-	ws.httpServer, err = NewHttpServer(server)
+	ws.httpServer, err = NewHttpServer(serverInstance)
 	if err != nil {
 		return err
 	}
