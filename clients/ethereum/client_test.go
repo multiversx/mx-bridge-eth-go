@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
@@ -946,34 +945,51 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 func TestClient_GetBatchSCMetadata(t *testing.T) {
 	t.Parallel()
 
-	t.Run("test remote", func(t *testing.T) {
-		scExecAbi, _ := contract.SCExecProxyMetaData.GetAbi()
-		scExecProxyAddr := common.HexToAddress("5526Ef117015fF63B62E4Fb40aA94be78e26d620")
-		query := ethereum.FilterQuery{
-			Addresses: []common.Address{scExecProxyAddr},
-			Topics: [][]common.Hash{
-				{scExecAbi.Events["ERC20SCDeposit"].ID},
-				{common.BytesToHash(new(big.Int).SetUint64(3).Bytes())},
+	t.Run("returns error on filter logs error", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("filter logs err")
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			FilterLogsCalled: func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+				return nil, expectedErr
 			},
 		}
-
-		fmt.Println(scExecAbi.Events["ERC20SCDeposit"].ID)
-		ethClient, _ := ethclient.Dial("https://sepolia.infura.io/v3/93473db9432643be907cdbd9810530b2")
-		logs, _ := ethClient.FilterLogs(context.Background(), query)
-
-		depositEvents := make([]*contract.SCExecProxyERC20SCDeposit, 0)
-		for _, vLog := range logs {
-			event := new(contract.SCExecProxyERC20SCDeposit)
-			_ = scExecAbi.UnpackIntoInterface(event, "ERC20SCDeposit", vLog.Data)
-
-			fmt.Println(event.CallData)
-			depositEvents = append(depositEvents, event)
-		}
-
-		fmt.Println(depositEvents)
+		c, _ := NewEthereumClient(args)
+		batch, err := c.GetBatchSCMetadata(context.Background(), 0)
+		assert.Nil(t, batch)
+		assert.Equal(t, expectedErr, err)
 	})
 
-	// TODO: Write full test suite
+	t.Run("returns expected logs", func(t *testing.T) {
+		scExecAbi, _ := contract.SCExecProxyMetaData.GetAbi()
+		expectedEvent := &contract.SCExecProxyERC20SCDeposit{
+			BatchNonce:   1,
+			DepositNonce: 1,
+		}
+
+		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs
+		packedArgs, _ := eventInputs.Pack(expectedEvent.BatchNonce, expectedEvent.DepositNonce,
+			expectedEvent.MvxGasLimit, expectedEvent.CallData)
+
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			FilterLogsCalled: func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+				return []types.Log{
+					{
+						Data: packedArgs,
+					},
+				}, nil
+			},
+		}
+		c, _ := NewEthereumClient(args)
+		batch, err := c.GetBatchSCMetadata(context.Background(), 0)
+
+		assert.Nil(t, err)
+		assert.Equal(t, 1, len(batch))
+		assert.Equal(t, expectedEvent.BatchNonce, batch[0].BatchNonce)
+		// assert.Equal(t, expectedEvent.DepositNonce, batch[0].DepositNonce)
+	})
 }
 
 func resetClient(c *client) {

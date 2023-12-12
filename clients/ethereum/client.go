@@ -232,8 +232,8 @@ func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contr
 
 	depositEvents := make([]*contract.SCExecProxyERC20SCDeposit, 0)
 	for _, vLog := range logs {
-		event := new(contract.SCExecProxyERC20SCDeposit) // Assuming ERC20Deposit is the struct for the event in Go
-		err = scExecAbi.UnpackIntoInterface(event, "SCExecProxyERC20SCDeposit", vLog.Data)
+		event := new(contract.SCExecProxyERC20SCDeposit)
+		err = scExecAbi.UnpackIntoInterface(event, "ERC20SCDeposit", vLog.Data)
 		if err != nil {
 			return nil, err
 		}
