@@ -238,6 +238,8 @@ func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contr
 			return nil, err
 		}
 
+		// Add this manually since UnpackIntoInterface only unpacks non-indexed arguments
+		event.BatchNonce = nonce
 		depositEvents = append(depositEvents, event)
 	}
 

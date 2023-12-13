@@ -966,10 +966,12 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 		expectedEvent := &contract.SCExecProxyERC20SCDeposit{
 			BatchNonce:   1,
 			DepositNonce: 1,
+			MvxGasLimit:  1,
+			CallData:     "call_data_to_unpack",
 		}
 
-		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs
-		packedArgs, _ := eventInputs.Pack(expectedEvent.BatchNonce, expectedEvent.DepositNonce,
+		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs.NonIndexed()
+		packedArgs, _ := eventInputs.Pack(expectedEvent.DepositNonce,
 			expectedEvent.MvxGasLimit, expectedEvent.CallData)
 
 		args := createMockEthereumClientArgs()
@@ -983,12 +985,14 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 			},
 		}
 		c, _ := NewEthereumClient(args)
-		batch, err := c.GetBatchSCMetadata(context.Background(), 0)
+		batch, err := c.GetBatchSCMetadata(context.Background(), expectedEvent.BatchNonce)
 
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(batch))
 		assert.Equal(t, expectedEvent.BatchNonce, batch[0].BatchNonce)
-		// assert.Equal(t, expectedEvent.DepositNonce, batch[0].DepositNonce)
+		assert.Equal(t, expectedEvent.DepositNonce, batch[0].DepositNonce)
+		assert.Equal(t, expectedEvent.MvxGasLimit, batch[0].MvxGasLimit)
+		assert.Equal(t, expectedEvent.CallData, batch[0].CallData)
 	})
 }
 
