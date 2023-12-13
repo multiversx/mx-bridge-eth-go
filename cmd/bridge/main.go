@@ -405,7 +405,6 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 	p2pPrivKey, _ := p2pKeyGen.GeneratePair()
 
 	args := libp2p.ArgsNetworkMessenger{
-		ListenAddress:         chainP2P.ListenAddrWithIp4AndTcp,
 		Marshalizer:           marshalizer,
 		P2pConfig:             p2pCfg,
 		SyncTimer:             &libp2p.LocalSyncTimer{},
