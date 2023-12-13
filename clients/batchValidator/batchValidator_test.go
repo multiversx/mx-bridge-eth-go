@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -261,7 +261,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 					_ = request.Body.Close()
 				}()
 
-				body, err := ioutil.ReadAll(request.Body)
+				body, err := io.ReadAll(request.Body)
 				require.Nil(t, err)
 				require.Equal(t, expectedJsonString, string(body))
 
