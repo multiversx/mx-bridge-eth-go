@@ -20,7 +20,7 @@ import (
 	"github.com/multiversx/mx-sdk-go/builders"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
-	"github.com/multiversx/mx-sdk-go/interactors/nonceHandlerV1"
+	"github.com/multiversx/mx-sdk-go/interactors/nonceHandlerV2"
 )
 
 const (
@@ -73,7 +73,12 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	nonceTxsHandler, err := nonceHandlerV1.NewNonceTransactionHandlerV1(args.Proxy, time.Second*time.Duration(args.IntervalToResendTxsInSeconds), true)
+	argNonceHandler := nonceHandlerV2.ArgsNonceTransactionsHandlerV2{
+		Proxy:            args.Proxy,
+		IntervalToResend: time.Second * time.Duration(args.IntervalToResendTxsInSeconds),
+		Creator:          &nonceHandlerV2.AddressNonceHandlerCreator{},
+	}
+	nonceTxsHandler, err := nonceHandlerV2.NewNonceTransactionHandlerV2(argNonceHandler)
 	if err != nil {
 		return nil, err
 	}

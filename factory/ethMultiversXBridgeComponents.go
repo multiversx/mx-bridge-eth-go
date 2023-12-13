@@ -5,7 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 
@@ -357,7 +357,7 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 		return err
 	}
 
-	privateKeyBytes, err := ioutil.ReadFile(ethereumConfigs.PrivateKeyFile)
+	privateKeyBytes, err := os.ReadFile(ethereumConfigs.PrivateKeyFile)
 	if err != nil {
 		return err
 	}

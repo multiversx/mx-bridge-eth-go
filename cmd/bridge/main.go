@@ -61,10 +61,13 @@ var log = logger.GetOrCreate("main")
 // appVersion should be populated at build time using ldflags
 // Usage examples:
 // linux/mac:
-//            go build -i -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)"
+//
+//	go build -i -v -ldflags="-X main.appVersion=$(git describe --tags --long --dirty)"
+//
 // windows:
-//            for /f %i in ('git describe --tags --long --dirty') do set VERS=%i
-//            go build -i -v -ldflags="-X main.appVersion=%VERS%"
+//
+//	for /f %i in ('git describe --tags --long --dirty') do set VERS=%i
+//	go build -i -v -ldflags="-X main.appVersion=%VERS%"
 var appVersion = chainCommon.UnVersionedAppString
 
 func main() {
@@ -395,7 +398,6 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 	p2pPrivKey, _ := p2pKeyGen.GeneratePair()
 
 	args := libp2p.ArgsNetworkMessenger{
-		ListenAddress:         chainP2P.ListenAddrWithIp4AndTcp,
 		Marshalizer:           marshalizer,
 		P2pConfig:             p2pCfg,
 		SyncTimer:             &libp2p.LocalSyncTimer{},
