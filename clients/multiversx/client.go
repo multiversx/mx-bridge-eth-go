@@ -310,6 +310,10 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 			ArgBytes(dt.ConvertedTokenBytes).
 			ArgBigInt(dt.Amount).
 			ArgInt64(int64(dt.Nonce))
+		if len(dt.Data) > 0 {
+			txBuilder.ArgBytes(dt.Data).
+				ArgInt64(int64(dt.ExtraGasLimit))
+		}
 	}
 
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
