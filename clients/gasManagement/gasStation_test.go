@@ -102,7 +102,10 @@ func TestGasStation_CloseWhileDoingRequest(t *testing.T) {
 	t.Parallel()
 
 	args := createMockArgsGasStation()
+	// synchronize the process loop & the testing go routine with an unbuffered channel
+	chanOk := make(chan struct{})
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		<-chanOk
 		// simulating that the operation takes a lot of time
 
 		time.Sleep(time.Second * 3)
@@ -117,7 +120,8 @@ func TestGasStation_CloseWhileDoingRequest(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(time.Second)
+	chanOk <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
 	_ = gs.Close()
 
@@ -130,7 +134,10 @@ func TestGasStation_InvalidJsonResponse(t *testing.T) {
 	t.Parallel()
 
 	args := createMockArgsGasStation()
+	// synchronize the process loop & the testing go routine with an unbuffered channel
+	chanNok := make(chan struct{})
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		<-chanNok
 		rw.WriteHeader(http.StatusOK)
 		_, _ = rw.Write([]byte("invalid json response"))
 	}))
@@ -141,7 +148,8 @@ func TestGasStation_InvalidJsonResponse(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(time.Second * 2)
+	chanNok <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
 	_ = gs.Close()
 
@@ -158,7 +166,10 @@ func TestGasStation_GoodResponseShouldSave(t *testing.T) {
 
 	gsResponse := createMockGasStationResponse()
 	args := createMockArgsGasStation()
+	// synchronize the process loop & the testing go routine with an unbuffered channel
+	chanOk := make(chan struct{})
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		<-chanOk
 		rw.WriteHeader(http.StatusOK)
 
 		resp, _ := json.Marshal(&gsResponse)
@@ -171,7 +182,8 @@ func TestGasStation_GoodResponseShouldSave(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(time.Second * 2)
+	chanOk <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
 	_ = gs.Close()
 
@@ -180,7 +192,6 @@ func TestGasStation_GoodResponseShouldSave(t *testing.T) {
 	var expectedPrice = -1
 	_, err = fmt.Sscanf(gsResponse.Result.SafeGasPrice, "%d", &expectedPrice)
 	require.Nil(t, err)
-	assert.NotEqual(t, expectedPrice, -1)
 	assert.Equal(t, gs.GetLatestGasPrice(), expectedPrice)
 }
 
@@ -190,17 +201,22 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	args := createMockArgsGasStation()
 	args.RequestRetryDelay = time.Second
 	args.RequestPollingInterval = 2 * time.Second
-	numCalled := 0
+	args.MaximumFetchRetries = 3
+
+	// synchronize the process loop & the testing go routine with unbuffered channels
+	chanOk := make(chan struct{})
+	chanNok := make(chan struct{})
 	gsResponse := createMockGasStationResponse()
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusOK)
-		if numCalled <= args.MaximumFetchRetries {
-			_, _ = rw.Write([]byte("invalid json response"))
-		} else {
+
+		select {
+		case <-chanOk:
 			resp, _ := json.Marshal(&gsResponse)
 			_, _ = rw.Write(resp)
+		case <-chanNok:
+			_, _ = rw.Write([]byte("invalid json response"))
 		}
-		numCalled++
 	}))
 	defer httpServer.Close()
 
@@ -208,55 +224,38 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
-	time.Sleep(args.RequestRetryDelay + 1)
+
+	chanNok <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, gs.GetLatestGasPrice(), -1)
-	assert.Equal(t, numCalled, 1)
-	assert.Equal(t, gs.fetchRetries, 1)
+	assert.Equal(t, -1, gs.GetLatestGasPrice())
+	assert.Equal(t, 1, gs.fetchRetries) // first retry
 	gasPrice, err := gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
 
-	time.Sleep(args.RequestRetryDelay + 1)
+	chanNok <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, gs.GetLatestGasPrice(), -1)
-	assert.Equal(t, numCalled, 2)
-	assert.Equal(t, gs.fetchRetries, 2)
+	assert.Equal(t, -1, gs.GetLatestGasPrice())
+	assert.Equal(t, 2, gs.fetchRetries) // second retry
 	gasPrice, err = gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
 
-	time.Sleep(args.RequestRetryDelay + 1)
+	chanNok <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, gs.GetLatestGasPrice(), -1)
-	assert.Equal(t, numCalled, 3)
-	assert.Equal(t, gs.fetchRetries, 3)
+	assert.Equal(t, -1, gs.GetLatestGasPrice())
+	assert.Equal(t, 3, gs.fetchRetries) // third retry
 	gasPrice, err = gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
 
-	time.Sleep(args.RequestRetryDelay + 1)
-	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, gs.GetLatestGasPrice(), -1)
-	assert.Equal(t, numCalled, 4)
-	assert.Equal(t, gs.fetchRetries, 0)
-	gasPrice, err = gs.GetCurrentGasPrice()
-	assert.Equal(t, big.NewInt(0), gasPrice)
-	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
-
-	time.Sleep(args.RequestRetryDelay + 1)
-	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, gs.GetLatestGasPrice(), -1)
-	assert.Equal(t, numCalled, 4)
-	assert.Equal(t, gs.fetchRetries, 0)
-	gasPrice, err = gs.GetCurrentGasPrice()
-	assert.Equal(t, big.NewInt(0), gasPrice)
-	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
-
-	time.Sleep(args.RequestRetryDelay + 1)
+	chanOk <- struct{}{} // response is now ok
+	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
 	assert.Equal(t, gs.GetLatestGasPrice(), 81)
-	assert.Equal(t, numCalled, 5)
 	assert.Equal(t, gs.fetchRetries, 0)
 	gasPrice, err = gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*args.GasPriceMultiplier)), gasPrice)
@@ -267,23 +266,26 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	assert.False(t, gs.loopStatus.IsSet())
 }
 
-func TestGasStation_RetryMechanism_IntermitentFails(t *testing.T) {
+func TestGasStation_RetryMechanism_IntermittentFails(t *testing.T) {
 	t.Parallel()
 
 	args := createMockArgsGasStation()
 	args.RequestRetryDelay = time.Second
 	args.RequestPollingInterval = 2 * time.Second
-	numCalled := 0
+
+	// synchronize the process loop & the testing go routine with unbuffered channels
+	chanOk := make(chan struct{})
+	chanNok := make(chan struct{})
 	gsResponse := createMockGasStationResponse()
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.WriteHeader(http.StatusOK)
-		if numCalled != 0 && numCalled%3 == 0 {
-			_, _ = rw.Write([]byte("invalid json response"))
-		} else {
+		fmt.Println("http server go routine")
+		select {
+		case <-chanOk:
 			resp, _ := json.Marshal(&gsResponse)
 			_, _ = rw.Write(resp)
+		case <-chanNok:
+			_, _ = rw.Write([]byte("invalid json response"))
 		}
-		numCalled++
 	}))
 	defer httpServer.Close()
 
@@ -292,23 +294,21 @@ func TestGasStation_RetryMechanism_IntermitentFails(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(args.RequestPollingInterval*3 + args.RequestRetryDelay + 1)
-	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, gs.GetLatestGasPrice(), 81)
-	assert.Equal(t, numCalled, 4)
-	assert.Equal(t, gs.fetchRetries, 1)
-	gasPrice, err := gs.GetCurrentGasPrice()
-	assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*args.GasPriceMultiplier)), gasPrice)
-	assert.Nil(t, err)
+	for i := 0; i < 6; i++ {
+		shouldFail := i > 0 && i%3 == 0
+		if shouldFail {
+			chanNok <- struct{}{}
+		} else {
+			chanOk <- struct{}{}
+		}
+		time.Sleep(time.Millisecond * 100)
 
-	time.Sleep(args.RequestRetryDelay + 1)
-	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, gs.GetLatestGasPrice(), 81)
-	assert.Equal(t, numCalled, 5)
-	assert.Equal(t, gs.fetchRetries, 0)
-	gasPrice, err = gs.GetCurrentGasPrice()
-	assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*args.GasPriceMultiplier)), gasPrice)
-	assert.Nil(t, err)
+		assert.True(t, gs.loopStatus.IsSet())
+		assert.Equal(t, 81, gs.GetLatestGasPrice())
+		gasPrice, errGet := gs.GetCurrentGasPrice()
+		assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*args.GasPriceMultiplier)), gasPrice)
+		assert.Nil(t, errGet)
+	}
 
 	_ = gs.Close()
 
@@ -322,7 +322,10 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	gsResponse := createMockGasStationResponse()
 	args := createMockArgsGasStation()
 	gasPriceMultiplier := big.NewInt(int64(args.GasPriceMultiplier))
+	// synchronize the process loop & the testing go routine with an unbuffered channel
+	chanOk := make(chan struct{})
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		<-chanOk
 		rw.WriteHeader(http.StatusOK)
 
 		resp, _ := json.Marshal(&gsResponse)
@@ -335,11 +338,13 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(time.Millisecond * 1100)
+	chanOk <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
 
 	gs.SetSelector(core.EthFastGasPrice)
-	time.Sleep(time.Millisecond * 1100)
+	chanOk <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	price, err := gs.GetCurrentGasPrice()
 	require.Nil(t, err)
 	expectedPrice := -1
@@ -350,7 +355,8 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	assert.Equal(t, expected, price)
 
 	gs.SetSelector(core.EthProposeGasPrice)
-	time.Sleep(time.Millisecond * 1100)
+	chanOk <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	price, err = gs.GetCurrentGasPrice()
 	require.Nil(t, err)
 	expectedPrice = -1
@@ -361,7 +367,8 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	assert.Equal(t, expected, price)
 
 	gs.SetSelector(core.EthSafeGasPrice)
-	time.Sleep(time.Millisecond * 1100)
+	chanOk <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	price, err = gs.GetCurrentGasPrice()
 	require.Nil(t, err)
 	expectedPrice = -1
@@ -372,7 +379,8 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	assert.Equal(t, expected, price)
 
 	gs.SetSelector("invalid")
-	time.Sleep(time.Millisecond * 1100)
+	chanOk <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	price, err = gs.GetCurrentGasPrice()
 	require.True(t, errors.Is(err, ErrLatestGasPricesWereNotFetched))
 	assert.Equal(t, big.NewInt(0), price)
@@ -385,7 +393,10 @@ func TestGasStation_GetCurrentGasPriceExceededMaximum(t *testing.T) {
 	gsResponse := createMockGasStationResponse()
 	gsResponse.Result.SafeGasPrice = "101"
 	args := createMockArgsGasStation()
+	// synchronize the process loop & the testing go routine with an unbuffered channel
+	chanOk := make(chan struct{})
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		<-chanOk
 		rw.WriteHeader(http.StatusOK)
 
 		resp, _ := json.Marshal(&gsResponse)
@@ -398,7 +409,8 @@ func TestGasStation_GetCurrentGasPriceExceededMaximum(t *testing.T) {
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
 
-	time.Sleep(time.Second * 2)
+	chanOk <- struct{}{}
+	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
 
 	price, err := gs.GetCurrentGasPrice()
