@@ -46,7 +46,7 @@ func TestRelayersShouldExecuteTransferFromMultiversXToEth(t *testing.T) {
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return expectedStatuses
 	}
-	multiversXChainMock := mock.NewMultiversXChainMock()
+	multiversXChainMock := mock.NewMultiversXChainMock(testsCommon.CreateRandomEthereumAddress().Bytes())
 	for i := 0; i < len(deposits); i++ {
 		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker)
 	}
@@ -134,7 +134,7 @@ func TestRelayersShouldExecuteTransferFromMultiversXToEthIfTransactionsAppearInB
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return expectedStatuses
 	}
-	multiversXChainMock := mock.NewMultiversXChainMock()
+	multiversXChainMock := mock.NewMultiversXChainMock(testsCommon.CreateRandomEthereumAddress().Bytes())
 	for i := 0; i < len(deposits); i++ {
 		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker)
 	}

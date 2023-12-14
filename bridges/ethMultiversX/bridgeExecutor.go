@@ -2,6 +2,7 @@ package ethmultiversx
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -484,6 +485,8 @@ func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositT
 		if event.DepositNonce == transfer.Nonce {
 			transfer.ExtraGasLimit = event.MvxGasLimit
 			transfer.Data = []byte(event.CallData)
+			transfer.DisplayableData = hex.EncodeToString(transfer.Data)
+
 			return transfer
 		}
 	}

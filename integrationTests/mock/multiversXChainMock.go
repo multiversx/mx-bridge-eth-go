@@ -27,9 +27,9 @@ type MultiversXChainMock struct {
 }
 
 // NewMultiversXChainMock -
-func NewMultiversXChainMock() *MultiversXChainMock {
+func NewMultiversXChainMock(whitelistedEthSCAddress []byte) *MultiversXChainMock {
 	return &MultiversXChainMock{
-		multiversXContractStateMock: newMultiversXContractStateMock(),
+		multiversXContractStateMock: newMultiversXContractStateMock(whitelistedEthSCAddress),
 		sentTransactions:            make(map[string]*transaction.FrontendTransaction),
 		accounts:                    newMultiversXAccountsMock(),
 	}

@@ -550,6 +550,49 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		assert.Equal(t, expectedHash, hash)
 		assert.True(t, sendWasCalled)
 	})
+	t.Run("should propose transfer with SC call", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+		expectedHash := "expected hash"
+		c, _ := NewClient(args)
+		sendWasCalled := false
+		batch := createMockBatch()
+		batch.Deposits[0].ExtraGasLimit = 37373
+		batch.Deposits[0].Data = []byte("doSomething@7788")
+		batch.Deposits[0].DisplayableData = hex.EncodeToString(batch.Deposits[0].Data)
+
+		c.txHandler = &bridgeTests.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+				sendWasCalled = true
+
+				dataField, err := builder.ToDataString()
+				assert.Nil(t, err)
+
+				dataStrings := []string{
+					proposeTransferFuncName,
+					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
+				}
+				for _, dt := range batch.Deposits {
+					dataStrings = append(dataStrings, depositToStrings(dt)...)
+				}
+
+				expectedDataField := strings.Join(dataStrings, "@")
+				assert.Equal(t, expectedDataField, dataField)
+
+				expectedGasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
+				assert.Equal(t, expectedGasLimit, gasLimit)
+
+				return expectedHash, nil
+			},
+		}
+
+		hash, err := c.ProposeTransfer(context.Background(), batch)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedHash, hash)
+		assert.True(t, sendWasCalled)
+	})
 }
 
 func depositToStrings(dt *clients.DepositTransfer) []string {
@@ -559,6 +602,11 @@ func depositToStrings(dt *clients.DepositTransfer) []string {
 		hex.EncodeToString(dt.ConvertedTokenBytes),
 		hex.EncodeToString(dt.Amount.Bytes()),
 		hex.EncodeToString(big.NewInt(int64(dt.Nonce)).Bytes()),
+	}
+
+	if len(dt.Data) > 0 {
+		result = append(result, hex.EncodeToString(dt.Data))
+		result = append(result, hex.EncodeToString(big.NewInt(int64(dt.ExtraGasLimit)).Bytes()))
 	}
 
 	return result
