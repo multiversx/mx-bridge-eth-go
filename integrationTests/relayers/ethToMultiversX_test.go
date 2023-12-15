@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	ethmultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
@@ -27,6 +28,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type argsForSCCallsTest struct {
+	providedScCallData string
+	providedExtraGas   uint64
+	expectedScCallData string
+	expectedExtraGas   uint64
+}
 
 func TestRelayersShouldExecuteTransferFromEthToMultiversX(t *testing.T) {
 	if testing.Short() {
@@ -84,7 +92,7 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversX(t *testing.T) {
 	ethereumChainMock.AddBatch(batch)
 	ethereumChainMock.SetQuorum(numRelayers)
 
-	multiversXChainMock := mock.NewMultiversXChainMock(testsCommon.CreateRandomEthereumAddress().Bytes())
+	multiversXChainMock := mock.NewMultiversXChainMock()
 	multiversXChainMock.AddTokensPair(token1Erc20, ticker1)
 	multiversXChainMock.AddTokensPair(token2Erc20, ticker2)
 	multiversXChainMock.SetLastExecutedEthBatchID(batchNonceOnEthereum)
@@ -160,6 +168,29 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 		t.Skip("this is not a short test")
 	}
 
+	t.Run("correct SC call", func(t *testing.T) {
+		testArgs := argsForSCCallsTest{
+			providedScCallData: "doSomething@aabbcc@001122",
+			providedExtraGas:   uint64(3737373),
+			expectedScCallData: "doSomething@aabbcc@001122",
+			expectedExtraGas:   uint64(3737373),
+		}
+
+		testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t, testArgs)
+	})
+	t.Run("invalid SC call", func(t *testing.T) {
+		testArgs := argsForSCCallsTest{
+			providedScCallData: "",
+			providedExtraGas:   0,
+			expectedScCallData: ethmultiversx.MissingCallData,
+			expectedExtraGas:   0,
+		}
+
+		testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t, testArgs)
+	})
+}
+
+func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t *testing.T, args argsForSCCallsTest) {
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	scExecProxyEthAddress := testsCommon.CreateRandomEthereumAddress()
 
@@ -181,7 +212,7 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	depositor2 := testsCommon.CreateRandomEthereumAddress()
 
 	value3 := big.NewInt(333333333)
-	destination3 := testsCommon.CreateRandomMultiversXAddress()
+	destination3Sc := testsCommon.CreateRandomMultiversXSCAddress()
 
 	tokens := []common.Address{token1Erc20, token2Erc20, token3Erc20}
 	availableBalances := []*big.Int{value1, value2, value3}
@@ -221,14 +252,11 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 		TokenAddress: token3Erc20,
 		Amount:       value3,
 		Depositor:    scExecProxyEthAddress,
-		Recipient:    destination3.AddressSlice(),
+		Recipient:    destination3Sc.AddressSlice(),
 		Status:       0,
 	})
 	ethereumChainMock.AddBatch(batch)
 	ethereumChainMock.SetQuorum(numRelayers)
-
-	mvxGasLimit := uint64(3737373)
-	callData := "doSomething@aabbcc@001122"
 
 	ethereumChainMock.FilterLogsCalled = func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 		expectedBatchNonceHash := []common.Hash{
@@ -241,7 +269,7 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 		require.Nil(t, err)
 
 		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs.NonIndexed()
-		packedArgs, err := eventInputs.Pack(txNonceOnEthereum+3, mvxGasLimit, callData)
+		packedArgs, err := eventInputs.Pack(txNonceOnEthereum+3, args.providedExtraGas, args.providedScCallData)
 		require.Nil(t, err)
 
 		scLog := types.Log{
@@ -251,7 +279,7 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 		return []types.Log{scLog}, nil
 	}
 
-	multiversXChainMock := mock.NewMultiversXChainMock(scExecProxyEthAddress.Bytes())
+	multiversXChainMock := mock.NewMultiversXChainMock()
 	multiversXChainMock.AddTokensPair(token1Erc20, ticker1)
 	multiversXChainMock.AddTokensPair(token2Erc20, ticker2)
 	multiversXChainMock.AddTokensPair(token3Erc20, ticker3)
@@ -323,13 +351,13 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	assert.Empty(t, transfer.Transfers[1].Data)
 	assert.Zero(t, transfer.Transfers[1].ExtraGas)
 
-	assert.Equal(t, destination3.AddressBytes(), transfer.Transfers[2].To)
+	assert.Equal(t, destination3Sc.AddressBytes(), transfer.Transfers[2].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker3)), transfer.Transfers[2].Token)
 	assert.Equal(t, value3, transfer.Transfers[2].Amount)
 	assert.Equal(t, scExecProxyEthAddress, common.BytesToAddress(transfer.Transfers[2].From))
 	assert.Equal(t, txNonceOnEthereum+3, transfer.Transfers[2].Nonce.Uint64())
-	assert.Equal(t, callData, string(transfer.Transfers[2].Data))
-	assert.Equal(t, mvxGasLimit, transfer.Transfers[2].ExtraGas)
+	assert.Equal(t, args.expectedScCallData, string(transfer.Transfers[2].Data))
+	assert.Equal(t, args.expectedExtraGas, transfer.Transfers[2].ExtraGas)
 }
 
 func createMockBridgeComponentsArgs(

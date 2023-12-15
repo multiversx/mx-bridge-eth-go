@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -66,15 +65,13 @@ type multiversXContractStateMock struct {
 	quorum                           int
 	lastExecutedEthBatchId           uint64
 	lastExecutedEthTxId              uint64
-	whitelistedEthSCAddress          []byte
 
 	ProposeMultiTransferEsdtBatchCalled func()
 }
 
-func newMultiversXContractStateMock(whitelistedEthSCAddress []byte) *multiversXContractStateMock {
+func newMultiversXContractStateMock() *multiversXContractStateMock {
 	mock := &multiversXContractStateMock{
-		tokensRegistryMock:      &tokensRegistryMock{},
-		whitelistedEthSCAddress: whitelistedEthSCAddress,
+		tokensRegistryMock: &tokensRegistryMock{},
 	}
 	mock.cleanState()
 	mock.clearTokens()
@@ -205,7 +202,7 @@ func (mock *multiversXContractStateMock) createProposedTransfer(dataSplit []stri
 		}
 
 		indexIncrementValue := 5
-		if bytes.Equal(from, mock.whitelistedEthSCAddress) {
+		if core.IsSmartContractAddress(to) {
 			indexIncrementValue += 2
 			t.Data, errDecode = hex.DecodeString(dataSplit[currentIndex+5])
 			if errDecode != nil {

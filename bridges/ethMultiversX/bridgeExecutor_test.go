@@ -1,7 +1,6 @@
 package ethmultiversx
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -364,7 +363,6 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
 		assert.True(t, expectedBatch == executor.batch)
 	})
-
 	t.Run("should add deposits metadata for sc calls", func(t *testing.T) {
 		args := createMockExecutorArgs()
 		providedNonce := uint64(8346)
@@ -398,7 +396,42 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
-		assert.True(t, bytes.Equal([]byte(depositData), executor.batch.Deposits[0].Data))
+		assert.Equal(t, depositData, string(executor.batch.Deposits[0].Data))
+	})
+	t.Run("should add deposits metadata for sc calls even if with invalid data", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		providedNonce := uint64(8346)
+		depositNonce := uint64(100)
+		depositData := ""
+		expectedBatch := &clients.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*clients.DepositTransfer{
+				{
+					Nonce: depositNonce,
+				},
+			},
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return expectedBatch, nil
+			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+				return []*contract.SCExecProxyERC20SCDeposit{{
+					DepositNonce: depositNonce,
+					CallData:     depositData,
+				}}, nil
+			},
+			IsDepositSCCallCalled: func(deposit *clients.DepositTransfer) bool {
+				return deposit.Nonce == depositNonce
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+		assert.Nil(t, err)
+		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
+		assert.Equal(t, MissingCallData, string(executor.batch.Deposits[0].Data))
 	})
 }
 
