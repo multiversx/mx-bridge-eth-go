@@ -2,6 +2,7 @@ package ethmultiversx
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -16,8 +17,10 @@ import (
 // splits - represent the number of times we split the maximum interval
 // we wait for the transfer confirmation on Ethereum
 const splits = 10
-
 const minRetries = 1
+
+// MissingCallData is a placeholder for wrongly initiated contract calls that do not contain data
+const MissingCallData = "<missing call data>"
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
@@ -484,6 +487,12 @@ func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositT
 		if event.DepositNonce == transfer.Nonce {
 			transfer.ExtraGasLimit = event.MvxGasLimit
 			transfer.Data = []byte(event.CallData)
+			if len(transfer.Data) == 0 {
+				// will add a dummy data so the relayers won't panic
+				transfer.Data = []byte(MissingCallData)
+			}
+			transfer.DisplayableData = hex.EncodeToString(transfer.Data)
+
 			return transfer
 		}
 	}

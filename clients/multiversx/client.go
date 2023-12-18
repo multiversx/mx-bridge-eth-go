@@ -310,9 +310,10 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 			ArgBytes(dt.ConvertedTokenBytes).
 			ArgBigInt(dt.Amount).
 			ArgInt64(int64(dt.Nonce))
+
 		if len(dt.Data) > 0 {
-			txBuilder.ArgBytes(dt.Data).
-				ArgInt64(int64(dt.ExtraGasLimit))
+			// SC call type of transfer
+			txBuilder.ArgBytes(dt.Data).ArgInt64(int64(dt.ExtraGasLimit))
 		}
 	}
 

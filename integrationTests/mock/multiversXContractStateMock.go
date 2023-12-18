@@ -27,11 +27,13 @@ type multiversXProposedTransfer struct {
 
 // Transfer -
 type Transfer struct {
-	From   []byte
-	To     []byte
-	Token  string
-	Amount *big.Int
-	Nonce  *big.Int
+	From     []byte
+	To       []byte
+	Token    string
+	Amount   *big.Int
+	Nonce    *big.Int
+	ExtraGas uint64
+	Data     []byte
 }
 
 // MultiversXPendingBatch -
@@ -169,23 +171,24 @@ func (mock *multiversXContractStateMock) createProposedTransfer(dataSplit []stri
 		BatchId: big.NewInt(0).SetBytes(buff),
 	}
 
-	for i := 2; i < len(dataSplit); i += 5 {
-		from, errDecode := hex.DecodeString(dataSplit[i])
+	currentIndex := 2
+	for currentIndex < len(dataSplit) {
+		from, errDecode := hex.DecodeString(dataSplit[currentIndex])
 		if errDecode != nil {
 			panic(errDecode)
 		}
 
-		to, errDecode := hex.DecodeString(dataSplit[i+1])
+		to, errDecode := hex.DecodeString(dataSplit[currentIndex+1])
 		if errDecode != nil {
 			panic(errDecode)
 		}
 
-		amountBytes, errDecode := hex.DecodeString(dataSplit[i+3])
+		amountBytes, errDecode := hex.DecodeString(dataSplit[currentIndex+3])
 		if errDecode != nil {
 			panic(errDecode)
 		}
 
-		nonceBytes, errDecode := hex.DecodeString(dataSplit[i+4])
+		nonceBytes, errDecode := hex.DecodeString(dataSplit[currentIndex+4])
 		if errDecode != nil {
 			panic(errDecode)
 		}
@@ -193,12 +196,30 @@ func (mock *multiversXContractStateMock) createProposedTransfer(dataSplit []stri
 		t := Transfer{
 			From:   from,
 			To:     to,
-			Token:  dataSplit[i+2],
+			Token:  dataSplit[currentIndex+2],
 			Amount: big.NewInt(0).SetBytes(amountBytes),
 			Nonce:  big.NewInt(0).SetBytes(nonceBytes),
 		}
 
+		indexIncrementValue := 5
+		if core.IsSmartContractAddress(to) {
+			indexIncrementValue += 2
+			t.Data, errDecode = hex.DecodeString(dataSplit[currentIndex+5])
+			if errDecode != nil {
+				panic(errDecode)
+			}
+
+			var extraGasBytes []byte
+			extraGasBytes, errDecode = hex.DecodeString(dataSplit[currentIndex+6])
+			if errDecode != nil {
+				panic(errDecode)
+			}
+
+			t.ExtraGas = big.NewInt(0).SetBytes(extraGasBytes).Uint64()
+		}
+
 		transfer.Transfers = append(transfer.Transfers, t)
+		currentIndex += indexIncrementValue
 	}
 
 	hash, err := core.CalculateHash(integrationTests.TestMarshalizer, integrationTests.TestHasher, transfer)
