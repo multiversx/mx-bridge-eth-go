@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -115,7 +115,7 @@ func (bv *batchValidator) doRequestReturningBytes(batch []byte, ctx context.Cont
 		return nil, err
 	}
 	if response.StatusCode == http.StatusBadRequest && response.Body != http.NoBody {
-		data, _ := ioutil.ReadAll(response.Body)
+		data, _ := io.ReadAll(response.Body)
 		badResponse := &microserviceBadRequestBody{}
 		err = json.Unmarshal(data, badResponse)
 		if err != nil {
@@ -131,7 +131,7 @@ func (bv *batchValidator) doRequestReturningBytes(batch []byte, ctx context.Cont
 		_ = response.Body.Close()
 	}()
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}

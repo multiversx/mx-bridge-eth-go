@@ -1,8 +1,6 @@
 package factory
 
 import (
-	"io/ioutil"
-	"os"
 	"path"
 	"testing"
 	"time"
@@ -11,7 +9,6 @@ import (
 	"github.com/multiversx/mx-chain-go/config"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var log = logger.GetOrCreate("factory_test")
@@ -19,21 +16,9 @@ var log = logger.GetOrCreate("factory_test")
 func TestCreateUnitStorer(t *testing.T) {
 	t.Parallel()
 
-	workingDir, err := ioutil.TempDir("", "")
-	require.Nil(t, err)
+	workingDir := t.TempDir()
 
 	log.Info("created temporary directory", "directory", workingDir)
-
-	defer func() {
-		err = os.RemoveAll(workingDir)
-		require.Nil(t, err)
-
-		if err == nil {
-			log.Info("removed temporary directory", "directory", workingDir)
-		} else {
-			log.Error("error while removing temporary directory", "directory", workingDir, "error", err)
-		}
-	}()
 
 	cfg := config.StorageConfig{
 		Cache: config.CacheConfig{

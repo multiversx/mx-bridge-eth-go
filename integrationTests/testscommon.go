@@ -95,8 +95,7 @@ func CreateMessengerWithNoDiscovery() p2p.Messenger {
 			Port: "0",
 			Transports: p2pConfig.P2PTransportConfig{
 				TCP: p2pConfig.P2PTCPTransport{
-					ListenAddress:    "/ip4/0.0.0.0/tcp/%d",
-					PreventPortReuse: false,
+					ListenAddress: "/ip4/127.0.0.1/tcp/%d",
 				},
 			},
 		},

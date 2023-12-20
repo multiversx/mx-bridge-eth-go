@@ -21,7 +21,7 @@ type Config struct {
 	StateMachine      map[string]ConfigStateMachine
 	Relayer           ConfigRelayer
 	Logs              LogsConfig
-	Antiflood         AntifloodConfig
+	WebAntiflood      WebAntifloodConfig
 	BatchValidator    BatchValidatorConfig
 	PeersRatingConfig PeersRatingConfig
 }
@@ -60,6 +60,7 @@ type ConfigP2P struct {
 	Port            string
 	InitialPeerList []string
 	ProtocolID      string
+	Transports      p2pConfig.P2PTransportConfig
 	AntifloodConfig config.AntifloodConfig
 	Transport       p2pConfig.P2PTCPTransport
 }
@@ -97,8 +98,8 @@ type WebServerAntifloodConfig struct {
 	SameSourceResetIntervalInSec uint32
 }
 
-// AntifloodConfig will hold all p2p antiflood parameters
-type AntifloodConfig struct {
+// WebAntifloodConfig will hold all web antiflood parameters
+type WebAntifloodConfig struct {
 	Enabled   bool
 	WebServer WebServerAntifloodConfig
 }
