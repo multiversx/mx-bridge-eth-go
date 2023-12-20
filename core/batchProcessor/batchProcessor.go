@@ -15,6 +15,7 @@ type ArgListsBatch struct {
 	Nonces              []*big.Int
 }
 
+// ExtractList will extract the batch data into a format that is easy to use
 func ExtractList(batch *clients.TransferBatch) (*ArgListsBatch, error) {
 	arg := ArgListsBatch{}
 

@@ -1183,9 +1183,9 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 				for i := 0; i < len(providedBatch.Deposits); i++ {
 					assert.True(t, providedBatch.Deposits[i].Amount == batch.Amounts[i])
 					assert.True(t, providedBatch.Deposits[i].Nonce == batch.Nonces[i].Uint64())
-					assert.True(t, CompareBytes(providedBatch.Deposits[i].ToBytes, batch.Recipients[i].Bytes()))
-					assert.True(t, CompareBytes(providedBatch.Deposits[i].TokenBytes, batch.Tokens[i].Bytes()))
-					assert.True(t, CompareBytes(providedBatch.Deposits[i].ConvertedTokenBytes, batch.ConvertedTokenBytes[i]))
+					assert.True(t, string(providedBatch.Deposits[i].ToBytes) == string(batch.Recipients[i].Bytes()))
+					assert.True(t, string(providedBatch.Deposits[i].TokenBytes) == string(batch.Tokens[i].Bytes()))
+					assert.True(t, string(providedBatch.Deposits[i].ConvertedTokenBytes) == string(batch.ConvertedTokenBytes[i]))
 				}
 				assert.True(t, providedQuorum == quorum)
 
@@ -1204,9 +1204,6 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 	})
 }
 
-func TestMultiversXToEthBridgeExecutor_checkAvailableTokens(t *testing.T) {
-
-}
 func TestMultiversXToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 	t.Parallel()
 
@@ -1665,17 +1662,4 @@ func TestBridgeExecutor_ValidateBatch(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, result)
 	assert.True(t, validateBatchCalled)
-}
-
-// CompareBytes compares two byte slices and returns true if they are equal.
-func CompareBytes(a, b []byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }

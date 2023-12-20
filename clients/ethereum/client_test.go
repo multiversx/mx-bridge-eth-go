@@ -651,6 +651,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 }
 
 func TestClient_CheckRequiredBalance(t *testing.T) {
+	t.Parallel()
 	args := createMockEthereumClientArgs()
 
 	tokenErc20 := common.BytesToAddress([]byte("ERC20token1"))
@@ -693,10 +694,12 @@ func TestClient_CheckRequiredBalance(t *testing.T) {
 	})
 }
 
-// TokenMintedBalances
-// WhitelistedTokensMintBurn
 func TestClient_TokenMintedBalances(t *testing.T) {
+	t.Parallel()
+
 	t.Run("error while getting token minted balances", func(t *testing.T) {
+		t.Parallel()
+
 		expectedErr := errors.New("expected error")
 		args := createMockEthereumClientArgs()
 		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
@@ -711,22 +714,29 @@ func TestClient_TokenMintedBalances(t *testing.T) {
 		assert.True(t, errors.Is(err, expectedErr))
 	})
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		providedBalance := big.NewInt(100)
 		args := createMockEthereumClientArgs()
 		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
-				return big.NewInt(100), nil
+				return providedBalance, nil
 			},
 		}
 		c, _ := NewEthereumClient(args)
 
 		balances, err := c.TokenMintedBalances(context.Background(), common.Address{})
 		assert.Nil(t, err)
-		assert.Equal(t, big.NewInt(100), balances)
+		assert.Equal(t, providedBalance, balances)
 	})
 }
 
 func TestClient_WhitelistedTokensMintBurn(t *testing.T) {
+	t.Parallel()
+
 	t.Run("error while getting whitelisted tokens mint burn", func(t *testing.T) {
+		t.Parallel()
+
 		expectedErr := errors.New("expected error")
 		args := createMockEthereumClientArgs()
 		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
@@ -741,6 +751,8 @@ func TestClient_WhitelistedTokensMintBurn(t *testing.T) {
 		assert.True(t, errors.Is(err, expectedErr))
 	})
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
 		args := createMockEthereumClientArgs()
 		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
 			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
