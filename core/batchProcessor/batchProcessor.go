@@ -6,6 +6,7 @@ import (
 	"math/big"
 )
 
+// ArgListsBatch is a struct that contains the batch data in a format that is easy to use
 type ArgListsBatch struct {
 	Tokens              []common.Address
 	Recipients          []common.Address
