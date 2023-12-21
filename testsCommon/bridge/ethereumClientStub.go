@@ -2,11 +2,11 @@ package bridge
 
 import (
 	"context"
-	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 )
 
 // EthereumClientStub -

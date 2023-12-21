@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"math/big"
 	"strings"
 	"testing"
@@ -13,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -1181,11 +1181,11 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 				assert.True(t, providedHash == msgHash)
 				assert.True(t, providedBatch.ID == batchId)
 				for i := 0; i < len(providedBatch.Deposits); i++ {
-					assert.True(t, providedBatch.Deposits[i].Amount == batch.Amounts[i])
-					assert.True(t, providedBatch.Deposits[i].Nonce == batch.Nonces[i].Uint64())
-					assert.True(t, string(providedBatch.Deposits[i].ToBytes) == string(batch.Recipients[i].Bytes()))
-					assert.True(t, string(providedBatch.Deposits[i].TokenBytes) == string(batch.Tokens[i].Bytes()))
-					assert.True(t, string(providedBatch.Deposits[i].ConvertedTokenBytes) == string(batch.ConvertedTokenBytes[i]))
+					assert.Equal(t, providedBatch.Deposits[i].Amount, batch.Amounts[i])
+					assert.Equal(t, providedBatch.Deposits[i].Nonce, batch.Nonces[i].Uint64())
+					assert.Equal(t, providedBatch.Deposits[i].ToBytes, batch.Recipients[i].Bytes())
+					assert.Equal(t, providedBatch.Deposits[i].TokenBytes, batch.Tokens[i].Bytes())
+					assert.Equal(t, providedBatch.Deposits[i].ConvertedTokenBytes, batch.ConvertedTokenBytes[i])
 				}
 				assert.True(t, providedQuorum == quorum)
 

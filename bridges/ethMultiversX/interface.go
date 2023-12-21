@@ -2,11 +2,11 @@ package ethmultiversx
 
 import (
 	"context"
-	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 )
 
 // MultiversXClient defines the behavior of the MultiversX client able to communicate with the MultiversX chain

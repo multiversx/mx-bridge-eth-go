@@ -3,13 +3,13 @@ package ethmultiversx
 import (
 	"context"
 	"fmt"
-	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -602,13 +602,15 @@ func (executor *bridgeExecutor) getCumulatedTransfers(tokens []common.Address, c
 	uniqueConvertedTokens := make([][]byte, 0)
 
 	for i, token := range tokens {
-		if _, exists := cumulatedAmounts[token]; exists {
-			cumulatedAmounts[token].Add(cumulatedAmounts[token], amounts[i])
-		} else {
-			cumulatedAmounts[token] = amounts[i]
-			uniqueTokens = append(uniqueTokens, token)
-			uniqueConvertedTokens = append(uniqueConvertedTokens, convertedTokens[i])
+		existingValue, exists := cumulatedAmounts[token]
+		if exists {
+			existingValue.Add(existingValue, amounts[i])
+			continue
 		}
+
+		cumulatedAmounts[token] = amounts[i]
+		uniqueTokens = append(uniqueTokens, token)
+		uniqueConvertedTokens = append(uniqueConvertedTokens, convertedTokens[i])
 	}
 
 	finalAmounts := make([]*big.Int, len(uniqueTokens))

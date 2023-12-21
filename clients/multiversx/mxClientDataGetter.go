@@ -206,7 +206,7 @@ func (dataGetter *mxClientDataGetter) ExecuteQueryReturningUint64(ctx context.Co
 func (dataGetter *mxClientDataGetter) ExecuteQueryReturningBigInt(ctx context.Context, request *data.VmValueRequest) (*big.Int, error) {
 	response, err := dataGetter.ExecuteQueryReturningBytes(ctx, request)
 	if err != nil {
-		return big.NewInt(0), err
+		return nil, err
 	}
 
 	if len(response) == 0 {
@@ -250,7 +250,7 @@ func (dataGetter *mxClientDataGetter) executeQueryUint64FromBuilder(ctx context.
 func (dataGetter *mxClientDataGetter) executeQueryBigIntFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (*big.Int, error) {
 	vmValuesRequest, err := builder.ToVmValueRequest()
 	if err != nil {
-		return big.NewInt(0), err
+		return nil, err
 	}
 
 	return dataGetter.ExecuteQueryReturningBigInt(ctx, vmValuesRequest)

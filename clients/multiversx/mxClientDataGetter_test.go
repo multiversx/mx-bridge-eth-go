@@ -388,7 +388,7 @@ func TestMXClientDataGetter_ExecuteQueryReturningBigInt(t *testing.T) {
 		dg, _ := NewMXClientDataGetter(args)
 
 		result, err := dg.ExecuteQueryReturningBigInt(context.Background(), nil)
-		assert.Equal(t, big.NewInt(0), result)
+		assert.Nil(t, result)
 		assert.Equal(t, errNilRequest, err)
 	})
 	t.Run("empty response", func(t *testing.T) {
