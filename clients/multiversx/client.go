@@ -66,6 +66,11 @@ type client struct {
 	mut                      sync.RWMutex
 }
 
+type scCallExtraGas struct {
+	basicGas      uint64
+	performAction uint64
+}
+
 // NewClient returns a new MultiversX Client instance
 func NewClient(args ClientArgs) (*client, error) {
 	err := checkArgs(args)
@@ -317,7 +322,10 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 		}
 	}
 
+	scCallGas := c.computeExtraGasForSCCallsBasic(batch)
+
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
+	gasLimit += scCallGas.basicGas
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
 		c.log.Info("proposed transfer"+batch.String(), "transaction hash", hash)
@@ -356,7 +364,10 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 
 	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))
 
+	scCallGas := c.computeExtraGasForSCCallsBasic(batch)
+
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+	gasLimit += scCallGas.basicGas + scCallGas.performAction
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 
 	if err == nil {
@@ -364,6 +375,24 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	}
 
 	return hash, err
+}
+
+func (c *client) computeExtraGasForSCCallsBasic(batch *clients.TransferBatch) scCallExtraGas {
+	result := scCallExtraGas{}
+	for _, deposit := range batch.Deposits {
+		if len(deposit.Data) == 0 {
+			continue
+		}
+
+		computedLen := 2                                                         // 2 extra arguments separators (@)
+		computedLen += len(deposit.Data) * 2                                     // the data is hexed, so, double the size
+		computedLen += len(big.NewInt(int64(deposit.ExtraGasLimit)).Bytes()) * 2 // the gas is converted to bytes, then hexed
+
+		result.basicGas += uint64(computedLen) * c.gasMapConfig.ScCallPerByte
+		result.performAction += c.gasMapConfig.ScCallPerformForEach
+	}
+
+	return result
 }
 
 func (c *client) checkIsPaused(ctx context.Context) error {
