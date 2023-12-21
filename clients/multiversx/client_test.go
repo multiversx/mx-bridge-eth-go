@@ -799,6 +799,7 @@ func TestClient_PerformAction(t *testing.T) {
 				}
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
+
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
 					dataStrings = append(dataStrings, depositToStrings(dt)...)
@@ -811,6 +812,7 @@ func TestClient_PerformAction(t *testing.T) {
 
 				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
 				expectedGasLimit += extraGas
+				assert.Equal(t, expectedGasLimit, gasLimit)
 
 				return expectedHash, nil
 			},
