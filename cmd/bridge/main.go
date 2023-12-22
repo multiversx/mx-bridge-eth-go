@@ -183,6 +183,12 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	scExecProxyAddr := ethCommon.HexToAddress(cfg.Eth.SCExecProxyAddress)
+	scExecProxy, err := contract.NewSCExecProxy(scExecProxyAddr, ethClient)
+	if err != nil {
+		return err
+	}
+
 	argsContractsHolder := ethereum.ArgsErc20SafeContractsHolder{
 		EthClient:              ethClient,
 		EthClientStatusHandler: ethClientStatusHandler,
@@ -209,9 +215,10 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	argsClientWrapper := wrappers.ArgsEthereumChainWrapper{
-		StatusHandler:    ethClientStatusHandler,
-		MultiSigContract: multiSigInstance,
-		BlockchainClient: ethClient,
+		StatusHandler:       ethClientStatusHandler,
+		MultiSigContract:    multiSigInstance,
+		BlockchainClient:    ethClient,
+		SCExecProxyContract: scExecProxy,
 	}
 
 	clientWrapper, err := wrappers.NewEthereumChainWrapper(argsClientWrapper)

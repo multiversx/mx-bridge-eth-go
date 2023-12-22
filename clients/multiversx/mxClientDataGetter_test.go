@@ -559,6 +559,59 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, proxyCalled)
 	})
+	t.Run("should work with SC calls", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsMXClientDataGetter()
+		proxyCalled := false
+		args.Proxy = &interactors.ProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				proxyCalled = true
+				assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+				assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+				assert.Equal(t, "", vmRequest.CallValue)
+				assert.Equal(t, wasTransferActionProposedFuncName, vmRequest.FuncName)
+
+				expectedArgs := []string{
+					hex.EncodeToString(big.NewInt(112233).Bytes()),
+
+					hex.EncodeToString([]byte("from1")),
+					hex.EncodeToString([]byte("to1")),
+					hex.EncodeToString([]byte("converted_token1")),
+					hex.EncodeToString(big.NewInt(2).Bytes()),
+					hex.EncodeToString(big.NewInt(1).Bytes()),
+					hex.EncodeToString([]byte("doSomething@7738")),
+					hex.EncodeToString(big.NewInt(5).Bytes()),
+
+					hex.EncodeToString([]byte("from2")),
+					hex.EncodeToString([]byte("to2")),
+					hex.EncodeToString([]byte("converted_token2")),
+					hex.EncodeToString(big.NewInt(4).Bytes()),
+					hex.EncodeToString(big.NewInt(3).Bytes()),
+				}
+
+				assert.Equal(t, expectedArgs, vmRequest.Args)
+
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{{1}},
+					},
+				}, nil
+			},
+		}
+
+		dg, _ := NewMXClientDataGetter(args)
+
+		batch := createMockBatch()
+		batch.Deposits[0].Data = []byte("doSomething@7738")
+		batch.Deposits[0].ExtraGasLimit = 5
+
+		result, err := dg.WasProposedTransfer(context.Background(), batch)
+		assert.True(t, result)
+		assert.Nil(t, err)
+		assert.True(t, proxyCalled)
+	})
 }
 
 func TestMXClientDataGetter_WasExecuted(t *testing.T) {
@@ -674,6 +727,59 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 		dg, _ := NewMXClientDataGetter(args)
 
 		batch := createMockBatch()
+
+		result, err := dg.GetActionIDForProposeTransfer(context.Background(), batch)
+		assert.Equal(t, uint64(1234), result)
+		assert.Nil(t, err)
+		assert.True(t, proxyCalled)
+	})
+	t.Run("should work with SC calls", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsMXClientDataGetter()
+		proxyCalled := false
+		args.Proxy = &interactors.ProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				proxyCalled = true
+				assert.Equal(t, args.RelayerAddress.AddressAsBech32String(), vmRequest.CallerAddr)
+				assert.Equal(t, args.MultisigContractAddress.AddressAsBech32String(), vmRequest.Address)
+				assert.Equal(t, "", vmRequest.CallValue)
+				assert.Equal(t, getActionIdForTransferBatchFuncName, vmRequest.FuncName)
+
+				expectedArgs := []string{
+					hex.EncodeToString(big.NewInt(112233).Bytes()),
+
+					hex.EncodeToString([]byte("from1")),
+					hex.EncodeToString([]byte("to1")),
+					hex.EncodeToString([]byte("converted_token1")),
+					hex.EncodeToString(big.NewInt(2).Bytes()),
+					hex.EncodeToString(big.NewInt(1).Bytes()),
+					hex.EncodeToString([]byte("doSomething@7742")),
+					hex.EncodeToString(big.NewInt(5).Bytes()),
+
+					hex.EncodeToString([]byte("from2")),
+					hex.EncodeToString([]byte("to2")),
+					hex.EncodeToString([]byte("converted_token2")),
+					hex.EncodeToString(big.NewInt(4).Bytes()),
+					hex.EncodeToString(big.NewInt(3).Bytes()),
+				}
+
+				assert.Equal(t, expectedArgs, vmRequest.Args)
+
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{big.NewInt(1234).Bytes()},
+					},
+				}, nil
+			},
+		}
+
+		dg, _ := NewMXClientDataGetter(args)
+
+		batch := createMockBatch()
+		batch.Deposits[0].Data = []byte("doSomething@7742")
+		batch.Deposits[0].ExtraGasLimit = 5
 
 		result, err := dg.GetActionIDForProposeTransfer(context.Background(), batch)
 		assert.Equal(t, uint64(1234), result)
