@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 )
 
 // MultiversXClient defines the behavior of the MultiversX client able to communicate with the MultiversX chain
@@ -38,12 +39,14 @@ type EthereumClient interface {
 	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
 	WasExecuted(ctx context.Context, batchID uint64) (bool, error)
 	GenerateMessageHash(batch *clients.TransferBatch) (common.Hash, error)
+	IsDepositSCCall(deposit *clients.DepositTransfer) bool
 
 	BroadcastSignatureForMessageHash(msgHash common.Hash)
 	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
 	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
 	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
+	GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error)
 	CheckClientAvailability(ctx context.Context) error
 	IsInterfaceNil() bool
 }
