@@ -45,6 +45,8 @@ func createMockClientArgs() ClientArgs {
 			ProposeStatusForEach:   50,
 			PerformActionBase:      60,
 			PerformActionForEach:   70,
+			ScCallPerByte:          80,
+			ScCallPerformForEach:   90,
 		},
 		Proxy:                        &interactors.ProxyStub{},
 		Log:                          logger.GetOrCreate("test"),
@@ -574,14 +576,19 @@ func TestClient_ProposeTransfer(t *testing.T) {
 					proposeTransferFuncName,
 					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
 				}
+				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
 					dataStrings = append(dataStrings, depositToStrings(dt)...)
+					if len(dt.Data) > 0 {
+						gasLimitBytes := big.NewInt(int64(dt.ExtraGasLimit)).Bytes()
+						extraGas += (uint64(len(dt.Data)+len(gasLimitBytes))*2 + 2) * args.GasMapConfig.ScCallPerByte
+					}
 				}
 
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
 
-				expectedGasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
+				expectedGasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach + extraGas
 				assert.Equal(t, expectedGasLimit, gasLimit)
 
 				return expectedHash, nil
@@ -754,8 +761,58 @@ func TestClient_PerformAction(t *testing.T) {
 				}
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
-				expectedGasdLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
-				assert.Equal(t, expectedGasdLimit, gasLimit)
+				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+				assert.Equal(t, expectedGasLimit, gasLimit)
+
+				return expectedHash, nil
+			},
+		}
+
+		hash, err := c.PerformAction(context.Background(), actionID, batch)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedHash, hash)
+		assert.True(t, sendWasCalled)
+	})
+	t.Run("should perform action with SC call", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+		expectedHash := "expected hash"
+		c, _ := NewClient(args)
+		sendWasCalled := false
+		batch := createMockBatch()
+		batch.Deposits[0].ExtraGasLimit = 37373
+		batch.Deposits[0].Data = []byte("doSomething@7788")
+		batch.Deposits[0].DisplayableData = hex.EncodeToString(batch.Deposits[0].Data)
+
+		c.txHandler = &bridgeTests.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+				sendWasCalled = true
+
+				dataField, err := builder.ToDataString()
+				assert.Nil(t, err)
+
+				dataStrings := []string{
+					performActionFuncName,
+					hex.EncodeToString(big.NewInt(int64(actionID)).Bytes()),
+				}
+				expectedDataField := strings.Join(dataStrings, "@")
+				assert.Equal(t, expectedDataField, dataField)
+
+				extraGas := uint64(0)
+				for _, dt := range batch.Deposits {
+					dataStrings = append(dataStrings, depositToStrings(dt)...)
+					if len(dt.Data) > 0 {
+						gasLimitBytes := big.NewInt(int64(dt.ExtraGasLimit)).Bytes()
+						extraGas += (uint64(len(dt.Data)+len(gasLimitBytes))*2 + 2) * args.GasMapConfig.ScCallPerByte
+						extraGas += args.GasMapConfig.ScCallPerformForEach
+					}
+				}
+
+				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+				expectedGasLimit += extraGas
+				assert.Equal(t, expectedGasLimit, gasLimit)
 
 				return expectedHash, nil
 			},

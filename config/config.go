@@ -169,6 +169,8 @@ type MultiversXGasMapConfig struct {
 	ProposeStatusForEach   uint64
 	PerformActionBase      uint64
 	PerformActionForEach   uint64
+	ScCallPerByte          uint64
+	ScCallPerformForEach   uint64
 }
 
 // PeersRatingConfig will hold settings related to peers rating
