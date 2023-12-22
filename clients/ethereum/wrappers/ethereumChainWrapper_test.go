@@ -24,6 +24,7 @@ func createMockArgsEthereumChainWrapper() (ArgsEthereumChainWrapper, *testsCommo
 
 	return ArgsEthereumChainWrapper{
 		MultiSigContract: &bridgeTests.MultiSigContractStub{},
+		SafeContract:     &bridgeTests.SafeContractStub{},
 		BlockchainClient: &interactors.BlockchainClientStub{},
 		StatusHandler:    statusHandler,
 	}, statusHandler

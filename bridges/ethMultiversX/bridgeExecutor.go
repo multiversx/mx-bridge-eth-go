@@ -3,11 +3,13 @@ package ethmultiversx
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -178,7 +180,7 @@ func (executor *bridgeExecutor) GetLastExecutedEthBatchIDFromMultiversX(ctx cont
 	return batchID, err
 }
 
-// VerifyLastDepositNonceExecutedOnEthereumBatch will check the deposit nonces from the fetched batch from Ethereum client
+// VerifyLastDepositNonceExecutedOnEthereumBatch will check the deposit Nonces from the fetched batch from Ethereum client
 func (executor *bridgeExecutor) VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error {
 	if executor.batch == nil {
 		return ErrNilBatch
@@ -403,6 +405,7 @@ func (executor *bridgeExecutor) PerformActionOnMultiversX(ctx context.Context) e
 		return ErrNilBatch
 	}
 
+	// TODO: check mintBurn balances before performing the action
 	hash, err := executor.multiversXClient.PerformAction(ctx, executor.actionID, executor.batch)
 	if err != nil {
 		return err
@@ -467,7 +470,12 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		return ErrNilBatch
 	}
 
-	hash, err := executor.ethereumClient.GenerateMessageHash(executor.batch)
+	argLists, err := batchProcessor.ExtractList(executor.batch)
+	if err != nil {
+		return err
+	}
+
+	hash, err := executor.ethereumClient.GenerateMessageHash(argLists, executor.batch.ID)
 	if err != nil {
 		return err
 	}
@@ -493,7 +501,19 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 
 	executor.log.Debug("fetched quorum size", "quorum", quorumSize.Int64())
 
-	hash, err := executor.ethereumClient.ExecuteTransfer(ctx, executor.msgHash, executor.batch, int(quorumSize.Int64()))
+	argLists, err := batchProcessor.ExtractList(executor.batch)
+	if err != nil {
+		return err
+	}
+
+	err = executor.checkAvailableTokensOnEthereum(ctx, argLists.Tokens, argLists.ConvertedTokenBytes, argLists.Amounts)
+	if err != nil {
+		return err
+	}
+
+	executor.log.Info("executing transfer " + executor.batch.String())
+
+	hash, err := executor.ethereumClient.ExecuteTransfer(ctx, executor.msgHash, argLists, executor.batch.ID, int(quorumSize.Int64()))
 	if err != nil {
 		return err
 	}
@@ -502,6 +522,103 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 		"batch ID", executor.batch.ID)
 
 	return nil
+}
+
+func (executor *bridgeExecutor) checkCumulatedTransfers(ctx context.Context, tokens []common.Address, convertedTokens [][]byte, amounts []*big.Int) error {
+	for i, token := range tokens {
+		err := executor.checkToken(ctx, token, convertedTokens[i], amounts[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (executor *bridgeExecutor) checkToken(ctx context.Context, token common.Address, convertedToken []byte, amount *big.Int) error {
+	isMintBurnToken, err := executor.isMintBurnToken(ctx, token, convertedToken)
+	if err != nil {
+		return err
+	}
+
+	if isMintBurnToken {
+		return executor.checkRequiredMintBurnBalance(ctx, token, convertedToken)
+	}
+
+	return executor.ethereumClient.CheckRequiredBalance(ctx, token, amount)
+}
+
+func (executor *bridgeExecutor) isMintBurnToken(ctx context.Context, token common.Address, convertedToken []byte) (bool, error) {
+	isMintBurnOnEthereum := executor.isMintBurnOnEthereum(ctx, token)
+	isMintBurnOnMultiversX := executor.isMintBurnOnMultiversX(ctx, convertedToken)
+	if isMintBurnOnEthereum != isMintBurnOnMultiversX {
+		return false, fmt.Errorf("%w isMintBurnOnEthereum = %v, isMintBurnOnMultiversX = %v", ErrInvalidSetupMintBurnToken, isMintBurnOnEthereum, isMintBurnOnMultiversX)
+	}
+	return isMintBurnOnEthereum, nil
+}
+
+func (executor *bridgeExecutor) checkRequiredMintBurnBalance(ctx context.Context, token common.Address, convertedToken []byte) error {
+	mintedBalance, err := executor.ethereumClient.TokenMintedBalances(ctx, token)
+	if err != nil {
+		return err
+	}
+
+	burntBalance, err := executor.multiversXClient.AccumulatedBurnedTokens(ctx, convertedToken)
+	if err != nil {
+		return err
+	}
+	if mintedBalance.Cmp(burntBalance) != 0 {
+		return fmt.Errorf("%w, minted: %s, burnt: %s for ERC20 token %s/ ESDT token %s",
+			ErrMintBurnBalance, mintedBalance.String(), burntBalance.String(), token.String(), convertedToken)
+	}
+	return nil
+}
+
+func (executor *bridgeExecutor) isMintBurnOnEthereum(ctx context.Context, erc20Address common.Address) bool {
+	isMintBurn, err := executor.ethereumClient.WhitelistedTokensMintBurn(ctx, erc20Address)
+	if err != nil {
+		return false
+	}
+	return isMintBurn
+}
+
+func (executor *bridgeExecutor) isMintBurnOnMultiversX(ctx context.Context, token []byte) bool {
+
+	isMintBurn, err := executor.multiversXClient.IsMintBurnAllowed(ctx, token)
+	if err != nil {
+		return false
+	}
+	return isMintBurn
+}
+
+func (executor *bridgeExecutor) checkAvailableTokensOnEthereum(ctx context.Context, tokens []common.Address, convertedTokens [][]byte, amounts []*big.Int) error {
+	tokens, convertedTokens, amounts = executor.getCumulatedTransfers(tokens, convertedTokens, amounts)
+
+	return executor.checkCumulatedTransfers(ctx, tokens, convertedTokens, amounts)
+}
+
+func (executor *bridgeExecutor) getCumulatedTransfers(tokens []common.Address, convertedTokens [][]byte, amounts []*big.Int) ([]common.Address, [][]byte, []*big.Int) {
+	cumulatedAmounts := make(map[common.Address]*big.Int)
+	uniqueTokens := make([]common.Address, 0)
+	uniqueConvertedTokens := make([][]byte, 0)
+
+	for i, token := range tokens {
+		existingValue, exists := cumulatedAmounts[token]
+		if exists {
+			existingValue.Add(existingValue, amounts[i])
+			continue
+		}
+
+		cumulatedAmounts[token] = amounts[i]
+		uniqueTokens = append(uniqueTokens, token)
+		uniqueConvertedTokens = append(uniqueConvertedTokens, convertedTokens[i])
+	}
+
+	finalAmounts := make([]*big.Int, len(uniqueTokens))
+	for i, token := range uniqueTokens {
+		finalAmounts[i] = cumulatedAmounts[token]
+	}
+
+	return uniqueTokens, uniqueConvertedTokens, finalAmounts
 }
 
 // ProcessQuorumReachedOnEthereum returns true if the proposed transfer reached the set quorum

@@ -6,19 +6,23 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 )
 
 // EthereumClientStub -
 type EthereumClientStub struct {
 	GetBatchCalled                         func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
 	WasExecutedCalled                      func(ctx context.Context, batchID uint64) (bool, error)
-	GenerateMessageHashCalled              func(batch *clients.TransferBatch) (common.Hash, error)
+	GenerateMessageHashCalled              func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error)
 	BroadcastSignatureForMessageHashCalled func(msgHash common.Hash)
-	ExecuteTransferCalled                  func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error)
+	ExecuteTransferCalled                  func(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error)
 	CheckClientAvailabilityCalled          func(ctx context.Context) error
 	GetTransactionsStatusesCalled          func(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSizeCalled                    func(ctx context.Context) (*big.Int, error)
 	IsQuorumReachedCalled                  func(ctx context.Context, msgHash common.Hash) (bool, error)
+	CheckRequiredBalanceCalled             func(ctx context.Context, erc20Address common.Address, value *big.Int) error
+	TokenMintedBalancesCalled              func(ctx context.Context, token common.Address) (*big.Int, error)
+	WhitelistedTokensMintBurnCalled        func(ctx context.Context, token common.Address) (bool, error)
 }
 
 // GetBatch -
@@ -40,9 +44,9 @@ func (stub *EthereumClientStub) WasExecuted(ctx context.Context, batchID uint64)
 }
 
 // GenerateMessageHash -
-func (stub *EthereumClientStub) GenerateMessageHash(batch *clients.TransferBatch) (common.Hash, error) {
+func (stub *EthereumClientStub) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error) {
 	if stub.GenerateMessageHashCalled != nil {
-		return stub.GenerateMessageHashCalled(batch)
+		return stub.GenerateMessageHashCalled(batch, batchID)
 	}
 
 	return common.Hash{}, errNotImplemented
@@ -56,9 +60,9 @@ func (stub *EthereumClientStub) BroadcastSignatureForMessageHash(msgHash common.
 }
 
 // ExecuteTransfer -
-func (stub *EthereumClientStub) ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error) {
+func (stub *EthereumClientStub) ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error) {
 	if stub.ExecuteTransferCalled != nil {
-		return stub.ExecuteTransferCalled(ctx, msgHash, batch, quorum)
+		return stub.ExecuteTransferCalled(ctx, msgHash, batch, batchId, quorum)
 	}
 
 	return "", errNotImplemented
@@ -98,6 +102,33 @@ func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash com
 	}
 
 	return false, errNotImplemented
+}
+
+// CheckRequiredBalance -
+func (stub *EthereumClientStub) CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error {
+	if stub.CheckRequiredBalanceCalled != nil {
+		return stub.CheckRequiredBalanceCalled(ctx, erc20Address, value)
+	}
+
+	return nil
+}
+
+// TokenMintedBalances -
+func (stub *EthereumClientStub) TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	if stub.TokenMintedBalancesCalled != nil {
+		return stub.TokenMintedBalancesCalled(ctx, token)
+	}
+
+	return nil, nil
+}
+
+// WhitelistedTokensMintBurn -
+func (stub *EthereumClientStub) WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error) {
+	if stub.WhitelistedTokensMintBurnCalled != nil {
+		return stub.WhitelistedTokensMintBurnCalled(ctx, token)
+	}
+
+	return false, nil
 }
 
 // IsInterfaceNil -

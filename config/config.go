@@ -62,6 +62,7 @@ type ConfigP2P struct {
 	ProtocolID      string
 	Transports      p2pConfig.P2PTransportConfig
 	AntifloodConfig config.AntifloodConfig
+	Transport       p2pConfig.P2PTCPTransport
 }
 
 // ConfigRelayer configuration for general relayer configuration

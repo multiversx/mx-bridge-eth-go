@@ -257,6 +257,16 @@ func (mock *EthereumChainMock) IsPaused(_ context.Context) (bool, error) {
 	return false, nil
 }
 
+// TokenMintedBalances -
+func (mock *EthereumChainMock) TokenMintedBalances(_ context.Context, _ common.Address) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+// WhitelistedTokensMintBurn -
+func (mock *EthereumChainMock) WhitelistedTokensMintBurn(_ context.Context, _ common.Address) (bool, error) {
+	return false, nil
+}
+
 // IsInterfaceNil -
 func (mock *EthereumChainMock) IsInterfaceNil() bool {
 	return mock == nil

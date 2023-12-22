@@ -378,6 +378,60 @@ func TestMXClientDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
 	})
 }
 
+func TestMXClientDataGetter_ExecuteQueryReturningBigInt(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsMXClientDataGetter()
+	t.Run("nil request", func(t *testing.T) {
+		t.Parallel()
+
+		dg, _ := NewMXClientDataGetter(args)
+
+		result, err := dg.ExecuteQueryReturningBigInt(context.Background(), nil)
+		assert.Nil(t, result)
+		assert.Equal(t, errNilRequest, err)
+	})
+	t.Run("empty response", func(t *testing.T) {
+		t.Parallel()
+
+		dg, _ := NewMXClientDataGetter(args)
+		dg.proxy = createMockProxy(make([][]byte, 0))
+
+		result, err := dg.ExecuteQueryReturningBigInt(context.Background(), &data.VmValueRequest{})
+		assert.Equal(t, big.NewInt(0), result)
+		assert.Nil(t, err)
+	})
+	t.Run("empty byte slice on first element", func(t *testing.T) {
+		t.Parallel()
+
+		dg, _ := NewMXClientDataGetter(args)
+		dg.proxy = createMockProxy([][]byte{make([]byte, 0)})
+
+		result, err := dg.ExecuteQueryReturningBigInt(context.Background(), &data.VmValueRequest{})
+		assert.Equal(t, big.NewInt(0), result)
+		assert.Nil(t, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		dg, _ := NewMXClientDataGetter(args)
+		largeNumber := new(big.Int)
+		largeNumber.SetString("18446744073709551616", 10)
+		dg.proxy = createMockProxy([][]byte{largeNumber.Bytes()})
+
+		result, err := dg.ExecuteQueryReturningBigInt(context.Background(), &data.VmValueRequest{})
+		assert.Equal(t, largeNumber, result)
+		assert.Nil(t, err)
+
+		dg.proxy = createMockProxy([][]byte{{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}})
+
+		result, err = dg.ExecuteQueryReturningBigInt(context.Background(), &data.VmValueRequest{})
+		largeNumber.SetString("79228162514264337593543950335", 10)
+		assert.Equal(t, largeNumber, result)
+		assert.Nil(t, err)
+	})
+}
+
 func TestMXClientDataGetter_GetCurrentBatchAsDataBytes(t *testing.T) {
 	t.Parallel()
 

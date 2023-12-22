@@ -111,7 +111,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		txHandler: &transactionHandler{
 			proxy:                   args.Proxy,
 			relayerAddress:          relayerAddress,
-			multisigAddressAsBech32: args.MultisigContractAddress.AddressAsBech32String(),
+			multisigAddressAsBech32: addressConverter.ToBech32String(args.MultisigContractAddress.AddressBytes()),
 			nonceTxHandler:          nonceTxsHandler,
 			relayerPrivateKey:       args.RelayerPrivateKey,
 			singleSigner:            &singlesig.Ed25519Signer{},
@@ -130,8 +130,8 @@ func NewClient(args ClientArgs) (*client, error) {
 	}
 
 	c.log.Info("NewMultiversXClient",
-		"relayer address", relayerAddress.AddressAsBech32String(),
-		"safe contract address", args.MultisigContractAddress.AddressAsBech32String())
+		"relayer address", addressConverter.ToBech32String(relayerAddress.AddressBytes()),
+		"safe contract address", addressConverter.ToBech32String(args.MultisigContractAddress.AddressBytes()))
 
 	return c, nil
 }
@@ -371,6 +371,16 @@ func (c *client) checkIsPaused(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// IsMintBurnAllowed returns true if the provided token is whitelisted for mint/burn operations
+func (c *client) IsMintBurnAllowed(ctx context.Context, token []byte) (bool, error) {
+	return c.isMintBurnAllowed(ctx, token)
+}
+
+// AccumulatedBurnedTokens returns the accumulated burned tokens
+func (c *client) AccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error) {
+	return c.getAccumulatedBurnedTokens(ctx, token)
 }
 
 // CheckClientAvailability will check the client availability and will set the metric accordingly

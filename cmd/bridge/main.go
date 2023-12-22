@@ -184,6 +184,12 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	safeEthAddress := ethCommon.HexToAddress(cfg.Eth.SafeContractAddress)
+	safeInstance, err := contract.NewContract(safeEthAddress, ethClient)
+	if err != nil {
+		return err
+	}
+
 	argsContractsHolder := ethereum.ArgsErc20SafeContractsHolder{
 		EthClient:              ethClient,
 		EthClientStatusHandler: ethClientStatusHandler,
@@ -212,6 +218,7 @@ func startRelay(ctx *cli.Context, version string) error {
 	argsClientWrapper := wrappers.ArgsEthereumChainWrapper{
 		StatusHandler:    ethClientStatusHandler,
 		MultiSigContract: multiSigInstance,
+		SafeContract:     safeInstance,
 		BlockchainClient: ethClient,
 	}
 
@@ -352,6 +359,9 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		Port:                       cfg.P2P.Port,
 		MaximumExpectedPeerCount:   0,
 		ThresholdMinConnectedPeers: 0,
+		Transports: p2pConfig.P2PTransportConfig{
+			TCP: cfg.P2P.Transport,
+		},
 	}
 	peerDiscoveryConfig := p2pConfig.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
