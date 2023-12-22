@@ -46,13 +46,17 @@ func TestAddressConverter_ToBech32String(t *testing.T) {
 	assert.False(t, check.IfNil(addrConv))
 
 	t.Run("invalid bytes should return empty", func(t *testing.T) {
-		str := addrConv.ToBech32String([]byte("invalid"))
-		assert.Equal(t, "", str)
+		str, errLocal := addrConv.ToBech32String([]byte("invalid"))
+		assert.NotNil(t, errLocal)
+		assert.Contains(t, errLocal.Error(), "wrong size when encoding address, expected length 32, received 7")
+		assert.Empty(t, str)
 	})
 	t.Run("should work", func(t *testing.T) {
 		expected := "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede"
 		bytes, _ := hex.DecodeString("1e8a8b6b49de5b7be10aaa158a5a6a4abb4b56cc08f524bb5e6cd5f211ad3e13")
-		assert.Equal(t, expected, addrConv.ToBech32String(bytes))
+		bech32Address, errLocal := addrConv.ToBech32String(bytes)
+		assert.Equal(t, expected, bech32Address)
+		assert.Nil(t, errLocal)
 	})
 }
 

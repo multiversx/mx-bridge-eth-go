@@ -178,7 +178,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 		depositTransfer := &clients.DepositTransfer{
 			Nonce:            deposit.Nonce.Uint64(),
 			ToBytes:          toBytes,
-			DisplayableTo:    c.addressConverter.ToBech32String(toBytes),
+			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),
 			FromBytes:        fromBytes,
 			DisplayableFrom:  c.addressConverter.ToHexString(fromBytes),
 			TokenBytes:       tokenBytes,

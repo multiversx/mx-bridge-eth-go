@@ -19,6 +19,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/factory"
 	"github.com/multiversx/mx-bridge-eth-go/p2p"
 	"github.com/multiversx/mx-bridge-eth-go/status"
+	"github.com/multiversx/mx-chain-communication-go/p2p/libp2p"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/typeConverters/uint64ByteSlice"
@@ -29,7 +30,6 @@ import (
 	"github.com/multiversx/mx-chain-crypto-go/signing/secp256k1/singlesig"
 	chainFactory "github.com/multiversx/mx-chain-go/cmd/node/factory"
 	chainCommon "github.com/multiversx/mx-chain-go/common"
-	chainP2P "github.com/multiversx/mx-chain-go/p2p"
 	p2pConfig "github.com/multiversx/mx-chain-go/p2p/config"
 	p2pFactory "github.com/multiversx/mx-chain-go/p2p/factory"
 	"github.com/multiversx/mx-chain-go/statusHandler"
@@ -38,7 +38,6 @@ import (
 	"github.com/multiversx/mx-chain-go/update/disabled"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-logger-go/file"
-	"github.com/multiversx/mx-chain-p2p-go/libp2p"
 	"github.com/multiversx/mx-sdk-go/blockchain"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/urfave/cli"
@@ -352,6 +351,8 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		Port:                       cfg.P2P.Port,
 		MaximumExpectedPeerCount:   0,
 		ThresholdMinConnectedPeers: 0,
+		Transports:                 cfg.P2P.Transports,
+		ResourceLimiter:            cfg.P2P.ResourceLimiter,
 	}
 	peerDiscoveryConfig := p2pConfig.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
@@ -398,11 +399,10 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 	p2pPrivKey, _ := p2pKeyGen.GeneratePair()
 
 	args := libp2p.ArgsNetworkMessenger{
-		Marshalizer:           marshalizer,
+		Marshaller:            marshalizer,
 		P2pConfig:             p2pCfg,
 		SyncTimer:             &libp2p.LocalSyncTimer{},
 		PreferredPeersHolder:  disabled.NewPreferredPeersHolder(),
-		NodeOperationMode:     chainP2P.NormalOperation,
 		PeersRatingHandler:    peersRatingHandler,
 		ConnectionWatcherType: disabledWatcher,
 		P2pPrivateKey:         p2pPrivKey,
