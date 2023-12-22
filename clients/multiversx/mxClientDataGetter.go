@@ -46,13 +46,14 @@ type ArgsMXClientDataGetter struct {
 }
 
 type mxClientDataGetter struct {
-	multisigContractAddress core.AddressHandler
-	relayerAddress          core.AddressHandler
-	proxy                   Proxy
-	log                     logger.Logger
-	mutNodeStatus           sync.Mutex
-	wasShardIDFetched       bool
-	shardID                 uint32
+	multisigContractAddress       core.AddressHandler
+	bech32MultisigContractAddress string
+	relayerAddress                core.AddressHandler
+	proxy                         Proxy
+	log                           logger.Logger
+	mutNodeStatus                 sync.Mutex
+	wasShardIDFetched             bool
+	shardID                       uint32
 }
 
 // NewMXClientDataGetter creates a new instance of the dataGetter type
@@ -69,12 +70,17 @@ func NewMXClientDataGetter(args ArgsMXClientDataGetter) (*mxClientDataGetter, er
 	if check.IfNil(args.MultisigContractAddress) {
 		return nil, fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
 	}
+	bech32Address, err := args.MultisigContractAddress.AddressAsBech32String()
+	if err != nil {
+		return nil, fmt.Errorf("%w for %x", err, args.MultisigContractAddress.AddressBytes())
+	}
 
 	return &mxClientDataGetter{
-		multisigContractAddress: args.MultisigContractAddress,
-		relayerAddress:          args.RelayerAddress,
-		proxy:                   args.Proxy,
-		log:                     args.Log,
+		multisigContractAddress:       args.MultisigContractAddress,
+		bech32MultisigContractAddress: bech32Address,
+		relayerAddress:                args.RelayerAddress,
+		proxy:                         args.Proxy,
+		log:                           args.Log,
 	}, nil
 }
 
@@ -133,7 +139,7 @@ func (dataGetter *mxClientDataGetter) getShardID(ctx context.Context) (uint32, e
 	}
 
 	var err error
-	dataGetter.shardID, err = dataGetter.proxy.GetShardOfAddress(ctx, dataGetter.multisigContractAddress.AddressAsBech32String())
+	dataGetter.shardID, err = dataGetter.proxy.GetShardOfAddress(ctx, dataGetter.bech32MultisigContractAddress)
 	if err == nil {
 		dataGetter.wasShardIDFetched = true
 	}
@@ -356,7 +362,7 @@ func (dataGetter *mxClientDataGetter) GetTransactionsStatuses(ctx context.Contex
 		return nil, fmt.Errorf("%w for batch ID %v", errNoStatusForBatchID, batchID)
 	}
 
-	isFinished, err := dataGetter.parseBool(values[0], getStatusesAfterExecutionFuncName, dataGetter.multisigContractAddress.AddressAsBech32String())
+	isFinished, err := dataGetter.parseBool(values[0], getStatusesAfterExecutionFuncName, dataGetter.bech32MultisigContractAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -469,6 +475,11 @@ func addBatchInfo(builder builders.VMQueryBuilder, batch *clients.TransferBatch)
 			ArgBytes(dt.ConvertedTokenBytes).
 			ArgBigInt(dt.Amount).
 			ArgInt64(int64(dt.Nonce))
+
+		if len(dt.Data) > 0 {
+			// SC call type of transfer
+			builder.ArgBytes(dt.Data).ArgInt64(int64(dt.ExtraGasLimit))
+		}
 	}
 }
 

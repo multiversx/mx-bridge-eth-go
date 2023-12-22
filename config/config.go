@@ -32,6 +32,7 @@ type EthereumConfig struct {
 	NetworkAddress                     string
 	MultisigContractAddress            string
 	SafeContractAddress                string
+	SCExecProxyAddress                 string
 	PrivateKeyFile                     string
 	IntervalToResendTxsInSeconds       uint64
 	GasLimitBase                       uint64
@@ -62,7 +63,7 @@ type ConfigP2P struct {
 	ProtocolID      string
 	Transports      p2pConfig.P2PTransportConfig
 	AntifloodConfig config.AntifloodConfig
-	Transport       p2pConfig.P2PTCPTransport
+	ResourceLimiter p2pConfig.P2PResourceLimiterConfig
 }
 
 // ConfigRelayer configuration for general relayer configuration
@@ -169,6 +170,8 @@ type MultiversXGasMapConfig struct {
 	ProposeStatusForEach   uint64
 	PerformActionBase      uint64
 	PerformActionForEach   uint64
+	ScCallPerByte          uint64
+	ScCallPerformForEach   uint64
 }
 
 // PeersRatingConfig will hold settings related to peers rating

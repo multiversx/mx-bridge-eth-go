@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"reflect"
 	"testing"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -23,10 +25,11 @@ func createMockArgsEthereumChainWrapper() (ArgsEthereumChainWrapper, *testsCommo
 	statusHandler := testsCommon.NewStatusHandlerMock("mock")
 
 	return ArgsEthereumChainWrapper{
-		MultiSigContract: &bridgeTests.MultiSigContractStub{},
-		SafeContract:     &bridgeTests.SafeContractStub{},
-		BlockchainClient: &interactors.BlockchainClientStub{},
-		StatusHandler:    statusHandler,
+		MultiSigContract:    &bridgeTests.MultiSigContractStub{},
+		SafeContract:        &bridgeTests.SafeContractStub{},
+		BlockchainClient:    &interactors.BlockchainClientStub{},
+		SCExecProxyContract: &bridgeTests.SCExecProxyContractStub{},
+		StatusHandler:       statusHandler,
 	}, statusHandler
 }
 
@@ -54,6 +57,16 @@ func TestNewMultiSigContractWrapper(t *testing.T) {
 		assert.Equal(t, errNilBlockchainClient, err)
 	})
 	t.Run("nil multisig contract", func(t *testing.T) {
+		t.Parallel()
+
+		args, _ := createMockArgsEthereumChainWrapper()
+		args.MultiSigContract = nil
+
+		wrapper, err := NewEthereumChainWrapper(args)
+		assert.True(t, check.IfNil(wrapper))
+		assert.Equal(t, errNilMultiSigContract, err)
+	})
+	t.Run("nil sc exec contract", func(t *testing.T) {
 		t.Parallel()
 
 		args, _ := createMockArgsEthereumChainWrapper()
@@ -294,4 +307,46 @@ func TestEthereumChainWrapper_IsPaused(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, result)
 	assert.True(t, handlerCalled)
+}
+
+func TestEthereumChainWrapper_FilterLogs(t *testing.T) {
+	t.Parallel()
+
+	expectedError := errors.New("expected error")
+	args, _ := createMockArgsEthereumChainWrapper()
+
+	t.Run("returns error", func(t *testing.T) {
+		args.BlockchainClient = &interactors.BlockchainClientStub{
+			FilterLogsCalled: func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+				return nil, expectedError
+			},
+		}
+
+		wrapper, _ := NewEthereumChainWrapper(args)
+
+		logs, err := wrapper.FilterLogs(context.Background(), ethereum.FilterQuery{})
+
+		assert.Nil(t, logs)
+		assert.Equal(t, expectedError, err)
+	})
+
+	t.Run("returns expected logs", func(t *testing.T) {
+		expectedLogs := []types.Log{
+			{
+				Index: 1,
+			},
+		}
+		args.BlockchainClient = &interactors.BlockchainClientStub{
+			FilterLogsCalled: func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+				return expectedLogs, nil
+			},
+		}
+
+		wrapper, _ := NewEthereumChainWrapper(args)
+		logs, err := wrapper.FilterLogs(context.Background(), ethereum.FilterQuery{})
+
+		assert.Nil(t, err)
+		assert.True(t, reflect.DeepEqual(expectedLogs, logs))
+	})
+
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/crypto"
+	"github.com/multiversx/mx-chain-communication-go/p2p/libp2p"
 	"github.com/multiversx/mx-chain-core-go/hashing/blake2b"
 	"github.com/multiversx/mx-chain-core-go/marshal"
 	"github.com/multiversx/mx-chain-crypto-go/signing"
@@ -14,7 +15,6 @@ import (
 	p2pConfig "github.com/multiversx/mx-chain-go/p2p/config"
 	"github.com/multiversx/mx-chain-go/testscommon/p2pmocks"
 	logger "github.com/multiversx/mx-chain-logger-go"
-	"github.com/multiversx/mx-chain-p2p-go/libp2p"
 )
 
 // Log -
@@ -98,6 +98,11 @@ func CreateMessengerWithNoDiscovery() p2p.Messenger {
 					ListenAddress: "/ip4/127.0.0.1/tcp/%d",
 				},
 			},
+			ResourceLimiter: p2pConfig.P2PResourceLimiterConfig{
+				Type:                   "default autoscale",
+				ManualSystemMemoryInMB: 0,
+				ManualMaximumFD:        0,
+			},
 		},
 		KadDhtPeerDiscovery: p2pConfig.KadDhtPeerDiscoveryConfig{
 			Enabled:    false,
@@ -114,21 +119,16 @@ func CreateMessengerWithNoDiscovery() p2p.Messenger {
 // CreateMessengerFromConfig creates a new libp2p messenger with provided configuration
 func CreateMessengerFromConfig(p2pConfig p2pConfig.P2PConfig) p2p.Messenger {
 	arg := libp2p.ArgsNetworkMessenger{
-		Marshalizer:           &marshal.JsonMarshalizer{},
+		Marshaller:            &marshal.JsonMarshalizer{},
 		P2pConfig:             p2pConfig,
 		SyncTimer:             &libp2p.LocalSyncTimer{},
 		PreferredPeersHolder:  &p2pmocks.PeersHolderStub{},
-		NodeOperationMode:     p2p.NormalOperation,
 		ConnectionWatcherType: "disabled",
 		PeersRatingHandler:    &p2pmocks.PeersRatingHandlerStub{},
 		P2pPrivateKey:         crypto.NewPrivateKeyMock(),
 		P2pSingleSigner:       &crypto.SingleSignerStub{},
 		P2pKeyGenerator:       &crypto.KeyGenStub{},
-	}
-
-	if p2pConfig.Sharding.AdditionalConnections.MaxFullHistoryObservers > 0 {
-		// we deliberately set this, automatically choose full archive node mode
-		arg.NodeOperationMode = p2p.FullArchiveMode
+		Logger:                Log,
 	}
 
 	libP2PMes, err := libp2p.NewNetworkMessenger(arg)

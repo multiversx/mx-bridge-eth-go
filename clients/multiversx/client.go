@@ -66,6 +66,11 @@ type client struct {
 	mut                      sync.RWMutex
 }
 
+type scCallExtraGas struct {
+	basicGas      uint64
+	performAction uint64
+}
+
 // NewClient returns a new MultiversX Client instance
 func NewClient(args ClientArgs) (*client, error) {
 	err := checkArgs(args)
@@ -76,7 +81,6 @@ func NewClient(args ClientArgs) (*client, error) {
 	argNonceHandler := nonceHandlerV2.ArgsNonceTransactionsHandlerV2{
 		Proxy:            args.Proxy,
 		IntervalToResend: time.Second * time.Duration(args.IntervalToResendTxsInSeconds),
-		Creator:          &nonceHandlerV2.AddressNonceHandlerCreator{},
 	}
 	nonceTxsHandler, err := nonceHandlerV2.NewNonceTransactionHandlerV2(argNonceHandler)
 	if err != nil {
@@ -107,11 +111,16 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, clients.ErrNilAddressConverter
 	}
 
+	bech23MultisigAddress, err := args.MultisigContractAddress.AddressAsBech32String()
+	if err != nil {
+		return nil, fmt.Errorf("%w for %x", err, args.MultisigContractAddress.AddressBytes())
+	}
+
 	c := &client{
 		txHandler: &transactionHandler{
 			proxy:                   args.Proxy,
 			relayerAddress:          relayerAddress,
-			multisigAddressAsBech32: addressConverter.ToBech32String(args.MultisigContractAddress.AddressBytes()),
+			multisigAddressAsBech32: bech23MultisigAddress,
 			nonceTxHandler:          nonceTxsHandler,
 			relayerPrivateKey:       args.RelayerPrivateKey,
 			singleSigner:            &singlesig.Ed25519Signer{},
@@ -129,9 +138,10 @@ func NewClient(args ClientArgs) (*client, error) {
 		allowDelta:                args.AllowDelta,
 	}
 
+	bech32RelayerAddress, _ := relayerAddress.AddressAsBech32String()
 	c.log.Info("NewMultiversXClient",
-		"relayer address", addressConverter.ToBech32String(relayerAddress.AddressBytes()),
-		"safe contract address", addressConverter.ToBech32String(args.MultisigContractAddress.AddressBytes()))
+		"relayer address", bech32RelayerAddress,
+		"safe contract address", bech23MultisigAddress)
 
 	return c, nil
 }
@@ -232,7 +242,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		deposit := &clients.DepositTransfer{
 			Nonce:            depositNonce,
 			FromBytes:        responseData[i+2],
-			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32String(responseData[i+2]),
+			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
 			ToBytes:          responseData[i+3],
 			DisplayableTo:    c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
 			TokenBytes:       responseData[i+4],
@@ -310,9 +320,17 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 			ArgBytes(dt.ConvertedTokenBytes).
 			ArgBigInt(dt.Amount).
 			ArgInt64(int64(dt.Nonce))
+
+		if len(dt.Data) > 0 {
+			// SC call type of transfer
+			txBuilder.ArgBytes(dt.Data).ArgInt64(int64(dt.ExtraGasLimit))
+		}
 	}
 
+	scCallGas := c.computeExtraGasForSCCallsBasic(batch)
+
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
+	gasLimit += scCallGas.basicGas
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
 		c.log.Info("proposed transfer"+batch.String(), "transaction hash", hash)
@@ -351,7 +369,10 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 
 	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))
 
+	scCallGas := c.computeExtraGasForSCCallsBasic(batch)
+
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+	gasLimit += scCallGas.basicGas + scCallGas.performAction
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 
 	if err == nil {
@@ -359,6 +380,24 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	}
 
 	return hash, err
+}
+
+func (c *client) computeExtraGasForSCCallsBasic(batch *clients.TransferBatch) scCallExtraGas {
+	result := scCallExtraGas{}
+	for _, deposit := range batch.Deposits {
+		if len(deposit.Data) == 0 {
+			continue
+		}
+
+		computedLen := 2                                                         // 2 extra arguments separators (@)
+		computedLen += len(deposit.Data) * 2                                     // the data is hexed, so, double the size
+		computedLen += len(big.NewInt(int64(deposit.ExtraGasLimit)).Bytes()) * 2 // the gas is converted to bytes, then hexed
+
+		result.basicGas += uint64(computedLen) * c.gasMapConfig.ScCallPerByte
+		result.performAction += c.gasMapConfig.ScCallPerformForEach
+	}
+
+	return result
 }
 
 func (c *client) checkIsPaused(ctx context.Context) error {

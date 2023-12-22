@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 )
 
@@ -40,6 +41,8 @@ type MultiversXClient interface {
 type EthereumClient interface {
 	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
 	WasExecuted(ctx context.Context, batchID uint64) (bool, error)
+	GenerateMessageHash(batch *clients.TransferBatch) (common.Hash, error)
+	IsDepositSCCall(deposit *clients.DepositTransfer) bool
 	GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error)
 
 	BroadcastSignatureForMessageHash(msgHash common.Hash)
@@ -47,6 +50,7 @@ type EthereumClient interface {
 	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
 	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
+	GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error)
 	CheckClientAvailability(ctx context.Context) error
 	CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error
 	TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error)

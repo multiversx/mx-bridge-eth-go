@@ -141,7 +141,7 @@ func TestTransactionHandler_SendTransactionReturnHash(t *testing.T) {
 
 		txHandlerInstance.nonceTxHandler = &bridgeTests.NonceTransactionsHandlerStub{
 			ApplyNonceAndGasPriceCalled: func(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error {
-				if address.AddressAsBech32String() == relayerAddress {
+				if getBech32Address(address) == relayerAddress {
 					tx.Nonce = nonce
 					tx.GasPrice = minGasPrice
 

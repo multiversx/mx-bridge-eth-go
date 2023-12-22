@@ -45,12 +45,17 @@ func (txHandler *transactionHandler) signTransaction(ctx context.Context, builde
 		return nil, err
 	}
 
+	bech32Address, err := txHandler.relayerAddress.AddressAsBech32String()
+	if err != nil {
+		return nil, err
+	}
+
 	tx := &transaction.FrontendTransaction{
 		ChainID:  networkConfig.ChainID,
 		Version:  networkConfig.MinTransactionVersion,
 		GasLimit: gasLimit,
 		Data:     dataBytes,
-		Sender:   txHandler.relayerAddress.AddressAsBech32String(),
+		Sender:   bech32Address,
 		Receiver: txHandler.multisigAddressAsBech32,
 		Value:    "0",
 	}
