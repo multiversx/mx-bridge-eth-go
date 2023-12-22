@@ -16,19 +16,17 @@ import (
 
 // ArgsEthereumChainWrapper is the DTO used to construct a ethereumChainWrapper instance
 type ArgsEthereumChainWrapper struct {
-	StatusHandler       core.StatusHandler
-	MultiSigContract    multiSigContract
-	SCExecProxyContract scExecProxyContract
-	SafeContract        safeContract
-	BlockchainClient    blockchainClient
+	StatusHandler    core.StatusHandler
+	MultiSigContract multiSigContract
+	SafeContract     safeContract
+	BlockchainClient blockchainClient
 }
 
 type ethereumChainWrapper struct {
 	core.StatusHandler
-	multiSigContract    multiSigContract
-	scExecProxyContract scExecProxyContract
-	safeContract        safeContract
-	blockchainClient    blockchainClient
+	multiSigContract multiSigContract
+	safeContract     safeContract
+	blockchainClient blockchainClient
 }
 
 // NewEthereumChainWrapper creates a new instance of type ethereumChainWrapper
@@ -39,11 +37,10 @@ func NewEthereumChainWrapper(args ArgsEthereumChainWrapper) (*ethereumChainWrapp
 	}
 
 	return &ethereumChainWrapper{
-		StatusHandler:       args.StatusHandler,
-		multiSigContract:    args.MultiSigContract,
-		scExecProxyContract: args.SCExecProxyContract,
-		safeContract:        args.SafeContract,
-		blockchainClient:    args.BlockchainClient,
+		StatusHandler:    args.StatusHandler,
+		multiSigContract: args.MultiSigContract,
+		safeContract:     args.SafeContract,
+		blockchainClient: args.BlockchainClient,
 	}, nil
 }
 
@@ -53,9 +50,6 @@ func checkArgs(args ArgsEthereumChainWrapper) error {
 	}
 	if check.IfNilReflect(args.MultiSigContract) {
 		return errNilMultiSigContract
-	}
-	if check.IfNilReflect(args.SCExecProxyContract) {
-		return errNilSCExecProxyContract
 	}
 	if check.IfNilReflect(args.SafeContract) {
 		return errNilSafeContract
