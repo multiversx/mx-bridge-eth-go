@@ -3,9 +3,9 @@ package config
 import (
 	"testing"
 
+	"github.com/multiversx/mx-chain-communication-go/p2p/config"
 	chainConfig "github.com/multiversx/mx-chain-go/config"
 	p2pConfig "github.com/multiversx/mx-chain-go/p2p/config"
-	"github.com/multiversx/mx-chain-p2p-go/config"
 	"github.com/pelletier/go-toml"
 	"github.com/stretchr/testify/require"
 )
@@ -70,6 +70,11 @@ func TestConfigs(t *testing.T) {
 				QUICAddress:         "",
 				WebSocketAddress:    "",
 				WebTransportAddress: "",
+			},
+			ResourceLimiter: config.ResourceLimiterConfig{
+				Type:                   "default autoscale",
+				ManualSystemMemoryInMB: 1,
+				ManualMaximumFD:        2,
 			},
 			AntifloodConfig: chainConfig.AntifloodConfig{
 				Enabled:                   true,
@@ -268,6 +273,10 @@ func TestConfigs(t *testing.T) {
         [P2P.Transports.TCP]
             ListenAddress = "/ip4/0.0.0.0/tcp/%d" # TCP listen address
             PreventPortReuse = false
+        [P2P.ResourceLimiter]
+			Type = "default autoscale" #available options "default autoscale", "infinite", "default with manual scale".
+			ManualSystemMemoryInMB = 1 # not taken into account if the type is not "default with manual scale"
+			ManualMaximumFD = 2 # not taken into account if the type is not "default with manual scale"
     [P2P.AntifloodConfig]
         Enabled = true
         NumConcurrentResolverJobs = 50

@@ -313,13 +313,15 @@ func TestClient_GetBatch(t *testing.T) {
 			},
 		}
 
+		bech32Recipient1Address, _ := recipient1.AddressAsBech32String()
+		bech32Recipient2Address, _ := recipient2.AddressAsBech32String()
 		expectedBatch := &clients.TransferBatch{
 			ID: 112243,
 			Deposits: []*clients.DepositTransfer{
 				{
 					Nonce:               10,
 					ToBytes:             recipient1.AddressBytes(),
-					DisplayableTo:       recipient1.AddressAsBech32String(),
+					DisplayableTo:       bech32Recipient1Address,
 					FromBytes:           from1[:],
 					DisplayableFrom:     hex.EncodeToString(from1[:]),
 					TokenBytes:          token1[:],
@@ -330,7 +332,7 @@ func TestClient_GetBatch(t *testing.T) {
 				{
 					Nonce:               30,
 					ToBytes:             recipient2.AddressBytes(),
-					DisplayableTo:       recipient2.AddressAsBech32String(),
+					DisplayableTo:       bech32Recipient2Address,
 					FromBytes:           from2[:],
 					DisplayableFrom:     hex.EncodeToString(from2[:]),
 					TokenBytes:          token2[:],

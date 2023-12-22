@@ -464,9 +464,10 @@ func (mock *multiversXContractStateMock) vmRequestSigned(request *data.VmValueRe
 	}
 
 	address := data.NewAddressFromBytes(addressBytes)
-	_, found = actionIDMap[address.AddressAsBech32String()]
+	bech32Address, _ := address.AddressAsBech32String()
+	_, found = actionIDMap[bech32Address]
 	if !found {
-		log.Error("action ID not found", "address", address.AddressAsBech32String())
+		log.Error("action ID not found", "address", bech32Address)
 	}
 
 	return createOkVmResponse([][]byte{BoolToByteSlice(found)})

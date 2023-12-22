@@ -58,6 +58,10 @@
         [P2P.Transports.TCP]
             ListenAddress = "/ip4/0.0.0.0/tcp/%d" # TCP listen address
             PreventPortReuse = false
+        [P2P.ResourceLimiter]
+            Type = "default autoscale" #available options "default autoscale", "infinite", "default with manual scale".
+            ManualSystemMemoryInMB = 0 # not taken into account if the type is not "default with manual scale"
+            ManualMaximumFD = 0 # not taken into account if the type is not "default with manual scale"
     [P2P.AntifloodConfig]
         Enabled = true
         NumConcurrentResolverJobs = 50

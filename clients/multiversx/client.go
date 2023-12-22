@@ -81,7 +81,6 @@ func NewClient(args ClientArgs) (*client, error) {
 	argNonceHandler := nonceHandlerV2.ArgsNonceTransactionsHandlerV2{
 		Proxy:            args.Proxy,
 		IntervalToResend: time.Second * time.Duration(args.IntervalToResendTxsInSeconds),
-		Creator:          &nonceHandlerV2.AddressNonceHandlerCreator{},
 	}
 	nonceTxsHandler, err := nonceHandlerV2.NewNonceTransactionHandlerV2(argNonceHandler)
 	if err != nil {
@@ -112,11 +111,16 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, clients.ErrNilAddressConverter
 	}
 
+	bech23MultisigAddress, err := args.MultisigContractAddress.AddressAsBech32String()
+	if err != nil {
+		return nil, fmt.Errorf("%w for %x", err, args.MultisigContractAddress.AddressBytes())
+	}
+
 	c := &client{
 		txHandler: &transactionHandler{
 			proxy:                   args.Proxy,
 			relayerAddress:          relayerAddress,
-			multisigAddressAsBech32: args.MultisigContractAddress.AddressAsBech32String(),
+			multisigAddressAsBech32: bech23MultisigAddress,
 			nonceTxHandler:          nonceTxsHandler,
 			relayerPrivateKey:       args.RelayerPrivateKey,
 			singleSigner:            &singlesig.Ed25519Signer{},
@@ -134,9 +138,10 @@ func NewClient(args ClientArgs) (*client, error) {
 		allowDelta:                args.AllowDelta,
 	}
 
+	bech32RelayerAddress, _ := relayerAddress.AddressAsBech32String()
 	c.log.Info("NewMultiversXClient",
-		"relayer address", relayerAddress.AddressAsBech32String(),
-		"safe contract address", args.MultisigContractAddress.AddressAsBech32String())
+		"relayer address", bech32RelayerAddress,
+		"safe contract address", bech23MultisigAddress)
 
 	return c, nil
 }
@@ -237,7 +242,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		deposit := &clients.DepositTransfer{
 			Nonce:            depositNonce,
 			FromBytes:        responseData[i+2],
-			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32String(responseData[i+2]),
+			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
 			ToBytes:          responseData[i+3],
 			DisplayableTo:    c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
 			TokenBytes:       responseData[i+4],
