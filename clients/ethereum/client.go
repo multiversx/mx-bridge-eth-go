@@ -1,18 +1,21 @@
 package ethereum
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"sync"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
@@ -36,6 +39,7 @@ type ArgsEthereumClient struct {
 	TokensMapper            TokensMapper
 	SignatureHolder         SignaturesHolder
 	SafeContractAddress     common.Address
+	SCExecProxyAddress      common.Address
 	GasHandler              GasHandler
 	TransferGasLimitBase    uint64
 	TransferGasLimitForEach uint64
@@ -53,6 +57,7 @@ type client struct {
 	tokensMapper            TokensMapper
 	signatureHolder         SignaturesHolder
 	safeContractAddress     common.Address
+	scExecProxyAddress      common.Address
 	gasHandler              GasHandler
 	transferGasLimitBase    uint64
 	transferGasLimitForEach uint64
@@ -87,6 +92,7 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 		tokensMapper:            args.TokensMapper,
 		signatureHolder:         args.SignatureHolder,
 		safeContractAddress:     args.SafeContractAddress,
+		scExecProxyAddress:      args.SCExecProxyAddress,
 		gasHandler:              args.GasHandler,
 		transferGasLimitBase:    args.TransferGasLimitBase,
 		transferGasLimitForEach: args.TransferGasLimitForEach,
@@ -172,7 +178,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 		depositTransfer := &clients.DepositTransfer{
 			Nonce:            deposit.Nonce.Uint64(),
 			ToBytes:          toBytes,
-			DisplayableTo:    c.addressConverter.ToBech32String(toBytes),
+			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),
 			FromBytes:        fromBytes,
 			DisplayableFrom:  c.addressConverter.ToHexString(fromBytes),
 			TokenBytes:       tokenBytes,
@@ -196,6 +202,42 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 	transferBatch.Statuses = make([]byte, len(transferBatch.Deposits))
 
 	return transferBatch, nil
+}
+
+// GetBatchSCMetadata returns the emitted logs in a batch that hold metadata for SC execution on MVX
+func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+	scExecAbi, err := contract.SCExecProxyMetaData.GetAbi()
+	if err != nil {
+		return nil, err
+	}
+
+	query := ethereum.FilterQuery{
+		Addresses: []common.Address{c.scExecProxyAddress},
+		Topics: [][]common.Hash{
+			{scExecAbi.Events["ERC20SCDeposit"].ID},
+			{common.BytesToHash(new(big.Int).SetUint64(nonce).Bytes())},
+		},
+	}
+
+	logs, err := c.clientWrapper.FilterLogs(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	depositEvents := make([]*contract.SCExecProxyERC20SCDeposit, 0)
+	for _, vLog := range logs {
+		event := new(contract.SCExecProxyERC20SCDeposit)
+		err = scExecAbi.UnpackIntoInterface(event, "ERC20SCDeposit", vLog.Data)
+		if err != nil {
+			return nil, err
+		}
+
+		// Add this manually since UnpackIntoInterface only unpacks non-indexed arguments
+		event.BatchNonce = nonce
+		depositEvents = append(depositEvents, event)
+	}
+
+	return depositEvents, nil
 }
 
 // WasExecuted returns true if the batch ID was executed
@@ -232,6 +274,15 @@ func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchI
 
 	hash := crypto.Keccak256Hash(pack)
 	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
+}
+
+// IsDepositSCCall checks whether a deposit should be treated as a SC interaction
+func (c *client) IsDepositSCCall(deposit *clients.DepositTransfer) bool {
+	if deposit == nil {
+		return false
+	}
+
+	return bytes.Equal(deposit.FromBytes, c.scExecProxyAddress.Bytes())
 }
 
 func generateTransferArgs() (abi.Arguments, error) {

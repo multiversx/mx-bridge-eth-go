@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -88,6 +89,12 @@ func (wrapper *ethereumChainWrapper) WasBatchExecuted(ctx context.Context, batch
 func (wrapper *ethereumChainWrapper) ChainID(ctx context.Context) (*big.Int, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.blockchainClient.ChainID(ctx)
+}
+
+// FilterLogs executes a query and returns matching logs and events
+func (wrapper *ethereumChainWrapper) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.blockchainClient.FilterLogs(ctx, q)
 }
 
 // BlockNumber returns the current ethereum block number

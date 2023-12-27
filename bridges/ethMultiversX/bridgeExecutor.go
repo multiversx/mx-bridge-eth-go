@@ -2,12 +2,14 @@ package ethmultiversx
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -17,8 +19,10 @@ import (
 // splits - represent the number of times we split the maximum interval
 // we wait for the transfer confirmation on Ethereum
 const splits = 10
-
 const minRetries = 1
+
+// MissingCallData is a placeholder for wrongly initiated contract calls that do not contain data
+const MissingCallData = "<missing call data>"
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
@@ -450,9 +454,62 @@ func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context
 			ErrBatchNotFound, nonce, batch.ID, len(batch.Deposits))
 	}
 
+	batch, err = executor.addBatchSCMetadata(ctx, batch)
+	if err != nil {
+		return err
+	}
 	executor.batch = batch
 
 	return nil
+}
+
+// addBatchSCMetadata fetches the logs containing sc calls metadata for the current batch
+func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfers *clients.TransferBatch) (*clients.TransferBatch, error) {
+	if transfers == nil {
+		return nil, ErrNilBatch
+	}
+
+	if !executor.hasSCCalls(transfers) {
+		return transfers, nil
+	}
+
+	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, transfers.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, t := range transfers.Deposits {
+		transfers.Deposits[i] = executor.addMetadataToTransfer(t, events)
+	}
+
+	return transfers, nil
+}
+
+func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositTransfer, events []*contract.SCExecProxyERC20SCDeposit) *clients.DepositTransfer {
+	for _, event := range events {
+		if event.DepositNonce == transfer.Nonce {
+			transfer.ExtraGasLimit = event.MvxGasLimit
+			transfer.Data = []byte(event.CallData)
+			if len(transfer.Data) == 0 {
+				// will add a dummy data so the relayers won't panic
+				transfer.Data = []byte(MissingCallData)
+			}
+			transfer.DisplayableData = hex.EncodeToString(transfer.Data)
+
+			return transfer
+		}
+	}
+	return transfer
+}
+
+func (executor *bridgeExecutor) hasSCCalls(transfers *clients.TransferBatch) bool {
+	for _, t := range transfers.Deposits {
+		if executor.ethereumClient.IsDepositSCCall(t) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // WasTransferPerformedOnEthereum returns true if the batch was performed on Ethereum

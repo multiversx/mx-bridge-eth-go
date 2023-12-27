@@ -15,6 +15,7 @@ type Executor interface {
 	GetBatchFromMultiversX(ctx context.Context) (*clients.TransferBatch, error)
 	StoreBatchFromMultiversX(batch *clients.TransferBatch) error
 	GetStoredBatch() *clients.TransferBatch
+
 	GetLastExecutedEthBatchIDFromMultiversX(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
@@ -362,6 +363,76 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
 		assert.True(t, expectedBatch == executor.batch)
+	})
+	t.Run("should add deposits metadata for sc calls", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		providedNonce := uint64(8346)
+		depositNonce := uint64(100)
+		depositData := "testData"
+		expectedBatch := &clients.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*clients.DepositTransfer{
+				{
+					Nonce: depositNonce,
+				},
+			},
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return expectedBatch, nil
+			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+				return []*contract.SCExecProxyERC20SCDeposit{{
+					DepositNonce: depositNonce,
+					CallData:     depositData,
+				}}, nil
+			},
+			IsDepositSCCallCalled: func(deposit *clients.DepositTransfer) bool {
+				return deposit.Nonce == depositNonce
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+		assert.Nil(t, err)
+		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
+		assert.Equal(t, depositData, string(executor.batch.Deposits[0].Data))
+	})
+	t.Run("should add deposits metadata for sc calls even if with invalid data", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		providedNonce := uint64(8346)
+		depositNonce := uint64(100)
+		depositData := ""
+		expectedBatch := &clients.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*clients.DepositTransfer{
+				{
+					Nonce: depositNonce,
+				},
+			},
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return expectedBatch, nil
+			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+				return []*contract.SCExecProxyERC20SCDeposit{{
+					DepositNonce: depositNonce,
+					CallData:     depositData,
+				}}, nil
+			},
+			IsDepositSCCallCalled: func(deposit *clients.DepositTransfer) bool {
+				return deposit.Nonce == depositNonce
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+		assert.Nil(t, err)
+		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
+		assert.Equal(t, MissingCallData, string(executor.batch.Deposits[0].Data))
 	})
 }
 

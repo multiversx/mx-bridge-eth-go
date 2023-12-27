@@ -213,7 +213,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			DataField: []byte("gibberish"),
 		}
 
-		err := b.ProcessReceivedMessage(p2pMsg, "")
+		err := b.ProcessReceivedMessage(p2pMsg, "", nil)
 		assert.NotNil(t, err)
 	})
 	t.Run("public key not whitelisted", func(t *testing.T) {
@@ -234,7 +234,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			DataField: buff,
 		}
 
-		err := b.ProcessReceivedMessage(p2pMsg, "")
+		err := b.ProcessReceivedMessage(p2pMsg, "", nil)
 		assert.True(t, errors.Is(err, ErrPeerNotWhitelisted))
 		assert.True(t, isWhiteListedCalled)
 	})
@@ -250,11 +250,11 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			DataField: buff,
 		}
 
-		err := b.ProcessReceivedMessage(p2pMsg, "")
+		err := b.ProcessReceivedMessage(p2pMsg, "", nil)
 		assert.Equal(t, ErrNonceTooLowInReceivedMessage, err)
 
 		b.nonces[string(msg.PublicKeyBytes)] = msg.Nonce
-		err = b.ProcessReceivedMessage(p2pMsg, "")
+		err = b.ProcessReceivedMessage(p2pMsg, "", nil)
 		assert.Equal(t, ErrNonceTooLowInReceivedMessage, err)
 	})
 	t.Run("joined topic should send stored messages from clients", func(t *testing.T) {
@@ -301,7 +301,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			TopicField: args.Name + signTopicSuffix,
 			PeerField:  pid,
 		}
-		_ = b.ProcessReceivedMessage(p2pMsg, "")
+		_ = b.ProcessReceivedMessage(p2pMsg, "", nil)
 
 		msg2, buff2 := createSignedMessageAndMarshaledBytes(1)
 		p2pMsg = &p2pMocks.P2PMessageMock{
@@ -310,7 +310,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			PeerField:  pid,
 		}
 
-		err = b.ProcessReceivedMessage(p2pMsg, "")
+		err = b.ProcessReceivedMessage(p2pMsg, "", nil)
 		assert.Nil(t, err)
 		assert.True(t, sendWasCalled)
 
@@ -349,7 +349,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			TopicField: args.Name + signTopicSuffix,
 		}
 
-		err := b.ProcessReceivedMessage(p2pMsg, "")
+		err := b.ProcessReceivedMessage(p2pMsg, "", nil)
 		assert.Nil(t, err)
 
 		p2pMsg = &p2pMocks.P2PMessageMock{
@@ -357,7 +357,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			TopicField: args.Name + signTopicSuffix,
 		}
 
-		err = b.ProcessReceivedMessage(p2pMsg, "")
+		err = b.ProcessReceivedMessage(p2pMsg, "", nil)
 		assert.Nil(t, err)
 
 		assert.Equal(t, 2, len(b.SortedPublicKeys()))
@@ -383,7 +383,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			TopicField: args.Name + signTopicSuffix,
 		}
 
-		err := b.ProcessReceivedMessage(p2pMsg, "")
+		err := b.ProcessReceivedMessage(p2pMsg, "", nil)
 		assert.Nil(t, err)
 
 		assert.Equal(t, 1, len(b.SortedPublicKeys()))
@@ -422,7 +422,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			TopicField: args.Name + signTopicSuffix,
 		}
 
-		err = b.ProcessReceivedMessage(p2pMsg, "p1")
+		err = b.ProcessReceivedMessage(p2pMsg, "p1", nil)
 		assert.Nil(t, err)
 
 		p2pMsg = &p2pMocks.P2PMessageMock{
@@ -430,7 +430,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			TopicField: args.Name + signTopicSuffix,
 		}
 
-		err = b.ProcessReceivedMessage(p2pMsg, "p1")
+		err = b.ProcessReceivedMessage(p2pMsg, "p1", nil)
 		assert.True(t, strings.Contains(err.Error(), "system busy"))
 	})
 	t.Run("sign should store message", func(t *testing.T) {
@@ -451,7 +451,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			TopicField: args.Name + signTopicSuffix,
 		}
 
-		err := b.ProcessReceivedMessage(p2pMsg, "")
+		err := b.ProcessReceivedMessage(p2pMsg, "", nil)
 		assert.Nil(t, err)
 
 		p2pMsg = &p2pMocks.P2PMessageMock{
@@ -459,7 +459,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 			TopicField: args.Name + signTopicSuffix,
 		}
 
-		err = b.ProcessReceivedMessage(p2pMsg, "")
+		err = b.ProcessReceivedMessage(p2pMsg, "", nil)
 		assert.Nil(t, err)
 
 		assert.Equal(t, [][]byte{msg1.PublicKeyBytes, msg2.PublicKeyBytes}, b.SortedPublicKeys())

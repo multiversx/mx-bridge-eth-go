@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -53,6 +54,7 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 		},
 		SignatureHolder:         &testsCommon.SignaturesHolderStub{},
 		SafeContractAddress:     testsCommon.CreateRandomEthereumAddress(),
+		SCExecProxyAddress:      testsCommon.CreateRandomEthereumAddress(),
 		GasHandler:              &testsCommon.GasHandlerStub{},
 		TransferGasLimitBase:    50,
 		TransferGasLimitForEach: 20,
@@ -312,13 +314,15 @@ func TestClient_GetBatch(t *testing.T) {
 			},
 		}
 
+		bech32Recipient1Address, _ := recipient1.AddressAsBech32String()
+		bech32Recipient2Address, _ := recipient2.AddressAsBech32String()
 		expectedBatch := &clients.TransferBatch{
 			ID: 112243,
 			Deposits: []*clients.DepositTransfer{
 				{
 					Nonce:               10,
 					ToBytes:             recipient1.AddressBytes(),
-					DisplayableTo:       c.addressConverter.ToBech32String(recipient1.AddressBytes()),
+					DisplayableTo:       bech32Recipient1Address,
 					FromBytes:           from1[:],
 					DisplayableFrom:     hex.EncodeToString(from1[:]),
 					TokenBytes:          token1[:],
@@ -329,7 +333,7 @@ func TestClient_GetBatch(t *testing.T) {
 				{
 					Nonce:               30,
 					ToBytes:             recipient2.AddressBytes(),
-					DisplayableTo:       c.addressConverter.ToBech32String(recipient2.AddressBytes()),
+					DisplayableTo:       bech32Recipient2Address,
 					FromBytes:           from2[:],
 					DisplayableFrom:     hex.EncodeToString(from2[:]),
 					TokenBytes:          token2[:],
@@ -878,6 +882,43 @@ func TestClient_IsQuorumReached(t *testing.T) {
 	})
 }
 
+func TestClient_IsDepositSCCall(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil deposit returns false", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		c, _ := NewEthereumClient(args)
+
+		assert.False(t, c.IsDepositSCCall(nil))
+	})
+
+	t.Run("returns true for matching addresses", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		c, _ := NewEthereumClient(args)
+
+		deposit := &clients.DepositTransfer{
+			FromBytes: args.SCExecProxyAddress.Bytes(),
+		}
+		assert.True(t, c.IsDepositSCCall(deposit))
+	})
+
+	t.Run("returns false for non matching addresses", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		c, _ := NewEthereumClient(args)
+
+		deposit := &clients.DepositTransfer{
+			FromBytes: []byte("different_addr"),
+		}
+		assert.False(t, c.IsDepositSCCall(deposit))
+	})
+}
+
 func TestClient_CheckClientAvailability(t *testing.T) {
 	t.Parallel()
 
@@ -965,6 +1006,60 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		err := c.CheckClientAvailability(context.Background())
 		checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, expectedErr.Error())
 		assert.Equal(t, expectedErr, err)
+	})
+}
+
+func TestClient_GetBatchSCMetadata(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns error on filter logs error", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("filter logs err")
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			FilterLogsCalled: func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+				return nil, expectedErr
+			},
+		}
+		c, _ := NewEthereumClient(args)
+		batch, err := c.GetBatchSCMetadata(context.Background(), 0)
+		assert.Nil(t, batch)
+		assert.Equal(t, expectedErr, err)
+	})
+
+	t.Run("returns expected logs", func(t *testing.T) {
+		scExecAbi, _ := contract.SCExecProxyMetaData.GetAbi()
+		expectedEvent := &contract.SCExecProxyERC20SCDeposit{
+			BatchNonce:   1,
+			DepositNonce: 1,
+			MvxGasLimit:  1,
+			CallData:     "call_data_to_unpack",
+		}
+
+		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs.NonIndexed()
+		packedArgs, _ := eventInputs.Pack(expectedEvent.DepositNonce,
+			expectedEvent.MvxGasLimit, expectedEvent.CallData)
+
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			FilterLogsCalled: func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+				return []types.Log{
+					{
+						Data: packedArgs,
+					},
+				}, nil
+			},
+		}
+		c, _ := NewEthereumClient(args)
+		batch, err := c.GetBatchSCMetadata(context.Background(), expectedEvent.BatchNonce)
+
+		assert.Nil(t, err)
+		assert.Equal(t, 1, len(batch))
+		assert.Equal(t, expectedEvent.BatchNonce, batch[0].BatchNonce)
+		assert.Equal(t, expectedEvent.DepositNonce, batch[0].DepositNonce)
+		assert.Equal(t, expectedEvent.MvxGasLimit, batch[0].MvxGasLimit)
+		assert.Equal(t, expectedEvent.CallData, batch[0].CallData)
 	})
 }
 
