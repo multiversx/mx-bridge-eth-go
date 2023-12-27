@@ -181,19 +181,19 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),
 			FromBytes:        fromBytes,
 			DisplayableFrom:  c.addressConverter.ToHexString(fromBytes),
-			TokenBytes:       tokenBytes,
+			SourceTokenBytes: tokenBytes,
 			DisplayableToken: c.addressConverter.ToHexString(tokenBytes),
 			Amount:           big.NewInt(0).Set(deposit.Amount),
 		}
 		storedConvertedTokenBytes, exists := cachedTokens[depositTransfer.DisplayableToken]
 		if !exists {
-			depositTransfer.ConvertedTokenBytes, err = c.tokensMapper.ConvertToken(ctx, depositTransfer.TokenBytes)
+			depositTransfer.DestinationTokenBytes, err = c.tokensMapper.ConvertToken(ctx, depositTransfer.SourceTokenBytes)
 			if err != nil {
 				return nil, err
 			}
-			cachedTokens[depositTransfer.DisplayableToken] = depositTransfer.ConvertedTokenBytes
+			cachedTokens[depositTransfer.DisplayableToken] = depositTransfer.DestinationTokenBytes
 		} else {
-			depositTransfer.ConvertedTokenBytes = storedConvertedTokenBytes
+			depositTransfer.DestinationTokenBytes = storedConvertedTokenBytes
 		}
 
 		transferBatch.Deposits = append(transferBatch.Deposits, depositTransfer)
@@ -267,7 +267,7 @@ func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchI
 		return common.Hash{}, err
 	}
 
-	pack, err := args.Pack(batch.Recipients, batch.Tokens, batch.Amounts, batch.Nonces, big.NewInt(0).SetUint64(batchId), "ExecuteBatchedTransfer")
+	pack, err := args.Pack(batch.Recipients, batch.EthTokens, batch.Amounts, batch.Nonces, big.NewInt(0).SetUint64(batchId), "ExecuteBatchedTransfer")
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -360,7 +360,7 @@ func (c *client) ExecuteTransfer(
 
 	auth.Nonce = big.NewInt(nonce)
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = c.transferGasLimitBase + uint64(len(argLists.Tokens))*c.transferGasLimitForEach
+	auth.GasLimit = c.transferGasLimitBase + uint64(len(argLists.EthTokens))*c.transferGasLimitForEach
 	auth.Context = ctx
 	auth.GasPrice = gasPrice
 
@@ -382,7 +382,7 @@ func (c *client) ExecuteTransfer(
 	}
 
 	batchID := big.NewInt(0).SetUint64(batchId)
-	tx, err := c.clientWrapper.ExecuteTransfer(auth, argLists.Tokens, argLists.Recipients, argLists.Amounts, argLists.Nonces, batchID, signatures)
+	tx, err := c.clientWrapper.ExecuteTransfer(auth, argLists.EthTokens, argLists.Recipients, argLists.Amounts, argLists.Nonces, batchID, signatures)
 	if err != nil {
 		return "", err
 	}
