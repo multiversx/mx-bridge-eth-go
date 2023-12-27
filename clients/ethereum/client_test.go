@@ -67,26 +67,26 @@ func createMockTransferBatch() *clients.TransferBatch {
 		ID: 332,
 		Deposits: []*clients.DepositTransfer{
 			{
-				Nonce:               10,
-				ToBytes:             []byte("to1"),
-				DisplayableTo:       "to1",
-				FromBytes:           []byte("from1"),
-				DisplayableFrom:     "from1",
-				TokenBytes:          []byte("token1"),
-				DisplayableToken:    "token1",
-				Amount:              big.NewInt(20),
-				ConvertedTokenBytes: []byte("ERC20token1"),
+				Nonce:                 10,
+				ToBytes:               []byte("to1"),
+				DisplayableTo:         "to1",
+				FromBytes:             []byte("from1"),
+				DisplayableFrom:       "from1",
+				SourceTokenBytes:      []byte("source token1"),
+				DisplayableToken:      "token1",
+				Amount:                big.NewInt(20),
+				DestinationTokenBytes: []byte("ERC20token1"),
 			},
 			{
-				Nonce:               30,
-				ToBytes:             []byte("to2"),
-				DisplayableTo:       "to2",
-				FromBytes:           []byte("from2"),
-				DisplayableFrom:     "from2",
-				TokenBytes:          []byte("token2"),
-				DisplayableToken:    "token2",
-				Amount:              big.NewInt(40),
-				ConvertedTokenBytes: []byte("ERC20token2"),
+				Nonce:                 30,
+				ToBytes:               []byte("to2"),
+				DisplayableTo:         "to2",
+				FromBytes:             []byte("from2"),
+				DisplayableFrom:       "from2",
+				SourceTokenBytes:      []byte("source token2"),
+				DisplayableToken:      "token2",
+				Amount:                big.NewInt(40),
+				DestinationTokenBytes: []byte("ERC20token2"),
 			},
 		},
 		Statuses: make([]byte, 2),
@@ -320,26 +320,26 @@ func TestClient_GetBatch(t *testing.T) {
 			ID: 112243,
 			Deposits: []*clients.DepositTransfer{
 				{
-					Nonce:               10,
-					ToBytes:             recipient1.AddressBytes(),
-					DisplayableTo:       bech32Recipient1Address,
-					FromBytes:           from1[:],
-					DisplayableFrom:     hex.EncodeToString(from1[:]),
-					TokenBytes:          token1[:],
-					DisplayableToken:    hex.EncodeToString(token1[:]),
-					Amount:              big.NewInt(20),
-					ConvertedTokenBytes: append([]byte("ERC20"), token1[:]...),
+					Nonce:                 10,
+					ToBytes:               recipient1.AddressBytes(),
+					DisplayableTo:         bech32Recipient1Address,
+					FromBytes:             from1[:],
+					DisplayableFrom:       hex.EncodeToString(from1[:]),
+					SourceTokenBytes:      token1[:],
+					DisplayableToken:      hex.EncodeToString(token1[:]),
+					Amount:                big.NewInt(20),
+					DestinationTokenBytes: append([]byte("ERC20"), token1[:]...),
 				},
 				{
-					Nonce:               30,
-					ToBytes:             recipient2.AddressBytes(),
-					DisplayableTo:       bech32Recipient2Address,
-					FromBytes:           from2[:],
-					DisplayableFrom:     hex.EncodeToString(from2[:]),
-					TokenBytes:          token2[:],
-					DisplayableToken:    hex.EncodeToString(token2[:]),
-					Amount:              big.NewInt(40),
-					ConvertedTokenBytes: append([]byte("ERC20"), token2[:]...),
+					Nonce:                 30,
+					ToBytes:               recipient2.AddressBytes(),
+					DisplayableTo:         bech32Recipient2Address,
+					FromBytes:             from2[:],
+					DisplayableFrom:       hex.EncodeToString(from2[:]),
+					SourceTokenBytes:      token2[:],
+					DisplayableToken:      hex.EncodeToString(token2[:]),
+					Amount:                big.NewInt(40),
+					DestinationTokenBytes: append([]byte("ERC20"), token2[:]...),
 				},
 			},
 			Statuses: make([]byte, 2),
@@ -367,9 +367,9 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 	})
 	t.Run("should work", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)
-		argLists, _ := batchProcessor.ExtractList(batch)
+		argLists, _ := batchProcessor.ExtractListMvxToEth(batch)
 		assert.Equal(t, expectedAmounts, argLists.Amounts)
-		assert.Equal(t, expectedTokens, argLists.Tokens)
+		assert.Equal(t, expectedTokens, argLists.EthTokens)
 		assert.Equal(t, expectedRecipients, argLists.Recipients)
 		assert.Equal(t, expectedNonces, argLists.Nonces)
 
@@ -425,7 +425,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 
 	args := createMockEthereumClientArgs()
 	batch := createMockTransferBatch()
-	argLists, _ := batchProcessor.ExtractList(batch)
+	argLists, _ := batchProcessor.ExtractListMvxToEth(batch)
 	signatures := make([][]byte, 10)
 	for i := range signatures {
 		signatures[i] = []byte(fmt.Sprintf("sig %d", i))
@@ -544,17 +544,17 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		}
 		newBatch := batch.Clone()
 		newBatch.Deposits = append(newBatch.Deposits, &clients.DepositTransfer{
-			Nonce:               40,
-			ToBytes:             []byte("to3"),
-			DisplayableTo:       "to3",
-			FromBytes:           []byte("from3"),
-			DisplayableFrom:     "from3",
-			TokenBytes:          []byte("token1"),
-			DisplayableToken:    "token1",
-			Amount:              big.NewInt(80),
-			ConvertedTokenBytes: []byte("ERC20token1"),
+			Nonce:                 40,
+			ToBytes:               []byte("to3"),
+			DisplayableTo:         "to3",
+			FromBytes:             []byte("from3"),
+			DisplayableFrom:       "from3",
+			SourceTokenBytes:      []byte("source token1"),
+			DisplayableToken:      "token1",
+			Amount:                big.NewInt(80),
+			DestinationTokenBytes: []byte("ERC20token1"),
 		})
-		newArgLists, _ := batchProcessor.ExtractList(newBatch)
+		newArgLists, _ := batchProcessor.ExtractListMvxToEth(newBatch)
 		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, newArgLists, newBatch.ID, 9)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, errInsufficientBalance))

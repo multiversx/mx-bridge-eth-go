@@ -245,20 +245,20 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
 			ToBytes:          responseData[i+3],
 			DisplayableTo:    c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
-			TokenBytes:       responseData[i+4],
+			SourceTokenBytes: responseData[i+4],
 			DisplayableToken: string(responseData[i+4]),
 			Amount:           amount,
 		}
 
 		storedConvertedTokenBytes, exists := cachedTokens[deposit.DisplayableToken]
 		if !exists {
-			deposit.ConvertedTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.TokenBytes)
+			deposit.DestinationTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.SourceTokenBytes)
 			if err != nil {
 				return nil, fmt.Errorf("%w while converting token bytes, transfer index %d", err, transferIndex)
 			}
-			cachedTokens[deposit.DisplayableToken] = deposit.ConvertedTokenBytes
+			cachedTokens[deposit.DisplayableToken] = deposit.DestinationTokenBytes
 		} else {
-			deposit.ConvertedTokenBytes = storedConvertedTokenBytes
+			deposit.DestinationTokenBytes = storedConvertedTokenBytes
 		}
 
 		batch.Deposits = append(batch.Deposits, deposit)
@@ -317,7 +317,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 	for _, dt := range batch.Deposits {
 		txBuilder.ArgBytes(dt.FromBytes).
 			ArgBytes(dt.ToBytes).
-			ArgBytes(dt.ConvertedTokenBytes).
+			ArgBytes(dt.DestinationTokenBytes).
 			ArgBigInt(dt.Amount).
 			ArgInt64(int64(dt.Nonce))
 
