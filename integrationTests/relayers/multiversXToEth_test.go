@@ -48,7 +48,7 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
-		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker)
+		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker, false, nil)
 	}
 	pendingBatch := mock.MultiversXPendingBatch{
 		Nonce:              big.NewInt(1),
@@ -97,11 +97,20 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 	checkTestStatus(t, multiversXChainMock, ethereumChainMock, numTransactions, deposits, tokensAddresses)
 }
 
-func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t *testing.T) {
+func TestRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
 
+	t.Run("simple tokens transfers", func(t *testing.T) {
+		testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t, false)
+	})
+	t.Run("native tokens transfers", func(t *testing.T) {
+		testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t, true)
+	})
+}
+
+func testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t *testing.T, withNativeTokens bool) {
 	numTransactions := 2
 	deposits, tokensAddresses, erc20Map := createTransactions(numTransactions)
 
@@ -118,7 +127,14 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEthIfTransactionsAp
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
-		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker)
+		var nativeBalanceValue *big.Int
+
+		if withNativeTokens {
+			nativeBalanceValue = big.NewInt(int64(i * 1000))
+			ethereumChainMock.AddWhitelistedTokensMintBurn(tokensAddresses[i], nativeBalanceValue)
+		}
+
+		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker, withNativeTokens, nativeBalanceValue)
 	}
 	pendingBatch := mock.MultiversXPendingBatch{
 		Nonce:              big.NewInt(1),

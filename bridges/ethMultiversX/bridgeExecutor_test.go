@@ -1734,3 +1734,134 @@ func TestBridgeExecutor_ValidateBatch(t *testing.T) {
 	assert.True(t, result)
 	assert.True(t, validateBatchCalled)
 }
+
+func TestBridgeExecutor_CheckAvailableTokens(t *testing.T) {
+	t.Parallel()
+
+	t.Run("wrong balances should error", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		tokenMintedBalancesCalled := false
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				tokenMintedBalancesCalled = true
+
+				return big.NewInt(3701), nil // eth holds a higher balance than the mvx
+			},
+		}
+
+		accumulatedBurnedTokensCalled := false
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return true, nil
+			},
+			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				accumulatedBurnedTokensCalled = true
+				return big.NewInt(3700), nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+
+		err := executor.CheckAvailableTokens(
+			context.Background(),
+			[]common.Address{
+				common.BytesToAddress([]byte("eth token")),
+			},
+			[][]byte{
+				[]byte("mvx token"),
+			},
+			[]*big.Int{
+				big.NewInt(1),
+			})
+		assert.ErrorIs(t, err, ErrMintBurnBalance)
+		assert.True(t, tokenMintedBalancesCalled)
+		assert.True(t, accumulatedBurnedTokensCalled)
+	})
+	t.Run("should work with the same balances", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		tokenMintedBalancesCalled := false
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				tokenMintedBalancesCalled = true
+
+				return big.NewInt(3700), nil
+			},
+		}
+
+		accumulatedBurnedTokensCalled := false
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return true, nil
+			},
+			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				accumulatedBurnedTokensCalled = true
+				return big.NewInt(3700), nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+
+		err := executor.CheckAvailableTokens(
+			context.Background(),
+			[]common.Address{
+				common.BytesToAddress([]byte("eth token")),
+			},
+			[][]byte{
+				[]byte("mvx token"),
+			},
+			[]*big.Int{
+				big.NewInt(1),
+			})
+		assert.Nil(t, err)
+		assert.True(t, tokenMintedBalancesCalled)
+		assert.True(t, accumulatedBurnedTokensCalled)
+	})
+	t.Run("should work with higher values on the mvx than eth", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		tokenMintedBalancesCalled := false
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				tokenMintedBalancesCalled = true
+
+				return big.NewInt(3699), nil // eth holds less than mvx
+			},
+		}
+
+		accumulatedBurnedTokensCalled := false
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return true, nil
+			},
+			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				accumulatedBurnedTokensCalled = true
+				return big.NewInt(3700), nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+
+		err := executor.CheckAvailableTokens(
+			context.Background(),
+			[]common.Address{
+				common.BytesToAddress([]byte("eth token")),
+			},
+			[][]byte{
+				[]byte("mvx token"),
+			},
+			[]*big.Int{
+				big.NewInt(1),
+			})
+		assert.Nil(t, err)
+		assert.True(t, tokenMintedBalancesCalled)
+		assert.True(t, accumulatedBurnedTokensCalled)
+	})
+}

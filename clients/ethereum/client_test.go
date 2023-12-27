@@ -367,7 +367,7 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 	})
 	t.Run("should work", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)
-		argLists, _ := batchProcessor.ExtractListMvxToEth(batch)
+		argLists := batchProcessor.ExtractListMvxToEth(batch)
 		assert.Equal(t, expectedAmounts, argLists.Amounts)
 		assert.Equal(t, expectedTokens, argLists.EthTokens)
 		assert.Equal(t, expectedRecipients, argLists.Recipients)
@@ -425,7 +425,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 
 	args := createMockEthereumClientArgs()
 	batch := createMockTransferBatch()
-	argLists, _ := batchProcessor.ExtractListMvxToEth(batch)
+	argLists := batchProcessor.ExtractListMvxToEth(batch)
 	signatures := make([][]byte, 10)
 	for i := range signatures {
 		signatures[i] = []byte(fmt.Sprintf("sig %d", i))
@@ -554,7 +554,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 			Amount:                big.NewInt(80),
 			DestinationTokenBytes: []byte("ERC20token1"),
 		})
-		newArgLists, _ := batchProcessor.ExtractListMvxToEth(newBatch)
+		newArgLists := batchProcessor.ExtractListMvxToEth(newBatch)
 		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, newArgLists, newBatch.ID, 9)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, errInsufficientBalance))

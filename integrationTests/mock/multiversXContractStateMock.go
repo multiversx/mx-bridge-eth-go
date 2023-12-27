@@ -271,6 +271,8 @@ func (mock *multiversXContractStateMock) processVmRequests(vmRequest *data.VmVal
 		return mock.vmRequestIsPaused(vmRequest), nil
 	case "isMintBurnAllowed":
 		return mock.vmRequestIsMintBurnAllowed(vmRequest), nil
+	case "getAccumulatedBurnedTokens":
+		return mock.vmRequestGetAccumulatedBurnedTokens(vmRequest), nil
 	}
 
 	panic("unimplemented function: " + vmRequest.FuncName)
@@ -479,8 +481,16 @@ func (mock *multiversXContractStateMock) vmRequestIsPaused(_ *data.VmValueReques
 	return createOkVmResponse([][]byte{BoolToByteSlice(false)})
 }
 
-func (mock *multiversXContractStateMock) vmRequestIsMintBurnAllowed(_ *data.VmValueRequest) *data.VmValuesResponseData {
-	return createOkVmResponse([][]byte{BoolToByteSlice(false)})
+func (mock *multiversXContractStateMock) vmRequestIsMintBurnAllowed(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
+	address := vmRequest.Args[0]
+
+	return createOkVmResponse([][]byte{BoolToByteSlice(mock.isNativeToken(address))})
+}
+
+func (mock *multiversXContractStateMock) vmRequestGetAccumulatedBurnedTokens(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
+	address := vmRequest.Args[0]
+
+	return createOkVmResponse([][]byte{mock.getAccumulatedBurn(address).Bytes()})
 }
 
 func getActionIDFromString(data string) *big.Int {
