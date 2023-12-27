@@ -14,5 +14,7 @@ func CreateTestMultiversXGasMap() config.MultiversXGasMapConfig {
 		ProposeStatusForEach:   105,
 		PerformActionBase:      106,
 		PerformActionForEach:   107,
+		ScCallPerByte:          108,
+		ScCallPerformForEach:   109,
 	}
 }

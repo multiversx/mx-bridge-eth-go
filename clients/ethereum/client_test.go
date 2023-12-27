@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,6 +18,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
@@ -52,6 +54,7 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 		},
 		SignatureHolder:         &testsCommon.SignaturesHolderStub{},
 		SafeContractAddress:     testsCommon.CreateRandomEthereumAddress(),
+		SCExecProxyAddress:      testsCommon.CreateRandomEthereumAddress(),
 		GasHandler:              &testsCommon.GasHandlerStub{},
 		TransferGasLimitBase:    50,
 		TransferGasLimitForEach: 20,
@@ -311,13 +314,15 @@ func TestClient_GetBatch(t *testing.T) {
 			},
 		}
 
+		bech32Recipient1Address, _ := recipient1.AddressAsBech32String()
+		bech32Recipient2Address, _ := recipient2.AddressAsBech32String()
 		expectedBatch := &clients.TransferBatch{
 			ID: 112243,
 			Deposits: []*clients.DepositTransfer{
 				{
 					Nonce:               10,
 					ToBytes:             recipient1.AddressBytes(),
-					DisplayableTo:       recipient1.AddressAsBech32String(),
+					DisplayableTo:       bech32Recipient1Address,
 					FromBytes:           from1[:],
 					DisplayableFrom:     hex.EncodeToString(from1[:]),
 					TokenBytes:          token1[:],
@@ -328,7 +333,7 @@ func TestClient_GetBatch(t *testing.T) {
 				{
 					Nonce:               30,
 					ToBytes:             recipient2.AddressBytes(),
-					DisplayableTo:       recipient2.AddressAsBech32String(),
+					DisplayableTo:       bech32Recipient2Address,
 					FromBytes:           from2[:],
 					DisplayableFrom:     hex.EncodeToString(from2[:]),
 					TokenBytes:          token2[:],
@@ -355,20 +360,20 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 
 	t.Run("nil batch should error", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)
-		h, err := c.GenerateMessageHash(nil)
+		h, err := c.GenerateMessageHash(nil, 0)
 
 		assert.Equal(t, common.Hash{}, h)
 		assert.True(t, errors.Is(err, clients.ErrNilBatch))
 	})
 	t.Run("should work", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)
-		argLists, _ := c.extractList(batch)
-		assert.Equal(t, expectedAmounts, argLists.amounts)
-		assert.Equal(t, expectedTokens, argLists.tokens)
-		assert.Equal(t, expectedRecipients, argLists.recipients)
-		assert.Equal(t, expectedNonces, argLists.nonces)
+		argLists, _ := batchProcessor.ExtractList(batch)
+		assert.Equal(t, expectedAmounts, argLists.Amounts)
+		assert.Equal(t, expectedTokens, argLists.Tokens)
+		assert.Equal(t, expectedRecipients, argLists.Recipients)
+		assert.Equal(t, expectedNonces, argLists.Nonces)
 
-		h, err := c.GenerateMessageHash(batch)
+		h, err := c.GenerateMessageHash(argLists, batch.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, "c68190e0a3b8d7c6bd966272a11d618ceddc4b38662b0a1610621f4d30ec07ca", hex.EncodeToString(h.Bytes()))
 	})
@@ -420,6 +425,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 
 	args := createMockEthereumClientArgs()
 	batch := createMockTransferBatch()
+	argLists, _ := batchProcessor.ExtractList(batch)
 	signatures := make([][]byte, 10)
 	for i := range signatures {
 		signatures[i] = []byte(fmt.Sprintf("sig %d", i))
@@ -427,7 +433,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 
 	t.Run("nil batch", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, nil, 10)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, nil, 0, 10)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, clients.ErrNilBatch))
 	})
@@ -439,7 +445,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return false, expectedErr
 			},
 		}
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 10)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 10)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -450,7 +456,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return true, nil
 			},
 		}
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 10)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 10)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -462,7 +468,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return 0, expectedErr
 			},
 		}
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 10)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 10)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -474,7 +480,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return 0, expectedErr
 			},
 		}
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 10)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 10)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -486,7 +492,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return big.NewInt(0), expectedErr
 			},
 		}
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 10)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 10)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -498,7 +504,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return nil, expectedErr
 			},
 		}
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 10)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 10)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -509,7 +515,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				return signatures[:9]
 			},
 		}
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 10)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 10)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, errQuorumNotReached))
 		assert.True(t, strings.Contains(err.Error(), "num signatures: 9, quorum: 10"))
@@ -548,64 +554,10 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 			Amount:              big.NewInt(80),
 			ConvertedTokenBytes: []byte("ERC20token1"),
 		})
-
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, newBatch, 9)
+		newArgLists, _ := batchProcessor.ExtractList(newBatch)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, newArgLists, newBatch.ID, 9)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, errInsufficientBalance))
-	})
-	t.Run("not enough erc20 balance", func(t *testing.T) {
-		c, _ := NewEthereumClient(args)
-		c.signatureHolder = &testsCommon.SignaturesHolderStub{
-			SignaturesCalled: func(messageHash []byte) [][]byte {
-				return signatures[:9]
-			},
-		}
-		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
-			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
-				assert.Equal(t, c.safeContractAddress, address)
-				tokenErc20 := common.BytesToAddress([]byte("ERC20token1"))
-				if erc20Address.String() == tokenErc20.String() {
-					return big.NewInt(99), nil
-				}
-
-				return big.NewInt(1000000), nil
-			},
-		}
-
-		newBatch := batch.Clone()
-		newBatch.Deposits = append(newBatch.Deposits, &clients.DepositTransfer{
-			Nonce:               40,
-			ToBytes:             []byte("to3"),
-			DisplayableTo:       "to3",
-			FromBytes:           []byte("from3"),
-			DisplayableFrom:     "from3",
-			TokenBytes:          []byte("token1"),
-			DisplayableToken:    "token1",
-			Amount:              big.NewInt(80),
-			ConvertedTokenBytes: []byte("ERC20token1"),
-		})
-
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, newBatch, 9)
-		assert.Equal(t, "", hash)
-		assert.True(t, errors.Is(err, errInsufficientErc20Balance))
-	})
-	t.Run("erc20 balance of errors", func(t *testing.T) {
-		expectedErr := errors.New("expected error erc20 balance of")
-		c, _ := NewEthereumClient(args)
-		c.signatureHolder = &testsCommon.SignaturesHolderStub{
-			SignaturesCalled: func(messageHash []byte) [][]byte {
-				return signatures[:9]
-			},
-		}
-		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
-			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
-				return nil, expectedErr
-			},
-		}
-
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 9)
-		assert.Equal(t, "", hash)
-		assert.True(t, errors.Is(err, expectedErr))
 	})
 	t.Run("execute transfer errors", func(t *testing.T) {
 		expectedErr := errors.New("expected error execute transfer")
@@ -626,7 +578,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 			},
 		}
 
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 9)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 9)
 		assert.Equal(t, "", hash)
 		assert.Equal(t, expectedErr, err)
 	})
@@ -660,7 +612,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 			},
 		}
 
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 9)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 9)
 		assert.Equal(t, "0xc5b2c658f5fa236c598a6e7fbf7f21413dc42e2a41dd982eb772b30707cba2eb", hash)
 		assert.Nil(t, err)
 		assert.True(t, wasCalled)
@@ -695,10 +647,127 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 			},
 		}
 
-		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, batch, 5)
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 5)
 		assert.Equal(t, "0xc5b2c658f5fa236c598a6e7fbf7f21413dc42e2a41dd982eb772b30707cba2eb", hash)
 		assert.Nil(t, err)
 		assert.True(t, wasCalled)
+	})
+}
+
+func TestClient_CheckRequiredBalance(t *testing.T) {
+	t.Parallel()
+	args := createMockEthereumClientArgs()
+
+	tokenErc20 := common.BytesToAddress([]byte("ERC20token1"))
+	balance := big.NewInt(1000000)
+	t.Run("not enough erc20 balance", func(t *testing.T) {
+		c, _ := NewEthereumClient(args)
+		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
+			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
+				assert.Equal(t, c.safeContractAddress, address)
+
+				return balance, nil
+			},
+		}
+		err := c.CheckRequiredBalance(context.Background(), tokenErc20, big.NewInt(0).Add(balance, big.NewInt(1)))
+		assert.True(t, errors.Is(err, errInsufficientErc20Balance))
+	})
+	t.Run("erc20 balance of errors", func(t *testing.T) {
+		expectedErr := errors.New("expected error erc20 balance of")
+		c, _ := NewEthereumClient(args)
+		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
+			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
+				return nil, expectedErr
+			},
+		}
+
+		err := c.CheckRequiredBalance(context.Background(), tokenErc20, balance)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("should work", func(t *testing.T) {
+		c, _ := NewEthereumClient(args)
+		c.erc20ContractsHandler = &bridgeTests.ERC20ContractsHolderStub{
+			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
+				assert.Equal(t, c.safeContractAddress, address)
+
+				return balance, nil
+			},
+		}
+		err := c.CheckRequiredBalance(context.Background(), tokenErc20, balance)
+		assert.Nil(t, err)
+	})
+}
+
+func TestClient_TokenMintedBalances(t *testing.T) {
+	t.Parallel()
+
+	t.Run("error while getting token minted balances", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("expected error")
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				return nil, expectedErr
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		balances, err := c.TokenMintedBalances(context.Background(), common.Address{})
+		assert.Nil(t, balances)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		providedBalance := big.NewInt(100)
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				return providedBalance, nil
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		balances, err := c.TokenMintedBalances(context.Background(), common.Address{})
+		assert.Nil(t, err)
+		assert.Equal(t, providedBalance, balances)
+	})
+}
+
+func TestClient_WhitelistedTokensMintBurn(t *testing.T) {
+	t.Parallel()
+
+	t.Run("error while getting whitelisted tokens mint burn", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("expected error")
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return false, expectedErr
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		isWhitelisted, err := c.WhitelistedTokensMintBurn(context.Background(), common.Address{})
+		assert.False(t, isWhitelisted)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		isWhitelisted, err := c.WhitelistedTokensMintBurn(context.Background(), common.Address{})
+		assert.Nil(t, err)
+		assert.True(t, isWhitelisted)
 	})
 }
 
@@ -813,6 +882,43 @@ func TestClient_IsQuorumReached(t *testing.T) {
 	})
 }
 
+func TestClient_IsDepositSCCall(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil deposit returns false", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		c, _ := NewEthereumClient(args)
+
+		assert.False(t, c.IsDepositSCCall(nil))
+	})
+
+	t.Run("returns true for matching addresses", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		c, _ := NewEthereumClient(args)
+
+		deposit := &clients.DepositTransfer{
+			FromBytes: args.SCExecProxyAddress.Bytes(),
+		}
+		assert.True(t, c.IsDepositSCCall(deposit))
+	})
+
+	t.Run("returns false for non matching addresses", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		c, _ := NewEthereumClient(args)
+
+		deposit := &clients.DepositTransfer{
+			FromBytes: []byte("different_addr"),
+		}
+		assert.False(t, c.IsDepositSCCall(deposit))
+	})
+}
+
 func TestClient_CheckClientAvailability(t *testing.T) {
 	t.Parallel()
 
@@ -900,6 +1006,60 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		err := c.CheckClientAvailability(context.Background())
 		checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, expectedErr.Error())
 		assert.Equal(t, expectedErr, err)
+	})
+}
+
+func TestClient_GetBatchSCMetadata(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns error on filter logs error", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("filter logs err")
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			FilterLogsCalled: func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+				return nil, expectedErr
+			},
+		}
+		c, _ := NewEthereumClient(args)
+		batch, err := c.GetBatchSCMetadata(context.Background(), 0)
+		assert.Nil(t, batch)
+		assert.Equal(t, expectedErr, err)
+	})
+
+	t.Run("returns expected logs", func(t *testing.T) {
+		scExecAbi, _ := contract.SCExecProxyMetaData.GetAbi()
+		expectedEvent := &contract.SCExecProxyERC20SCDeposit{
+			BatchNonce:   1,
+			DepositNonce: 1,
+			MvxGasLimit:  1,
+			CallData:     "call_data_to_unpack",
+		}
+
+		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs.NonIndexed()
+		packedArgs, _ := eventInputs.Pack(expectedEvent.DepositNonce,
+			expectedEvent.MvxGasLimit, expectedEvent.CallData)
+
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			FilterLogsCalled: func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+				return []types.Log{
+					{
+						Data: packedArgs,
+					},
+				}, nil
+			},
+		}
+		c, _ := NewEthereumClient(args)
+		batch, err := c.GetBatchSCMetadata(context.Background(), expectedEvent.BatchNonce)
+
+		assert.Nil(t, err)
+		assert.Equal(t, 1, len(batch))
+		assert.Equal(t, expectedEvent.BatchNonce, batch[0].BatchNonce)
+		assert.Equal(t, expectedEvent.DepositNonce, batch[0].DepositNonce)
+		assert.Equal(t, expectedEvent.MvxGasLimit, batch[0].MvxGasLimit)
+		assert.Equal(t, expectedEvent.CallData, batch[0].CallData)
 	})
 }
 

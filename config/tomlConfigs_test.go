@@ -1,9 +1,226 @@
+package config
+
+import (
+	"testing"
+
+	"github.com/multiversx/mx-chain-communication-go/p2p/config"
+	chainConfig "github.com/multiversx/mx-chain-go/config"
+	p2pConfig "github.com/multiversx/mx-chain-go/p2p/config"
+	"github.com/pelletier/go-toml"
+	"github.com/stretchr/testify/require"
+)
+
+func TestConfigs(t *testing.T) {
+	t.Parallel()
+
+	expectedConfig := Config{
+		Eth: EthereumConfig{
+			Chain:                              "Ethereum",
+			NetworkAddress:                     "http://127.0.0.1:8545",
+			MultisigContractAddress:            "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
+			SafeContractAddress:                "A6504Cc508889bbDBd4B748aFf6EA6b5D0d2684c",
+			PrivateKeyFile:                     "keys/ethereum.sk",
+			IntervalToWaitForTransferInSeconds: 600,
+			GasLimitBase:                       350000,
+			GasLimitForEach:                    30000,
+			GasStation: GasStationConfig{
+				Enabled:                    true,
+				URL:                        "https://api.etherscan.io/api?module=gastracker&action=gasoracle",
+				PollingIntervalInSeconds:   60,
+				RequestRetryDelayInSeconds: 5,
+				MaxFetchRetries:            3,
+				RequestTimeInSeconds:       2,
+				MaximumAllowedGasPrice:     300,
+				GasPriceSelector:           "SafeGasPrice",
+				GasPriceMultiplier:         1000000000,
+			},
+			MaxRetriesOnQuorumReached: 3,
+			MaxBlocksDelta:            10,
+		},
+		MultiversX: MultiversXConfig{
+			NetworkAddress:               "https://devnet-gateway.multiversx.com",
+			MultisigContractAddress:      "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+			PrivateKeyFile:               "keys/multiversx.pem",
+			IntervalToResendTxsInSeconds: 60,
+			GasMap: MultiversXGasMapConfig{
+				Sign:                   8000000,
+				ProposeTransferBase:    11000000,
+				ProposeTransferForEach: 5500000,
+				ProposeStatusBase:      10000000,
+				ProposeStatusForEach:   7000000,
+				PerformActionBase:      40000000,
+				PerformActionForEach:   5500000,
+			},
+			MaxRetriesOnQuorumReached:       3,
+			MaxRetriesOnWasTransferProposed: 3,
+			ProxyCacherExpirationSeconds:    600,
+			ProxyRestAPIEntityType:          "observer",
+			ProxyMaxNoncesDelta:             7,
+			ProxyFinalityCheck:              true,
+		},
+		P2P: ConfigP2P{
+			Port:            "10010",
+			InitialPeerList: make([]string, 0),
+			ProtocolID:      "/erd/relay/1.0.0",
+			Transports: p2pConfig.P2PTransportConfig{
+				TCP: config.TCPProtocolConfig{
+					ListenAddress:    "/ip4/0.0.0.0/tcp/%d",
+					PreventPortReuse: false,
+				},
+				QUICAddress:         "",
+				WebSocketAddress:    "",
+				WebTransportAddress: "",
+			},
+			ResourceLimiter: config.ResourceLimiterConfig{
+				Type:                   "default autoscale",
+				ManualSystemMemoryInMB: 1,
+				ManualMaximumFD:        2,
+			},
+			AntifloodConfig: chainConfig.AntifloodConfig{
+				Enabled:                   true,
+				NumConcurrentResolverJobs: 50,
+				OutOfSpecs: chainConfig.FloodPreventerConfig{
+					IntervalInSeconds: 1,
+					ReservedPercent:   0,
+					PeerMaxInput: chainConfig.AntifloodLimitsConfig{
+						BaseMessagesPerInterval: 140,
+						TotalSizePerInterval:    4194304,
+						IncreaseFactor: chainConfig.IncreaseFactorConfig{
+							Threshold: 0,
+							Factor:    0,
+						},
+					},
+					BlackList: chainConfig.BlackListConfig{
+						ThresholdNumMessagesPerInterval: 200,
+						ThresholdSizePerInterval:        6291456,
+						NumFloodingRounds:               2,
+						PeerBanDurationInSeconds:        3600,
+					},
+				},
+				FastReacting: chainConfig.FloodPreventerConfig{
+					IntervalInSeconds: 1,
+					ReservedPercent:   20,
+					PeerMaxInput: chainConfig.AntifloodLimitsConfig{
+						BaseMessagesPerInterval: 10,
+						TotalSizePerInterval:    1048576,
+						IncreaseFactor: chainConfig.IncreaseFactorConfig{
+							Threshold: 10,
+							Factor:    1,
+						},
+					},
+					BlackList: chainConfig.BlackListConfig{
+						ThresholdNumMessagesPerInterval: 70,
+						ThresholdSizePerInterval:        2097154,
+						NumFloodingRounds:               10,
+						PeerBanDurationInSeconds:        300,
+					},
+				},
+				SlowReacting: chainConfig.FloodPreventerConfig{
+					IntervalInSeconds: 30,
+					ReservedPercent:   20,
+					PeerMaxInput: chainConfig.AntifloodLimitsConfig{
+						BaseMessagesPerInterval: 400,
+						TotalSizePerInterval:    10485760,
+						IncreaseFactor: chainConfig.IncreaseFactorConfig{
+							Threshold: 10,
+							Factor:    0,
+						},
+					},
+					BlackList: chainConfig.BlackListConfig{
+						ThresholdNumMessagesPerInterval: 800,
+						ThresholdSizePerInterval:        20971540,
+						NumFloodingRounds:               2,
+						PeerBanDurationInSeconds:        3600,
+					},
+				},
+				PeerMaxOutput: chainConfig.AntifloodLimitsConfig{
+					BaseMessagesPerInterval: 5,
+					TotalSizePerInterval:    524288,
+					IncreaseFactor:          chainConfig.IncreaseFactorConfig{},
+				},
+				Cache: chainConfig.CacheConfig{
+					Name:     "Antiflood",
+					Type:     "LRU",
+					Capacity: 7000,
+				},
+				Topic: chainConfig.TopicAntifloodConfig{
+					DefaultMaxMessagesPerSec: 300,
+					MaxMessages: []chainConfig.TopicMaxMessagesConfig{
+						{
+							Topic:             "EthereumToMultiversX_join",
+							NumMessagesPerSec: 100,
+						},
+						{
+							Topic:             "EthereumToMultiversX_sign",
+							NumMessagesPerSec: 100,
+						},
+					},
+				},
+				TxAccumulator: chainConfig.TxAccumulatorConfig{},
+			},
+		},
+		StateMachine: map[string]ConfigStateMachine{
+			"EthereumToMultiversX": {
+				StepDurationInMillis:       12000,
+				IntervalForLeaderInSeconds: 120,
+			},
+			"MultiversXToEthereum": {
+				StepDurationInMillis:       12000,
+				IntervalForLeaderInSeconds: 720,
+			},
+		},
+		Relayer: ConfigRelayer{
+			Marshalizer: chainConfig.MarshalizerConfig{
+				Type:           "gogo protobuf",
+				SizeCheckDelta: 10,
+			},
+			RoleProvider: RoleProviderConfig{
+				PollingIntervalInMillis: 60000,
+			},
+			StatusMetricsStorage: chainConfig.StorageConfig{
+				Cache: chainConfig.CacheConfig{
+					Name:     "StatusMetricsStorage",
+					Type:     "LRU",
+					Capacity: 1000,
+				},
+				DB: chainConfig.DBConfig{
+					FilePath:          "StatusMetricsStorageDB",
+					Type:              "LvlDBSerial",
+					BatchDelaySeconds: 2,
+					MaxBatchSize:      100,
+					MaxOpenFiles:      10,
+				},
+			},
+		},
+		Logs: LogsConfig{
+			LogFileLifeSpanInSec: 86400,
+			LogFileLifeSpanInMB:  1024,
+		},
+		WebAntiflood: WebAntifloodConfig{
+			Enabled: true,
+			WebServer: WebServerAntifloodConfig{
+				SimultaneousRequests:         100,
+				SameSourceRequests:           10000,
+				SameSourceResetIntervalInSec: 1,
+			},
+		},
+		BatchValidator: BatchValidatorConfig{
+			Enabled:              false,
+			URL:                  "https://devnet-bridge-api.multiversx.com/validateBatch",
+			RequestTimeInSeconds: 2,
+		},
+		PeersRatingConfig: PeersRatingConfig{
+			TopRatedCacheCapacity: 5000,
+			BadRatedCacheCapacity: 5000,
+		},
+	}
+
+	testString := `
 [Eth]
     Chain = "Ethereum"
     NetworkAddress = "http://127.0.0.1:8545" # a network address
     MultisigContractAddress = "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c" # the eth address for the bridge contract
     SafeContractAddress = "A6504Cc508889bbDBd4B748aFf6EA6b5D0d2684c"
-    SCExecProxyAddress = "A6504Cc508889bbDBd4B748aFf6EA6b5D0d2684c" # eth address for bridge sc execution logic
     PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
     GasLimitBase = 350000
     GasLimitForEach = 30000
@@ -44,8 +261,6 @@
         ProposeStatusForEach = 7000000
         PerformActionBase = 40000000
         PerformActionForEach = 5500000
-        ScCallPerByte = 100000 # 1500 tx data field + the rest for the actual storage in the contract
-        ScCallPerformForEach = 10000000
 
 [P2P]
     Port = "10010"
@@ -59,9 +274,9 @@
             ListenAddress = "/ip4/0.0.0.0/tcp/%d" # TCP listen address
             PreventPortReuse = false
         [P2P.ResourceLimiter]
-            Type = "default autoscale" #available options "default autoscale", "infinite", "default with manual scale".
-            ManualSystemMemoryInMB = 0 # not taken into account if the type is not "default with manual scale"
-            ManualMaximumFD = 0 # not taken into account if the type is not "default with manual scale"
+			Type = "default autoscale" #available options "default autoscale", "infinite", "default with manual scale".
+			ManualSystemMemoryInMB = 1 # not taken into account if the type is not "default with manual scale"
+			ManualMaximumFD = 2 # not taken into account if the type is not "default with manual scale"
     [P2P.AntifloodConfig]
         Enabled = true
         NumConcurrentResolverJobs = 50
@@ -174,3 +389,13 @@
 [PeersRatingConfig]
     TopRatedCacheCapacity = 5000
     BadRatedCacheCapacity = 5000
+
+`
+
+	cfg := Config{}
+
+	err := toml.Unmarshal([]byte(testString), &cfg)
+
+	require.Nil(t, err)
+	require.Equal(t, expectedConfig, cfg)
+}

@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -37,6 +38,7 @@ type EthereumChainMock struct {
 	relayers                            []common.Address
 	ProposeMultiTransferEsdtBatchCalled func()
 	BalanceAtCalled                     func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	FilterLogsCalled                    func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 }
 
 // NewEthereumChainMock -
@@ -252,8 +254,27 @@ func (mock *EthereumChainMock) BalanceAt(ctx context.Context, account common.Add
 	return big.NewInt(0), nil
 }
 
+// FilterLogs -
+func (mock *EthereumChainMock) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+	if mock.FilterLogsCalled != nil {
+		return mock.FilterLogsCalled(ctx, q)
+	}
+
+	return []types.Log{}, nil
+}
+
 // IsPaused -
 func (mock *EthereumChainMock) IsPaused(_ context.Context) (bool, error) {
+	return false, nil
+}
+
+// TokenMintedBalances -
+func (mock *EthereumChainMock) TokenMintedBalances(_ context.Context, _ common.Address) (*big.Int, error) {
+	return big.NewInt(0), nil
+}
+
+// WhitelistedTokensMintBurn -
+func (mock *EthereumChainMock) WhitelistedTokensMintBurn(_ context.Context, _ common.Address) (bool, error) {
 	return false, nil
 }
 

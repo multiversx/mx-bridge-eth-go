@@ -6,6 +6,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 )
 
 // MultiversXClient defines the behavior of the MultiversX client able to communicate with the MultiversX chain
@@ -30,7 +32,7 @@ type MultiversXClient interface {
 	PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
 	CheckClientAvailability(ctx context.Context) error
 	IsMintBurnAllowed(ctx context.Context, token []byte) (bool, error)
-	AccumulatedBurnedTokens(ctx context.Context, token common.Address) (uint64, error)
+	AccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error)
 	Close() error
 	IsInterfaceNil() bool
 }
@@ -39,13 +41,15 @@ type MultiversXClient interface {
 type EthereumClient interface {
 	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
 	WasExecuted(ctx context.Context, batchID uint64) (bool, error)
-	GenerateMessageHash(batch *ArgListsBatch, batchId uint64) (common.Hash, error)
+	IsDepositSCCall(deposit *clients.DepositTransfer) bool
+	GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error)
 
 	BroadcastSignatureForMessageHash(msgHash common.Hash)
-	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *ArgListsBatch, batchId uint64, quorum int) (string, error)
+	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error)
 	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
 	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
+	GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error)
 	CheckClientAvailability(ctx context.Context) error
 	CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error
 	TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error)

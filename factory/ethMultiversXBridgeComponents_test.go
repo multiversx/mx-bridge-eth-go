@@ -418,6 +418,7 @@ func TestEthMultiversXBridgeComponents_RelayerAddresses(t *testing.T) {
 	args := createMockEthMultiversXBridgeArgs()
 	components, _ := NewEthMultiversXBridgeComponents(args)
 
-	assert.Equal(t, "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede", components.MultiversXRelayerAddress().AddressAsBech32String())
+	bech32Address, _ := components.MultiversXRelayerAddress().AddressAsBech32String()
+	assert.Equal(t, "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede", bech32Address)
 	assert.Equal(t, "0x3FE464Ac5aa562F7948322F92020F2b668D543d8", components.EthereumRelayerAddress().String())
 }

@@ -46,13 +46,14 @@ type ArgsMXClientDataGetter struct {
 }
 
 type mxClientDataGetter struct {
-	multisigContractAddress core.AddressHandler
-	relayerAddress          core.AddressHandler
-	proxy                   Proxy
-	log                     logger.Logger
-	mutNodeStatus           sync.Mutex
-	wasShardIDFetched       bool
-	shardID                 uint32
+	multisigContractAddress       core.AddressHandler
+	bech32MultisigContractAddress string
+	relayerAddress                core.AddressHandler
+	proxy                         Proxy
+	log                           logger.Logger
+	mutNodeStatus                 sync.Mutex
+	wasShardIDFetched             bool
+	shardID                       uint32
 }
 
 // NewMXClientDataGetter creates a new instance of the dataGetter type
@@ -69,12 +70,17 @@ func NewMXClientDataGetter(args ArgsMXClientDataGetter) (*mxClientDataGetter, er
 	if check.IfNil(args.MultisigContractAddress) {
 		return nil, fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
 	}
+	bech32Address, err := args.MultisigContractAddress.AddressAsBech32String()
+	if err != nil {
+		return nil, fmt.Errorf("%w for %x", err, args.MultisigContractAddress.AddressBytes())
+	}
 
 	return &mxClientDataGetter{
-		multisigContractAddress: args.MultisigContractAddress,
-		relayerAddress:          args.RelayerAddress,
-		proxy:                   args.Proxy,
-		log:                     args.Log,
+		multisigContractAddress:       args.MultisigContractAddress,
+		bech32MultisigContractAddress: bech32Address,
+		relayerAddress:                args.RelayerAddress,
+		proxy:                         args.Proxy,
+		log:                           args.Log,
 	}, nil
 }
 
@@ -133,7 +139,7 @@ func (dataGetter *mxClientDataGetter) getShardID(ctx context.Context) (uint32, e
 	}
 
 	var err error
-	dataGetter.shardID, err = dataGetter.proxy.GetShardOfAddress(ctx, dataGetter.multisigContractAddress.AddressAsBech32String())
+	dataGetter.shardID, err = dataGetter.proxy.GetShardOfAddress(ctx, dataGetter.bech32MultisigContractAddress)
 	if err == nil {
 		dataGetter.wasShardIDFetched = true
 	}
@@ -202,6 +208,24 @@ func (dataGetter *mxClientDataGetter) ExecuteQueryReturningUint64(ctx context.Co
 	return num, nil
 }
 
+// ExecuteQueryReturningBigInt will try to execute the provided query and return the result as big.Int
+func (dataGetter *mxClientDataGetter) ExecuteQueryReturningBigInt(ctx context.Context, request *data.VmValueRequest) (*big.Int, error) {
+	response, err := dataGetter.ExecuteQueryReturningBytes(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(response) == 0 {
+		return big.NewInt(0), nil
+	}
+	if len(response[0]) == 0 {
+		return big.NewInt(0), nil
+	}
+
+	num := big.NewInt(0).SetBytes(response[0])
+	return num, nil
+}
+
 func parseUInt64FromByteSlice(bytes []byte) (uint64, error) {
 	num := big.NewInt(0).SetBytes(bytes)
 	if !num.IsUint64() {
@@ -227,6 +251,15 @@ func (dataGetter *mxClientDataGetter) executeQueryUint64FromBuilder(ctx context.
 	}
 
 	return dataGetter.ExecuteQueryReturningUint64(ctx, vmValuesRequest)
+}
+
+func (dataGetter *mxClientDataGetter) executeQueryBigIntFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (*big.Int, error) {
+	vmValuesRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		return nil, err
+	}
+
+	return dataGetter.ExecuteQueryReturningBigInt(ctx, vmValuesRequest)
 }
 
 func (dataGetter *mxClientDataGetter) executeQueryBoolFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (bool, error) {
@@ -329,7 +362,7 @@ func (dataGetter *mxClientDataGetter) GetTransactionsStatuses(ctx context.Contex
 		return nil, fmt.Errorf("%w for batch ID %v", errNoStatusForBatchID, batchID)
 	}
 
-	isFinished, err := dataGetter.parseBool(values[0], getStatusesAfterExecutionFuncName, dataGetter.multisigContractAddress.AddressAsBech32String())
+	isFinished, err := dataGetter.parseBool(values[0], getStatusesAfterExecutionFuncName, dataGetter.bech32MultisigContractAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -420,11 +453,11 @@ func (dataGetter *mxClientDataGetter) isMintBurnAllowed(ctx context.Context, tok
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
-func (dataGetter *mxClientDataGetter) getAccumulatedBurnedTokens(ctx context.Context, token []byte) (uint64, error) {
+func (dataGetter *mxClientDataGetter) getAccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error) {
 	builder := dataGetter.createDefaultVmQueryBuilder()
 	builder.Function(getAccumulatedBurnedTokensFuncName).ArgBytes(token)
 
-	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
+	return dataGetter.executeQueryBigIntFromBuilder(ctx, builder)
 }
 
 func getStatusFromBuff(buff []byte) (byte, error) {
@@ -442,6 +475,11 @@ func addBatchInfo(builder builders.VMQueryBuilder, batch *clients.TransferBatch)
 			ArgBytes(dt.ConvertedTokenBytes).
 			ArgBigInt(dt.Amount).
 			ArgInt64(int64(dt.Nonce))
+
+		if len(dt.Data) > 0 {
+			// SC call type of transfer
+			builder.ArgBytes(dt.Data).ArgInt64(int64(dt.ExtraGasLimit))
+		}
 	}
 }
 
