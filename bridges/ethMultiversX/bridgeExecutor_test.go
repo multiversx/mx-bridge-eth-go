@@ -1255,8 +1255,8 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 					assert.Equal(t, providedBatch.Deposits[i].Amount, batch.Amounts[i])
 					assert.Equal(t, providedBatch.Deposits[i].Nonce, batch.Nonces[i].Uint64())
 					assert.Equal(t, providedBatch.Deposits[i].ToBytes, batch.Recipients[i].Bytes())
-					assert.Equal(t, providedBatch.Deposits[i].TokenBytes, batch.Tokens[i].Bytes())
-					assert.Equal(t, providedBatch.Deposits[i].ConvertedTokenBytes, batch.ConvertedTokenBytes[i])
+					assert.Equal(t, providedBatch.Deposits[i].SourceTokenBytes, batch.EthTokens[i].Bytes())
+					assert.Equal(t, providedBatch.Deposits[i].DestinationTokenBytes, batch.MvxTokenBytes[i])
 				}
 				assert.True(t, providedQuorum == quorum)
 

@@ -527,7 +527,7 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		return ErrNilBatch
 	}
 
-	argLists, err := batchProcessor.ExtractList(executor.batch)
+	argLists, err := batchProcessor.ExtractListMvxToEth(executor.batch)
 	if err != nil {
 		return err
 	}
@@ -558,12 +558,12 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 
 	executor.log.Debug("fetched quorum size", "quorum", quorumSize.Int64())
 
-	argLists, err := batchProcessor.ExtractList(executor.batch)
+	argLists, err := batchProcessor.ExtractListMvxToEth(executor.batch)
 	if err != nil {
 		return err
 	}
 
-	err = executor.checkAvailableTokensOnEthereum(ctx, argLists.Tokens, argLists.ConvertedTokenBytes, argLists.Amounts)
+	err = executor.checkAvailableTokensOnEthereum(ctx, argLists.EthTokens, argLists.MvxTokenBytes, argLists.Amounts)
 	if err != nil {
 		return err
 	}
@@ -647,18 +647,18 @@ func (executor *bridgeExecutor) isMintBurnOnMultiversX(ctx context.Context, toke
 	return isMintBurn
 }
 
-func (executor *bridgeExecutor) checkAvailableTokensOnEthereum(ctx context.Context, tokens []common.Address, convertedTokens [][]byte, amounts []*big.Int) error {
-	tokens, convertedTokens, amounts = executor.getCumulatedTransfers(tokens, convertedTokens, amounts)
+func (executor *bridgeExecutor) checkAvailableTokensOnEthereum(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) error {
+	ethTokens, mvxTokens, amounts = executor.getCumulatedTransfers(ethTokens, mvxTokens, amounts)
 
-	return executor.checkCumulatedTransfers(ctx, tokens, convertedTokens, amounts)
+	return executor.checkCumulatedTransfers(ctx, ethTokens, mvxTokens, amounts)
 }
 
-func (executor *bridgeExecutor) getCumulatedTransfers(tokens []common.Address, convertedTokens [][]byte, amounts []*big.Int) ([]common.Address, [][]byte, []*big.Int) {
+func (executor *bridgeExecutor) getCumulatedTransfers(ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) ([]common.Address, [][]byte, []*big.Int) {
 	cumulatedAmounts := make(map[common.Address]*big.Int)
 	uniqueTokens := make([]common.Address, 0)
 	uniqueConvertedTokens := make([][]byte, 0)
 
-	for i, token := range tokens {
+	for i, token := range ethTokens {
 		existingValue, exists := cumulatedAmounts[token]
 		if exists {
 			existingValue.Add(existingValue, amounts[i])
@@ -667,7 +667,7 @@ func (executor *bridgeExecutor) getCumulatedTransfers(tokens []common.Address, c
 
 		cumulatedAmounts[token] = amounts[i]
 		uniqueTokens = append(uniqueTokens, token)
-		uniqueConvertedTokens = append(uniqueConvertedTokens, convertedTokens[i])
+		uniqueConvertedTokens = append(uniqueConvertedTokens, mvxTokens[i])
 	}
 
 	finalAmounts := make([]*big.Int, len(uniqueTokens))

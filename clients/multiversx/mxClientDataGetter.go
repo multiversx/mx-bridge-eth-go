@@ -472,7 +472,7 @@ func addBatchInfo(builder builders.VMQueryBuilder, batch *clients.TransferBatch)
 	for _, dt := range batch.Deposits {
 		builder.ArgBytes(dt.FromBytes).
 			ArgBytes(dt.ToBytes).
-			ArgBytes(dt.ConvertedTokenBytes).
+			ArgBytes(dt.DestinationTokenBytes).
 			ArgBigInt(dt.Amount).
 			ArgInt64(int64(dt.Nonce))
 
