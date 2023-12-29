@@ -27,7 +27,7 @@ func asyncCancelCall(cancelHandler func(), delay time.Duration) {
 	}()
 }
 
-func TestRelayersShouldExecuteTransferFromMultiversXToEth(t *testing.T) {
+func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
@@ -48,7 +48,7 @@ func TestRelayersShouldExecuteTransferFromMultiversXToEth(t *testing.T) {
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
-		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker)
+		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker, false, nil)
 	}
 	pendingBatch := mock.MultiversXPendingBatch{
 		Nonce:              big.NewInt(1),
@@ -59,11 +59,7 @@ func TestRelayersShouldExecuteTransferFromMultiversXToEth(t *testing.T) {
 	multiversXChainMock.SetQuorum(numRelayers)
 
 	relayers := make([]bridgeComponents, 0, numRelayers)
-	defer func() {
-		for _, r := range relayers {
-			_ = r.Close()
-		}
-	}()
+	defer closeRelayers(relayers)
 
 	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
 
@@ -98,28 +94,23 @@ func TestRelayersShouldExecuteTransferFromMultiversXToEth(t *testing.T) {
 	// let all transactions propagate
 	time.Sleep(time.Second * 5)
 
-	transactions := multiversXChainMock.GetAllSentTransactions(context.Background())
-	assert.Equal(t, 5, len(transactions))
-	assert.Nil(t, multiversXChainMock.ProposedTransfer())
-	assert.NotNil(t, multiversXChainMock.PerformedActionID())
-
-	transfer := ethereumChainMock.GetLastProposedTransfer()
-	require.NotNil(t, transfer)
-
-	require.Equal(t, numTransactions, len(transfer.Amounts))
-
-	for i := 0; i < len(transfer.Amounts); i++ {
-		assert.Equal(t, deposits[i].To, transfer.Recipients[i])
-		assert.Equal(t, tokensAddresses[i], transfer.Tokens[i])
-		assert.Equal(t, deposits[i].Amount, transfer.Amounts[i])
-	}
+	checkTestStatus(t, multiversXChainMock, ethereumChainMock, numTransactions, deposits, tokensAddresses)
 }
 
-func TestRelayersShouldExecuteTransferFromMultiversXToEthIfTransactionsAppearInBatch(t *testing.T) {
+func TestRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
 
+	t.Run("simple tokens transfers", func(t *testing.T) {
+		testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t, false)
+	})
+	t.Run("native tokens transfers", func(t *testing.T) {
+		testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t, true)
+	})
+}
+
+func testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t *testing.T, withNativeTokens bool) {
 	numTransactions := 2
 	deposits, tokensAddresses, erc20Map := createTransactions(numTransactions)
 
@@ -136,7 +127,14 @@ func TestRelayersShouldExecuteTransferFromMultiversXToEthIfTransactionsAppearInB
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
-		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker)
+		var nativeBalanceValue *big.Int
+
+		if withNativeTokens {
+			nativeBalanceValue = big.NewInt(int64(i * 1000))
+			ethereumChainMock.AddWhitelistedTokensMintBurn(tokensAddresses[i], nativeBalanceValue)
+		}
+
+		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker, withNativeTokens, nativeBalanceValue)
 	}
 	pendingBatch := mock.MultiversXPendingBatch{
 		Nonce:              big.NewInt(1),
@@ -152,11 +150,7 @@ func TestRelayersShouldExecuteTransferFromMultiversXToEthIfTransactionsAppearInB
 	}
 
 	relayers := make([]bridgeComponents, 0, numRelayers)
-	defer func() {
-		for _, r := range relayers {
-			_ = r.Close()
-		}
-	}()
+	defer closeRelayers(relayers)
 
 	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
 
@@ -191,21 +185,7 @@ func TestRelayersShouldExecuteTransferFromMultiversXToEthIfTransactionsAppearInB
 	// let all transactions propagate
 	time.Sleep(time.Second * 5)
 
-	transactions := multiversXChainMock.GetAllSentTransactions(context.Background())
-	assert.Equal(t, 5, len(transactions))
-	assert.Nil(t, multiversXChainMock.ProposedTransfer())
-	assert.NotNil(t, multiversXChainMock.PerformedActionID())
-
-	transfer := ethereumChainMock.GetLastProposedTransfer()
-	require.NotNil(t, transfer)
-
-	require.Equal(t, numTransactions, len(transfer.Amounts))
-
-	for i := 0; i < len(transfer.Amounts); i++ {
-		assert.Equal(t, deposits[i].To, transfer.Recipients[i])
-		assert.Equal(t, tokensAddresses[i], transfer.Tokens[i])
-		assert.Equal(t, deposits[i].Amount, transfer.Amounts[i])
-	}
+	checkTestStatus(t, multiversXChainMock, ethereumChainMock, numTransactions, deposits, tokensAddresses)
 }
 
 func createTransactions(n int) ([]mock.MultiversXDeposit, []common.Address, map[common.Address]*big.Int) {
@@ -239,8 +219,33 @@ func createTransaction(index int) (mock.MultiversXDeposit, common.Address) {
 	}, tokenAddress
 }
 
-// TODO: remove duplicated code from the integration tests:
-// L154-L169, for loop is the same as in the first tests
-// L108-L129 same with L25-L47
-// L137-L151 same with L49-L63
-// check are the same after ctx.Done()
+func closeRelayers(relayers []bridgeComponents) {
+	for _, r := range relayers {
+		_ = r.Close()
+	}
+}
+
+func checkTestStatus(
+	t *testing.T,
+	multiversXChainMock *mock.MultiversXChainMock,
+	ethereumChainMock *mock.EthereumChainMock,
+	numTransactions int,
+	deposits []mock.MultiversXDeposit,
+	tokensAddresses []common.Address,
+) {
+	transactions := multiversXChainMock.GetAllSentTransactions(context.Background())
+	assert.Equal(t, 5, len(transactions))
+	assert.Nil(t, multiversXChainMock.ProposedTransfer())
+	assert.NotNil(t, multiversXChainMock.PerformedActionID())
+
+	transfer := ethereumChainMock.GetLastProposedTransfer()
+	require.NotNil(t, transfer)
+
+	require.Equal(t, numTransactions, len(transfer.Amounts))
+
+	for i := 0; i < len(transfer.Amounts); i++ {
+		assert.Equal(t, deposits[i].To, transfer.Recipients[i])
+		assert.Equal(t, tokensAddresses[i], transfer.Tokens[i])
+		assert.Equal(t, deposits[i].Amount, transfer.Amounts[i])
+	}
+}

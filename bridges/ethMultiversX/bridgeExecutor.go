@@ -409,7 +409,6 @@ func (executor *bridgeExecutor) PerformActionOnMultiversX(ctx context.Context) e
 		return ErrNilBatch
 	}
 
-	// TODO: check mintBurn balances before performing the action
 	hash, err := executor.multiversXClient.PerformAction(ctx, executor.actionID, executor.batch)
 	if err != nil {
 		return err
@@ -527,11 +526,7 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		return ErrNilBatch
 	}
 
-	argLists, err := batchProcessor.ExtractListMvxToEth(executor.batch)
-	if err != nil {
-		return err
-	}
-
+	argLists := batchProcessor.ExtractListMvxToEth(executor.batch)
 	hash, err := executor.ethereumClient.GenerateMessageHash(argLists, executor.batch.ID)
 	if err != nil {
 		return err
@@ -558,15 +553,7 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 
 	executor.log.Debug("fetched quorum size", "quorum", quorumSize.Int64())
 
-	argLists, err := batchProcessor.ExtractListMvxToEth(executor.batch)
-	if err != nil {
-		return err
-	}
-
-	err = executor.checkAvailableTokensOnEthereum(ctx, argLists.EthTokens, argLists.MvxTokenBytes, argLists.Amounts)
-	if err != nil {
-		return err
-	}
+	argLists := batchProcessor.ExtractListMvxToEth(executor.batch)
 
 	executor.log.Info("executing transfer " + executor.batch.String())
 
@@ -613,20 +600,28 @@ func (executor *bridgeExecutor) isMintBurnToken(ctx context.Context, token commo
 	return isMintBurnOnEthereum, nil
 }
 
-func (executor *bridgeExecutor) checkRequiredMintBurnBalance(ctx context.Context, token common.Address, convertedToken []byte) error {
-	mintedBalance, err := executor.ethereumClient.TokenMintedBalances(ctx, token)
+func (executor *bridgeExecutor) checkRequiredMintBurnBalance(ctx context.Context, ethToken common.Address, mvxToken []byte) error {
+	ethBalance, err := executor.ethereumClient.TokenMintedBalances(ctx, ethToken)
 	if err != nil {
 		return err
 	}
 
-	burntBalance, err := executor.multiversXClient.AccumulatedBurnedTokens(ctx, convertedToken)
+	mvxBalance, err := executor.multiversXClient.AccumulatedBurnedTokens(ctx, mvxToken)
 	if err != nil {
 		return err
 	}
-	if mintedBalance.Cmp(burntBalance) != 0 {
-		return fmt.Errorf("%w, minted: %s, burnt: %s for ERC20 token %s/ ESDT token %s",
-			ErrMintBurnBalance, mintedBalance.String(), burntBalance.String(), token.String(), convertedToken)
+	if ethBalance.Cmp(mvxBalance) > 0 {
+		return fmt.Errorf("%w, balance for ERC20 token %s is %s and the balance for ESDT token %s is %s",
+			ErrMintBurnBalance, ethToken.String(), ethBalance.String(), mvxToken, mvxBalance.String())
 	}
+
+	executor.log.Debug("bridgeExecutor.checkRequiredMintBurnBalance",
+		"ERC20 token", ethToken.String(),
+		"ERC20 native balance", ethBalance.String(),
+		"ESDT token", mvxToken,
+		"ESDT native balance", mvxBalance.String(),
+	)
+
 	return nil
 }
 
@@ -639,7 +634,6 @@ func (executor *bridgeExecutor) isMintBurnOnEthereum(ctx context.Context, erc20A
 }
 
 func (executor *bridgeExecutor) isMintBurnOnMultiversX(ctx context.Context, token []byte) bool {
-
 	isMintBurn, err := executor.multiversXClient.IsMintBurnAllowed(ctx, token)
 	if err != nil {
 		return false
@@ -647,7 +641,8 @@ func (executor *bridgeExecutor) isMintBurnOnMultiversX(ctx context.Context, toke
 	return isMintBurn
 }
 
-func (executor *bridgeExecutor) checkAvailableTokensOnEthereum(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) error {
+// CheckAvailableTokens checks the available balances handling also the native tokens
+func (executor *bridgeExecutor) CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) error {
 	ethTokens, mvxTokens, amounts = executor.getCumulatedTransfers(ethTokens, mvxTokens, amounts)
 
 	return executor.checkCumulatedTransfers(ctx, ethTokens, mvxTokens, amounts)

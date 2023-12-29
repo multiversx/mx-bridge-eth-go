@@ -150,11 +150,11 @@ func (mock *MultiversXChainMock) SetLastExecutedEthTxId(lastExecutedEthTxId uint
 }
 
 // AddTokensPair -
-func (mock *MultiversXChainMock) AddTokensPair(erc20 common.Address, ticker string) {
+func (mock *MultiversXChainMock) AddTokensPair(erc20 common.Address, ticker string, isNativeToken bool, nativeBalance *big.Int) {
 	mock.mutState.Lock()
 	defer mock.mutState.Unlock()
 
-	mock.addTokensPair(erc20, ticker)
+	mock.addTokensPair(erc20, ticker, isNativeToken, nativeBalance)
 }
 
 // SetQuorum -
