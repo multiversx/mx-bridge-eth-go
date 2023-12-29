@@ -28,6 +28,8 @@ type EthereumClientWrapperStub struct {
 	QuorumCalled                    func(ctx context.Context) (*big.Int, error)
 	GetStatusesAfterExecutionCalled func(ctx context.Context, batchID *big.Int) ([]byte, error)
 	BalanceAtCalled                 func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	TokenMintedBalancesCalled       func(ctx context.Context, token common.Address) (*big.Int, error)
+	WhitelistedTokensMintBurnCalled func(ctx context.Context, token common.Address) (bool, error)
 
 	SetIntMetricCalled    func(metric string, value int)
 	AddIntMetricCalled    func(metric string, delta int)
@@ -206,6 +208,22 @@ func (stub *EthereumClientWrapperStub) IsPaused(ctx context.Context) (bool, erro
 		return stub.IsPausedCalled(ctx)
 	}
 
+	return false, nil
+}
+
+// TokenMintedBalances -
+func (stub *EthereumClientWrapperStub) TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	if stub.TokenMintedBalancesCalled != nil {
+		return stub.TokenMintedBalancesCalled(ctx, token)
+	}
+	return big.NewInt(0), nil
+}
+
+// WhitelistedTokensMintBurn -
+func (stub *EthereumClientWrapperStub) WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error) {
+	if stub.WhitelistedTokensMintBurnCalled != nil {
+		return stub.WhitelistedTokensMintBurnCalled(ctx, token)
+	}
 	return false, nil
 }
 

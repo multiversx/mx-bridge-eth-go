@@ -25,10 +25,10 @@ func createMockArgsEthereumChainWrapper() (ArgsEthereumChainWrapper, *testsCommo
 	statusHandler := testsCommon.NewStatusHandlerMock("mock")
 
 	return ArgsEthereumChainWrapper{
-		MultiSigContract:    &bridgeTests.MultiSigContractStub{},
-		BlockchainClient:    &interactors.BlockchainClientStub{},
-		SCExecProxyContract: &bridgeTests.SCExecProxyContractStub{},
-		StatusHandler:       statusHandler,
+		MultiSigContract: &bridgeTests.MultiSigContractStub{},
+		SafeContract:     &bridgeTests.SafeContractStub{},
+		BlockchainClient: &interactors.BlockchainClientStub{},
+		StatusHandler:    statusHandler,
 	}, statusHandler
 }
 

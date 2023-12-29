@@ -13,6 +13,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -1154,7 +1155,7 @@ func TestMultiversXToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GenerateMessageHashCalled: func(batch *clients.TransferBatch) (common.Hash, error) {
+			GenerateMessageHashCalled: func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error) {
 				return common.Hash{}, expectedErr
 			},
 		}
@@ -1171,7 +1172,7 @@ func TestMultiversXToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 		wasCalledBroadcastSignatureForMessageHashCalled := false
 		args := createMockExecutorArgs()
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GenerateMessageHashCalled: func(batch *clients.TransferBatch) (common.Hash, error) {
+			GenerateMessageHashCalled: func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error) {
 				wasCalledGenerateMessageHashCalled = true
 				return common.Hash{}, nil
 			},
@@ -1224,7 +1225,7 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 			GetQuorumSizeCalled: func(ctx context.Context) (*big.Int, error) {
 				return big.NewInt(0), nil
 			},
-			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error) {
+			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error) {
 				return "", expectedErr
 			},
 		}
@@ -1247,9 +1248,16 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 				wasCalledGetQuorumSizeCalled = true
 				return big.NewInt(int64(providedQuorum)), nil
 			},
-			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error) {
+			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error) {
 				assert.True(t, providedHash == msgHash)
-				assert.True(t, providedBatch == batch)
+				assert.True(t, providedBatch.ID == batchId)
+				for i := 0; i < len(providedBatch.Deposits); i++ {
+					assert.Equal(t, providedBatch.Deposits[i].Amount, batch.Amounts[i])
+					assert.Equal(t, providedBatch.Deposits[i].Nonce, batch.Nonces[i].Uint64())
+					assert.Equal(t, providedBatch.Deposits[i].ToBytes, batch.Recipients[i].Bytes())
+					assert.Equal(t, providedBatch.Deposits[i].SourceTokenBytes, batch.EthTokens[i].Bytes())
+					assert.Equal(t, providedBatch.Deposits[i].DestinationTokenBytes, batch.MvxTokenBytes[i])
+				}
 				assert.True(t, providedQuorum == quorum)
 
 				wasCalledExecuteTransferCalled = true
@@ -1725,4 +1733,135 @@ func TestBridgeExecutor_ValidateBatch(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, result)
 	assert.True(t, validateBatchCalled)
+}
+
+func TestBridgeExecutor_CheckAvailableTokens(t *testing.T) {
+	t.Parallel()
+
+	t.Run("wrong balances should error", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		tokenMintedBalancesCalled := false
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				tokenMintedBalancesCalled = true
+
+				return big.NewInt(3701), nil // eth holds a higher balance than the mvx
+			},
+		}
+
+		accumulatedBurnedTokensCalled := false
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return true, nil
+			},
+			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				accumulatedBurnedTokensCalled = true
+				return big.NewInt(3700), nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+
+		err := executor.CheckAvailableTokens(
+			context.Background(),
+			[]common.Address{
+				common.BytesToAddress([]byte("eth token")),
+			},
+			[][]byte{
+				[]byte("mvx token"),
+			},
+			[]*big.Int{
+				big.NewInt(1),
+			})
+		assert.ErrorIs(t, err, ErrMintBurnBalance)
+		assert.True(t, tokenMintedBalancesCalled)
+		assert.True(t, accumulatedBurnedTokensCalled)
+	})
+	t.Run("should work with the same balances", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		tokenMintedBalancesCalled := false
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				tokenMintedBalancesCalled = true
+
+				return big.NewInt(3700), nil
+			},
+		}
+
+		accumulatedBurnedTokensCalled := false
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return true, nil
+			},
+			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				accumulatedBurnedTokensCalled = true
+				return big.NewInt(3700), nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+
+		err := executor.CheckAvailableTokens(
+			context.Background(),
+			[]common.Address{
+				common.BytesToAddress([]byte("eth token")),
+			},
+			[][]byte{
+				[]byte("mvx token"),
+			},
+			[]*big.Int{
+				big.NewInt(1),
+			})
+		assert.Nil(t, err)
+		assert.True(t, tokenMintedBalancesCalled)
+		assert.True(t, accumulatedBurnedTokensCalled)
+	})
+	t.Run("should work with higher values on the mvx than eth", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		tokenMintedBalancesCalled := false
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				tokenMintedBalancesCalled = true
+
+				return big.NewInt(3699), nil // eth holds less than mvx
+			},
+		}
+
+		accumulatedBurnedTokensCalled := false
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return true, nil
+			},
+			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				accumulatedBurnedTokensCalled = true
+				return big.NewInt(3700), nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+
+		err := executor.CheckAvailableTokens(
+			context.Background(),
+			[]common.Address{
+				common.BytesToAddress([]byte("eth token")),
+			},
+			[][]byte{
+				[]byte("mvx token"),
+			},
+			[]*big.Int{
+				big.NewInt(1),
+			})
+		assert.Nil(t, err)
+		assert.True(t, tokenMintedBalancesCalled)
+		assert.True(t, accumulatedBurnedTokensCalled)
+	})
 }

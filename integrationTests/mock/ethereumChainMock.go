@@ -32,6 +32,7 @@ type EthereumChainMock struct {
 	batches                             map[uint64]*contract.Batch
 	deposits                            map[uint64][]contract.Deposit
 	proposedTransfer                    *EthereumProposedTransfer
+	nativeErc20TokensBalances           map[common.Address]*big.Int
 	GetStatusesAfterExecutionHandler    func() []byte
 	ProcessFinishedHandler              func()
 	quorum                              int
@@ -44,9 +45,10 @@ type EthereumChainMock struct {
 // NewEthereumChainMock -
 func NewEthereumChainMock() *EthereumChainMock {
 	return &EthereumChainMock{
-		nonces:   make(map[common.Address]uint64),
-		batches:  make(map[uint64]*contract.Batch),
-		deposits: make(map[uint64][]contract.Deposit),
+		nonces:                    make(map[common.Address]uint64),
+		batches:                   make(map[uint64]*contract.Batch),
+		deposits:                  make(map[uint64][]contract.Deposit),
+		nativeErc20TokensBalances: make(map[common.Address]*big.Int),
 	}
 }
 
@@ -266,6 +268,33 @@ func (mock *EthereumChainMock) FilterLogs(ctx context.Context, q ethereum.Filter
 // IsPaused -
 func (mock *EthereumChainMock) IsPaused(_ context.Context) (bool, error) {
 	return false, nil
+}
+
+// TokenMintedBalances -
+func (mock *EthereumChainMock) TokenMintedBalances(_ context.Context, erc20Token common.Address) (*big.Int, error) {
+	mock.mutState.RLock()
+	defer mock.mutState.RUnlock()
+
+	value := mock.nativeErc20TokensBalances[erc20Token]
+
+	return value, nil
+}
+
+// WhitelistedTokensMintBurn -
+func (mock *EthereumChainMock) WhitelistedTokensMintBurn(_ context.Context, erc20Token common.Address) (bool, error) {
+	mock.mutState.RLock()
+	defer mock.mutState.RUnlock()
+
+	_, found := mock.nativeErc20TokensBalances[erc20Token]
+
+	return found, nil
+}
+
+// AddWhitelistedTokensMintBurn -
+func (mock *EthereumChainMock) AddWhitelistedTokensMintBurn(erc20Token common.Address, nativeBalance *big.Int) {
+	mock.mutState.Lock()
+	mock.nativeErc20TokensBalances[erc20Token] = nativeBalance
+	mock.mutState.Unlock()
 }
 
 // IsInterfaceNil -

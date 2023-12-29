@@ -33,6 +33,8 @@ const (
 	signedFuncName                                            = "signed"
 	getAllStakedRelayersFuncName                              = "getAllStakedRelayers"
 	isPausedFuncName                                          = "isPaused"
+	isMintBurnAllowedFuncName                                 = "isMintBurnAllowed"
+	getAccumulatedBurnedTokensFuncName                        = "getAccumulatedBurnedTokens"
 )
 
 // ArgsMXClientDataGetter is the arguments DTO used in the NewMXClientDataGetter constructor
@@ -206,6 +208,24 @@ func (dataGetter *mxClientDataGetter) ExecuteQueryReturningUint64(ctx context.Co
 	return num, nil
 }
 
+// ExecuteQueryReturningBigInt will try to execute the provided query and return the result as big.Int
+func (dataGetter *mxClientDataGetter) ExecuteQueryReturningBigInt(ctx context.Context, request *data.VmValueRequest) (*big.Int, error) {
+	response, err := dataGetter.ExecuteQueryReturningBytes(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(response) == 0 {
+		return big.NewInt(0), nil
+	}
+	if len(response[0]) == 0 {
+		return big.NewInt(0), nil
+	}
+
+	num := big.NewInt(0).SetBytes(response[0])
+	return num, nil
+}
+
 func parseUInt64FromByteSlice(bytes []byte) (uint64, error) {
 	num := big.NewInt(0).SetBytes(bytes)
 	if !num.IsUint64() {
@@ -231,6 +251,15 @@ func (dataGetter *mxClientDataGetter) executeQueryUint64FromBuilder(ctx context.
 	}
 
 	return dataGetter.ExecuteQueryReturningUint64(ctx, vmValuesRequest)
+}
+
+func (dataGetter *mxClientDataGetter) executeQueryBigIntFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (*big.Int, error) {
+	vmValuesRequest, err := builder.ToVmValueRequest()
+	if err != nil {
+		return nil, err
+	}
+
+	return dataGetter.ExecuteQueryReturningBigInt(ctx, vmValuesRequest)
 }
 
 func (dataGetter *mxClientDataGetter) executeQueryBoolFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) (bool, error) {
@@ -417,6 +446,20 @@ func (dataGetter *mxClientDataGetter) IsPaused(ctx context.Context) (bool, error
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
+func (dataGetter *mxClientDataGetter) isMintBurnAllowed(ctx context.Context, token []byte) (bool, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder.Function(isMintBurnAllowedFuncName).ArgBytes(token)
+
+	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
+}
+
+func (dataGetter *mxClientDataGetter) getAccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error) {
+	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder.Function(getAccumulatedBurnedTokensFuncName).ArgBytes(token)
+
+	return dataGetter.executeQueryBigIntFromBuilder(ctx, builder)
+}
+
 func getStatusFromBuff(buff []byte) (byte, error) {
 	if len(buff) == 0 {
 		return 0, errMalformedBatchResponse
@@ -429,7 +472,7 @@ func addBatchInfo(builder builders.VMQueryBuilder, batch *clients.TransferBatch)
 	for _, dt := range batch.Deposits {
 		builder.ArgBytes(dt.FromBytes).
 			ArgBytes(dt.ToBytes).
-			ArgBytes(dt.ConvertedTokenBytes).
+			ArgBytes(dt.DestinationTokenBytes).
 			ArgBigInt(dt.Amount).
 			ArgInt64(int64(dt.Nonce))
 

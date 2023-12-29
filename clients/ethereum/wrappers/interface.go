@@ -26,7 +26,9 @@ type multiSigContract interface {
 	Paused(opts *bind.CallOpts) (bool, error)
 }
 
-type scExecProxyContract interface {
+type safeContract interface {
+	TokenMintedBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	WhitelistedTokensMintBurn(opts *bind.CallOpts, arg0 common.Address) (bool, error)
 }
 
 type blockchainClient interface {
