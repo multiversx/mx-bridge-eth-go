@@ -40,7 +40,7 @@ func TestConfigs(t *testing.T) {
 		MultiversX: MultiversXConfig{
 			NetworkAddress:               "https://devnet-gateway.multiversx.com",
 			MultisigContractAddress:      "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
-			SafeContractAddress:          "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+			SafeContractAddress:          "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus",
 			PrivateKeyFile:               "keys/multiversx.pem",
 			IntervalToResendTxsInSeconds: 60,
 			GasMap: MultiversXGasMapConfig{
@@ -243,6 +243,7 @@ func TestConfigs(t *testing.T) {
 [MultiversX]
     NetworkAddress = "https://devnet-gateway.multiversx.com" # the network address
     MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the multiversx address for the bridge contract
+    SafeContractAddress = "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus" # the multiversx address for the safe contract
     PrivateKeyFile = "keys/multiversx.pem" # the path to the pem file containing the relayer multiversx wallet
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
     MaxRetriesOnQuorumReached = 3
