@@ -262,7 +262,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXKeysAndAddresse
 
 	components.multiversXSafeContractAddress, err = data.NewAddressFromBech32String(chainConfigs.SafeContractAddress)
 	if err != nil {
-		return fmt.Errorf("%w for chainConfigs.MultisigContractAddress", err)
+		return fmt.Errorf("%w for chainConfigs.SafeContractAddress", err)
 	}
 
 	return nil
@@ -298,6 +298,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXClient(args Arg
 		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(multiversXClientLogId), multiversXClientLogId),
 		RelayerPrivateKey:            components.multiversXRelayerPrivateKey,
 		MultisigContractAddress:      components.multiversXMultisigContractAddress,
+		SafeContractAddress:          components.multiversXSafeContractAddress,
 		IntervalToResendTxsInSeconds: chainConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
 		RoleProvider:                 components.multiversXRoleProvider,

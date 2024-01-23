@@ -59,6 +59,7 @@ func createMockEthMultiversXBridgeArgs() ArgsEthereumToMultiversXBridge {
 			IntervalToResendTxsInSeconds:    60,
 			NetworkAddress:                  "http://127.0.0.1:8079",
 			MultisigContractAddress:         "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+			SafeContractAddress:             "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 			GasMap:                          testsCommon.CreateTestMultiversXGasMap(),
 			MaxRetriesOnQuorumReached:       1,
 			MaxRetriesOnWasTransferProposed: 1,

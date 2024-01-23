@@ -430,6 +430,7 @@ func createBridgeComponentsConfig(index int) config.Config {
 		MultiversX: config.MultiversXConfig{
 			NetworkAddress:                  "mock",
 			MultisigContractAddress:         "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+			SafeContractAddress:             "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus",
 			PrivateKeyFile:                  fmt.Sprintf("testdata/multiversx%d.pem", index),
 			IntervalToResendTxsInSeconds:    10,
 			GasMap:                          testsCommon.CreateTestMultiversXGasMap(),

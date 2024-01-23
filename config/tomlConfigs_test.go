@@ -40,6 +40,7 @@ func TestConfigs(t *testing.T) {
 		MultiversX: MultiversXConfig{
 			NetworkAddress:               "https://devnet-gateway.multiversx.com",
 			MultisigContractAddress:      "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+			SafeContractAddress:          "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
 			PrivateKeyFile:               "keys/multiversx.pem",
 			IntervalToResendTxsInSeconds: 60,
 			GasMap: MultiversXGasMapConfig{

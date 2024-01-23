@@ -40,6 +40,7 @@ type ClientArgs struct {
 	Log                          logger.Logger
 	RelayerPrivateKey            crypto.PrivateKey
 	MultisigContractAddress      core.AddressHandler
+	SafeContractAddress          core.AddressHandler
 	IntervalToResendTxsInSeconds uint64
 	TokensMapper                 TokensMapper
 	RoleProvider                 roleProvider
@@ -55,6 +56,7 @@ type client struct {
 	relayerPublicKey          crypto.PublicKey
 	relayerAddress            core.AddressHandler
 	multisigContractAddress   core.AddressHandler
+	safeContractAddress       core.AddressHandler
 	log                       logger.Logger
 	gasMapConfig              config.MultiversXGasMapConfig
 	addressPublicKeyConverter bridgeCore.AddressConverter
@@ -97,6 +99,7 @@ func NewClient(args ClientArgs) (*client, error) {
 
 	argsMXClientDataGetter := ArgsMXClientDataGetter{
 		MultisigContractAddress: args.MultisigContractAddress,
+		SafeContractAddress:     args.SafeContractAddress,
 		RelayerAddress:          relayerAddress,
 		Proxy:                   args.Proxy,
 		Log:                     bridgeCore.NewLoggerWithIdentifier(logger.GetOrCreate(multiversXDataGetterLogId), multiversXDataGetterLogId),
@@ -116,6 +119,11 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, fmt.Errorf("%w for %x", err, args.MultisigContractAddress.AddressBytes())
 	}
 
+	bech23SafeAddress, err := args.SafeContractAddress.AddressAsBech32String()
+	if err != nil {
+		return nil, fmt.Errorf("%w for %x", err, args.SafeContractAddress.AddressBytes())
+	}
+
 	c := &client{
 		txHandler: &transactionHandler{
 			proxy:                   args.Proxy,
@@ -130,6 +138,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		relayerPublicKey:          publicKey,
 		relayerAddress:            relayerAddress,
 		multisigContractAddress:   args.MultisigContractAddress,
+		safeContractAddress:       args.SafeContractAddress,
 		log:                       args.Log,
 		gasMapConfig:              args.GasMapConfig,
 		addressPublicKeyConverter: addressConverter,
@@ -141,7 +150,8 @@ func NewClient(args ClientArgs) (*client, error) {
 	bech32RelayerAddress, _ := relayerAddress.AddressAsBech32String()
 	c.log.Info("NewMultiversXClient",
 		"relayer address", bech32RelayerAddress,
-		"safe contract address", bech23MultisigAddress)
+		"multisig contract address", bech23MultisigAddress,
+		"safe contract address", bech23SafeAddress)
 
 	return c, nil
 }
@@ -155,6 +165,9 @@ func checkArgs(args ClientArgs) error {
 	}
 	if check.IfNil(args.MultisigContractAddress) {
 		return fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
+	}
+	if check.IfNil(args.SafeContractAddress) {
+		return fmt.Errorf("%w for the SafeContractAddress argument", errNilAddressHandler)
 	}
 	if check.IfNil(args.Log) {
 		return clients.ErrNilLogger

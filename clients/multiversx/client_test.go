@@ -35,6 +35,7 @@ var pausedBytes = []byte{1}
 func createMockClientArgs() ClientArgs {
 	privateKey, _ := testKeyGen.PrivateKeyFromByteArray(bytes.Repeat([]byte{1}, 32))
 	multisigContractAddress, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
+	safeContractAddress, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
 
 	return ClientArgs{
 		GasMapConfig: config.MultiversXGasMapConfig{
@@ -52,6 +53,7 @@ func createMockClientArgs() ClientArgs {
 		Log:                          logger.GetOrCreate("test"),
 		RelayerPrivateKey:            privateKey,
 		MultisigContractAddress:      multisigContractAddress,
+		SafeContractAddress:          safeContractAddress,
 		IntervalToResendTxsInSeconds: 1,
 		TokensMapper: &bridgeTests.TokensMapperStub{
 			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
@@ -119,6 +121,17 @@ func TestNewClient(t *testing.T) {
 
 		args := createMockClientArgs()
 		args.MultisigContractAddress = nil
+
+		c, err := NewClient(args)
+
+		require.True(t, check.IfNil(c))
+		require.True(t, errors.Is(err, errNilAddressHandler))
+	})
+	t.Run("nil safe contract address should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.SafeContractAddress = nil
 
 		c, err := NewClient(args)
 
