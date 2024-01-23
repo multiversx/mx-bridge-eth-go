@@ -40,6 +40,7 @@ const (
 // ArgsMXClientDataGetter is the arguments DTO used in the NewMXClientDataGetter constructor
 type ArgsMXClientDataGetter struct {
 	MultisigContractAddress core.AddressHandler
+	SafeContractAddress     core.AddressHandler
 	RelayerAddress          core.AddressHandler
 	Proxy                   Proxy
 	Log                     logger.Logger
@@ -47,6 +48,7 @@ type ArgsMXClientDataGetter struct {
 
 type mxClientDataGetter struct {
 	multisigContractAddress       core.AddressHandler
+	safeContractAddress           core.AddressHandler
 	bech32MultisigContractAddress string
 	relayerAddress                core.AddressHandler
 	proxy                         Proxy
@@ -70,6 +72,9 @@ func NewMXClientDataGetter(args ArgsMXClientDataGetter) (*mxClientDataGetter, er
 	if check.IfNil(args.MultisigContractAddress) {
 		return nil, fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
 	}
+	if check.IfNil(args.SafeContractAddress) {
+		return nil, fmt.Errorf("%w for the SafeContractAddress argument", errNilAddressHandler)
+	}
 	bech32Address, err := args.MultisigContractAddress.AddressAsBech32String()
 	if err != nil {
 		return nil, fmt.Errorf("%w for %x", err, args.MultisigContractAddress.AddressBytes())
@@ -77,6 +82,7 @@ func NewMXClientDataGetter(args ArgsMXClientDataGetter) (*mxClientDataGetter, er
 
 	return &mxClientDataGetter{
 		multisigContractAddress:       args.MultisigContractAddress,
+		safeContractAddress:           args.SafeContractAddress,
 		bech32MultisigContractAddress: bech32Address,
 		relayerAddress:                args.RelayerAddress,
 		proxy:                         args.Proxy,
@@ -271,13 +277,17 @@ func (dataGetter *mxClientDataGetter) executeQueryBoolFromBuilder(ctx context.Co
 	return dataGetter.ExecuteQueryReturningBool(ctx, vmValuesRequest)
 }
 
-func (dataGetter *mxClientDataGetter) createDefaultVmQueryBuilder() builders.VMQueryBuilder {
+func (dataGetter *mxClientDataGetter) createMultisigDefaultVmQueryBuilder() builders.VMQueryBuilder {
 	return builders.NewVMQueryBuilder().Address(dataGetter.multisigContractAddress).CallerAddress(dataGetter.relayerAddress)
+}
+
+func (dataGetter *mxClientDataGetter) createSafeDefaultVmQueryBuilder() builders.VMQueryBuilder {
+	return builders.NewVMQueryBuilder().Address(dataGetter.safeContractAddress).CallerAddress(dataGetter.relayerAddress)
 }
 
 // GetCurrentBatchAsDataBytes will assemble a builder and query the proxy for the current pending batch
 func (dataGetter *mxClientDataGetter) GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(getCurrentTxBatchFuncName)
 
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
@@ -285,7 +295,7 @@ func (dataGetter *mxClientDataGetter) GetCurrentBatchAsDataBytes(ctx context.Con
 
 // GetTokenIdForErc20Address will assemble a builder and query the proxy for a token id given a specific erc20 address
 func (dataGetter *mxClientDataGetter) GetTokenIdForErc20Address(ctx context.Context, erc20Address []byte) ([][]byte, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(getTokenIdForErc20AddressFuncName)
 	builder.ArgBytes(erc20Address)
 
@@ -294,7 +304,7 @@ func (dataGetter *mxClientDataGetter) GetTokenIdForErc20Address(ctx context.Cont
 
 // GetERC20AddressForTokenId will assemble a builder and query the proxy for an erc20 address given a specific token id
 func (dataGetter *mxClientDataGetter) GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(getErc20AddressForTokenIdFuncName)
 	builder.ArgBytes(tokenId)
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
@@ -306,7 +316,7 @@ func (dataGetter *mxClientDataGetter) WasProposedTransfer(ctx context.Context, b
 		return false, clients.ErrNilBatch
 	}
 
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(wasTransferActionProposedFuncName).ArgInt64(int64(batch.ID))
 	addBatchInfo(builder, batch)
 
@@ -315,7 +325,7 @@ func (dataGetter *mxClientDataGetter) WasProposedTransfer(ctx context.Context, b
 
 // WasExecuted returns true if the provided actionID was executed or not
 func (dataGetter *mxClientDataGetter) WasExecuted(ctx context.Context, actionID uint64) (bool, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(wasActionExecutedFuncName).ArgInt64(int64(actionID))
 
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
@@ -327,7 +337,7 @@ func (dataGetter *mxClientDataGetter) GetActionIDForProposeTransfer(ctx context.
 		return 0, clients.ErrNilBatch
 	}
 
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(getActionIdForTransferBatchFuncName).ArgInt64(int64(batch.ID))
 	addBatchInfo(builder, batch)
 
@@ -340,7 +350,7 @@ func (dataGetter *mxClientDataGetter) WasProposedSetStatus(ctx context.Context, 
 		return false, clients.ErrNilBatch
 	}
 
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(wasSetCurrentTransactionBatchStatusActionProposedFuncName).ArgInt64(int64(batch.ID))
 	for _, stat := range batch.Statuses {
 		builder.ArgBytes([]byte{stat})
@@ -351,7 +361,7 @@ func (dataGetter *mxClientDataGetter) WasProposedSetStatus(ctx context.Context, 
 
 // GetTransactionsStatuses will return the transactions statuses from the batch ID
 func (dataGetter *mxClientDataGetter) GetTransactionsStatuses(ctx context.Context, batchID uint64) ([]byte, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(getStatusesAfterExecutionFuncName).ArgInt64(int64(batchID))
 
 	values, err := dataGetter.executeQueryFromBuilder(ctx, builder)
@@ -391,7 +401,7 @@ func (dataGetter *mxClientDataGetter) GetActionIDForSetStatusOnPendingTransfer(c
 		return 0, clients.ErrNilBatch
 	}
 
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(getActionIdForSetCurrentTransactionBatchStatusFuncName).ArgInt64(int64(batch.ID))
 	for _, stat := range batch.Statuses {
 		builder.ArgBytes([]byte{stat})
@@ -402,7 +412,7 @@ func (dataGetter *mxClientDataGetter) GetActionIDForSetStatusOnPendingTransfer(c
 
 // QuorumReached returns true if the provided action ID reached the set quorum
 func (dataGetter *mxClientDataGetter) QuorumReached(ctx context.Context, actionID uint64) (bool, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(quorumReachedFuncName).ArgInt64(int64(actionID))
 
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
@@ -410,21 +420,21 @@ func (dataGetter *mxClientDataGetter) QuorumReached(ctx context.Context, actionI
 
 // GetLastExecutedEthBatchID returns the last executed Ethereum batch ID
 func (dataGetter *mxClientDataGetter) GetLastExecutedEthBatchID(ctx context.Context) (uint64, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder().Function(getLastExecutedEthBatchIdFuncName)
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder().Function(getLastExecutedEthBatchIdFuncName)
 
 	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
 
 // GetLastExecutedEthTxID returns the last executed Ethereum deposit ID
 func (dataGetter *mxClientDataGetter) GetLastExecutedEthTxID(ctx context.Context) (uint64, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder().Function(getLastExecutedEthTxId)
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder().Function(getLastExecutedEthTxId)
 
 	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
 
 // WasSigned returns true if the action was already signed by the current relayer
 func (dataGetter *mxClientDataGetter) WasSigned(ctx context.Context, actionID uint64) (bool, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(signedFuncName).ArgAddress(dataGetter.relayerAddress).ArgInt64(int64(actionID))
 
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
@@ -432,7 +442,7 @@ func (dataGetter *mxClientDataGetter) WasSigned(ctx context.Context, actionID ui
 
 // GetAllStakedRelayers returns all staked relayers defined in MultiversX SC
 func (dataGetter *mxClientDataGetter) GetAllStakedRelayers(ctx context.Context) ([][]byte, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(getAllStakedRelayersFuncName)
 
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
@@ -440,21 +450,21 @@ func (dataGetter *mxClientDataGetter) GetAllStakedRelayers(ctx context.Context) 
 
 // IsPaused returns true if the multisig contract is paused
 func (dataGetter *mxClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(isPausedFuncName)
 
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
 func (dataGetter *mxClientDataGetter) isMintBurnAllowed(ctx context.Context, token []byte) (bool, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createSafeDefaultVmQueryBuilder()
 	builder.Function(isMintBurnAllowedFuncName).ArgBytes(token)
 
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
 func (dataGetter *mxClientDataGetter) getAccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error) {
-	builder := dataGetter.createDefaultVmQueryBuilder()
+	builder := dataGetter.createSafeDefaultVmQueryBuilder()
 	builder.Function(getAccumulatedBurnedTokensFuncName).ArgBytes(token)
 
 	return dataGetter.executeQueryBigIntFromBuilder(ctx, builder)

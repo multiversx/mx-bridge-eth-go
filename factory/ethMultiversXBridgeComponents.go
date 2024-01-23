@@ -81,6 +81,7 @@ type ethMultiversXBridgeComponents struct {
 	ethClient                         ethmultiversx.EthereumClient
 	evmCompatibleChain                chain.Chain
 	multiversXMultisigContractAddress sdkCore.AddressHandler
+	multiversXSafeContractAddress     sdkCore.AddressHandler
 	multiversXRelayerPrivateKey       crypto.PrivateKey
 	multiversXRelayerAddress          sdkCore.AddressHandler
 	ethereumRelayerAddress            common.Address
@@ -259,6 +260,11 @@ func (components *ethMultiversXBridgeComponents) createMultiversXKeysAndAddresse
 		return fmt.Errorf("%w for chainConfigs.MultisigContractAddress", err)
 	}
 
+	components.multiversXSafeContractAddress, err = data.NewAddressFromBech32String(chainConfigs.SafeContractAddress)
+	if err != nil {
+		return fmt.Errorf("%w for chainConfigs.MultisigContractAddress", err)
+	}
+
 	return nil
 }
 
@@ -266,6 +272,7 @@ func (components *ethMultiversXBridgeComponents) createDataGetter() error {
 	multiversXDataGetterLogId := components.evmCompatibleChain.MultiversXDataGetterLogId()
 	argsMXClientDataGetter := multiversx.ArgsMXClientDataGetter{
 		MultisigContractAddress: components.multiversXMultisigContractAddress,
+		SafeContractAddress:     components.multiversXSafeContractAddress,
 		RelayerAddress:          components.multiversXRelayerAddress,
 		Proxy:                   components.proxy,
 		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(multiversXDataGetterLogId), multiversXDataGetterLogId),
