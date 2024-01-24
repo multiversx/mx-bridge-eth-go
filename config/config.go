@@ -150,6 +150,7 @@ type RoleProviderConfig struct {
 type MultiversXConfig struct {
 	NetworkAddress                  string
 	MultisigContractAddress         string
+	SafeContractAddress             string
 	PrivateKeyFile                  string
 	IntervalToResendTxsInSeconds    uint64
 	GasMap                          MultiversXGasMapConfig
