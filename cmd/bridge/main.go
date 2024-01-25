@@ -203,7 +203,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	messenger, err := buildNetMessenger(cfg, marshaller)
+	messenger, err := buildNetMessenger(cfg, marshaller, log)
 	if err != nil {
 		return err
 	}
@@ -353,7 +353,7 @@ func attachFileLogger(log logger.Logger, flagsConfig config.ContextFlagsConfig) 
 	return fileLogging, nil
 }
 
-func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.NetMessenger, error) {
+func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer, log logger.Logger) (p2p.NetMessenger, error) {
 	nodeConfig := p2pConfig.NodeConfig{
 		Port:                       cfg.P2P.Port,
 		MaximumExpectedPeerCount:   0,
@@ -395,6 +395,7 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 	argsPeersRatingHandler := p2pFactory.ArgPeersRatingHandler{
 		TopRatedCache: topRatedCache,
 		BadRatedCache: badRatedCache,
+		Logger:        log,
 	}
 	peersRatingHandler, err := p2pFactory.NewPeersRatingHandler(argsPeersRatingHandler)
 	if err != nil {
@@ -415,6 +416,7 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		P2pPrivateKey:         p2pPrivKey,
 		P2pSingleSigner:       p2pSingleSigner,
 		P2pKeyGenerator:       p2pKeyGen,
+		Logger:                log,
 	}
 
 	return libp2p.NewNetworkMessenger(args)
