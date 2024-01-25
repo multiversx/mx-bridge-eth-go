@@ -384,6 +384,7 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		},
 	}
 
+	p2pLog := logger.GetOrCreate("p2p")
 	topRatedCache, err := cache.NewLRUCache(cfg.PeersRatingConfig.TopRatedCacheCapacity)
 	if err != nil {
 		return nil, err
@@ -395,6 +396,7 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 	argsPeersRatingHandler := p2pFactory.ArgPeersRatingHandler{
 		TopRatedCache: topRatedCache,
 		BadRatedCache: badRatedCache,
+		Logger:        p2pLog,
 	}
 	peersRatingHandler, err := p2pFactory.NewPeersRatingHandler(argsPeersRatingHandler)
 	if err != nil {
@@ -415,6 +417,7 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 		P2pPrivateKey:         p2pPrivKey,
 		P2pSingleSigner:       p2pSingleSigner,
 		P2pKeyGenerator:       p2pKeyGen,
+		Logger:                p2pLog,
 	}
 
 	return libp2p.NewNetworkMessenger(args)
