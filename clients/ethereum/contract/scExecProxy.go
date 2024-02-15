@@ -31,7 +31,7 @@ var (
 
 // SCExecProxyMetaData contains all meta data concerning the SCExecProxy contract.
 var SCExecProxyMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"contractERC20Safe\",\"name\":\"erc20Safe\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousAdmin\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"AdminRoleTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint64\",\"name\":\"batchNonce\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"depositNonce\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"mvxGasLimit\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"callData\",\"type\":\"string\"}],\"name\":\"ERC20SCDeposit\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"admin\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"recipientAddress\",\"type\":\"bytes32\"},{\"internalType\":\"uint64\",\"name\":\"mvxGasLimit\",\"type\":\"uint64\"},{\"internalType\":\"string\",\"name\":\"callData\",\"type\":\"string\"}],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"isSafePaused\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"safe\",\"outputs\":[{\"internalType\":\"contractERC20Safe\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contractERC20Safe\",\"name\":\"erc20Safe\",\"type\":\"address\"}],\"name\":\"setSafe\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"transferAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"contractERC20Safe\",\"name\":\"erc20Safe\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"}],\"name\":\"AddressEmptyCode\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"AddressInsufficientBalance\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"FailedInnerCall\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"SafeERC20FailedOperation\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousAdmin\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"AdminRoleTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint64\",\"name\":\"batchNonce\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"depositNonce\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"callData\",\"type\":\"string\"}],\"name\":\"ERC20SCDeposit\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"admin\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"recipientAddress\",\"type\":\"bytes32\"},{\"internalType\":\"string\",\"name\":\"callData\",\"type\":\"string\"}],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"isSafePaused\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"safe\",\"outputs\":[{\"internalType\":\"contractERC20Safe\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contractERC20Safe\",\"name\":\"erc20Safe\",\"type\":\"address\"}],\"name\":\"setSafe\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"transferAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // SCExecProxyABI is the input ABI used to generate the binding from.
@@ -273,25 +273,25 @@ func (_SCExecProxy *SCExecProxyCallerSession) Safe() (common.Address, error) {
 	return _SCExecProxy.Contract.Safe(&_SCExecProxy.CallOpts)
 }
 
-// Deposit is a paid mutator transaction binding the contract method 0xb9930981.
+// Deposit is a paid mutator transaction binding the contract method 0x7583e9fd.
 //
-// Solidity: function deposit(address tokenAddress, uint256 amount, bytes32 recipientAddress, uint64 mvxGasLimit, string callData) returns()
-func (_SCExecProxy *SCExecProxyTransactor) Deposit(opts *bind.TransactOpts, tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte, mvxGasLimit uint64, callData string) (*types.Transaction, error) {
-	return _SCExecProxy.contract.Transact(opts, "deposit", tokenAddress, amount, recipientAddress, mvxGasLimit, callData)
+// Solidity: function deposit(address tokenAddress, uint256 amount, bytes32 recipientAddress, string callData) returns()
+func (_SCExecProxy *SCExecProxyTransactor) Deposit(opts *bind.TransactOpts, tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte, callData string) (*types.Transaction, error) {
+	return _SCExecProxy.contract.Transact(opts, "deposit", tokenAddress, amount, recipientAddress, callData)
 }
 
-// Deposit is a paid mutator transaction binding the contract method 0xb9930981.
+// Deposit is a paid mutator transaction binding the contract method 0x7583e9fd.
 //
-// Solidity: function deposit(address tokenAddress, uint256 amount, bytes32 recipientAddress, uint64 mvxGasLimit, string callData) returns()
-func (_SCExecProxy *SCExecProxySession) Deposit(tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte, mvxGasLimit uint64, callData string) (*types.Transaction, error) {
-	return _SCExecProxy.Contract.Deposit(&_SCExecProxy.TransactOpts, tokenAddress, amount, recipientAddress, mvxGasLimit, callData)
+// Solidity: function deposit(address tokenAddress, uint256 amount, bytes32 recipientAddress, string callData) returns()
+func (_SCExecProxy *SCExecProxySession) Deposit(tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte, callData string) (*types.Transaction, error) {
+	return _SCExecProxy.Contract.Deposit(&_SCExecProxy.TransactOpts, tokenAddress, amount, recipientAddress, callData)
 }
 
-// Deposit is a paid mutator transaction binding the contract method 0xb9930981.
+// Deposit is a paid mutator transaction binding the contract method 0x7583e9fd.
 //
-// Solidity: function deposit(address tokenAddress, uint256 amount, bytes32 recipientAddress, uint64 mvxGasLimit, string callData) returns()
-func (_SCExecProxy *SCExecProxyTransactorSession) Deposit(tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte, mvxGasLimit uint64, callData string) (*types.Transaction, error) {
-	return _SCExecProxy.Contract.Deposit(&_SCExecProxy.TransactOpts, tokenAddress, amount, recipientAddress, mvxGasLimit, callData)
+// Solidity: function deposit(address tokenAddress, uint256 amount, bytes32 recipientAddress, string callData) returns()
+func (_SCExecProxy *SCExecProxyTransactorSession) Deposit(tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte, callData string) (*types.Transaction, error) {
+	return _SCExecProxy.Contract.Deposit(&_SCExecProxy.TransactOpts, tokenAddress, amount, recipientAddress, callData)
 }
 
 // RenounceAdmin is a paid mutator transaction binding the contract method 0x8bad0c0a.
@@ -581,14 +581,13 @@ func (it *SCExecProxyERC20SCDepositIterator) Close() error {
 type SCExecProxyERC20SCDeposit struct {
 	BatchNonce   uint64
 	DepositNonce uint64
-	MvxGasLimit  uint64
 	CallData     string
 	Raw          types.Log // Blockchain specific contextual infos
 }
 
-// FilterERC20SCDeposit is a free log retrieval operation binding the contract event 0x4f330e92497d6cc47fffe9408a15ace7b6012d2999529e32dd9b3de825e4f748.
+// FilterERC20SCDeposit is a free log retrieval operation binding the contract event 0x78b7f0ae2aed1debc707b7fdfc571d40c238bf57db740c833098f00dfddb6e9b.
 //
-// Solidity: event ERC20SCDeposit(uint64 indexed batchNonce, uint64 depositNonce, uint64 mvxGasLimit, string callData)
+// Solidity: event ERC20SCDeposit(uint64 indexed batchNonce, uint64 depositNonce, string callData)
 func (_SCExecProxy *SCExecProxyFilterer) FilterERC20SCDeposit(opts *bind.FilterOpts, batchNonce []uint64) (*SCExecProxyERC20SCDepositIterator, error) {
 
 	var batchNonceRule []interface{}
@@ -603,9 +602,9 @@ func (_SCExecProxy *SCExecProxyFilterer) FilterERC20SCDeposit(opts *bind.FilterO
 	return &SCExecProxyERC20SCDepositIterator{contract: _SCExecProxy.contract, event: "ERC20SCDeposit", logs: logs, sub: sub}, nil
 }
 
-// WatchERC20SCDeposit is a free log subscription operation binding the contract event 0x4f330e92497d6cc47fffe9408a15ace7b6012d2999529e32dd9b3de825e4f748.
+// WatchERC20SCDeposit is a free log subscription operation binding the contract event 0x78b7f0ae2aed1debc707b7fdfc571d40c238bf57db740c833098f00dfddb6e9b.
 //
-// Solidity: event ERC20SCDeposit(uint64 indexed batchNonce, uint64 depositNonce, uint64 mvxGasLimit, string callData)
+// Solidity: event ERC20SCDeposit(uint64 indexed batchNonce, uint64 depositNonce, string callData)
 func (_SCExecProxy *SCExecProxyFilterer) WatchERC20SCDeposit(opts *bind.WatchOpts, sink chan<- *SCExecProxyERC20SCDeposit, batchNonce []uint64) (event.Subscription, error) {
 
 	var batchNonceRule []interface{}
@@ -645,9 +644,9 @@ func (_SCExecProxy *SCExecProxyFilterer) WatchERC20SCDeposit(opts *bind.WatchOpt
 	}), nil
 }
 
-// ParseERC20SCDeposit is a log parse operation binding the contract event 0x4f330e92497d6cc47fffe9408a15ace7b6012d2999529e32dd9b3de825e4f748.
+// ParseERC20SCDeposit is a log parse operation binding the contract event 0x78b7f0ae2aed1debc707b7fdfc571d40c238bf57db740c833098f00dfddb6e9b.
 //
-// Solidity: event ERC20SCDeposit(uint64 indexed batchNonce, uint64 depositNonce, uint64 mvxGasLimit, string callData)
+// Solidity: event ERC20SCDeposit(uint64 indexed batchNonce, uint64 depositNonce, string callData)
 func (_SCExecProxy *SCExecProxyFilterer) ParseERC20SCDeposit(log types.Log) (*SCExecProxyERC20SCDeposit, error) {
 	event := new(SCExecProxyERC20SCDeposit)
 	if err := _SCExecProxy.contract.UnpackLog(event, "ERC20SCDeposit", log); err != nil {

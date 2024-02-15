@@ -488,7 +488,7 @@ func addBatchInfo(builder builders.VMQueryBuilder, batch *clients.TransferBatch)
 
 		if len(dt.Data) > 0 {
 			// SC call type of transfer
-			builder.ArgBytes(dt.Data).ArgInt64(int64(dt.ExtraGasLimit))
+			builder.ArgBytes(dt.Data)
 		}
 	}
 }

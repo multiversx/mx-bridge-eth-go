@@ -336,7 +336,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 
 		if len(dt.Data) > 0 {
 			// SC call type of transfer
-			txBuilder.ArgBytes(dt.Data).ArgInt64(int64(dt.ExtraGasLimit))
+			txBuilder.ArgBytes(dt.Data)
 		}
 	}
 
@@ -402,9 +402,8 @@ func (c *client) computeExtraGasForSCCallsBasic(batch *clients.TransferBatch) sc
 			continue
 		}
 
-		computedLen := 2                                                         // 2 extra arguments separators (@)
-		computedLen += len(deposit.Data) * 2                                     // the data is hexed, so, double the size
-		computedLen += len(big.NewInt(int64(deposit.ExtraGasLimit)).Bytes()) * 2 // the gas is converted to bytes, then hexed
+		computedLen := 2                     // 2 extra arguments separators (@)
+		computedLen += len(deposit.Data) * 2 // the data is hexed, so, double the size
 
 		result.basicGas += uint64(computedLen) * c.gasMapConfig.ScCallPerByte
 		result.performAction += c.gasMapConfig.ScCallPerformForEach
