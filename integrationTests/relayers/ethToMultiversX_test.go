@@ -286,7 +286,7 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 		require.Nil(t, err)
 
 		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs.NonIndexed()
-		packedArgs, err := eventInputs.Pack(txNonceOnEthereum+3, args.providedExtraGas, args.providedScCallData)
+		packedArgs, err := eventInputs.Pack(txNonceOnEthereum+3, args.providedScCallData)
 		require.Nil(t, err)
 
 		scLog := types.Log{
