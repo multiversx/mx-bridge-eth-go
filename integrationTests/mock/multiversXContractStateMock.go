@@ -27,13 +27,12 @@ type multiversXProposedTransfer struct {
 
 // Transfer -
 type Transfer struct {
-	From     []byte
-	To       []byte
-	Token    string
-	Amount   *big.Int
-	Nonce    *big.Int
-	ExtraGas uint64
-	Data     []byte
+	From   []byte
+	To     []byte
+	Token  string
+	Amount *big.Int
+	Nonce  *big.Int
+	Data   []byte
 }
 
 // MultiversXPendingBatch -
@@ -208,14 +207,6 @@ func (mock *multiversXContractStateMock) createProposedTransfer(dataSplit []stri
 			if errDecode != nil {
 				panic(errDecode)
 			}
-
-			var extraGasBytes []byte
-			extraGasBytes, errDecode = hex.DecodeString(dataSplit[currentIndex+6])
-			if errDecode != nil {
-				panic(errDecode)
-			}
-
-			t.ExtraGas = big.NewInt(0).SetBytes(extraGasBytes).Uint64()
 		}
 
 		transfer.Transfers = append(transfer.Transfers, t)
