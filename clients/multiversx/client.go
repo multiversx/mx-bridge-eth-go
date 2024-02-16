@@ -391,7 +391,7 @@ func (c *client) computeExtraGasForSCCallsBasic(batch *clients.TransferBatch, pe
 			continue
 		}
 
-		computedLen := 2                     // 2 extra arguments separators (@)
+		computedLen := 1                     // extra argument separator (@)
 		computedLen += len(deposit.Data) * 2 // the data is hexed, so, double the size
 
 		gasLimit += uint64(computedLen) * c.gasMapConfig.ScCallPerByte

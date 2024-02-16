@@ -596,7 +596,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 					if bytes.Equal(dt.Data, ethmultiversx.MissingCallData) {
 						continue
 					}
-					extraGas += (uint64(len(dt.Data))*2 + 2) * args.GasMapConfig.ScCallPerByte
+					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
 				}
 
 				expectedDataField := strings.Join(dataStrings, "@")
@@ -817,7 +817,7 @@ func TestClient_PerformAction(t *testing.T) {
 					if bytes.Equal(dt.Data, ethmultiversx.MissingCallData) {
 						continue
 					}
-					extraGas += (uint64(len(dt.Data))*2 + 2) * args.GasMapConfig.ScCallPerByte
+					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
 					extraGas += args.GasMapConfig.ScCallPerformForEach
 				}
 
