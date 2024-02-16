@@ -574,8 +574,10 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		c, _ := NewClient(args)
 		sendWasCalled := false
 		batch := createMockBatch()
-		batch.Deposits[0].Data = []byte("doSomething@7788")
-		batch.Deposits[0].DisplayableData = hex.EncodeToString(batch.Deposits[0].Data)
+		batch.Deposits[0].Data = bridgeTests.CallDataMock
+		var err error
+		batch.Deposits[0].DisplayableData, err = ethmultiversx.ConvertToDisplayableData(batch.Deposits[0].Data)
+		require.Nil(t, err)
 
 		c.txHandler = &bridgeTests.TxHandlerStub{
 			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
@@ -591,9 +593,10 @@ func TestClient_ProposeTransfer(t *testing.T) {
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
 					dataStrings = append(dataStrings, depositToStrings(dt)...)
-					if len(dt.Data) > 0 {
-						extraGas += (uint64(len(dt.Data))*2 + 2) * args.GasMapConfig.ScCallPerByte
+					if bytes.Equal(dt.Data, ethmultiversx.MissingCallData) {
+						continue
 					}
+					extraGas += (uint64(len(dt.Data))*2 + 2) * args.GasMapConfig.ScCallPerByte
 				}
 
 				expectedDataField := strings.Join(dataStrings, "@")
@@ -620,10 +623,7 @@ func depositToStrings(dt *clients.DepositTransfer) []string {
 		hex.EncodeToString(dt.DestinationTokenBytes),
 		hex.EncodeToString(dt.Amount.Bytes()),
 		hex.EncodeToString(big.NewInt(int64(dt.Nonce)).Bytes()),
-	}
-
-	if len(dt.Data) > 0 {
-		result = append(result, hex.EncodeToString(dt.Data))
+		hex.EncodeToString(dt.Data),
 	}
 
 	return result
@@ -792,8 +792,10 @@ func TestClient_PerformAction(t *testing.T) {
 		c, _ := NewClient(args)
 		sendWasCalled := false
 		batch := createMockBatch()
-		batch.Deposits[0].Data = []byte("doSomething@7788")
-		batch.Deposits[0].DisplayableData = hex.EncodeToString(batch.Deposits[0].Data)
+		batch.Deposits[0].Data = bridgeTests.CallDataMock
+		var err error
+		batch.Deposits[0].DisplayableData, err = ethmultiversx.ConvertToDisplayableData(batch.Deposits[0].Data)
+		require.Nil(t, err)
 
 		c.txHandler = &bridgeTests.TxHandlerStub{
 			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
@@ -812,10 +814,11 @@ func TestClient_PerformAction(t *testing.T) {
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
 					dataStrings = append(dataStrings, depositToStrings(dt)...)
-					if len(dt.Data) > 0 {
-						extraGas += (uint64(len(dt.Data))*2 + 2) * args.GasMapConfig.ScCallPerByte
-						extraGas += args.GasMapConfig.ScCallPerformForEach
+					if bytes.Equal(dt.Data, ethmultiversx.MissingCallData) {
+						continue
 					}
+					extraGas += (uint64(len(dt.Data))*2 + 2) * args.GasMapConfig.ScCallPerByte
+					extraGas += args.GasMapConfig.ScCallPerformForEach
 				}
 
 				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach

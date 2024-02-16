@@ -480,16 +480,15 @@ func getStatusFromBuff(buff []byte) (byte, error) {
 
 func addBatchInfo(builder builders.VMQueryBuilder, batch *clients.TransferBatch) {
 	for _, dt := range batch.Deposits {
+		if dt.Data == nil {
+			continue
+		}
 		builder.ArgBytes(dt.FromBytes).
 			ArgBytes(dt.ToBytes).
 			ArgBytes(dt.DestinationTokenBytes).
 			ArgBigInt(dt.Amount).
-			ArgInt64(int64(dt.Nonce))
-
-		if len(dt.Data) > 0 {
-			// SC call type of transfer
-			builder.ArgBytes(dt.Data)
-		}
+			ArgInt64(int64(dt.Nonce)).
+			ArgBytes(dt.Data)
 	}
 }
 

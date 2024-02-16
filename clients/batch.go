@@ -80,7 +80,7 @@ type DepositTransfer struct {
 
 // String will convert the deposit transfer to a string
 func (dt *DepositTransfer) String() string {
-	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %d, hex data: %s",
+	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %d, data: %s",
 		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.Nonce, dt.DisplayableData)
 }
 

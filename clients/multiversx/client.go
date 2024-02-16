@@ -1,6 +1,7 @@
 package multiversx
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -66,11 +67,6 @@ type client struct {
 	lastNonce                uint64
 	retriesAvailabilityCheck uint64
 	mut                      sync.RWMutex
-}
-
-type scCallExtraGas struct {
-	basicGas      uint64
-	performAction uint64
 }
 
 // NewClient returns a new MultiversX Client instance
@@ -332,18 +328,13 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 			ArgBytes(dt.ToBytes).
 			ArgBytes(dt.DestinationTokenBytes).
 			ArgBigInt(dt.Amount).
-			ArgInt64(int64(dt.Nonce))
-
-		if len(dt.Data) > 0 {
-			// SC call type of transfer
-			txBuilder.ArgBytes(dt.Data)
-		}
+			ArgInt64(int64(dt.Nonce)).
+			ArgBytes(dt.Data)
 	}
 
-	scCallGas := c.computeExtraGasForSCCallsBasic(batch)
-
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
-	gasLimit += scCallGas.basicGas
+	extraGasForScCalls := c.computeExtraGasForSCCallsBasic(batch, false)
+	gasLimit += extraGasForScCalls
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
 		c.log.Info("proposed transfer"+batch.String(), "transaction hash", hash)
@@ -382,10 +373,8 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 
 	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))
 
-	scCallGas := c.computeExtraGasForSCCallsBasic(batch)
-
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
-	gasLimit += scCallGas.basicGas + scCallGas.performAction
+	gasLimit += c.computeExtraGasForSCCallsBasic(batch, true)
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 
 	if err == nil {
@@ -395,21 +384,23 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	return hash, err
 }
 
-func (c *client) computeExtraGasForSCCallsBasic(batch *clients.TransferBatch) scCallExtraGas {
-	result := scCallExtraGas{}
+func (c *client) computeExtraGasForSCCallsBasic(batch *clients.TransferBatch, performAction bool) uint64 {
+	gasLimit := uint64(0)
 	for _, deposit := range batch.Deposits {
-		if len(deposit.Data) == 0 {
+		if bytes.Equal(deposit.Data, ethmultiversx.MissingCallData) {
 			continue
 		}
 
 		computedLen := 2                     // 2 extra arguments separators (@)
 		computedLen += len(deposit.Data) * 2 // the data is hexed, so, double the size
 
-		result.basicGas += uint64(computedLen) * c.gasMapConfig.ScCallPerByte
-		result.performAction += c.gasMapConfig.ScCallPerformForEach
+		gasLimit += uint64(computedLen) * c.gasMapConfig.ScCallPerByte
+		if performAction {
+			gasLimit += c.gasMapConfig.ScCallPerformForEach
+		}
 	}
 
-	return result
+	return gasLimit
 }
 
 func (c *client) checkIsPaused(ctx context.Context) error {

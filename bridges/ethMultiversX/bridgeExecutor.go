@@ -1,10 +1,12 @@
 package ethmultiversx
 
 import (
+	"bytes"
 	"context"
-	"encoding/hex"
+	"encoding/binary"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -21,8 +23,8 @@ import (
 const splits = 10
 const minRetries = 1
 
-// MissingCallData is a placeholder for wrongly initiated contract calls that do not contain data
-const MissingCallData = "<missing call data>"
+// MissingCallData is a placeholder that specifies that the call data is missing
+var MissingCallData = []byte{0x00}
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
@@ -468,10 +470,6 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 		return nil, ErrNilBatch
 	}
 
-	if !executor.hasSCCalls(transfers) {
-		return transfers, nil
-	}
-
 	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, transfers.ID)
 	if err != nil {
 		return nil, err
@@ -488,26 +486,20 @@ func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositT
 	for _, event := range events {
 		if event.DepositNonce == transfer.Nonce {
 			transfer.Data = []byte(event.CallData)
-			if len(transfer.Data) == 0 {
-				// will add a dummy data so the relayers won't panic
-				transfer.Data = []byte(MissingCallData)
+			var err error
+			transfer.DisplayableData, err = ConvertToDisplayableData(transfer.Data)
+			if err != nil {
+				executor.log.Warn("failed to convert call data to displayable data", "error", err)
 			}
-			transfer.DisplayableData = hex.EncodeToString(transfer.Data)
 
 			return transfer
 		}
 	}
+
+	transfer.Data = MissingCallData
+	transfer.DisplayableData = ""
+
 	return transfer
-}
-
-func (executor *bridgeExecutor) hasSCCalls(transfers *clients.TransferBatch) bool {
-	for _, t := range transfers.Deposits {
-		if executor.ethereumClient.IsDepositSCCall(t) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // WasTransferPerformedOnEthereum returns true if the batch was performed on Ethereum
@@ -716,4 +708,85 @@ func (executor *bridgeExecutor) CheckEthereumClientAvailability(ctx context.Cont
 // IsInterfaceNil returns true if there is no value under the interface
 func (executor *bridgeExecutor) IsInterfaceNil() bool {
 	return executor == nil
+}
+
+// ConvertToDisplayableData
+/** @param callData The encoded data specifying the cross-chain call details. The expected format is:
+*        0x01 + endpoint_name_length (4 bytes) + endpoint_name + gas_limit (8 bytes) +
+*        num_arguments_length (4 bytes) + [argument_length (4 bytes) + argument]...
+*        This payload includes the endpoint name, gas limit for the execution, and the arguments for the call.
+ */
+func ConvertToDisplayableData(callData []byte) (string, error) {
+	if len(callData) == 0 {
+		return "", fmt.Errorf("callData too short for protocol indicator")
+	}
+
+	if callData[0] == 0x00 {
+		return "", nil
+	}
+
+	if callData[0] != 0x01 {
+		return "", fmt.Errorf("callData unexpected protocol indicator: %d", callData[0])
+	}
+
+	currentIndex := uint64(1)
+	// Ensure there's enough length for the initial parts: 1 byte protocol indicator + 4 bytes for endpoint name length
+	if len(callData) < int(currentIndex+4) {
+		return "", fmt.Errorf("callData too short for endpoint name length")
+	}
+	endpointNameLength := uint64(binary.BigEndian.Uint32(callData[currentIndex : currentIndex+4]))
+	currentIndex += 4
+
+	// Check if there's enough length for the endpoint name itself
+	if len(callData) < int(currentIndex+endpointNameLength) {
+		return "", fmt.Errorf("callData too short for endpoint name")
+	}
+	endpointName := string(callData[currentIndex : currentIndex+endpointNameLength])
+	currentIndex += endpointNameLength
+
+	// Check for gas limit
+	if len(callData) < int(currentIndex+8) { // 8 bytes for gas limit length
+		return "", fmt.Errorf("callData too short for gas limit length")
+	}
+
+	gasLimitLength := binary.BigEndian.Uint64(callData[currentIndex : currentIndex+8])
+	currentIndex += 8
+
+	// Check for gas limit
+	if len(callData) < int(currentIndex+gasLimitLength) {
+		return "", fmt.Errorf("callData too short for gas limit")
+	}
+
+	gasLimitBytes := append(bytes.Repeat([]byte{0x00}, 8-int(gasLimitLength)), callData[currentIndex:currentIndex+gasLimitLength]...)
+	gasLimit := binary.BigEndian.Uint64(gasLimitBytes)
+	currentIndex += gasLimitLength
+
+	// Check for numArguments
+	if len(callData) < int(currentIndex+4) { // 4 for numArguments
+		return "", fmt.Errorf("callData too short for numArguments length")
+	}
+	numArgumentsLength := binary.BigEndian.Uint32(callData[currentIndex : currentIndex+4])
+	currentIndex += 4
+
+	arguments := make([]string, 0)
+
+	for i := 0; i < int(numArgumentsLength); i++ {
+		// Check for argument length
+		if len(callData) < int(currentIndex+4) {
+			return "", fmt.Errorf("callData too short for argument %d length", i)
+		}
+		argumentLength := uint64(binary.BigEndian.Uint32(callData[currentIndex : currentIndex+4]))
+		currentIndex += 4
+
+		// Check for the argument data
+		if len(callData) < int(currentIndex+argumentLength) {
+			return "", fmt.Errorf("callData too short for argument %d data", i)
+		}
+		argument := callData[currentIndex : currentIndex+argumentLength]
+		currentIndex += argumentLength
+
+		arguments = append(arguments, string(argument))
+	}
+
+	return fmt.Sprintf("Endpoint: %s, Gas: %d, Arguments: %s", endpointName, gasLimit, strings.Join(arguments, "@")), nil
 }

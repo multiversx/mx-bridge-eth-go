@@ -882,43 +882,6 @@ func TestClient_IsQuorumReached(t *testing.T) {
 	})
 }
 
-func TestClient_IsDepositSCCall(t *testing.T) {
-	t.Parallel()
-
-	t.Run("nil deposit returns false", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockEthereumClientArgs()
-		c, _ := NewEthereumClient(args)
-
-		assert.False(t, c.IsDepositSCCall(nil))
-	})
-
-	t.Run("returns true for matching addresses", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockEthereumClientArgs()
-		c, _ := NewEthereumClient(args)
-
-		deposit := &clients.DepositTransfer{
-			FromBytes: args.SCExecProxyAddress.Bytes(),
-		}
-		assert.True(t, c.IsDepositSCCall(deposit))
-	})
-
-	t.Run("returns false for non matching addresses", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockEthereumClientArgs()
-		c, _ := NewEthereumClient(args)
-
-		deposit := &clients.DepositTransfer{
-			FromBytes: []byte("different_addr"),
-		}
-		assert.False(t, c.IsDepositSCCall(deposit))
-	})
-}
-
 func TestClient_CheckClientAvailability(t *testing.T) {
 	t.Parallel()
 

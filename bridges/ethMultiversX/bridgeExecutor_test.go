@@ -1,6 +1,7 @@
 package ethmultiversx
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var expectedErr = errors.New("expected error")
@@ -388,9 +390,6 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 					CallData:     depositData,
 				}}, nil
 			},
-			IsDepositSCCallCalled: func(deposit *clients.DepositTransfer) bool {
-				return deposit.Nonce == depositNonce
-			},
 		}
 		executor, _ := NewBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
@@ -399,7 +398,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
 		assert.Equal(t, depositData, string(executor.batch.Deposits[0].Data))
 	})
-	t.Run("should add deposits metadata for sc calls even if with invalid data", func(t *testing.T) {
+	t.Run("should add deposits metadata for sc calls even if with no data", func(t *testing.T) {
 		args := createMockExecutorArgs()
 		providedNonce := uint64(8346)
 		depositNonce := uint64(100)
@@ -423,16 +422,13 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 					CallData:     depositData,
 				}}, nil
 			},
-			IsDepositSCCallCalled: func(deposit *clients.DepositTransfer) bool {
-				return deposit.Nonce == depositNonce
-			},
 		}
 		executor, _ := NewBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
 
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
-		assert.Equal(t, MissingCallData, string(executor.batch.Deposits[0].Data))
+		assert.Equal(t, "", string(executor.batch.Deposits[0].Data))
 	})
 }
 
@@ -1864,4 +1860,169 @@ func TestBridgeExecutor_CheckAvailableTokens(t *testing.T) {
 		assert.True(t, tokenMintedBalancesCalled)
 		assert.True(t, accumulatedBurnedTokensCalled)
 	})
+}
+
+func TestConvertToDisplayableData_EmptyCallData(t *testing.T) {
+	t.Parallel()
+
+	callData := []byte{0x00}
+	want := ""
+	got, err := ConvertToDisplayableData(callData)
+	require.Nil(t, err)
+	require.Equal(t, want, got)
+}
+
+func TestConvertToDisplayableData_ValidCallDataWithNoArguments(t *testing.T) {
+	t.Parallel()
+
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
+		b = append(b, 0x00, 0x00, 0x00, 0x00)                        // numArguments
+		return b
+	}()
+
+	want := "Endpoint: abc, Gas: 500000000, Arguments: "
+	got, err := ConvertToDisplayableData(callData)
+	require.Nil(t, err)
+	require.Equal(t, want, got)
+}
+
+func TestConvertToDisplayableData_MultipleTypesArguments(t *testing.T) {
+	t.Parallel()
+
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
+		b = append(b, 0x00, 0x00, 0x00, 0x02)                        // numArguments
+		b = append(b, 0x00, 0x00, 0x00, 0x05)                        // Argument 0 length
+		b = append(b, bytes.Repeat([]byte{'A'}, 5)...)               // Argument 0 data
+		b = append(b, 0x00, 0x00, 0x00, 0x32)                        // Argument 1 length
+		b = append(b, bytes.Repeat([]byte{'B'}, 50)...)              // Argument 1 data
+		return b
+	}()
+
+	want := "Endpoint: abc, Gas: 500000000, Arguments: AAAAA@BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+	got, err := ConvertToDisplayableData(callData)
+	require.Nil(t, err)
+	if got != want {
+		t.Errorf("Test with multiple types arguments failed. Got: %v, want: %v", got, want)
+	}
+}
+
+func TestConvertToDisplayableData_TooShortForProtocolIndicator(t *testing.T) {
+	t.Parallel()
+	_, err := ConvertToDisplayableData([]byte{})
+	require.NotNil(t, err)
+	if err != nil {
+		require.Equal(t, "callData too short for protocol indicator", err.Error())
+	}
+}
+
+func TestConvertToDisplayableData_TooShortForEndpointNameLength(t *testing.T) {
+	t.Parallel()
+	_, err := ConvertToDisplayableData([]byte{0x01})
+	require.NotNil(t, err)
+	if err != nil {
+		require.Equal(t, "callData too short for endpoint name length", err.Error())
+	}
+}
+
+func TestConvertToDisplayableData_UnexpectedProtocolIndicator(t *testing.T) {
+	t.Parallel()
+	_, err := ConvertToDisplayableData([]byte{0x02})
+	require.NotNil(t, err)
+	if err != nil {
+		require.Equal(t, "callData unexpected protocol indicator: 2", err.Error())
+	}
+}
+
+func TestConvertToDisplayableData_TooShortForEndpointName(t *testing.T) {
+	t.Parallel()
+	_, err := ConvertToDisplayableData([]byte{0x01, 0x00, 0x00, 0x00, 0x05})
+	require.NotNil(t, err)
+	if err != nil {
+		require.Equal(t, "callData too short for endpoint name", err.Error())
+	}
+}
+
+func TestConvertToDisplayableData_TooShortForGasLimitLength(t *testing.T) {
+	t.Parallel()
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x04) // Bad Gas limit length
+		return b
+	}()
+	_, err := ConvertToDisplayableData(callData)
+	if err != nil {
+		require.Equal(t, "callData too short for gas limit length", err.Error())
+	}
+}
+
+func TestConvertToDisplayableData_TooShortForGasLimit(t *testing.T) {
+	t.Parallel()
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x03, 0x00, 0x03)                              // Bad Gas limit
+		return b
+	}()
+	_, err := ConvertToDisplayableData(callData)
+	require.NotNil(t, err)
+	if err != nil {
+		require.Equal(t, "callData too short for gas limit", err.Error())
+	}
+}
+
+func TestConvertToDisplayableData_TooShortForNumberOfArgumentsLength(t *testing.T) {
+	t.Parallel()
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
+		b = append(b, 0x00, 0x00, 0x03)                              // Bad numArgument
+		return b
+	}()
+	_, err := ConvertToDisplayableData(callData)
+	require.NotNil(t, err)
+	if err != nil {
+		require.Equal(t, "callData too short for numArguments length", err.Error())
+	}
+}
+
+func TestConvertToDisplayableData_TooShortForArgumentLength(t *testing.T) {
+	t.Parallel()
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
+		b = append(b, 0x00, 0x00, 0x00, 0x01)                        // numArguments
+		b = append(b, 0x00, 0x00, 0x04)                              // Bad Argument 0 length
+		return b
+	}()
+	_, err := ConvertToDisplayableData(callData)
+	require.NotNil(t, err)
+	if err != nil {
+		require.Equal(t, "callData too short for argument 0 length", err.Error())
+	}
+}
+
+func TestConvertToDisplayableData_TooShortForArgumentData(t *testing.T) {
+	t.Parallel()
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
+		b = append(b, 0x00, 0x00, 0x00, 0x01)                        // numArguments
+		b = append(b, 0x00, 0x00, 0x00, 0x04)                        // Argument 0 length
+		b = append(b, 0x00, 0x00, 0x04)                              // Bad Argument 0 data
+		return b
+	}()
+	_, err := ConvertToDisplayableData(callData)
+	require.NotNil(t, err)
+	if err != nil {
+		require.Equal(t, "callData too short for argument 0 data", err.Error())
+	}
 }

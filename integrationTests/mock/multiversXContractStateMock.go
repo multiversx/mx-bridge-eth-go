@@ -192,22 +192,21 @@ func (mock *multiversXContractStateMock) createProposedTransfer(dataSplit []stri
 			panic(errDecode)
 		}
 
+		dataBytes, errDecode := hex.DecodeString(dataSplit[currentIndex+5])
+		if errDecode != nil {
+			panic(errDecode)
+		}
+
 		t := Transfer{
 			From:   from,
 			To:     to,
 			Token:  dataSplit[currentIndex+2],
 			Amount: big.NewInt(0).SetBytes(amountBytes),
 			Nonce:  big.NewInt(0).SetBytes(nonceBytes),
+			Data:   dataBytes,
 		}
 
-		indexIncrementValue := 5
-		if core.IsSmartContractAddress(to) {
-			indexIncrementValue += 2
-			t.Data, errDecode = hex.DecodeString(dataSplit[currentIndex+5])
-			if errDecode != nil {
-				panic(errDecode)
-			}
-		}
+		indexIncrementValue := 6
 
 		transfer.Transfers = append(transfer.Transfers, t)
 		currentIndex += indexIncrementValue

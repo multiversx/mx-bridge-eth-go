@@ -1,7 +1,6 @@
 package ethereum
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"fmt"
@@ -274,15 +273,6 @@ func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchI
 
 	hash := crypto.Keccak256Hash(pack)
 	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
-}
-
-// IsDepositSCCall checks whether a deposit should be treated as a SC interaction
-func (c *client) IsDepositSCCall(deposit *clients.DepositTransfer) bool {
-	if deposit == nil {
-		return false
-	}
-
-	return bytes.Equal(deposit.FromBytes, c.scExecProxyAddress.Bytes())
 }
 
 func generateTransferArgs() (abi.Arguments, error) {
