@@ -583,8 +583,8 @@ func TestClient_ProposeTransfer(t *testing.T) {
 			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
-				dataField, err := builder.ToDataString()
-				assert.Nil(t, err)
+				dataField, errConvert := builder.ToDataString()
+				assert.Nil(t, errConvert)
 
 				dataStrings := []string{
 					proposeTransferFuncName,
@@ -593,7 +593,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
 					dataStrings = append(dataStrings, depositToStrings(dt)...)
-					if bytes.Equal(dt.Data, ethmultiversx.MissingCallData) {
+					if bytes.Equal(dt.Data, []byte{ethmultiversx.MissingDataProtocolMarker}) {
 						continue
 					}
 					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
@@ -801,8 +801,8 @@ func TestClient_PerformAction(t *testing.T) {
 			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
 				sendWasCalled = true
 
-				dataField, err := builder.ToDataString()
-				assert.Nil(t, err)
+				dataField, errConvert := builder.ToDataString()
+				assert.Nil(t, errConvert)
 
 				dataStrings := []string{
 					performActionFuncName,
@@ -814,7 +814,7 @@ func TestClient_PerformAction(t *testing.T) {
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
 					dataStrings = append(dataStrings, depositToStrings(dt)...)
-					if bytes.Equal(dt.Data, ethmultiversx.MissingCallData) {
+					if bytes.Equal(dt.Data, []byte{ethmultiversx.MissingDataProtocolMarker}) {
 						continue
 					}
 					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte

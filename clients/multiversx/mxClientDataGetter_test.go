@@ -603,14 +603,14 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 					hex.EncodeToString([]byte("converted_token1")),
 					hex.EncodeToString(big.NewInt(2).Bytes()),
 					hex.EncodeToString(big.NewInt(1).Bytes()),
-					hex.EncodeToString(ethmultiversx.MissingCallData),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 
 					hex.EncodeToString([]byte("from2")),
 					hex.EncodeToString([]byte("to2")),
 					hex.EncodeToString([]byte("converted_token2")),
 					hex.EncodeToString(big.NewInt(4).Bytes()),
 					hex.EncodeToString(big.NewInt(3).Bytes()),
-					hex.EncodeToString(ethmultiversx.MissingCallData),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -661,7 +661,7 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 					hex.EncodeToString([]byte("converted_token2")),
 					hex.EncodeToString(big.NewInt(4).Bytes()),
 					hex.EncodeToString(big.NewInt(3).Bytes()),
-					hex.EncodeToString(ethmultiversx.MissingCallData),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -778,14 +778,14 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 					hex.EncodeToString([]byte("converted_token1")),
 					hex.EncodeToString(big.NewInt(2).Bytes()),
 					hex.EncodeToString(big.NewInt(1).Bytes()),
-					hex.EncodeToString(ethmultiversx.MissingCallData),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 
 					hex.EncodeToString([]byte("from2")),
 					hex.EncodeToString([]byte("to2")),
 					hex.EncodeToString([]byte("converted_token2")),
 					hex.EncodeToString(big.NewInt(4).Bytes()),
 					hex.EncodeToString(big.NewInt(3).Bytes()),
-					hex.EncodeToString(ethmultiversx.MissingCallData),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -836,7 +836,7 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 					hex.EncodeToString([]byte("converted_token2")),
 					hex.EncodeToString(big.NewInt(4).Bytes()),
 					hex.EncodeToString(big.NewInt(3).Bytes()),
-					hex.EncodeToString(ethmultiversx.MissingCallData),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)

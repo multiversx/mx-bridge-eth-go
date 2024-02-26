@@ -387,7 +387,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 func (c *client) computeExtraGasForSCCallsBasic(batch *clients.TransferBatch, performAction bool) uint64 {
 	gasLimit := uint64(0)
 	for _, deposit := range batch.Deposits {
-		if bytes.Equal(deposit.Data, ethmultiversx.MissingCallData) {
+		if bytes.Equal(deposit.Data, []byte{ethmultiversx.MissingDataProtocolMarker}) {
 			continue
 		}
 
