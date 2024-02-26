@@ -34,7 +34,7 @@ func createMockArgsNewWebServer() ArgsNewWebServer {
 			},
 			APIPackages: make(map[string]config.APIPackageConfig),
 		},
-		AntiFloodConfig: config.AntifloodConfig{
+		AntiFloodConfig: config.WebAntifloodConfig{
 			Enabled: true,
 			WebServer: config.WebServerAntifloodConfig{
 				SimultaneousRequests:         1,

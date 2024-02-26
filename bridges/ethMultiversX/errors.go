@@ -40,3 +40,9 @@ var ErrNilSignaturesHolder = errors.New("nil signatures holder")
 
 // ErrNilBatchValidator signals that a nil batch validator was provided
 var ErrNilBatchValidator = errors.New("nil batch validator")
+
+// ErrInvalidSetupMintBurnToken signals that an invalid setup mint burn token was provided
+var ErrInvalidSetupMintBurnToken = errors.New("invalid setup mint burn token")
+
+// ErrMintBurnBalance signals that the mint burn balances are not expected
+var ErrMintBurnBalance = errors.New("mint burn balances are not expected")

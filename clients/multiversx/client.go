@@ -1,6 +1,7 @@
 package multiversx
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -20,7 +21,7 @@ import (
 	"github.com/multiversx/mx-sdk-go/builders"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
-	"github.com/multiversx/mx-sdk-go/interactors/nonceHandlerV1"
+	"github.com/multiversx/mx-sdk-go/interactors/nonceHandlerV2"
 )
 
 const (
@@ -40,6 +41,7 @@ type ClientArgs struct {
 	Log                          logger.Logger
 	RelayerPrivateKey            crypto.PrivateKey
 	MultisigContractAddress      core.AddressHandler
+	SafeContractAddress          core.AddressHandler
 	IntervalToResendTxsInSeconds uint64
 	TokensMapper                 TokensMapper
 	RoleProvider                 roleProvider
@@ -55,6 +57,7 @@ type client struct {
 	relayerPublicKey          crypto.PublicKey
 	relayerAddress            core.AddressHandler
 	multisigContractAddress   core.AddressHandler
+	safeContractAddress       core.AddressHandler
 	log                       logger.Logger
 	gasMapConfig              config.MultiversXGasMapConfig
 	addressPublicKeyConverter bridgeCore.AddressConverter
@@ -73,7 +76,11 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	nonceTxsHandler, err := nonceHandlerV1.NewNonceTransactionHandlerV1(args.Proxy, time.Second*time.Duration(args.IntervalToResendTxsInSeconds), true)
+	argNonceHandler := nonceHandlerV2.ArgsNonceTransactionsHandlerV2{
+		Proxy:            args.Proxy,
+		IntervalToResend: time.Second * time.Duration(args.IntervalToResendTxsInSeconds),
+	}
+	nonceTxsHandler, err := nonceHandlerV2.NewNonceTransactionHandlerV2(argNonceHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +95,7 @@ func NewClient(args ClientArgs) (*client, error) {
 
 	argsMXClientDataGetter := ArgsMXClientDataGetter{
 		MultisigContractAddress: args.MultisigContractAddress,
+		SafeContractAddress:     args.SafeContractAddress,
 		RelayerAddress:          relayerAddress,
 		Proxy:                   args.Proxy,
 		Log:                     bridgeCore.NewLoggerWithIdentifier(logger.GetOrCreate(multiversXDataGetterLogId), multiversXDataGetterLogId),
@@ -102,11 +110,21 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, clients.ErrNilAddressConverter
 	}
 
+	bech23MultisigAddress, err := args.MultisigContractAddress.AddressAsBech32String()
+	if err != nil {
+		return nil, fmt.Errorf("%w for %x", err, args.MultisigContractAddress.AddressBytes())
+	}
+
+	bech23SafeAddress, err := args.SafeContractAddress.AddressAsBech32String()
+	if err != nil {
+		return nil, fmt.Errorf("%w for %x", err, args.SafeContractAddress.AddressBytes())
+	}
+
 	c := &client{
 		txHandler: &transactionHandler{
 			proxy:                   args.Proxy,
 			relayerAddress:          relayerAddress,
-			multisigAddressAsBech32: args.MultisigContractAddress.AddressAsBech32String(),
+			multisigAddressAsBech32: bech23MultisigAddress,
 			nonceTxHandler:          nonceTxsHandler,
 			relayerPrivateKey:       args.RelayerPrivateKey,
 			singleSigner:            &singlesig.Ed25519Signer{},
@@ -116,6 +134,7 @@ func NewClient(args ClientArgs) (*client, error) {
 		relayerPublicKey:          publicKey,
 		relayerAddress:            relayerAddress,
 		multisigContractAddress:   args.MultisigContractAddress,
+		safeContractAddress:       args.SafeContractAddress,
 		log:                       args.Log,
 		gasMapConfig:              args.GasMapConfig,
 		addressPublicKeyConverter: addressConverter,
@@ -124,9 +143,11 @@ func NewClient(args ClientArgs) (*client, error) {
 		allowDelta:                args.AllowDelta,
 	}
 
+	bech32RelayerAddress, _ := relayerAddress.AddressAsBech32String()
 	c.log.Info("NewMultiversXClient",
-		"relayer address", relayerAddress.AddressAsBech32String(),
-		"safe contract address", args.MultisigContractAddress.AddressAsBech32String())
+		"relayer address", bech32RelayerAddress,
+		"multisig contract address", bech23MultisigAddress,
+		"safe contract address", bech23SafeAddress)
 
 	return c, nil
 }
@@ -140,6 +161,9 @@ func checkArgs(args ClientArgs) error {
 	}
 	if check.IfNil(args.MultisigContractAddress) {
 		return fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
+	}
+	if check.IfNil(args.SafeContractAddress) {
+		return fmt.Errorf("%w for the SafeContractAddress argument", errNilAddressHandler)
 	}
 	if check.IfNil(args.Log) {
 		return clients.ErrNilLogger
@@ -227,23 +251,23 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		deposit := &clients.DepositTransfer{
 			Nonce:            depositNonce,
 			FromBytes:        responseData[i+2],
-			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32String(responseData[i+2]),
+			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
 			ToBytes:          responseData[i+3],
 			DisplayableTo:    c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
-			TokenBytes:       responseData[i+4],
+			SourceTokenBytes: responseData[i+4],
 			DisplayableToken: string(responseData[i+4]),
 			Amount:           amount,
 		}
 
 		storedConvertedTokenBytes, exists := cachedTokens[deposit.DisplayableToken]
 		if !exists {
-			deposit.ConvertedTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.TokenBytes)
+			deposit.DestinationTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.SourceTokenBytes)
 			if err != nil {
 				return nil, fmt.Errorf("%w while converting token bytes, transfer index %d", err, transferIndex)
 			}
-			cachedTokens[deposit.DisplayableToken] = deposit.ConvertedTokenBytes
+			cachedTokens[deposit.DisplayableToken] = deposit.DestinationTokenBytes
 		} else {
-			deposit.ConvertedTokenBytes = storedConvertedTokenBytes
+			deposit.DestinationTokenBytes = storedConvertedTokenBytes
 		}
 
 		batch.Deposits = append(batch.Deposits, deposit)
@@ -302,12 +326,15 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 	for _, dt := range batch.Deposits {
 		txBuilder.ArgBytes(dt.FromBytes).
 			ArgBytes(dt.ToBytes).
-			ArgBytes(dt.ConvertedTokenBytes).
+			ArgBytes(dt.DestinationTokenBytes).
 			ArgBigInt(dt.Amount).
-			ArgInt64(int64(dt.Nonce))
+			ArgInt64(int64(dt.Nonce)).
+			ArgBytes(dt.Data)
 	}
 
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
+	extraGasForScCalls := c.computeExtraGasForSCCallsBasic(batch, false)
+	gasLimit += extraGasForScCalls
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
 		c.log.Info("proposed transfer"+batch.String(), "transaction hash", hash)
@@ -347,6 +374,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))
 
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+	gasLimit += c.computeExtraGasForSCCallsBasic(batch, true)
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 
 	if err == nil {
@@ -354,6 +382,25 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	}
 
 	return hash, err
+}
+
+func (c *client) computeExtraGasForSCCallsBasic(batch *clients.TransferBatch, performAction bool) uint64 {
+	gasLimit := uint64(0)
+	for _, deposit := range batch.Deposits {
+		if bytes.Equal(deposit.Data, []byte{ethmultiversx.MissingDataProtocolMarker}) {
+			continue
+		}
+
+		computedLen := 1                     // extra argument separator (@)
+		computedLen += len(deposit.Data) * 2 // the data is hexed, so, double the size
+
+		gasLimit += uint64(computedLen) * c.gasMapConfig.ScCallPerByte
+		if performAction {
+			gasLimit += c.gasMapConfig.ScCallPerformForEach
+		}
+	}
+
+	return gasLimit
 }
 
 func (c *client) checkIsPaused(ctx context.Context) error {
@@ -366,6 +413,16 @@ func (c *client) checkIsPaused(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// IsMintBurnAllowed returns true if the provided token is whitelisted for mint/burn operations
+func (c *client) IsMintBurnAllowed(ctx context.Context, token []byte) (bool, error) {
+	return c.isMintBurnAllowed(ctx, token)
+}
+
+// AccumulatedBurnedTokens returns the accumulated burned tokens
+func (c *client) AccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error) {
+	return c.getAccumulatedBurnedTokens(ctx, token)
 }
 
 // CheckClientAvailability will check the client availability and will set the metric accordingly

@@ -23,7 +23,7 @@ type Proxy interface {
 
 // NonceTransactionsHandler represents the interface able to handle the current nonce and the transactions resend mechanism
 type NonceTransactionsHandler interface {
-	GetNonce(ctx context.Context, address core.AddressHandler) (uint64, error)
+	ApplyNonceAndGasPrice(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error
 	SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
 	Close() error
 }

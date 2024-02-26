@@ -1,6 +1,7 @@
 package ethmultiversx
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,12 +12,15 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var expectedErr = errors.New("expected error")
@@ -361,6 +365,70 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
 		assert.True(t, expectedBatch == executor.batch)
+	})
+	t.Run("should add deposits metadata for sc calls", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		providedNonce := uint64(8346)
+		depositNonce := uint64(100)
+		depositData := "testData"
+		expectedBatch := &clients.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*clients.DepositTransfer{
+				{
+					Nonce: depositNonce,
+				},
+			},
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return expectedBatch, nil
+			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+				return []*contract.SCExecProxyERC20SCDeposit{{
+					DepositNonce: depositNonce,
+					CallData:     depositData,
+				}}, nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+		assert.Nil(t, err)
+		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
+		assert.Equal(t, depositData, string(executor.batch.Deposits[0].Data))
+	})
+	t.Run("should add deposits metadata for sc calls even if with no data", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		providedNonce := uint64(8346)
+		depositNonce := uint64(100)
+		depositData := ""
+		expectedBatch := &clients.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*clients.DepositTransfer{
+				{
+					Nonce: depositNonce,
+				},
+			},
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return expectedBatch, nil
+			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+				return []*contract.SCExecProxyERC20SCDeposit{{
+					DepositNonce: depositNonce,
+					CallData:     depositData,
+				}}, nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+		assert.Nil(t, err)
+		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
+		assert.Equal(t, "", string(executor.batch.Deposits[0].Data))
 	})
 }
 
@@ -1083,7 +1151,7 @@ func TestMultiversXToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 
 		args := createMockExecutorArgs()
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GenerateMessageHashCalled: func(batch *clients.TransferBatch) (common.Hash, error) {
+			GenerateMessageHashCalled: func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error) {
 				return common.Hash{}, expectedErr
 			},
 		}
@@ -1100,7 +1168,7 @@ func TestMultiversXToEthBridgeExecutor_SignTransferOnEthereum(t *testing.T) {
 		wasCalledBroadcastSignatureForMessageHashCalled := false
 		args := createMockExecutorArgs()
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GenerateMessageHashCalled: func(batch *clients.TransferBatch) (common.Hash, error) {
+			GenerateMessageHashCalled: func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error) {
 				wasCalledGenerateMessageHashCalled = true
 				return common.Hash{}, nil
 			},
@@ -1153,7 +1221,7 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 			GetQuorumSizeCalled: func(ctx context.Context) (*big.Int, error) {
 				return big.NewInt(0), nil
 			},
-			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error) {
+			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error) {
 				return "", expectedErr
 			},
 		}
@@ -1176,9 +1244,16 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnEthereum(t *testing.T) {
 				wasCalledGetQuorumSizeCalled = true
 				return big.NewInt(int64(providedQuorum)), nil
 			},
-			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *clients.TransferBatch, quorum int) (string, error) {
+			ExecuteTransferCalled: func(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error) {
 				assert.True(t, providedHash == msgHash)
-				assert.True(t, providedBatch == batch)
+				assert.True(t, providedBatch.ID == batchId)
+				for i := 0; i < len(providedBatch.Deposits); i++ {
+					assert.Equal(t, providedBatch.Deposits[i].Amount, batch.Amounts[i])
+					assert.Equal(t, providedBatch.Deposits[i].Nonce, batch.Nonces[i].Uint64())
+					assert.Equal(t, providedBatch.Deposits[i].ToBytes, batch.Recipients[i].Bytes())
+					assert.Equal(t, providedBatch.Deposits[i].SourceTokenBytes, batch.EthTokens[i].Bytes())
+					assert.Equal(t, providedBatch.Deposits[i].DestinationTokenBytes, batch.MvxTokenBytes[i])
+				}
 				assert.True(t, providedQuorum == quorum)
 
 				wasCalledExecuteTransferCalled = true
@@ -1654,4 +1729,285 @@ func TestBridgeExecutor_ValidateBatch(t *testing.T) {
 	assert.Nil(t, err)
 	assert.True(t, result)
 	assert.True(t, validateBatchCalled)
+}
+
+func TestBridgeExecutor_CheckAvailableTokens(t *testing.T) {
+	t.Parallel()
+
+	t.Run("wrong balances should error", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		tokenMintedBalancesCalled := false
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				tokenMintedBalancesCalled = true
+
+				return big.NewInt(3701), nil // eth holds a higher balance than the mvx
+			},
+		}
+
+		accumulatedBurnedTokensCalled := false
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return true, nil
+			},
+			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				accumulatedBurnedTokensCalled = true
+				return big.NewInt(3700), nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+
+		err := executor.CheckAvailableTokens(
+			context.Background(),
+			[]common.Address{
+				common.BytesToAddress([]byte("eth token")),
+			},
+			[][]byte{
+				[]byte("mvx token"),
+			},
+			[]*big.Int{
+				big.NewInt(1),
+			})
+		assert.ErrorIs(t, err, ErrMintBurnBalance)
+		assert.True(t, tokenMintedBalancesCalled)
+		assert.True(t, accumulatedBurnedTokensCalled)
+	})
+	t.Run("should work with the same balances", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		tokenMintedBalancesCalled := false
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				tokenMintedBalancesCalled = true
+
+				return big.NewInt(3700), nil
+			},
+		}
+
+		accumulatedBurnedTokensCalled := false
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return true, nil
+			},
+			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				accumulatedBurnedTokensCalled = true
+				return big.NewInt(3700), nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+
+		err := executor.CheckAvailableTokens(
+			context.Background(),
+			[]common.Address{
+				common.BytesToAddress([]byte("eth token")),
+			},
+			[][]byte{
+				[]byte("mvx token"),
+			},
+			[]*big.Int{
+				big.NewInt(1),
+			})
+		assert.Nil(t, err)
+		assert.True(t, tokenMintedBalancesCalled)
+		assert.True(t, accumulatedBurnedTokensCalled)
+	})
+	t.Run("should work with higher values on the mvx than eth", func(t *testing.T) {
+		args := createMockExecutorArgs()
+		tokenMintedBalancesCalled := false
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				tokenMintedBalancesCalled = true
+
+				return big.NewInt(3699), nil // eth holds less than mvx
+			},
+		}
+
+		accumulatedBurnedTokensCalled := false
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return true, nil
+			},
+			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				accumulatedBurnedTokensCalled = true
+				return big.NewInt(3700), nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+
+		err := executor.CheckAvailableTokens(
+			context.Background(),
+			[]common.Address{
+				common.BytesToAddress([]byte("eth token")),
+			},
+			[][]byte{
+				[]byte("mvx token"),
+			},
+			[]*big.Int{
+				big.NewInt(1),
+			})
+		assert.Nil(t, err)
+		assert.True(t, tokenMintedBalancesCalled)
+		assert.True(t, accumulatedBurnedTokensCalled)
+	})
+}
+
+func TestConvertToDisplayableData_EmptyCallData(t *testing.T) {
+	t.Parallel()
+
+	callData := []byte{0x00}
+	want := ""
+	got, err := ConvertToDisplayableData(callData)
+	require.Nil(t, err)
+	require.Equal(t, want, got)
+}
+
+func TestConvertToDisplayableData_ValidCallDataWithNoArguments(t *testing.T) {
+	t.Parallel()
+
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
+		b = append(b, 0x00, 0x00, 0x00, 0x00)                        // numArguments
+		return b
+	}()
+
+	want := "Endpoint: abc, Gas: 500000000, Arguments: "
+	got, err := ConvertToDisplayableData(callData)
+	require.Nil(t, err)
+	require.Equal(t, want, got)
+}
+
+func TestConvertToDisplayableData_MultipleTypesArguments(t *testing.T) {
+	t.Parallel()
+
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
+		b = append(b, 0x00, 0x00, 0x00, 0x02)                        // numArguments
+		b = append(b, 0x00, 0x00, 0x00, 0x05)                        // Argument 0 length
+		b = append(b, bytes.Repeat([]byte{'A'}, 5)...)               // Argument 0 data
+		b = append(b, 0x00, 0x00, 0x00, 0x32)                        // Argument 1 length
+		b = append(b, bytes.Repeat([]byte{'B'}, 50)...)              // Argument 1 data
+		return b
+	}()
+
+	want := "Endpoint: abc, Gas: 500000000, Arguments: AAAAA@BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+	got, err := ConvertToDisplayableData(callData)
+	require.Nil(t, err)
+	if got != want {
+		t.Errorf("Test with multiple types arguments failed. Got: %v, want: %v", got, want)
+	}
+}
+
+func TestConvertToDisplayableData_TooShortForProtocolIndicator(t *testing.T) {
+	t.Parallel()
+	_, err := ConvertToDisplayableData([]byte{})
+	require.NotNil(t, err)
+	if err != nil {
+		require.Equal(t, "callData too short for protocol indicator", err.Error())
+	}
+}
+
+func TestConvertToDisplayableData_TooShortForEndpointNameLength(t *testing.T) {
+	t.Parallel()
+	_, err := ConvertToDisplayableData([]byte{0x01})
+	require.NotNil(t, err)
+	require.Equal(t, "callData too short while extracting the length for endpoint", err.Error())
+}
+
+func TestConvertToDisplayableData_UnexpectedProtocolIndicator(t *testing.T) {
+	t.Parallel()
+	_, err := ConvertToDisplayableData([]byte{0x02})
+	require.NotNil(t, err)
+	require.Equal(t, "callData unexpected protocol indicator: 2", err.Error())
+}
+
+func TestConvertToDisplayableData_TooShortForEndpointName(t *testing.T) {
+	t.Parallel()
+	_, err := ConvertToDisplayableData([]byte{0x01, 0x00, 0x00, 0x00, 0x05})
+	require.NotNil(t, err)
+	require.Equal(t, "callData too short while extracting the string data for endpoint", err.Error())
+}
+
+func TestConvertToDisplayableData_TooShortForGasLimitLength(t *testing.T) {
+	t.Parallel()
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x04) // Bad Gas limit length
+		return b
+	}()
+	_, err := ConvertToDisplayableData(callData)
+	require.NotNil(t, err)
+	require.Equal(t, "callData too short for gas limit length", err.Error())
+}
+
+func TestConvertToDisplayableData_TooShortForGasLimit(t *testing.T) {
+	t.Parallel()
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x03, 0x00, 0x03)                              // Bad Gas limit
+		return b
+	}()
+	_, err := ConvertToDisplayableData(callData)
+	require.NotNil(t, err)
+	require.Equal(t, "callData too short for gas limit", err.Error())
+}
+
+func TestConvertToDisplayableData_TooShortForNumberOfArgumentsLength(t *testing.T) {
+	t.Parallel()
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
+		b = append(b, 0x00, 0x00, 0x03)                              // Bad numArgument
+		return b
+	}()
+	_, err := ConvertToDisplayableData(callData)
+	require.NotNil(t, err)
+	require.Equal(t, "callData too short for numArguments length", err.Error())
+}
+
+func TestConvertToDisplayableData_TooShortForArgumentLength(t *testing.T) {
+	t.Parallel()
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
+		b = append(b, 0x00, 0x00, 0x00, 0x01)                        // numArguments
+		b = append(b, 0x00, 0x00, 0x04)                              // Bad Argument 0 length
+		return b
+	}()
+	_, err := ConvertToDisplayableData(callData)
+	require.NotNil(t, err)
+	require.Equal(t, "callData too short while extracting the length for argument 0", err.Error())
+}
+
+func TestConvertToDisplayableData_TooShortForArgumentData(t *testing.T) {
+	t.Parallel()
+	callData := func() []byte {
+		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
+		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
+		b = append(b, 0x00, 0x00, 0x00, 0x01)                        // numArguments
+		b = append(b, 0x00, 0x00, 0x00, 0x04)                        // Argument 0 length
+		b = append(b, 0x00, 0x00, 0x04)                              // Bad Argument 0 data
+		return b
+	}()
+	_, err := ConvertToDisplayableData(callData)
+	require.NotNil(t, err)
+	require.Equal(t, "callData too short while extracting the string data for argument 0", err.Error())
 }

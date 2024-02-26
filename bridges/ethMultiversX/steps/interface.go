@@ -2,7 +2,9 @@ package steps
 
 import (
 	"context"
+	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -15,6 +17,7 @@ type Executor interface {
 	GetBatchFromMultiversX(ctx context.Context) (*clients.TransferBatch, error)
 	StoreBatchFromMultiversX(batch *clients.TransferBatch) error
 	GetStoredBatch() *clients.TransferBatch
+
 	GetLastExecutedEthBatchIDFromMultiversX(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error
 
@@ -57,6 +60,7 @@ type Executor interface {
 	ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 	CheckMultiversXClientAvailability(ctx context.Context) error
 	CheckEthereumClientAvailability(ctx context.Context) error
+	CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) error
 
 	IsInterfaceNil() bool
 }

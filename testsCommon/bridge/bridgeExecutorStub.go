@@ -3,10 +3,12 @@ package bridge
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"runtime"
 	"strings"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -55,6 +57,7 @@ type BridgeExecutorStub struct {
 	ValidateBatchCalled                                        func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 	CheckMultiversXClientAvailabilityCalled                    func(ctx context.Context) error
 	CheckEthereumClientAvailabilityCalled                      func(ctx context.Context) error
+	CheckAvailableTokensCalled                                 func(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) error
 }
 
 // NewBridgeExecutorStub creates a new BridgeExecutorStub instance
@@ -420,4 +423,13 @@ func (stub *BridgeExecutorStub) GetFunctionCounter(function string) int {
 	defer stub.mutExecutor.Unlock()
 
 	return stub.functionCalledCounter[function]
+}
+
+// CheckAvailableTokens -
+func (stub *BridgeExecutorStub) CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) error {
+	if stub.CheckAvailableTokensCalled != nil {
+		return stub.CheckAvailableTokensCalled(ctx, ethTokens, mvxTokens, amounts)
+	}
+
+	return nil
 }

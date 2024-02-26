@@ -35,6 +35,7 @@ var pausedBytes = []byte{1}
 func createMockClientArgs() ClientArgs {
 	privateKey, _ := testKeyGen.PrivateKeyFromByteArray(bytes.Repeat([]byte{1}, 32))
 	multisigContractAddress, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
+	safeContractAddress, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus")
 
 	return ClientArgs{
 		GasMapConfig: config.MultiversXGasMapConfig{
@@ -45,11 +46,14 @@ func createMockClientArgs() ClientArgs {
 			ProposeStatusForEach:   50,
 			PerformActionBase:      60,
 			PerformActionForEach:   70,
+			ScCallPerByte:          80,
+			ScCallPerformForEach:   90,
 		},
 		Proxy:                        &interactors.ProxyStub{},
 		Log:                          logger.GetOrCreate("test"),
 		RelayerPrivateKey:            privateKey,
 		MultisigContractAddress:      multisigContractAddress,
+		SafeContractAddress:          safeContractAddress,
 		IntervalToResendTxsInSeconds: 1,
 		TokensMapper: &bridgeTests.TokensMapperStub{
 			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
@@ -117,6 +121,17 @@ func TestNewClient(t *testing.T) {
 
 		args := createMockClientArgs()
 		args.MultisigContractAddress = nil
+
+		c, err := NewClient(args)
+
+		require.True(t, check.IfNil(c))
+		require.True(t, errors.Is(err, errNilAddressHandler))
+	})
+	t.Run("nil safe contract address should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.SafeContractAddress = nil
 
 		c, err := NewClient(args)
 
@@ -334,26 +349,26 @@ func TestClient_GetPending(t *testing.T) {
 			ID: 44562,
 			Deposits: []*clients.DepositTransfer{
 				{
-					Nonce:               5000,
-					ToBytes:             bytes.Repeat([]byte{2}, 20),
-					DisplayableTo:       "0x0202020202020202020202020202020202020202",
-					FromBytes:           bytes.Repeat([]byte{1}, 32),
-					DisplayableFrom:     "erd1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsl6e0p7",
-					TokenBytes:          tokenBytes1,
-					ConvertedTokenBytes: append([]byte("converted_"), tokenBytes1...),
-					DisplayableToken:    string(tokenBytes1),
-					Amount:              big.NewInt(10000),
+					Nonce:                 5000,
+					ToBytes:               bytes.Repeat([]byte{2}, 20),
+					DisplayableTo:         "0x0202020202020202020202020202020202020202",
+					FromBytes:             bytes.Repeat([]byte{1}, 32),
+					DisplayableFrom:       "erd1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsl6e0p7",
+					SourceTokenBytes:      tokenBytes1,
+					DestinationTokenBytes: append([]byte("converted_"), tokenBytes1...),
+					DisplayableToken:      string(tokenBytes1),
+					Amount:                big.NewInt(10000),
 				},
 				{
-					Nonce:               5001,
-					ToBytes:             bytes.Repeat([]byte{5}, 20),
-					DisplayableTo:       "0x0505050505050505050505050505050505050505",
-					FromBytes:           bytes.Repeat([]byte{4}, 32),
-					DisplayableFrom:     "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn",
-					TokenBytes:          tokenBytes2,
-					ConvertedTokenBytes: append([]byte("converted_"), tokenBytes2...),
-					DisplayableToken:    string(tokenBytes2),
-					Amount:              big.NewInt(20000),
+					Nonce:                 5001,
+					ToBytes:               bytes.Repeat([]byte{5}, 20),
+					DisplayableTo:         "0x0505050505050505050505050505050505050505",
+					FromBytes:             bytes.Repeat([]byte{4}, 32),
+					DisplayableFrom:       "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn",
+					SourceTokenBytes:      tokenBytes2,
+					DestinationTokenBytes: append([]byte("converted_"), tokenBytes2...),
+					DisplayableToken:      string(tokenBytes2),
+					Amount:                big.NewInt(20000),
 				},
 			},
 			Statuses: make([]byte, 2),
@@ -550,15 +565,65 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		assert.Equal(t, expectedHash, hash)
 		assert.True(t, sendWasCalled)
 	})
+	t.Run("should propose transfer with SC call", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+		expectedHash := "expected hash"
+		c, _ := NewClient(args)
+		sendWasCalled := false
+		batch := createMockBatch()
+		batch.Deposits[0].Data = bridgeTests.CallDataMock
+		var err error
+		batch.Deposits[0].DisplayableData, err = ethmultiversx.ConvertToDisplayableData(batch.Deposits[0].Data)
+		require.Nil(t, err)
+
+		c.txHandler = &bridgeTests.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+				sendWasCalled = true
+
+				dataField, errConvert := builder.ToDataString()
+				assert.Nil(t, errConvert)
+
+				dataStrings := []string{
+					proposeTransferFuncName,
+					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
+				}
+				extraGas := uint64(0)
+				for _, dt := range batch.Deposits {
+					dataStrings = append(dataStrings, depositToStrings(dt)...)
+					if bytes.Equal(dt.Data, []byte{ethmultiversx.MissingDataProtocolMarker}) {
+						continue
+					}
+					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
+				}
+
+				expectedDataField := strings.Join(dataStrings, "@")
+				assert.Equal(t, expectedDataField, dataField)
+
+				expectedGasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach + extraGas
+				assert.Equal(t, expectedGasLimit, gasLimit)
+
+				return expectedHash, nil
+			},
+		}
+
+		hash, err := c.ProposeTransfer(context.Background(), batch)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedHash, hash)
+		assert.True(t, sendWasCalled)
+	})
 }
 
 func depositToStrings(dt *clients.DepositTransfer) []string {
 	result := []string{
 		hex.EncodeToString(dt.FromBytes),
 		hex.EncodeToString(dt.ToBytes),
-		hex.EncodeToString(dt.ConvertedTokenBytes),
+		hex.EncodeToString(dt.DestinationTokenBytes),
 		hex.EncodeToString(dt.Amount.Bytes()),
 		hex.EncodeToString(big.NewInt(int64(dt.Nonce)).Bytes()),
+		hex.EncodeToString(dt.Data),
 	}
 
 	return result
@@ -706,8 +771,59 @@ func TestClient_PerformAction(t *testing.T) {
 				}
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
-				expectedGasdLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
-				assert.Equal(t, expectedGasdLimit, gasLimit)
+				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+				assert.Equal(t, expectedGasLimit, gasLimit)
+
+				return expectedHash, nil
+			},
+		}
+
+		hash, err := c.PerformAction(context.Background(), actionID, batch)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedHash, hash)
+		assert.True(t, sendWasCalled)
+	})
+	t.Run("should perform action with SC call", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+		expectedHash := "expected hash"
+		c, _ := NewClient(args)
+		sendWasCalled := false
+		batch := createMockBatch()
+		batch.Deposits[0].Data = bridgeTests.CallDataMock
+		var err error
+		batch.Deposits[0].DisplayableData, err = ethmultiversx.ConvertToDisplayableData(batch.Deposits[0].Data)
+		require.Nil(t, err)
+
+		c.txHandler = &bridgeTests.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+				sendWasCalled = true
+
+				dataField, errConvert := builder.ToDataString()
+				assert.Nil(t, errConvert)
+
+				dataStrings := []string{
+					performActionFuncName,
+					hex.EncodeToString(big.NewInt(int64(actionID)).Bytes()),
+				}
+				expectedDataField := strings.Join(dataStrings, "@")
+				assert.Equal(t, expectedDataField, dataField)
+
+				extraGas := uint64(0)
+				for _, dt := range batch.Deposits {
+					dataStrings = append(dataStrings, depositToStrings(dt)...)
+					if bytes.Equal(dt.Data, []byte{ethmultiversx.MissingDataProtocolMarker}) {
+						continue
+					}
+					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
+					extraGas += args.GasMapConfig.ScCallPerformForEach
+				}
+
+				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+				expectedGasLimit += extraGas
+				assert.Equal(t, expectedGasLimit, gasLimit)
 
 				return expectedHash, nil
 			},

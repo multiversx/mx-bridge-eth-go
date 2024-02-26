@@ -4,7 +4,7 @@ const (
 	// GettingPendingBatchFromEthereum is the step identifier for fetching the pending batch from the Ethereum chain
 	GettingPendingBatchFromEthereum = "get pending batch from Ethereum"
 
-	// ProposingTransferOnMultiversX is the step idetifier for proposing transfer on MultiversX
+	// ProposingTransferOnMultiversX is the step identifier for proposing transfer on MultiversX
 	ProposingTransferOnMultiversX = "propose transfer"
 
 	// SigningProposedTransferOnMultiversX is the step identifier for signing proposed transfer

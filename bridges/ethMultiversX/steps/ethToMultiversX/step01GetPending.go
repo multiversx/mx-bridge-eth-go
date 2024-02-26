@@ -6,6 +6,7 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
@@ -51,6 +52,13 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 
 	if !isValid {
 		step.bridge.PrintInfo(logger.LogError, "batch not valid "+batch.String())
+		return step.Identifier()
+	}
+
+	argLists := batchProcessor.ExtractListEthToMvx(batch)
+	err = step.bridge.CheckAvailableTokens(ctx, argLists.EthTokens, argLists.MvxTokenBytes, argLists.Amounts)
+	if err != nil {
+		step.bridge.PrintInfo(logger.LogError, "error checking available tokens", "error", err, "batch", batch.String())
 		return step.Identifier()
 	}
 

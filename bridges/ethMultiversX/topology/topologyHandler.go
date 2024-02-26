@@ -69,9 +69,9 @@ func (t *topologyHandler) MyTurnAsLeader() bool {
 		}
 
 		t.log.Debug(msg,
-			"leader", t.addressConverter.ToBech32String(leaderAddress),
+			"leader", t.addressConverter.ToBech32StringSilent(leaderAddress),
 			"index", index,
-			"self address", t.addressConverter.ToBech32String(t.addressBytes))
+			"self address", t.addressConverter.ToBech32StringSilent(t.addressBytes))
 
 		return isLeader
 	}

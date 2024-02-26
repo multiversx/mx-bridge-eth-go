@@ -1,13 +1,19 @@
 package ethmultiversx
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -15,8 +21,15 @@ import (
 // splits - represent the number of times we split the maximum interval
 // we wait for the transfer confirmation on Ethereum
 const splits = 10
-
 const minRetries = 1
+const uint32ArgBytes = 4
+const uint64ArgBytes = 8
+
+// MissingDataProtocolMarker defines the marker for missing data (simple transfers)
+const MissingDataProtocolMarker byte = 0x00
+
+// DataPresentProtocolMarker defines the marker for existing data (transfers with SC calls)
+const DataPresentProtocolMarker byte = 0x01
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
@@ -178,7 +191,7 @@ func (executor *bridgeExecutor) GetLastExecutedEthBatchIDFromMultiversX(ctx cont
 	return batchID, err
 }
 
-// VerifyLastDepositNonceExecutedOnEthereumBatch will check the deposit nonces from the fetched batch from Ethereum client
+// VerifyLastDepositNonceExecutedOnEthereumBatch will check the deposit Nonces from the fetched batch from Ethereum client
 func (executor *bridgeExecutor) VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error {
 	if executor.batch == nil {
 		return ErrNilBatch
@@ -447,9 +460,51 @@ func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context
 			ErrBatchNotFound, nonce, batch.ID, len(batch.Deposits))
 	}
 
+	batch, err = executor.addBatchSCMetadata(ctx, batch)
+	if err != nil {
+		return err
+	}
 	executor.batch = batch
 
 	return nil
+}
+
+// addBatchSCMetadata fetches the logs containing sc calls metadata for the current batch
+func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfers *clients.TransferBatch) (*clients.TransferBatch, error) {
+	if transfers == nil {
+		return nil, ErrNilBatch
+	}
+
+	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, transfers.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, t := range transfers.Deposits {
+		transfers.Deposits[i] = executor.addMetadataToTransfer(t, events)
+	}
+
+	return transfers, nil
+}
+
+func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositTransfer, events []*contract.SCExecProxyERC20SCDeposit) *clients.DepositTransfer {
+	for _, event := range events {
+		if event.DepositNonce == transfer.Nonce {
+			transfer.Data = []byte(event.CallData)
+			var err error
+			transfer.DisplayableData, err = ConvertToDisplayableData(transfer.Data)
+			if err != nil {
+				executor.log.Warn("failed to convert call data to displayable data", "error", err)
+			}
+
+			return transfer
+		}
+	}
+
+	transfer.Data = []byte{MissingDataProtocolMarker}
+	transfer.DisplayableData = ""
+
+	return transfer
 }
 
 // WasTransferPerformedOnEthereum returns true if the batch was performed on Ethereum
@@ -467,7 +522,8 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		return ErrNilBatch
 	}
 
-	hash, err := executor.ethereumClient.GenerateMessageHash(executor.batch)
+	argLists := batchProcessor.ExtractListMvxToEth(executor.batch)
+	hash, err := executor.ethereumClient.GenerateMessageHash(argLists, executor.batch.ID)
 	if err != nil {
 		return err
 	}
@@ -493,7 +549,11 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 
 	executor.log.Debug("fetched quorum size", "quorum", quorumSize.Int64())
 
-	hash, err := executor.ethereumClient.ExecuteTransfer(ctx, executor.msgHash, executor.batch, int(quorumSize.Int64()))
+	argLists := batchProcessor.ExtractListMvxToEth(executor.batch)
+
+	executor.log.Info("executing transfer " + executor.batch.String())
+
+	hash, err := executor.ethereumClient.ExecuteTransfer(ctx, executor.msgHash, argLists, executor.batch.ID, int(quorumSize.Int64()))
 	if err != nil {
 		return err
 	}
@@ -502,6 +562,111 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 		"batch ID", executor.batch.ID)
 
 	return nil
+}
+
+func (executor *bridgeExecutor) checkCumulatedTransfers(ctx context.Context, tokens []common.Address, convertedTokens [][]byte, amounts []*big.Int) error {
+	for i, token := range tokens {
+		err := executor.checkToken(ctx, token, convertedTokens[i], amounts[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (executor *bridgeExecutor) checkToken(ctx context.Context, token common.Address, convertedToken []byte, amount *big.Int) error {
+	isMintBurnToken, err := executor.isMintBurnToken(ctx, token, convertedToken)
+	if err != nil {
+		return err
+	}
+
+	if isMintBurnToken {
+		return executor.checkRequiredMintBurnBalance(ctx, token, convertedToken)
+	}
+
+	return executor.ethereumClient.CheckRequiredBalance(ctx, token, amount)
+}
+
+func (executor *bridgeExecutor) isMintBurnToken(ctx context.Context, token common.Address, convertedToken []byte) (bool, error) {
+	isMintBurnOnEthereum := executor.isMintBurnOnEthereum(ctx, token)
+	isMintBurnOnMultiversX := executor.isMintBurnOnMultiversX(ctx, convertedToken)
+	if isMintBurnOnEthereum != isMintBurnOnMultiversX {
+		return false, fmt.Errorf("%w isMintBurnOnEthereum = %v, isMintBurnOnMultiversX = %v", ErrInvalidSetupMintBurnToken, isMintBurnOnEthereum, isMintBurnOnMultiversX)
+	}
+	return isMintBurnOnEthereum, nil
+}
+
+func (executor *bridgeExecutor) checkRequiredMintBurnBalance(ctx context.Context, ethToken common.Address, mvxToken []byte) error {
+	ethBalance, err := executor.ethereumClient.TokenMintedBalances(ctx, ethToken)
+	if err != nil {
+		return err
+	}
+
+	mvxBalance, err := executor.multiversXClient.AccumulatedBurnedTokens(ctx, mvxToken)
+	if err != nil {
+		return err
+	}
+	if ethBalance.Cmp(mvxBalance) > 0 {
+		return fmt.Errorf("%w, balance for ERC20 token %s is %s and the balance for ESDT token %s is %s",
+			ErrMintBurnBalance, ethToken.String(), ethBalance.String(), mvxToken, mvxBalance.String())
+	}
+
+	executor.log.Debug("bridgeExecutor.checkRequiredMintBurnBalance",
+		"ERC20 token", ethToken.String(),
+		"ERC20 native balance", ethBalance.String(),
+		"ESDT token", mvxToken,
+		"ESDT native balance", mvxBalance.String(),
+	)
+
+	return nil
+}
+
+func (executor *bridgeExecutor) isMintBurnOnEthereum(ctx context.Context, erc20Address common.Address) bool {
+	isMintBurn, err := executor.ethereumClient.WhitelistedTokensMintBurn(ctx, erc20Address)
+	if err != nil {
+		return false
+	}
+	return isMintBurn
+}
+
+func (executor *bridgeExecutor) isMintBurnOnMultiversX(ctx context.Context, token []byte) bool {
+	isMintBurn, err := executor.multiversXClient.IsMintBurnAllowed(ctx, token)
+	if err != nil {
+		return false
+	}
+	return isMintBurn
+}
+
+// CheckAvailableTokens checks the available balances handling also the native tokens
+func (executor *bridgeExecutor) CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) error {
+	ethTokens, mvxTokens, amounts = executor.getCumulatedTransfers(ethTokens, mvxTokens, amounts)
+
+	return executor.checkCumulatedTransfers(ctx, ethTokens, mvxTokens, amounts)
+}
+
+func (executor *bridgeExecutor) getCumulatedTransfers(ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) ([]common.Address, [][]byte, []*big.Int) {
+	cumulatedAmounts := make(map[common.Address]*big.Int)
+	uniqueTokens := make([]common.Address, 0)
+	uniqueConvertedTokens := make([][]byte, 0)
+
+	for i, token := range ethTokens {
+		existingValue, exists := cumulatedAmounts[token]
+		if exists {
+			existingValue.Add(existingValue, amounts[i])
+			continue
+		}
+
+		cumulatedAmounts[token] = amounts[i]
+		uniqueTokens = append(uniqueTokens, token)
+		uniqueConvertedTokens = append(uniqueConvertedTokens, mvxTokens[i])
+	}
+
+	finalAmounts := make([]*big.Int, len(uniqueTokens))
+	for i, token := range uniqueTokens {
+		finalAmounts[i] = cumulatedAmounts[token]
+	}
+
+	return uniqueTokens, uniqueConvertedTokens, finalAmounts
 }
 
 // ProcessQuorumReachedOnEthereum returns true if the proposed transfer reached the set quorum
@@ -548,4 +713,108 @@ func (executor *bridgeExecutor) CheckEthereumClientAvailability(ctx context.Cont
 // IsInterfaceNil returns true if there is no value under the interface
 func (executor *bridgeExecutor) IsInterfaceNil() bool {
 	return executor == nil
+}
+
+// ConvertToDisplayableData
+/** @param callData The encoded data specifying the cross-chain call details. The expected format is:
+*        0x01 + endpoint_name_length (4 bytes) + endpoint_name + gas_limit (8 bytes) +
+*        num_arguments_length (4 bytes) + [argument_length (4 bytes) + argument]...
+*        This payload includes the endpoint name, gas limit for the execution, and the arguments for the call.
+ */
+func ConvertToDisplayableData(callData []byte) (string, error) {
+	if len(callData) == 0 {
+		return "", fmt.Errorf("callData too short for protocol indicator")
+	}
+
+	marker := callData[0]
+	callData = callData[1:]
+
+	switch marker {
+	case MissingDataProtocolMarker:
+		return "", nil
+	case DataPresentProtocolMarker:
+		return convertBytesToDisplayableData(callData)
+	default:
+		return "", fmt.Errorf("callData unexpected protocol indicator: %d", marker)
+	}
+}
+
+func convertBytesToDisplayableData(callData []byte) (string, error) {
+	callData, endpointName, err := extractString(callData)
+	if err != nil {
+		return "", fmt.Errorf("%w for endpoint", err)
+	}
+
+	callData, gasLimit, err := extractGasLimit(callData)
+	if err != nil {
+		return "", err
+	}
+
+	callData, numArgumentsLength, err := extractArgumentsLen(callData)
+	if err != nil {
+		return "", err
+	}
+
+	arguments := make([]string, 0)
+	for i := 0; i < numArgumentsLength; i++ {
+		var argument string
+		callData, argument, err = extractString(callData)
+		if err != nil {
+			return "", fmt.Errorf("%w for argument %d", err, i)
+		}
+
+		arguments = append(arguments, argument)
+	}
+
+	return fmt.Sprintf("Endpoint: %s, Gas: %d, Arguments: %s", endpointName, gasLimit, strings.Join(arguments, "@")), nil
+}
+
+func extractString(callData []byte) ([]byte, string, error) {
+	// Ensure there's enough length for the 4 bytes for length
+	if len(callData) < uint32ArgBytes {
+		return nil, "", fmt.Errorf("callData too short while extracting the length")
+	}
+	argumentLength := int(binary.BigEndian.Uint32(callData[:uint32ArgBytes]))
+	callData = callData[uint32ArgBytes:] // remove the len bytes
+
+	// Check for the argument data
+	if len(callData) < argumentLength {
+		return nil, "", fmt.Errorf("callData too short while extracting the string data")
+	}
+	endpointName := string(callData[:argumentLength])
+	callData = callData[argumentLength:] // remove the string bytes
+
+	return callData, endpointName, nil
+}
+
+func extractGasLimit(callData []byte) ([]byte, uint64, error) {
+	// Check for gas limit
+	if len(callData) < uint64ArgBytes { // 8 bytes for gas limit length
+		return nil, 0, fmt.Errorf("callData too short for gas limit length")
+	}
+
+	gasLimitLength := int(binary.BigEndian.Uint64(callData[:uint64ArgBytes]))
+	callData = callData[uint64ArgBytes:]
+
+	// Check for gas limit
+	if len(callData) < gasLimitLength {
+		return nil, 0, fmt.Errorf("callData too short for gas limit")
+	}
+
+	gasLimitBytes := append(bytes.Repeat([]byte{0x00}, 8-int(gasLimitLength)), callData[:gasLimitLength]...)
+	gasLimit := binary.BigEndian.Uint64(gasLimitBytes)
+	callData = callData[gasLimitLength:] // remove the gas limit bytes
+
+	return callData, gasLimit, nil
+}
+
+func extractArgumentsLen(callData []byte) ([]byte, int, error) {
+	// Ensure there's enough length for the 4 bytes for endpoint name length
+	if len(callData) < uint32ArgBytes {
+		return nil, 0, fmt.Errorf("callData too short for numArguments length")
+	}
+	length := int(binary.BigEndian.Uint32(callData[:uint32ArgBytes]))
+	callData = callData[uint32ArgBytes:] // remove the len bytes
+
+	return callData, length, nil
 }

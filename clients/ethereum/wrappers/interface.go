@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -25,9 +26,15 @@ type multiSigContract interface {
 	Paused(opts *bind.CallOpts) (bool, error)
 }
 
+type safeContract interface {
+	TokenMintedBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	WhitelistedTokensMintBurn(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+}
+
 type blockchainClient interface {
 	BlockNumber(ctx context.Context) (uint64, error)
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	ChainID(ctx context.Context) (*big.Int, error)
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 }

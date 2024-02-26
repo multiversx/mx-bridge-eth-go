@@ -65,8 +65,8 @@ func TestTransactionHandler_SendTransactionReturnHash(t *testing.T) {
 		expectedErr := errors.New("expected error in get nonce")
 		txHandlerInstance := createTransactionHandlerWithMockComponents()
 		txHandlerInstance.nonceTxHandler = &bridgeTests.NonceTransactionsHandlerStub{
-			GetNonceCalled: func(ctx context.Context, address core.AddressHandler) (uint64, error) {
-				return 0, expectedErr
+			ApplyNonceAndGasPriceCalled: func(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error {
+				return expectedErr
 			},
 		}
 
@@ -140,12 +140,15 @@ func TestTransactionHandler_SendTransactionReturnHash(t *testing.T) {
 		}
 
 		txHandlerInstance.nonceTxHandler = &bridgeTests.NonceTransactionsHandlerStub{
-			GetNonceCalled: func(ctx context.Context, address core.AddressHandler) (uint64, error) {
-				if address.AddressAsBech32String() == relayerAddress {
-					return nonce, nil
+			ApplyNonceAndGasPriceCalled: func(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error {
+				if getBech32Address(address) == relayerAddress {
+					tx.Nonce = nonce
+					tx.GasPrice = minGasPrice
+
+					return nil
 				}
 
-				return 0, errors.New("unexpected address to fetch the nonce")
+				return errors.New("unexpected address to fetch the nonce")
 			},
 			SendTransactionCalled: func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {
 				sendWasCalled = true

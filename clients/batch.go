@@ -65,41 +65,46 @@ func (tb *TransferBatch) ResolveNewDeposits(newNumDeposits int) {
 
 // DepositTransfer is the deposit transfer structure agnostic of any chain implementation
 type DepositTransfer struct {
-	Nonce               uint64   `json:"nonce"`
-	ToBytes             []byte   `json:"-"`
-	DisplayableTo       string   `json:"to"`
-	FromBytes           []byte   `json:"-"`
-	DisplayableFrom     string   `json:"from"`
-	TokenBytes          []byte   `json:"-"`
-	ConvertedTokenBytes []byte   `json:"-"`
-	DisplayableToken    string   `json:"token"`
-	Amount              *big.Int `json:"amount"`
+	Nonce                 uint64   `json:"nonce"`
+	ToBytes               []byte   `json:"-"`
+	DisplayableTo         string   `json:"to"`
+	FromBytes             []byte   `json:"-"`
+	DisplayableFrom       string   `json:"from"`
+	SourceTokenBytes      []byte   `json:"-"`
+	DestinationTokenBytes []byte   `json:"-"`
+	DisplayableToken      string   `json:"token"`
+	Amount                *big.Int `json:"amount"`
+	Data                  []byte   `json:"-"`
+	DisplayableData       string   `json:"data"`
 }
 
 // String will convert the deposit transfer to a string
 func (dt *DepositTransfer) String() string {
-	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %d",
-		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.Nonce)
+	return fmt.Sprintf("to: %s, from: %s, token address: %s, amount: %v, deposit nonce: %d, data: %s",
+		dt.DisplayableTo, dt.DisplayableFrom, dt.DisplayableToken, dt.Amount, dt.Nonce, dt.DisplayableData)
 }
 
-// Clone will deep clone the current DepositTransfer instance
+// Clone will deeply clone the current DepositTransfer instance
 func (dt *DepositTransfer) Clone() *DepositTransfer {
 	cloned := &DepositTransfer{
-		Nonce:               dt.Nonce,
-		ToBytes:             make([]byte, len(dt.ToBytes)),
-		DisplayableTo:       dt.DisplayableTo,
-		FromBytes:           make([]byte, len(dt.FromBytes)),
-		DisplayableFrom:     dt.DisplayableFrom,
-		TokenBytes:          make([]byte, len(dt.TokenBytes)),
-		ConvertedTokenBytes: make([]byte, len(dt.ConvertedTokenBytes)),
-		DisplayableToken:    dt.DisplayableToken,
-		Amount:              big.NewInt(0),
+		Nonce:                 dt.Nonce,
+		ToBytes:               make([]byte, len(dt.ToBytes)),
+		DisplayableTo:         dt.DisplayableTo,
+		FromBytes:             make([]byte, len(dt.FromBytes)),
+		DisplayableFrom:       dt.DisplayableFrom,
+		SourceTokenBytes:      make([]byte, len(dt.SourceTokenBytes)),
+		DestinationTokenBytes: make([]byte, len(dt.DestinationTokenBytes)),
+		DisplayableToken:      dt.DisplayableToken,
+		Amount:                big.NewInt(0),
+		Data:                  make([]byte, len(dt.Data)),
+		DisplayableData:       dt.DisplayableData,
 	}
 
 	copy(cloned.ToBytes, dt.ToBytes)
 	copy(cloned.FromBytes, dt.FromBytes)
-	copy(cloned.TokenBytes, dt.TokenBytes)
-	copy(cloned.ConvertedTokenBytes, dt.ConvertedTokenBytes)
+	copy(cloned.SourceTokenBytes, dt.SourceTokenBytes)
+	copy(cloned.DestinationTokenBytes, dt.DestinationTokenBytes)
+	copy(cloned.Data, dt.Data)
 	if dt.Amount != nil {
 		cloned.Amount.Set(dt.Amount)
 	}

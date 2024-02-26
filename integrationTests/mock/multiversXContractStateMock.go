@@ -32,6 +32,7 @@ type Transfer struct {
 	Token  string
 	Amount *big.Int
 	Nonce  *big.Int
+	Data   []byte
 }
 
 // MultiversXPendingBatch -
@@ -169,23 +170,29 @@ func (mock *multiversXContractStateMock) createProposedTransfer(dataSplit []stri
 		BatchId: big.NewInt(0).SetBytes(buff),
 	}
 
-	for i := 2; i < len(dataSplit); i += 5 {
-		from, errDecode := hex.DecodeString(dataSplit[i])
+	currentIndex := 2
+	for currentIndex < len(dataSplit) {
+		from, errDecode := hex.DecodeString(dataSplit[currentIndex])
 		if errDecode != nil {
 			panic(errDecode)
 		}
 
-		to, errDecode := hex.DecodeString(dataSplit[i+1])
+		to, errDecode := hex.DecodeString(dataSplit[currentIndex+1])
 		if errDecode != nil {
 			panic(errDecode)
 		}
 
-		amountBytes, errDecode := hex.DecodeString(dataSplit[i+3])
+		amountBytes, errDecode := hex.DecodeString(dataSplit[currentIndex+3])
 		if errDecode != nil {
 			panic(errDecode)
 		}
 
-		nonceBytes, errDecode := hex.DecodeString(dataSplit[i+4])
+		nonceBytes, errDecode := hex.DecodeString(dataSplit[currentIndex+4])
+		if errDecode != nil {
+			panic(errDecode)
+		}
+
+		dataBytes, errDecode := hex.DecodeString(dataSplit[currentIndex+5])
 		if errDecode != nil {
 			panic(errDecode)
 		}
@@ -193,12 +200,16 @@ func (mock *multiversXContractStateMock) createProposedTransfer(dataSplit []stri
 		t := Transfer{
 			From:   from,
 			To:     to,
-			Token:  dataSplit[i+2],
+			Token:  dataSplit[currentIndex+2],
 			Amount: big.NewInt(0).SetBytes(amountBytes),
 			Nonce:  big.NewInt(0).SetBytes(nonceBytes),
+			Data:   dataBytes,
 		}
 
+		indexIncrementValue := 6
+
 		transfer.Transfers = append(transfer.Transfers, t)
+		currentIndex += indexIncrementValue
 	}
 
 	hash, err := core.CalculateHash(integrationTests.TestMarshalizer, integrationTests.TestHasher, transfer)
@@ -248,6 +259,10 @@ func (mock *multiversXContractStateMock) processVmRequests(vmRequest *data.VmVal
 		return mock.vmRequestSigned(vmRequest), nil
 	case "isPaused":
 		return mock.vmRequestIsPaused(vmRequest), nil
+	case "isMintBurnAllowed":
+		return mock.vmRequestIsMintBurnAllowed(vmRequest), nil
+	case "getAccumulatedBurnedTokens":
+		return mock.vmRequestGetAccumulatedBurnedTokens(vmRequest), nil
 	}
 
 	panic("unimplemented function: " + vmRequest.FuncName)
@@ -443,9 +458,10 @@ func (mock *multiversXContractStateMock) vmRequestSigned(request *data.VmValueRe
 	}
 
 	address := data.NewAddressFromBytes(addressBytes)
-	_, found = actionIDMap[address.AddressAsBech32String()]
+	bech32Address, _ := address.AddressAsBech32String()
+	_, found = actionIDMap[bech32Address]
 	if !found {
-		log.Error("action ID not found", "address", address.AddressAsBech32String())
+		log.Error("action ID not found", "address", bech32Address)
 	}
 
 	return createOkVmResponse([][]byte{BoolToByteSlice(found)})
@@ -453,6 +469,18 @@ func (mock *multiversXContractStateMock) vmRequestSigned(request *data.VmValueRe
 
 func (mock *multiversXContractStateMock) vmRequestIsPaused(_ *data.VmValueRequest) *data.VmValuesResponseData {
 	return createOkVmResponse([][]byte{BoolToByteSlice(false)})
+}
+
+func (mock *multiversXContractStateMock) vmRequestIsMintBurnAllowed(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
+	address := vmRequest.Args[0]
+
+	return createOkVmResponse([][]byte{BoolToByteSlice(mock.isNativeToken(address))})
+}
+
+func (mock *multiversXContractStateMock) vmRequestGetAccumulatedBurnedTokens(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
+	address := vmRequest.Args[0]
+
+	return createOkVmResponse([][]byte{mock.getAccumulatedBurn(address).Bytes()})
 }
 
 func getActionIDFromString(data string) *big.Int {

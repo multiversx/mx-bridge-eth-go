@@ -11,11 +11,18 @@ import (
 
 // CreateUnitStorer based on the config and the working directory
 func CreateUnitStorer(config config.StorageConfig, workingDir string) (core.Storer, error) {
+	dbConfigHandler := factory.NewDBConfigHandler(config.DB)
+	persisterCreator, err := factory.NewPersisterFactory(dbConfigHandler)
+	if err != nil {
+		return nil, err
+	}
+
 	statusMetricsDbConfig := factory.GetDBFromConfig(config.DB)
 	dbPath := path.Join(workingDir, config.DB.FilePath)
 	statusMetricsDbConfig.FilePath = dbPath
 
 	return storageunit.NewStorageUnitFromConf(
 		factory.GetCacherFromConfig(config.Cache),
-		statusMetricsDbConfig)
+		statusMetricsDbConfig,
+		persisterCreator)
 }

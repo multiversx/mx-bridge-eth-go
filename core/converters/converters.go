@@ -6,13 +6,11 @@ import (
 
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
-	logger "github.com/multiversx/mx-chain-logger-go"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 )
 
-var log = logger.GetOrCreate("core")
-
 const hexPrefix = "0x"
+const hrp = "erd"
 
 type addressConverter struct {
 	converter core.PubkeyConverter
@@ -22,7 +20,7 @@ type addressConverter struct {
 func NewAddressConverter() (*addressConverter, error) {
 	var err error
 	ac := &addressConverter{}
-	ac.converter, err = pubkeyConverter.NewBech32PubkeyConverter(sdkCore.AddressBytesLen, log)
+	ac.converter, err = pubkeyConverter.NewBech32PubkeyConverter(sdkCore.AddressBytesLen, hrp)
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +39,15 @@ func (ac *addressConverter) ToHexStringWithPrefix(addressBytes []byte) string {
 }
 
 // ToBech32String will convert the addressBytes to the bech32 representation
-func (ac *addressConverter) ToBech32String(addressBytes []byte) string {
+func (ac *addressConverter) ToBech32String(addressBytes []byte) (string, error) {
 	return ac.converter.Encode(addressBytes)
+}
+
+// ToBech32StringSilent will try to convert the addressBytes to the bech32 representation
+func (ac *addressConverter) ToBech32StringSilent(addressBytes []byte) string {
+	bech32Address, _ := ac.converter.Encode(addressBytes)
+
+	return bech32Address
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

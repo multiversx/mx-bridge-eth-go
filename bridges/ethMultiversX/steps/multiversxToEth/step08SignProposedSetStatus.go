@@ -47,7 +47,7 @@ func (step *signProposedSetStatusStep) Execute(ctx context.Context) core.StepIde
 
 	err = step.bridge.SignActionOnMultiversX(ctx)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogError, "error signing the proposed transfer",
+		step.bridge.PrintInfo(logger.LogError, "error signing the proposed set status",
 			"batch ID", storedBatch.ID, "error", err)
 		return GettingPendingBatchFromMultiversX
 	}
