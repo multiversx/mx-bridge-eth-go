@@ -1925,27 +1925,21 @@ func TestConvertToDisplayableData_TooShortForEndpointNameLength(t *testing.T) {
 	t.Parallel()
 	_, err := ConvertToDisplayableData([]byte{0x01})
 	require.NotNil(t, err)
-	if err != nil {
-		require.Equal(t, "callData too short for endpoint name length", err.Error())
-	}
+	require.Equal(t, "callData too short while extracting the length for endpoint", err.Error())
 }
 
 func TestConvertToDisplayableData_UnexpectedProtocolIndicator(t *testing.T) {
 	t.Parallel()
 	_, err := ConvertToDisplayableData([]byte{0x02})
 	require.NotNil(t, err)
-	if err != nil {
-		require.Equal(t, "callData unexpected protocol indicator: 2", err.Error())
-	}
+	require.Equal(t, "callData unexpected protocol indicator: 2", err.Error())
 }
 
 func TestConvertToDisplayableData_TooShortForEndpointName(t *testing.T) {
 	t.Parallel()
 	_, err := ConvertToDisplayableData([]byte{0x01, 0x00, 0x00, 0x00, 0x05})
 	require.NotNil(t, err)
-	if err != nil {
-		require.Equal(t, "callData too short for endpoint name", err.Error())
-	}
+	require.Equal(t, "callData too short while extracting the string data for endpoint", err.Error())
 }
 
 func TestConvertToDisplayableData_TooShortForGasLimitLength(t *testing.T) {
@@ -1956,9 +1950,8 @@ func TestConvertToDisplayableData_TooShortForGasLimitLength(t *testing.T) {
 		return b
 	}()
 	_, err := ConvertToDisplayableData(callData)
-	if err != nil {
-		require.Equal(t, "callData too short for gas limit length", err.Error())
-	}
+	require.NotNil(t, err)
+	require.Equal(t, "callData too short for gas limit length", err.Error())
 }
 
 func TestConvertToDisplayableData_TooShortForGasLimit(t *testing.T) {
@@ -1971,9 +1964,7 @@ func TestConvertToDisplayableData_TooShortForGasLimit(t *testing.T) {
 	}()
 	_, err := ConvertToDisplayableData(callData)
 	require.NotNil(t, err)
-	if err != nil {
-		require.Equal(t, "callData too short for gas limit", err.Error())
-	}
+	require.Equal(t, "callData too short for gas limit", err.Error())
 }
 
 func TestConvertToDisplayableData_TooShortForNumberOfArgumentsLength(t *testing.T) {
@@ -1987,9 +1978,7 @@ func TestConvertToDisplayableData_TooShortForNumberOfArgumentsLength(t *testing.
 	}()
 	_, err := ConvertToDisplayableData(callData)
 	require.NotNil(t, err)
-	if err != nil {
-		require.Equal(t, "callData too short for numArguments length", err.Error())
-	}
+	require.Equal(t, "callData too short for numArguments length", err.Error())
 }
 
 func TestConvertToDisplayableData_TooShortForArgumentLength(t *testing.T) {
@@ -2004,9 +1993,7 @@ func TestConvertToDisplayableData_TooShortForArgumentLength(t *testing.T) {
 	}()
 	_, err := ConvertToDisplayableData(callData)
 	require.NotNil(t, err)
-	if err != nil {
-		require.Equal(t, "callData too short for argument 0 length", err.Error())
-	}
+	require.Equal(t, "callData too short while extracting the length for argument 0", err.Error())
 }
 
 func TestConvertToDisplayableData_TooShortForArgumentData(t *testing.T) {
@@ -2022,7 +2009,5 @@ func TestConvertToDisplayableData_TooShortForArgumentData(t *testing.T) {
 	}()
 	_, err := ConvertToDisplayableData(callData)
 	require.NotNil(t, err)
-	if err != nil {
-		require.Equal(t, "callData too short for argument 0 data", err.Error())
-	}
+	require.Equal(t, "callData too short while extracting the string data for argument 0", err.Error())
 }
