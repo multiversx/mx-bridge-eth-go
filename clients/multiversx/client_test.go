@@ -574,7 +574,6 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		c, _ := NewClient(args)
 		sendWasCalled := false
 		batch := createMockBatch()
-		batch.Deposits[0].ExtraGasLimit = 37373
 		batch.Deposits[0].Data = []byte("doSomething@7788")
 		batch.Deposits[0].DisplayableData = hex.EncodeToString(batch.Deposits[0].Data)
 
@@ -593,8 +592,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 				for _, dt := range batch.Deposits {
 					dataStrings = append(dataStrings, depositToStrings(dt)...)
 					if len(dt.Data) > 0 {
-						gasLimitBytes := big.NewInt(int64(dt.ExtraGasLimit)).Bytes()
-						extraGas += (uint64(len(dt.Data)+len(gasLimitBytes))*2 + 2) * args.GasMapConfig.ScCallPerByte
+						extraGas += (uint64(len(dt.Data))*2 + 2) * args.GasMapConfig.ScCallPerByte
 					}
 				}
 
@@ -626,7 +624,6 @@ func depositToStrings(dt *clients.DepositTransfer) []string {
 
 	if len(dt.Data) > 0 {
 		result = append(result, hex.EncodeToString(dt.Data))
-		result = append(result, hex.EncodeToString(big.NewInt(int64(dt.ExtraGasLimit)).Bytes()))
 	}
 
 	return result
@@ -795,7 +792,6 @@ func TestClient_PerformAction(t *testing.T) {
 		c, _ := NewClient(args)
 		sendWasCalled := false
 		batch := createMockBatch()
-		batch.Deposits[0].ExtraGasLimit = 37373
 		batch.Deposits[0].Data = []byte("doSomething@7788")
 		batch.Deposits[0].DisplayableData = hex.EncodeToString(batch.Deposits[0].Data)
 
@@ -817,8 +813,7 @@ func TestClient_PerformAction(t *testing.T) {
 				for _, dt := range batch.Deposits {
 					dataStrings = append(dataStrings, depositToStrings(dt)...)
 					if len(dt.Data) > 0 {
-						gasLimitBytes := big.NewInt(int64(dt.ExtraGasLimit)).Bytes()
-						extraGas += (uint64(len(dt.Data)+len(gasLimitBytes))*2 + 2) * args.GasMapConfig.ScCallPerByte
+						extraGas += (uint64(len(dt.Data))*2 + 2) * args.GasMapConfig.ScCallPerByte
 						extraGas += args.GasMapConfig.ScCallPerformForEach
 					}
 				}

@@ -487,7 +487,6 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositTransfer, events []*contract.SCExecProxyERC20SCDeposit) *clients.DepositTransfer {
 	for _, event := range events {
 		if event.DepositNonce == transfer.Nonce {
-			transfer.ExtraGasLimit = event.MvxGasLimit
 			transfer.Data = []byte(event.CallData)
 			if len(transfer.Data) == 0 {
 				// will add a dummy data so the relayers won't panic

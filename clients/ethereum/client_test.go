@@ -1033,13 +1033,11 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 		expectedEvent := &contract.SCExecProxyERC20SCDeposit{
 			BatchNonce:   1,
 			DepositNonce: 1,
-			MvxGasLimit:  1,
 			CallData:     "call_data_to_unpack",
 		}
 
 		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs.NonIndexed()
-		packedArgs, _ := eventInputs.Pack(expectedEvent.DepositNonce,
-			expectedEvent.MvxGasLimit, expectedEvent.CallData)
+		packedArgs, _ := eventInputs.Pack(expectedEvent.DepositNonce, expectedEvent.CallData)
 
 		args := createMockEthereumClientArgs()
 		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
@@ -1058,7 +1056,6 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 		assert.Equal(t, 1, len(batch))
 		assert.Equal(t, expectedEvent.BatchNonce, batch[0].BatchNonce)
 		assert.Equal(t, expectedEvent.DepositNonce, batch[0].DepositNonce)
-		assert.Equal(t, expectedEvent.MvxGasLimit, batch[0].MvxGasLimit)
 		assert.Equal(t, expectedEvent.CallData, batch[0].CallData)
 	})
 }

@@ -31,9 +31,7 @@ import (
 
 type argsForSCCallsTest struct {
 	providedScCallData string
-	providedExtraGas   uint64
 	expectedScCallData string
-	expectedExtraGas   uint64
 }
 
 func TestRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T) {
@@ -169,7 +167,6 @@ func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNat
 	assert.Equal(t, depositor1, common.BytesToAddress(transfer.Transfers[0].From))
 	assert.Equal(t, txNonceOnEthereum+1, transfer.Transfers[0].Nonce.Uint64())
 	assert.Empty(t, transfer.Transfers[0].Data)
-	assert.Zero(t, transfer.Transfers[0].ExtraGas)
 
 	assert.Equal(t, destination2.AddressBytes(), transfer.Transfers[1].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker2)), transfer.Transfers[1].Token)
@@ -177,7 +174,6 @@ func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNat
 	assert.Equal(t, depositor2, common.BytesToAddress(transfer.Transfers[1].From))
 	assert.Equal(t, txNonceOnEthereum+2, transfer.Transfers[1].Nonce.Uint64())
 	assert.Empty(t, transfer.Transfers[1].Data)
-	assert.Zero(t, transfer.Transfers[1].ExtraGas)
 }
 
 func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t *testing.T) {
@@ -188,9 +184,7 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	t.Run("correct SC call", func(t *testing.T) {
 		testArgs := argsForSCCallsTest{
 			providedScCallData: "doSomething@aabbcc@001122",
-			providedExtraGas:   uint64(3737373),
 			expectedScCallData: "doSomething@aabbcc@001122",
-			expectedExtraGas:   uint64(3737373),
 		}
 
 		testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t, testArgs)
@@ -198,9 +192,7 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	t.Run("invalid SC call", func(t *testing.T) {
 		testArgs := argsForSCCallsTest{
 			providedScCallData: "",
-			providedExtraGas:   0,
 			expectedScCallData: ethmultiversx.MissingCallData,
-			expectedExtraGas:   0,
 		}
 
 		testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t, testArgs)
@@ -286,7 +278,7 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 		require.Nil(t, err)
 
 		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs.NonIndexed()
-		packedArgs, err := eventInputs.Pack(txNonceOnEthereum+3, args.providedExtraGas, args.providedScCallData)
+		packedArgs, err := eventInputs.Pack(txNonceOnEthereum+3, args.providedScCallData)
 		require.Nil(t, err)
 
 		scLog := types.Log{
@@ -358,7 +350,6 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	assert.Equal(t, depositor1, common.BytesToAddress(transfer.Transfers[0].From))
 	assert.Equal(t, txNonceOnEthereum+1, transfer.Transfers[0].Nonce.Uint64())
 	assert.Empty(t, transfer.Transfers[0].Data)
-	assert.Zero(t, transfer.Transfers[0].ExtraGas)
 
 	assert.Equal(t, destination2.AddressBytes(), transfer.Transfers[1].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker2)), transfer.Transfers[1].Token)
@@ -366,7 +357,6 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	assert.Equal(t, depositor2, common.BytesToAddress(transfer.Transfers[1].From))
 	assert.Equal(t, txNonceOnEthereum+2, transfer.Transfers[1].Nonce.Uint64())
 	assert.Empty(t, transfer.Transfers[1].Data)
-	assert.Zero(t, transfer.Transfers[1].ExtraGas)
 
 	assert.Equal(t, destination3Sc.AddressBytes(), transfer.Transfers[2].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker3)), transfer.Transfers[2].Token)
@@ -374,7 +364,6 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	assert.Equal(t, scExecProxyEthAddress, common.BytesToAddress(transfer.Transfers[2].From))
 	assert.Equal(t, txNonceOnEthereum+3, transfer.Transfers[2].Nonce.Uint64())
 	assert.Equal(t, args.expectedScCallData, string(transfer.Transfers[2].Data))
-	assert.Equal(t, args.expectedExtraGas, transfer.Transfers[2].ExtraGas)
 }
 
 func createMockBridgeComponentsArgs(

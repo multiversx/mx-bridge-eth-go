@@ -647,7 +647,6 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 					hex.EncodeToString(big.NewInt(2).Bytes()),
 					hex.EncodeToString(big.NewInt(1).Bytes()),
 					hex.EncodeToString([]byte("doSomething@7738")),
-					hex.EncodeToString(big.NewInt(5).Bytes()),
 
 					hex.EncodeToString([]byte("from2")),
 					hex.EncodeToString([]byte("to2")),
@@ -671,7 +670,6 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 
 		batch := createMockBatch()
 		batch.Deposits[0].Data = []byte("doSomething@7738")
-		batch.Deposits[0].ExtraGasLimit = 5
 
 		result, err := dg.WasProposedTransfer(context.Background(), batch)
 		assert.True(t, result)
@@ -821,7 +819,6 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 					hex.EncodeToString(big.NewInt(2).Bytes()),
 					hex.EncodeToString(big.NewInt(1).Bytes()),
 					hex.EncodeToString([]byte("doSomething@7742")),
-					hex.EncodeToString(big.NewInt(5).Bytes()),
 
 					hex.EncodeToString([]byte("from2")),
 					hex.EncodeToString([]byte("to2")),
@@ -845,7 +842,6 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 
 		batch := createMockBatch()
 		batch.Deposits[0].Data = []byte("doSomething@7742")
-		batch.Deposits[0].ExtraGasLimit = 5
 
 		result, err := dg.GetActionIDForProposeTransfer(context.Background(), batch)
 		assert.Equal(t, uint64(1234), result)

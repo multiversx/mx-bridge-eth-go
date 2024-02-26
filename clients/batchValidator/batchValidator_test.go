@@ -92,7 +92,7 @@ func TestBatchValidator_ValidateBatch(t *testing.T) {
 		},
 		Statuses: []byte{0x3, 0x4},
 	}
-	expectedJsonString := `{"batchId":1,"deposits":[{"nonce":1,"to":"to1","from":"from1","token":"token1","amount":1000000000000000000001,"gasLimit":0,"data":""},{"nonce":2,"to":"to2","from":"from2","token":"token2","amount":1000000000000000000002,"gasLimit":0,"data":""}],"statuses":"AwQ="}`
+	expectedJsonString := `{"batchId":1,"deposits":[{"nonce":1,"to":"to1","from":"from1","token":"token1","amount":1000000000000000000001,"data":""},{"nonce":2,"to":"to2","from":"from2","token":"token2","amount":1000000000000000000002,"data":""}],"statuses":"AwQ="}`
 
 	t.Run("server errors with Bad Request, but no reason", func(t *testing.T) {
 		t.Parallel()
