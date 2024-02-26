@@ -7,6 +7,7 @@ import (
 
 var notImplemented = errors.New("method not implemented")
 
+// CallDataMock -
 var CallDataMock = func() []byte {
 	b := []byte{0x01, 0x00, 0x00, 0x00, 0x03}
 	b = append(b, []byte("abc")...)
