@@ -1,10 +1,12 @@
 package ethmultiversx
 
 import (
+	"bytes"
 	"context"
-	"encoding/hex"
+	"encoding/binary"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -20,9 +22,14 @@ import (
 // we wait for the transfer confirmation on Ethereum
 const splits = 10
 const minRetries = 1
+const uint32ArgBytes = 4
+const uint64ArgBytes = 8
 
-// MissingCallData is a placeholder for wrongly initiated contract calls that do not contain data
-const MissingCallData = "<missing call data>"
+// MissingDataProtocolMarker defines the marker for missing data (simple transfers)
+const MissingDataProtocolMarker byte = 0x00
+
+// DataPresentProtocolMarker defines the marker for existing data (transfers with SC calls)
+const DataPresentProtocolMarker byte = 0x01
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
@@ -468,10 +475,6 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 		return nil, ErrNilBatch
 	}
 
-	if !executor.hasSCCalls(transfers) {
-		return transfers, nil
-	}
-
 	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, transfers.ID)
 	if err != nil {
 		return nil, err
@@ -488,26 +491,20 @@ func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositT
 	for _, event := range events {
 		if event.DepositNonce == transfer.Nonce {
 			transfer.Data = []byte(event.CallData)
-			if len(transfer.Data) == 0 {
-				// will add a dummy data so the relayers won't panic
-				transfer.Data = []byte(MissingCallData)
+			var err error
+			transfer.DisplayableData, err = ConvertToDisplayableData(transfer.Data)
+			if err != nil {
+				executor.log.Warn("failed to convert call data to displayable data", "error", err)
 			}
-			transfer.DisplayableData = hex.EncodeToString(transfer.Data)
 
 			return transfer
 		}
 	}
+
+	transfer.Data = []byte{MissingDataProtocolMarker}
+	transfer.DisplayableData = ""
+
 	return transfer
-}
-
-func (executor *bridgeExecutor) hasSCCalls(transfers *clients.TransferBatch) bool {
-	for _, t := range transfers.Deposits {
-		if executor.ethereumClient.IsDepositSCCall(t) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // WasTransferPerformedOnEthereum returns true if the batch was performed on Ethereum
@@ -716,4 +713,108 @@ func (executor *bridgeExecutor) CheckEthereumClientAvailability(ctx context.Cont
 // IsInterfaceNil returns true if there is no value under the interface
 func (executor *bridgeExecutor) IsInterfaceNil() bool {
 	return executor == nil
+}
+
+// ConvertToDisplayableData
+/** @param callData The encoded data specifying the cross-chain call details. The expected format is:
+*        0x01 + endpoint_name_length (4 bytes) + endpoint_name + gas_limit (8 bytes) +
+*        num_arguments_length (4 bytes) + [argument_length (4 bytes) + argument]...
+*        This payload includes the endpoint name, gas limit for the execution, and the arguments for the call.
+ */
+func ConvertToDisplayableData(callData []byte) (string, error) {
+	if len(callData) == 0 {
+		return "", fmt.Errorf("callData too short for protocol indicator")
+	}
+
+	marker := callData[0]
+	callData = callData[1:]
+
+	switch marker {
+	case MissingDataProtocolMarker:
+		return "", nil
+	case DataPresentProtocolMarker:
+		return convertBytesToDisplayableData(callData)
+	default:
+		return "", fmt.Errorf("callData unexpected protocol indicator: %d", marker)
+	}
+}
+
+func convertBytesToDisplayableData(callData []byte) (string, error) {
+	callData, endpointName, err := extractString(callData)
+	if err != nil {
+		return "", fmt.Errorf("%w for endpoint", err)
+	}
+
+	callData, gasLimit, err := extractGasLimit(callData)
+	if err != nil {
+		return "", err
+	}
+
+	callData, numArgumentsLength, err := extractArgumentsLen(callData)
+	if err != nil {
+		return "", err
+	}
+
+	arguments := make([]string, 0)
+	for i := 0; i < numArgumentsLength; i++ {
+		var argument string
+		callData, argument, err = extractString(callData)
+		if err != nil {
+			return "", fmt.Errorf("%w for argument %d", err, i)
+		}
+
+		arguments = append(arguments, argument)
+	}
+
+	return fmt.Sprintf("Endpoint: %s, Gas: %d, Arguments: %s", endpointName, gasLimit, strings.Join(arguments, "@")), nil
+}
+
+func extractString(callData []byte) ([]byte, string, error) {
+	// Ensure there's enough length for the 4 bytes for length
+	if len(callData) < uint32ArgBytes {
+		return nil, "", fmt.Errorf("callData too short while extracting the length")
+	}
+	argumentLength := int(binary.BigEndian.Uint32(callData[:uint32ArgBytes]))
+	callData = callData[uint32ArgBytes:] // remove the len bytes
+
+	// Check for the argument data
+	if len(callData) < argumentLength {
+		return nil, "", fmt.Errorf("callData too short while extracting the string data")
+	}
+	endpointName := string(callData[:argumentLength])
+	callData = callData[argumentLength:] // remove the string bytes
+
+	return callData, endpointName, nil
+}
+
+func extractGasLimit(callData []byte) ([]byte, uint64, error) {
+	// Check for gas limit
+	if len(callData) < uint64ArgBytes { // 8 bytes for gas limit length
+		return nil, 0, fmt.Errorf("callData too short for gas limit length")
+	}
+
+	gasLimitLength := int(binary.BigEndian.Uint64(callData[:uint64ArgBytes]))
+	callData = callData[uint64ArgBytes:]
+
+	// Check for gas limit
+	if len(callData) < gasLimitLength {
+		return nil, 0, fmt.Errorf("callData too short for gas limit")
+	}
+
+	gasLimitBytes := append(bytes.Repeat([]byte{0x00}, 8-int(gasLimitLength)), callData[:gasLimitLength]...)
+	gasLimit := binary.BigEndian.Uint64(gasLimitBytes)
+	callData = callData[gasLimitLength:] // remove the gas limit bytes
+
+	return callData, gasLimit, nil
+}
+
+func extractArgumentsLen(callData []byte) ([]byte, int, error) {
+	// Ensure there's enough length for the 4 bytes for endpoint name length
+	if len(callData) < uint32ArgBytes {
+		return nil, 0, fmt.Errorf("callData too short for numArguments length")
+	}
+	length := int(binary.BigEndian.Uint32(callData[:uint32ArgBytes]))
+	callData = callData[uint32ArgBytes:] // remove the len bytes
+
+	return callData, length, nil
 }

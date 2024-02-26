@@ -21,7 +21,6 @@ type EthereumClientStub struct {
 	GetTransactionsStatusesCalled          func(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSizeCalled                    func(ctx context.Context) (*big.Int, error)
 	IsQuorumReachedCalled                  func(ctx context.Context, msgHash common.Hash) (bool, error)
-	IsDepositSCCallCalled                  func(deposit *clients.DepositTransfer) bool
 	GetBatchSCMetadataCalled               func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error)
 	CheckRequiredBalanceCalled             func(ctx context.Context, erc20Address common.Address, value *big.Int) error
 	TokenMintedBalancesCalled              func(ctx context.Context, token common.Address) (*big.Int, error)
@@ -105,15 +104,6 @@ func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash com
 	}
 
 	return false, errNotImplemented
-}
-
-// IsDepositSCCall -
-func (stub *EthereumClientStub) IsDepositSCCall(deposit *clients.DepositTransfer) bool {
-	if stub.IsDepositSCCallCalled != nil {
-		return stub.IsDepositSCCallCalled(deposit)
-	}
-
-	return false
 }
 
 // GetBatchSCMetadata -

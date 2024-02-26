@@ -41,7 +41,6 @@ type MultiversXClient interface {
 type EthereumClient interface {
 	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
 	WasExecuted(ctx context.Context, batchID uint64) (bool, error)
-	IsDepositSCCall(deposit *clients.DepositTransfer) bool
 	GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error)
 
 	BroadcastSignatureForMessageHash(msgHash common.Hash)

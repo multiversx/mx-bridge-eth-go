@@ -484,12 +484,8 @@ func addBatchInfo(builder builders.VMQueryBuilder, batch *clients.TransferBatch)
 			ArgBytes(dt.ToBytes).
 			ArgBytes(dt.DestinationTokenBytes).
 			ArgBigInt(dt.Amount).
-			ArgInt64(int64(dt.Nonce))
-
-		if len(dt.Data) > 0 {
-			// SC call type of transfer
-			builder.ArgBytes(dt.Data)
-		}
+			ArgInt64(int64(dt.Nonce)).
+			ArgBytes(dt.Data)
 	}
 }
 

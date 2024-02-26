@@ -10,7 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	ethmultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/vm"
@@ -75,6 +77,8 @@ func createMockBatch() *clients.TransferBatch {
 				DestinationTokenBytes: []byte("converted_token1"),
 				DisplayableToken:      "token1",
 				Amount:                big.NewInt(2),
+				Data:                  []byte{0x00},
+				DisplayableData:       "",
 			},
 			{
 				Nonce:                 3,
@@ -86,6 +90,8 @@ func createMockBatch() *clients.TransferBatch {
 				DestinationTokenBytes: []byte("converted_token2"),
 				DisplayableToken:      "token2",
 				Amount:                big.NewInt(4),
+				Data:                  []byte{0x00},
+				DisplayableData:       "",
 			},
 		},
 		Statuses: []byte{clients.Rejected, clients.Executed},
@@ -597,12 +603,14 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 					hex.EncodeToString([]byte("converted_token1")),
 					hex.EncodeToString(big.NewInt(2).Bytes()),
 					hex.EncodeToString(big.NewInt(1).Bytes()),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 
 					hex.EncodeToString([]byte("from2")),
 					hex.EncodeToString([]byte("to2")),
 					hex.EncodeToString([]byte("converted_token2")),
 					hex.EncodeToString(big.NewInt(4).Bytes()),
 					hex.EncodeToString(big.NewInt(3).Bytes()),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -646,13 +654,14 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 					hex.EncodeToString([]byte("converted_token1")),
 					hex.EncodeToString(big.NewInt(2).Bytes()),
 					hex.EncodeToString(big.NewInt(1).Bytes()),
-					hex.EncodeToString([]byte("doSomething@7738")),
+					hex.EncodeToString(bridgeTests.CallDataMock),
 
 					hex.EncodeToString([]byte("from2")),
 					hex.EncodeToString([]byte("to2")),
 					hex.EncodeToString([]byte("converted_token2")),
 					hex.EncodeToString(big.NewInt(4).Bytes()),
 					hex.EncodeToString(big.NewInt(3).Bytes()),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -669,7 +678,7 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 		dg, _ := NewMXClientDataGetter(args)
 
 		batch := createMockBatch()
-		batch.Deposits[0].Data = []byte("doSomething@7738")
+		batch.Deposits[0].Data = bridgeTests.CallDataMock
 
 		result, err := dg.WasProposedTransfer(context.Background(), batch)
 		assert.True(t, result)
@@ -769,12 +778,14 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 					hex.EncodeToString([]byte("converted_token1")),
 					hex.EncodeToString(big.NewInt(2).Bytes()),
 					hex.EncodeToString(big.NewInt(1).Bytes()),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 
 					hex.EncodeToString([]byte("from2")),
 					hex.EncodeToString([]byte("to2")),
 					hex.EncodeToString([]byte("converted_token2")),
 					hex.EncodeToString(big.NewInt(4).Bytes()),
 					hex.EncodeToString(big.NewInt(3).Bytes()),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -818,13 +829,14 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 					hex.EncodeToString([]byte("converted_token1")),
 					hex.EncodeToString(big.NewInt(2).Bytes()),
 					hex.EncodeToString(big.NewInt(1).Bytes()),
-					hex.EncodeToString([]byte("doSomething@7742")),
+					hex.EncodeToString(bridgeTests.CallDataMock),
 
 					hex.EncodeToString([]byte("from2")),
 					hex.EncodeToString([]byte("to2")),
 					hex.EncodeToString([]byte("converted_token2")),
 					hex.EncodeToString(big.NewInt(4).Bytes()),
 					hex.EncodeToString(big.NewInt(3).Bytes()),
+					hex.EncodeToString([]byte{ethmultiversx.MissingDataProtocolMarker}),
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -841,7 +853,7 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 		dg, _ := NewMXClientDataGetter(args)
 
 		batch := createMockBatch()
-		batch.Deposits[0].Data = []byte("doSomething@7742")
+		batch.Deposits[0].Data = bridgeTests.CallDataMock
 
 		result, err := dg.GetActionIDForProposeTransfer(context.Background(), batch)
 		assert.Equal(t, uint64(1234), result)
