@@ -8,12 +8,13 @@ require (
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-contrib/pprof v1.4.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/multiversx/mx-chain-communication-go v1.0.12
-	github.com/multiversx/mx-chain-core-go v1.2.18
-	github.com/multiversx/mx-chain-crypto-go v1.2.9
-	github.com/multiversx/mx-chain-go v1.6.7
-	github.com/multiversx/mx-chain-logger-go v1.0.13
-	github.com/multiversx/mx-sdk-go v1.3.11
+	github.com/multiversx/mx-chain-communication-go v1.0.13-0.20240126121117-627adccf10ad
+	github.com/multiversx/mx-chain-core-go v1.2.19-0.20240129082057-a76d0c995cf2
+	github.com/multiversx/mx-chain-crypto-go v1.2.10-0.20231206065052-38843c1f1479
+	github.com/multiversx/mx-chain-go v1.7.3-0.20240228112221-69530308bb19
+	github.com/multiversx/mx-chain-logger-go v1.0.14-0.20240129144507-d00e967c890c
+	github.com/multiversx/mx-chain-simulator-go v1.7.1
+	github.com/multiversx/mx-sdk-go v1.3.12-0.20240228130921-940b47b0f2be
 	github.com/pelletier/go-toml v1.9.3
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.10
@@ -21,12 +22,14 @@ require (
 
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
+	github.com/TwiN/go-color v1.1.0 // indirect
 	github.com/beevik/ntp v1.3.0 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
@@ -42,6 +45,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
+	github.com/elastic/go-elasticsearch/v7 v7.12.0 // indirect
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
@@ -49,6 +53,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/gin-contrib/static v0.0.1 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
@@ -63,13 +68,16 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/gopacket v1.1.19 // indirect
+	github.com/google/gops v0.3.18 // indirect
 	github.com/google/pprof v0.0.0-20230602150820-91b7bce49751 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
+	github.com/herumi/bls-go-binary v1.28.2 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/ipfs/boxo v0.8.1 // indirect
@@ -107,6 +115,7 @@ require (
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -122,9 +131,17 @@ require (
 	github.com/multiformats/go-multistream v0.4.1 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/multiversx/concurrent-map v0.1.4 // indirect
-	github.com/multiversx/mx-chain-storage-go v1.0.14 // indirect
-	github.com/multiversx/mx-chain-vm-common-go v1.5.9 // indirect
-	github.com/onsi/ginkgo/v2 v2.9.7 // indirect
+	github.com/multiversx/mx-chain-es-indexer-go v1.4.19-0.20240129150813-a772c480d33a // indirect
+	github.com/multiversx/mx-chain-proxy-go v1.1.41 // indirect
+	github.com/multiversx/mx-chain-scenario-go v1.4.3-0.20240212160120-cc32d1580157 // indirect
+	github.com/multiversx/mx-chain-storage-go v1.0.15-0.20240130081611-aeea9336e979 // indirect
+	github.com/multiversx/mx-chain-vm-common-go v1.5.12-0.20240227112124-bfd3f5676e5a // indirect
+	github.com/multiversx/mx-chain-vm-go v1.5.28-0.20240216071136-6d748b5d6a72 // indirect
+	github.com/multiversx/mx-chain-vm-v1_2-go v1.2.66-0.20240129145751-f814f5525edb // indirect
+	github.com/multiversx/mx-chain-vm-v1_3-go v1.3.67-0.20240129150004-536a22d9c618 // indirect
+	github.com/multiversx/mx-chain-vm-v1_4-go v1.4.96-0.20240216071525-f7d1b8ce8662 // indirect
+	github.com/multiversx/mx-components-big-int v1.0.0 // indirect
+	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
@@ -148,6 +165,9 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
+	github.com/tidwall/gjson v1.14.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
@@ -175,6 +195,7 @@ require (
 	golang.org/x/tools v0.15.0 // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
+	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
