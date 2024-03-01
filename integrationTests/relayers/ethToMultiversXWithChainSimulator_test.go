@@ -58,7 +58,7 @@ type proxyWithChainSimulator interface {
 	Proxy() multiversx.Proxy
 	GetNetworkAddress() string
 	DeploySC(ctx context.Context, path string, ownerPK string, ownerSK []byte, extraParams []string) (string, error)
-	ScCall(ctx context.Context, senderPK string, senderSK []byte, contract string, function string, parameters []string) (string, error)
+	ScCall(ctx context.Context, senderPK string, senderSK []byte, contract string, value string, function string, parameters []string) (string, error)
 	SendTx(ctx context.Context, senderPK string, senderSK []byte, receiver string, value string, dataField []byte) (string, error)
 	FundWallets(wallets []string)
 	Close()
@@ -305,6 +305,7 @@ func executeContractsTxs(
 		ownerPK,
 		ownerSK,
 		multiTransferAddress,
+		zeroValue,
 		"setBridgeProxyContractAddress",
 		[]string{getHexAddress(t, bridgeProxyAddress)},
 	)
@@ -318,6 +319,7 @@ func executeContractsTxs(
 		ownerPK,
 		ownerSK,
 		multiTransferAddress,
+		zeroValue,
 		"setWrappingContractAddress",
 		[]string{getHexAddress(t, wrapperAddress)},
 	)
@@ -331,6 +333,7 @@ func executeContractsTxs(
 		ownerPK,
 		ownerSK,
 		safeAddress,
+		zeroValue,
 		"ChangeOwnerAddress",
 		[]string{getHexAddress(t, multisigAddress)},
 	)
@@ -344,6 +347,7 @@ func executeContractsTxs(
 		ownerPK,
 		ownerSK,
 		multiTransferAddress,
+		zeroValue,
 		"ChangeOwnerAddress",
 		[]string{getHexAddress(t, multisigAddress)},
 	)
@@ -357,6 +361,7 @@ func executeContractsTxs(
 		ownerPK,
 		ownerSK,
 		bridgeProxyAddress,
+		zeroValue,
 		"ChangeOwnerAddress",
 		[]string{getHexAddress(t, multisigAddress)},
 	)
@@ -370,6 +375,7 @@ func executeContractsTxs(
 		ownerPK,
 		ownerSK,
 		multisigAddress,
+		zeroValue,
 		"setMultiTransferOnEsdtSafe",
 		[]string{},
 	)
@@ -383,6 +389,7 @@ func executeContractsTxs(
 		ownerPK,
 		ownerSK,
 		multisigAddress,
+		zeroValue,
 		"setEsdtSafeOnMultiTransfer",
 		[]string{},
 	)

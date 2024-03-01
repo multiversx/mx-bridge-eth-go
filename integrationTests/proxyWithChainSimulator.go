@@ -236,12 +236,12 @@ func (instance *proxyWithChainSimulator) DeploySC(ctx context.Context, path stri
 }
 
 // ScCall will make the provided sc call
-func (instance *proxyWithChainSimulator) ScCall(ctx context.Context, senderPK string, senderSK []byte, contract string, function string, parameters []string) (string, error) {
+func (instance *proxyWithChainSimulator) ScCall(ctx context.Context, senderPK string, senderSK []byte, contract string, value string, function string, parameters []string) (string, error) {
 	params := []string{function}
 	params = append(params, parameters...)
 	txData := strings.Join(params, "@")
 
-	return instance.SendTx(ctx, senderPK, senderSK, contract, "0", []byte(txData))
+	return instance.SendTx(ctx, senderPK, senderSK, contract, value, []byte(txData))
 }
 
 // SendTx will build and send a transaction
