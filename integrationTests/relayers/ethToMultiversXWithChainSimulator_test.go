@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-chain-go/integrationTests/vm/wasm"
 	"github.com/multiversx/mx-chain-go/testscommon/statusHandler"
 	"github.com/multiversx/mx-sdk-go/data"
@@ -30,28 +32,61 @@ import (
 )
 
 const (
-	ownerPem                     = "testdata/wallets/owner.pem"
-	safeContract                 = "testdata/contracts/esdt-safe.wasm"
-	multisigContract             = "testdata/contracts/multisig.wasm"
-	multiTransferContract        = "testdata/contracts/multi-transfer-esdt.wasm"
-	bridgeProxyContract          = "testdata/contracts/bridge-proxy.wasm"
-	aggregatorContract           = "testdata/contracts/aggregator.wasm"
-	wrapperContract              = "testdata/contracts/bridged-tokens-wrapper.wasm"
-	nodeConfig                   = "testdata/config/nodeConfig"
-	proxyConfig                  = "testdata/config/proxyConfig"
-	minRelayerStake              = "10000000000000000000" // 10egld
-	minRelayerStakeHex           = "8AC7230489E80000"     // 10egld
-	slashAmount                  = "00"
-	quorum                       = "03"
-	relayerPemPathFormat         = "testdata/multiversx%d.pem"
-	roundDurationInMs            = 3000
-	roundsPerEpoch               = 20
-	numOfShards                  = 3
-	serverPort                   = 8085
-	proxyCacherExpirationSeconds = 600
-	proxyMaxNoncesDelta          = 7
-	zeroValue                    = "0"
-	emptyAddress                 = "erd1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6gq4hu"
+	ownerPem                                     = "testdata/wallets/owner.pem"
+	safeContract                                 = "testdata/contracts/esdt-safe.wasm"
+	multisigContract                             = "testdata/contracts/multisig.wasm"
+	multiTransferContract                        = "testdata/contracts/multi-transfer-esdt.wasm"
+	bridgeProxyContract                          = "testdata/contracts/bridge-proxy.wasm"
+	aggregatorContract                           = "testdata/contracts/aggregator.wasm"
+	wrapperContract                              = "testdata/contracts/bridged-tokens-wrapper.wasm"
+	nodeConfig                                   = "testdata/config/nodeConfig"
+	proxyConfig                                  = "testdata/config/proxyConfig"
+	minRelayerStake                              = "10000000000000000000" // 10egld
+	slashAmount                                  = "00"
+	quorum                                       = "03"
+	relayerPemPathFormat                         = "testdata/multiversx%d.pem"
+	roundDurationInMs                            = 3000
+	roundsPerEpoch                               = 20
+	numOfShards                                  = 3
+	serverPort                                   = 8085
+	proxyCacherExpirationSeconds                 = 600
+	proxyMaxNoncesDelta                          = 7
+	zeroValue                                    = "0"
+	unpause                                      = "unpause"
+	unpauseEsdtSafe                              = "unpauseEsdtSafe"
+	setEsdtSafeOnMultiTransfer                   = "setEsdtSafeOnMultiTransfer"
+	setMultiTransferOnEsdtSafe                   = "setMultiTransferOnEsdtSafe"
+	changeOwnerAddress                           = "ChangeOwnerAddress"
+	setWrappingContractAddress                   = "setWrappingContractAddress"
+	setBridgeProxyContractAddress                = "setBridgeProxyContractAddress"
+	emptyAddress                                 = "erd1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6gq4hu"
+	esdtSystemSCAddress                          = "erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzllls8a5w6u"
+	esdtIssueCost                                = "5000000000000000000" // 5egld
+	universalTokenTicker                         = "USDC"
+	universalTokenDisplayName                    = "WrappedUSDC"
+	chainSpecificTokenTicker                     = "ETHUSDC"
+	chainSpecificTokenDisplayName                = "EthereumWrappedUSDC"
+	numOfDecimalsUniversal                       = "06"
+	numOfDecimalsChainSpecific                   = "06"
+	issue                                        = "issue"
+	canAddSpecialRoles                           = "canAddSpecialRoles"
+	trueStr                                      = "true"
+	valueToMint                                  = "10000000000"
+	setSpecialRole                               = "setSpecialRole"
+	esdtRoleLocalMint                            = "ESDTRoleLocalMint"
+	esdtRoleLocalBurn                            = "ESDTRoleLocalBurn"
+	esdtTransfer                                 = "ESDTTransfer"
+	depositLiquidity                             = "depositLiquidity"
+	addWrappedToken                              = "addWrappedToken"
+	whitelistToken                               = "whitelistToken"
+	addMapping                                   = "addMapping"
+	esdtSafeAddTokenToWhitelist                  = "esdtSafeAddTokenToWhitelist"
+	submitBatch                                  = "submitBatch"
+	esdtSafeSetMaxBridgedAmountForToken          = "esdtSafeSetMaxBridgedAmountForToken"
+	multiTransferEsdtSetMaxBridgedAmountForToken = "multiTransferEsdtSetMaxBridgedAmountForToken"
+	gwei                                         = "GWEI"
+	fee                                          = "50000000"
+	maxBridgedAmountForToken                     = "50000000000"
 )
 
 type proxyWithChainSimulator interface {
@@ -60,6 +95,7 @@ type proxyWithChainSimulator interface {
 	DeploySC(ctx context.Context, path string, ownerPK string, ownerSK []byte, extraParams []string) (string, error)
 	ScCall(ctx context.Context, senderPK string, senderSK []byte, contract string, value string, function string, parameters []string) (string, error)
 	SendTx(ctx context.Context, senderPK string, senderSK []byte, receiver string, value string, dataField []byte) (string, error)
+	GetTransactionResult(hash string) (*transaction.ApiTransactionResult, error)
 	FundWallets(wallets []string)
 	Close()
 }
@@ -113,7 +149,10 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 	}
 
 	// deploy all contracts and execute all txs needed
-	safeAddress, multisigAddress := executeContractsTxs(t, ctx, multiversXProxyWithChainSimulator, relayersKeys, ownerKeys)
+	safeAddress, multisigAddress, wrapperAddress, aggregatorAddress := executeContractsTxs(t, ctx, multiversXProxyWithChainSimulator, relayersKeys, ownerKeys)
+
+	// issue and whitelist token
+	issueAndWhitelistToken(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(token1Erc20.Bytes()))
 
 	// start relayers
 	relayers := startRelayers(t, numRelayers, multiversXProxyWithChainSimulator, ethereumChainMock, safeContractEthAddress, erc20ContractsHolder, safeAddress, multisigAddress)
@@ -220,7 +259,7 @@ func executeContractsTxs(
 	multiversXProxyWithChainSimulator proxyWithChainSimulator,
 	relayersKeys []keysHolder,
 	ownerKeys keysHolder,
-) (string, string) {
+) (string, string, string, string) {
 	// fund the involved wallets(owner + relayers)
 	multiversXProxyWithChainSimulator.FundWallets([]string{
 		ownerKeys.pk,
@@ -285,6 +324,8 @@ func executeContractsTxs(
 	log.Info("multi-transfer contract deployed", "address", multiTransferAddress)
 
 	// deploy multisig
+	minRelayerStakeInt, _ := big.NewInt(0).SetString(minRelayerStake, 10)
+	minRelayerStakeHex := hex.EncodeToString(minRelayerStakeInt.Bytes())
 	multisigAddress, err := multiversXProxyWithChainSimulator.DeploySC(
 		ctx,
 		multisigContract,
@@ -317,12 +358,14 @@ func executeContractsTxs(
 		ownerKeys.sk,
 		multiTransferAddress,
 		zeroValue,
-		"setBridgeProxyContractAddress",
+		setBridgeProxyContractAddress,
 		[]string{getHexAddress(t, bridgeProxyAddress)},
 	)
 	require.NoError(t, err)
+	txResult, err := multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
 
-	log.Info("setBridgeProxyContractAddress tx sent", "hash", hash)
+	log.Info("setBridgeProxyContractAddress tx executed", "hash", hash, "status", txResult.Status.String())
 
 	// setWrappingContractAddress
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
@@ -331,12 +374,14 @@ func executeContractsTxs(
 		ownerKeys.sk,
 		multiTransferAddress,
 		zeroValue,
-		"setWrappingContractAddress",
+		setWrappingContractAddress,
 		[]string{getHexAddress(t, wrapperAddress)},
 	)
 	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
 
-	log.Info("setWrappingContractAddress tx sent", "hash", hash)
+	log.Info("setWrappingContractAddress tx executed", "hash", hash, "status", txResult.Status.String())
 
 	// ChangeOwnerAddress for safe
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
@@ -345,12 +390,14 @@ func executeContractsTxs(
 		ownerKeys.sk,
 		safeAddress,
 		zeroValue,
-		"ChangeOwnerAddress",
+		changeOwnerAddress,
 		[]string{getHexAddress(t, multisigAddress)},
 	)
 	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
 
-	log.Info("ChangeOwnerAddress for safe tx sent", "hash", hash)
+	log.Info("ChangeOwnerAddress for safe tx executed", "hash", hash, "status", txResult.Status.String())
 
 	// ChangeOwnerAddress for multi-transfer
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
@@ -359,12 +406,14 @@ func executeContractsTxs(
 		ownerKeys.sk,
 		multiTransferAddress,
 		zeroValue,
-		"ChangeOwnerAddress",
+		changeOwnerAddress,
 		[]string{getHexAddress(t, multisigAddress)},
 	)
 	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
 
-	log.Info("ChangeOwnerAddress for multi-transfer tx sent", "hash", hash)
+	log.Info("ChangeOwnerAddress for multi-transfer tx executed", "hash", hash, "status", txResult.Status.String())
 
 	// ChangeOwnerAddress for bridge proxy
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
@@ -373,12 +422,14 @@ func executeContractsTxs(
 		ownerKeys.sk,
 		bridgeProxyAddress,
 		zeroValue,
-		"ChangeOwnerAddress",
+		changeOwnerAddress,
 		[]string{getHexAddress(t, multisigAddress)},
 	)
 	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
 
-	log.Info("ChangeOwnerAddress for bridge proxy tx sent", "hash", hash)
+	log.Info("ChangeOwnerAddress for bridge proxy tx executed", "hash", hash, "status", txResult.Status.String())
 
 	// setMultiTransferOnEsdtSafe
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
@@ -387,12 +438,14 @@ func executeContractsTxs(
 		ownerKeys.sk,
 		multisigAddress,
 		zeroValue,
-		"setMultiTransferOnEsdtSafe",
+		setMultiTransferOnEsdtSafe,
 		[]string{},
 	)
 	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
 
-	log.Info("setMultiTransferOnEsdtSafe tx sent", "hash", hash)
+	log.Info("setMultiTransferOnEsdtSafe tx executed", "hash", hash, "status", txResult.Status.String())
 
 	// setEsdtSafeOnMultiTransfer
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
@@ -401,33 +454,43 @@ func executeContractsTxs(
 		ownerKeys.sk,
 		multisigAddress,
 		zeroValue,
-		"setEsdtSafeOnMultiTransfer",
+		setEsdtSafeOnMultiTransfer,
 		[]string{},
 	)
 	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
 
-	log.Info("setEsdtSafeOnMultiTransfer tx sent", "hash", hash)
+	log.Info("setEsdtSafeOnMultiTransfer tx executed", "hash", hash, "status", txResult.Status.String())
 
 	// stake relayers
 	stakeRelayers(t, ctx, multiversXProxyWithChainSimulator, multisigAddress, relayersKeys)
 
 	// unpause multisig
-	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys.pk, ownerKeys.sk, multisigAddress, []byte("unpause"))
-	log.Info("unpaused multisig", "hash", hash)
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, multisigAddress, []byte(unpause))
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+	log.Info("unpaused multisig executed", "hash", hash, "status", txResult.Status.String())
 
 	// unpause safe
-	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys.pk, ownerKeys.sk, multisigAddress, []byte("unpauseEsdtSafe"))
-	log.Info("unpaused safe", "hash", hash)
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, multisigAddress, []byte(unpauseEsdtSafe))
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+	log.Info("unpaused safe executed", "hash", hash, "status", txResult.Status.String())
 
 	// unpause aggregator
-	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys.pk, ownerKeys.sk, aggregatorAddress, []byte("unpause"))
-	log.Info("unpaused aggregator", "hash", hash)
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, aggregatorAddress, []byte(unpause))
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+	log.Info("unpaused aggregator executed", "hash", hash, "status", txResult.Status.String())
 
 	// unpause wrapper
-	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys.pk, ownerKeys.sk, wrapperAddress, []byte("unpause"))
-	log.Info("unpaused wrapper", "hash", hash)
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, wrapperAddress, []byte(unpause))
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+	log.Info("unpaused wrapper executed", "hash", hash, "status", txResult.Status.String())
 
-	return safeAddress, multisigAddress
+	return safeAddress, multisigAddress, wrapperAddress, aggregatorAddress
 }
 
 func stakeRelayers(t *testing.T, ctx context.Context, multiversXProxyWithChainSimulator proxyWithChainSimulator, contract string, relayersKeys []keysHolder) {
@@ -439,11 +502,221 @@ func stakeRelayers(t *testing.T, ctx context.Context, multiversXProxyWithChainSi
 	}
 }
 
-func unpauseContract(t *testing.T, ctx context.Context, multiversXProxyWithChainSimulator proxyWithChainSimulator, ownerPK string, ownerSK []byte, contract string, dataField []byte) string {
-	hash, err := multiversXProxyWithChainSimulator.SendTx(ctx, ownerPK, ownerSK, contract, zeroValue, dataField)
+func unpauseContract(t *testing.T, ctx context.Context, multiversXProxyWithChainSimulator proxyWithChainSimulator, ownerKeys keysHolder, contract string, dataField []byte) string {
+	hash, err := multiversXProxyWithChainSimulator.SendTx(ctx, ownerKeys.pk, ownerKeys.sk, contract, zeroValue, dataField)
 	require.NoError(t, err)
 
 	return hash
+}
+
+func issueAndWhitelistToken(
+	t *testing.T,
+	ctx context.Context,
+	multiversXProxyWithChainSimulator proxyWithChainSimulator,
+	ownerKeys keysHolder,
+	wrapperAddress string,
+	safeAddress string,
+	multisigAddress string,
+	aggregatorAddress string,
+	erc20Token string,
+) {
+	// issue universal token
+	hash, err := multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		esdtSystemSCAddress,
+		esdtIssueCost,
+		issue,
+		[]string{hex.EncodeToString([]byte(universalTokenDisplayName)), hex.EncodeToString([]byte(universalTokenTicker)), "00", numOfDecimalsUniversal, hex.EncodeToString([]byte(canAddSpecialRoles)), hex.EncodeToString([]byte(trueStr))})
+	require.NoError(t, err)
+	txResult, err := multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+	newUniversalToken := getTokenNameFromResult(t, txResult)
+
+	log.Info("issue universal token tx executed", "hash", hash, "status", txResult.Status.String(), "token", newUniversalToken)
+
+	// issue chain specific token
+	valueToMintInt, _ := big.NewInt(0).SetString(valueToMint, 10)
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		esdtSystemSCAddress,
+		esdtIssueCost,
+		issue,
+		[]string{hex.EncodeToString([]byte(chainSpecificTokenDisplayName)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), hex.EncodeToString(valueToMintInt.Bytes()), numOfDecimalsChainSpecific, hex.EncodeToString([]byte(canAddSpecialRoles)), hex.EncodeToString([]byte(trueStr))})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+	newChainSpecificToken := getTokenNameFromResult(t, txResult)
+
+	log.Info("issue chain specific token tx executed", "hash", hash, "status", txResult.Status.String(), "token", newChainSpecificToken)
+
+	// set local roles bridged tokens wrapper
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		esdtSystemSCAddress,
+		zeroValue,
+		setSpecialRole,
+		[]string{hex.EncodeToString([]byte(newUniversalToken)), getHexAddress(t, wrapperAddress), hex.EncodeToString([]byte(esdtRoleLocalMint)), hex.EncodeToString([]byte(esdtRoleLocalBurn))})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+
+	log.Info("set local roles bridged tokens wrapper tx executed", "hash", hash, "status", txResult.Status.String())
+
+	// transfer to sc
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		wrapperAddress,
+		zeroValue,
+		esdtTransfer,
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(valueToMintInt.Bytes()), hex.EncodeToString([]byte(depositLiquidity))})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+
+	log.Info("transfer to sc tx executed", "hash", hash, "status", txResult.Status.String())
+
+	// add wrapped token
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		wrapperAddress,
+		zeroValue,
+		addWrappedToken,
+		[]string{hex.EncodeToString([]byte(newUniversalToken)), numOfDecimalsUniversal})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+
+	log.Info("add wrapped token tx executed", "hash", hash, "status", txResult.Status.String())
+
+	// wrapper whitelist token
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		wrapperAddress,
+		zeroValue,
+		whitelistToken,
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), numOfDecimalsChainSpecific, hex.EncodeToString([]byte(newUniversalToken))})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+
+	log.Info("wrapper whitelist token tx executed", "hash", hash, "status", txResult.Status.String())
+
+	// set local roles esdt safe
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		esdtSystemSCAddress,
+		zeroValue,
+		setSpecialRole,
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), getHexAddress(t, safeAddress), hex.EncodeToString([]byte(esdtRoleLocalMint)), hex.EncodeToString([]byte(esdtRoleLocalBurn))})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+
+	log.Info("set local roles esdt safe tx executed", "hash", hash, "status", txResult.Status.String())
+
+	// add mapping
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		multisigAddress,
+		zeroValue,
+		addMapping,
+		[]string{erc20Token, hex.EncodeToString([]byte(newChainSpecificToken))})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+
+	log.Info("add mapping tx executed", "hash", hash, "status", txResult.Status.String())
+
+	// whitelist token
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		multisigAddress,
+		zeroValue,
+		esdtSafeAddTokenToWhitelist,
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), "01"})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+
+	log.Info("whitelist token tx executed", "hash", hash, "status", txResult.Status.String())
+
+	// submit aggregator batch
+	feeInt, _ := big.NewInt(0).SetString(fee, 10)
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		aggregatorAddress,
+		zeroValue,
+		submitBatch,
+		[]string{hex.EncodeToString([]byte(gwei)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), hex.EncodeToString(feeInt.Bytes())})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+
+	log.Info("submit aggregator batch tx executed", "hash", hash, "status", txResult.Status.String())
+
+	// safe set max bridge amount for token
+	maxBridgedAmountForTokenInt, _ := big.NewInt(0).SetString(maxBridgedAmountForToken, 10)
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		multisigAddress,
+		zeroValue,
+		esdtSafeSetMaxBridgedAmountForToken,
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(maxBridgedAmountForTokenInt.Bytes())})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+
+	log.Info("safe set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status.String())
+
+	// multi-transfer set max bridge amount for token
+	hash, err = multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		multisigAddress,
+		zeroValue,
+		multiTransferEsdtSetMaxBridgedAmountForToken,
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(maxBridgedAmountForTokenInt.Bytes())})
+	require.NoError(t, err)
+	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(hash)
+	require.NoError(t, err)
+
+	log.Info("multi-transfer set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status.String())
+}
+
+func getTokenNameFromResult(t *testing.T, txResult *transaction.ApiTransactionResult) string {
+	resultData := txResult.SmartContractResults[0].Data
+	splittedData := strings.Split(resultData, "@")
+	if len(splittedData) != 2 {
+		require.Fail(t, fmt.Sprintf("received invalid data received while issuing: %s", resultData))
+	}
+
+	newUniversalTokenBytes, err := hex.DecodeString(splittedData[1])
+	require.NoError(t, err)
+
+	return string(newUniversalTokenBytes)
 }
 
 func getHexAddress(t *testing.T, bech32Address string) string {

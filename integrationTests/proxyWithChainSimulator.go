@@ -215,9 +215,19 @@ func (instance *proxyWithChainSimulator) DeploySC(ctx context.Context, path stri
 
 	log.Info("contract deployed", "hash", hash)
 
+	txResult, errGet := instance.GetTransactionResult(hash)
+	if errGet != nil {
+		return "", errGet
+	}
+
+	return txResult.Logs.Events[0].Address, nil
+}
+
+// GetTransactionResult tries to get a transaction result. It may wait a few blocks
+func (instance *proxyWithChainSimulator) GetTransactionResult(hash string) (*transaction.ApiTransactionResult, error) {
 	txResult, errGet := instance.simulator.GetNodeHandler(0).GetFacadeHandler().GetTransaction(hash, true)
 	if errGet == nil && txResult.Status == transaction.TxStatusSuccess {
-		return txResult.Logs.Events[0].Address, nil
+		return txResult, nil
 	}
 
 	// wait for tx to be done, in order to get the contract address
@@ -227,10 +237,10 @@ func (instance *proxyWithChainSimulator) DeploySC(ctx context.Context, path stri
 		case <-time.After(instance.roundDuration):
 			txResult, errGet = instance.simulator.GetNodeHandler(0).GetFacadeHandler().GetTransaction(hash, true)
 			if errGet == nil && txResult.Status == transaction.TxStatusSuccess {
-				return txResult.Logs.Events[0].Address, nil
+				return txResult, nil
 			}
 		case <-timeoutTimer.C:
-			return "", errors.New("timeout")
+			return nil, errors.New("timeout")
 		}
 	}
 }
