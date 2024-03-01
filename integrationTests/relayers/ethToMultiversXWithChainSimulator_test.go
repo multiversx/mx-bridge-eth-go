@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -112,15 +113,43 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
-	token2Erc20 := testsCommon.CreateRandomEthereumAddress()
-	value1 := big.NewInt(111111111)
-	value2 := big.NewInt(222222222)
-	tokens := []common.Address{token1Erc20, token2Erc20}
-	availableBalances := []*big.Int{value1, value2}
+	value1 := big.NewInt(1000)
+	destination1 := testsCommon.CreateRandomMultiversXAddress()
+	bech32Destination1, _ := destination1.AddressAsBech32String()
+	log.Info("destination account", "address", bech32Destination1)
+
+	depositor1 := testsCommon.CreateRandomEthereumAddress()
+
+	tokens := []common.Address{token1Erc20}
+	availableBalances := []*big.Int{value1}
 
 	erc20ContractsHolder := createMockErc20ContractsHolder(tokens, safeContractEthAddress, availableBalances)
 
+	batchNonceOnEthereum := uint64(1)
+	txNonceOnEthereum := uint64(0)
+	batch := contract.Batch{
+		Nonce:                  big.NewInt(int64(batchNonceOnEthereum)),
+		BlockNumber:            0,
+		LastUpdatedBlockNumber: 0,
+		DepositsCount:          1,
+	}
+
 	numRelayers := 3
+	ethereumChainMock := mock.NewEthereumChainMock()
+	token1NativeBalance := big.NewInt(0)
+	ethereumChainMock.AddWhitelistedTokensMintBurn(token1Erc20, token1NativeBalance)
+	ethereumChainMock.AddBatch(batch)
+	ethereumChainMock.AddDepositToBatch(batchNonceOnEthereum, contract.Deposit{
+		Nonce:        big.NewInt(int64(txNonceOnEthereum) + 1),
+		TokenAddress: token1Erc20,
+		Amount:       value1,
+		Depositor:    depositor1,
+		Recipient:    destination1.AddressSlice(),
+		Status:       0,
+	})
+	ethereumChainMock.AddBatch(batch)
+	ethereumChainMock.SetQuorum(numRelayers)
+
 	relayersKeys := make([]keysHolder, 0, numRelayers)
 	for i := 0; i < numRelayers; i++ {
 		relayerSK, relayerPK, err := core.LoadSkPkFromPemFile(fmt.Sprintf(relayerPemPathFormat, i), 0)
@@ -131,7 +160,6 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 			sk: relayerSK,
 		})
 	}
-	ethereumChainMock := mock.NewEthereumChainMock()
 
 	multiversXProxyWithChainSimulator := startProxyWithChainSimulator(t)
 	defer multiversXProxyWithChainSimulator.Close()
@@ -238,6 +266,17 @@ func startRelayers(
 		argsBridgeComponents.Configs.GeneralConfig.MultiversX.NetworkAddress = multiversXProxyWithChainSimulator.GetNetworkAddress()
 		argsBridgeComponents.Configs.GeneralConfig.MultiversX.SafeContractAddress = safeAddress
 		argsBridgeComponents.Configs.GeneralConfig.MultiversX.MultisigContractAddress = multisigAddress
+		argsBridgeComponents.Configs.GeneralConfig.MultiversX.GasMap = config.MultiversXGasMapConfig{
+			Sign:                   8000000,
+			ProposeTransferBase:    11000000,
+			ProposeTransferForEach: 5500000,
+			ProposeStatusBase:      10000000,
+			ProposeStatusForEach:   7000000,
+			PerformActionBase:      40000000,
+			PerformActionForEach:   5500000,
+			ScCallPerByte:          100000,
+			ScCallPerformForEach:   10000000,
+		}
 		relayer, err := factory.NewEthMultiversXBridgeComponents(argsBridgeComponents)
 		require.Nil(t, err)
 
