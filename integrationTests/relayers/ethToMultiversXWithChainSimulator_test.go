@@ -100,8 +100,12 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 	multiversXProxyWithChainSimulator := startProxyWithChainSimulator(t)
 	defer multiversXProxyWithChainSimulator.Close()
 
+	// create a test context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// deploy all contracts and execute all txs needed
-	safeAddress, multisigAddress := executeContractsTxs(t, multiversXProxyWithChainSimulator, relayersKeys)
+	safeAddress, multisigAddress := executeContractsTxs(t, ctx, multiversXProxyWithChainSimulator, relayersKeys)
 
 	// start relayers
 	relayers := startRelayers(t, numRelayers, multiversXProxyWithChainSimulator, ethereumChainMock, safeContractEthAddress, erc20ContractsHolder, safeAddress, multisigAddress)
@@ -204,6 +208,7 @@ func startRelayers(
 
 func executeContractsTxs(
 	t *testing.T,
+	ctx context.Context,
 	multiversXProxyWithChainSimulator proxyWithChainSimulator,
 	relayersKeys []keysHolder,
 ) (string, string) {
@@ -223,7 +228,7 @@ func executeContractsTxs(
 
 	// deploy aggregator
 	aggregatorAddress, err := multiversXProxyWithChainSimulator.DeploySC(
-		context.Background(),
+		ctx,
 		aggregatorContract,
 		ownerPK,
 		ownerSK,
@@ -236,7 +241,7 @@ func executeContractsTxs(
 
 	// deploy wrapper
 	wrapperAddress, err := multiversXProxyWithChainSimulator.DeploySC(
-		context.Background(),
+		ctx,
 		wrapperContract,
 		ownerPK,
 		ownerSK,
@@ -249,7 +254,7 @@ func executeContractsTxs(
 
 	// deploy safe
 	safeAddress, err := multiversXProxyWithChainSimulator.DeploySC(
-		context.Background(),
+		ctx,
 		safeContract,
 		ownerPK,
 		ownerSK,
@@ -262,7 +267,7 @@ func executeContractsTxs(
 
 	// deploy multi-transfer
 	multiTransferAddress, err := multiversXProxyWithChainSimulator.DeploySC(
-		context.Background(),
+		ctx,
 		multiTransferContract,
 		ownerPK,
 		ownerSK,
@@ -275,7 +280,7 @@ func executeContractsTxs(
 
 	// deploy multisig
 	multisigAddress, err := multiversXProxyWithChainSimulator.DeploySC(
-		context.Background(),
+		ctx,
 		multisigContract,
 		ownerPK,
 		ownerSK,
@@ -288,7 +293,7 @@ func executeContractsTxs(
 
 	// deploy bridge proxy
 	bridgeProxyAddress, err := multiversXProxyWithChainSimulator.DeploySC(
-		context.Background(),
+		ctx,
 		bridgeProxyContract,
 		ownerPK,
 		ownerSK,
@@ -301,7 +306,7 @@ func executeContractsTxs(
 
 	// setBridgeProxyContractAddress
 	hash, err := multiversXProxyWithChainSimulator.ScCall(
-		context.Background(),
+		ctx,
 		ownerPK,
 		ownerSK,
 		multiTransferAddress,
@@ -315,7 +320,7 @@ func executeContractsTxs(
 
 	// setWrappingContractAddress
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
-		context.Background(),
+		ctx,
 		ownerPK,
 		ownerSK,
 		multiTransferAddress,
@@ -329,7 +334,7 @@ func executeContractsTxs(
 
 	// ChangeOwnerAddress for safe
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
-		context.Background(),
+		ctx,
 		ownerPK,
 		ownerSK,
 		safeAddress,
@@ -343,7 +348,7 @@ func executeContractsTxs(
 
 	// ChangeOwnerAddress for multi-transfer
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
-		context.Background(),
+		ctx,
 		ownerPK,
 		ownerSK,
 		multiTransferAddress,
@@ -357,7 +362,7 @@ func executeContractsTxs(
 
 	// ChangeOwnerAddress for bridge proxy
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
-		context.Background(),
+		ctx,
 		ownerPK,
 		ownerSK,
 		bridgeProxyAddress,
@@ -371,7 +376,7 @@ func executeContractsTxs(
 
 	// setMultiTransferOnEsdtSafe
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
-		context.Background(),
+		ctx,
 		ownerPK,
 		ownerSK,
 		multisigAddress,
@@ -385,7 +390,7 @@ func executeContractsTxs(
 
 	// setEsdtSafeOnMultiTransfer
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
-		context.Background(),
+		ctx,
 		ownerPK,
 		ownerSK,
 		multisigAddress,
@@ -398,38 +403,38 @@ func executeContractsTxs(
 	log.Info("setEsdtSafeOnMultiTransfer tx sent", "hash", hash)
 
 	// stake relayers
-	stakeRelayers(t, multiversXProxyWithChainSimulator, multisigAddress, relayersKeys)
+	stakeRelayers(t, ctx, multiversXProxyWithChainSimulator, multisigAddress, relayersKeys)
 
 	// unpause multisig
-	hash = unpauseContract(t, multiversXProxyWithChainSimulator, ownerPK, ownerSK, multisigAddress, []byte("unpause"))
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerPK, ownerSK, multisigAddress, []byte("unpause"))
 	log.Info("unpaused multisig", "hash", hash)
 
 	// unpause safe
-	hash = unpauseContract(t, multiversXProxyWithChainSimulator, ownerPK, ownerSK, multisigAddress, []byte("unpauseEsdtSafe"))
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerPK, ownerSK, multisigAddress, []byte("unpauseEsdtSafe"))
 	log.Info("unpaused safe", "hash", hash)
 
 	// unpause aggregator
-	hash = unpauseContract(t, multiversXProxyWithChainSimulator, ownerPK, ownerSK, aggregatorAddress, []byte("unpause"))
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerPK, ownerSK, aggregatorAddress, []byte("unpause"))
 	log.Info("unpaused aggregator", "hash", hash)
 
 	// unpause wrapper
-	hash = unpauseContract(t, multiversXProxyWithChainSimulator, ownerPK, ownerSK, wrapperAddress, []byte("unpause"))
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerPK, ownerSK, wrapperAddress, []byte("unpause"))
 	log.Info("unpaused wrapper", "hash", hash)
 
 	return safeAddress, multisigAddress
 }
 
-func stakeRelayers(t *testing.T, multiversXProxyWithChainSimulator proxyWithChainSimulator, contract string, relayersKeys []keysHolder) {
+func stakeRelayers(t *testing.T, ctx context.Context, multiversXProxyWithChainSimulator proxyWithChainSimulator, contract string, relayersKeys []keysHolder) {
 	for _, relayerKeys := range relayersKeys {
-		hash, err := multiversXProxyWithChainSimulator.SendTx(context.Background(), relayerKeys.pk, relayerKeys.sk, contract, minRelayerStake, []byte("stake"))
+		hash, err := multiversXProxyWithChainSimulator.SendTx(ctx, relayerKeys.pk, relayerKeys.sk, contract, minRelayerStake, []byte("stake"))
 		require.NoError(t, err)
 
 		log.Info(fmt.Sprintf("relayer %s staked with hash %s", relayerKeys.pk, hash))
 	}
 }
 
-func unpauseContract(t *testing.T, multiversXProxyWithChainSimulator proxyWithChainSimulator, ownerPK string, ownerSK []byte, contract string, dataField []byte) string {
-	hash, err := multiversXProxyWithChainSimulator.SendTx(context.Background(), ownerPK, ownerSK, contract, zeroValue, dataField)
+func unpauseContract(t *testing.T, ctx context.Context, multiversXProxyWithChainSimulator proxyWithChainSimulator, ownerPK string, ownerSK []byte, contract string, dataField []byte) string {
+	hash, err := multiversXProxyWithChainSimulator.SendTx(ctx, ownerPK, ownerSK, contract, zeroValue, dataField)
 	require.NoError(t, err)
 
 	return hash
