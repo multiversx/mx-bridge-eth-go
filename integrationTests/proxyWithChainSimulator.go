@@ -237,33 +237,11 @@ func (instance *proxyWithChainSimulator) DeploySC(ctx context.Context, path stri
 
 // ScCall will make the provided sc call
 func (instance *proxyWithChainSimulator) ScCall(ctx context.Context, senderPK string, senderSK []byte, contract string, function string, parameters []string) (string, error) {
-	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	nonce, err := instance.getNonce(ctx, senderPK)
-	if err != nil {
-		return "", err
-	}
-
 	params := []string{function}
 	params = append(params, parameters...)
 	txData := strings.Join(params, "@")
 
-	ftx := &transaction.FrontendTransaction{
-		Nonce:    nonce,
-		Value:    "0",
-		Receiver: contract,
-		Sender:   senderPK,
-		GasPrice: networkConfig.MinGasPrice,
-		GasLimit: 600000000,
-		Data:     []byte(txData),
-		ChainID:  networkConfig.ChainID,
-		Version:  1,
-	}
-
-	return instance.signAndSend(ctx, senderSK, ftx)
+	return instance.SendTx(ctx, senderPK, senderSK, contract, "0", []byte(txData))
 }
 
 // SendTx will build and send a transaction
