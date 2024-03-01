@@ -104,8 +104,16 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// read the owner keys
+	ownerSK, ownerPK, err := core.LoadSkPkFromPemFile(ownerPem, 0)
+	require.NoError(t, err)
+	ownerKeys := keysHolder{
+		pk: ownerPK,
+		sk: ownerSK,
+	}
+
 	// deploy all contracts and execute all txs needed
-	safeAddress, multisigAddress := executeContractsTxs(t, ctx, multiversXProxyWithChainSimulator, relayersKeys)
+	safeAddress, multisigAddress := executeContractsTxs(t, ctx, multiversXProxyWithChainSimulator, relayersKeys, ownerKeys)
 
 	// start relayers
 	relayers := startRelayers(t, numRelayers, multiversXProxyWithChainSimulator, ethereumChainMock, safeContractEthAddress, erc20ContractsHolder, safeAddress, multisigAddress)
@@ -211,13 +219,11 @@ func executeContractsTxs(
 	ctx context.Context,
 	multiversXProxyWithChainSimulator proxyWithChainSimulator,
 	relayersKeys []keysHolder,
+	ownerKeys keysHolder,
 ) (string, string) {
-	ownerSK, ownerPK, err := core.LoadSkPkFromPemFile(ownerPem, 0)
-	require.NoError(t, err)
-
 	// fund the involved wallets(owner + relayers)
 	multiversXProxyWithChainSimulator.FundWallets([]string{
-		ownerPK,
+		ownerKeys.pk,
 		relayersKeys[0].pk,
 		relayersKeys[1].pk,
 		relayersKeys[2].pk,
@@ -230,9 +236,9 @@ func executeContractsTxs(
 	aggregatorAddress, err := multiversXProxyWithChainSimulator.DeploySC(
 		ctx,
 		aggregatorContract,
-		ownerPK,
-		ownerSK,
-		[]string{wasm.VMTypeHex, "0500", "01", "00", getHexAddress(t, ownerPK)},
+		ownerKeys.pk,
+		ownerKeys.sk,
+		[]string{wasm.VMTypeHex, "0500", "01", "00", getHexAddress(t, ownerKeys.pk)},
 	)
 	require.NoError(t, err)
 	require.NotEqual(t, emptyAddress, aggregatorAddress)
@@ -243,8 +249,8 @@ func executeContractsTxs(
 	wrapperAddress, err := multiversXProxyWithChainSimulator.DeploySC(
 		ctx,
 		wrapperContract,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		[]string{wasm.VMTypeHex, "0500"},
 	)
 	require.NoError(t, err)
@@ -256,8 +262,8 @@ func executeContractsTxs(
 	safeAddress, err := multiversXProxyWithChainSimulator.DeploySC(
 		ctx,
 		safeContract,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		[]string{wasm.VMTypeHex, "0500", getHexAddress(t, aggregatorAddress), "01"},
 	)
 	require.NoError(t, err)
@@ -269,8 +275,8 @@ func executeContractsTxs(
 	multiTransferAddress, err := multiversXProxyWithChainSimulator.DeploySC(
 		ctx,
 		multiTransferContract,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		[]string{wasm.VMTypeHex, "0500"},
 	)
 	require.NoError(t, err)
@@ -282,8 +288,8 @@ func executeContractsTxs(
 	multisigAddress, err := multiversXProxyWithChainSimulator.DeploySC(
 		ctx,
 		multisigContract,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		[]string{wasm.VMTypeHex, "0500", getHexAddress(t, safeAddress), getHexAddress(t, multiTransferAddress), minRelayerStakeHex, slashAmount, quorum, getHexAddress(t, relayersKeys[0].pk), getHexAddress(t, relayersKeys[1].pk), getHexAddress(t, relayersKeys[2].pk)},
 	)
 	require.NoError(t, err)
@@ -295,8 +301,8 @@ func executeContractsTxs(
 	bridgeProxyAddress, err := multiversXProxyWithChainSimulator.DeploySC(
 		ctx,
 		bridgeProxyContract,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		[]string{wasm.VMTypeHex, "0500", getHexAddress(t, multiTransferAddress)},
 	)
 	require.NoError(t, err)
@@ -307,8 +313,8 @@ func executeContractsTxs(
 	// setBridgeProxyContractAddress
 	hash, err := multiversXProxyWithChainSimulator.ScCall(
 		ctx,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		multiTransferAddress,
 		zeroValue,
 		"setBridgeProxyContractAddress",
@@ -321,8 +327,8 @@ func executeContractsTxs(
 	// setWrappingContractAddress
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
 		ctx,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		multiTransferAddress,
 		zeroValue,
 		"setWrappingContractAddress",
@@ -335,8 +341,8 @@ func executeContractsTxs(
 	// ChangeOwnerAddress for safe
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
 		ctx,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		safeAddress,
 		zeroValue,
 		"ChangeOwnerAddress",
@@ -349,8 +355,8 @@ func executeContractsTxs(
 	// ChangeOwnerAddress for multi-transfer
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
 		ctx,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		multiTransferAddress,
 		zeroValue,
 		"ChangeOwnerAddress",
@@ -363,8 +369,8 @@ func executeContractsTxs(
 	// ChangeOwnerAddress for bridge proxy
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
 		ctx,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		bridgeProxyAddress,
 		zeroValue,
 		"ChangeOwnerAddress",
@@ -377,8 +383,8 @@ func executeContractsTxs(
 	// setMultiTransferOnEsdtSafe
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
 		ctx,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		multisigAddress,
 		zeroValue,
 		"setMultiTransferOnEsdtSafe",
@@ -391,8 +397,8 @@ func executeContractsTxs(
 	// setEsdtSafeOnMultiTransfer
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
 		ctx,
-		ownerPK,
-		ownerSK,
+		ownerKeys.pk,
+		ownerKeys.sk,
 		multisigAddress,
 		zeroValue,
 		"setEsdtSafeOnMultiTransfer",
@@ -406,19 +412,19 @@ func executeContractsTxs(
 	stakeRelayers(t, ctx, multiversXProxyWithChainSimulator, multisigAddress, relayersKeys)
 
 	// unpause multisig
-	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerPK, ownerSK, multisigAddress, []byte("unpause"))
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys.pk, ownerKeys.sk, multisigAddress, []byte("unpause"))
 	log.Info("unpaused multisig", "hash", hash)
 
 	// unpause safe
-	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerPK, ownerSK, multisigAddress, []byte("unpauseEsdtSafe"))
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys.pk, ownerKeys.sk, multisigAddress, []byte("unpauseEsdtSafe"))
 	log.Info("unpaused safe", "hash", hash)
 
 	// unpause aggregator
-	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerPK, ownerSK, aggregatorAddress, []byte("unpause"))
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys.pk, ownerKeys.sk, aggregatorAddress, []byte("unpause"))
 	log.Info("unpaused aggregator", "hash", hash)
 
 	// unpause wrapper
-	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerPK, ownerSK, wrapperAddress, []byte("unpause"))
+	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys.pk, ownerKeys.sk, wrapperAddress, []byte("unpause"))
 	log.Info("unpaused wrapper", "hash", hash)
 
 	return safeAddress, multisigAddress
