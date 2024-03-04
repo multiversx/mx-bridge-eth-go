@@ -178,13 +178,13 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 	safeAddress, multisigAddress, wrapperAddress, aggregatorAddress := executeContractsTxs(t, ctx, multiversXProxyWithChainSimulator, relayersKeys, ownerKeys)
 
 	// issue and whitelist token
-	newChainSpecificToken := issueAndWhitelistToken(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(token1Erc20.Bytes()))
+	newUniversalToken := issueAndWhitelistToken(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(token1Erc20.Bytes()))
 
 	// start relayers
 	relayers := startRelayers(t, numRelayers, multiversXProxyWithChainSimulator, ethereumChainMock, safeContractEthAddress, erc20ContractsHolder, safeAddress, multisigAddress)
 	defer closeRelayers(relayers)
 
-	checkESDTBalance(t, ctx, multiversXProxyWithChainSimulator, destination1, newChainSpecificToken, "0", true)
+	checkESDTBalance(t, ctx, multiversXProxyWithChainSimulator, destination1, newUniversalToken, "0", true)
 
 	// wait for signal interrupt or time out
 	roundDuration := time.Duration(roundDurationInMs) * time.Millisecond
@@ -195,7 +195,7 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 		timerBetweenBalanceChecks.Reset(roundDuration)
 		select {
 		case <-timerBetweenBalanceChecks.C:
-			isTransferDone := checkESDTBalance(t, ctx, multiversXProxyWithChainSimulator, destination1, newChainSpecificToken, value1.String(), false)
+			isTransferDone := checkESDTBalance(t, ctx, multiversXProxyWithChainSimulator, destination1, newUniversalToken, value1.String(), false)
 			if isTransferDone {
 				log.Info("transfer finished")
 				return
@@ -703,7 +703,7 @@ func issueAndWhitelistToken(
 		multisigAddress,
 		zeroValue,
 		esdtSafeAddTokenToWhitelist,
-		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), "01"})
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), "01", "01"})
 	require.NoError(t, err)
 	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
@@ -757,7 +757,7 @@ func issueAndWhitelistToken(
 
 	log.Info("multi-transfer set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status)
 
-	return newChainSpecificToken
+	return newUniversalToken
 }
 
 func getTokenNameFromResult(t *testing.T, txResult data.TransactionOnNetwork) string {
