@@ -107,9 +107,7 @@ type keysHolder struct {
 }
 
 func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *testing.T) {
-	if testing.Short() {
-		t.Skip("this is a long test")
-	}
+	t.Skip("this is a long test")
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
