@@ -12,14 +12,15 @@ import (
 
 // ProxyStub -
 type ProxyStub struct {
-	GetNetworkConfigCalled  func(ctx context.Context) (*data.NetworkConfig, error)
-	SendTransactionCalled   func(ctx context.Context, transaction *transaction.FrontendTransaction) (string, error)
-	SendTransactionsCalled  func(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error)
-	ExecuteVMQueryCalled    func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
-	GetAccountCalled        func(ctx context.Context, address core.AddressHandler) (*data.Account, error)
-	GetNetworkStatusCalled  func(ctx context.Context, shardID uint32) (*data.NetworkStatus, error)
-	GetShardOfAddressCalled func(ctx context.Context, bech32Address string) (uint32, error)
-	GetESDTTokenDataCalled  func(ctx context.Context, address core.AddressHandler, tokenIdentifier string, queryOptions api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error)
+	GetNetworkConfigCalled              func(ctx context.Context) (*data.NetworkConfig, error)
+	SendTransactionCalled               func(ctx context.Context, transaction *transaction.FrontendTransaction) (string, error)
+	SendTransactionsCalled              func(ctx context.Context, txs []*transaction.FrontendTransaction) ([]string, error)
+	ExecuteVMQueryCalled                func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error)
+	GetAccountCalled                    func(ctx context.Context, address core.AddressHandler) (*data.Account, error)
+	GetNetworkStatusCalled              func(ctx context.Context, shardID uint32) (*data.NetworkStatus, error)
+	GetShardOfAddressCalled             func(ctx context.Context, bech32Address string) (uint32, error)
+	GetESDTTokenDataCalled              func(ctx context.Context, address core.AddressHandler, tokenIdentifier string, queryOptions api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error)
+	GetTransactionInfoWithResultsCalled func(_ context.Context, _ string) (*data.TransactionInfo, error)
 }
 
 // GetNetworkConfig -
@@ -89,6 +90,15 @@ func (eps *ProxyStub) GetShardOfAddress(ctx context.Context, bech32Address strin
 func (eps *ProxyStub) GetESDTTokenData(ctx context.Context, address core.AddressHandler, tokenIdentifier string, queryOptions api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error) {
 	if eps.GetESDTTokenDataCalled != nil {
 		return eps.GetESDTTokenDataCalled(ctx, address, tokenIdentifier, queryOptions)
+	}
+
+	return nil, fmt.Errorf("not implemented")
+}
+
+// GetTransactionInfoWithResults -
+func (eps *ProxyStub) GetTransactionInfoWithResults(ctx context.Context, hash string) (*data.TransactionInfo, error) {
+	if eps.GetTransactionInfoWithResultsCalled != nil {
+		return eps.GetTransactionInfoWithResultsCalled(ctx, hash)
 	}
 
 	return nil, fmt.Errorf("not implemented")

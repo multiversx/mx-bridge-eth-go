@@ -131,6 +131,11 @@ func (mock *MultiversXChainMock) GetESDTTokenData(_ context.Context, _ sdkCore.A
 	return &data.ESDTFungibleTokenData{}, nil
 }
 
+// GetTransactionInfoWithResults -
+func (mock *MultiversXChainMock) GetTransactionInfoWithResults(_ context.Context, _ string) (*data.TransactionInfo, error) {
+	return &data.TransactionInfo{}, nil
+}
+
 // AddRelayer -
 func (mock *MultiversXChainMock) AddRelayer(address sdkCore.AddressHandler) {
 	mock.mutState.Lock()

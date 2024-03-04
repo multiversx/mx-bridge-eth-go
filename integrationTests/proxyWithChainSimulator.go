@@ -176,7 +176,7 @@ func (instance *proxyWithChainSimulator) GetNetworkAddress() string {
 }
 
 // DeploySC will deploy the provided smart contract and return its address
-func (instance *proxyWithChainSimulator) DeploySC(ctx context.Context, path string, ownerPK string, ownerSK []byte, parameters []string) (string, error) {
+func (instance *proxyWithChainSimulator) DeploySC(ctx context.Context, wasmFilePath string, ownerPK string, ownerSK []byte, parameters []string) (string, error) {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	if err != nil {
 		return "", err
@@ -192,8 +192,8 @@ func (instance *proxyWithChainSimulator) DeploySC(ctx context.Context, path stri
 		return "", err
 	}
 
-	scCode := wasm.GetSCCode(path)
-	params := []string{scCode}
+	scCode := wasm.GetSCCode(wasmFilePath)
+	params := []string{scCode, wasm.VMTypeHex, wasm.DummyCodeMetadataHex}
 	params = append(params, parameters...)
 	txData := strings.Join(params, "@")
 
@@ -216,7 +216,7 @@ func (instance *proxyWithChainSimulator) DeploySC(ctx context.Context, path stri
 
 	log.Info("contract deployed", "hash", hash)
 
-	txResult, errGet := instance.GetTransactionResult(hash)
+	txResult, errGet := instance.GetTransactionResult(ctx, hash)
 	if errGet != nil {
 		return "", errGet
 	}
@@ -225,10 +225,10 @@ func (instance *proxyWithChainSimulator) DeploySC(ctx context.Context, path stri
 }
 
 // GetTransactionResult tries to get a transaction result. It may wait a few blocks
-func (instance *proxyWithChainSimulator) GetTransactionResult(hash string) (*transaction.ApiTransactionResult, error) {
-	txResult, errGet := instance.simulator.GetNodeHandler(0).GetFacadeHandler().GetTransaction(hash, true)
-	if errGet == nil && txResult.Status == transaction.TxStatusSuccess {
-		return txResult, nil
+func (instance *proxyWithChainSimulator) GetTransactionResult(ctx context.Context, hash string) (data.TransactionOnNetwork, error) {
+	txResult, errGet := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
+	if errGet == nil && txResult.Data.Transaction.Status == transaction.TxStatusSuccess.String() {
+		return txResult.Data.Transaction, nil
 	}
 
 	// wait for tx to be done, in order to get the contract address
@@ -236,12 +236,12 @@ func (instance *proxyWithChainSimulator) GetTransactionResult(hash string) (*tra
 	for {
 		select {
 		case <-time.After(instance.roundDuration):
-			txResult, errGet = instance.simulator.GetNodeHandler(0).GetFacadeHandler().GetTransaction(hash, true)
-			if errGet == nil && txResult.Status == transaction.TxStatusSuccess {
-				return txResult, nil
+			txResult, errGet = instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
+			if errGet == nil && txResult.Data.Transaction.Status == transaction.TxStatusSuccess.String() {
+				return txResult.Data.Transaction, nil
 			}
 		case <-timeoutTimer.C:
-			return nil, errors.New("timeout")
+			return data.TransactionOnNetwork{}, errors.New("timeout")
 		}
 	}
 }
