@@ -11,6 +11,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
+	apiCore "github.com/multiversx/mx-chain-core-go/data/api"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-chain-crypto-go/signing"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519"
@@ -293,6 +294,18 @@ func (instance *proxyWithChainSimulator) FundWallets(wallets []string) {
 	}
 	err := instance.simulator.SetStateMultiple(addressesState)
 	log.LogIfError(err)
+}
+
+// GetESDTBalance returns the balance of the esdt token for the provided address
+func (instance *proxyWithChainSimulator) GetESDTBalance(ctx context.Context, address sdkCore.AddressHandler, token string) (string, error) {
+	tokenData, err := instance.proxyInstance.GetESDTTokenData(ctx, address, token, apiCore.AccountQueryOptions{
+		OnFinalBlock: true,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return tokenData.Balance, nil
 }
 
 func (instance *proxyWithChainSimulator) getNonce(ctx context.Context, bech32Address string) (uint64, error) {

@@ -28,6 +28,7 @@ import (
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-chain-go/integrationTests/vm/wasm"
 	"github.com/multiversx/mx-chain-go/testscommon/statusHandler"
+	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/require"
 )
@@ -98,6 +99,7 @@ type proxyWithChainSimulator interface {
 	SendTx(ctx context.Context, senderPK string, senderSK []byte, receiver string, value string, dataField []byte) (string, error)
 	GetTransactionResult(hash string) (*transaction.ApiTransactionResult, error)
 	FundWallets(wallets []string)
+	GetESDTBalance(ctx context.Context, address sdkCore.AddressHandler, token string) (string, error)
 	Close()
 }
 
@@ -178,17 +180,28 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 	safeAddress, multisigAddress, wrapperAddress, aggregatorAddress := executeContractsTxs(t, ctx, multiversXProxyWithChainSimulator, relayersKeys, ownerKeys)
 
 	// issue and whitelist token
-	issueAndWhitelistToken(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(token1Erc20.Bytes()))
+	newChainSpecificToken := issueAndWhitelistToken(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(token1Erc20.Bytes()))
 
 	// start relayers
 	relayers := startRelayers(t, numRelayers, multiversXProxyWithChainSimulator, ethereumChainMock, safeContractEthAddress, erc20ContractsHolder, safeAddress, multisigAddress)
 	defer closeRelayers(relayers)
 
+	checkESDTBalance(t, ctx, multiversXProxyWithChainSimulator, destination1, newChainSpecificToken, "0", true)
+
 	// wait for signal interrupt or time out
+	roundDuration := time.Duration(roundDurationInMs) * time.Millisecond
+	timerBetweenBalanceChecks := time.NewTimer(roundDuration)
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 	for {
+		timerBetweenBalanceChecks.Reset(roundDuration)
 		select {
+		case <-timerBetweenBalanceChecks.C:
+			isTransferDone := checkESDTBalance(t, ctx, multiversXProxyWithChainSimulator, destination1, newChainSpecificToken, value1.String(), false)
+			if isTransferDone {
+				log.Info("transfer finished")
+				return
+			}
 		case <-interrupt:
 			log.Error("signal interrupted")
 			return
@@ -556,7 +569,7 @@ func issueAndWhitelistToken(
 	multisigAddress string,
 	aggregatorAddress string,
 	erc20Token string,
-) {
+) string {
 	// issue universal token
 	hash, err := multiversXProxyWithChainSimulator.ScCall(
 		ctx,
@@ -741,6 +754,8 @@ func issueAndWhitelistToken(
 	require.NoError(t, err)
 
 	log.Info("multi-transfer set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status.String())
+
+	return newChainSpecificToken
 }
 
 func getTokenNameFromResult(t *testing.T, txResult *transaction.ApiTransactionResult) string {
@@ -761,4 +776,23 @@ func getHexAddress(t *testing.T, bech32Address string) string {
 	require.NoError(t, err)
 
 	return hex.EncodeToString(address.AddressBytes())
+}
+
+func checkESDTBalance(
+	t *testing.T,
+	ctx context.Context,
+	multiversXProxyWithChainSimulator proxyWithChainSimulator,
+	address sdkCore.AddressHandler,
+	token string,
+	expectedBalance string,
+	checkResult bool,
+) bool {
+	balance, err := multiversXProxyWithChainSimulator.GetESDTBalance(ctx, address, token)
+	require.NoError(t, err)
+
+	if checkResult {
+		require.Equal(t, expectedBalance, balance)
+	}
+
+	return expectedBalance == balance
 }

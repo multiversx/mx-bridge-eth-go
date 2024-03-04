@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/multiversx/mx-chain-core-go/data/api"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
@@ -18,6 +19,7 @@ type ProxyStub struct {
 	GetAccountCalled        func(ctx context.Context, address core.AddressHandler) (*data.Account, error)
 	GetNetworkStatusCalled  func(ctx context.Context, shardID uint32) (*data.NetworkStatus, error)
 	GetShardOfAddressCalled func(ctx context.Context, bech32Address string) (uint32, error)
+	GetESDTTokenDataCalled  func(ctx context.Context, address core.AddressHandler, tokenIdentifier string, queryOptions api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error)
 }
 
 // GetNetworkConfig -
@@ -81,6 +83,15 @@ func (eps *ProxyStub) GetShardOfAddress(ctx context.Context, bech32Address strin
 	}
 
 	return 0, fmt.Errorf("not implemented")
+}
+
+// GetESDTTokenData -
+func (eps *ProxyStub) GetESDTTokenData(ctx context.Context, address core.AddressHandler, tokenIdentifier string, queryOptions api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error) {
+	if eps.GetESDTTokenDataCalled != nil {
+		return eps.GetESDTTokenDataCalled(ctx, address, tokenIdentifier, queryOptions)
+	}
+
+	return nil, fmt.Errorf("not implemented")
 }
 
 // IsInterfaceNil -

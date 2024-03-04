@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/data/api"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
@@ -123,6 +124,11 @@ func (mock *MultiversXChainMock) GetAccount(_ context.Context, address sdkCore.A
 	defer mock.mutState.Unlock()
 
 	return mock.accounts.getOrCreate(address), nil
+}
+
+// GetESDTTokenData -
+func (mock *MultiversXChainMock) GetESDTTokenData(_ context.Context, _ sdkCore.AddressHandler, _ string, _ api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error) {
+	return &data.ESDTFungibleTokenData{}, nil
 }
 
 // AddRelayer -
