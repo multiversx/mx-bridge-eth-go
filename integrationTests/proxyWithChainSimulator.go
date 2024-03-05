@@ -226,24 +226,43 @@ func (instance *proxyWithChainSimulator) DeploySC(ctx context.Context, wasmFileP
 
 // GetTransactionResult tries to get a transaction result. It may wait a few blocks
 func (instance *proxyWithChainSimulator) GetTransactionResult(ctx context.Context, hash string) (data.TransactionOnNetwork, error) {
-	txResult, errGet := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
-	if errGet == nil && txResult.Data.Transaction.Status == transaction.TxStatusSuccess.String() {
-		return txResult.Data.Transaction, nil
+	txResult, err := instance.getTxInfoWithResultsIfTxProcessingFinished(ctx, hash)
+	if err == nil && txResult != nil {
+		return *txResult, nil
 	}
 
 	// wait for tx to be done, in order to get the contract address
-	timeoutTimer := time.NewTimer(instance.roundDuration * 5)
+	timeoutTimer := time.NewTimer(instance.roundDuration * 20)
 	for {
 		select {
 		case <-time.After(instance.roundDuration):
-			txResult, errGet = instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
-			if errGet == nil && txResult.Data.Transaction.Status == transaction.TxStatusSuccess.String() {
-				return txResult.Data.Transaction, nil
+			txResult, err = instance.getTxInfoWithResultsIfTxProcessingFinished(ctx, hash)
+			if err == nil && txResult != nil {
+				return *txResult, nil
 			}
 		case <-timeoutTimer.C:
 			return data.TransactionOnNetwork{}, errors.New("timeout")
 		}
 	}
+}
+
+func (instance *proxyWithChainSimulator) getTxInfoWithResultsIfTxProcessingFinished(ctx context.Context, hash string) (*data.TransactionOnNetwork, error) {
+	txStatus, err := instance.proxyInstance.ProcessTransactionStatus(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	if txStatus != transaction.TxStatusSuccess {
+		return nil, nil
+	}
+
+	txResult, errGet := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
+	if errGet != nil {
+		return nil, err
+	}
+
+	return &txResult.Data.Transaction, nil
+
 }
 
 // ScCall will make the provided sc call
