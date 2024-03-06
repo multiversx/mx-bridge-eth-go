@@ -240,6 +240,9 @@ func (instance *proxyWithChainSimulator) GetTransactionResult(ctx context.Contex
 			if err == nil && txResult != nil {
 				return *txResult, nil
 			}
+			if err != nil {
+				return data.TransactionOnNetwork{}, err
+			}
 		case <-timeoutTimer.C:
 			return data.TransactionOnNetwork{}, errors.New("timeout")
 		}
@@ -252,8 +255,12 @@ func (instance *proxyWithChainSimulator) getTxInfoWithResultsIfTxProcessingFinis
 		return nil, err
 	}
 
-	if txStatus != transaction.TxStatusSuccess {
+	if txStatus == transaction.TxStatusPending {
 		return nil, nil
+	}
+
+	if txStatus != transaction.TxStatusSuccess {
+		log.Warn("something went wrong with the transaction", "hash", hash, "status", txStatus)
 	}
 
 	txResult, errGet := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
