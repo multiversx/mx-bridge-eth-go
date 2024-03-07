@@ -33,8 +33,11 @@ const (
 	signedFuncName                                            = "signed"
 	getAllStakedRelayersFuncName                              = "getAllStakedRelayers"
 	isPausedFuncName                                          = "isPaused"
-	isMintBurnAllowedFuncName                                 = "isMintBurnAllowed"
-	getAccumulatedBurnedTokensFuncName                        = "getAccumulatedBurnedTokens"
+	isMintBurnTokenFuncName                                   = "isMintBurnToken"
+	isNativeTokenFuncName                                     = "isNativeToken"
+	getTotalBalances                                          = "getTotalBalances"
+	getMintBalances                                           = "getMintBalances"
+	getBurnBalances                                           = "getBurnBalances"
 )
 
 // ArgsMXClientDataGetter is the arguments DTO used in the NewMXClientDataGetter constructor
@@ -456,16 +459,38 @@ func (dataGetter *mxClientDataGetter) IsPaused(ctx context.Context) (bool, error
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
-func (dataGetter *mxClientDataGetter) isMintBurnAllowed(ctx context.Context, token []byte) (bool, error) {
+func (dataGetter *mxClientDataGetter) isMintBurnToken(ctx context.Context, token []byte) (bool, error) {
 	builder := dataGetter.createSafeDefaultVmQueryBuilder()
-	builder.Function(isMintBurnAllowedFuncName).ArgBytes(token)
+	builder.Function(isMintBurnTokenFuncName).ArgBytes(token)
 
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
 
-func (dataGetter *mxClientDataGetter) getAccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error) {
+// isNativeToken returns true if the token is native
+func (dataGetter *mxClientDataGetter) isNativeToken(ctx context.Context, token []byte) (bool, error) {
 	builder := dataGetter.createSafeDefaultVmQueryBuilder()
-	builder.Function(getAccumulatedBurnedTokensFuncName).ArgBytes(token)
+	builder.Function(isNativeTokenFuncName).ArgBytes(token)
+
+	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
+}
+
+func (dataGetter *mxClientDataGetter) getTotalBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	builder := dataGetter.createSafeDefaultVmQueryBuilder()
+	builder.Function(getTotalBalances).ArgBytes(token)
+
+	return dataGetter.executeQueryBigIntFromBuilder(ctx, builder)
+}
+
+func (dataGetter *mxClientDataGetter) getMintBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	builder := dataGetter.createSafeDefaultVmQueryBuilder()
+	builder.Function(getMintBalances).ArgBytes(token)
+
+	return dataGetter.executeQueryBigIntFromBuilder(ctx, builder)
+}
+
+func (dataGetter *mxClientDataGetter) getBurnBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	builder := dataGetter.createSafeDefaultVmQueryBuilder()
+	builder.Function(getBurnBalances).ArgBytes(token)
 
 	return dataGetter.executeQueryBigIntFromBuilder(ctx, builder)
 }

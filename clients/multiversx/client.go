@@ -415,14 +415,29 @@ func (c *client) checkIsPaused(ctx context.Context) error {
 	return nil
 }
 
-// IsMintBurnAllowed returns true if the provided token is whitelisted for mint/burn operations
-func (c *client) IsMintBurnAllowed(ctx context.Context, token []byte) (bool, error) {
-	return c.isMintBurnAllowed(ctx, token)
+// IsMintBurnToken returns true if the provided token is whitelisted for mint/burn operations
+func (c *client) IsMintBurnToken(ctx context.Context, token []byte) (bool, error) {
+	return c.isMintBurnToken(ctx, token)
 }
 
-// AccumulatedBurnedTokens returns the accumulated burned tokens
-func (c *client) AccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error) {
-	return c.getAccumulatedBurnedTokens(ctx, token)
+// IsNativeToken returns true if the provided token is native
+func (c *client) IsNativeToken(ctx context.Context, token []byte) (bool, error) {
+	return c.isNativeToken(ctx, token)
+}
+
+// TotalBalances returns the total stored tokens
+func (c *client) TotalBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	return c.getTotalBalances(ctx, token)
+}
+
+// MintBalances returns the minted tokens
+func (c *client) MintBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	return c.getMintBalances(ctx, token)
+}
+
+// BurnBalances returns the burned tokens
+func (c *client) BurnBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	return c.getBurnBalances(ctx, token)
 }
 
 // CheckClientAvailability will check the client availability and will set the metric accordingly

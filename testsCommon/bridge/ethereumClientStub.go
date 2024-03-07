@@ -23,8 +23,12 @@ type EthereumClientStub struct {
 	IsQuorumReachedCalled                  func(ctx context.Context, msgHash common.Hash) (bool, error)
 	GetBatchSCMetadataCalled               func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error)
 	CheckRequiredBalanceCalled             func(ctx context.Context, erc20Address common.Address, value *big.Int) error
-	TokenMintedBalancesCalled              func(ctx context.Context, token common.Address) (*big.Int, error)
-	WhitelistedTokensMintBurnCalled        func(ctx context.Context, token common.Address) (bool, error)
+	TotalBalancesCalled                    func(ctx context.Context, account common.Address) (*big.Int, error)
+	MintBalancesCalled                     func(ctx context.Context, account common.Address) (*big.Int, error)
+	BurnBalancesCalled                     func(ctx context.Context, account common.Address) (*big.Int, error)
+	MintBurnTokensCalled                   func(ctx context.Context, account common.Address) (bool, error)
+	NativeTokensCalled                     func(ctx context.Context, account common.Address) (bool, error)
+	WhiteListedTokensCalled                func(ctx context.Context, account common.Address) (bool, error)
 }
 
 // GetBatch -
@@ -124,19 +128,55 @@ func (stub *EthereumClientStub) CheckRequiredBalance(ctx context.Context, erc20A
 	return nil
 }
 
-// TokenMintedBalances -
-func (stub *EthereumClientStub) TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error) {
-	if stub.TokenMintedBalancesCalled != nil {
-		return stub.TokenMintedBalancesCalled(ctx, token)
+// TotalBalances -
+func (stub *EthereumClientStub) TotalBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+	if stub.TotalBalancesCalled != nil {
+		return stub.TotalBalancesCalled(ctx, account)
 	}
 
-	return nil, nil
+	return big.NewInt(0), nil
 }
 
-// WhitelistedTokensMintBurn -
-func (stub *EthereumClientStub) WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error) {
-	if stub.WhitelistedTokensMintBurnCalled != nil {
-		return stub.WhitelistedTokensMintBurnCalled(ctx, token)
+// MintBalances -
+func (stub *EthereumClientStub) MintBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+	if stub.MintBalancesCalled != nil {
+		return stub.MintBalancesCalled(ctx, account)
+	}
+
+	return big.NewInt(0), nil
+}
+
+// BurnBalances -
+func (stub *EthereumClientStub) BurnBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+	if stub.BurnBalancesCalled != nil {
+		return stub.BurnBalancesCalled(ctx, account)
+	}
+
+	return big.NewInt(0), nil
+}
+
+// MintBurnTokens -
+func (stub *EthereumClientStub) MintBurnTokens(ctx context.Context, account common.Address) (bool, error) {
+	if stub.MintBurnTokensCalled != nil {
+		return stub.MintBurnTokensCalled(ctx, account)
+	}
+
+	return false, nil
+}
+
+// NativeTokens -
+func (stub *EthereumClientStub) NativeTokens(ctx context.Context, account common.Address) (bool, error) {
+	if stub.NativeTokensCalled != nil {
+		return stub.NativeTokensCalled(ctx, account)
+	}
+
+	return false, nil
+}
+
+// WhitelistedTokens -
+func (stub *EthereumClientStub) WhitelistedTokens(ctx context.Context, account common.Address) (bool, error) {
+	if stub.WhiteListedTokensCalled != nil {
+		return stub.WhiteListedTokensCalled(ctx, account)
 	}
 
 	return false, nil

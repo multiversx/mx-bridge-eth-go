@@ -141,16 +141,40 @@ func (wrapper *ethereumChainWrapper) BalanceAt(ctx context.Context, account comm
 	return wrapper.blockchainClient.BalanceAt(ctx, account, blockNumber)
 }
 
-// TokenMintedBalances retuns the minted balance of the given token
-func (wrapper *ethereumChainWrapper) TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+// TotalBalances returns the total balance of the given token
+func (wrapper *ethereumChainWrapper) TotalBalances(ctx context.Context, token common.Address) (*big.Int, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
-	return wrapper.safeContract.TokenMintedBalances(&bind.CallOpts{Context: ctx}, token)
+	return wrapper.safeContract.TotalBalances(&bind.CallOpts{Context: ctx}, token)
 }
 
-// WhitelistedTokensMintBurn returns true if the token is whitelisted as a mintBurn token
-func (wrapper *ethereumChainWrapper) WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error) {
+// MintBalances returns the mint balance of the given token
+func (wrapper *ethereumChainWrapper) MintBalances(ctx context.Context, token common.Address) (*big.Int, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
-	return wrapper.safeContract.WhitelistedTokensMintBurn(&bind.CallOpts{Context: ctx}, token)
+	return wrapper.safeContract.MintBalances(&bind.CallOpts{Context: ctx}, token)
+}
+
+// BurnBalances returns the burn balance of the given token
+func (wrapper *ethereumChainWrapper) BurnBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.BurnBalances(&bind.CallOpts{Context: ctx}, token)
+}
+
+// MintBurnTokens returns true if the token is a mintBurn token
+func (wrapper *ethereumChainWrapper) MintBurnTokens(ctx context.Context, token common.Address) (bool, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.MintBurnTokens(&bind.CallOpts{Context: ctx}, token)
+}
+
+// NativeTokens returns true if the token is a native token
+func (wrapper *ethereumChainWrapper) NativeTokens(ctx context.Context, token common.Address) (bool, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.NativeTokens(&bind.CallOpts{Context: ctx}, token)
+}
+
+// WhitelistedTokens returns true if the token is a native token
+func (wrapper *ethereumChainWrapper) WhitelistedTokens(ctx context.Context, token common.Address) (bool, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.WhitelistedTokens(&bind.CallOpts{Context: ctx}, token)
 }
 
 // IsPaused returns true if the multisig contract is paused

@@ -1750,7 +1750,7 @@ func TestBridgeExecutor_CheckAvailableTokens(t *testing.T) {
 
 		accumulatedBurnedTokensCalled := false
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
-			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+			IsMintBurnTokenCalled: func(ctx context.Context, token []byte) (bool, error) {
 				return true, nil
 			},
 			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
@@ -1792,7 +1792,7 @@ func TestBridgeExecutor_CheckAvailableTokens(t *testing.T) {
 
 		accumulatedBurnedTokensCalled := false
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
-			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+			IsMintBurnTokenCalled: func(ctx context.Context, token []byte) (bool, error) {
 				return true, nil
 			},
 			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
@@ -1834,7 +1834,7 @@ func TestBridgeExecutor_CheckAvailableTokens(t *testing.T) {
 
 		accumulatedBurnedTokensCalled := false
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
-			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
+			IsMintBurnTokenCalled: func(ctx context.Context, token []byte) (bool, error) {
 				return true, nil
 			},
 			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {

@@ -41,8 +41,11 @@ var ErrNilSignaturesHolder = errors.New("nil signatures holder")
 // ErrNilBatchValidator signals that a nil batch validator was provided
 var ErrNilBatchValidator = errors.New("nil batch validator")
 
-// ErrInvalidSetupMintBurnToken signals that an invalid setup mint burn token was provided
-var ErrInvalidSetupMintBurnToken = errors.New("invalid setup mint burn token")
+// ErrInvalidSetup signals that an invalid setup mint burn token was provided
+var ErrInvalidSetup = errors.New("invalid setup")
 
-// ErrMintBurnBalance signals that the mint burn balances are not expected
-var ErrMintBurnBalance = errors.New("mint burn balances are not expected")
+// ErrInvalidDirection signals that an invalid direction was provided
+var ErrInvalidDirection = errors.New("invalid direction")
+
+// ErrBalanceMismatch signals that the balances are not expected
+var ErrBalanceMismatch = errors.New("balance mismatch")
