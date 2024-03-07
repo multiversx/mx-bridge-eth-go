@@ -10,11 +10,16 @@ import (
 
 // tokensRegistryMock is not concurrent safe
 type tokensRegistryMock struct {
-	ethToMultiversX     map[common.Address]string
-	multiversXToEth     map[string]common.Address
-	nativeTokensBalance map[string]*big.Int
+	ethToMultiversX map[common.Address]string
+	multiversXToEth map[string]common.Address
+	mintBurnTokens  map[string]bool
+	nativeTokens    map[string]bool
+	totalBalances   map[string]*big.Int
+	mintBalances    map[string]*big.Int
+	burnBalances    map[string]*big.Int
 }
 
+// TODO: do this
 func (mock *tokensRegistryMock) addTokensPair(erc20Address common.Address, ticker string, isNativeToken bool, nativeBalance *big.Int) {
 	integrationTests.Log.Info("added tokens pair", "ticker", ticker,
 		"erc20 address", erc20Address.String(), "is native token", isNativeToken, "native balance", nativeBalance)
@@ -53,12 +58,26 @@ func (mock *tokensRegistryMock) getErc20Address(ticker string) common.Address {
 	return addr
 }
 
-func (mock *tokensRegistryMock) isNativeToken(ticker string) bool {
-	_, found := mock.nativeTokensBalance[ticker]
+func (mock *tokensRegistryMock) isMintBurnToken(ticker string) bool {
+	_, found := mock.mintBurnTokens[ticker]
 
 	return found
 }
 
-func (mock *tokensRegistryMock) getAccumulatedBurn(ticker string) *big.Int {
-	return mock.nativeTokensBalance[ticker]
+func (mock *tokensRegistryMock) isNativeToken(ticker string) bool {
+	_, found := mock.nativeTokens[ticker]
+
+	return found
+}
+
+func (mock *tokensRegistryMock) getTotalBalances(ticker string) *big.Int {
+	return mock.totalBalances[ticker]
+}
+
+func (mock *tokensRegistryMock) getMintBalances(ticker string) *big.Int {
+	return mock.mintBalances[ticker]
+}
+
+func (mock *tokensRegistryMock) getBurnBalances(ticker string) *big.Int {
+	return mock.burnBalances[ticker]
 }
