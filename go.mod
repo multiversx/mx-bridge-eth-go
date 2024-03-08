@@ -8,12 +8,12 @@ require (
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-contrib/pprof v1.4.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/multiversx/mx-chain-communication-go v1.0.12
-	github.com/multiversx/mx-chain-core-go v1.2.18
-	github.com/multiversx/mx-chain-crypto-go v1.2.9
-	github.com/multiversx/mx-chain-go v1.6.7
-	github.com/multiversx/mx-chain-logger-go v1.0.13
-	github.com/multiversx/mx-sdk-go v1.3.11
+	github.com/multiversx/mx-chain-communication-go v1.0.13-0.20240126121117-627adccf10ad
+	github.com/multiversx/mx-chain-core-go v1.2.19-0.20240222081523-011c96ab2548
+	github.com/multiversx/mx-chain-crypto-go v1.2.10-0.20231206065052-38843c1f1479
+	github.com/multiversx/mx-chain-go v1.7.7-0.20240308085429-629ebc91b1d7
+	github.com/multiversx/mx-chain-logger-go v1.0.14-0.20240129144507-d00e967c890c
+	github.com/multiversx/mx-sdk-go v1.3.12-0.20240308091713-454f8de93b5b
 	github.com/pelletier/go-toml v1.9.3
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.10
@@ -122,8 +122,8 @@ require (
 	github.com/multiformats/go-multistream v0.4.1 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/multiversx/concurrent-map v0.1.4 // indirect
-	github.com/multiversx/mx-chain-storage-go v1.0.14 // indirect
-	github.com/multiversx/mx-chain-vm-common-go v1.5.9 // indirect
+	github.com/multiversx/mx-chain-storage-go v1.0.15-0.20240129144933-b1c0d642d7f8 // indirect
+	github.com/multiversx/mx-chain-vm-common-go v1.5.12-0.20240305123516-2231c71162a2 // indirect
 	github.com/onsi/ginkgo/v2 v2.9.7 // indirect
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
