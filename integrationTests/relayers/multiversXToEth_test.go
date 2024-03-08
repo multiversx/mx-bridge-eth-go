@@ -46,6 +46,9 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return expectedStatuses
 	}
+	ethereumChainMock.BalanceAtCalled = func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
+		return big.NewInt(10000000), nil
+	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
 		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker, false, nil)

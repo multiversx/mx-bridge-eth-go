@@ -2,12 +2,14 @@ package disabled
 
 import "math/big"
 
+const defaultDisabledGasPrice = 10
+
 // DisabledGasStation implementation in case no gasStation is used
 type DisabledGasStation struct{}
 
-// GetCurrentGasPrice returns nil,nil and will cause the gas price to be determined automatically
+// GetCurrentGasPrice returns a default value
 func (dgs *DisabledGasStation) GetCurrentGasPrice() (*big.Int, error) {
-	return big.NewInt(0), nil
+	return big.NewInt(defaultDisabledGasPrice), nil
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

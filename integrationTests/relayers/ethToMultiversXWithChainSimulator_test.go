@@ -144,6 +144,13 @@ type keysHolder struct {
 func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *testing.T) {
 	t.Skip("this is a long test")
 
+	defer func() {
+		r := recover()
+		if r != nil {
+			require.Fail(t, "should have not panicked")
+		}
+	}()
+
 	// create a test context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -188,12 +195,8 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 
 	ethChainID, _ := simulatedETHChainWrapper.ChainID(ctx)
 
-	// deposit on ETH safe
-	auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, ethChainID)
-	tx, err := ethSafeContract.Deposit(auth, ethGenericTokenAddress, mintAmount, receiverAddress.AddressSlice())
-	require.NoError(t, err)
-	simulatedETHChain.Commit()
-	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+	// create a pending batch on ethereum
+	createBatchOnEthereum(t, ctx, simulatedETHChain, ethGenericTokenAddress, ethGenericTokenContract, ethSafeAddress, ethSafeContract, ethChainID, receiverAddress)
 
 	// read the owner keys
 	ownerSK, ownerPK, err := core.LoadSkPkFromPemFile(ownerPem, 0)
@@ -257,6 +260,9 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 				log.Info("MVX<->ETH transfers done")
 				return
 			}
+
+			// commit blocks in order to execute incoming txs from relayers
+			simulatedETHChain.Commit()
 
 		case <-interrupt:
 			require.Fail(t, "signal interrupted")
@@ -967,7 +973,7 @@ func createEthereumSimulatorAndDeployContracts(
 		ethDepositorAddr: {Balance: new(big.Int).Lsh(big.NewInt(1), 100)},
 	}
 	for _, relayerKeys := range relayersKeys {
-		addr[relayerKeys.ethAddress] = ethCore.GenesisAccount{Balance: new(big.Int).Lsh(big.NewInt(1), 10)}
+		addr[relayerKeys.ethAddress] = ethCore.GenesisAccount{Balance: new(big.Int).Lsh(big.NewInt(1), 100)}
 	}
 	alloc := ethCore.GenesisAlloc(addr)
 	simulatedETHChain := backends.NewSimulatedBackend(alloc, 9000000)
@@ -983,8 +989,7 @@ func createEthereumSimulatorAndDeployContracts(
 	// deploy bridge
 	ethRelayersAddresses := make([]common.Address, 0, len(relayersKeys))
 	for _, relayerKeys := range relayersKeys {
-		common.BytesToAddress(relayerKeys.sk)
-		ethRelayersAddresses = append(ethRelayersAddresses, common.BytesToAddress(relayerKeys.sk))
+		ethRelayersAddresses = append(ethRelayersAddresses, relayerKeys.ethAddress)
 	}
 	quorumInt, _ := big.NewInt(0).SetString(quorum, 10)
 	ethBridgeAddress := deployETHContract(t, ctx, simulatedETHChain, ethChainID, bridgeABI, bridgeBytecode, ethRelayersAddresses, quorumInt, ethSafeAddress)
@@ -1040,7 +1045,15 @@ func createEthereumSimulatorAndDeployContracts(
 	return simulatedETHChain, simulatedETHChainWrapper, ethSafeContract, ethSafeAddress, ethBridgeContract, ethBridgeAddress, ethGenericTokenContract, ethGenericTokenAddress
 }
 
-func deployETHContract(t *testing.T, ctx context.Context, simulatedETHChain *backends.SimulatedBackend, chainID *big.Int, abiFile string, bytecodeFile string, params ...interface{}) common.Address {
+func deployETHContract(
+	t *testing.T,
+	ctx context.Context,
+	simulatedETHChain *backends.SimulatedBackend,
+	chainID *big.Int,
+	abiFile string,
+	bytecodeFile string,
+	params ...interface{},
+) common.Address {
 	abiBytes, err := os.ReadFile(abiFile)
 	require.NoError(t, err)
 	parsed, err := abi.JSON(bytes.NewReader(abiBytes))
@@ -1059,6 +1072,38 @@ func deployETHContract(t *testing.T, ctx context.Context, simulatedETHChain *bac
 	log.Info("deployed eth contract", "from file", bytecodeFile, "address", contractAddress.Hex())
 
 	return contractAddress
+}
+
+func createBatchOnEthereum(
+	t *testing.T,
+	ctx context.Context,
+	simulatedETHChain *backends.SimulatedBackend,
+	ethGenericTokenAddress common.Address,
+	ethGenericTokenContract *contract.GenericERC20,
+	ethSafeAddress common.Address,
+	ethSafeContract *contract.ERC20Safe,
+	ethChainID *big.Int,
+	mvxReceiverAddress sdkCore.AddressHandler,
+) {
+	// add allowance for the sender
+	auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, ethChainID)
+	tx, err := ethGenericTokenContract.Approve(auth, ethSafeAddress, mintAmount)
+	require.NoError(t, err)
+	simulatedETHChain.Commit()
+	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+
+	// deposit on ETH safe
+	auth, _ = bind.NewKeyedTransactorWithChainID(ethDepositorSK, ethChainID)
+	tx, err = ethSafeContract.Deposit(auth, ethGenericTokenAddress, mintAmount, mvxReceiverAddress.AddressSlice())
+	require.NoError(t, err)
+	simulatedETHChain.Commit()
+	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+
+	// wait until batch is settled
+	batchSettleLimit, _ := ethSafeContract.BatchSettleLimit(nil)
+	for i := uint8(0); i < batchSettleLimit+1; i++ {
+		simulatedETHChain.Commit()
+	}
 }
 
 func checkEthTxResult(t *testing.T, ctx context.Context, simulatedETHChain *backends.SimulatedBackend, hash common.Hash) {
