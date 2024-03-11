@@ -116,7 +116,7 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
-	value1 := big.NewInt(1000)
+	value1 := big.NewInt(200000000)
 
 	// read the receiver keys
 	receiverSK, receiverPK, err := core.LoadSkPkFromPemFile(mvxReceiverPem, 0)
@@ -198,7 +198,7 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 	safeAddress, multisigAddress, wrapperAddress, aggregatorAddress := executeContractsTxs(t, ctx, multiversXProxyWithChainSimulator, relayersKeys, ownerKeys, receiverKeys)
 
 	// issue and whitelist token
-	newUniversalToken, newChainSpecificToken := issueAndWhitelistToken(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, relayersKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(token1Erc20.Bytes()))
+	newUniversalToken, newChainSpecificToken := issueAndWhitelistToken(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(token1Erc20.Bytes()))
 
 	// start relayers
 	relayers := startRelayers(t, numRelayers, multiversXProxyWithChainSimulator, ethereumChainMock, safeContractEthAddress, erc20ContractsHolder, safeAddress, multisigAddress)
@@ -361,17 +361,14 @@ func executeContractsTxs(
 	time.Sleep(time.Duration(roundDurationInMs*(roundsPerEpoch+2)) * time.Millisecond)
 
 	// deploy aggregator
-	relayersStakeValue, _ := big.NewInt(0).SetString(minRelayerStake, 10)
+	stakeValue, _ := big.NewInt(0).SetString(minRelayerStake, 10)
 	aggregatorDeployParams := []string{
 		hex.EncodeToString([]byte("EGLD")),
-		hex.EncodeToString(relayersStakeValue.Bytes()),
+		hex.EncodeToString(stakeValue.Bytes()),
 		"01",
-		quorum,
-		quorum,
-	}
-	aggregatorDeployParams = append(aggregatorDeployParams, getHexAddress(t, ownerKeys.pk))
-	for _, relayerKeys := range relayersKeys {
-		aggregatorDeployParams = append(aggregatorDeployParams, getHexAddress(t, relayerKeys.pk))
+		"01",
+		"01",
+		getHexAddress(t, ownerKeys.pk),
 	}
 
 	aggregatorAddress, err := multiversXProxyWithChainSimulator.DeploySC(
@@ -588,8 +585,7 @@ func executeContractsTxs(
 	stakeAddressesOnContract(t, ctx, multiversXProxyWithChainSimulator, multisigAddress, relayersKeys)
 
 	// stake relayers on price aggregator
-	priceAggregatorFeeders := append(relayersKeys, ownerKeys)
-	stakeAddressesOnContract(t, ctx, multiversXProxyWithChainSimulator, aggregatorAddress, priceAggregatorFeeders)
+	stakeAddressesOnContract(t, ctx, multiversXProxyWithChainSimulator, aggregatorAddress, []keysHolder{ownerKeys})
 
 	// unpause multisig
 	hash = unpauseContract(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, multisigAddress, []byte(unpause))
@@ -641,7 +637,6 @@ func issueAndWhitelistToken(
 	ctx context.Context,
 	multiversXProxyWithChainSimulator proxyWithChainSimulator,
 	ownerKeys keysHolder,
-	relayersKeys []keysHolder,
 	wrapperAddress string,
 	safeAddress string,
 	multisigAddress string,
@@ -787,7 +782,7 @@ func issueAndWhitelistToken(
 	log.Info("whitelist token tx executed", "hash", hash, "status", txResult.Status)
 
 	// submit aggregator batch
-	submitAggregatorBatch(t, ctx, multiversXProxyWithChainSimulator, aggregatorAddress, relayersKeys, ownerKeys)
+	submitAggregatorBatch(t, ctx, multiversXProxyWithChainSimulator, aggregatorAddress, ownerKeys)
 
 	// safe set max bridge amount for token
 	maxBridgedAmountForTokenInt, _ := big.NewInt(0).SetString(maxBridgedAmountForToken, 10)
@@ -917,23 +912,21 @@ func sendMVXToEthTransaction(
 	return hash
 }
 
-func submitAggregatorBatch(t *testing.T, ctx context.Context, multiversXProxyWithChainSimulator proxyWithChainSimulator, aggregatorAddress string, relayersKeys []keysHolder, ownerKeys keysHolder) {
+func submitAggregatorBatch(t *testing.T, ctx context.Context, multiversXProxyWithChainSimulator proxyWithChainSimulator, aggregatorAddress string, ownerKeys keysHolder) {
 	feeInt, _ := big.NewInt(0).SetString(fee, 10)
-	allAggregatorFeedersKeys := append(relayersKeys, ownerKeys)
 	timestamp := big.NewInt(time.Now().Unix())
-	for _, aggregatorFeederKeys := range allAggregatorFeedersKeys {
-		hash, err := multiversXProxyWithChainSimulator.ScCall(
-			ctx,
-			aggregatorFeederKeys.pk,
-			aggregatorFeederKeys.sk,
-			aggregatorAddress,
-			zeroValue,
-			submitBatch,
-			[]string{hex.EncodeToString([]byte(gwei)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), hex.EncodeToString(timestamp.Bytes()), hex.EncodeToString(feeInt.Bytes()), numOfDecimalsChainSpecific})
-		require.NoError(t, err)
-		txResult, err := multiversXProxyWithChainSimulator.GetTransactionResult(ctx, hash)
-		require.NoError(t, err)
+	hash, err := multiversXProxyWithChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		aggregatorAddress,
+		zeroValue,
+		submitBatch,
+		[]string{hex.EncodeToString([]byte(gwei)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), hex.EncodeToString(timestamp.Bytes()), hex.EncodeToString(feeInt.Bytes()), numOfDecimalsChainSpecific})
+	require.NoError(t, err)
+	txResult, err := multiversXProxyWithChainSimulator.GetTransactionResult(ctx, hash)
+	require.NoError(t, err)
 
-		log.Info("submit aggregator batch tx executed for relayer", "hash", hash, "relayer", aggregatorFeederKeys.pk, "status", txResult.Status)
-	}
+	log.Info("submit aggregator batch tx executed", "hash", hash, "submitter", ownerKeys.pk, "status", txResult.Status)
+
 }
