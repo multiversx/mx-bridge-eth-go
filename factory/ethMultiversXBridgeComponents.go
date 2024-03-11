@@ -659,7 +659,9 @@ func (components *ethMultiversXBridgeComponents) Start() error {
 		return err
 	}
 
-	go components.startBroadcastJoinRetriesLoop()
+	var ctx context.Context
+	ctx, components.cancelFunc = context.WithCancel(context.Background())
+	go components.startBroadcastJoinRetriesLoop(ctx)
 
 	return nil
 }
@@ -772,12 +774,10 @@ func (components *ethMultiversXBridgeComponents) createAntifloodComponents(antif
 	return antiFloodComponents, nil
 }
 
-func (components *ethMultiversXBridgeComponents) startBroadcastJoinRetriesLoop() {
+func (components *ethMultiversXBridgeComponents) startBroadcastJoinRetriesLoop(ctx context.Context) {
 	broadcastTimer := time.NewTimer(components.timeBeforeRepeatJoin)
 	defer broadcastTimer.Stop()
 
-	var ctx context.Context
-	ctx, components.cancelFunc = context.WithCancel(context.Background())
 	for {
 		broadcastTimer.Reset(components.timeBeforeRepeatJoin)
 
