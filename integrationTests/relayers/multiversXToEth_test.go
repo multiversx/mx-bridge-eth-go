@@ -128,6 +128,9 @@ func testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearIn
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
 		return expectedStatuses
 	}
+	ethereumChainMock.BalanceAtCalled = func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
+		return big.NewInt(10000000), nil
+	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
 		var nativeBalanceValue *big.Int
