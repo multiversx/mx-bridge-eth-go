@@ -104,8 +104,8 @@ const (
 	esdtSafeSetMaxBridgedAmountForToken          = "esdtSafeSetMaxBridgedAmountForToken"
 	multiTransferEsdtSetMaxBridgedAmountForToken = "multiTransferEsdtSetMaxBridgedAmountForToken"
 	gwei                                         = "GWEI"
-	fee                                          = "50000000"
-	maxBridgedAmountForToken                     = "50000000000"
+	fee                                          = "50"
+	maxBridgedAmountForToken                     = "500000"
 	createTransactionParam                       = "createTransaction"
 	unwrapToken                                  = "unwrapToken"
 	setPairDecimals                              = "setPairDecimals"
@@ -113,13 +113,14 @@ const (
 	ethTokenName                                 = "ETHTOKEN"
 	ethTokenSymbol                               = "ETHT"
 	ethMinAmountAllowedToTransfer                = 25
-	ethMaxAmountAllowedToTransfer                = 10000
+	ethMaxAmountAllowedToTransfer                = 500000
 )
 
 var (
 	ethOwnerSK, _     = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	ethDepositorSK, _ = crypto.HexToECDSA("9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1")
-	mintAmount        = big.NewInt(1000)
+	mintAmount        = big.NewInt(20000)
+	feeInt, _         = big.NewInt(0).SetString(fee, 10)
 )
 
 type proxyWithChainSimulator interface {
@@ -221,7 +222,7 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 	safeAddress, multisigAddress, wrapperAddress, aggregatorAddress := executeContractsTxs(t, ctx, multiversXProxyWithChainSimulator, relayersKeys, ownerKeys, receiverKeys)
 
 	// issue and whitelist token
-	newUniversalToken, newChainSpecificToken := issueAndWhitelistToken(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, relayersKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(ethGenericTokenAddress.Bytes()))
+	newUniversalToken, newChainSpecificToken := issueAndWhitelistToken(t, ctx, multiversXProxyWithChainSimulator, ownerKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(ethGenericTokenAddress.Bytes()))
 
 	// start relayers
 	relayers := startRelayers(t, numRelayers, multiversXProxyWithChainSimulator, ethChainWrapper, ethSafeAddress, erc20ContractsHolder, safeAddress, multisigAddress)
@@ -237,8 +238,12 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 	ethToMVXDone := false
 	mvxToETHDone := false
 
+	safeAddr, err := data.NewAddressFromBech32String(safeAddress)
+	require.NoError(t, err)
+
 	// send half of the amount back to ETH
 	valueToSendFromMVX := big.NewInt(0).Div(mintAmount, big.NewInt(2))
+	expectedFinalValueOnETH := big.NewInt(0).Sub(valueToSendFromMVX, feeInt)
 	for {
 		timerBetweenBalanceChecks.Reset(roundDuration)
 		select {
@@ -251,8 +256,9 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 				sendMVXToEthTransaction(t, ctx, multiversXProxyWithChainSimulator, valueToSendFromMVX.Bytes(), newUniversalToken, newChainSpecificToken, receiverKeys, safeAddress, wrapperAddress, ethOwnerAddr.Bytes())
 			}
 
-			isTransferDoneFromMVX := checkETHStatus(t, ethGenericTokenContract, ethOwnerAddr, valueToSendFromMVX.Uint64())
-			if !mvxToETHDone && isTransferDoneFromMVX {
+			isTransferDoneFromMVX := checkETHStatus(t, ethGenericTokenContract, ethOwnerAddr, expectedFinalValueOnETH.Uint64())
+			safeSavedFee := checkESDTBalance(t, ctx, multiversXProxyWithChainSimulator, safeAddr, newChainSpecificToken, feeInt.String(), false)
+			if !mvxToETHDone && isTransferDoneFromMVX && safeSavedFee {
 				mvxToETHDone = true
 			}
 
@@ -936,7 +942,6 @@ func sendMVXToEthTransaction(
 }
 
 func submitAggregatorBatch(t *testing.T, ctx context.Context, multiversXProxyWithChainSimulator proxyWithChainSimulator, aggregatorAddress string, ownerKeys keysHolder) {
-	feeInt, _ := big.NewInt(0).SetString(fee, 10)
 	timestamp := big.NewInt(time.Now().Unix())
 	hash, err := multiversXProxyWithChainSimulator.ScCall(
 		ctx,
