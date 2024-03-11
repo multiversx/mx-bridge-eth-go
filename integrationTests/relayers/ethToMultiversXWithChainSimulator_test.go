@@ -32,7 +32,6 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-bridge-eth-go/status"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
-	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-go/testscommon/statusHandler"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
@@ -206,7 +205,12 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 		pk: ownerPK,
 		sk: ownerSK,
 	}
-	erc20ContractsHolder := createMockErc20ContractsHolder([]common.Address{ethGenericTokenAddress}, ethSafeAddress, []*big.Int{mintAmount})
+
+	erc20ContractsHolder, err := ethereum.NewErc20SafeContractsHolder(ethereum.ArgsErc20SafeContractsHolder{
+		EthClient:              simulatedETHChain,
+		EthClientStatusHandler: &testsCommon.StatusHandlerStub{},
+	})
+
 	ethChainWrapper, err := wrappers.NewEthereumChainWrapper(wrappers.ArgsEthereumChainWrapper{
 		StatusHandler:    &testsCommon.StatusHandlerStub{},
 		MultiSigContract: ethBridgeContract,
@@ -312,7 +316,7 @@ func startRelayers(
 	multiversXProxyWithChainSimulator proxyWithChainSimulator,
 	ethereumChain ethereum.ClientWrapper,
 	safeContractEthAddress common.Address,
-	erc20ContractsHolder *bridge.ERC20ContractsHolderStub,
+	erc20ContractsHolder ethereum.Erc20ContractsHolder,
 	safeAddress string,
 	multisigAddress string,
 ) []bridgeComponents {
