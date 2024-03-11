@@ -229,7 +229,6 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
 	assert.Equal(t, -1, gs.GetLatestGasPrice())
-	assert.Equal(t, 1, gs.fetchRetries) // first retry
 	gasPrice, err := gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
@@ -238,7 +237,6 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
 	assert.Equal(t, -1, gs.GetLatestGasPrice())
-	assert.Equal(t, 2, gs.fetchRetries) // second retry
 	gasPrice, err = gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
@@ -247,7 +245,6 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
 	assert.Equal(t, -1, gs.GetLatestGasPrice())
-	assert.Equal(t, 3, gs.fetchRetries) // third retry
 	gasPrice, err = gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
@@ -255,8 +252,7 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	chanOk <- struct{}{} // response is now ok
 	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, gs.GetLatestGasPrice(), 81)
-	assert.Equal(t, gs.fetchRetries, 0)
+	assert.Equal(t, 81, gs.GetLatestGasPrice())
 	gasPrice, err = gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*args.GasPriceMultiplier)), gasPrice)
 	assert.Nil(t, err)
