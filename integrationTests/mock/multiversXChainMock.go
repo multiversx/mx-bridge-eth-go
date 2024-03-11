@@ -136,6 +136,11 @@ func (mock *MultiversXChainMock) GetTransactionInfoWithResults(_ context.Context
 	return &data.TransactionInfo{}, nil
 }
 
+// ProcessTransactionStatus -
+func (mock *MultiversXChainMock) ProcessTransactionStatus(_ context.Context, _ string) (transaction.TxStatus, error) {
+	return "", nil
+}
+
 // AddRelayer -
 func (mock *MultiversXChainMock) AddRelayer(address sdkCore.AddressHandler) {
 	mock.mutState.Lock()

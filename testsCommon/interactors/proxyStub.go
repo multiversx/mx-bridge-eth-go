@@ -21,6 +21,7 @@ type ProxyStub struct {
 	GetShardOfAddressCalled             func(ctx context.Context, bech32Address string) (uint32, error)
 	GetESDTTokenDataCalled              func(ctx context.Context, address core.AddressHandler, tokenIdentifier string, queryOptions api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error)
 	GetTransactionInfoWithResultsCalled func(_ context.Context, _ string) (*data.TransactionInfo, error)
+	ProcessTransactionStatusCalled      func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error)
 }
 
 // GetNetworkConfig -
@@ -102,6 +103,15 @@ func (eps *ProxyStub) GetTransactionInfoWithResults(ctx context.Context, hash st
 	}
 
 	return nil, fmt.Errorf("not implemented")
+}
+
+// ProcessTransactionStatus -
+func (eps *ProxyStub) ProcessTransactionStatus(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+	if eps.ProcessTransactionStatusCalled != nil {
+		return eps.ProcessTransactionStatusCalled(ctx, hexTxHash)
+	}
+
+	return "", nil
 }
 
 // IsInterfaceNil -

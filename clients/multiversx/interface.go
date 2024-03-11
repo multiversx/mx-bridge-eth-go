@@ -21,6 +21,7 @@ type Proxy interface {
 	GetShardOfAddress(ctx context.Context, bech32Address string) (uint32, error)
 	GetESDTTokenData(ctx context.Context, address core.AddressHandler, tokenIdentifier string, queryOptions api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error)
 	GetTransactionInfoWithResults(ctx context.Context, hash string) (*data.TransactionInfo, error)
+	ProcessTransactionStatus(ctx context.Context, hexTxHash string) (transaction.TxStatus, error)
 	IsInterfaceNil() bool
 }
 
