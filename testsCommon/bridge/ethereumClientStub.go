@@ -134,7 +134,7 @@ func (stub *EthereumClientStub) TotalBalances(ctx context.Context, account commo
 		return stub.TotalBalancesCalled(ctx, account)
 	}
 
-	return big.NewInt(0), errNotImplemented
+	return nil, errNotImplemented
 }
 
 // MintBalances -
@@ -143,7 +143,7 @@ func (stub *EthereumClientStub) MintBalances(ctx context.Context, account common
 		return stub.MintBalancesCalled(ctx, account)
 	}
 
-	return big.NewInt(0), errNotImplemented
+	return nil, errNotImplemented
 }
 
 // BurnBalances -
@@ -152,7 +152,7 @@ func (stub *EthereumClientStub) BurnBalances(ctx context.Context, account common
 		return stub.BurnBalancesCalled(ctx, account)
 	}
 
-	return big.NewInt(0), errNotImplemented
+	return nil, errNotImplemented
 }
 
 // MintBurnTokens -

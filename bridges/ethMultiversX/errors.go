@@ -49,3 +49,6 @@ var ErrInvalidDirection = errors.New("invalid direction")
 
 // ErrBalanceMismatch signals that the balances are not expected
 var ErrBalanceMismatch = errors.New("balance mismatch")
+
+// ErrNegativeAmount signals that a negative amount was provided
+var ErrNegativeAmount = errors.New("negative amount")
