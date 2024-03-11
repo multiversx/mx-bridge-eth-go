@@ -15,6 +15,7 @@ import (
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/data/api"
 	crypto "github.com/multiversx/mx-chain-crypto-go"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519/singlesig"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -442,7 +443,39 @@ func (c *client) BurnBalances(ctx context.Context, token []byte) (*big.Int, erro
 
 // CheckRequiredBalance will check the required balance for the provided token
 func (c *client) CheckRequiredBalance(ctx context.Context, token []byte, value *big.Int) error {
-	// TODO: implement this
+	isMintBurn, err := c.IsMintBurnToken(ctx, token)
+	if err != nil {
+		return err
+	}
+
+	if isMintBurn {
+		return nil
+	}
+	safeAddress, err := c.safeContractAddress.AddressAsBech32String()
+	if err != nil {
+		return fmt.Errorf("%w for safe address %s", err, c.safeContractAddress.AddressBytes())
+	}
+	esdt, err := c.proxy.GetESDTTokenData(ctx, c.safeContractAddress, string(token), api.AccountQueryOptions{})
+	if err != nil {
+		return fmt.Errorf("%w for address %s for ESDT token %s", err, safeAddress, string(token))
+	}
+
+	existingBalance, ok := big.NewInt(0).SetString(esdt.Balance, 10)
+	if !ok {
+		return fmt.Errorf("%w for ESDT token %s and address %s", errInvalidBalance, string(token), safeAddress)
+	}
+
+	if value.Cmp(existingBalance) > 0 {
+		return fmt.Errorf("%w, existing: %s, required: %s for ERC20 token %s and address %s",
+			errInsufficientESDTBalance, existingBalance.String(), value.String(), string(token), safeAddress)
+	}
+
+	c.log.Debug("checked ERC20 balance",
+		"ESDT token", string(token),
+		"address", safeAddress,
+		"existing balance", existingBalance.String(),
+		"needed", value.String())
+
 	return nil
 }
 

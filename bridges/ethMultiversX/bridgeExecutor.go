@@ -575,15 +575,15 @@ func (executor *bridgeExecutor) checkCumulatedTransfers(ctx context.Context, tok
 }
 
 func (executor *bridgeExecutor) checkToken(ctx context.Context, token common.Address, convertedToken []byte, amount *big.Int, direction batchProcessor.Direction) error {
+	err := executor.checkRequiredBalance(ctx, token, convertedToken, amount, direction)
+	if err != nil {
+		return err
+	}
+
 	isMintBurnOnEthereum := executor.isMintBurnOnEthereum(ctx, token)
 	isMintBurnOnMultiversX := executor.isMintBurnOnMultiversX(ctx, convertedToken)
 	isNativeOnEthereum := executor.isNativeOnEthereum(ctx, token)
 	isNativeOnMultiversX := executor.isNativeOnMultiversX(ctx, convertedToken)
-
-	err := executor.checkRequiredBalance(ctx, token, convertedToken, amount, isMintBurnOnEthereum, isMintBurnOnMultiversX, direction)
-	if err != nil {
-		return err
-	}
 
 	if isNativeOnEthereum && isNativeOnMultiversX || !isNativeOnEthereum && !isNativeOnMultiversX {
 		return fmt.Errorf("%w isNativeOnEthereum = %v, isNativeOnMultiversX = %v", ErrInvalidSetup, isNativeOnEthereum, isNativeOnMultiversX)
@@ -634,18 +634,12 @@ func (executor *bridgeExecutor) checkToken(ctx context.Context, token common.Add
 	return nil
 }
 
-func (executor *bridgeExecutor) checkRequiredBalance(ctx context.Context, token common.Address, convertedToken []byte, amount *big.Int, isMintBurnOnEthereum, isMintBurnOnMultiversX bool, direction batchProcessor.Direction) error {
+func (executor *bridgeExecutor) checkRequiredBalance(ctx context.Context, token common.Address, convertedToken []byte, amount *big.Int, direction batchProcessor.Direction) error {
 	switch direction {
 	case batchProcessor.FromMultiversX:
-		if !isMintBurnOnEthereum {
-			return executor.ethereumClient.CheckRequiredBalance(ctx, token, amount)
-		}
-		return nil
+		return executor.ethereumClient.CheckRequiredBalance(ctx, token, amount)
 	case batchProcessor.ToMultiversX:
-		if !isMintBurnOnMultiversX {
-			return executor.multiversXClient.CheckRequiredBalance(ctx, convertedToken, amount)
-		}
-		return nil
+		return executor.multiversXClient.CheckRequiredBalance(ctx, convertedToken, amount)
 	default:
 		return fmt.Errorf("%w, direction: %s", ErrInvalidDirection, direction)
 	}

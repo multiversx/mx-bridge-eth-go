@@ -3,6 +3,7 @@ package multiversx
 import (
 	"context"
 
+	"github.com/multiversx/mx-chain-core-go/data/api"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-sdk-go/builders"
 	"github.com/multiversx/mx-sdk-go/core"
@@ -18,6 +19,12 @@ type Proxy interface {
 	GetAccount(ctx context.Context, address core.AddressHandler) (*data.Account, error)
 	GetNetworkStatus(ctx context.Context, shardID uint32) (*data.NetworkStatus, error)
 	GetShardOfAddress(ctx context.Context, bech32Address string) (uint32, error)
+	GetESDTTokenData(
+		ctx context.Context,
+		address core.AddressHandler,
+		tokenIdentifier string,
+		queryOptions api.AccountQueryOptions, // TODO: provide AccountQueryOptions on all accounts-related getters
+	) (*data.ESDTFungibleTokenData, error)
 	IsInterfaceNil() bool
 }
 
