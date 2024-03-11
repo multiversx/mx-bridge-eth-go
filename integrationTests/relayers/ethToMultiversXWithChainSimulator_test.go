@@ -210,6 +210,7 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 		EthClient:              simulatedETHChain,
 		EthClientStatusHandler: &testsCommon.StatusHandlerStub{},
 	})
+	require.NoError(t, err)
 
 	ethChainWrapper, err := wrappers.NewEthereumChainWrapper(wrappers.ArgsEthereumChainWrapper{
 		StatusHandler:    &testsCommon.StatusHandlerStub{},
