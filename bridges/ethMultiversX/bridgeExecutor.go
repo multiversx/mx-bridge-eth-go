@@ -575,17 +575,17 @@ func (executor *bridgeExecutor) checkCumulatedTransfers(ctx context.Context, tok
 }
 
 func (executor *bridgeExecutor) checkToken(ctx context.Context, token common.Address, convertedToken []byte, amount *big.Int, direction batchProcessor.Direction) error {
-	err := executor.checkRequiredBalance(ctx, token, convertedToken, amount, direction)
-	if err != nil {
-		return err
-	}
-
 	isMintBurnOnEthereum := executor.isMintBurnOnEthereum(ctx, token)
 	isMintBurnOnMultiversX := executor.isMintBurnOnMultiversX(ctx, convertedToken)
 	isNativeOnEthereum := executor.isNativeOnEthereum(ctx, token)
 	isNativeOnMultiversX := executor.isNativeOnMultiversX(ctx, convertedToken)
 
-	if isNativeOnEthereum && isNativeOnMultiversX {
+	err := executor.checkRequiredBalance(ctx, token, convertedToken, amount, isMintBurnOnEthereum, isMintBurnOnMultiversX, direction)
+	if err != nil {
+		return err
+	}
+
+	if isNativeOnEthereum && isNativeOnMultiversX || !isNativeOnEthereum && !isNativeOnMultiversX {
 		return fmt.Errorf("%w isNativeOnEthereum = %v, isNativeOnMultiversX = %v", ErrInvalidSetup, isNativeOnEthereum, isNativeOnMultiversX)
 	}
 
@@ -612,9 +612,17 @@ func (executor *bridgeExecutor) checkToken(ctx context.Context, token common.Add
 
 	switch direction {
 	case batchProcessor.FromMultiversX:
-		mvxAmount = big.NewInt(0).Add(mvxAmount, amount)
+		if isNativeOnMultiversX {
+			mvxAmount = big.NewInt(0).Sub(mvxAmount, amount)
+		} else {
+			mvxAmount = big.NewInt(0).Add(mvxAmount, amount)
+		}
 	case batchProcessor.ToMultiversX:
-		ethAmount = big.NewInt(0).Add(ethAmount, amount)
+		if isNativeOnEthereum {
+			ethAmount = big.NewInt(0).Sub(ethAmount, amount)
+		} else {
+			ethAmount = big.NewInt(0).Add(ethAmount, amount)
+		}
 	default:
 		return fmt.Errorf("%w, direction: %s", ErrInvalidDirection, direction)
 	}
@@ -626,12 +634,18 @@ func (executor *bridgeExecutor) checkToken(ctx context.Context, token common.Add
 	return nil
 }
 
-func (executor *bridgeExecutor) checkRequiredBalance(ctx context.Context, token common.Address, convertedToken []byte, amount *big.Int, direction batchProcessor.Direction) error {
+func (executor *bridgeExecutor) checkRequiredBalance(ctx context.Context, token common.Address, convertedToken []byte, amount *big.Int, isMintBurnOnEthereum, isMintBurnOnMultiversX bool, direction batchProcessor.Direction) error {
 	switch direction {
 	case batchProcessor.FromMultiversX:
-		return executor.ethereumClient.CheckRequiredBalance(ctx, token, amount)
+		if !isMintBurnOnEthereum {
+			return executor.ethereumClient.CheckRequiredBalance(ctx, token, amount)
+		}
+		return nil
 	case batchProcessor.ToMultiversX:
-		return executor.multiversXClient.CheckRequiredBalance(ctx, convertedToken, amount)
+		if !isMintBurnOnMultiversX {
+			return executor.multiversXClient.CheckRequiredBalance(ctx, convertedToken, amount)
+		}
+		return nil
 	default:
 		return fmt.Errorf("%w, direction: %s", ErrInvalidDirection, direction)
 	}

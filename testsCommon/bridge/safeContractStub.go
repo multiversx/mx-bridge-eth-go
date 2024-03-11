@@ -14,7 +14,7 @@ type SafeContractStub struct {
 	BurnBalancesCalled      func(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
 	MintBurnTokensCalled    func(opts *bind.CallOpts, arg0 common.Address) (bool, error)
 	NativeTokensCalled      func(opts *bind.CallOpts, arg0 common.Address) (bool, error)
-	WhiteListedTokensCalled func(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+	WhitelistedTokensCalled func(opts *bind.CallOpts, arg0 common.Address) (bool, error)
 }
 
 // TotalBalances -
@@ -62,10 +62,10 @@ func (stub *SafeContractStub) NativeTokens(opts *bind.CallOpts, arg0 common.Addr
 	return false, nil
 }
 
-// WhiteListedTokens -
-func (stub *SafeContractStub) WhiteListedTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
-	if stub.WhiteListedTokensCalled != nil {
-		return stub.WhiteListedTokensCalled(opts, arg0)
+// WhitelistedTokens -
+func (stub *SafeContractStub) WhitelistedTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
+	if stub.WhitelistedTokensCalled != nil {
+		return stub.WhitelistedTokensCalled(opts, arg0)
 	}
 
 	return false, nil

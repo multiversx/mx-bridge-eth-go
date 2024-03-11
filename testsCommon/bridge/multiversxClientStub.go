@@ -36,6 +36,7 @@ type MultiversXClientStub struct {
 	TotalBalancesCalled                            func(ctx context.Context, token []byte) (*big.Int, error)
 	MintBalancesCalled                             func(ctx context.Context, token []byte) (*big.Int, error)
 	BurnBalancesCalled                             func(ctx context.Context, token []byte) (*big.Int, error)
+	CheckRequiredBalanceCalled                     func(ctx context.Context, token []byte, value *big.Int) error
 	CloseCalled                                    func() error
 }
 
@@ -239,6 +240,14 @@ func (stub *MultiversXClientStub) BurnBalances(ctx context.Context, token []byte
 		return stub.BurnBalancesCalled(ctx, token)
 	}
 	return big.NewInt(0), nil
+}
+
+// CheckRequiredBalance -
+func (stub *MultiversXClientStub) CheckRequiredBalance(ctx context.Context, token []byte, value *big.Int) error {
+	if stub.CheckRequiredBalanceCalled != nil {
+		return stub.CheckRequiredBalanceCalled(ctx, token, value)
+	}
+	return nil
 }
 
 // Close -

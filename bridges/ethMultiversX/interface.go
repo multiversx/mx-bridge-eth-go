@@ -36,6 +36,7 @@ type MultiversXClient interface {
 	TotalBalances(ctx context.Context, token []byte) (*big.Int, error)
 	MintBalances(ctx context.Context, token []byte) (*big.Int, error)
 	BurnBalances(ctx context.Context, token []byte) (*big.Int, error)
+	CheckRequiredBalance(ctx context.Context, token []byte, value *big.Int) error
 	Close() error
 	IsInterfaceNil() bool
 }

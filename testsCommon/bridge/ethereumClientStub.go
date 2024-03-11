@@ -28,7 +28,7 @@ type EthereumClientStub struct {
 	BurnBalancesCalled                     func(ctx context.Context, account common.Address) (*big.Int, error)
 	MintBurnTokensCalled                   func(ctx context.Context, account common.Address) (bool, error)
 	NativeTokensCalled                     func(ctx context.Context, account common.Address) (bool, error)
-	WhiteListedTokensCalled                func(ctx context.Context, account common.Address) (bool, error)
+	WhitelistedTokensCalled                func(ctx context.Context, account common.Address) (bool, error)
 }
 
 // GetBatch -
@@ -80,7 +80,7 @@ func (stub *EthereumClientStub) CheckClientAvailability(ctx context.Context) err
 		return stub.CheckClientAvailabilityCalled(ctx)
 	}
 
-	return nil
+	return errNotImplemented
 }
 
 // GetTransactionsStatuses -
@@ -116,7 +116,7 @@ func (stub *EthereumClientStub) GetBatchSCMetadata(ctx context.Context, nonce ui
 		return stub.GetBatchSCMetadataCalled(ctx, nonce)
 	}
 
-	return []*contract.SCExecProxyERC20SCDeposit{}, nil
+	return []*contract.SCExecProxyERC20SCDeposit{}, errNotImplemented
 }
 
 // CheckRequiredBalance -
@@ -125,7 +125,7 @@ func (stub *EthereumClientStub) CheckRequiredBalance(ctx context.Context, erc20A
 		return stub.CheckRequiredBalanceCalled(ctx, erc20Address, value)
 	}
 
-	return nil
+	return errNotImplemented
 }
 
 // TotalBalances -
@@ -134,7 +134,7 @@ func (stub *EthereumClientStub) TotalBalances(ctx context.Context, account commo
 		return stub.TotalBalancesCalled(ctx, account)
 	}
 
-	return big.NewInt(0), nil
+	return big.NewInt(0), errNotImplemented
 }
 
 // MintBalances -
@@ -143,7 +143,7 @@ func (stub *EthereumClientStub) MintBalances(ctx context.Context, account common
 		return stub.MintBalancesCalled(ctx, account)
 	}
 
-	return big.NewInt(0), nil
+	return big.NewInt(0), errNotImplemented
 }
 
 // BurnBalances -
@@ -152,7 +152,7 @@ func (stub *EthereumClientStub) BurnBalances(ctx context.Context, account common
 		return stub.BurnBalancesCalled(ctx, account)
 	}
 
-	return big.NewInt(0), nil
+	return big.NewInt(0), errNotImplemented
 }
 
 // MintBurnTokens -
@@ -161,7 +161,7 @@ func (stub *EthereumClientStub) MintBurnTokens(ctx context.Context, account comm
 		return stub.MintBurnTokensCalled(ctx, account)
 	}
 
-	return false, nil
+	return false, errNotImplemented
 }
 
 // NativeTokens -
@@ -170,16 +170,16 @@ func (stub *EthereumClientStub) NativeTokens(ctx context.Context, account common
 		return stub.NativeTokensCalled(ctx, account)
 	}
 
-	return false, nil
+	return false, errNotImplemented
 }
 
 // WhitelistedTokens -
 func (stub *EthereumClientStub) WhitelistedTokens(ctx context.Context, account common.Address) (bool, error) {
-	if stub.WhiteListedTokensCalled != nil {
-		return stub.WhiteListedTokensCalled(ctx, account)
+	if stub.WhitelistedTokensCalled != nil {
+		return stub.WhitelistedTokensCalled(ctx, account)
 	}
 
-	return false, nil
+	return false, errNotImplemented
 }
 
 // IsInterfaceNil -

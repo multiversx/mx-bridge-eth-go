@@ -440,6 +440,12 @@ func (c *client) BurnBalances(ctx context.Context, token []byte) (*big.Int, erro
 	return c.getBurnBalances(ctx, token)
 }
 
+// CheckRequiredBalance will check the required balance for the provided token
+func (c *client) CheckRequiredBalance(ctx context.Context, token []byte, value *big.Int) error {
+	// TODO: implement this
+	return nil
+}
+
 // CheckClientAvailability will check the client availability and will set the metric accordingly
 func (c *client) CheckClientAvailability(ctx context.Context) error {
 	c.mut.Lock()
