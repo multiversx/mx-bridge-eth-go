@@ -144,13 +144,13 @@ func (wrapper *ethereumChainWrapper) BalanceAt(ctx context.Context, account comm
 // TokenMintedBalances retuns the minted balance of the given token
 func (wrapper *ethereumChainWrapper) TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
-	return wrapper.safeContract.TokenMintedBalances(&bind.CallOpts{Context: ctx}, token)
+	return wrapper.safeContract.MintBalances(&bind.CallOpts{Context: ctx}, token)
 }
 
 // WhitelistedTokensMintBurn returns true if the token is whitelisted as a mintBurn token
 func (wrapper *ethereumChainWrapper) WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
-	return wrapper.safeContract.WhitelistedTokensMintBurn(&bind.CallOpts{Context: ctx}, token)
+	return wrapper.safeContract.WhitelistedTokens(&bind.CallOpts{Context: ctx}, token)
 }
 
 // IsPaused returns true if the multisig contract is paused

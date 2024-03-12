@@ -184,7 +184,7 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	safeEthAddress := ethCommon.HexToAddress(cfg.Eth.SafeContractAddress)
-	safeInstance, err := contract.NewContract(safeEthAddress, ethClient)
+	safeInstance, err := contract.NewERC20Safe(safeEthAddress, ethClient)
 	if err != nil {
 		return err
 	}

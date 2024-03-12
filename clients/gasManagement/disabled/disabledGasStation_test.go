@@ -14,6 +14,6 @@ func TestNewDisabledGasStation(t *testing.T) {
 	assert.False(t, check.IfNil(dgs))
 
 	gasPrice, err := dgs.GetCurrentGasPrice()
-	assert.Equal(t, big.NewInt(0), gasPrice)
+	assert.Equal(t, big.NewInt(defaultDisabledGasPrice), gasPrice)
 	assert.Nil(t, err)
 }
