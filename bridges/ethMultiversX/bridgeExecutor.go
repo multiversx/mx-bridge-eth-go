@@ -600,6 +600,14 @@ func (executor *bridgeExecutor) checkToken(ctx context.Context, token common.Add
 		return err
 	}
 
+	if !isNativeOnEthereum && !isMintBurnOnEthereum {
+		return fmt.Errorf("%w isNativeOnEthereum = %v, isMintBurnOnEthereum = %v", ErrInvalidSetup, isNativeOnEthereum, isMintBurnOnEthereum)
+	}
+
+	if !isNativeOnMultiversX && !isMintBurnOnMultiversX {
+		return fmt.Errorf("%w isNativeOnMultiversX = %v, isMintBurnOnMultiversX = %v", ErrInvalidSetup, isNativeOnMultiversX, isMintBurnOnMultiversX)
+	}
+
 	if isNativeOnEthereum == isNativeOnMultiversX {
 		return fmt.Errorf("%w isNativeOnEthereum = %v, isNativeOnMultiversX = %v", ErrInvalidSetup, isNativeOnEthereum, isNativeOnMultiversX)
 	}
