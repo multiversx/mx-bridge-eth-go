@@ -141,7 +141,7 @@ type keysHolder struct {
 	ethAddress common.Address
 }
 
-func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *testing.T) {
+func TestRelayersShouldExecuteTransfersFromEthToMultiversXAndBackWithSimulatedChains(t *testing.T) {
 	t.Skip("this is a long test")
 
 	defer func() {
