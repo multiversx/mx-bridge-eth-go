@@ -9,22 +9,64 @@ import (
 
 // SafeContractStub -
 type SafeContractStub struct {
-	TokenMintedBalancesCalled       func(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
-	WhitelistedTokensMintBurnCalled func(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+	TotalBalancesCalled     func(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	MintBalancesCalled      func(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	BurnBalancesCalled      func(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	MintBurnTokensCalled    func(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+	NativeTokensCalled      func(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+	WhitelistedTokensCalled func(opts *bind.CallOpts, arg0 common.Address) (bool, error)
 }
 
-// TokenMintedBalances -
-func (stub *SafeContractStub) TokenMintedBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
-	if stub.TokenMintedBalancesCalled != nil {
-		return stub.TokenMintedBalancesCalled(opts, arg0)
+// TotalBalances -
+func (stub *SafeContractStub) TotalBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
+	if stub.TotalBalancesCalled != nil {
+		return stub.TotalBalancesCalled(opts, arg0)
 	}
-	return big.NewInt(0), nil // or any other default value
+
+	return big.NewInt(0), nil
 }
 
-// WhitelistedTokensMintBurn -
-func (stub *SafeContractStub) WhitelistedTokensMintBurn(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
-	if stub.WhitelistedTokensMintBurnCalled != nil {
-		return stub.WhitelistedTokensMintBurnCalled(opts, arg0)
+// MintBalances -
+func (stub *SafeContractStub) MintBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
+	if stub.MintBalancesCalled != nil {
+		return stub.MintBalancesCalled(opts, arg0)
 	}
-	return false, nil // or any other default value
+
+	return big.NewInt(0), nil
+}
+
+// BurnBalances -
+func (stub *SafeContractStub) BurnBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
+	if stub.BurnBalancesCalled != nil {
+		return stub.BurnBalancesCalled(opts, arg0)
+	}
+
+	return big.NewInt(0), nil
+}
+
+// MintBurnTokens -
+func (stub *SafeContractStub) MintBurnTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
+	if stub.MintBurnTokensCalled != nil {
+		return stub.MintBurnTokensCalled(opts, arg0)
+	}
+
+	return false, nil
+}
+
+// NativeTokens -
+func (stub *SafeContractStub) NativeTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
+	if stub.NativeTokensCalled != nil {
+		return stub.NativeTokensCalled(opts, arg0)
+	}
+
+	return false, nil
+}
+
+// WhitelistedTokens -
+func (stub *SafeContractStub) WhitelistedTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
+	if stub.WhitelistedTokensCalled != nil {
+		return stub.WhitelistedTokensCalled(opts, arg0)
+	}
+
+	return false, nil
 }

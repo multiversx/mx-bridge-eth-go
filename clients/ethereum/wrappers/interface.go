@@ -27,8 +27,12 @@ type multiSigContract interface {
 }
 
 type safeContract interface {
-	TokenMintedBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
-	WhitelistedTokensMintBurn(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+	TotalBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	MintBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	BurnBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	MintBurnTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+	NativeTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+	WhitelistedTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error)
 }
 
 type blockchainClient interface {

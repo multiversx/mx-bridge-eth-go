@@ -29,113 +29,113 @@ var (
 	_ = abi.ConvertType
 )
 
-// ContractMetaData contains all meta data concerning the Contract contract.
-var ContractMetaData = &bind.MetaData{
-	ABI: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousAdmin\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"AdminRoleTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousBridge\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newBridge\",\"type\":\"address\"}],\"name\":\"BridgeTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint112\",\"name\":\"depositNonce\",\"type\":\"uint112\"},{\"indexed\":false,\"internalType\":\"uint112\",\"name\":\"batchId\",\"type\":\"uint112\"}],\"name\":\"ERC20Deposit\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"admin\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchBlockLimit\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"batchDeposits\",\"outputs\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"depositor\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"recipient\",\"type\":\"bytes32\"},{\"internalType\":\"enumDepositStatus\",\"name\":\"status\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchSettleLimit\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchSize\",\"outputs\":[{\"internalType\":\"uint16\",\"name\":\"\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"batches\",\"outputs\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"uint64\",\"name\":\"blockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"lastUpdatedBlockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint16\",\"name\":\"depositsCount\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchesCount\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"bridge\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"recipientAddress\",\"type\":\"bytes32\"}],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"depositsCount\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonce\",\"type\":\"uint256\"}],\"name\":\"getBatch\",\"outputs\":[{\"components\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"uint64\",\"name\":\"blockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"lastUpdatedBlockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint16\",\"name\":\"depositsCount\",\"type\":\"uint16\"}],\"internalType\":\"structBatch\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonce\",\"type\":\"uint256\"}],\"name\":\"getDeposits\",\"outputs\":[{\"components\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"depositor\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"recipient\",\"type\":\"bytes32\"},{\"internalType\":\"enumDepositStatus\",\"name\":\"status\",\"type\":\"uint8\"}],\"internalType\":\"structDeposit[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"getTokenMaxLimit\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"getTokenMinLimit\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"initSupply\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"isAnyBatchInProgress\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"isTokenWhitelisted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"paused\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"}],\"name\":\"recoverLostFunds\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"removeTokenFromWhitelist\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"newBatchBlockLimit\",\"type\":\"uint8\"}],\"name\":\"setBatchBlockLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"newBatchSettleLimit\",\"type\":\"uint8\"}],\"name\":\"setBatchSettleLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint16\",\"name\":\"newBatchSize\",\"type\":\"uint16\"}],\"name\":\"setBatchSize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newBridge\",\"type\":\"address\"}],\"name\":\"setBridge\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"setTokenMaxLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"setTokenMinLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"tokenBalances\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"tokenMaxLimits\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"tokenMinLimits\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"tokenMintedBalances\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"recipientAddress\",\"type\":\"address\"}],\"name\":\"transfer\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"transferAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"minimumAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maximumAmount\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"mintBurn\",\"type\":\"bool\"}],\"name\":\"whitelistToken\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"whitelistedTokens\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"whitelistedTokensMintBurn\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+// ERC20SafeMetaData contains all meta data concerning the ERC20Safe contract.
+var ERC20SafeMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"}],\"name\":\"AddressEmptyCode\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"AddressInsufficientBalance\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"FailedInnerCall\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"SafeERC20FailedOperation\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousAdmin\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"AdminRoleTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousBridge\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newBridge\",\"type\":\"address\"}],\"name\":\"BridgeTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint112\",\"name\":\"depositNonce\",\"type\":\"uint112\"},{\"indexed\":false,\"internalType\":\"uint112\",\"name\":\"batchId\",\"type\":\"uint112\"}],\"name\":\"ERC20Deposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isPause\",\"type\":\"bool\"}],\"name\":\"Pause\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"admin\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchBlockLimit\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"batchDeposits\",\"outputs\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"depositor\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"recipient\",\"type\":\"bytes32\"},{\"internalType\":\"enumDepositStatus\",\"name\":\"status\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchSettleLimit\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchSize\",\"outputs\":[{\"internalType\":\"uint16\",\"name\":\"\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"batches\",\"outputs\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"uint64\",\"name\":\"blockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"lastUpdatedBlockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint16\",\"name\":\"depositsCount\",\"type\":\"uint16\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchesCount\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"bridge\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"burnBalances\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"recipientAddress\",\"type\":\"bytes32\"}],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"depositsCount\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonce\",\"type\":\"uint256\"}],\"name\":\"getBatch\",\"outputs\":[{\"components\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"uint64\",\"name\":\"blockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"lastUpdatedBlockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint16\",\"name\":\"depositsCount\",\"type\":\"uint16\"}],\"internalType\":\"structBatch\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonce\",\"type\":\"uint256\"}],\"name\":\"getDeposits\",\"outputs\":[{\"components\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"depositor\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"recipient\",\"type\":\"bytes32\"},{\"internalType\":\"enumDepositStatus\",\"name\":\"status\",\"type\":\"uint8\"}],\"internalType\":\"structDeposit[]\",\"name\":\"\",\"type\":\"tuple[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"getTokenMaxLimit\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"getTokenMinLimit\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"initSupply\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"isAnyBatchInProgress\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"isTokenWhitelisted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"mintBalances\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"mintBurnTokens\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"nativeTokens\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"paused\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"}],\"name\":\"recoverLostFunds\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"}],\"name\":\"removeTokenFromWhitelist\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"newBatchBlockLimit\",\"type\":\"uint8\"}],\"name\":\"setBatchBlockLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"newBatchSettleLimit\",\"type\":\"uint8\"}],\"name\":\"setBatchSettleLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint16\",\"name\":\"newBatchSize\",\"type\":\"uint16\"}],\"name\":\"setBatchSize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newBridge\",\"type\":\"address\"}],\"name\":\"setBridge\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"setTokenMaxLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"setTokenMinLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"tokenMaxLimits\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"tokenMinLimits\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"totalBalances\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"recipientAddress\",\"type\":\"address\"}],\"name\":\"transfer\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"transferAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"minimumAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"maximumAmount\",\"type\":\"uint256\"},{\"internalType\":\"bool\",\"name\":\"mintBurn\",\"type\":\"bool\"},{\"internalType\":\"bool\",\"name\":\"native\",\"type\":\"bool\"}],\"name\":\"whitelistToken\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"whitelistedTokens\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
 }
 
-// ContractABI is the input ABI used to generate the binding from.
-// Deprecated: Use ContractMetaData.ABI instead.
-var ContractABI = ContractMetaData.ABI
+// ERC20SafeABI is the input ABI used to generate the binding from.
+// Deprecated: Use ERC20SafeMetaData.ABI instead.
+var ERC20SafeABI = ERC20SafeMetaData.ABI
 
-// Contract is an auto generated Go binding around an Ethereum contract.
-type Contract struct {
-	ContractCaller     // Read-only binding to the contract
-	ContractTransactor // Write-only binding to the contract
-	ContractFilterer   // Log filterer for contract events
+// ERC20Safe is an auto generated Go binding around an Ethereum contract.
+type ERC20Safe struct {
+	ERC20SafeCaller     // Read-only binding to the contract
+	ERC20SafeTransactor // Write-only binding to the contract
+	ERC20SafeFilterer   // Log filterer for contract events
 }
 
-// ContractCaller is an auto generated read-only Go binding around an Ethereum contract.
-type ContractCaller struct {
+// ERC20SafeCaller is an auto generated read-only Go binding around an Ethereum contract.
+type ERC20SafeCaller struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// ContractTransactor is an auto generated write-only Go binding around an Ethereum contract.
-type ContractTransactor struct {
+// ERC20SafeTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type ERC20SafeTransactor struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// ContractFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type ContractFilterer struct {
+// ERC20SafeFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type ERC20SafeFilterer struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// ContractSession is an auto generated Go binding around an Ethereum contract,
+// ERC20SafeSession is an auto generated Go binding around an Ethereum contract,
 // with pre-set call and transact options.
-type ContractSession struct {
-	Contract     *Contract         // Generic contract binding to set the session for
+type ERC20SafeSession struct {
+	Contract     *ERC20Safe        // Generic contract binding to set the session for
 	CallOpts     bind.CallOpts     // Call options to use throughout this session
 	TransactOpts bind.TransactOpts // Transaction auth options to use throughout this session
 }
 
-// ContractCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// ERC20SafeCallerSession is an auto generated read-only Go binding around an Ethereum contract,
 // with pre-set call options.
-type ContractCallerSession struct {
-	Contract *ContractCaller // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts   // Call options to use throughout this session
+type ERC20SafeCallerSession struct {
+	Contract *ERC20SafeCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts    // Call options to use throughout this session
 }
 
-// ContractTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// ERC20SafeTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
 // with pre-set transact options.
-type ContractTransactorSession struct {
-	Contract     *ContractTransactor // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts   // Transaction auth options to use throughout this session
+type ERC20SafeTransactorSession struct {
+	Contract     *ERC20SafeTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts    // Transaction auth options to use throughout this session
 }
 
-// ContractRaw is an auto generated low-level Go binding around an Ethereum contract.
-type ContractRaw struct {
-	Contract *Contract // Generic contract binding to access the raw methods on
+// ERC20SafeRaw is an auto generated low-level Go binding around an Ethereum contract.
+type ERC20SafeRaw struct {
+	Contract *ERC20Safe // Generic contract binding to access the raw methods on
 }
 
-// ContractCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type ContractCallerRaw struct {
-	Contract *ContractCaller // Generic read-only contract binding to access the raw methods on
+// ERC20SafeCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type ERC20SafeCallerRaw struct {
+	Contract *ERC20SafeCaller // Generic read-only contract binding to access the raw methods on
 }
 
-// ContractTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type ContractTransactorRaw struct {
-	Contract *ContractTransactor // Generic write-only contract binding to access the raw methods on
+// ERC20SafeTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type ERC20SafeTransactorRaw struct {
+	Contract *ERC20SafeTransactor // Generic write-only contract binding to access the raw methods on
 }
 
-// NewContract creates a new instance of Contract, bound to a specific deployed contract.
-func NewContract(address common.Address, backend bind.ContractBackend) (*Contract, error) {
-	contract, err := bindContract(address, backend, backend, backend)
+// NewERC20Safe creates a new instance of ERC20Safe, bound to a specific deployed contract.
+func NewERC20Safe(address common.Address, backend bind.ContractBackend) (*ERC20Safe, error) {
+	contract, err := bindERC20Safe(address, backend, backend, backend)
 	if err != nil {
 		return nil, err
 	}
-	return &Contract{ContractCaller: ContractCaller{contract: contract}, ContractTransactor: ContractTransactor{contract: contract}, ContractFilterer: ContractFilterer{contract: contract}}, nil
+	return &ERC20Safe{ERC20SafeCaller: ERC20SafeCaller{contract: contract}, ERC20SafeTransactor: ERC20SafeTransactor{contract: contract}, ERC20SafeFilterer: ERC20SafeFilterer{contract: contract}}, nil
 }
 
-// NewContractCaller creates a new read-only instance of Contract, bound to a specific deployed contract.
-func NewContractCaller(address common.Address, caller bind.ContractCaller) (*ContractCaller, error) {
-	contract, err := bindContract(address, caller, nil, nil)
+// NewERC20SafeCaller creates a new read-only instance of ERC20Safe, bound to a specific deployed contract.
+func NewERC20SafeCaller(address common.Address, caller bind.ContractCaller) (*ERC20SafeCaller, error) {
+	contract, err := bindERC20Safe(address, caller, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractCaller{contract: contract}, nil
+	return &ERC20SafeCaller{contract: contract}, nil
 }
 
-// NewContractTransactor creates a new write-only instance of Contract, bound to a specific deployed contract.
-func NewContractTransactor(address common.Address, transactor bind.ContractTransactor) (*ContractTransactor, error) {
-	contract, err := bindContract(address, nil, transactor, nil)
+// NewERC20SafeTransactor creates a new write-only instance of ERC20Safe, bound to a specific deployed contract.
+func NewERC20SafeTransactor(address common.Address, transactor bind.ContractTransactor) (*ERC20SafeTransactor, error) {
+	contract, err := bindERC20Safe(address, nil, transactor, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractTransactor{contract: contract}, nil
+	return &ERC20SafeTransactor{contract: contract}, nil
 }
 
-// NewContractFilterer creates a new log filterer instance of Contract, bound to a specific deployed contract.
-func NewContractFilterer(address common.Address, filterer bind.ContractFilterer) (*ContractFilterer, error) {
-	contract, err := bindContract(address, nil, nil, filterer)
+// NewERC20SafeFilterer creates a new log filterer instance of ERC20Safe, bound to a specific deployed contract.
+func NewERC20SafeFilterer(address common.Address, filterer bind.ContractFilterer) (*ERC20SafeFilterer, error) {
+	contract, err := bindERC20Safe(address, nil, nil, filterer)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractFilterer{contract: contract}, nil
+	return &ERC20SafeFilterer{contract: contract}, nil
 }
 
-// bindContract binds a generic wrapper to an already deployed contract.
-func bindContract(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := ContractMetaData.GetAbi()
+// bindERC20Safe binds a generic wrapper to an already deployed contract.
+func bindERC20Safe(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := ERC20SafeMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
@@ -146,46 +146,46 @@ func bindContract(address common.Address, caller bind.ContractCaller, transactor
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_Contract *ContractRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
-	return _Contract.Contract.ContractCaller.contract.Call(opts, result, method, params...)
+func (_ERC20Safe *ERC20SafeRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _ERC20Safe.Contract.ERC20SafeCaller.contract.Call(opts, result, method, params...)
 }
 
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
-func (_Contract *ContractRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _Contract.Contract.ContractTransactor.contract.Transfer(opts)
+func (_ERC20Safe *ERC20SafeRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.ERC20SafeTransactor.contract.Transfer(opts)
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_Contract *ContractRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _Contract.Contract.ContractTransactor.contract.Transact(opts, method, params...)
+func (_ERC20Safe *ERC20SafeRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.ERC20SafeTransactor.contract.Transact(opts, method, params...)
 }
 
 // Call invokes the (constant) contract method with params as input values and
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_Contract *ContractCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
-	return _Contract.Contract.contract.Call(opts, result, method, params...)
+func (_ERC20Safe *ERC20SafeCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _ERC20Safe.Contract.contract.Call(opts, result, method, params...)
 }
 
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
-func (_Contract *ContractTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _Contract.Contract.contract.Transfer(opts)
+func (_ERC20Safe *ERC20SafeTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.contract.Transfer(opts)
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _Contract.Contract.contract.Transact(opts, method, params...)
+func (_ERC20Safe *ERC20SafeTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.contract.Transact(opts, method, params...)
 }
 
 // Admin is a free data retrieval call binding the contract method 0xf851a440.
 //
 // Solidity: function admin() view returns(address)
-func (_Contract *ContractCaller) Admin(opts *bind.CallOpts) (common.Address, error) {
+func (_ERC20Safe *ERC20SafeCaller) Admin(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "admin")
+	err := _ERC20Safe.contract.Call(opts, &out, "admin")
 
 	if err != nil {
 		return *new(common.Address), err
@@ -200,23 +200,23 @@ func (_Contract *ContractCaller) Admin(opts *bind.CallOpts) (common.Address, err
 // Admin is a free data retrieval call binding the contract method 0xf851a440.
 //
 // Solidity: function admin() view returns(address)
-func (_Contract *ContractSession) Admin() (common.Address, error) {
-	return _Contract.Contract.Admin(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeSession) Admin() (common.Address, error) {
+	return _ERC20Safe.Contract.Admin(&_ERC20Safe.CallOpts)
 }
 
 // Admin is a free data retrieval call binding the contract method 0xf851a440.
 //
 // Solidity: function admin() view returns(address)
-func (_Contract *ContractCallerSession) Admin() (common.Address, error) {
-	return _Contract.Contract.Admin(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeCallerSession) Admin() (common.Address, error) {
+	return _ERC20Safe.Contract.Admin(&_ERC20Safe.CallOpts)
 }
 
 // BatchBlockLimit is a free data retrieval call binding the contract method 0x9ab7cfaa.
 //
 // Solidity: function batchBlockLimit() view returns(uint8)
-func (_Contract *ContractCaller) BatchBlockLimit(opts *bind.CallOpts) (uint8, error) {
+func (_ERC20Safe *ERC20SafeCaller) BatchBlockLimit(opts *bind.CallOpts) (uint8, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "batchBlockLimit")
+	err := _ERC20Safe.contract.Call(opts, &out, "batchBlockLimit")
 
 	if err != nil {
 		return *new(uint8), err
@@ -231,21 +231,21 @@ func (_Contract *ContractCaller) BatchBlockLimit(opts *bind.CallOpts) (uint8, er
 // BatchBlockLimit is a free data retrieval call binding the contract method 0x9ab7cfaa.
 //
 // Solidity: function batchBlockLimit() view returns(uint8)
-func (_Contract *ContractSession) BatchBlockLimit() (uint8, error) {
-	return _Contract.Contract.BatchBlockLimit(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeSession) BatchBlockLimit() (uint8, error) {
+	return _ERC20Safe.Contract.BatchBlockLimit(&_ERC20Safe.CallOpts)
 }
 
 // BatchBlockLimit is a free data retrieval call binding the contract method 0x9ab7cfaa.
 //
 // Solidity: function batchBlockLimit() view returns(uint8)
-func (_Contract *ContractCallerSession) BatchBlockLimit() (uint8, error) {
-	return _Contract.Contract.BatchBlockLimit(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeCallerSession) BatchBlockLimit() (uint8, error) {
+	return _ERC20Safe.Contract.BatchBlockLimit(&_ERC20Safe.CallOpts)
 }
 
 // BatchDeposits is a free data retrieval call binding the contract method 0x284c0c44.
 //
 // Solidity: function batchDeposits(uint256 , uint256 ) view returns(uint112 nonce, address tokenAddress, uint256 amount, address depositor, bytes32 recipient, uint8 status)
-func (_Contract *ContractCaller) BatchDeposits(opts *bind.CallOpts, arg0 *big.Int, arg1 *big.Int) (struct {
+func (_ERC20Safe *ERC20SafeCaller) BatchDeposits(opts *bind.CallOpts, arg0 *big.Int, arg1 *big.Int) (struct {
 	Nonce        *big.Int
 	TokenAddress common.Address
 	Amount       *big.Int
@@ -254,7 +254,7 @@ func (_Contract *ContractCaller) BatchDeposits(opts *bind.CallOpts, arg0 *big.In
 	Status       uint8
 }, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "batchDeposits", arg0, arg1)
+	err := _ERC20Safe.contract.Call(opts, &out, "batchDeposits", arg0, arg1)
 
 	outstruct := new(struct {
 		Nonce        *big.Int
@@ -282,7 +282,7 @@ func (_Contract *ContractCaller) BatchDeposits(opts *bind.CallOpts, arg0 *big.In
 // BatchDeposits is a free data retrieval call binding the contract method 0x284c0c44.
 //
 // Solidity: function batchDeposits(uint256 , uint256 ) view returns(uint112 nonce, address tokenAddress, uint256 amount, address depositor, bytes32 recipient, uint8 status)
-func (_Contract *ContractSession) BatchDeposits(arg0 *big.Int, arg1 *big.Int) (struct {
+func (_ERC20Safe *ERC20SafeSession) BatchDeposits(arg0 *big.Int, arg1 *big.Int) (struct {
 	Nonce        *big.Int
 	TokenAddress common.Address
 	Amount       *big.Int
@@ -290,13 +290,13 @@ func (_Contract *ContractSession) BatchDeposits(arg0 *big.Int, arg1 *big.Int) (s
 	Recipient    [32]byte
 	Status       uint8
 }, error) {
-	return _Contract.Contract.BatchDeposits(&_Contract.CallOpts, arg0, arg1)
+	return _ERC20Safe.Contract.BatchDeposits(&_ERC20Safe.CallOpts, arg0, arg1)
 }
 
 // BatchDeposits is a free data retrieval call binding the contract method 0x284c0c44.
 //
 // Solidity: function batchDeposits(uint256 , uint256 ) view returns(uint112 nonce, address tokenAddress, uint256 amount, address depositor, bytes32 recipient, uint8 status)
-func (_Contract *ContractCallerSession) BatchDeposits(arg0 *big.Int, arg1 *big.Int) (struct {
+func (_ERC20Safe *ERC20SafeCallerSession) BatchDeposits(arg0 *big.Int, arg1 *big.Int) (struct {
 	Nonce        *big.Int
 	TokenAddress common.Address
 	Amount       *big.Int
@@ -304,15 +304,15 @@ func (_Contract *ContractCallerSession) BatchDeposits(arg0 *big.Int, arg1 *big.I
 	Recipient    [32]byte
 	Status       uint8
 }, error) {
-	return _Contract.Contract.BatchDeposits(&_Contract.CallOpts, arg0, arg1)
+	return _ERC20Safe.Contract.BatchDeposits(&_ERC20Safe.CallOpts, arg0, arg1)
 }
 
 // BatchSettleLimit is a free data retrieval call binding the contract method 0x2325b5f7.
 //
 // Solidity: function batchSettleLimit() view returns(uint8)
-func (_Contract *ContractCaller) BatchSettleLimit(opts *bind.CallOpts) (uint8, error) {
+func (_ERC20Safe *ERC20SafeCaller) BatchSettleLimit(opts *bind.CallOpts) (uint8, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "batchSettleLimit")
+	err := _ERC20Safe.contract.Call(opts, &out, "batchSettleLimit")
 
 	if err != nil {
 		return *new(uint8), err
@@ -327,23 +327,23 @@ func (_Contract *ContractCaller) BatchSettleLimit(opts *bind.CallOpts) (uint8, e
 // BatchSettleLimit is a free data retrieval call binding the contract method 0x2325b5f7.
 //
 // Solidity: function batchSettleLimit() view returns(uint8)
-func (_Contract *ContractSession) BatchSettleLimit() (uint8, error) {
-	return _Contract.Contract.BatchSettleLimit(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeSession) BatchSettleLimit() (uint8, error) {
+	return _ERC20Safe.Contract.BatchSettleLimit(&_ERC20Safe.CallOpts)
 }
 
 // BatchSettleLimit is a free data retrieval call binding the contract method 0x2325b5f7.
 //
 // Solidity: function batchSettleLimit() view returns(uint8)
-func (_Contract *ContractCallerSession) BatchSettleLimit() (uint8, error) {
-	return _Contract.Contract.BatchSettleLimit(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeCallerSession) BatchSettleLimit() (uint8, error) {
+	return _ERC20Safe.Contract.BatchSettleLimit(&_ERC20Safe.CallOpts)
 }
 
 // BatchSize is a free data retrieval call binding the contract method 0xf4daaba1.
 //
 // Solidity: function batchSize() view returns(uint16)
-func (_Contract *ContractCaller) BatchSize(opts *bind.CallOpts) (uint16, error) {
+func (_ERC20Safe *ERC20SafeCaller) BatchSize(opts *bind.CallOpts) (uint16, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "batchSize")
+	err := _ERC20Safe.contract.Call(opts, &out, "batchSize")
 
 	if err != nil {
 		return *new(uint16), err
@@ -358,28 +358,28 @@ func (_Contract *ContractCaller) BatchSize(opts *bind.CallOpts) (uint16, error) 
 // BatchSize is a free data retrieval call binding the contract method 0xf4daaba1.
 //
 // Solidity: function batchSize() view returns(uint16)
-func (_Contract *ContractSession) BatchSize() (uint16, error) {
-	return _Contract.Contract.BatchSize(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeSession) BatchSize() (uint16, error) {
+	return _ERC20Safe.Contract.BatchSize(&_ERC20Safe.CallOpts)
 }
 
 // BatchSize is a free data retrieval call binding the contract method 0xf4daaba1.
 //
 // Solidity: function batchSize() view returns(uint16)
-func (_Contract *ContractCallerSession) BatchSize() (uint16, error) {
-	return _Contract.Contract.BatchSize(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeCallerSession) BatchSize() (uint16, error) {
+	return _ERC20Safe.Contract.BatchSize(&_ERC20Safe.CallOpts)
 }
 
 // Batches is a free data retrieval call binding the contract method 0xb32c4d8d.
 //
 // Solidity: function batches(uint256 ) view returns(uint112 nonce, uint64 blockNumber, uint64 lastUpdatedBlockNumber, uint16 depositsCount)
-func (_Contract *ContractCaller) Batches(opts *bind.CallOpts, arg0 *big.Int) (struct {
+func (_ERC20Safe *ERC20SafeCaller) Batches(opts *bind.CallOpts, arg0 *big.Int) (struct {
 	Nonce                  *big.Int
 	BlockNumber            uint64
 	LastUpdatedBlockNumber uint64
 	DepositsCount          uint16
 }, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "batches", arg0)
+	err := _ERC20Safe.contract.Call(opts, &out, "batches", arg0)
 
 	outstruct := new(struct {
 		Nonce                  *big.Int
@@ -403,33 +403,33 @@ func (_Contract *ContractCaller) Batches(opts *bind.CallOpts, arg0 *big.Int) (st
 // Batches is a free data retrieval call binding the contract method 0xb32c4d8d.
 //
 // Solidity: function batches(uint256 ) view returns(uint112 nonce, uint64 blockNumber, uint64 lastUpdatedBlockNumber, uint16 depositsCount)
-func (_Contract *ContractSession) Batches(arg0 *big.Int) (struct {
+func (_ERC20Safe *ERC20SafeSession) Batches(arg0 *big.Int) (struct {
 	Nonce                  *big.Int
 	BlockNumber            uint64
 	LastUpdatedBlockNumber uint64
 	DepositsCount          uint16
 }, error) {
-	return _Contract.Contract.Batches(&_Contract.CallOpts, arg0)
+	return _ERC20Safe.Contract.Batches(&_ERC20Safe.CallOpts, arg0)
 }
 
 // Batches is a free data retrieval call binding the contract method 0xb32c4d8d.
 //
 // Solidity: function batches(uint256 ) view returns(uint112 nonce, uint64 blockNumber, uint64 lastUpdatedBlockNumber, uint16 depositsCount)
-func (_Contract *ContractCallerSession) Batches(arg0 *big.Int) (struct {
+func (_ERC20Safe *ERC20SafeCallerSession) Batches(arg0 *big.Int) (struct {
 	Nonce                  *big.Int
 	BlockNumber            uint64
 	LastUpdatedBlockNumber uint64
 	DepositsCount          uint16
 }, error) {
-	return _Contract.Contract.Batches(&_Contract.CallOpts, arg0)
+	return _ERC20Safe.Contract.Batches(&_ERC20Safe.CallOpts, arg0)
 }
 
 // BatchesCount is a free data retrieval call binding the contract method 0x87ea0961.
 //
 // Solidity: function batchesCount() view returns(uint64)
-func (_Contract *ContractCaller) BatchesCount(opts *bind.CallOpts) (uint64, error) {
+func (_ERC20Safe *ERC20SafeCaller) BatchesCount(opts *bind.CallOpts) (uint64, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "batchesCount")
+	err := _ERC20Safe.contract.Call(opts, &out, "batchesCount")
 
 	if err != nil {
 		return *new(uint64), err
@@ -444,23 +444,23 @@ func (_Contract *ContractCaller) BatchesCount(opts *bind.CallOpts) (uint64, erro
 // BatchesCount is a free data retrieval call binding the contract method 0x87ea0961.
 //
 // Solidity: function batchesCount() view returns(uint64)
-func (_Contract *ContractSession) BatchesCount() (uint64, error) {
-	return _Contract.Contract.BatchesCount(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeSession) BatchesCount() (uint64, error) {
+	return _ERC20Safe.Contract.BatchesCount(&_ERC20Safe.CallOpts)
 }
 
 // BatchesCount is a free data retrieval call binding the contract method 0x87ea0961.
 //
 // Solidity: function batchesCount() view returns(uint64)
-func (_Contract *ContractCallerSession) BatchesCount() (uint64, error) {
-	return _Contract.Contract.BatchesCount(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeCallerSession) BatchesCount() (uint64, error) {
+	return _ERC20Safe.Contract.BatchesCount(&_ERC20Safe.CallOpts)
 }
 
 // Bridge is a free data retrieval call binding the contract method 0xe78cea92.
 //
 // Solidity: function bridge() view returns(address)
-func (_Contract *ContractCaller) Bridge(opts *bind.CallOpts) (common.Address, error) {
+func (_ERC20Safe *ERC20SafeCaller) Bridge(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "bridge")
+	err := _ERC20Safe.contract.Call(opts, &out, "bridge")
 
 	if err != nil {
 		return *new(common.Address), err
@@ -475,23 +475,54 @@ func (_Contract *ContractCaller) Bridge(opts *bind.CallOpts) (common.Address, er
 // Bridge is a free data retrieval call binding the contract method 0xe78cea92.
 //
 // Solidity: function bridge() view returns(address)
-func (_Contract *ContractSession) Bridge() (common.Address, error) {
-	return _Contract.Contract.Bridge(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeSession) Bridge() (common.Address, error) {
+	return _ERC20Safe.Contract.Bridge(&_ERC20Safe.CallOpts)
 }
 
 // Bridge is a free data retrieval call binding the contract method 0xe78cea92.
 //
 // Solidity: function bridge() view returns(address)
-func (_Contract *ContractCallerSession) Bridge() (common.Address, error) {
-	return _Contract.Contract.Bridge(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeCallerSession) Bridge() (common.Address, error) {
+	return _ERC20Safe.Contract.Bridge(&_ERC20Safe.CallOpts)
+}
+
+// BurnBalances is a free data retrieval call binding the contract method 0xcf6682a2.
+//
+// Solidity: function burnBalances(address ) view returns(uint256)
+func (_ERC20Safe *ERC20SafeCaller) BurnBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
+	var out []interface{}
+	err := _ERC20Safe.contract.Call(opts, &out, "burnBalances", arg0)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// BurnBalances is a free data retrieval call binding the contract method 0xcf6682a2.
+//
+// Solidity: function burnBalances(address ) view returns(uint256)
+func (_ERC20Safe *ERC20SafeSession) BurnBalances(arg0 common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.BurnBalances(&_ERC20Safe.CallOpts, arg0)
+}
+
+// BurnBalances is a free data retrieval call binding the contract method 0xcf6682a2.
+//
+// Solidity: function burnBalances(address ) view returns(uint256)
+func (_ERC20Safe *ERC20SafeCallerSession) BurnBalances(arg0 common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.BurnBalances(&_ERC20Safe.CallOpts, arg0)
 }
 
 // DepositsCount is a free data retrieval call binding the contract method 0x4506e935.
 //
 // Solidity: function depositsCount() view returns(uint64)
-func (_Contract *ContractCaller) DepositsCount(opts *bind.CallOpts) (uint64, error) {
+func (_ERC20Safe *ERC20SafeCaller) DepositsCount(opts *bind.CallOpts) (uint64, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "depositsCount")
+	err := _ERC20Safe.contract.Call(opts, &out, "depositsCount")
 
 	if err != nil {
 		return *new(uint64), err
@@ -506,23 +537,23 @@ func (_Contract *ContractCaller) DepositsCount(opts *bind.CallOpts) (uint64, err
 // DepositsCount is a free data retrieval call binding the contract method 0x4506e935.
 //
 // Solidity: function depositsCount() view returns(uint64)
-func (_Contract *ContractSession) DepositsCount() (uint64, error) {
-	return _Contract.Contract.DepositsCount(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeSession) DepositsCount() (uint64, error) {
+	return _ERC20Safe.Contract.DepositsCount(&_ERC20Safe.CallOpts)
 }
 
 // DepositsCount is a free data retrieval call binding the contract method 0x4506e935.
 //
 // Solidity: function depositsCount() view returns(uint64)
-func (_Contract *ContractCallerSession) DepositsCount() (uint64, error) {
-	return _Contract.Contract.DepositsCount(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeCallerSession) DepositsCount() (uint64, error) {
+	return _ERC20Safe.Contract.DepositsCount(&_ERC20Safe.CallOpts)
 }
 
 // GetBatch is a free data retrieval call binding the contract method 0x5ac44282.
 //
 // Solidity: function getBatch(uint256 batchNonce) view returns((uint112,uint64,uint64,uint16))
-func (_Contract *ContractCaller) GetBatch(opts *bind.CallOpts, batchNonce *big.Int) (Batch, error) {
+func (_ERC20Safe *ERC20SafeCaller) GetBatch(opts *bind.CallOpts, batchNonce *big.Int) (Batch, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getBatch", batchNonce)
+	err := _ERC20Safe.contract.Call(opts, &out, "getBatch", batchNonce)
 
 	if err != nil {
 		return *new(Batch), err
@@ -537,23 +568,23 @@ func (_Contract *ContractCaller) GetBatch(opts *bind.CallOpts, batchNonce *big.I
 // GetBatch is a free data retrieval call binding the contract method 0x5ac44282.
 //
 // Solidity: function getBatch(uint256 batchNonce) view returns((uint112,uint64,uint64,uint16))
-func (_Contract *ContractSession) GetBatch(batchNonce *big.Int) (Batch, error) {
-	return _Contract.Contract.GetBatch(&_Contract.CallOpts, batchNonce)
+func (_ERC20Safe *ERC20SafeSession) GetBatch(batchNonce *big.Int) (Batch, error) {
+	return _ERC20Safe.Contract.GetBatch(&_ERC20Safe.CallOpts, batchNonce)
 }
 
 // GetBatch is a free data retrieval call binding the contract method 0x5ac44282.
 //
 // Solidity: function getBatch(uint256 batchNonce) view returns((uint112,uint64,uint64,uint16))
-func (_Contract *ContractCallerSession) GetBatch(batchNonce *big.Int) (Batch, error) {
-	return _Contract.Contract.GetBatch(&_Contract.CallOpts, batchNonce)
+func (_ERC20Safe *ERC20SafeCallerSession) GetBatch(batchNonce *big.Int) (Batch, error) {
+	return _ERC20Safe.Contract.GetBatch(&_ERC20Safe.CallOpts, batchNonce)
 }
 
 // GetDeposits is a free data retrieval call binding the contract method 0x085c967f.
 //
 // Solidity: function getDeposits(uint256 batchNonce) view returns((uint112,address,uint256,address,bytes32,uint8)[])
-func (_Contract *ContractCaller) GetDeposits(opts *bind.CallOpts, batchNonce *big.Int) ([]Deposit, error) {
+func (_ERC20Safe *ERC20SafeCaller) GetDeposits(opts *bind.CallOpts, batchNonce *big.Int) ([]Deposit, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getDeposits", batchNonce)
+	err := _ERC20Safe.contract.Call(opts, &out, "getDeposits", batchNonce)
 
 	if err != nil {
 		return *new([]Deposit), err
@@ -568,23 +599,23 @@ func (_Contract *ContractCaller) GetDeposits(opts *bind.CallOpts, batchNonce *bi
 // GetDeposits is a free data retrieval call binding the contract method 0x085c967f.
 //
 // Solidity: function getDeposits(uint256 batchNonce) view returns((uint112,address,uint256,address,bytes32,uint8)[])
-func (_Contract *ContractSession) GetDeposits(batchNonce *big.Int) ([]Deposit, error) {
-	return _Contract.Contract.GetDeposits(&_Contract.CallOpts, batchNonce)
+func (_ERC20Safe *ERC20SafeSession) GetDeposits(batchNonce *big.Int) ([]Deposit, error) {
+	return _ERC20Safe.Contract.GetDeposits(&_ERC20Safe.CallOpts, batchNonce)
 }
 
 // GetDeposits is a free data retrieval call binding the contract method 0x085c967f.
 //
 // Solidity: function getDeposits(uint256 batchNonce) view returns((uint112,address,uint256,address,bytes32,uint8)[])
-func (_Contract *ContractCallerSession) GetDeposits(batchNonce *big.Int) ([]Deposit, error) {
-	return _Contract.Contract.GetDeposits(&_Contract.CallOpts, batchNonce)
+func (_ERC20Safe *ERC20SafeCallerSession) GetDeposits(batchNonce *big.Int) ([]Deposit, error) {
+	return _ERC20Safe.Contract.GetDeposits(&_ERC20Safe.CallOpts, batchNonce)
 }
 
 // GetTokenMaxLimit is a free data retrieval call binding the contract method 0xc652a0b5.
 //
 // Solidity: function getTokenMaxLimit(address token) view returns(uint256)
-func (_Contract *ContractCaller) GetTokenMaxLimit(opts *bind.CallOpts, token common.Address) (*big.Int, error) {
+func (_ERC20Safe *ERC20SafeCaller) GetTokenMaxLimit(opts *bind.CallOpts, token common.Address) (*big.Int, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getTokenMaxLimit", token)
+	err := _ERC20Safe.contract.Call(opts, &out, "getTokenMaxLimit", token)
 
 	if err != nil {
 		return *new(*big.Int), err
@@ -599,23 +630,23 @@ func (_Contract *ContractCaller) GetTokenMaxLimit(opts *bind.CallOpts, token com
 // GetTokenMaxLimit is a free data retrieval call binding the contract method 0xc652a0b5.
 //
 // Solidity: function getTokenMaxLimit(address token) view returns(uint256)
-func (_Contract *ContractSession) GetTokenMaxLimit(token common.Address) (*big.Int, error) {
-	return _Contract.Contract.GetTokenMaxLimit(&_Contract.CallOpts, token)
+func (_ERC20Safe *ERC20SafeSession) GetTokenMaxLimit(token common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.GetTokenMaxLimit(&_ERC20Safe.CallOpts, token)
 }
 
 // GetTokenMaxLimit is a free data retrieval call binding the contract method 0xc652a0b5.
 //
 // Solidity: function getTokenMaxLimit(address token) view returns(uint256)
-func (_Contract *ContractCallerSession) GetTokenMaxLimit(token common.Address) (*big.Int, error) {
-	return _Contract.Contract.GetTokenMaxLimit(&_Contract.CallOpts, token)
+func (_ERC20Safe *ERC20SafeCallerSession) GetTokenMaxLimit(token common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.GetTokenMaxLimit(&_ERC20Safe.CallOpts, token)
 }
 
 // GetTokenMinLimit is a free data retrieval call binding the contract method 0x9f0ebb93.
 //
 // Solidity: function getTokenMinLimit(address token) view returns(uint256)
-func (_Contract *ContractCaller) GetTokenMinLimit(opts *bind.CallOpts, token common.Address) (*big.Int, error) {
+func (_ERC20Safe *ERC20SafeCaller) GetTokenMinLimit(opts *bind.CallOpts, token common.Address) (*big.Int, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "getTokenMinLimit", token)
+	err := _ERC20Safe.contract.Call(opts, &out, "getTokenMinLimit", token)
 
 	if err != nil {
 		return *new(*big.Int), err
@@ -630,23 +661,23 @@ func (_Contract *ContractCaller) GetTokenMinLimit(opts *bind.CallOpts, token com
 // GetTokenMinLimit is a free data retrieval call binding the contract method 0x9f0ebb93.
 //
 // Solidity: function getTokenMinLimit(address token) view returns(uint256)
-func (_Contract *ContractSession) GetTokenMinLimit(token common.Address) (*big.Int, error) {
-	return _Contract.Contract.GetTokenMinLimit(&_Contract.CallOpts, token)
+func (_ERC20Safe *ERC20SafeSession) GetTokenMinLimit(token common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.GetTokenMinLimit(&_ERC20Safe.CallOpts, token)
 }
 
 // GetTokenMinLimit is a free data retrieval call binding the contract method 0x9f0ebb93.
 //
 // Solidity: function getTokenMinLimit(address token) view returns(uint256)
-func (_Contract *ContractCallerSession) GetTokenMinLimit(token common.Address) (*big.Int, error) {
-	return _Contract.Contract.GetTokenMinLimit(&_Contract.CallOpts, token)
+func (_ERC20Safe *ERC20SafeCallerSession) GetTokenMinLimit(token common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.GetTokenMinLimit(&_ERC20Safe.CallOpts, token)
 }
 
 // IsAnyBatchInProgress is a free data retrieval call binding the contract method 0x82146138.
 //
 // Solidity: function isAnyBatchInProgress() view returns(bool)
-func (_Contract *ContractCaller) IsAnyBatchInProgress(opts *bind.CallOpts) (bool, error) {
+func (_ERC20Safe *ERC20SafeCaller) IsAnyBatchInProgress(opts *bind.CallOpts) (bool, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "isAnyBatchInProgress")
+	err := _ERC20Safe.contract.Call(opts, &out, "isAnyBatchInProgress")
 
 	if err != nil {
 		return *new(bool), err
@@ -661,23 +692,23 @@ func (_Contract *ContractCaller) IsAnyBatchInProgress(opts *bind.CallOpts) (bool
 // IsAnyBatchInProgress is a free data retrieval call binding the contract method 0x82146138.
 //
 // Solidity: function isAnyBatchInProgress() view returns(bool)
-func (_Contract *ContractSession) IsAnyBatchInProgress() (bool, error) {
-	return _Contract.Contract.IsAnyBatchInProgress(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeSession) IsAnyBatchInProgress() (bool, error) {
+	return _ERC20Safe.Contract.IsAnyBatchInProgress(&_ERC20Safe.CallOpts)
 }
 
 // IsAnyBatchInProgress is a free data retrieval call binding the contract method 0x82146138.
 //
 // Solidity: function isAnyBatchInProgress() view returns(bool)
-func (_Contract *ContractCallerSession) IsAnyBatchInProgress() (bool, error) {
-	return _Contract.Contract.IsAnyBatchInProgress(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeCallerSession) IsAnyBatchInProgress() (bool, error) {
+	return _ERC20Safe.Contract.IsAnyBatchInProgress(&_ERC20Safe.CallOpts)
 }
 
 // IsTokenWhitelisted is a free data retrieval call binding the contract method 0xb5af090f.
 //
 // Solidity: function isTokenWhitelisted(address token) view returns(bool)
-func (_Contract *ContractCaller) IsTokenWhitelisted(opts *bind.CallOpts, token common.Address) (bool, error) {
+func (_ERC20Safe *ERC20SafeCaller) IsTokenWhitelisted(opts *bind.CallOpts, token common.Address) (bool, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "isTokenWhitelisted", token)
+	err := _ERC20Safe.contract.Call(opts, &out, "isTokenWhitelisted", token)
 
 	if err != nil {
 		return *new(bool), err
@@ -692,23 +723,116 @@ func (_Contract *ContractCaller) IsTokenWhitelisted(opts *bind.CallOpts, token c
 // IsTokenWhitelisted is a free data retrieval call binding the contract method 0xb5af090f.
 //
 // Solidity: function isTokenWhitelisted(address token) view returns(bool)
-func (_Contract *ContractSession) IsTokenWhitelisted(token common.Address) (bool, error) {
-	return _Contract.Contract.IsTokenWhitelisted(&_Contract.CallOpts, token)
+func (_ERC20Safe *ERC20SafeSession) IsTokenWhitelisted(token common.Address) (bool, error) {
+	return _ERC20Safe.Contract.IsTokenWhitelisted(&_ERC20Safe.CallOpts, token)
 }
 
 // IsTokenWhitelisted is a free data retrieval call binding the contract method 0xb5af090f.
 //
 // Solidity: function isTokenWhitelisted(address token) view returns(bool)
-func (_Contract *ContractCallerSession) IsTokenWhitelisted(token common.Address) (bool, error) {
-	return _Contract.Contract.IsTokenWhitelisted(&_Contract.CallOpts, token)
+func (_ERC20Safe *ERC20SafeCallerSession) IsTokenWhitelisted(token common.Address) (bool, error) {
+	return _ERC20Safe.Contract.IsTokenWhitelisted(&_ERC20Safe.CallOpts, token)
+}
+
+// MintBalances is a free data retrieval call binding the contract method 0xbc56602f.
+//
+// Solidity: function mintBalances(address ) view returns(uint256)
+func (_ERC20Safe *ERC20SafeCaller) MintBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
+	var out []interface{}
+	err := _ERC20Safe.contract.Call(opts, &out, "mintBalances", arg0)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// MintBalances is a free data retrieval call binding the contract method 0xbc56602f.
+//
+// Solidity: function mintBalances(address ) view returns(uint256)
+func (_ERC20Safe *ERC20SafeSession) MintBalances(arg0 common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.MintBalances(&_ERC20Safe.CallOpts, arg0)
+}
+
+// MintBalances is a free data retrieval call binding the contract method 0xbc56602f.
+//
+// Solidity: function mintBalances(address ) view returns(uint256)
+func (_ERC20Safe *ERC20SafeCallerSession) MintBalances(arg0 common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.MintBalances(&_ERC20Safe.CallOpts, arg0)
+}
+
+// MintBurnTokens is a free data retrieval call binding the contract method 0x90e0cfcb.
+//
+// Solidity: function mintBurnTokens(address ) view returns(bool)
+func (_ERC20Safe *ERC20SafeCaller) MintBurnTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
+	var out []interface{}
+	err := _ERC20Safe.contract.Call(opts, &out, "mintBurnTokens", arg0)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// MintBurnTokens is a free data retrieval call binding the contract method 0x90e0cfcb.
+//
+// Solidity: function mintBurnTokens(address ) view returns(bool)
+func (_ERC20Safe *ERC20SafeSession) MintBurnTokens(arg0 common.Address) (bool, error) {
+	return _ERC20Safe.Contract.MintBurnTokens(&_ERC20Safe.CallOpts, arg0)
+}
+
+// MintBurnTokens is a free data retrieval call binding the contract method 0x90e0cfcb.
+//
+// Solidity: function mintBurnTokens(address ) view returns(bool)
+func (_ERC20Safe *ERC20SafeCallerSession) MintBurnTokens(arg0 common.Address) (bool, error) {
+	return _ERC20Safe.Contract.MintBurnTokens(&_ERC20Safe.CallOpts, arg0)
+}
+
+// NativeTokens is a free data retrieval call binding the contract method 0xc86726f6.
+//
+// Solidity: function nativeTokens(address ) view returns(bool)
+func (_ERC20Safe *ERC20SafeCaller) NativeTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
+	var out []interface{}
+	err := _ERC20Safe.contract.Call(opts, &out, "nativeTokens", arg0)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// NativeTokens is a free data retrieval call binding the contract method 0xc86726f6.
+//
+// Solidity: function nativeTokens(address ) view returns(bool)
+func (_ERC20Safe *ERC20SafeSession) NativeTokens(arg0 common.Address) (bool, error) {
+	return _ERC20Safe.Contract.NativeTokens(&_ERC20Safe.CallOpts, arg0)
+}
+
+// NativeTokens is a free data retrieval call binding the contract method 0xc86726f6.
+//
+// Solidity: function nativeTokens(address ) view returns(bool)
+func (_ERC20Safe *ERC20SafeCallerSession) NativeTokens(arg0 common.Address) (bool, error) {
+	return _ERC20Safe.Contract.NativeTokens(&_ERC20Safe.CallOpts, arg0)
 }
 
 // Paused is a free data retrieval call binding the contract method 0x5c975abb.
 //
 // Solidity: function paused() view returns(bool)
-func (_Contract *ContractCaller) Paused(opts *bind.CallOpts) (bool, error) {
+func (_ERC20Safe *ERC20SafeCaller) Paused(opts *bind.CallOpts) (bool, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "paused")
+	err := _ERC20Safe.contract.Call(opts, &out, "paused")
 
 	if err != nil {
 		return *new(bool), err
@@ -723,54 +847,23 @@ func (_Contract *ContractCaller) Paused(opts *bind.CallOpts) (bool, error) {
 // Paused is a free data retrieval call binding the contract method 0x5c975abb.
 //
 // Solidity: function paused() view returns(bool)
-func (_Contract *ContractSession) Paused() (bool, error) {
-	return _Contract.Contract.Paused(&_Contract.CallOpts)
+func (_ERC20Safe *ERC20SafeSession) Paused() (bool, error) {
+	return _ERC20Safe.Contract.Paused(&_ERC20Safe.CallOpts)
 }
 
 // Paused is a free data retrieval call binding the contract method 0x5c975abb.
 //
 // Solidity: function paused() view returns(bool)
-func (_Contract *ContractCallerSession) Paused() (bool, error) {
-	return _Contract.Contract.Paused(&_Contract.CallOpts)
-}
-
-// TokenBalances is a free data retrieval call binding the contract method 0x523fba7f.
-//
-// Solidity: function tokenBalances(address ) view returns(uint256)
-func (_Contract *ContractCaller) TokenBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
-	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "tokenBalances", arg0)
-
-	if err != nil {
-		return *new(*big.Int), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
-
-	return out0, err
-
-}
-
-// TokenBalances is a free data retrieval call binding the contract method 0x523fba7f.
-//
-// Solidity: function tokenBalances(address ) view returns(uint256)
-func (_Contract *ContractSession) TokenBalances(arg0 common.Address) (*big.Int, error) {
-	return _Contract.Contract.TokenBalances(&_Contract.CallOpts, arg0)
-}
-
-// TokenBalances is a free data retrieval call binding the contract method 0x523fba7f.
-//
-// Solidity: function tokenBalances(address ) view returns(uint256)
-func (_Contract *ContractCallerSession) TokenBalances(arg0 common.Address) (*big.Int, error) {
-	return _Contract.Contract.TokenBalances(&_Contract.CallOpts, arg0)
+func (_ERC20Safe *ERC20SafeCallerSession) Paused() (bool, error) {
+	return _ERC20Safe.Contract.Paused(&_ERC20Safe.CallOpts)
 }
 
 // TokenMaxLimits is a free data retrieval call binding the contract method 0xc639651d.
 //
 // Solidity: function tokenMaxLimits(address ) view returns(uint256)
-func (_Contract *ContractCaller) TokenMaxLimits(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
+func (_ERC20Safe *ERC20SafeCaller) TokenMaxLimits(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "tokenMaxLimits", arg0)
+	err := _ERC20Safe.contract.Call(opts, &out, "tokenMaxLimits", arg0)
 
 	if err != nil {
 		return *new(*big.Int), err
@@ -785,23 +878,23 @@ func (_Contract *ContractCaller) TokenMaxLimits(opts *bind.CallOpts, arg0 common
 // TokenMaxLimits is a free data retrieval call binding the contract method 0xc639651d.
 //
 // Solidity: function tokenMaxLimits(address ) view returns(uint256)
-func (_Contract *ContractSession) TokenMaxLimits(arg0 common.Address) (*big.Int, error) {
-	return _Contract.Contract.TokenMaxLimits(&_Contract.CallOpts, arg0)
+func (_ERC20Safe *ERC20SafeSession) TokenMaxLimits(arg0 common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.TokenMaxLimits(&_ERC20Safe.CallOpts, arg0)
 }
 
 // TokenMaxLimits is a free data retrieval call binding the contract method 0xc639651d.
 //
 // Solidity: function tokenMaxLimits(address ) view returns(uint256)
-func (_Contract *ContractCallerSession) TokenMaxLimits(arg0 common.Address) (*big.Int, error) {
-	return _Contract.Contract.TokenMaxLimits(&_Contract.CallOpts, arg0)
+func (_ERC20Safe *ERC20SafeCallerSession) TokenMaxLimits(arg0 common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.TokenMaxLimits(&_ERC20Safe.CallOpts, arg0)
 }
 
 // TokenMinLimits is a free data retrieval call binding the contract method 0xf6246ea1.
 //
 // Solidity: function tokenMinLimits(address ) view returns(uint256)
-func (_Contract *ContractCaller) TokenMinLimits(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
+func (_ERC20Safe *ERC20SafeCaller) TokenMinLimits(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "tokenMinLimits", arg0)
+	err := _ERC20Safe.contract.Call(opts, &out, "tokenMinLimits", arg0)
 
 	if err != nil {
 		return *new(*big.Int), err
@@ -816,23 +909,23 @@ func (_Contract *ContractCaller) TokenMinLimits(opts *bind.CallOpts, arg0 common
 // TokenMinLimits is a free data retrieval call binding the contract method 0xf6246ea1.
 //
 // Solidity: function tokenMinLimits(address ) view returns(uint256)
-func (_Contract *ContractSession) TokenMinLimits(arg0 common.Address) (*big.Int, error) {
-	return _Contract.Contract.TokenMinLimits(&_Contract.CallOpts, arg0)
+func (_ERC20Safe *ERC20SafeSession) TokenMinLimits(arg0 common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.TokenMinLimits(&_ERC20Safe.CallOpts, arg0)
 }
 
 // TokenMinLimits is a free data retrieval call binding the contract method 0xf6246ea1.
 //
 // Solidity: function tokenMinLimits(address ) view returns(uint256)
-func (_Contract *ContractCallerSession) TokenMinLimits(arg0 common.Address) (*big.Int, error) {
-	return _Contract.Contract.TokenMinLimits(&_Contract.CallOpts, arg0)
+func (_ERC20Safe *ERC20SafeCallerSession) TokenMinLimits(arg0 common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.TokenMinLimits(&_ERC20Safe.CallOpts, arg0)
 }
 
-// TokenMintedBalances is a free data retrieval call binding the contract method 0x34ae3850.
+// TotalBalances is a free data retrieval call binding the contract method 0xaee9c872.
 //
-// Solidity: function tokenMintedBalances(address ) view returns(uint256)
-func (_Contract *ContractCaller) TokenMintedBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
+// Solidity: function totalBalances(address ) view returns(uint256)
+func (_ERC20Safe *ERC20SafeCaller) TotalBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "tokenMintedBalances", arg0)
+	err := _ERC20Safe.contract.Call(opts, &out, "totalBalances", arg0)
 
 	if err != nil {
 		return *new(*big.Int), err
@@ -844,26 +937,26 @@ func (_Contract *ContractCaller) TokenMintedBalances(opts *bind.CallOpts, arg0 c
 
 }
 
-// TokenMintedBalances is a free data retrieval call binding the contract method 0x34ae3850.
+// TotalBalances is a free data retrieval call binding the contract method 0xaee9c872.
 //
-// Solidity: function tokenMintedBalances(address ) view returns(uint256)
-func (_Contract *ContractSession) TokenMintedBalances(arg0 common.Address) (*big.Int, error) {
-	return _Contract.Contract.TokenMintedBalances(&_Contract.CallOpts, arg0)
+// Solidity: function totalBalances(address ) view returns(uint256)
+func (_ERC20Safe *ERC20SafeSession) TotalBalances(arg0 common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.TotalBalances(&_ERC20Safe.CallOpts, arg0)
 }
 
-// TokenMintedBalances is a free data retrieval call binding the contract method 0x34ae3850.
+// TotalBalances is a free data retrieval call binding the contract method 0xaee9c872.
 //
-// Solidity: function tokenMintedBalances(address ) view returns(uint256)
-func (_Contract *ContractCallerSession) TokenMintedBalances(arg0 common.Address) (*big.Int, error) {
-	return _Contract.Contract.TokenMintedBalances(&_Contract.CallOpts, arg0)
+// Solidity: function totalBalances(address ) view returns(uint256)
+func (_ERC20Safe *ERC20SafeCallerSession) TotalBalances(arg0 common.Address) (*big.Int, error) {
+	return _ERC20Safe.Contract.TotalBalances(&_ERC20Safe.CallOpts, arg0)
 }
 
 // WhitelistedTokens is a free data retrieval call binding the contract method 0xdaf9c210.
 //
 // Solidity: function whitelistedTokens(address ) view returns(bool)
-func (_Contract *ContractCaller) WhitelistedTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
+func (_ERC20Safe *ERC20SafeCaller) WhitelistedTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
 	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "whitelistedTokens", arg0)
+	err := _ERC20Safe.contract.Call(opts, &out, "whitelistedTokens", arg0)
 
 	if err != nil {
 		return *new(bool), err
@@ -878,387 +971,356 @@ func (_Contract *ContractCaller) WhitelistedTokens(opts *bind.CallOpts, arg0 com
 // WhitelistedTokens is a free data retrieval call binding the contract method 0xdaf9c210.
 //
 // Solidity: function whitelistedTokens(address ) view returns(bool)
-func (_Contract *ContractSession) WhitelistedTokens(arg0 common.Address) (bool, error) {
-	return _Contract.Contract.WhitelistedTokens(&_Contract.CallOpts, arg0)
+func (_ERC20Safe *ERC20SafeSession) WhitelistedTokens(arg0 common.Address) (bool, error) {
+	return _ERC20Safe.Contract.WhitelistedTokens(&_ERC20Safe.CallOpts, arg0)
 }
 
 // WhitelistedTokens is a free data retrieval call binding the contract method 0xdaf9c210.
 //
 // Solidity: function whitelistedTokens(address ) view returns(bool)
-func (_Contract *ContractCallerSession) WhitelistedTokens(arg0 common.Address) (bool, error) {
-	return _Contract.Contract.WhitelistedTokens(&_Contract.CallOpts, arg0)
-}
-
-// WhitelistedTokensMintBurn is a free data retrieval call binding the contract method 0x48db2fca.
-//
-// Solidity: function whitelistedTokensMintBurn(address ) view returns(bool)
-func (_Contract *ContractCaller) WhitelistedTokensMintBurn(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
-	var out []interface{}
-	err := _Contract.contract.Call(opts, &out, "whitelistedTokensMintBurn", arg0)
-
-	if err != nil {
-		return *new(bool), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
-
-	return out0, err
-
-}
-
-// WhitelistedTokensMintBurn is a free data retrieval call binding the contract method 0x48db2fca.
-//
-// Solidity: function whitelistedTokensMintBurn(address ) view returns(bool)
-func (_Contract *ContractSession) WhitelistedTokensMintBurn(arg0 common.Address) (bool, error) {
-	return _Contract.Contract.WhitelistedTokensMintBurn(&_Contract.CallOpts, arg0)
-}
-
-// WhitelistedTokensMintBurn is a free data retrieval call binding the contract method 0x48db2fca.
-//
-// Solidity: function whitelistedTokensMintBurn(address ) view returns(bool)
-func (_Contract *ContractCallerSession) WhitelistedTokensMintBurn(arg0 common.Address) (bool, error) {
-	return _Contract.Contract.WhitelistedTokensMintBurn(&_Contract.CallOpts, arg0)
+func (_ERC20Safe *ERC20SafeCallerSession) WhitelistedTokens(arg0 common.Address) (bool, error) {
+	return _ERC20Safe.Contract.WhitelistedTokens(&_ERC20Safe.CallOpts, arg0)
 }
 
 // Deposit is a paid mutator transaction binding the contract method 0x26b3293f.
 //
 // Solidity: function deposit(address tokenAddress, uint256 amount, bytes32 recipientAddress) returns()
-func (_Contract *ContractTransactor) Deposit(opts *bind.TransactOpts, tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "deposit", tokenAddress, amount, recipientAddress)
+func (_ERC20Safe *ERC20SafeTransactor) Deposit(opts *bind.TransactOpts, tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "deposit", tokenAddress, amount, recipientAddress)
 }
 
 // Deposit is a paid mutator transaction binding the contract method 0x26b3293f.
 //
 // Solidity: function deposit(address tokenAddress, uint256 amount, bytes32 recipientAddress) returns()
-func (_Contract *ContractSession) Deposit(tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte) (*types.Transaction, error) {
-	return _Contract.Contract.Deposit(&_Contract.TransactOpts, tokenAddress, amount, recipientAddress)
+func (_ERC20Safe *ERC20SafeSession) Deposit(tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.Deposit(&_ERC20Safe.TransactOpts, tokenAddress, amount, recipientAddress)
 }
 
 // Deposit is a paid mutator transaction binding the contract method 0x26b3293f.
 //
 // Solidity: function deposit(address tokenAddress, uint256 amount, bytes32 recipientAddress) returns()
-func (_Contract *ContractTransactorSession) Deposit(tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte) (*types.Transaction, error) {
-	return _Contract.Contract.Deposit(&_Contract.TransactOpts, tokenAddress, amount, recipientAddress)
+func (_ERC20Safe *ERC20SafeTransactorSession) Deposit(tokenAddress common.Address, amount *big.Int, recipientAddress [32]byte) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.Deposit(&_ERC20Safe.TransactOpts, tokenAddress, amount, recipientAddress)
 }
 
 // InitSupply is a paid mutator transaction binding the contract method 0x4013c89c.
 //
 // Solidity: function initSupply(address tokenAddress, uint256 amount) returns()
-func (_Contract *ContractTransactor) InitSupply(opts *bind.TransactOpts, tokenAddress common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "initSupply", tokenAddress, amount)
+func (_ERC20Safe *ERC20SafeTransactor) InitSupply(opts *bind.TransactOpts, tokenAddress common.Address, amount *big.Int) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "initSupply", tokenAddress, amount)
 }
 
 // InitSupply is a paid mutator transaction binding the contract method 0x4013c89c.
 //
 // Solidity: function initSupply(address tokenAddress, uint256 amount) returns()
-func (_Contract *ContractSession) InitSupply(tokenAddress common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _Contract.Contract.InitSupply(&_Contract.TransactOpts, tokenAddress, amount)
+func (_ERC20Safe *ERC20SafeSession) InitSupply(tokenAddress common.Address, amount *big.Int) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.InitSupply(&_ERC20Safe.TransactOpts, tokenAddress, amount)
 }
 
 // InitSupply is a paid mutator transaction binding the contract method 0x4013c89c.
 //
 // Solidity: function initSupply(address tokenAddress, uint256 amount) returns()
-func (_Contract *ContractTransactorSession) InitSupply(tokenAddress common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _Contract.Contract.InitSupply(&_Contract.TransactOpts, tokenAddress, amount)
+func (_ERC20Safe *ERC20SafeTransactorSession) InitSupply(tokenAddress common.Address, amount *big.Int) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.InitSupply(&_ERC20Safe.TransactOpts, tokenAddress, amount)
 }
 
 // Pause is a paid mutator transaction binding the contract method 0x8456cb59.
 //
 // Solidity: function pause() returns()
-func (_Contract *ContractTransactor) Pause(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "pause")
+func (_ERC20Safe *ERC20SafeTransactor) Pause(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "pause")
 }
 
 // Pause is a paid mutator transaction binding the contract method 0x8456cb59.
 //
 // Solidity: function pause() returns()
-func (_Contract *ContractSession) Pause() (*types.Transaction, error) {
-	return _Contract.Contract.Pause(&_Contract.TransactOpts)
+func (_ERC20Safe *ERC20SafeSession) Pause() (*types.Transaction, error) {
+	return _ERC20Safe.Contract.Pause(&_ERC20Safe.TransactOpts)
 }
 
 // Pause is a paid mutator transaction binding the contract method 0x8456cb59.
 //
 // Solidity: function pause() returns()
-func (_Contract *ContractTransactorSession) Pause() (*types.Transaction, error) {
-	return _Contract.Contract.Pause(&_Contract.TransactOpts)
+func (_ERC20Safe *ERC20SafeTransactorSession) Pause() (*types.Transaction, error) {
+	return _ERC20Safe.Contract.Pause(&_ERC20Safe.TransactOpts)
 }
 
 // RecoverLostFunds is a paid mutator transaction binding the contract method 0x770be784.
 //
 // Solidity: function recoverLostFunds(address tokenAddress) returns()
-func (_Contract *ContractTransactor) RecoverLostFunds(opts *bind.TransactOpts, tokenAddress common.Address) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "recoverLostFunds", tokenAddress)
+func (_ERC20Safe *ERC20SafeTransactor) RecoverLostFunds(opts *bind.TransactOpts, tokenAddress common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "recoverLostFunds", tokenAddress)
 }
 
 // RecoverLostFunds is a paid mutator transaction binding the contract method 0x770be784.
 //
 // Solidity: function recoverLostFunds(address tokenAddress) returns()
-func (_Contract *ContractSession) RecoverLostFunds(tokenAddress common.Address) (*types.Transaction, error) {
-	return _Contract.Contract.RecoverLostFunds(&_Contract.TransactOpts, tokenAddress)
+func (_ERC20Safe *ERC20SafeSession) RecoverLostFunds(tokenAddress common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.RecoverLostFunds(&_ERC20Safe.TransactOpts, tokenAddress)
 }
 
 // RecoverLostFunds is a paid mutator transaction binding the contract method 0x770be784.
 //
 // Solidity: function recoverLostFunds(address tokenAddress) returns()
-func (_Contract *ContractTransactorSession) RecoverLostFunds(tokenAddress common.Address) (*types.Transaction, error) {
-	return _Contract.Contract.RecoverLostFunds(&_Contract.TransactOpts, tokenAddress)
+func (_ERC20Safe *ERC20SafeTransactorSession) RecoverLostFunds(tokenAddress common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.RecoverLostFunds(&_ERC20Safe.TransactOpts, tokenAddress)
 }
 
 // RemoveTokenFromWhitelist is a paid mutator transaction binding the contract method 0x306275be.
 //
 // Solidity: function removeTokenFromWhitelist(address token) returns()
-func (_Contract *ContractTransactor) RemoveTokenFromWhitelist(opts *bind.TransactOpts, token common.Address) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "removeTokenFromWhitelist", token)
+func (_ERC20Safe *ERC20SafeTransactor) RemoveTokenFromWhitelist(opts *bind.TransactOpts, token common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "removeTokenFromWhitelist", token)
 }
 
 // RemoveTokenFromWhitelist is a paid mutator transaction binding the contract method 0x306275be.
 //
 // Solidity: function removeTokenFromWhitelist(address token) returns()
-func (_Contract *ContractSession) RemoveTokenFromWhitelist(token common.Address) (*types.Transaction, error) {
-	return _Contract.Contract.RemoveTokenFromWhitelist(&_Contract.TransactOpts, token)
+func (_ERC20Safe *ERC20SafeSession) RemoveTokenFromWhitelist(token common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.RemoveTokenFromWhitelist(&_ERC20Safe.TransactOpts, token)
 }
 
 // RemoveTokenFromWhitelist is a paid mutator transaction binding the contract method 0x306275be.
 //
 // Solidity: function removeTokenFromWhitelist(address token) returns()
-func (_Contract *ContractTransactorSession) RemoveTokenFromWhitelist(token common.Address) (*types.Transaction, error) {
-	return _Contract.Contract.RemoveTokenFromWhitelist(&_Contract.TransactOpts, token)
+func (_ERC20Safe *ERC20SafeTransactorSession) RemoveTokenFromWhitelist(token common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.RemoveTokenFromWhitelist(&_ERC20Safe.TransactOpts, token)
 }
 
 // RenounceAdmin is a paid mutator transaction binding the contract method 0x8bad0c0a.
 //
 // Solidity: function renounceAdmin() returns()
-func (_Contract *ContractTransactor) RenounceAdmin(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "renounceAdmin")
+func (_ERC20Safe *ERC20SafeTransactor) RenounceAdmin(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "renounceAdmin")
 }
 
 // RenounceAdmin is a paid mutator transaction binding the contract method 0x8bad0c0a.
 //
 // Solidity: function renounceAdmin() returns()
-func (_Contract *ContractSession) RenounceAdmin() (*types.Transaction, error) {
-	return _Contract.Contract.RenounceAdmin(&_Contract.TransactOpts)
+func (_ERC20Safe *ERC20SafeSession) RenounceAdmin() (*types.Transaction, error) {
+	return _ERC20Safe.Contract.RenounceAdmin(&_ERC20Safe.TransactOpts)
 }
 
 // RenounceAdmin is a paid mutator transaction binding the contract method 0x8bad0c0a.
 //
 // Solidity: function renounceAdmin() returns()
-func (_Contract *ContractTransactorSession) RenounceAdmin() (*types.Transaction, error) {
-	return _Contract.Contract.RenounceAdmin(&_Contract.TransactOpts)
+func (_ERC20Safe *ERC20SafeTransactorSession) RenounceAdmin() (*types.Transaction, error) {
+	return _ERC20Safe.Contract.RenounceAdmin(&_ERC20Safe.TransactOpts)
 }
 
 // SetBatchBlockLimit is a paid mutator transaction binding the contract method 0xe8a70ee2.
 //
 // Solidity: function setBatchBlockLimit(uint8 newBatchBlockLimit) returns()
-func (_Contract *ContractTransactor) SetBatchBlockLimit(opts *bind.TransactOpts, newBatchBlockLimit uint8) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "setBatchBlockLimit", newBatchBlockLimit)
+func (_ERC20Safe *ERC20SafeTransactor) SetBatchBlockLimit(opts *bind.TransactOpts, newBatchBlockLimit uint8) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "setBatchBlockLimit", newBatchBlockLimit)
 }
 
 // SetBatchBlockLimit is a paid mutator transaction binding the contract method 0xe8a70ee2.
 //
 // Solidity: function setBatchBlockLimit(uint8 newBatchBlockLimit) returns()
-func (_Contract *ContractSession) SetBatchBlockLimit(newBatchBlockLimit uint8) (*types.Transaction, error) {
-	return _Contract.Contract.SetBatchBlockLimit(&_Contract.TransactOpts, newBatchBlockLimit)
+func (_ERC20Safe *ERC20SafeSession) SetBatchBlockLimit(newBatchBlockLimit uint8) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetBatchBlockLimit(&_ERC20Safe.TransactOpts, newBatchBlockLimit)
 }
 
 // SetBatchBlockLimit is a paid mutator transaction binding the contract method 0xe8a70ee2.
 //
 // Solidity: function setBatchBlockLimit(uint8 newBatchBlockLimit) returns()
-func (_Contract *ContractTransactorSession) SetBatchBlockLimit(newBatchBlockLimit uint8) (*types.Transaction, error) {
-	return _Contract.Contract.SetBatchBlockLimit(&_Contract.TransactOpts, newBatchBlockLimit)
+func (_ERC20Safe *ERC20SafeTransactorSession) SetBatchBlockLimit(newBatchBlockLimit uint8) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetBatchBlockLimit(&_ERC20Safe.TransactOpts, newBatchBlockLimit)
 }
 
 // SetBatchSettleLimit is a paid mutator transaction binding the contract method 0xf2e0ec48.
 //
 // Solidity: function setBatchSettleLimit(uint8 newBatchSettleLimit) returns()
-func (_Contract *ContractTransactor) SetBatchSettleLimit(opts *bind.TransactOpts, newBatchSettleLimit uint8) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "setBatchSettleLimit", newBatchSettleLimit)
+func (_ERC20Safe *ERC20SafeTransactor) SetBatchSettleLimit(opts *bind.TransactOpts, newBatchSettleLimit uint8) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "setBatchSettleLimit", newBatchSettleLimit)
 }
 
 // SetBatchSettleLimit is a paid mutator transaction binding the contract method 0xf2e0ec48.
 //
 // Solidity: function setBatchSettleLimit(uint8 newBatchSettleLimit) returns()
-func (_Contract *ContractSession) SetBatchSettleLimit(newBatchSettleLimit uint8) (*types.Transaction, error) {
-	return _Contract.Contract.SetBatchSettleLimit(&_Contract.TransactOpts, newBatchSettleLimit)
+func (_ERC20Safe *ERC20SafeSession) SetBatchSettleLimit(newBatchSettleLimit uint8) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetBatchSettleLimit(&_ERC20Safe.TransactOpts, newBatchSettleLimit)
 }
 
 // SetBatchSettleLimit is a paid mutator transaction binding the contract method 0xf2e0ec48.
 //
 // Solidity: function setBatchSettleLimit(uint8 newBatchSettleLimit) returns()
-func (_Contract *ContractTransactorSession) SetBatchSettleLimit(newBatchSettleLimit uint8) (*types.Transaction, error) {
-	return _Contract.Contract.SetBatchSettleLimit(&_Contract.TransactOpts, newBatchSettleLimit)
+func (_ERC20Safe *ERC20SafeTransactorSession) SetBatchSettleLimit(newBatchSettleLimit uint8) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetBatchSettleLimit(&_ERC20Safe.TransactOpts, newBatchSettleLimit)
 }
 
 // SetBatchSize is a paid mutator transaction binding the contract method 0xd4673de9.
 //
 // Solidity: function setBatchSize(uint16 newBatchSize) returns()
-func (_Contract *ContractTransactor) SetBatchSize(opts *bind.TransactOpts, newBatchSize uint16) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "setBatchSize", newBatchSize)
+func (_ERC20Safe *ERC20SafeTransactor) SetBatchSize(opts *bind.TransactOpts, newBatchSize uint16) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "setBatchSize", newBatchSize)
 }
 
 // SetBatchSize is a paid mutator transaction binding the contract method 0xd4673de9.
 //
 // Solidity: function setBatchSize(uint16 newBatchSize) returns()
-func (_Contract *ContractSession) SetBatchSize(newBatchSize uint16) (*types.Transaction, error) {
-	return _Contract.Contract.SetBatchSize(&_Contract.TransactOpts, newBatchSize)
+func (_ERC20Safe *ERC20SafeSession) SetBatchSize(newBatchSize uint16) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetBatchSize(&_ERC20Safe.TransactOpts, newBatchSize)
 }
 
 // SetBatchSize is a paid mutator transaction binding the contract method 0xd4673de9.
 //
 // Solidity: function setBatchSize(uint16 newBatchSize) returns()
-func (_Contract *ContractTransactorSession) SetBatchSize(newBatchSize uint16) (*types.Transaction, error) {
-	return _Contract.Contract.SetBatchSize(&_Contract.TransactOpts, newBatchSize)
+func (_ERC20Safe *ERC20SafeTransactorSession) SetBatchSize(newBatchSize uint16) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetBatchSize(&_ERC20Safe.TransactOpts, newBatchSize)
 }
 
 // SetBridge is a paid mutator transaction binding the contract method 0x8dd14802.
 //
 // Solidity: function setBridge(address newBridge) returns()
-func (_Contract *ContractTransactor) SetBridge(opts *bind.TransactOpts, newBridge common.Address) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "setBridge", newBridge)
+func (_ERC20Safe *ERC20SafeTransactor) SetBridge(opts *bind.TransactOpts, newBridge common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "setBridge", newBridge)
 }
 
 // SetBridge is a paid mutator transaction binding the contract method 0x8dd14802.
 //
 // Solidity: function setBridge(address newBridge) returns()
-func (_Contract *ContractSession) SetBridge(newBridge common.Address) (*types.Transaction, error) {
-	return _Contract.Contract.SetBridge(&_Contract.TransactOpts, newBridge)
+func (_ERC20Safe *ERC20SafeSession) SetBridge(newBridge common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetBridge(&_ERC20Safe.TransactOpts, newBridge)
 }
 
 // SetBridge is a paid mutator transaction binding the contract method 0x8dd14802.
 //
 // Solidity: function setBridge(address newBridge) returns()
-func (_Contract *ContractTransactorSession) SetBridge(newBridge common.Address) (*types.Transaction, error) {
-	return _Contract.Contract.SetBridge(&_Contract.TransactOpts, newBridge)
+func (_ERC20Safe *ERC20SafeTransactorSession) SetBridge(newBridge common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetBridge(&_ERC20Safe.TransactOpts, newBridge)
 }
 
 // SetTokenMaxLimit is a paid mutator transaction binding the contract method 0x7d7763ce.
 //
 // Solidity: function setTokenMaxLimit(address token, uint256 amount) returns()
-func (_Contract *ContractTransactor) SetTokenMaxLimit(opts *bind.TransactOpts, token common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "setTokenMaxLimit", token, amount)
+func (_ERC20Safe *ERC20SafeTransactor) SetTokenMaxLimit(opts *bind.TransactOpts, token common.Address, amount *big.Int) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "setTokenMaxLimit", token, amount)
 }
 
 // SetTokenMaxLimit is a paid mutator transaction binding the contract method 0x7d7763ce.
 //
 // Solidity: function setTokenMaxLimit(address token, uint256 amount) returns()
-func (_Contract *ContractSession) SetTokenMaxLimit(token common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _Contract.Contract.SetTokenMaxLimit(&_Contract.TransactOpts, token, amount)
+func (_ERC20Safe *ERC20SafeSession) SetTokenMaxLimit(token common.Address, amount *big.Int) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetTokenMaxLimit(&_ERC20Safe.TransactOpts, token, amount)
 }
 
 // SetTokenMaxLimit is a paid mutator transaction binding the contract method 0x7d7763ce.
 //
 // Solidity: function setTokenMaxLimit(address token, uint256 amount) returns()
-func (_Contract *ContractTransactorSession) SetTokenMaxLimit(token common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _Contract.Contract.SetTokenMaxLimit(&_Contract.TransactOpts, token, amount)
+func (_ERC20Safe *ERC20SafeTransactorSession) SetTokenMaxLimit(token common.Address, amount *big.Int) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetTokenMaxLimit(&_ERC20Safe.TransactOpts, token, amount)
 }
 
 // SetTokenMinLimit is a paid mutator transaction binding the contract method 0x920b0308.
 //
 // Solidity: function setTokenMinLimit(address token, uint256 amount) returns()
-func (_Contract *ContractTransactor) SetTokenMinLimit(opts *bind.TransactOpts, token common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "setTokenMinLimit", token, amount)
+func (_ERC20Safe *ERC20SafeTransactor) SetTokenMinLimit(opts *bind.TransactOpts, token common.Address, amount *big.Int) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "setTokenMinLimit", token, amount)
 }
 
 // SetTokenMinLimit is a paid mutator transaction binding the contract method 0x920b0308.
 //
 // Solidity: function setTokenMinLimit(address token, uint256 amount) returns()
-func (_Contract *ContractSession) SetTokenMinLimit(token common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _Contract.Contract.SetTokenMinLimit(&_Contract.TransactOpts, token, amount)
+func (_ERC20Safe *ERC20SafeSession) SetTokenMinLimit(token common.Address, amount *big.Int) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetTokenMinLimit(&_ERC20Safe.TransactOpts, token, amount)
 }
 
 // SetTokenMinLimit is a paid mutator transaction binding the contract method 0x920b0308.
 //
 // Solidity: function setTokenMinLimit(address token, uint256 amount) returns()
-func (_Contract *ContractTransactorSession) SetTokenMinLimit(token common.Address, amount *big.Int) (*types.Transaction, error) {
-	return _Contract.Contract.SetTokenMinLimit(&_Contract.TransactOpts, token, amount)
+func (_ERC20Safe *ERC20SafeTransactorSession) SetTokenMinLimit(token common.Address, amount *big.Int) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.SetTokenMinLimit(&_ERC20Safe.TransactOpts, token, amount)
 }
 
 // Transfer is a paid mutator transaction binding the contract method 0xdbba0f01.
 //
 // Solidity: function transfer(address tokenAddress, uint256 amount, address recipientAddress) returns(bool)
-func (_Contract *ContractTransactor) Transfer(opts *bind.TransactOpts, tokenAddress common.Address, amount *big.Int, recipientAddress common.Address) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "transfer", tokenAddress, amount, recipientAddress)
+func (_ERC20Safe *ERC20SafeTransactor) Transfer(opts *bind.TransactOpts, tokenAddress common.Address, amount *big.Int, recipientAddress common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "transfer", tokenAddress, amount, recipientAddress)
 }
 
 // Transfer is a paid mutator transaction binding the contract method 0xdbba0f01.
 //
 // Solidity: function transfer(address tokenAddress, uint256 amount, address recipientAddress) returns(bool)
-func (_Contract *ContractSession) Transfer(tokenAddress common.Address, amount *big.Int, recipientAddress common.Address) (*types.Transaction, error) {
-	return _Contract.Contract.Transfer(&_Contract.TransactOpts, tokenAddress, amount, recipientAddress)
+func (_ERC20Safe *ERC20SafeSession) Transfer(tokenAddress common.Address, amount *big.Int, recipientAddress common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.Transfer(&_ERC20Safe.TransactOpts, tokenAddress, amount, recipientAddress)
 }
 
 // Transfer is a paid mutator transaction binding the contract method 0xdbba0f01.
 //
 // Solidity: function transfer(address tokenAddress, uint256 amount, address recipientAddress) returns(bool)
-func (_Contract *ContractTransactorSession) Transfer(tokenAddress common.Address, amount *big.Int, recipientAddress common.Address) (*types.Transaction, error) {
-	return _Contract.Contract.Transfer(&_Contract.TransactOpts, tokenAddress, amount, recipientAddress)
+func (_ERC20Safe *ERC20SafeTransactorSession) Transfer(tokenAddress common.Address, amount *big.Int, recipientAddress common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.Transfer(&_ERC20Safe.TransactOpts, tokenAddress, amount, recipientAddress)
 }
 
 // TransferAdmin is a paid mutator transaction binding the contract method 0x75829def.
 //
 // Solidity: function transferAdmin(address newAdmin) returns()
-func (_Contract *ContractTransactor) TransferAdmin(opts *bind.TransactOpts, newAdmin common.Address) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "transferAdmin", newAdmin)
+func (_ERC20Safe *ERC20SafeTransactor) TransferAdmin(opts *bind.TransactOpts, newAdmin common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "transferAdmin", newAdmin)
 }
 
 // TransferAdmin is a paid mutator transaction binding the contract method 0x75829def.
 //
 // Solidity: function transferAdmin(address newAdmin) returns()
-func (_Contract *ContractSession) TransferAdmin(newAdmin common.Address) (*types.Transaction, error) {
-	return _Contract.Contract.TransferAdmin(&_Contract.TransactOpts, newAdmin)
+func (_ERC20Safe *ERC20SafeSession) TransferAdmin(newAdmin common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.TransferAdmin(&_ERC20Safe.TransactOpts, newAdmin)
 }
 
 // TransferAdmin is a paid mutator transaction binding the contract method 0x75829def.
 //
 // Solidity: function transferAdmin(address newAdmin) returns()
-func (_Contract *ContractTransactorSession) TransferAdmin(newAdmin common.Address) (*types.Transaction, error) {
-	return _Contract.Contract.TransferAdmin(&_Contract.TransactOpts, newAdmin)
+func (_ERC20Safe *ERC20SafeTransactorSession) TransferAdmin(newAdmin common.Address) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.TransferAdmin(&_ERC20Safe.TransactOpts, newAdmin)
 }
 
 // Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
 //
 // Solidity: function unpause() returns()
-func (_Contract *ContractTransactor) Unpause(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "unpause")
+func (_ERC20Safe *ERC20SafeTransactor) Unpause(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "unpause")
 }
 
 // Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
 //
 // Solidity: function unpause() returns()
-func (_Contract *ContractSession) Unpause() (*types.Transaction, error) {
-	return _Contract.Contract.Unpause(&_Contract.TransactOpts)
+func (_ERC20Safe *ERC20SafeSession) Unpause() (*types.Transaction, error) {
+	return _ERC20Safe.Contract.Unpause(&_ERC20Safe.TransactOpts)
 }
 
 // Unpause is a paid mutator transaction binding the contract method 0x3f4ba83a.
 //
 // Solidity: function unpause() returns()
-func (_Contract *ContractTransactorSession) Unpause() (*types.Transaction, error) {
-	return _Contract.Contract.Unpause(&_Contract.TransactOpts)
+func (_ERC20Safe *ERC20SafeTransactorSession) Unpause() (*types.Transaction, error) {
+	return _ERC20Safe.Contract.Unpause(&_ERC20Safe.TransactOpts)
 }
 
-// WhitelistToken is a paid mutator transaction binding the contract method 0x5fd94707.
+// WhitelistToken is a paid mutator transaction binding the contract method 0xa7c3a06f.
 //
-// Solidity: function whitelistToken(address token, uint256 minimumAmount, uint256 maximumAmount, bool mintBurn) returns()
-func (_Contract *ContractTransactor) WhitelistToken(opts *bind.TransactOpts, token common.Address, minimumAmount *big.Int, maximumAmount *big.Int, mintBurn bool) (*types.Transaction, error) {
-	return _Contract.contract.Transact(opts, "whitelistToken", token, minimumAmount, maximumAmount, mintBurn)
+// Solidity: function whitelistToken(address token, uint256 minimumAmount, uint256 maximumAmount, bool mintBurn, bool native) returns()
+func (_ERC20Safe *ERC20SafeTransactor) WhitelistToken(opts *bind.TransactOpts, token common.Address, minimumAmount *big.Int, maximumAmount *big.Int, mintBurn bool, native bool) (*types.Transaction, error) {
+	return _ERC20Safe.contract.Transact(opts, "whitelistToken", token, minimumAmount, maximumAmount, mintBurn, native)
 }
 
-// WhitelistToken is a paid mutator transaction binding the contract method 0x5fd94707.
+// WhitelistToken is a paid mutator transaction binding the contract method 0xa7c3a06f.
 //
-// Solidity: function whitelistToken(address token, uint256 minimumAmount, uint256 maximumAmount, bool mintBurn) returns()
-func (_Contract *ContractSession) WhitelistToken(token common.Address, minimumAmount *big.Int, maximumAmount *big.Int, mintBurn bool) (*types.Transaction, error) {
-	return _Contract.Contract.WhitelistToken(&_Contract.TransactOpts, token, minimumAmount, maximumAmount, mintBurn)
+// Solidity: function whitelistToken(address token, uint256 minimumAmount, uint256 maximumAmount, bool mintBurn, bool native) returns()
+func (_ERC20Safe *ERC20SafeSession) WhitelistToken(token common.Address, minimumAmount *big.Int, maximumAmount *big.Int, mintBurn bool, native bool) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.WhitelistToken(&_ERC20Safe.TransactOpts, token, minimumAmount, maximumAmount, mintBurn, native)
 }
 
-// WhitelistToken is a paid mutator transaction binding the contract method 0x5fd94707.
+// WhitelistToken is a paid mutator transaction binding the contract method 0xa7c3a06f.
 //
-// Solidity: function whitelistToken(address token, uint256 minimumAmount, uint256 maximumAmount, bool mintBurn) returns()
-func (_Contract *ContractTransactorSession) WhitelistToken(token common.Address, minimumAmount *big.Int, maximumAmount *big.Int, mintBurn bool) (*types.Transaction, error) {
-	return _Contract.Contract.WhitelistToken(&_Contract.TransactOpts, token, minimumAmount, maximumAmount, mintBurn)
+// Solidity: function whitelistToken(address token, uint256 minimumAmount, uint256 maximumAmount, bool mintBurn, bool native) returns()
+func (_ERC20Safe *ERC20SafeTransactorSession) WhitelistToken(token common.Address, minimumAmount *big.Int, maximumAmount *big.Int, mintBurn bool, native bool) (*types.Transaction, error) {
+	return _ERC20Safe.Contract.WhitelistToken(&_ERC20Safe.TransactOpts, token, minimumAmount, maximumAmount, mintBurn, native)
 }
 
-// ContractAdminRoleTransferredIterator is returned from FilterAdminRoleTransferred and is used to iterate over the raw logs and unpacked data for AdminRoleTransferred events raised by the Contract contract.
-type ContractAdminRoleTransferredIterator struct {
-	Event *ContractAdminRoleTransferred // Event containing the contract specifics and raw log
+// ERC20SafeAdminRoleTransferredIterator is returned from FilterAdminRoleTransferred and is used to iterate over the raw logs and unpacked data for AdminRoleTransferred events raised by the ERC20Safe contract.
+type ERC20SafeAdminRoleTransferredIterator struct {
+	Event *ERC20SafeAdminRoleTransferred // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -1272,7 +1334,7 @@ type ContractAdminRoleTransferredIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *ContractAdminRoleTransferredIterator) Next() bool {
+func (it *ERC20SafeAdminRoleTransferredIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -1281,7 +1343,7 @@ func (it *ContractAdminRoleTransferredIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(ContractAdminRoleTransferred)
+			it.Event = new(ERC20SafeAdminRoleTransferred)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -1296,7 +1358,7 @@ func (it *ContractAdminRoleTransferredIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(ContractAdminRoleTransferred)
+		it.Event = new(ERC20SafeAdminRoleTransferred)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -1312,19 +1374,19 @@ func (it *ContractAdminRoleTransferredIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *ContractAdminRoleTransferredIterator) Error() error {
+func (it *ERC20SafeAdminRoleTransferredIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *ContractAdminRoleTransferredIterator) Close() error {
+func (it *ERC20SafeAdminRoleTransferredIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// ContractAdminRoleTransferred represents a AdminRoleTransferred event raised by the Contract contract.
-type ContractAdminRoleTransferred struct {
+// ERC20SafeAdminRoleTransferred represents a AdminRoleTransferred event raised by the ERC20Safe contract.
+type ERC20SafeAdminRoleTransferred struct {
 	PreviousAdmin common.Address
 	NewAdmin      common.Address
 	Raw           types.Log // Blockchain specific contextual infos
@@ -1333,7 +1395,7 @@ type ContractAdminRoleTransferred struct {
 // FilterAdminRoleTransferred is a free log retrieval operation binding the contract event 0xe379ac64de02d8184ca1a871ac486cb8137de77e485ede140e97057b9c765ffd.
 //
 // Solidity: event AdminRoleTransferred(address indexed previousAdmin, address indexed newAdmin)
-func (_Contract *ContractFilterer) FilterAdminRoleTransferred(opts *bind.FilterOpts, previousAdmin []common.Address, newAdmin []common.Address) (*ContractAdminRoleTransferredIterator, error) {
+func (_ERC20Safe *ERC20SafeFilterer) FilterAdminRoleTransferred(opts *bind.FilterOpts, previousAdmin []common.Address, newAdmin []common.Address) (*ERC20SafeAdminRoleTransferredIterator, error) {
 
 	var previousAdminRule []interface{}
 	for _, previousAdminItem := range previousAdmin {
@@ -1344,17 +1406,17 @@ func (_Contract *ContractFilterer) FilterAdminRoleTransferred(opts *bind.FilterO
 		newAdminRule = append(newAdminRule, newAdminItem)
 	}
 
-	logs, sub, err := _Contract.contract.FilterLogs(opts, "AdminRoleTransferred", previousAdminRule, newAdminRule)
+	logs, sub, err := _ERC20Safe.contract.FilterLogs(opts, "AdminRoleTransferred", previousAdminRule, newAdminRule)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractAdminRoleTransferredIterator{contract: _Contract.contract, event: "AdminRoleTransferred", logs: logs, sub: sub}, nil
+	return &ERC20SafeAdminRoleTransferredIterator{contract: _ERC20Safe.contract, event: "AdminRoleTransferred", logs: logs, sub: sub}, nil
 }
 
 // WatchAdminRoleTransferred is a free log subscription operation binding the contract event 0xe379ac64de02d8184ca1a871ac486cb8137de77e485ede140e97057b9c765ffd.
 //
 // Solidity: event AdminRoleTransferred(address indexed previousAdmin, address indexed newAdmin)
-func (_Contract *ContractFilterer) WatchAdminRoleTransferred(opts *bind.WatchOpts, sink chan<- *ContractAdminRoleTransferred, previousAdmin []common.Address, newAdmin []common.Address) (event.Subscription, error) {
+func (_ERC20Safe *ERC20SafeFilterer) WatchAdminRoleTransferred(opts *bind.WatchOpts, sink chan<- *ERC20SafeAdminRoleTransferred, previousAdmin []common.Address, newAdmin []common.Address) (event.Subscription, error) {
 
 	var previousAdminRule []interface{}
 	for _, previousAdminItem := range previousAdmin {
@@ -1365,7 +1427,7 @@ func (_Contract *ContractFilterer) WatchAdminRoleTransferred(opts *bind.WatchOpt
 		newAdminRule = append(newAdminRule, newAdminItem)
 	}
 
-	logs, sub, err := _Contract.contract.WatchLogs(opts, "AdminRoleTransferred", previousAdminRule, newAdminRule)
+	logs, sub, err := _ERC20Safe.contract.WatchLogs(opts, "AdminRoleTransferred", previousAdminRule, newAdminRule)
 	if err != nil {
 		return nil, err
 	}
@@ -1375,8 +1437,8 @@ func (_Contract *ContractFilterer) WatchAdminRoleTransferred(opts *bind.WatchOpt
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(ContractAdminRoleTransferred)
-				if err := _Contract.contract.UnpackLog(event, "AdminRoleTransferred", log); err != nil {
+				event := new(ERC20SafeAdminRoleTransferred)
+				if err := _ERC20Safe.contract.UnpackLog(event, "AdminRoleTransferred", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -1400,18 +1462,18 @@ func (_Contract *ContractFilterer) WatchAdminRoleTransferred(opts *bind.WatchOpt
 // ParseAdminRoleTransferred is a log parse operation binding the contract event 0xe379ac64de02d8184ca1a871ac486cb8137de77e485ede140e97057b9c765ffd.
 //
 // Solidity: event AdminRoleTransferred(address indexed previousAdmin, address indexed newAdmin)
-func (_Contract *ContractFilterer) ParseAdminRoleTransferred(log types.Log) (*ContractAdminRoleTransferred, error) {
-	event := new(ContractAdminRoleTransferred)
-	if err := _Contract.contract.UnpackLog(event, "AdminRoleTransferred", log); err != nil {
+func (_ERC20Safe *ERC20SafeFilterer) ParseAdminRoleTransferred(log types.Log) (*ERC20SafeAdminRoleTransferred, error) {
+	event := new(ERC20SafeAdminRoleTransferred)
+	if err := _ERC20Safe.contract.UnpackLog(event, "AdminRoleTransferred", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
 	return event, nil
 }
 
-// ContractBridgeTransferredIterator is returned from FilterBridgeTransferred and is used to iterate over the raw logs and unpacked data for BridgeTransferred events raised by the Contract contract.
-type ContractBridgeTransferredIterator struct {
-	Event *ContractBridgeTransferred // Event containing the contract specifics and raw log
+// ERC20SafeBridgeTransferredIterator is returned from FilterBridgeTransferred and is used to iterate over the raw logs and unpacked data for BridgeTransferred events raised by the ERC20Safe contract.
+type ERC20SafeBridgeTransferredIterator struct {
+	Event *ERC20SafeBridgeTransferred // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -1425,7 +1487,7 @@ type ContractBridgeTransferredIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *ContractBridgeTransferredIterator) Next() bool {
+func (it *ERC20SafeBridgeTransferredIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -1434,7 +1496,7 @@ func (it *ContractBridgeTransferredIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(ContractBridgeTransferred)
+			it.Event = new(ERC20SafeBridgeTransferred)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -1449,7 +1511,7 @@ func (it *ContractBridgeTransferredIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(ContractBridgeTransferred)
+		it.Event = new(ERC20SafeBridgeTransferred)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -1465,19 +1527,19 @@ func (it *ContractBridgeTransferredIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *ContractBridgeTransferredIterator) Error() error {
+func (it *ERC20SafeBridgeTransferredIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *ContractBridgeTransferredIterator) Close() error {
+func (it *ERC20SafeBridgeTransferredIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// ContractBridgeTransferred represents a BridgeTransferred event raised by the Contract contract.
-type ContractBridgeTransferred struct {
+// ERC20SafeBridgeTransferred represents a BridgeTransferred event raised by the ERC20Safe contract.
+type ERC20SafeBridgeTransferred struct {
 	PreviousBridge common.Address
 	NewBridge      common.Address
 	Raw            types.Log // Blockchain specific contextual infos
@@ -1486,7 +1548,7 @@ type ContractBridgeTransferred struct {
 // FilterBridgeTransferred is a free log retrieval operation binding the contract event 0xcca5fddab921a878ddbd4edb737a2cf3ac6df70864f108606647d1b37a5e07a0.
 //
 // Solidity: event BridgeTransferred(address indexed previousBridge, address indexed newBridge)
-func (_Contract *ContractFilterer) FilterBridgeTransferred(opts *bind.FilterOpts, previousBridge []common.Address, newBridge []common.Address) (*ContractBridgeTransferredIterator, error) {
+func (_ERC20Safe *ERC20SafeFilterer) FilterBridgeTransferred(opts *bind.FilterOpts, previousBridge []common.Address, newBridge []common.Address) (*ERC20SafeBridgeTransferredIterator, error) {
 
 	var previousBridgeRule []interface{}
 	for _, previousBridgeItem := range previousBridge {
@@ -1497,17 +1559,17 @@ func (_Contract *ContractFilterer) FilterBridgeTransferred(opts *bind.FilterOpts
 		newBridgeRule = append(newBridgeRule, newBridgeItem)
 	}
 
-	logs, sub, err := _Contract.contract.FilterLogs(opts, "BridgeTransferred", previousBridgeRule, newBridgeRule)
+	logs, sub, err := _ERC20Safe.contract.FilterLogs(opts, "BridgeTransferred", previousBridgeRule, newBridgeRule)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractBridgeTransferredIterator{contract: _Contract.contract, event: "BridgeTransferred", logs: logs, sub: sub}, nil
+	return &ERC20SafeBridgeTransferredIterator{contract: _ERC20Safe.contract, event: "BridgeTransferred", logs: logs, sub: sub}, nil
 }
 
 // WatchBridgeTransferred is a free log subscription operation binding the contract event 0xcca5fddab921a878ddbd4edb737a2cf3ac6df70864f108606647d1b37a5e07a0.
 //
 // Solidity: event BridgeTransferred(address indexed previousBridge, address indexed newBridge)
-func (_Contract *ContractFilterer) WatchBridgeTransferred(opts *bind.WatchOpts, sink chan<- *ContractBridgeTransferred, previousBridge []common.Address, newBridge []common.Address) (event.Subscription, error) {
+func (_ERC20Safe *ERC20SafeFilterer) WatchBridgeTransferred(opts *bind.WatchOpts, sink chan<- *ERC20SafeBridgeTransferred, previousBridge []common.Address, newBridge []common.Address) (event.Subscription, error) {
 
 	var previousBridgeRule []interface{}
 	for _, previousBridgeItem := range previousBridge {
@@ -1518,7 +1580,7 @@ func (_Contract *ContractFilterer) WatchBridgeTransferred(opts *bind.WatchOpts, 
 		newBridgeRule = append(newBridgeRule, newBridgeItem)
 	}
 
-	logs, sub, err := _Contract.contract.WatchLogs(opts, "BridgeTransferred", previousBridgeRule, newBridgeRule)
+	logs, sub, err := _ERC20Safe.contract.WatchLogs(opts, "BridgeTransferred", previousBridgeRule, newBridgeRule)
 	if err != nil {
 		return nil, err
 	}
@@ -1528,8 +1590,8 @@ func (_Contract *ContractFilterer) WatchBridgeTransferred(opts *bind.WatchOpts, 
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(ContractBridgeTransferred)
-				if err := _Contract.contract.UnpackLog(event, "BridgeTransferred", log); err != nil {
+				event := new(ERC20SafeBridgeTransferred)
+				if err := _ERC20Safe.contract.UnpackLog(event, "BridgeTransferred", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -1553,18 +1615,18 @@ func (_Contract *ContractFilterer) WatchBridgeTransferred(opts *bind.WatchOpts, 
 // ParseBridgeTransferred is a log parse operation binding the contract event 0xcca5fddab921a878ddbd4edb737a2cf3ac6df70864f108606647d1b37a5e07a0.
 //
 // Solidity: event BridgeTransferred(address indexed previousBridge, address indexed newBridge)
-func (_Contract *ContractFilterer) ParseBridgeTransferred(log types.Log) (*ContractBridgeTransferred, error) {
-	event := new(ContractBridgeTransferred)
-	if err := _Contract.contract.UnpackLog(event, "BridgeTransferred", log); err != nil {
+func (_ERC20Safe *ERC20SafeFilterer) ParseBridgeTransferred(log types.Log) (*ERC20SafeBridgeTransferred, error) {
+	event := new(ERC20SafeBridgeTransferred)
+	if err := _ERC20Safe.contract.UnpackLog(event, "BridgeTransferred", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
 	return event, nil
 }
 
-// ContractERC20DepositIterator is returned from FilterERC20Deposit and is used to iterate over the raw logs and unpacked data for ERC20Deposit events raised by the Contract contract.
-type ContractERC20DepositIterator struct {
-	Event *ContractERC20Deposit // Event containing the contract specifics and raw log
+// ERC20SafeERC20DepositIterator is returned from FilterERC20Deposit and is used to iterate over the raw logs and unpacked data for ERC20Deposit events raised by the ERC20Safe contract.
+type ERC20SafeERC20DepositIterator struct {
+	Event *ERC20SafeERC20Deposit // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -1578,7 +1640,7 @@ type ContractERC20DepositIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *ContractERC20DepositIterator) Next() bool {
+func (it *ERC20SafeERC20DepositIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -1587,7 +1649,7 @@ func (it *ContractERC20DepositIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(ContractERC20Deposit)
+			it.Event = new(ERC20SafeERC20Deposit)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -1602,7 +1664,7 @@ func (it *ContractERC20DepositIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(ContractERC20Deposit)
+		it.Event = new(ERC20SafeERC20Deposit)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -1618,19 +1680,19 @@ func (it *ContractERC20DepositIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *ContractERC20DepositIterator) Error() error {
+func (it *ERC20SafeERC20DepositIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *ContractERC20DepositIterator) Close() error {
+func (it *ERC20SafeERC20DepositIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// ContractERC20Deposit represents a ERC20Deposit event raised by the Contract contract.
-type ContractERC20Deposit struct {
+// ERC20SafeERC20Deposit represents a ERC20Deposit event raised by the ERC20Safe contract.
+type ERC20SafeERC20Deposit struct {
 	DepositNonce *big.Int
 	BatchId      *big.Int
 	Raw          types.Log // Blockchain specific contextual infos
@@ -1639,21 +1701,21 @@ type ContractERC20Deposit struct {
 // FilterERC20Deposit is a free log retrieval operation binding the contract event 0x6c15ce44793c685a79cde26a0bd5419ef4f3a337991f156be7b365962001b4a7.
 //
 // Solidity: event ERC20Deposit(uint112 depositNonce, uint112 batchId)
-func (_Contract *ContractFilterer) FilterERC20Deposit(opts *bind.FilterOpts) (*ContractERC20DepositIterator, error) {
+func (_ERC20Safe *ERC20SafeFilterer) FilterERC20Deposit(opts *bind.FilterOpts) (*ERC20SafeERC20DepositIterator, error) {
 
-	logs, sub, err := _Contract.contract.FilterLogs(opts, "ERC20Deposit")
+	logs, sub, err := _ERC20Safe.contract.FilterLogs(opts, "ERC20Deposit")
 	if err != nil {
 		return nil, err
 	}
-	return &ContractERC20DepositIterator{contract: _Contract.contract, event: "ERC20Deposit", logs: logs, sub: sub}, nil
+	return &ERC20SafeERC20DepositIterator{contract: _ERC20Safe.contract, event: "ERC20Deposit", logs: logs, sub: sub}, nil
 }
 
 // WatchERC20Deposit is a free log subscription operation binding the contract event 0x6c15ce44793c685a79cde26a0bd5419ef4f3a337991f156be7b365962001b4a7.
 //
 // Solidity: event ERC20Deposit(uint112 depositNonce, uint112 batchId)
-func (_Contract *ContractFilterer) WatchERC20Deposit(opts *bind.WatchOpts, sink chan<- *ContractERC20Deposit) (event.Subscription, error) {
+func (_ERC20Safe *ERC20SafeFilterer) WatchERC20Deposit(opts *bind.WatchOpts, sink chan<- *ERC20SafeERC20Deposit) (event.Subscription, error) {
 
-	logs, sub, err := _Contract.contract.WatchLogs(opts, "ERC20Deposit")
+	logs, sub, err := _ERC20Safe.contract.WatchLogs(opts, "ERC20Deposit")
 	if err != nil {
 		return nil, err
 	}
@@ -1663,8 +1725,8 @@ func (_Contract *ContractFilterer) WatchERC20Deposit(opts *bind.WatchOpts, sink 
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(ContractERC20Deposit)
-				if err := _Contract.contract.UnpackLog(event, "ERC20Deposit", log); err != nil {
+				event := new(ERC20SafeERC20Deposit)
+				if err := _ERC20Safe.contract.UnpackLog(event, "ERC20Deposit", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -1688,9 +1750,143 @@ func (_Contract *ContractFilterer) WatchERC20Deposit(opts *bind.WatchOpts, sink 
 // ParseERC20Deposit is a log parse operation binding the contract event 0x6c15ce44793c685a79cde26a0bd5419ef4f3a337991f156be7b365962001b4a7.
 //
 // Solidity: event ERC20Deposit(uint112 depositNonce, uint112 batchId)
-func (_Contract *ContractFilterer) ParseERC20Deposit(log types.Log) (*ContractERC20Deposit, error) {
-	event := new(ContractERC20Deposit)
-	if err := _Contract.contract.UnpackLog(event, "ERC20Deposit", log); err != nil {
+func (_ERC20Safe *ERC20SafeFilterer) ParseERC20Deposit(log types.Log) (*ERC20SafeERC20Deposit, error) {
+	event := new(ERC20SafeERC20Deposit)
+	if err := _ERC20Safe.contract.UnpackLog(event, "ERC20Deposit", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// ERC20SafePauseIterator is returned from FilterPause and is used to iterate over the raw logs and unpacked data for Pause events raised by the ERC20Safe contract.
+type ERC20SafePauseIterator struct {
+	Event *ERC20SafePause // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *ERC20SafePauseIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(ERC20SafePause)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(ERC20SafePause)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *ERC20SafePauseIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *ERC20SafePauseIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// ERC20SafePause represents a Pause event raised by the ERC20Safe contract.
+type ERC20SafePause struct {
+	IsPause bool
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterPause is a free log retrieval operation binding the contract event 0x9422424b175dda897495a07b091ef74a3ef715cf6d866fc972954c1c7f459304.
+//
+// Solidity: event Pause(bool isPause)
+func (_ERC20Safe *ERC20SafeFilterer) FilterPause(opts *bind.FilterOpts) (*ERC20SafePauseIterator, error) {
+
+	logs, sub, err := _ERC20Safe.contract.FilterLogs(opts, "Pause")
+	if err != nil {
+		return nil, err
+	}
+	return &ERC20SafePauseIterator{contract: _ERC20Safe.contract, event: "Pause", logs: logs, sub: sub}, nil
+}
+
+// WatchPause is a free log subscription operation binding the contract event 0x9422424b175dda897495a07b091ef74a3ef715cf6d866fc972954c1c7f459304.
+//
+// Solidity: event Pause(bool isPause)
+func (_ERC20Safe *ERC20SafeFilterer) WatchPause(opts *bind.WatchOpts, sink chan<- *ERC20SafePause) (event.Subscription, error) {
+
+	logs, sub, err := _ERC20Safe.contract.WatchLogs(opts, "Pause")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(ERC20SafePause)
+				if err := _ERC20Safe.contract.UnpackLog(event, "Pause", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParsePause is a log parse operation binding the contract event 0x9422424b175dda897495a07b091ef74a3ef715cf6d866fc972954c1c7f459304.
+//
+// Solidity: event Pause(bool isPause)
+func (_ERC20Safe *ERC20SafeFilterer) ParsePause(log types.Log) (*ERC20SafePause, error) {
+	event := new(ERC20SafePause)
+	if err := _ERC20Safe.contract.UnpackLog(event, "Pause", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

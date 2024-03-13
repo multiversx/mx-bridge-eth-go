@@ -23,8 +23,12 @@ type EthereumClientStub struct {
 	IsQuorumReachedCalled                  func(ctx context.Context, msgHash common.Hash) (bool, error)
 	GetBatchSCMetadataCalled               func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error)
 	CheckRequiredBalanceCalled             func(ctx context.Context, erc20Address common.Address, value *big.Int) error
-	TokenMintedBalancesCalled              func(ctx context.Context, token common.Address) (*big.Int, error)
-	WhitelistedTokensMintBurnCalled        func(ctx context.Context, token common.Address) (bool, error)
+	TotalBalancesCalled                    func(ctx context.Context, account common.Address) (*big.Int, error)
+	MintBalancesCalled                     func(ctx context.Context, account common.Address) (*big.Int, error)
+	BurnBalancesCalled                     func(ctx context.Context, account common.Address) (*big.Int, error)
+	MintBurnTokensCalled                   func(ctx context.Context, account common.Address) (bool, error)
+	NativeTokensCalled                     func(ctx context.Context, account common.Address) (bool, error)
+	WhitelistedTokensCalled                func(ctx context.Context, account common.Address) (bool, error)
 }
 
 // GetBatch -
@@ -76,7 +80,7 @@ func (stub *EthereumClientStub) CheckClientAvailability(ctx context.Context) err
 		return stub.CheckClientAvailabilityCalled(ctx)
 	}
 
-	return nil
+	return errNotImplemented
 }
 
 // GetTransactionsStatuses -
@@ -112,7 +116,7 @@ func (stub *EthereumClientStub) GetBatchSCMetadata(ctx context.Context, nonce ui
 		return stub.GetBatchSCMetadataCalled(ctx, nonce)
 	}
 
-	return []*contract.SCExecProxyERC20SCDeposit{}, nil
+	return []*contract.SCExecProxyERC20SCDeposit{}, errNotImplemented
 }
 
 // CheckRequiredBalance -
@@ -121,25 +125,61 @@ func (stub *EthereumClientStub) CheckRequiredBalance(ctx context.Context, erc20A
 		return stub.CheckRequiredBalanceCalled(ctx, erc20Address, value)
 	}
 
-	return nil
+	return errNotImplemented
 }
 
-// TokenMintedBalances -
-func (stub *EthereumClientStub) TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error) {
-	if stub.TokenMintedBalancesCalled != nil {
-		return stub.TokenMintedBalancesCalled(ctx, token)
+// TotalBalances -
+func (stub *EthereumClientStub) TotalBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+	if stub.TotalBalancesCalled != nil {
+		return stub.TotalBalancesCalled(ctx, account)
 	}
 
-	return nil, nil
+	return nil, errNotImplemented
 }
 
-// WhitelistedTokensMintBurn -
-func (stub *EthereumClientStub) WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error) {
-	if stub.WhitelistedTokensMintBurnCalled != nil {
-		return stub.WhitelistedTokensMintBurnCalled(ctx, token)
+// MintBalances -
+func (stub *EthereumClientStub) MintBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+	if stub.MintBalancesCalled != nil {
+		return stub.MintBalancesCalled(ctx, account)
 	}
 
-	return false, nil
+	return nil, errNotImplemented
+}
+
+// BurnBalances -
+func (stub *EthereumClientStub) BurnBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+	if stub.BurnBalancesCalled != nil {
+		return stub.BurnBalancesCalled(ctx, account)
+	}
+
+	return nil, errNotImplemented
+}
+
+// MintBurnTokens -
+func (stub *EthereumClientStub) MintBurnTokens(ctx context.Context, account common.Address) (bool, error) {
+	if stub.MintBurnTokensCalled != nil {
+		return stub.MintBurnTokensCalled(ctx, account)
+	}
+
+	return false, errNotImplemented
+}
+
+// NativeTokens -
+func (stub *EthereumClientStub) NativeTokens(ctx context.Context, account common.Address) (bool, error) {
+	if stub.NativeTokensCalled != nil {
+		return stub.NativeTokensCalled(ctx, account)
+	}
+
+	return false, errNotImplemented
+}
+
+// WhitelistedTokens -
+func (stub *EthereumClientStub) WhitelistedTokens(ctx context.Context, account common.Address) (bool, error) {
+	if stub.WhitelistedTokensCalled != nil {
+		return stub.WhitelistedTokensCalled(ctx, account)
+	}
+
+	return false, errNotImplemented
 }
 
 // IsInterfaceNil -

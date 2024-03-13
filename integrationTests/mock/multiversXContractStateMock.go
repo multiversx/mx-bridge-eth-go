@@ -259,10 +259,16 @@ func (mock *multiversXContractStateMock) processVmRequests(vmRequest *data.VmVal
 		return mock.vmRequestSigned(vmRequest), nil
 	case "isPaused":
 		return mock.vmRequestIsPaused(vmRequest), nil
-	case "isMintBurnAllowed":
-		return mock.vmRequestIsMintBurnAllowed(vmRequest), nil
-	case "getAccumulatedBurnedTokens":
-		return mock.vmRequestGetAccumulatedBurnedTokens(vmRequest), nil
+	case "isMintBurnToken":
+		return mock.vmRequestIsMintBurnToken(vmRequest), nil
+	case "isNativeToken":
+		return mock.vmRequestIsNativeToken(vmRequest), nil
+	case "getTotalBalances":
+		return mock.vmRequestGetTotalBalances(vmRequest), nil
+	case "getMintBalances":
+		return mock.vmRequestGetMintBalances(vmRequest), nil
+	case "getBurnBalances":
+		return mock.vmRequestGetBurnBalances(vmRequest), nil
 	}
 
 	panic("unimplemented function: " + vmRequest.FuncName)
@@ -471,16 +477,34 @@ func (mock *multiversXContractStateMock) vmRequestIsPaused(_ *data.VmValueReques
 	return createOkVmResponse([][]byte{BoolToByteSlice(false)})
 }
 
-func (mock *multiversXContractStateMock) vmRequestIsMintBurnAllowed(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
+func (mock *multiversXContractStateMock) vmRequestIsMintBurnToken(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
+	address := vmRequest.Args[0]
+
+	return createOkVmResponse([][]byte{BoolToByteSlice(mock.isMintBurnToken(address))})
+}
+
+func (mock *multiversXContractStateMock) vmRequestIsNativeToken(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
 	address := vmRequest.Args[0]
 
 	return createOkVmResponse([][]byte{BoolToByteSlice(mock.isNativeToken(address))})
 }
 
-func (mock *multiversXContractStateMock) vmRequestGetAccumulatedBurnedTokens(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
+func (mock *multiversXContractStateMock) vmRequestGetTotalBalances(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
 	address := vmRequest.Args[0]
 
-	return createOkVmResponse([][]byte{mock.getAccumulatedBurn(address).Bytes()})
+	return createOkVmResponse([][]byte{mock.getTotalBalances(address).Bytes()})
+}
+
+func (mock *multiversXContractStateMock) vmRequestGetMintBalances(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
+	address := vmRequest.Args[0]
+
+	return createOkVmResponse([][]byte{mock.getMintBalances(address).Bytes()})
+}
+
+func (mock *multiversXContractStateMock) vmRequestGetBurnBalances(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
+	address := vmRequest.Args[0]
+
+	return createOkVmResponse([][]byte{mock.getBurnBalances(address).Bytes()})
 }
 
 func getActionIDFromString(data string) *big.Int {
