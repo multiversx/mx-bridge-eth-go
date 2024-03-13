@@ -114,7 +114,7 @@ func CreateProxyWithChainSimulator(args ArgProxyWithChainSimulator) (*proxyWithC
 		PathToProxyConfig: args.ProxyConfigs,
 		ServerPort:        args.ServerPort,
 		RestApiInterfaces: restApiInterfaces,
-		InitialWallets:    simulator.GetInitialWalletKeys().ShardWallets,
+		InitialWallets:    simulator.GetInitialWalletKeys().BalanceWallets,
 	})
 	if err != nil {
 		return nil, err
