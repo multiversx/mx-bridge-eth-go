@@ -207,7 +207,7 @@ func (stub *MultiversXClientStub) IsMintBurnToken(ctx context.Context, token []b
 	if stub.IsMintBurnTokenCalled != nil {
 		return stub.IsMintBurnTokenCalled(ctx, token)
 	}
-	return false, nil
+	return false, notImplemented
 }
 
 // IsNativeToken -
@@ -215,7 +215,7 @@ func (stub *MultiversXClientStub) IsNativeToken(ctx context.Context, token []byt
 	if stub.IsNativeTokenCalled != nil {
 		return stub.IsNativeTokenCalled(ctx, token)
 	}
-	return false, nil
+	return false, notImplemented
 }
 
 // TotalBalances -
@@ -223,7 +223,7 @@ func (stub *MultiversXClientStub) TotalBalances(ctx context.Context, token []byt
 	if stub.TotalBalancesCalled != nil {
 		return stub.TotalBalancesCalled(ctx, token)
 	}
-	return big.NewInt(0), nil
+	return nil, notImplemented
 }
 
 // MintBalances -
@@ -231,7 +231,7 @@ func (stub *MultiversXClientStub) MintBalances(ctx context.Context, token []byte
 	if stub.MintBalancesCalled != nil {
 		return stub.MintBalancesCalled(ctx, token)
 	}
-	return big.NewInt(0), nil
+	return nil, notImplemented
 }
 
 // BurnBalances -
@@ -239,7 +239,7 @@ func (stub *MultiversXClientStub) BurnBalances(ctx context.Context, token []byte
 	if stub.BurnBalancesCalled != nil {
 		return stub.BurnBalancesCalled(ctx, token)
 	}
-	return big.NewInt(0), nil
+	return nil, notImplemented
 }
 
 // CheckRequiredBalance -

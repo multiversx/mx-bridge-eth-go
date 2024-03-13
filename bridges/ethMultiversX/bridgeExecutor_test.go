@@ -358,6 +358,9 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 				assert.Equal(t, providedNonce, nonce)
 				return expectedBatch, nil
 			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+				return make([]*contract.SCExecProxyERC20SCDeposit, 0), nil
+			},
 		}
 		executor, _ := NewBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)

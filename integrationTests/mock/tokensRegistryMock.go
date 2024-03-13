@@ -19,10 +19,10 @@ type tokensRegistryMock struct {
 	burnBalances    map[string]*big.Int
 }
 
-// TODO: do this
-func (mock *tokensRegistryMock) addTokensPair(erc20Address common.Address, ticker string, isNativeToken bool, nativeBalance *big.Int) {
+func (mock *tokensRegistryMock) addTokensPair(erc20Address common.Address, ticker string, isNativeToken, isMintBurnToken bool, totalBalance, mintBalances, burnBalances *big.Int) {
 	integrationTests.Log.Info("added tokens pair", "ticker", ticker,
-		"erc20 address", erc20Address.String(), "is native token", isNativeToken, "native balance", nativeBalance)
+		"erc20 address", erc20Address.String(), "is native token", isNativeToken, "is mint burn token", isMintBurnToken,
+		"total balance", totalBalance, "mint balances", mintBalances, "burn balances", burnBalances)
 
 	mock.ethToMultiversX[erc20Address] = ticker
 
@@ -30,14 +30,25 @@ func (mock *tokensRegistryMock) addTokensPair(erc20Address common.Address, ticke
 	mock.multiversXToEth[hexedTicker] = erc20Address
 
 	if isNativeToken {
-		mock.nativeTokensBalance[hexedTicker] = nativeBalance
+		mock.nativeTokens[hexedTicker] = true
+	}
+	if isMintBurnToken {
+		mock.mintBurnTokens[hexedTicker] = true
+		mock.mintBalances[hexedTicker] = mintBalances
+		mock.burnBalances[hexedTicker] = burnBalances
+	} else {
+		mock.totalBalances[hexedTicker] = totalBalance
 	}
 }
 
 func (mock *tokensRegistryMock) clearTokens() {
 	mock.ethToMultiversX = make(map[common.Address]string)
 	mock.multiversXToEth = make(map[string]common.Address)
-	mock.nativeTokensBalance = make(map[string]*big.Int)
+	mock.mintBurnTokens = make(map[string]bool)
+	mock.nativeTokens = make(map[string]bool)
+	mock.totalBalances = make(map[string]*big.Int)
+	mock.mintBalances = make(map[string]*big.Int)
+	mock.burnBalances = make(map[string]*big.Int)
 }
 
 func (mock *tokensRegistryMock) getTicker(erc20Address common.Address) string {
