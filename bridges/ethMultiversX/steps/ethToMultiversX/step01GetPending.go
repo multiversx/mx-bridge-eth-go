@@ -56,7 +56,7 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 	}
 
 	argLists := batchProcessor.ExtractListEthToMvx(batch)
-	err = step.bridge.CheckAvailableTokens(ctx, argLists.EthTokens, argLists.MvxTokenBytes, argLists.Amounts)
+	err = step.bridge.CheckAvailableTokens(ctx, argLists.EthTokens, argLists.MvxTokenBytes, argLists.Amounts, argLists.Direction)
 	if err != nil {
 		step.bridge.PrintInfo(logger.LogError, "error checking available tokens", "error", err, "batch", batch.String())
 		return step.Identifier()

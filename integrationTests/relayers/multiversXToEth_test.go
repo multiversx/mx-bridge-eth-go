@@ -19,6 +19,7 @@ import (
 )
 
 var log = logger.GetOrCreate("integrationTests/relayers")
+var zero = big.NewInt(0)
 
 func asyncCancelCall(cancelHandler func(), delay time.Duration) {
 	go func() {
@@ -51,7 +52,12 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
-		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker, false, nil)
+		ethereumChainMock.UpdateNativeTokens(tokensAddresses[i], false)
+		ethereumChainMock.UpdateMintBurnTokens(tokensAddresses[i], true)
+		ethereumChainMock.UpdateMintBalances(tokensAddresses[i], zero)
+		ethereumChainMock.UpdateBurnBalances(tokensAddresses[i], zero)
+
+		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker, true, true, zero, zero, deposits[i].Amount)
 	}
 	pendingBatch := mock.MultiversXPendingBatch{
 		Nonce:              big.NewInt(1),
@@ -133,14 +139,22 @@ func testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearIn
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
-		var nativeBalanceValue *big.Int
+		nativeBalanceValue := big.NewInt(int64(i * 1000))
 
-		if withNativeTokens {
-			nativeBalanceValue = big.NewInt(int64(i * 1000))
-			ethereumChainMock.AddWhitelistedTokensMintBurn(tokensAddresses[i], nativeBalanceValue)
+		if !withNativeTokens {
+			ethereumChainMock.UpdateNativeTokens(tokensAddresses[i], true)
+			ethereumChainMock.UpdateMintBurnTokens(tokensAddresses[i], false)
+			ethereumChainMock.UpdateTotalBalances(tokensAddresses[i], nativeBalanceValue)
+
+			multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker, withNativeTokens, true, zero, nativeBalanceValue, nativeBalanceValue)
+		} else {
+			ethereumChainMock.UpdateNativeTokens(tokensAddresses[i], false)
+			ethereumChainMock.UpdateMintBurnTokens(tokensAddresses[i], true)
+			ethereumChainMock.UpdateBurnBalances(tokensAddresses[i], zero)
+			ethereumChainMock.UpdateMintBalances(tokensAddresses[i], zero)
+
+			multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker, withNativeTokens, true, zero, zero, nativeBalanceValue)
 		}
-
-		multiversXChainMock.AddTokensPair(tokensAddresses[i], deposits[i].Ticker, withNativeTokens, nativeBalanceValue)
 	}
 	pendingBatch := mock.MultiversXPendingBatch{
 		Nonce:              big.NewInt(1),
@@ -221,7 +235,7 @@ func createTransaction(index int) (mock.MultiversXDeposit, common.Address) {
 		From:   testsCommon.CreateRandomMultiversXAddress(),
 		To:     testsCommon.CreateRandomEthereumAddress(),
 		Ticker: fmt.Sprintf("tck-00000%d", index+1),
-		Amount: big.NewInt(int64(index)),
+		Amount: big.NewInt(int64(index * 1000)),
 	}, tokenAddress
 }
 

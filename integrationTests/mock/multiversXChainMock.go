@@ -166,11 +166,11 @@ func (mock *MultiversXChainMock) SetLastExecutedEthTxId(lastExecutedEthTxId uint
 }
 
 // AddTokensPair -
-func (mock *MultiversXChainMock) AddTokensPair(erc20 common.Address, ticker string, isNativeToken bool, nativeBalance *big.Int) {
+func (mock *MultiversXChainMock) AddTokensPair(erc20 common.Address, ticker string, isNativeToken, isMintBurnToken bool, totalBalance, mintBalances, burnBalances *big.Int) {
 	mock.mutState.Lock()
 	defer mock.mutState.Unlock()
 
-	mock.addTokensPair(erc20, ticker, isNativeToken, nativeBalance)
+	mock.addTokensPair(erc20, ticker, isNativeToken, isMintBurnToken, totalBalance, mintBalances, burnBalances)
 }
 
 // SetQuorum -
@@ -219,6 +219,22 @@ func (mock *MultiversXChainMock) AddDepositToCurrentBatch(deposit MultiversXDepo
 	mock.mutState.Lock()
 	mock.pendingBatch.MultiversXDeposits = append(mock.pendingBatch.MultiversXDeposits, deposit)
 	mock.mutState.Unlock()
+}
+
+func (mock *MultiversXChainMock) GetESDTTokenData(_ context.Context, _ sdkCore.AddressHandler, tokenIdentifier string, _ api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error) {
+	mock.mutState.RLock()
+	defer mock.mutState.RUnlock()
+
+	isMintBurn, found := mock.mintBurnTokens[tokenIdentifier]
+	balance := mock.totalBalances[tokenIdentifier]
+	if found && isMintBurn {
+		balance = big.NewInt(0)
+	}
+
+	return &data.ESDTFungibleTokenData{
+		TokenIdentifier: tokenIdentifier,
+		Balance:         balance.String(),
+	}, nil
 }
 
 // IsInterfaceNil -

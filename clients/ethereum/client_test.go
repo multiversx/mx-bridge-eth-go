@@ -698,22 +698,22 @@ func TestClient_CheckRequiredBalance(t *testing.T) {
 	})
 }
 
-func TestClient_TokenMintedBalances(t *testing.T) {
+func TestClient_TotalBalances(t *testing.T) {
 	t.Parallel()
 
-	t.Run("error while getting token minted balances", func(t *testing.T) {
+	t.Run("error while getting total balances", func(t *testing.T) {
 		t.Parallel()
 
 		expectedErr := errors.New("expected error")
 		args := createMockEthereumClientArgs()
 		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+			TotalBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
 				return nil, expectedErr
 			},
 		}
 		c, _ := NewEthereumClient(args)
 
-		balances, err := c.TokenMintedBalances(context.Background(), common.Address{})
+		balances, err := c.TotalBalances(context.Background(), common.Address{})
 		assert.Nil(t, balances)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -723,35 +723,109 @@ func TestClient_TokenMintedBalances(t *testing.T) {
 		providedBalance := big.NewInt(100)
 		args := createMockEthereumClientArgs()
 		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+			TotalBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
 				return providedBalance, nil
 			},
 		}
 		c, _ := NewEthereumClient(args)
 
-		balances, err := c.TokenMintedBalances(context.Background(), common.Address{})
+		balances, err := c.TotalBalances(context.Background(), common.Address{})
 		assert.Nil(t, err)
 		assert.Equal(t, providedBalance, balances)
 	})
 }
 
-func TestClient_WhitelistedTokensMintBurn(t *testing.T) {
+func TestClient_MintBalances(t *testing.T) {
 	t.Parallel()
 
-	t.Run("error while getting whitelisted tokens mint burn", func(t *testing.T) {
+	t.Run("error while getting mint balances", func(t *testing.T) {
 		t.Parallel()
 
 		expectedErr := errors.New("expected error")
 		args := createMockEthereumClientArgs()
 		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+			MintBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				return nil, expectedErr
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		balances, err := c.MintBalances(context.Background(), common.Address{})
+		assert.Nil(t, balances)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		providedBalance := big.NewInt(100)
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			MintBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				return providedBalance, nil
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		balances, err := c.MintBalances(context.Background(), common.Address{})
+		assert.Nil(t, err)
+		assert.Equal(t, providedBalance, balances)
+	})
+}
+
+func TestClient_BurnBalances(t *testing.T) {
+	t.Parallel()
+
+	t.Run("error while getting burn balances", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("expected error")
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			BurnBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				return nil, expectedErr
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		balances, err := c.BurnBalances(context.Background(), common.Address{})
+		assert.Nil(t, balances)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		providedBalance := big.NewInt(100)
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			BurnBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				return providedBalance, nil
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		balances, err := c.BurnBalances(context.Background(), common.Address{})
+		assert.Nil(t, err)
+		assert.Equal(t, providedBalance, balances)
+	})
+}
+
+func TestClient_MintBurnTokens(t *testing.T) {
+	t.Parallel()
+
+	t.Run("error while getting mint burn tokens", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("expected error")
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			MintBurnTokensCalled: func(ctx context.Context, token common.Address) (bool, error) {
 				return false, expectedErr
 			},
 		}
 		c, _ := NewEthereumClient(args)
 
-		isWhitelisted, err := c.WhitelistedTokensMintBurn(context.Background(), common.Address{})
-		assert.False(t, isWhitelisted)
+		isMintBurn, err := c.MintBurnTokens(context.Background(), common.Address{})
+		assert.False(t, isMintBurn)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -759,15 +833,51 @@ func TestClient_WhitelistedTokensMintBurn(t *testing.T) {
 
 		args := createMockEthereumClientArgs()
 		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
+			MintBurnTokensCalled: func(ctx context.Context, token common.Address) (bool, error) {
 				return true, nil
 			},
 		}
 		c, _ := NewEthereumClient(args)
 
-		isWhitelisted, err := c.WhitelistedTokensMintBurn(context.Background(), common.Address{})
+		isMintBurn, err := c.MintBurnTokens(context.Background(), common.Address{})
 		assert.Nil(t, err)
-		assert.True(t, isWhitelisted)
+		assert.True(t, isMintBurn)
+	})
+}
+
+func TestClient_NativeTokens(t *testing.T) {
+	t.Parallel()
+
+	t.Run("error while getting native tokens", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("expected error")
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			NativeTokensCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return false, expectedErr
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		isNative, err := c.NativeTokens(context.Background(), common.Address{})
+		assert.False(t, isNative)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			NativeTokensCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return true, nil
+			},
+		}
+		c, _ := NewEthereumClient(args)
+
+		isNative, err := c.NativeTokens(context.Background(), common.Address{})
+		assert.Nil(t, err)
+		assert.True(t, isNative)
 	})
 }
 

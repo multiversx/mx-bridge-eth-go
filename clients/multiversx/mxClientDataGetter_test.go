@@ -1399,7 +1399,7 @@ func TestMultiversXClientDataGetter_IsPaused(t *testing.T) {
 	assert.True(t, proxyCalled)
 }
 
-func TestMultiversXClientDataGetter_isMintBurnAllowed(t *testing.T) {
+func TestMultiversXClientDataGetter_isMintBurnToken(t *testing.T) {
 	t.Parallel()
 
 	args := createMockArgsMXClientDataGetter()
@@ -1410,7 +1410,7 @@ func TestMultiversXClientDataGetter_isMintBurnAllowed(t *testing.T) {
 			assert.Equal(t, getBech32Address(args.SafeContractAddress), vmRequest.Address)
 			assert.Equal(t, getBech32Address(args.RelayerAddress), vmRequest.CallerAddr)
 			assert.Equal(t, "", vmRequest.CallValue)
-			assert.Equal(t, isMintBurnAllowedFuncName, vmRequest.FuncName)
+			assert.Equal(t, isMintBurnTokenFuncName, vmRequest.FuncName)
 			assert.Equal(t, []string{"746f6b656e"}, vmRequest.Args)
 
 			strResponse := "AQ=="
@@ -1426,13 +1426,46 @@ func TestMultiversXClientDataGetter_isMintBurnAllowed(t *testing.T) {
 
 	dg, _ := NewMXClientDataGetter(args)
 
-	result, err := dg.isMintBurnAllowed(context.Background(), []byte("token"))
+	result, err := dg.isMintBurnToken(context.Background(), []byte("token"))
 	assert.Nil(t, err)
 	assert.True(t, result)
 	assert.True(t, proxyCalled)
 }
 
-func TestMultiversXClientDataGetter_getAccumulatedBurnedTokens(t *testing.T) {
+func TestMultiversXClientDataGetter_isNativeToken(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsMXClientDataGetter()
+	proxyCalled := false
+	args.Proxy = &interactors.ProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			proxyCalled = true
+			assert.Equal(t, getBech32Address(args.SafeContractAddress), vmRequest.Address)
+			assert.Equal(t, getBech32Address(args.RelayerAddress), vmRequest.CallerAddr)
+			assert.Equal(t, "", vmRequest.CallValue)
+			assert.Equal(t, isNativeTokenFuncName, vmRequest.FuncName)
+			assert.Equal(t, []string{"746f6b656e"}, vmRequest.Args)
+
+			strResponse := "AQ=="
+			response, _ := base64.StdEncoding.DecodeString(strResponse)
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: okCodeAfterExecution,
+					ReturnData: [][]byte{response},
+				},
+			}, nil
+		},
+	}
+
+	dg, _ := NewMXClientDataGetter(args)
+
+	result, err := dg.isNativeToken(context.Background(), []byte("token"))
+	assert.Nil(t, err)
+	assert.True(t, result)
+	assert.True(t, proxyCalled)
+}
+
+func TestMultiversXClientDataGetter_getTotalBalances(t *testing.T) {
 	t.Parallel()
 
 	args := createMockArgsMXClientDataGetter()
@@ -1444,7 +1477,7 @@ func TestMultiversXClientDataGetter_getAccumulatedBurnedTokens(t *testing.T) {
 			assert.Equal(t, getBech32Address(args.SafeContractAddress), vmRequest.Address)
 			assert.Equal(t, getBech32Address(args.RelayerAddress), vmRequest.CallerAddr)
 			assert.Equal(t, "", vmRequest.CallValue)
-			assert.Equal(t, getAccumulatedBurnedTokensFuncName, vmRequest.FuncName)
+			assert.Equal(t, getTotalBalances, vmRequest.FuncName)
 			assert.Equal(t, []string{"746f6b656e"}, vmRequest.Args)
 
 			return &data.VmValuesResponseData{
@@ -1458,7 +1491,71 @@ func TestMultiversXClientDataGetter_getAccumulatedBurnedTokens(t *testing.T) {
 
 	dg, _ := NewMXClientDataGetter(args)
 
-	result, err := dg.getAccumulatedBurnedTokens(context.Background(), []byte("token"))
+	result, err := dg.getTotalBalances(context.Background(), []byte("token"))
+	assert.Nil(t, err)
+	assert.Equal(t, result, expectedAccumulatedBurnedTokens)
+	assert.True(t, proxyCalled)
+}
+
+func TestMultiversXClientDataGetter_getMintBalances(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsMXClientDataGetter()
+	proxyCalled := false
+	expectedAccumulatedMintedTokens := big.NewInt(100)
+	args.Proxy = &interactors.ProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			proxyCalled = true
+			assert.Equal(t, getBech32Address(args.SafeContractAddress), vmRequest.Address)
+			assert.Equal(t, getBech32Address(args.RelayerAddress), vmRequest.CallerAddr)
+			assert.Equal(t, "", vmRequest.CallValue)
+			assert.Equal(t, getMintBalances, vmRequest.FuncName)
+			assert.Equal(t, []string{"746f6b656e"}, vmRequest.Args)
+
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: okCodeAfterExecution,
+					ReturnData: [][]byte{expectedAccumulatedMintedTokens.Bytes()},
+				},
+			}, nil
+		},
+	}
+
+	dg, _ := NewMXClientDataGetter(args)
+
+	result, err := dg.getMintBalances(context.Background(), []byte("token"))
+	assert.Nil(t, err)
+	assert.Equal(t, result, expectedAccumulatedMintedTokens)
+	assert.True(t, proxyCalled)
+}
+
+func TestMultiversXClientDataGetter_getBurnBalances(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsMXClientDataGetter()
+	proxyCalled := false
+	expectedAccumulatedBurnedTokens := big.NewInt(100)
+	args.Proxy = &interactors.ProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			proxyCalled = true
+			assert.Equal(t, getBech32Address(args.SafeContractAddress), vmRequest.Address)
+			assert.Equal(t, getBech32Address(args.RelayerAddress), vmRequest.CallerAddr)
+			assert.Equal(t, "", vmRequest.CallValue)
+			assert.Equal(t, getBurnBalances, vmRequest.FuncName)
+			assert.Equal(t, []string{"746f6b656e"}, vmRequest.Args)
+
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: okCodeAfterExecution,
+					ReturnData: [][]byte{expectedAccumulatedBurnedTokens.Bytes()},
+				},
+			}, nil
+		},
+	}
+
+	dg, _ := NewMXClientDataGetter(args)
+
+	result, err := dg.getBurnBalances(context.Background(), []byte("token"))
 	assert.Nil(t, err)
 	assert.Equal(t, result, expectedAccumulatedBurnedTokens)
 	assert.True(t, proxyCalled)
