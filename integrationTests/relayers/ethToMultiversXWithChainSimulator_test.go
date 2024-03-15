@@ -27,6 +27,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/factory"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
@@ -197,7 +198,18 @@ func TestRelayersShouldExecuteTransfersFromEthToMvxAndBackWithSimulatedChainsWit
 				ethToMVXDone = true
 				log.Info("ETH->MVX transfer finished, now sending back to ETH...")
 
-				sendMVXToEthTransaction(t, testSetup.testContext, testSetup.mvxProxyWithChainSimulator, valueToSendFromMVX.Bytes(), testSetup.mvxUniversalToken, testSetup.mvxChainSpecificToken, testSetup.mvxReceiverKeys, testSetup.mvxSafeAddress, testSetup.mvxWrapperAddress, testSetup.ethOwnerAddress.Bytes())
+				sendMVXToEthTransaction(
+					t,
+					testSetup.testContext,
+					testSetup.mvxProxyWithChainSimulator,
+					valueToSendFromMVX.Bytes(),
+					testSetup.mvxUniversalToken,
+					testSetup.mvxChainSpecificToken,
+					testSetup.mvxReceiverKeys,
+					testSetup.mvxSafeAddress,
+					testSetup.mvxWrapperAddress,
+					testSetup.ethOwnerAddress.Bytes(),
+				)
 			}
 
 			isTransferDoneFromMVX := checkETHStatus(t, testSetup.ethGenericTokenContract, testSetup.ethOwnerAddress, expectedFinalValueOnETH.Uint64())
@@ -235,6 +247,7 @@ func TestRelayersShouldNotExecuteTransfersIfBothTokensAreNativeAndNoMintBurn(t *
 			ethIsNative:      true,
 		},
 		"error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true",
+		batchProcessor.ToMultiversX,
 	))
 	t.Run("ETH->MVX, ethNative = true, ethMintBurn = false, mvxNative = true, mvxMintBurn = true", testRelayersShouldNotExecuteTransfers(
 		argSimulatedSetup{
@@ -244,6 +257,7 @@ func TestRelayersShouldNotExecuteTransfersIfBothTokensAreNativeAndNoMintBurn(t *
 			ethIsNative:      true,
 		},
 		"error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true",
+		batchProcessor.ToMultiversX,
 	))
 	t.Run("ETH->MVX, ethNative = true, ethMintBurn = true, mvxNative = true, mvxMintBurn = false", testEthContractsShouldError(
 		argSimulatedSetup{
@@ -269,11 +283,23 @@ func TestRelayersShouldNotExecuteTransfersIfBothTokensAreNativeAndNoMintBurn(t *
 			ethIsNative:      false,
 		},
 	))
+
+	t.Run("MVX->ETH, ethNative = true, ethMintBurn = false, mvxNative = true, mvxMintBurn = false", testRelayersShouldNotExecuteTransfers(
+		argSimulatedSetup{
+			mvxHexIsMintBurn: hexFalse,
+			mvxHexIsNative:   hexTrue,
+			ethIsMintBurn:    false,
+			ethIsNative:      true,
+		},
+		"error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true",
+		batchProcessor.FromMultiversX,
+	))
 }
 
 func testRelayersShouldNotExecuteTransfers(
 	argsSimulatedSetup argSimulatedSetup,
 	expectedStringInLogs string,
+	direction batchProcessor.Direction,
 ) func(t *testing.T) {
 	return func(t *testing.T) {
 		defer func() {
@@ -289,8 +315,14 @@ func testRelayersShouldNotExecuteTransfers(
 
 		checkESDTBalance(t, testSetup.testContext, testSetup.mvxProxyWithChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
 
-		// create a pending batch on ethereum
-		createBatchOnEthereum(t, testSetup)
+		if direction == batchProcessor.ToMultiversX {
+			// create a pending batch on ethereum
+			createBatchOnEthereum(t, testSetup)
+		}
+		if direction == batchProcessor.FromMultiversX {
+			// create a pending batch on multiversx
+			createBatchOnMultiversX(t, testSetup)
+		}
 
 		// start a mocked log observer that is looking for a specific relayer error
 		chanCnt := 0
@@ -391,6 +423,7 @@ type simulatedSetup struct {
 	mvxReceiverKeys            keysHolder
 	mvxSafeAddress             string
 	mvxWrapperAddress          string
+	mvxOwnerKeys               keysHolder
 	ethOwnerAddress            common.Address
 	ethGenericTokenAddress     common.Address
 	ethGenericTokenContract    *contract.GenericERC20
@@ -452,6 +485,7 @@ func prepareSimulatedSetup(args argSimulatedSetup) *simulatedSetup {
 		pk: ownerPK,
 		sk: ownerSK,
 	}
+	testSetup.mvxOwnerKeys = ownerKeys
 
 	erc20ContractsHolder, err := ethereum.NewErc20SafeContractsHolder(ethereum.ArgsErc20SafeContractsHolder{
 		EthClient:              simulatedETHChain,
@@ -965,7 +999,7 @@ func issueAndWhitelistToken(
 	log.Info("set local roles bridged tokens wrapper tx executed", "hash", hash, "status", txResult.Status)
 
 	// transfer to wrapper sc
-	halfOfInitialMintValue := valueToMintInt.Div(valueToMintInt, big.NewInt(2))
+	initialMintValue := valueToMintInt.Div(valueToMintInt, big.NewInt(3))
 	hash, err = multiversXProxyWithChainSimulator.ScCall(
 		ctx,
 		ownerKeys.pk,
@@ -973,7 +1007,7 @@ func issueAndWhitelistToken(
 		wrapperAddress,
 		zeroValue,
 		esdtTransfer,
-		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(halfOfInitialMintValue.Bytes()), hex.EncodeToString([]byte(depositLiquidity))})
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(initialMintValue.Bytes()), hex.EncodeToString([]byte(depositLiquidity))})
 	require.NoError(t, err)
 	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
@@ -988,7 +1022,7 @@ func issueAndWhitelistToken(
 		safeAddress,
 		zeroValue,
 		esdtTransfer,
-		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(halfOfInitialMintValue.Bytes())})
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(initialMintValue.Bytes())})
 	require.NoError(t, err)
 	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
@@ -1352,6 +1386,50 @@ func createBatchOnEthereum(t *testing.T, testSetup *simulatedSetup) {
 	for i := uint8(0); i < batchSettleLimit+1; i++ {
 		testSetup.simulatedETHChain.Commit()
 	}
+}
+
+func createBatchOnMultiversX(t *testing.T, testSetup *simulatedSetup) {
+	// create a pending batch on multiversx
+	valueToSendFromMVX := big.NewInt(0).Div(mintAmount, big.NewInt(2))
+
+	// mint erc20 token into eth safe
+	auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, testSetup.ethChainID)
+	tx, err := testSetup.ethGenericTokenContract.Mint(auth, testSetup.ethSafeAddress, valueToSendFromMVX)
+	require.NoError(t, err)
+	testSetup.simulatedETHChain.Commit()
+	checkEthTxResult(t, testSetup.testContext, testSetup.simulatedETHChain, tx.Hash())
+	checkETHStatus(t, testSetup.ethGenericTokenContract, testSetup.ethSafeAddress, mintAmount.Uint64())
+
+	// transfer to sender tx
+	hash, err := testSetup.mvxProxyWithChainSimulator.ScCall(
+		testSetup.testContext,
+		testSetup.mvxOwnerKeys.pk,
+		testSetup.mvxOwnerKeys.sk,
+		testSetup.mvxReceiverKeys.pk,
+		zeroValue,
+		esdtTransfer,
+		[]string{hex.EncodeToString([]byte(testSetup.mvxChainSpecificToken)), hex.EncodeToString(valueToSendFromMVX.Bytes())})
+	require.NoError(t, err)
+	txResult, err := testSetup.mvxProxyWithChainSimulator.GetTransactionResult(testSetup.testContext, hash)
+	require.NoError(t, err)
+
+	log.Info("transfer to sender tx executed", "hash", hash, "status", txResult.Status)
+
+	// send tx to safe contract
+	params := []string{
+		hex.EncodeToString([]byte(testSetup.mvxChainSpecificToken)),
+		hex.EncodeToString(valueToSendFromMVX.Bytes()),
+		hex.EncodeToString([]byte(createTransactionParam)),
+		hex.EncodeToString(testSetup.ethOwnerAddress.Bytes()),
+	}
+
+	hash, err = testSetup.mvxProxyWithChainSimulator.ScCall(testSetup.testContext, testSetup.mvxReceiverKeys.pk, testSetup.mvxReceiverKeys.sk, testSetup.mvxSafeAddress, zeroValue, esdtTransfer, params)
+	require.NoError(t, err)
+
+	txResult, err = testSetup.mvxProxyWithChainSimulator.GetTransactionResult(testSetup.testContext, hash)
+	require.NoError(t, err)
+
+	log.Info("MVX->ETH transaction sent", "hash", hash, "status", txResult.Status)
 }
 
 func checkEthTxResult(t *testing.T, ctx context.Context, simulatedETHChain *backends.SimulatedBackend, hash common.Hash) {
