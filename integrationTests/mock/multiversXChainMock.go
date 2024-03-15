@@ -126,11 +126,6 @@ func (mock *MultiversXChainMock) GetAccount(_ context.Context, address sdkCore.A
 	return mock.accounts.getOrCreate(address), nil
 }
 
-// GetESDTTokenData -
-func (mock *MultiversXChainMock) GetESDTTokenData(_ context.Context, _ sdkCore.AddressHandler, _ string, _ api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error) {
-	return &data.ESDTFungibleTokenData{}, nil
-}
-
 // GetTransactionInfoWithResults -
 func (mock *MultiversXChainMock) GetTransactionInfoWithResults(_ context.Context, _ string) (*data.TransactionInfo, error) {
 	return &data.TransactionInfo{}, nil

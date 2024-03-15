@@ -25,6 +25,8 @@ type Proxy interface {
 		tokenIdentifier string,
 		queryOptions api.AccountQueryOptions, // TODO: provide AccountQueryOptions on all accounts-related getters
 	) (*data.ESDTFungibleTokenData, error)
+	ProcessTransactionStatus(ctx context.Context, hexTxHash string) (transaction.TxStatus, error)
+	GetTransactionInfoWithResults(ctx context.Context, hash string) (*data.TransactionInfo, error)
 	IsInterfaceNil() bool
 }
 

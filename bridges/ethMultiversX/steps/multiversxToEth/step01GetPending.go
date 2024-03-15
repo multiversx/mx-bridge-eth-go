@@ -55,13 +55,6 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 		return step.Identifier()
 	}
 
-	argLists := batchProcessor.ExtractListMvxToEth(batch)
-	err = step.bridge.CheckAvailableTokens(ctx, argLists.EthTokens, argLists.MvxTokenBytes, argLists.Amounts, argLists.Direction)
-	if err != nil {
-		step.bridge.PrintInfo(logger.LogError, "error checking available tokens", "error", err, "batch", batch.String())
-		return step.Identifier()
-	}
-
 	step.bridge.PrintInfo(logger.LogInfo, "fetched new batch from MultiversX "+batch.String())
 
 	wasPerformed, err := step.bridge.WasTransferPerformedOnEthereum(ctx)
@@ -72,6 +65,13 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 	if wasPerformed {
 		step.bridge.PrintInfo(logger.LogInfo, "transfer performed")
 		return ResolvingSetStatusOnMultiversX
+	}
+
+	argLists := batchProcessor.ExtractListMvxToEth(batch)
+	err = step.bridge.CheckAvailableTokens(ctx, argLists.EthTokens, argLists.MvxTokenBytes, argLists.Amounts, argLists.Direction)
+	if err != nil {
+		step.bridge.PrintInfo(logger.LogError, "error checking available tokens", "error", err, "batch", batch.String())
+		return step.Identifier()
 	}
 
 	return SigningProposedTransferOnEthereum
