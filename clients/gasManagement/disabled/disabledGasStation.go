@@ -2,7 +2,7 @@ package disabled
 
 import "math/big"
 
-const defaultDisabledGasPrice = 10
+const defaultDisabledGasPrice = 1000
 
 // DisabledGasStation implementation in case no gasStation is used
 type DisabledGasStation struct{}

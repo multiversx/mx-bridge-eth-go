@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/stretchr/testify/assert"
 )
@@ -163,7 +164,7 @@ func TestExecuteGetPending(t *testing.T) {
 	t.Run("error on CheckAvailableTokens", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.CheckAvailableTokensCalled = func(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) error {
+		bridgeStub.CheckAvailableTokensCalled = func(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
 			return expectedError
 		}
 		bridgeStub.GetLastExecutedEthBatchIDFromMultiversXCalled = func(ctx context.Context) (uint64, error) {
@@ -209,7 +210,7 @@ func TestExecuteGetPending(t *testing.T) {
 			return true, nil
 		}
 		checkAvailableTokensCalled := false
-		bridgeStub.CheckAvailableTokensCalled = func(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) error {
+		bridgeStub.CheckAvailableTokensCalled = func(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
 			checkAvailableTokensCalled = true
 			return nil
 		}
