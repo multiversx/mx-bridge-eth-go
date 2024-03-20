@@ -3,6 +3,7 @@ package ethereum
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sync"
@@ -372,13 +373,15 @@ func (c *client) ExecuteTransfer(
 	}
 
 	batchID := big.NewInt(0).SetUint64(batchId)
-	tx, err := c.clientWrapper.ExecuteTransfer(auth, argLists.EthTokens, argLists.Recipients, argLists.Amounts, argLists.Nonces, batchID, signatures)
+	tx, err := c.clientWrapper.ExecuteTransfer(auth, argLists.EthTokens, argLists.Recipients, argLists.Amounts, argLists.Nonces, batchID, make([][]byte, 0))
 	if err != nil {
 		return "", err
 	}
 
 	txHash := tx.Hash().String()
 	c.log.Info("Executed transfer transaction", "batchID", batchID, "hash", txHash)
+
+	println(hex.EncodeToString(tx.Data()))
 
 	return txHash, err
 }
