@@ -49,13 +49,13 @@ const (
 	aggregatorContract                           = "testdata/contracts/mvx/aggregator.wasm"
 	wrapperContract                              = "testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
 	bridgeABI                                    = "testdata/contracts/eth/bridgeABI.json"
-	bridgeBytecode                               = "testdata/contracts/eth/bridgeBytecode.txt"
+	bridgeBytecode                               = "testdata/contracts/eth/bridgeBytecode.hex"
 	erc20SafeABI                                 = "testdata/contracts/eth/erc20SafeABI.json"
-	erc20SafeBytecode                            = "testdata/contracts/eth/erc20SafeBytecode.txt"
+	erc20SafeBytecode                            = "testdata/contracts/eth/erc20SafeBytecode.hex"
 	genericERC20ABI                              = "testdata/contracts/eth/genericERC20ABI.json"
-	genericERC20Bytecode                         = "testdata/contracts/eth/genericERC20Bytecode.txt"
+	genericERC20Bytecode                         = "testdata/contracts/eth/genericERC20Bytecode.hex"
 	scExecProxyABI                               = "testdata/contracts/eth/scExecProxyABI.json"
-	scExecProxyBytecode                          = "testdata/contracts/eth/scExecProxyBytecode.txt"
+	scExecProxyBytecode                          = "testdata/contracts/eth/scExecProxyBytecode.hex"
 	nodeConfig                                   = "testdata/config/nodeConfig"
 	proxyConfig                                  = "testdata/config/proxyConfig"
 	minRelayerStake                              = "10000000000000000000" // 10egld
@@ -113,6 +113,7 @@ const (
 	ethTokenSymbol                               = "ETHT"
 	ethMinAmountAllowedToTransfer                = 25
 	ethMaxAmountAllowedToTransfer                = 500000
+	ethSimulatedGasLimit                         = 9000000
 )
 
 var (
@@ -979,7 +980,7 @@ func createEthereumSimulatorAndDeployContracts(
 		addr[relayerKeys.ethAddress] = ethCore.GenesisAccount{Balance: new(big.Int).Lsh(big.NewInt(1), 100)}
 	}
 	alloc := ethCore.GenesisAlloc(addr)
-	simulatedETHChain := backends.NewSimulatedBackend(alloc, 9000000)
+	simulatedETHChain := backends.NewSimulatedBackend(alloc, ethSimulatedGasLimit)
 
 	simulatedETHChainWrapper := integrationTests.NewSimulatedETHChainWrapper(simulatedETHChain)
 	ethChainID, _ := simulatedETHChainWrapper.ChainID(ctx)
