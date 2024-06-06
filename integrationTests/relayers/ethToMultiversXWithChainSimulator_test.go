@@ -8,6 +8,7 @@ package relayers
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -24,18 +25,22 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	ethCore "github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/factory"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
-	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/status"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
-	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
-	"github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
+	"github.com/multiversx/mx-chain-crypto-go/signing"
+	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519"
 	"github.com/multiversx/mx-chain-go/testscommon/statusHandler"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
@@ -154,6 +159,8 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXAndBackWithSimulatedCh
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	tempDir := t.TempDir()
+
 	numRelayers := 3
 	relayersKeys := make([]keysHolder, 0, numRelayers)
 	for i := 0; i < numRelayers; i++ {
@@ -164,7 +171,7 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXAndBackWithSimulatedCh
 		require.Nil(t, err)
 		relayerKeys.ethSK, err = crypto.HexToECDSA(string(relayerETHSKBytes))
 		require.Nil(t, err)
-		relayerKeys.ethAddress = crypto.PubkeyToAddress(relayerETHSK.PublicKey)
+		relayerKeys.ethAddress = crypto.PubkeyToAddress(relayerKeys.ethSK.PublicKey)
 
 		relayersKeys = append(relayersKeys, relayerKeys)
 		saveRelayerKey(t, tempDir, i, relayerKeys)
@@ -175,7 +182,6 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXAndBackWithSimulatedCh
 	require.NoError(t, err)
 
 	mvxChainSimulatorWrapper := startChainSimulatorWrapper(t)
-
 
 	ethOwnerAddr := crypto.PubkeyToAddress(ethOwnerSK.PublicKey)
 	ethDepositorAddr := crypto.PubkeyToAddress(ethDepositorSK.PublicKey)
@@ -208,9 +214,6 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXAndBackWithSimulatedCh
 		BlockchainClient: simulatedETHChainWrapper,
 	})
 	require.NoError(t, err)
-
-	multiversXProxyWithChainSimulator := startProxyWithChainSimulator(t)
-	defer multiversXProxyWithChainSimulator.Close()
 
 	// deploy all contracts and execute all txs needed
 	safeAddress, multisigAddress, wrapperAddress, aggregatorAddress := executeContractsTxs(t, ctx, mvxChainSimulatorWrapper, relayersKeys, ownerKeys, receiverKeys)
@@ -253,7 +256,7 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXAndBackWithSimulatedCh
 			}
 
 			isTransferDoneFromMVX := checkETHStatus(t, ethGenericTokenContract, ethOwnerAddr, expectedFinalValueOnETH.Uint64())
-			safeSavedFee := checkESDTBalance(t, ctx, multiversXProxyWithChainSimulator, safeAddr, newChainSpecificToken, feeInt.String(), false)
+			safeSavedFee := checkESDTBalance(t, ctx, mvxChainSimulatorWrapper, safeAddr, newChainSpecificToken, feeInt.String(), false)
 			if !mvxToETHDone && isTransferDoneFromMVX && safeSavedFee {
 				mvxToETHDone = true
 			}
