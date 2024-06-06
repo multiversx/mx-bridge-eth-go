@@ -1,9 +1,10 @@
+//go:build !slow
+
 package relayers
 
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	ethmultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/core"
@@ -23,7 +23,6 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/status"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
-	chainConfig "github.com/multiversx/mx-chain-go/config"
 	"github.com/multiversx/mx-chain-go/p2p"
 	"github.com/multiversx/mx-chain-go/testscommon/statusHandler"
 	"github.com/stretchr/testify/assert"
@@ -374,7 +373,7 @@ func createMockBridgeComponentsArgs(
 	ethereumChainMock *mock.EthereumChainMock,
 ) factory.ArgsEthereumToMultiversXBridge {
 
-	generalConfigs := createBridgeComponentsConfig(index)
+	generalConfigs := createBridgeComponentsConfig(index, "testdata")
 	return factory.ArgsEthereumToMultiversXBridge{
 		Configs: config.Configs{
 			GeneralConfig:   generalConfigs,
@@ -392,55 +391,5 @@ func createMockBridgeComponentsArgs(
 		MetricsHolder:                 status.NewMetricsHolder(),
 		AppStatusHandler:              &statusHandler.AppStatusHandlerStub{},
 		MultiversXClientStatusHandler: &testsCommon.StatusHandlerStub{},
-	}
-}
-
-func createBridgeComponentsConfig(index int) config.Config {
-	stateMachineConfig := config.ConfigStateMachine{
-		StepDurationInMillis:       1000,
-		IntervalForLeaderInSeconds: 60,
-	}
-
-	return config.Config{
-		Eth: config.EthereumConfig{
-			Chain:                        chain.Ethereum,
-			NetworkAddress:               "mock",
-			MultisigContractAddress:      "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
-			PrivateKeyFile:               fmt.Sprintf("testdata/ethereum%d.sk", index),
-			IntervalToResendTxsInSeconds: 10,
-			GasLimitBase:                 200000,
-			GasLimitForEach:              30000,
-			GasStation: config.GasStationConfig{
-				Enabled: false,
-			},
-			MaxRetriesOnQuorumReached:          1,
-			IntervalToWaitForTransferInSeconds: 1,
-			MaxBlocksDelta:                     5,
-		},
-		MultiversX: config.MultiversXConfig{
-			NetworkAddress:                  "mock",
-			MultisigContractAddress:         "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
-			SafeContractAddress:             "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus",
-			PrivateKeyFile:                  fmt.Sprintf("testdata/multiversx%d.pem", index),
-			IntervalToResendTxsInSeconds:    10,
-			GasMap:                          testsCommon.CreateTestMultiversXGasMap(),
-			MaxRetriesOnQuorumReached:       1,
-			MaxRetriesOnWasTransferProposed: 3,
-			ProxyMaxNoncesDelta:             5,
-		},
-		P2P: config.ConfigP2P{},
-		StateMachine: map[string]config.ConfigStateMachine{
-			"EthereumToMultiversX": stateMachineConfig,
-			"MultiversXToEthereum": stateMachineConfig,
-		},
-		Relayer: config.ConfigRelayer{
-			Marshalizer: chainConfig.MarshalizerConfig{
-				Type:           "json",
-				SizeCheckDelta: 10,
-			},
-			RoleProvider: config.RoleProviderConfig{
-				PollingIntervalInMillis: 1000,
-			},
-		},
 	}
 }
