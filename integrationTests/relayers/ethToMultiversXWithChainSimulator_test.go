@@ -816,6 +816,7 @@ func issueAndWhitelistToken(
 	log.Info("add mapping tx executed", "hash", hash, "status", txResult.Status)
 
 	// whitelist token
+	statusBefore, _ := mvxChainSimulator.Proxy().GetNetworkStatus(ctx, 0)
 	hash, err = mvxChainSimulator.ScCall(
 		ctx,
 		ownerKeys.pk,
@@ -831,7 +832,13 @@ func issueAndWhitelistToken(
 	log.Info("whitelist token tx executed", "hash", hash, "status", txResult.Status)
 
 	// submit aggregator batch
-	submitAggregatorBatch(t, ctx, mvxChainSimulator, aggregatorAddress, ownerKeys)
+	statusAfter, _ := mvxChainSimulator.Proxy().GetNetworkStatus(ctx, 0)
+	networkConfig, err := mvxChainSimulator.Proxy().GetNetworkConfig(ctx)
+	require.NoError(t, err)
+	roundDurationInSeconds := networkConfig.RoundDuration / 1000
+	timePassed := (statusAfter.CurrentRound - statusBefore.CurrentRound - 1) * uint64(roundDurationInSeconds)
+	currentChainTimestamp := txResult.Timestamp + timePassed
+	submitAggregatorBatch(t, ctx, mvxChainSimulator, aggregatorAddress, ownerKeys, currentChainTimestamp)
 
 	// safe set max bridge amount for token
 	maxBridgedAmountForTokenInt, _ := big.NewInt(0).SetString(maxBridgedAmountForToken, 10)
@@ -959,8 +966,16 @@ func sendMVXToEthTransaction(
 	return hash
 }
 
-func submitAggregatorBatch(t *testing.T, ctx context.Context, mvxChainSimulator chainSimulatorWrapper, aggregatorAddress string, ownerKeys keysHolder) {
-	timestamp := big.NewInt(time.Now().Unix())
+func submitAggregatorBatch(
+	t *testing.T,
+	ctx context.Context,
+	mvxChainSimulator chainSimulatorWrapper,
+	aggregatorAddress string,
+	ownerKeys keysHolder,
+	currentChainTimestamp uint64,
+) {
+	timestamp := big.NewInt(0).SetUint64(currentChainTimestamp)
+
 	hash, err := mvxChainSimulator.ScCall(
 		ctx,
 		ownerKeys.pk,
