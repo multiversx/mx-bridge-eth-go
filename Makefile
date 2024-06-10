@@ -17,6 +17,11 @@ test-coverage:
 	@echo "Running unit tests"
 	CURRENT_DIRECTORY=$(CURRENT_DIRECTORY) go test -cover -coverprofile=coverage.txt -covermode=atomic -v ${TESTS_TO_RUN}
 
+slow-tests: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/... -v -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
 lint-install:
 ifeq (,$(wildcard test -f bin/golangci-lint))
 	@echo "Installing golint"
