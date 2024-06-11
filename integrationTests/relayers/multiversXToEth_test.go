@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var log = logger.GetOrCreate("integrationTests/relayers")
 var zero = big.NewInt(0)
 
 func asyncCancelCall(cancelHandler func(), delay time.Duration) {
