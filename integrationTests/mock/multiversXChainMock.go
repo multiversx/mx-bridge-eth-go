@@ -126,11 +126,6 @@ func (mock *MultiversXChainMock) GetAccount(_ context.Context, address sdkCore.A
 	return mock.accounts.getOrCreate(address), nil
 }
 
-// GetESDTTokenData -
-func (mock *MultiversXChainMock) GetESDTTokenData(_ context.Context, _ sdkCore.AddressHandler, _ string, _ api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error) {
-	return &data.ESDTFungibleTokenData{}, nil
-}
-
 // GetTransactionInfoWithResults -
 func (mock *MultiversXChainMock) GetTransactionInfoWithResults(_ context.Context, _ string) (*data.TransactionInfo, error) {
 	return &data.TransactionInfo{}, nil
@@ -166,11 +161,11 @@ func (mock *MultiversXChainMock) SetLastExecutedEthTxId(lastExecutedEthTxId uint
 }
 
 // AddTokensPair -
-func (mock *MultiversXChainMock) AddTokensPair(erc20 common.Address, ticker string, isNativeToken bool, nativeBalance *big.Int) {
+func (mock *MultiversXChainMock) AddTokensPair(erc20 common.Address, ticker string, isNativeToken, isMintBurnToken bool, totalBalance, mintBalances, burnBalances *big.Int) {
 	mock.mutState.Lock()
 	defer mock.mutState.Unlock()
 
-	mock.addTokensPair(erc20, ticker, isNativeToken, nativeBalance)
+	mock.addTokensPair(erc20, ticker, isNativeToken, isMintBurnToken, totalBalance, mintBalances, burnBalances)
 }
 
 // SetQuorum -
@@ -219,6 +214,23 @@ func (mock *MultiversXChainMock) AddDepositToCurrentBatch(deposit MultiversXDepo
 	mock.mutState.Lock()
 	mock.pendingBatch.MultiversXDeposits = append(mock.pendingBatch.MultiversXDeposits, deposit)
 	mock.mutState.Unlock()
+}
+
+// GetESDTTokenData -
+func (mock *MultiversXChainMock) GetESDTTokenData(_ context.Context, _ sdkCore.AddressHandler, tokenIdentifier string, _ api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error) {
+	mock.mutState.RLock()
+	defer mock.mutState.RUnlock()
+
+	isMintBurn, found := mock.mintBurnTokens[tokenIdentifier]
+	balance := mock.totalBalances[tokenIdentifier]
+	if found && isMintBurn {
+		balance = big.NewInt(0)
+	}
+
+	return &data.ESDTFungibleTokenData{
+		TokenIdentifier: tokenIdentifier,
+		Balance:         balance.String(),
+	}, nil
 }
 
 // IsInterfaceNil -

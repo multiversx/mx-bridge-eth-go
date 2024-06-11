@@ -52,7 +52,7 @@ func (h *erc20SafeContractsHolder) BalanceOf(ctx context.Context, erc20Address e
 
 	wrapper, exists := h.contracts[erc20Address]
 	if !exists {
-		contractInstance, err := contract.NewGenericErc20(erc20Address, h.ethClient)
+		contractInstance, err := contract.NewGenericERC20(erc20Address, h.ethClient)
 		if err != nil {
 			return nil, fmt.Errorf("%w for %s", err, erc20Address.String())
 		}

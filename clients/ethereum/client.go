@@ -427,6 +427,15 @@ func (c *client) setStatusForAvailabilityCheck(status ethmultiversx.ClientStatus
 
 // CheckRequiredBalance will check if the safe has enough balance for the transfer
 func (c *client) CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error {
+	isMintBurn, err := c.MintBurnTokens(ctx, erc20Address)
+	if err != nil {
+		return err
+	}
+
+	if isMintBurn {
+		return nil
+	}
+
 	existingBalance, err := c.erc20ContractsHandler.BalanceOf(ctx, erc20Address, c.safeContractAddress)
 	if err != nil {
 		return fmt.Errorf("%w for address %s for ERC20 token %s", err, c.safeContractAddress.String(), erc20Address.String())
@@ -446,14 +455,34 @@ func (c *client) CheckRequiredBalance(ctx context.Context, erc20Address common.A
 	return nil
 }
 
-// TokenMintedBalances returns the minted balance of the given token
-func (c *client) TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error) {
-	return c.clientWrapper.TokenMintedBalances(ctx, token)
+// TotalBalances returns the total balance of the given token
+func (c *client) TotalBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	return c.clientWrapper.TotalBalances(ctx, token)
 }
 
-// WhitelistedTokensMintBurn returns true if the token is whitelisted as a mintBurn token
-func (c *client) WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error) {
-	return c.clientWrapper.WhitelistedTokensMintBurn(ctx, token)
+// MintBalances returns the mint balance of the given token
+func (c *client) MintBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	return c.clientWrapper.MintBalances(ctx, token)
+}
+
+// BurnBalances returns the burn balance of the given token
+func (c *client) BurnBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	return c.clientWrapper.BurnBalances(ctx, token)
+}
+
+// MintBurnTokens returns true if the token is mintBurn token
+func (c *client) MintBurnTokens(ctx context.Context, token common.Address) (bool, error) {
+	return c.clientWrapper.MintBurnTokens(ctx, token)
+}
+
+// NativeTokens returns true if the token is native
+func (c *client) NativeTokens(ctx context.Context, token common.Address) (bool, error) {
+	return c.clientWrapper.NativeTokens(ctx, token)
+}
+
+// WhitelistedTokens returns true if the token is whitelisted
+func (c *client) WhitelistedTokens(ctx context.Context, token common.Address) (bool, error) {
+	return c.clientWrapper.WhitelistedTokens(ctx, token)
 }
 
 func (c *client) checkRelayerFundsForFee(ctx context.Context, transferFee *big.Int) error {

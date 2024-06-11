@@ -26,6 +26,7 @@ import (
 var expectedErr = errors.New("expected error")
 var providedBatch = &clients.TransferBatch{}
 var expectedMaxRetries = uint64(3)
+var zero = big.NewInt(0)
 
 func createMockExecutorArgs() ArgsBridgeExecutor {
 	return ArgsBridgeExecutor{
@@ -357,6 +358,9 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
 				assert.Equal(t, providedNonce, nonce)
 				return expectedBatch, nil
+			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+				return make([]*contract.SCExecProxyERC20SCDeposit, 0), nil
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
@@ -1734,132 +1738,290 @@ func TestBridgeExecutor_ValidateBatch(t *testing.T) {
 func TestBridgeExecutor_CheckAvailableTokens(t *testing.T) {
 	t.Parallel()
 
-	t.Run("wrong balances should error", func(t *testing.T) {
-		args := createMockExecutorArgs()
-		tokenMintedBalancesCalled := false
-		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
-				return true, nil
-			},
-			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
-				tokenMintedBalancesCalled = true
+	direction := batchProcessor.FromMultiversX
+	var ethIsNative, ethIsMintBurn, mvxIsNative, mvxIsMintBurn bool
+	t.Run("from MultiversX", func(t *testing.T) {
+		ethIsNative = false
+		t.Run("ethIsNative = false", func(t *testing.T) {
+			ethIsMintBurn = false
+			t.Run("ethIsMintBurn = false", func(t *testing.T) {
+				// mvxIsNative & mvxIsMintBurn does not matter
+				testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnEthereum", "isMintBurnOnEthereum"})(t)
+			})
 
-				return big.NewInt(3701), nil // eth holds a higher balance than the mvx
+			ethIsMintBurn = true
+			t.Run("ethIsMintBurn = true", func(t *testing.T) {
+				mvxIsNative = false
+				t.Run("mvxIsNative = false", func(t *testing.T) {
+					mvxIsMintBurn = false
+					t.Run("mvxIsMintBurn = false", func(t *testing.T) {
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnMultiversX", "isMintBurnOnMultiversX"})(t)
+					})
+
+					mvxIsMintBurn = true
+					t.Run("mvxIsMintBurn = true", func(t *testing.T) {
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnEthereum", "isNativeOnMultiversX"})(t)
+					})
+				})
+
+				mvxIsNative = true
+				t.Run("mvxIsNative = true", func(t *testing.T) {
+					mvxIsMintBurn = false
+					t.Run("mvxIsMintBurn = false", func(t *testing.T) {
+						ethMintBalance := big.NewInt(0)
+						ethBurnBalance := big.NewInt(0)
+						mvxTotalBalances := big.NewInt(99)
+
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, mvxTotalBalances, zero, zero, direction, ErrBalanceMismatch, []string{})(t)
+						mvxTotalBalances = big.NewInt(100)
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, mvxTotalBalances, zero, zero, direction, nil, []string{})(t)
+					})
+					mvxIsMintBurn = true
+					t.Run("mvxIsMintBurn = true", func(t *testing.T) {
+						ethMintBalance := big.NewInt(0)
+						ethBurnBalance := big.NewInt(0)
+						mvxMintBalance := big.NewInt(0)
+						mvxBurnBalance := big.NewInt(99)
+
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, zero, mvxMintBalance, mvxBurnBalance, direction, ErrBalanceMismatch, []string{})(t)
+						mvxBurnBalance = big.NewInt(100)
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, zero, mvxMintBalance, mvxBurnBalance, direction, nil, []string{})(t)
+					})
+				})
+			})
+		})
+
+		ethIsNative = true
+		t.Run("ethIsNative = true", func(t *testing.T) {
+			ethIsMintBurn = false
+			t.Run("ethIsMintBurn = false", func(t *testing.T) {
+				mvxIsNative = false
+				t.Run("mvxIsNative = false", func(t *testing.T) {
+					mvxIsMintBurn = false
+					t.Run("mvxIsMintBurn = false", func(t *testing.T) {
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnMultiversX", "isMintBurnOnMultiversX"})(t)
+					})
+					mvxIsMintBurn = true
+					t.Run("mvxIsMintBurn = true", func(t *testing.T) {
+						ethTotalBalances := big.NewInt(100)
+						mvxMintBalance := big.NewInt(100)
+						mvxBurnBalance := big.NewInt(99)
+
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, ethTotalBalances, zero, zero, zero, mvxMintBalance, mvxBurnBalance, direction, ErrBalanceMismatch, []string{})(t)
+						mvxBurnBalance = big.NewInt(100)
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, ethTotalBalances, zero, zero, zero, mvxMintBalance, mvxBurnBalance, direction, nil, []string{})(t)
+					})
+				})
+				mvxIsNative = true
+				// mvxIsMintBurn does not matter
+				testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnEthereum", "isNativeOnMultiversX"})(t)
+			})
+
+			ethIsMintBurn = true
+			t.Run("ethIsMintBurn = true", func(t *testing.T) {
+				mvxIsNative = false
+				t.Run("mvxIsNative = false", func(t *testing.T) {
+					mvxIsMintBurn = false
+					t.Run("mvxIsMintBurn = false", func(t *testing.T) {
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnMultiversX", "isMintBurnOnMultiversX"})(t)
+					})
+
+					mvxIsMintBurn = true
+					t.Run("mvxIsMintBurn = true", func(t *testing.T) {
+						ethMintBalance := big.NewInt(0)
+						ethBurnBalance := big.NewInt(100)
+						mvxMintBalance := big.NewInt(100)
+						mvxBurnBalance := big.NewInt(99)
+
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, zero, mvxMintBalance, mvxBurnBalance, direction, ErrBalanceMismatch, []string{})(t)
+						mvxBurnBalance = big.NewInt(100)
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, zero, mvxMintBalance, mvxBurnBalance, direction, nil, []string{})(t)
+					})
+				})
+				mvxIsNative = true
+				// mvxIsMintBurn does not matter
+				testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnEthereum", "isNativeOnMultiversX"})(t)
+			})
+		})
+	})
+
+	direction = batchProcessor.ToMultiversX
+	t.Run("to MultiversX", func(t *testing.T) {
+		ethIsNative = false
+		t.Run("ethIsNative = false", func(t *testing.T) {
+			ethIsMintBurn = false
+			t.Run("ethIsMintBurn = false", func(t *testing.T) {
+				// mvxIsNative && mvxIsMintBurn does not matter
+				testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnEthereum", "isMintBurnOnEthereum"})(t)
+			})
+
+			ethIsMintBurn = true
+			t.Run("ethIsMintBurn = true", func(t *testing.T) {
+				mvxIsNative = false
+				t.Run("mvxIsNative = false", func(t *testing.T) {
+					// mvxIsMintBurn does not matter
+					testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnEthereum", "isNativeOnMultiversX"})(t)
+				})
+
+				mvxIsNative = true
+				t.Run("mvxIsNative = true", func(t *testing.T) {
+					mvxIsMintBurn = false
+					t.Run("mvxIsMintBurn = false", func(t *testing.T) {
+						ethMintBalance := big.NewInt(0)
+						ethBurnBalance := big.NewInt(0)
+						mvxTotalBalances := big.NewInt(99)
+
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, mvxTotalBalances, zero, zero, direction, ErrBalanceMismatch, []string{})(t)
+						mvxTotalBalances = big.NewInt(100)
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, mvxTotalBalances, zero, zero, direction, nil, []string{})(t)
+					})
+					mvxIsMintBurn = true
+					t.Run("mvxIsMintBurn = true", func(t *testing.T) {
+						ethMintBalance := big.NewInt(0)
+						ethBurnBalance := big.NewInt(0)
+						mvxBurnBalance := big.NewInt(99)
+						mvxMintBalance := big.NewInt(0)
+
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, zero, mvxMintBalance, mvxBurnBalance, direction, ErrBalanceMismatch, []string{})(t)
+						mvxBurnBalance = big.NewInt(100)
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, zero, mvxMintBalance, mvxBurnBalance, direction, nil, []string{})(t)
+					})
+				})
+			})
+		})
+
+		ethIsNative = true
+		t.Run("ethIsNative = true", func(t *testing.T) {
+			ethIsMintBurn = false
+			t.Run("ethIsMintBurn = false", func(t *testing.T) {
+				mvxIsNative = false
+				t.Run("mvxIsNative = false", func(t *testing.T) {
+					mvxIsMintBurn = false
+					t.Run("mvxIsMintBurn = false", func(t *testing.T) {
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnMultiversX", "isMintBurnOnMultiversX"})(t)
+					})
+					mvxIsMintBurn = true
+					t.Run("mvxIsMintBurn = true", func(t *testing.T) {
+						ethTotalBalances := big.NewInt(99)
+						mvxBurnBalance := big.NewInt(0)
+						mvxMintBalance := big.NewInt(0)
+
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, ethTotalBalances, zero, zero, zero, mvxMintBalance, mvxBurnBalance, direction, ErrBalanceMismatch, []string{})(t)
+						ethTotalBalances = big.NewInt(100)
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, ethTotalBalances, zero, zero, zero, mvxMintBalance, mvxBurnBalance, direction, nil, []string{})(t)
+					})
+				})
+				mvxIsNative = true
+				// mvxIsMintBurn does not matter
+				testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnEthereum", "isNativeOnMultiversX"})(t)
+			})
+
+			ethIsMintBurn = true
+			t.Run("ethIsMintBurn = true", func(t *testing.T) {
+				mvxIsNative = false
+				t.Run("mvxIsNative = false", func(t *testing.T) {
+					mvxIsMintBurn = false
+					t.Run("mvxIsMintBurn = false", func(t *testing.T) {
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnMultiversX", "isMintBurnOnMultiversX"})(t)
+					})
+
+					mvxIsMintBurn = true
+					t.Run("mvxIsMintBurn = true", func(t *testing.T) {
+						ethMintBalance := big.NewInt(0)
+						ethBurnBalance := big.NewInt(100)
+						mvxBurnBalance := big.NewInt(0)
+						mvxMintBalance := big.NewInt(1)
+
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, zero, mvxMintBalance, mvxBurnBalance, direction, ErrBalanceMismatch, []string{})(t)
+						mvxMintBalance = big.NewInt(0)
+						testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, ethMintBalance, ethBurnBalance, zero, mvxMintBalance, mvxBurnBalance, direction, nil, []string{})(t)
+					})
+				})
+				mvxIsNative = true
+				// mvxIsMintBurn does not matter
+				testBridge(ethIsMintBurn, ethIsNative, mvxIsMintBurn, mvxIsNative, zero, zero, zero, zero, zero, zero, direction, ErrInvalidSetup, []string{"isNativeOnEthereum", "isNativeOnMultiversX"})(t)
+			})
+		})
+	})
+}
+
+func testBridge(
+	ethIsMintBurn,
+	ethIsNative,
+	mvxIsMintBurn,
+	mvxIsNative bool,
+	ethTotalBalances,
+	ethMintBalance,
+	ethBurnBalance,
+	mvxTotalBalances,
+	mvxMintBalance,
+	mvxBurnBalance *big.Int,
+	direction batchProcessor.Direction,
+	expectedErr error,
+	expectedStringsInErr []string,
+) func(t *testing.T) {
+	return func(t *testing.T) {
+		ethTokens := []common.Address{
+			common.BytesToAddress([]byte("eth token")),
+		}
+		mvxTokens := [][]byte{
+			[]byte("mvx token"),
+		}
+		amounts := []*big.Int{
+			big.NewInt(100),
+		}
+
+		args := createMockExecutorArgs()
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			MintBurnTokensCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return ethIsMintBurn, nil
+			},
+			NativeTokensCalled: func(ctx context.Context, token common.Address) (bool, error) {
+				return ethIsNative, nil
+			},
+			TotalBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				return ethTotalBalances, nil
+			},
+			MintBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				return ethMintBalance, nil
+			},
+			BurnBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
+				return ethBurnBalance, nil
+			},
+			CheckRequiredBalanceCalled: func(ctx context.Context, token common.Address, amount *big.Int) error {
+				return nil
 			},
 		}
 
-		accumulatedBurnedTokensCalled := false
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
-			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
-				return true, nil
+			IsMintBurnTokenCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return mvxIsMintBurn, nil
 			},
-			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
-				accumulatedBurnedTokensCalled = true
-				return big.NewInt(3700), nil
+			IsNativeTokenCalled: func(ctx context.Context, token []byte) (bool, error) {
+				return mvxIsNative, nil
+			},
+			TotalBalancesCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				return mvxTotalBalances, nil
+			},
+			MintBalancesCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				return mvxMintBalance, nil
+			},
+			BurnBalancesCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
+				return mvxBurnBalance, nil
+			},
+			CheckRequiredBalanceCalled: func(ctx context.Context, token []byte, amount *big.Int) error {
+				return nil
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
+		err := executor.CheckAvailableTokens(context.Background(), ethTokens, mvxTokens, amounts, direction)
 
-		err := executor.CheckAvailableTokens(
-			context.Background(),
-			[]common.Address{
-				common.BytesToAddress([]byte("eth token")),
-			},
-			[][]byte{
-				[]byte("mvx token"),
-			},
-			[]*big.Int{
-				big.NewInt(1),
-			})
-		assert.ErrorIs(t, err, ErrMintBurnBalance)
-		assert.True(t, tokenMintedBalancesCalled)
-		assert.True(t, accumulatedBurnedTokensCalled)
-	})
-	t.Run("should work with the same balances", func(t *testing.T) {
-		args := createMockExecutorArgs()
-		tokenMintedBalancesCalled := false
-		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
-				return true, nil
-			},
-			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
-				tokenMintedBalancesCalled = true
-
-				return big.NewInt(3700), nil
-			},
+		assert.True(t, errors.Is(err, expectedErr))
+		for _, expectedStringInErr := range expectedStringsInErr {
+			assert.True(t, strings.Contains(err.Error(), expectedStringInErr))
 		}
-
-		accumulatedBurnedTokensCalled := false
-		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
-			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
-				return true, nil
-			},
-			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
-				accumulatedBurnedTokensCalled = true
-				return big.NewInt(3700), nil
-			},
-		}
-
-		executor, _ := NewBridgeExecutor(args)
-
-		err := executor.CheckAvailableTokens(
-			context.Background(),
-			[]common.Address{
-				common.BytesToAddress([]byte("eth token")),
-			},
-			[][]byte{
-				[]byte("mvx token"),
-			},
-			[]*big.Int{
-				big.NewInt(1),
-			})
-		assert.Nil(t, err)
-		assert.True(t, tokenMintedBalancesCalled)
-		assert.True(t, accumulatedBurnedTokensCalled)
-	})
-	t.Run("should work with higher values on the mvx than eth", func(t *testing.T) {
-		args := createMockExecutorArgs()
-		tokenMintedBalancesCalled := false
-		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			WhitelistedTokensMintBurnCalled: func(ctx context.Context, token common.Address) (bool, error) {
-				return true, nil
-			},
-			TokenMintedBalancesCalled: func(ctx context.Context, token common.Address) (*big.Int, error) {
-				tokenMintedBalancesCalled = true
-
-				return big.NewInt(3699), nil // eth holds less than mvx
-			},
-		}
-
-		accumulatedBurnedTokensCalled := false
-		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
-			IsMintBurnAllowedCalled: func(ctx context.Context, token []byte) (bool, error) {
-				return true, nil
-			},
-			AccumulatedBurnedTokensCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
-				accumulatedBurnedTokensCalled = true
-				return big.NewInt(3700), nil
-			},
-		}
-
-		executor, _ := NewBridgeExecutor(args)
-
-		err := executor.CheckAvailableTokens(
-			context.Background(),
-			[]common.Address{
-				common.BytesToAddress([]byte("eth token")),
-			},
-			[][]byte{
-				[]byte("mvx token"),
-			},
-			[]*big.Int{
-				big.NewInt(1),
-			})
-		assert.Nil(t, err)
-		assert.True(t, tokenMintedBalancesCalled)
-		assert.True(t, accumulatedBurnedTokensCalled)
-	})
+	}
 }
 
 func TestConvertToDisplayableData_EmptyCallData(t *testing.T) {

@@ -7,6 +7,16 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 )
 
+// Direction is the direction of the transfer
+type Direction string
+
+const (
+	// FromMultiversX is the direction of the transfer
+	FromMultiversX Direction = "FromMultiversX"
+	// ToMultiversX is the direction of the transfer
+	ToMultiversX Direction = "ToMultiversX"
+)
+
 // ArgListsBatch is a struct that contains the batch data in a format that is easy to use
 type ArgListsBatch struct {
 	EthTokens     []common.Address
@@ -14,12 +24,15 @@ type ArgListsBatch struct {
 	MvxTokenBytes [][]byte
 	Amounts       []*big.Int
 	Nonces        []*big.Int
+	Direction     Direction
 }
 
 // ExtractListMvxToEth will extract the batch data into a format that is easy to use
 // The transfer is from MultiversX to Ethereum
 func ExtractListMvxToEth(batch *clients.TransferBatch) *ArgListsBatch {
-	arg := &ArgListsBatch{}
+	arg := &ArgListsBatch{
+		Direction: FromMultiversX,
+	}
 
 	for _, dt := range batch.Deposits {
 		recipient := common.BytesToAddress(dt.ToBytes)
@@ -43,7 +56,9 @@ func ExtractListMvxToEth(batch *clients.TransferBatch) *ArgListsBatch {
 // ExtractListEthToMvx will extract the batch data into a format that is easy to use
 // The transfer is from Ehtereum to MultiversX
 func ExtractListEthToMvx(batch *clients.TransferBatch) *ArgListsBatch {
-	arg := &ArgListsBatch{}
+	arg := &ArgListsBatch{
+		Direction: ToMultiversX,
+	}
 
 	for _, dt := range batch.Deposits {
 		recipient := common.BytesToAddress(dt.ToBytes)
