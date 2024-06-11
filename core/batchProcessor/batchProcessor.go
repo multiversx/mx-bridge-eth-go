@@ -7,6 +7,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 )
 
+// Direction is the direction of the transfer
 type Direction string
 
 const (
