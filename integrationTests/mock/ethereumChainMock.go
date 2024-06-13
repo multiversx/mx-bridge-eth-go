@@ -38,7 +38,6 @@ type EthereumChainMock struct {
 	mintBurnTokens                      map[common.Address]bool
 	nativeTokens                        map[common.Address]bool
 	whitelistedTokens                   map[common.Address]bool
-	nativeErc20TokensBalances           map[common.Address]*big.Int
 	GetStatusesAfterExecutionHandler    func() []byte
 	ProcessFinishedHandler              func()
 	quorum                              int
@@ -51,16 +50,15 @@ type EthereumChainMock struct {
 // NewEthereumChainMock -
 func NewEthereumChainMock() *EthereumChainMock {
 	return &EthereumChainMock{
-		nonces:                    make(map[common.Address]uint64),
-		batches:                   make(map[uint64]*contract.Batch),
-		deposits:                  make(map[uint64][]contract.Deposit),
-		totalBalances:             make(map[common.Address]*big.Int),
-		mintBalances:              make(map[common.Address]*big.Int),
-		burnBalances:              make(map[common.Address]*big.Int),
-		mintBurnTokens:            make(map[common.Address]bool),
-		nativeTokens:              make(map[common.Address]bool),
-		whitelistedTokens:         make(map[common.Address]bool),
-		nativeErc20TokensBalances: make(map[common.Address]*big.Int),
+		nonces:            make(map[common.Address]uint64),
+		batches:           make(map[uint64]*contract.Batch),
+		deposits:          make(map[uint64][]contract.Deposit),
+		totalBalances:     make(map[common.Address]*big.Int),
+		mintBalances:      make(map[common.Address]*big.Int),
+		burnBalances:      make(map[common.Address]*big.Int),
+		mintBurnTokens:    make(map[common.Address]bool),
+		nativeTokens:      make(map[common.Address]bool),
+		whitelistedTokens: make(map[common.Address]bool),
 	}
 }
 
@@ -287,7 +285,7 @@ func (mock *EthereumChainMock) TotalBalances(_ context.Context, account common.A
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()
 
-	return mock.totalBalances[account], nil
+	return getValueFromBalanceMap(mock.totalBalances, account), nil
 }
 
 // UpdateTotalBalances -
@@ -302,7 +300,7 @@ func (mock *EthereumChainMock) MintBalances(_ context.Context, account common.Ad
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()
 
-	return mock.mintBalances[account], nil
+	return getValueFromBalanceMap(mock.mintBalances, account), nil
 }
 
 // UpdateMintBalances -
@@ -317,7 +315,7 @@ func (mock *EthereumChainMock) BurnBalances(_ context.Context, account common.Ad
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()
 
-	return mock.burnBalances[account], nil
+	return getValueFromBalanceMap(mock.burnBalances, account), nil
 }
 
 // UpdateBurnBalances -
@@ -377,29 +375,11 @@ func (mock *EthereumChainMock) IsInterfaceNil() bool {
 	return mock == nil
 }
 
-// TokenMintedBalances -
-func (mock *EthereumChainMock) TokenMintedBalances(_ context.Context, erc20Token common.Address) (*big.Int, error) {
-	mock.mutState.RLock()
-	defer mock.mutState.RUnlock()
+func getValueFromBalanceMap(m map[common.Address]*big.Int, address common.Address) *big.Int {
+	value := m[address]
+	if value == nil {
+		return big.NewInt(0)
+	}
 
-	value := mock.nativeErc20TokensBalances[erc20Token]
-
-	return value, nil
-}
-
-// WhitelistedTokensMintBurn -
-func (mock *EthereumChainMock) WhitelistedTokensMintBurn(_ context.Context, erc20Token common.Address) (bool, error) {
-	mock.mutState.RLock()
-	defer mock.mutState.RUnlock()
-
-	_, found := mock.nativeErc20TokensBalances[erc20Token]
-
-	return found, nil
-}
-
-// AddWhitelistedTokensMintBurn -
-func (mock *EthereumChainMock) AddWhitelistedTokensMintBurn(erc20Token common.Address, nativeBalance *big.Int) {
-	mock.mutState.Lock()
-	mock.nativeErc20TokensBalances[erc20Token] = nativeBalance
-	mock.mutState.Unlock()
+	return value
 }

@@ -1,0 +1,453 @@
+{
+    "buildInfo": {
+        "rustc": {
+            "version": "1.76.0-nightly",
+            "commitHash": "d86d65bbc19b928387f68427fcc3a0da498d8a19",
+            "commitDate": "2023-12-10",
+            "channel": "Nightly",
+            "short": "rustc 1.76.0-nightly (d86d65bbc 2023-12-10)"
+        },
+        "contractCrate": {
+            "name": "multi-transfer-esdt",
+            "version": "0.0.0"
+        },
+        "framework": {
+            "name": "multiversx-sc",
+            "version": "0.47.5"
+        }
+    },
+    "name": "MultiTransferEsdt",
+    "constructor": {
+        "inputs": [],
+        "outputs": []
+    },
+    "endpoints": [
+        {
+            "name": "upgrade",
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "batchTransferEsdtToken",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64"
+                },
+                {
+                    "name": "transfers",
+                    "type": "variadic<EthTransaction>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "moveRefundBatchToSafe",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "setWrappingContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setBridgeProxyContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setEsdtSafeContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getFailedTxFromBridgeProxy",
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "getWrappingContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getBridgeProxyContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getEsdtSafeContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "setMaxTxBatchSize",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "new_max_tx_batch_size",
+                    "type": "u32"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setMaxTxBatchBlockDuration",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "new_max_tx_batch_block_duration",
+                    "type": "u64"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getCurrentTxBatch",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "optional<multi<u64,variadic<multi<u64,u64,bytes,bytes,TokenIdentifier,BigUint>>>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getFirstBatchAnyStatus",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "optional<multi<u64,variadic<multi<u64,u64,bytes,bytes,TokenIdentifier,BigUint>>>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getBatch",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "optional<multi<u64,variadic<multi<u64,u64,bytes,bytes,TokenIdentifier,BigUint>>>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getBatchStatus",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BatchStatus"
+                }
+            ]
+        },
+        {
+            "name": "getFirstBatchId",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "u64"
+                }
+            ]
+        },
+        {
+            "name": "getLastBatchId",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "u64"
+                }
+            ]
+        },
+        {
+            "name": "setMaxBridgedAmount",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "max_amount",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getMaxBridgedAmount",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "identifier": "transferPerformedEvent",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "from",
+                    "type": "EthAddress",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "Address",
+                    "indexed": true
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "transferFailedInvalidDestination",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "transferFailedInvalidToken",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "transferFailedFrozenDestinationAccount",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "transferOverMaxAmount",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        }
+    ],
+    "esdtAttributes": [],
+    "hasCallback": false,
+    "types": {
+        "BatchStatus": {
+            "type": "enum",
+            "variants": [
+                {
+                    "name": "AlreadyProcessed",
+                    "discriminant": 0
+                },
+                {
+                    "name": "Empty",
+                    "discriminant": 1
+                },
+                {
+                    "name": "PartiallyFull",
+                    "discriminant": 2,
+                    "fields": [
+                        {
+                            "name": "end_block_nonce",
+                            "type": "u64"
+                        },
+                        {
+                            "name": "tx_ids",
+                            "type": "List<u64>"
+                        }
+                    ]
+                },
+                {
+                    "name": "Full",
+                    "discriminant": 3
+                },
+                {
+                    "name": "WaitingForSignatures",
+                    "discriminant": 4
+                }
+            ]
+        },
+        "CallData": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "endpoint",
+                    "type": "bytes"
+                },
+                {
+                    "name": "gas_limit",
+                    "type": "u64"
+                },
+                {
+                    "name": "args",
+                    "type": "List<bytes>"
+                }
+            ]
+        },
+        "EthAddress": {
+            "type": "struct",
+            "docs": [
+                "Wrapper over a 20-byte array"
+            ],
+            "fields": [
+                {
+                    "name": "raw_addr",
+                    "type": "array20<u8>"
+                }
+            ]
+        },
+        "EthTransaction": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "EthAddress"
+                },
+                {
+                    "name": "to",
+                    "type": "Address"
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "tx_nonce",
+                    "type": "u64"
+                },
+                {
+                    "name": "call_data",
+                    "type": "Option<CallData>"
+                }
+            ]
+        }
+    }
+}

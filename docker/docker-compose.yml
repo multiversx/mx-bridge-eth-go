@@ -8,4 +8,4 @@ services:
     - 8085:8085
   volumes:
     - "../scripts:/docker/scripts"
-  entrypoint: "./chainsimulator"
+  entrypoint: "./chainsimulator -log-level *:INFO"

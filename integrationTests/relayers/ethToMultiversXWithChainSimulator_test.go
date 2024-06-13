@@ -95,6 +95,7 @@ const (
 	createTransactionParam                       = "createTransaction"
 	unwrapToken                                  = "unwrapToken"
 	setPairDecimals                              = "setPairDecimals"
+	initSupplyFromChildContract                  = "initSupplyFromChildContract"
 )
 
 type chainSimulatorWrapper interface {
@@ -115,7 +116,37 @@ type keysHolder struct {
 	sk []byte
 }
 
-func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *testing.T) {
+type testConfig struct {
+	isMintBurnOnMvX bool
+	isNativeOnMvx   bool
+	isMintBurnOnEth bool
+	isNativeOnEth   bool
+}
+
+func TestTransfersBothWaysWithChainSimulator(t *testing.T) {
+	t.Run("Eth: native, MvX: mint & burn", func(t *testing.T) {
+		cfg := testConfig{
+			isMintBurnOnMvX: true,
+			isNativeOnMvx:   false,
+			isMintBurnOnEth: false,
+			isNativeOnEth:   true,
+		}
+
+		testTransfersBothWaysWithChainSimulatorAndConfig(t, cfg)
+	})
+	t.Run("Eth: mint & burn, MvX: native", func(t *testing.T) {
+		cfg := testConfig{
+			isMintBurnOnMvX: false,
+			isNativeOnMvx:   true,
+			isMintBurnOnEth: true,
+			isNativeOnEth:   false,
+		}
+
+		testTransfersBothWaysWithChainSimulatorAndConfig(t, cfg)
+	})
+}
+
+func testTransfersBothWaysWithChainSimulatorAndConfig(t *testing.T, cfg testConfig) {
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
 	value1 := big.NewInt(200000000)
@@ -145,8 +176,8 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 	numRelayers := 3
 	ethereumChainMock := mock.NewEthereumChainMock()
 	// prepare ethereum chain mock for ETH->MVX
-	token1NativeBalance := big.NewInt(0)
-	ethereumChainMock.AddWhitelistedTokensMintBurn(token1Erc20, token1NativeBalance)
+	ethereumChainMock.UpdateMintBurnTokens(token1Erc20, cfg.isMintBurnOnEth)
+	ethereumChainMock.UpdateNativeTokens(token1Erc20, cfg.isNativeOnEth)
 	ethereumChainMock.AddBatch(batch)
 	ethereumChainMock.AddDepositToBatch(batchNonceOnEthereum, contract.Deposit{
 		Nonce:        big.NewInt(int64(txNonceOnEthereum) + 1),
@@ -190,7 +221,19 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversXWithChainSimulator(t *
 	safeAddress, multisigAddress, wrapperAddress, aggregatorAddress := executeContractsTxs(t, ctx, mvxChainSimulatorWrapper, relayersKeys, ownerKeys, receiverKeys)
 
 	// issue and whitelist token
-	newUniversalToken, newChainSpecificToken := issueAndWhitelistToken(t, ctx, mvxChainSimulatorWrapper, ownerKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(token1Erc20.Bytes()))
+	newUniversalToken, newChainSpecificToken := issueAndWhitelistToken(
+		t,
+		ctx,
+		mvxChainSimulatorWrapper,
+		ownerKeys,
+		wrapperAddress,
+		safeAddress,
+		multisigAddress,
+		aggregatorAddress,
+		hex.EncodeToString(token1Erc20.Bytes()),
+		cfg.isNativeOnMvx,
+		cfg.isMintBurnOnMvX,
+	)
 
 	// start relayers
 	relayers := startRelayers(t, tempDir, numRelayers, mvxChainSimulatorWrapper, ethereumChainMock, safeContractEthAddress, erc20ContractsHolder, safeAddress, multisigAddress)
@@ -655,6 +698,8 @@ func issueAndWhitelistToken(
 	multisigAddress string,
 	aggregatorAddress string,
 	erc20Token string,
+	isNativeOnMvX bool,
+	isMintBurnOnMvX bool,
 ) (string, string) {
 	// issue universal token
 	hash, err := mvxChainSimulator.ScCall(
@@ -670,7 +715,7 @@ func issueAndWhitelistToken(
 	require.NoError(t, err)
 	newUniversalToken := getTokenNameFromResult(t, *txResult)
 
-	log.Info("issue universal token tx executed", "hash", hash, "status", txResult.Status, "token", newUniversalToken)
+	log.Info("issue universal token tx executed", "hash", hash, "status", txResult.Status, "token", newUniversalToken, "owner", ownerKeys.pk)
 
 	// issue chain specific token
 	valueToMintInt, _ := big.NewInt(0).SetString(valueToMint, 10)
@@ -687,7 +732,7 @@ func issueAndWhitelistToken(
 	require.NoError(t, err)
 	newChainSpecificToken := getTokenNameFromResult(t, *txResult)
 
-	log.Info("issue chain specific token tx executed", "hash", hash, "status", txResult.Status, "token", newChainSpecificToken)
+	log.Info("issue chain specific token tx executed", "hash", hash, "status", txResult.Status, "token", newChainSpecificToken, "owner", ownerKeys.pk)
 
 	// set local roles bridged tokens wrapper
 	hash, err = mvxChainSimulator.ScCall(
@@ -704,7 +749,8 @@ func issueAndWhitelistToken(
 
 	log.Info("set local roles bridged tokens wrapper tx executed", "hash", hash, "status", txResult.Status)
 
-	// transfer to sc
+	// transfer to wrapper SC half the liquidity
+	valueToTransfer := big.NewInt(0).Div(valueToMintInt, big.NewInt(2))
 	hash, err = mvxChainSimulator.ScCall(
 		ctx,
 		ownerKeys.pk,
@@ -712,12 +758,12 @@ func issueAndWhitelistToken(
 		wrapperAddress,
 		zeroValue,
 		esdtTransfer,
-		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(valueToMintInt.Bytes()), hex.EncodeToString([]byte(depositLiquidity))})
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(valueToTransfer.Bytes()), hex.EncodeToString([]byte(depositLiquidity))})
 	require.NoError(t, err)
 	txResult, err = mvxChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
 
-	log.Info("transfer to sc tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("transfer to wrapper sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToTransfer.String())
 
 	// add wrapped token
 	hash, err = mvxChainSimulator.ScCall(
@@ -780,6 +826,14 @@ func issueAndWhitelistToken(
 	log.Info("add mapping tx executed", "hash", hash, "status", txResult.Status)
 
 	// whitelist token
+	isNative := "00"
+	if isNativeOnMvX {
+		isNative = "01"
+	}
+	isMintBurn := "00"
+	if isMintBurnOnMvX {
+		isMintBurn = "01"
+	}
 	hash, err = mvxChainSimulator.ScCall(
 		ctx,
 		ownerKeys.pk,
@@ -787,12 +841,33 @@ func issueAndWhitelistToken(
 		multisigAddress,
 		zeroValue,
 		esdtSafeAddTokenToWhitelist,
-		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), "01", "01"})
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), isMintBurn, isNative})
 	require.NoError(t, err)
 	txResult, err = mvxChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
 
 	log.Info("whitelist token tx executed", "hash", hash, "status", txResult.Status)
+
+	// transfer to safe SC the other half of the liquidity
+	hash, err = mvxChainSimulator.ScCall(
+		ctx,
+		ownerKeys.pk,
+		ownerKeys.sk,
+		multisigAddress,
+		zeroValue,
+		esdtTransfer,
+		[]string{
+			hex.EncodeToString([]byte(newChainSpecificToken)),
+			hex.EncodeToString(valueToTransfer.Bytes()),
+			hex.EncodeToString([]byte(initSupplyFromChildContract)), // function initSupplyFromChildContract
+			hex.EncodeToString([]byte(newChainSpecificToken)),       // provide the token, as required by the function
+			hex.EncodeToString(valueToTransfer.Bytes()),             // provide also the amount, as required by the function
+		})
+	require.NoError(t, err)
+	txResult, err = mvxChainSimulator.GetTransactionResult(ctx, hash)
+	require.NoError(t, err)
+
+	log.Info("transfer to multisig sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToTransfer.String())
 
 	// submit aggregator batch
 	submitAggregatorBatch(t, ctx, mvxChainSimulator, aggregatorAddress, ownerKeys)

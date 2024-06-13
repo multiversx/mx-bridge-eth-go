@@ -1,0 +1,934 @@
+{
+    "buildInfo": {
+        "rustc": {
+            "version": "1.76.0-nightly",
+            "commitHash": "d86d65bbc19b928387f68427fcc3a0da498d8a19",
+            "commitDate": "2023-12-10",
+            "channel": "Nightly",
+            "short": "rustc 1.76.0-nightly (d86d65bbc 2023-12-10)"
+        },
+        "contractCrate": {
+            "name": "esdt-safe",
+            "version": "0.0.0"
+        },
+        "framework": {
+            "name": "multiversx-sc",
+            "version": "0.47.5"
+        }
+    },
+    "name": "EsdtSafe",
+    "constructor": {
+        "docs": [
+            "fee_estimator_contract_address - The address of a Price Aggregator contract,",
+            "which will get the price of token A in token B",
+            "",
+            "eth_tx_gas_limit - The gas limit that will be used for transactions on the ETH side.",
+            "Will be used to compute the fees for the transfer"
+        ],
+        "inputs": [
+            {
+                "name": "fee_estimator_contract_address",
+                "type": "Address"
+            },
+            {
+                "name": "eth_tx_gas_limit",
+                "type": "BigUint"
+            }
+        ],
+        "outputs": []
+    },
+    "endpoints": [
+        {
+            "name": "upgrade",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "fee_estimator_contract_address",
+                    "type": "Address"
+                },
+                {
+                    "name": "eth_tx_gas_limit",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Sets the statuses for the transactions, after they were executed on the Ethereum side.",
+                "",
+                "Only TransactionStatus::Executed (3) and TransactionStatus::Rejected (4) values are allowed.",
+                "Number of provided statuses must be equal to number of transactions in the batch."
+            ],
+            "name": "setTransactionBatchStatus",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64"
+                },
+                {
+                    "name": "tx_statuses",
+                    "type": "variadic<TransactionStatus>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Converts failed Ethereum -> Elrond transactions to Elrond -> Ethereum transaction.",
+                "This is done every now and then to refund the tokens.",
+                "",
+                "As with normal Elrond -> Ethereum transactions, a part of the tokens will be",
+                "subtracted to pay for the fees"
+            ],
+            "name": "addRefundBatch",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "refund_transactions",
+                    "type": "List<Transaction>"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Create an Elrond -> Ethereum transaction. Only fungible tokens are accepted.",
+                "",
+                "Every transfer will have a part of the tokens subtracted as fees.",
+                "The fee amount depends on the global eth_tx_gas_limit",
+                "and the current GWEI price, respective to the bridged token",
+                "",
+                "fee_amount = price_per_gas_unit * eth_tx_gas_limit"
+            ],
+            "name": "createTransaction",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "to",
+                    "type": "EthAddress"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Claim funds for failed Elrond -> Ethereum transactions.",
+                "These are not sent automatically to prevent the contract getting stuck.",
+                "For example, if the receiver is a SC, a frozen account, etc."
+            ],
+            "name": "claimRefund",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "EsdtTokenPayment"
+                }
+            ]
+        },
+        {
+            "name": "initSupply",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "computeTotalAmmountsFromIndex",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "startIndex",
+                    "type": "u64"
+                },
+                {
+                    "name": "endIndex",
+                    "type": "u64"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "List<EsdtTokenPayment>"
+                }
+            ]
+        },
+        {
+            "docs": [
+                "Query function that lists all refund amounts for a user.",
+                "Useful for knowing which token IDs to pass to the claimRefund endpoint."
+            ],
+            "name": "getRefundAmounts",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "address",
+                    "type": "Address"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "variadic<multi<TokenIdentifier,BigUint>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getTotalRefundAmounts",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<multi<TokenIdentifier,BigUint>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "setFeeEstimatorContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "new_address",
+                    "type": "Address"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setEthTxGasLimit",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "new_limit",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Default price being used if the aggregator lacks a mapping for this token",
+                "or the aggregator address is not set"
+            ],
+            "name": "setDefaultPricePerGasUnit",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "default_price_per_gas_unit",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Token ticker being used when querying the aggregator for GWEI prices"
+            ],
+            "name": "setTokenTicker",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "ticker",
+                    "type": "bytes"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Returns the fee for the given token ID (the fee amount is in the given token)"
+            ],
+            "name": "calculateRequiredFee",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "getFeeEstimatorContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getDefaultPricePerGasUnit",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "getEthTxGasLimit",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "docs": [
+                "Distributes the accumulated fees to the given addresses.",
+                "Expected arguments are pairs of (address, percentage),",
+                "where percentages must add up to the PERCENTAGE_TOTAL constant"
+            ],
+            "name": "distributeFees",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "address_percentage_pairs",
+                    "type": "List<AddressPercentagePair>"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "addTokenToWhitelist",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "ticker",
+                    "type": "bytes"
+                },
+                {
+                    "name": "mint_burn_token",
+                    "type": "bool"
+                },
+                {
+                    "name": "native_token",
+                    "type": "bool"
+                },
+                {
+                    "name": "opt_default_price_per_gas_unit",
+                    "type": "optional<BigUint>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "removeTokenFromWhitelist",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getTokens",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "setMultiTransferContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setTotalBalances",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "value",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getAllKnownTokens",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<TokenIdentifier>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "isNativeToken",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "isMintBurnToken",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "getMultiTransferContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getAccumulatedTransactionFees",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "getTotalBalances",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "getMintBalances",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "getBurnBalances",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "setMaxTxBatchSize",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "new_max_tx_batch_size",
+                    "type": "u32"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setMaxTxBatchBlockDuration",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "new_max_tx_batch_block_duration",
+                    "type": "u64"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getCurrentTxBatch",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "optional<multi<u64,variadic<multi<u64,u64,bytes,bytes,TokenIdentifier,BigUint>>>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getFirstBatchAnyStatus",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "optional<multi<u64,variadic<multi<u64,u64,bytes,bytes,TokenIdentifier,BigUint>>>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getBatch",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "optional<multi<u64,variadic<multi<u64,u64,bytes,bytes,TokenIdentifier,BigUint>>>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getBatchStatus",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BatchStatus"
+                }
+            ]
+        },
+        {
+            "name": "getFirstBatchId",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "u64"
+                }
+            ]
+        },
+        {
+            "name": "getLastBatchId",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "u64"
+                }
+            ]
+        },
+        {
+            "name": "setMaxBridgedAmount",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "max_amount",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getMaxBridgedAmount",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "pause",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "unpause",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "isPaused",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "bool"
+                }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "identifier": "createTransactionEvent",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "fee",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "sender",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "recipient",
+                    "type": "bytes",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "addRefundTransactionEvent",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "original_tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "claimRefundTransactionEvent",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                },
+                {
+                    "name": "caller",
+                    "type": "Address",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "setStatusEvent",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_status",
+                    "type": "TransactionStatus",
+                    "indexed": true
+                }
+            ]
+        }
+    ],
+    "esdtAttributes": [],
+    "hasCallback": false,
+    "types": {
+        "AddressPercentagePair": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "address",
+                    "type": "Address"
+                },
+                {
+                    "name": "percentage",
+                    "type": "u32"
+                }
+            ]
+        },
+        "BatchStatus": {
+            "type": "enum",
+            "variants": [
+                {
+                    "name": "AlreadyProcessed",
+                    "discriminant": 0
+                },
+                {
+                    "name": "Empty",
+                    "discriminant": 1
+                },
+                {
+                    "name": "PartiallyFull",
+                    "discriminant": 2,
+                    "fields": [
+                        {
+                            "name": "end_block_nonce",
+                            "type": "u64"
+                        },
+                        {
+                            "name": "tx_ids",
+                            "type": "List<u64>"
+                        }
+                    ]
+                },
+                {
+                    "name": "Full",
+                    "discriminant": 3
+                },
+                {
+                    "name": "WaitingForSignatures",
+                    "discriminant": 4
+                }
+            ]
+        },
+        "EsdtTokenPayment": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "token_identifier",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "token_nonce",
+                    "type": "u64"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                }
+            ]
+        },
+        "EthAddress": {
+            "type": "struct",
+            "docs": [
+                "Wrapper over a 20-byte array"
+            ],
+            "fields": [
+                {
+                    "name": "raw_addr",
+                    "type": "array20<u8>"
+                }
+            ]
+        },
+        "Transaction": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "block_nonce",
+                    "type": "u64"
+                },
+                {
+                    "name": "nonce",
+                    "type": "u64"
+                },
+                {
+                    "name": "from",
+                    "type": "bytes"
+                },
+                {
+                    "name": "to",
+                    "type": "bytes"
+                },
+                {
+                    "name": "token_identifier",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "is_refund_tx",
+                    "type": "bool"
+                }
+            ]
+        },
+        "TransactionStatus": {
+            "type": "enum",
+            "variants": [
+                {
+                    "name": "None",
+                    "discriminant": 0
+                },
+                {
+                    "name": "Pending",
+                    "discriminant": 1
+                },
+                {
+                    "name": "InProgress",
+                    "discriminant": 2
+                },
+                {
+                    "name": "Executed",
+                    "discriminant": 3
+                },
+                {
+                    "name": "Rejected",
+                    "discriminant": 4
+                }
+            ]
+        }
+    }
+}
