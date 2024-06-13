@@ -650,7 +650,7 @@ func (executor *bridgeExecutor) checkToken(ctx context.Context, token common.Add
 		return fmt.Errorf("%w, direction: %s", ErrInvalidDirection, direction)
 	}
 
-	// TODO: fix this
+	// TODO(jls): fix this
 	//if ethAmount.Cmp(mvxAmount) != 0 {
 	//	return fmt.Errorf("%w, balance for ERC20 token %s is %s and the balance for ESDT token %s is %s",
 	//		ErrBalanceMismatch, token.String(), ethAmount.String(), convertedToken, mvxAmount.String())
