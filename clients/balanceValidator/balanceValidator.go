@@ -91,10 +91,6 @@ func (validator *balanceValidator) CheckToken(ctx context.Context, ethToken comm
 		return fmt.Errorf("%w isNativeOnEthereum = %v, isNativeOnMultiversX = %v", ErrInvalidSetup, isNativeOnEthereum, isNativeOnMultiversX)
 	}
 
-	if !isMintBurnOnEthereum && !isMintBurnOnMultiversX {
-		return fmt.Errorf("%w isMintBurnOnEthereum = %v, isMintBurnOnMultiversX = %v", ErrInvalidSetup, isMintBurnOnEthereum, isMintBurnOnMultiversX)
-	}
-
 	ethAmount, err := validator.computeEthAmount(ctx, ethToken, isMintBurnOnEthereum, isNativeOnEthereum)
 	if err != nil {
 		return err
