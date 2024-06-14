@@ -21,11 +21,13 @@ import (
 	"testing"
 	"time"
 
+	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	ethCore "github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
@@ -137,6 +139,14 @@ type chainSimulatorWrapper interface {
 	GenerateBlocksUntilEpochReached(ctx context.Context, epoch uint32)
 	GenerateBlocks(ctx context.Context, numBlocks int)
 	GetESDTBalance(ctx context.Context, address sdkCore.AddressHandler, token string) (string, error)
+}
+
+type blockchainClient interface {
+	BlockNumber(ctx context.Context) (uint64, error)
+	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
+	ChainID(ctx context.Context) (*big.Int, error)
+	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	FilterLogs(ctx context.Context, q goEthereum.FilterQuery) ([]types.Log, error)
 }
 
 type keysHolder struct {
