@@ -1,3 +1,5 @@
+//go:build !slow
+
 package relayers
 
 import (
@@ -13,12 +15,10 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
-	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var log = logger.GetOrCreate("integrationTests/relayers")
 var zero = big.NewInt(0)
 
 func asyncCancelCall(cancelHandler func(), delay time.Duration) {
@@ -237,12 +237,6 @@ func createTransaction(index int) (mock.MultiversXDeposit, common.Address) {
 		Ticker: fmt.Sprintf("tck-00000%d", index+1),
 		Amount: big.NewInt(int64(index * 1000)),
 	}, tokenAddress
-}
-
-func closeRelayers(relayers []bridgeComponents) {
-	for _, r := range relayers {
-		_ = r.Close()
-	}
 }
 
 func checkTestStatus(

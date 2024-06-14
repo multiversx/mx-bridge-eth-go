@@ -216,6 +216,7 @@ func (mock *MultiversXChainMock) AddDepositToCurrentBatch(deposit MultiversXDepo
 	mock.mutState.Unlock()
 }
 
+// GetESDTTokenData -
 func (mock *MultiversXChainMock) GetESDTTokenData(_ context.Context, _ sdkCore.AddressHandler, tokenIdentifier string, _ api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error) {
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()

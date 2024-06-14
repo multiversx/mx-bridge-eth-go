@@ -1,0 +1,241 @@
+{
+    "buildInfo": {
+        "rustc": {
+            "version": "1.76.0-nightly",
+            "commitHash": "d86d65bbc19b928387f68427fcc3a0da498d8a19",
+            "commitDate": "2023-12-10",
+            "channel": "Nightly",
+            "short": "rustc 1.76.0-nightly (d86d65bbc 2023-12-10)"
+        },
+        "contractCrate": {
+            "name": "bridge-proxy",
+            "version": "0.0.0"
+        },
+        "framework": {
+            "name": "multiversx-sc",
+            "version": "0.47.5"
+        }
+    },
+    "name": "BridgeProxyContract",
+    "constructor": {
+        "inputs": [
+            {
+                "name": "opt_multi_transfer_address",
+                "type": "optional<Address>",
+                "multi_arg": true
+            }
+        ],
+        "outputs": []
+    },
+    "endpoints": [
+        {
+            "name": "upgrade",
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "deposit",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "eth_tx",
+                    "type": "EthTransaction"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "executeWithAsnyc",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "refundTransactions",
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<EthTransactionPayment>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "setupMultiTransfer",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_multi_transfer_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getEthTransactionById",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "id",
+                    "type": "u32"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "EthTransaction"
+                }
+            ]
+        },
+        {
+            "name": "getMultiTransferAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getEthTransactionList",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<EthTransactionPayment>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getEthFailedTransactionList",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<EthTransactionPayment>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "pause",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "unpause",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "isPaused",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "bool"
+                }
+            ]
+        }
+    ],
+    "esdtAttributes": [],
+    "hasCallback": true,
+    "types": {
+        "CallData": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "endpoint",
+                    "type": "bytes"
+                },
+                {
+                    "name": "gas_limit",
+                    "type": "u64"
+                },
+                {
+                    "name": "args",
+                    "type": "List<bytes>"
+                }
+            ]
+        },
+        "EthAddress": {
+            "type": "struct",
+            "docs": [
+                "Wrapper over a 20-byte array"
+            ],
+            "fields": [
+                {
+                    "name": "raw_addr",
+                    "type": "array20<u8>"
+                }
+            ]
+        },
+        "EthTransaction": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "EthAddress"
+                },
+                {
+                    "name": "to",
+                    "type": "Address"
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "tx_nonce",
+                    "type": "u64"
+                },
+                {
+                    "name": "call_data",
+                    "type": "Option<CallData>"
+                }
+            ]
+        },
+        "EthTransactionPayment": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "nonce",
+                    "type": "u64"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "eth_tx",
+                    "type": "EthTransaction"
+                }
+            ]
+        }
+    }
+}

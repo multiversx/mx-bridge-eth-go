@@ -285,7 +285,7 @@ func (mock *EthereumChainMock) TotalBalances(_ context.Context, account common.A
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()
 
-	return mock.totalBalances[account], nil
+	return getValueFromBalanceMap(mock.totalBalances, account), nil
 }
 
 // UpdateTotalBalances -
@@ -300,7 +300,7 @@ func (mock *EthereumChainMock) MintBalances(_ context.Context, account common.Ad
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()
 
-	return mock.mintBalances[account], nil
+	return getValueFromBalanceMap(mock.mintBalances, account), nil
 }
 
 // UpdateMintBalances -
@@ -315,7 +315,7 @@ func (mock *EthereumChainMock) BurnBalances(_ context.Context, account common.Ad
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()
 
-	return mock.burnBalances[account], nil
+	return getValueFromBalanceMap(mock.burnBalances, account), nil
 }
 
 // UpdateBurnBalances -
@@ -373,4 +373,13 @@ func (mock *EthereumChainMock) UpdateWhitelistedTokens(account common.Address, v
 // IsInterfaceNil -
 func (mock *EthereumChainMock) IsInterfaceNil() bool {
 	return mock == nil
+}
+
+func getValueFromBalanceMap(m map[common.Address]*big.Int, address common.Address) *big.Int {
+	value := m[address]
+	if value == nil {
+		return big.NewInt(0)
+	}
+
+	return value
 }
