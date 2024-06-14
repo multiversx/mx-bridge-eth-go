@@ -36,6 +36,7 @@ const (
 	generateBlocksEndpoint                  = "simulator/generate-blocks/%d"
 	generateBlocksUntilEpochReachedEndpoint = "simulator/generate-blocks-until-epoch-reached/%d"
 	numProbeRetries                         = 10
+	networkConfigEndpointTemplate           = "network/status/%d"
 )
 
 // ArgChainSimulatorWrapper is the DTO used to create a new instance of proxy that relies on a chain simulator
@@ -284,6 +285,29 @@ func (instance *chainSimulatorWrapper) GetESDTBalance(ctx context.Context, addre
 	}
 
 	return tokenData.Balance, nil
+}
+
+// GetBlockchainTimeStamp will return the latest block timestamp by querying the endpoint route: /network/status/4294967295
+func (instance *chainSimulatorWrapper) GetBlockchainTimeStamp(ctx context.Context) (uint64, error) {
+	resultBytes, status, err := instance.clientWrapper.GetHTTP(ctx, fmt.Sprintf(networkConfigEndpointTemplate, core.MetachainShardId))
+	if err != nil || status != http.StatusOK {
+		return 0, fmt.Errorf("error %w, status code %d in chainSimulatorWrapper.GetBlockchainTimeStamp", err, status)
+	}
+
+	resultStruct := struct {
+		Data struct {
+			Status struct {
+				ErdBlockTimestamp uint64 `json:"erd_block_timestamp"`
+			} `json:"status"`
+		} `json:"data"`
+	}{}
+
+	err = json.Unmarshal(resultBytes, &resultStruct)
+	if err != nil {
+		return 0, fmt.Errorf("error %w, status code %d in chainSimulatorWrapper.GetBlockchainTimeStamp", err)
+	}
+
+	return resultStruct.Data.Status.ErdBlockTimestamp, nil
 }
 
 func (instance *chainSimulatorWrapper) getNonce(ctx context.Context, bech32Address string) (uint64, error) {

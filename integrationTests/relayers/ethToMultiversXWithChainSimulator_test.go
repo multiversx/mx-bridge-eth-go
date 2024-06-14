@@ -112,13 +112,13 @@ const (
 	createTransactionParam                       = "createTransaction"
 	unwrapToken                                  = "unwrapToken"
 	setPairDecimals                              = "setPairDecimals"
-	initSupplyFromChildContract                  = "initSupplyFromChildContract"
-	ethStatusSuccess                             = uint64(1)
-	ethTokenName                                 = "ETHTOKEN"
-	ethTokenSymbol                               = "ETHT"
-	ethMinAmountAllowedToTransfer                = 25
-	ethMaxAmountAllowedToTransfer                = 500000
-	ethSimulatedGasLimit                         = 9000000
+	// initSupplyFromChildContract                  = "initSupplyFromChildContract"
+	ethStatusSuccess              = uint64(1)
+	ethTokenName                  = "ETHTOKEN"
+	ethTokenSymbol                = "ETHT"
+	ethMinAmountAllowedToTransfer = 25
+	ethMaxAmountAllowedToTransfer = 500000
+	ethSimulatedGasLimit          = 9000000
 )
 
 var (
@@ -139,6 +139,7 @@ type chainSimulatorWrapper interface {
 	GenerateBlocksUntilEpochReached(ctx context.Context, epoch uint32)
 	GenerateBlocks(ctx context.Context, numBlocks int)
 	GetESDTBalance(ctx context.Context, address sdkCore.AddressHandler, token string) (string, error)
+	GetBlockchainTimeStamp(ctx context.Context) (uint64, error)
 }
 
 type blockchainClient interface {
@@ -229,7 +230,10 @@ func testTransfersBothWaysWithChainSimulatorAndConfig(t *testing.T, cfg testConf
 
 	// create ethereum simulator
 	simulatedETHChain, simulatedETHChainWrapper, ethSafeContract, ethSafeAddress, ethBridgeContract, _, ethGenericTokenContract, ethGenericTokenAddress := createEthereumSimulatorAndDeployContracts(t, ctx, relayersKeys, ethOwnerAddr, ethDepositorAddr)
-	defer simulatedETHChain.Close()
+	defer func() {
+		errCloseETH := simulatedETHChain.Close()
+		log.LogIfError(errCloseETH)
+	}()
 
 	ethChainID, _ := simulatedETHChainWrapper.ChainID(ctx)
 
@@ -871,7 +875,6 @@ func issueAndWhitelistToken(
 	log.Info("add mapping tx executed", "hash", hash, "status", txResult.Status)
 
 	// whitelist token
-	statusBefore, _ := mvxChainSimulator.Proxy().GetNetworkStatus(ctx, 0)
 	isNative := "00"
 	if isNativeOnMvX {
 		isNative = "01"
@@ -917,13 +920,7 @@ func issueAndWhitelistToken(
 	//log.Info("transfer to multisig sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToTransfer.String())
 
 	// submit aggregator batch
-	statusAfter, _ := mvxChainSimulator.Proxy().GetNetworkStatus(ctx, 0)
-	networkConfig, err := mvxChainSimulator.Proxy().GetNetworkConfig(ctx)
-	require.NoError(t, err)
-	roundDurationInSeconds := networkConfig.RoundDuration / 1000
-	timePassed := (statusAfter.CurrentRound - statusBefore.CurrentRound - 1) * uint64(roundDurationInSeconds)
-	currentChainTimestamp := txResult.Timestamp + timePassed
-	submitAggregatorBatch(t, ctx, mvxChainSimulator, aggregatorAddress, ownerKeys, currentChainTimestamp)
+	submitAggregatorBatch(t, ctx, mvxChainSimulator, aggregatorAddress, ownerKeys)
 
 	// safe set max bridge amount for token
 	maxBridgedAmountForTokenInt, _ := big.NewInt(0).SetString(maxBridgedAmountForToken, 10)
@@ -1057,9 +1054,12 @@ func submitAggregatorBatch(
 	mvxChainSimulator chainSimulatorWrapper,
 	aggregatorAddress string,
 	ownerKeys keysHolder,
-	currentChainTimestamp uint64,
 ) {
-	timestamp := big.NewInt(0).SetUint64(currentChainTimestamp)
+	timestamp, err := mvxChainSimulator.GetBlockchainTimeStamp(ctx)
+	require.Nil(t, err)
+	require.Greater(t, timestamp, uint64(0), "something went wrong and the chain simulator returned 0 for the current timestamp")
+
+	timestampAsBigInt := big.NewInt(0).SetUint64(timestamp)
 
 	hash, err := mvxChainSimulator.ScCall(
 		ctx,
@@ -1068,7 +1068,7 @@ func submitAggregatorBatch(
 		aggregatorAddress,
 		zeroValue,
 		submitBatch,
-		[]string{hex.EncodeToString([]byte(gwei)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), hex.EncodeToString(timestamp.Bytes()), hex.EncodeToString(feeInt.Bytes()), numOfDecimalsChainSpecific})
+		[]string{hex.EncodeToString([]byte(gwei)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), hex.EncodeToString(timestampAsBigInt.Bytes()), hex.EncodeToString(feeInt.Bytes()), numOfDecimalsChainSpecific})
 	require.NoError(t, err)
 	txResult, err := mvxChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
