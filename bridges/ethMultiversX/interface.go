@@ -31,8 +31,12 @@ type MultiversXClient interface {
 	WasSigned(ctx context.Context, actionID uint64) (bool, error)
 	PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
 	CheckClientAvailability(ctx context.Context) error
-	IsMintBurnAllowed(ctx context.Context, token []byte) (bool, error)
-	AccumulatedBurnedTokens(ctx context.Context, token []byte) (*big.Int, error)
+	IsMintBurnToken(ctx context.Context, token []byte) (bool, error)
+	IsNativeToken(ctx context.Context, token []byte) (bool, error)
+	TotalBalances(ctx context.Context, token []byte) (*big.Int, error)
+	MintBalances(ctx context.Context, token []byte) (*big.Int, error)
+	BurnBalances(ctx context.Context, token []byte) (*big.Int, error)
+	CheckRequiredBalance(ctx context.Context, token []byte, value *big.Int) error
 	Close() error
 	IsInterfaceNil() bool
 }
@@ -51,8 +55,12 @@ type EthereumClient interface {
 	GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error)
 	CheckClientAvailability(ctx context.Context) error
 	CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error
-	TokenMintedBalances(ctx context.Context, token common.Address) (*big.Int, error)
-	WhitelistedTokensMintBurn(ctx context.Context, token common.Address) (bool, error)
+	TotalBalances(ctx context.Context, token common.Address) (*big.Int, error)
+	MintBalances(ctx context.Context, token common.Address) (*big.Int, error)
+	BurnBalances(ctx context.Context, token common.Address) (*big.Int, error)
+	MintBurnTokens(ctx context.Context, token common.Address) (bool, error)
+	NativeTokens(ctx context.Context, token common.Address) (bool, error)
+	WhitelistedTokens(ctx context.Context, token common.Address) (bool, error)
 	IsInterfaceNil() bool
 }
 

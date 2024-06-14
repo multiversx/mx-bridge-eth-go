@@ -48,6 +48,7 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T) {
 }
 
 func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNativeTokens bool) {
+	zero := big.NewInt(0)
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
 	ticker1 := "tck-000001"
@@ -101,19 +102,32 @@ func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNat
 
 	multiversXChainMock := mock.NewMultiversXChainMock()
 
-	var token1NativeBalance *big.Int
-	var token2NativeBalance *big.Int
+	if !withNativeTokens {
+		ethereumChainMock.UpdateNativeTokens(token1Erc20, true)
+		ethereumChainMock.UpdateMintBurnTokens(token1Erc20, false)
+		ethereumChainMock.UpdateTotalBalances(token1Erc20, value1)
 
-	if withNativeTokens {
-		token1NativeBalance = big.NewInt(0)
-		token2NativeBalance = big.NewInt(1000)
+		ethereumChainMock.UpdateNativeTokens(token2Erc20, true)
+		ethereumChainMock.UpdateMintBurnTokens(token2Erc20, false)
+		ethereumChainMock.UpdateTotalBalances(token2Erc20, value2)
 
-		ethereumChainMock.AddWhitelistedTokensMintBurn(token1Erc20, token1NativeBalance)
-		ethereumChainMock.AddWhitelistedTokensMintBurn(token2Erc20, token2NativeBalance)
+		multiversXChainMock.AddTokensPair(token1Erc20, ticker1, withNativeTokens, true, zero, zero, zero)
+		multiversXChainMock.AddTokensPair(token2Erc20, ticker2, withNativeTokens, true, zero, zero, zero)
+	} else {
+		ethereumChainMock.UpdateNativeTokens(token1Erc20, false)
+		ethereumChainMock.UpdateMintBurnTokens(token1Erc20, true)
+		ethereumChainMock.UpdateBurnBalances(token1Erc20, value1)
+		ethereumChainMock.UpdateMintBalances(token1Erc20, value1)
+
+		ethereumChainMock.UpdateNativeTokens(token2Erc20, false)
+		ethereumChainMock.UpdateMintBurnTokens(token2Erc20, true)
+		ethereumChainMock.UpdateBurnBalances(token2Erc20, value2)
+		ethereumChainMock.UpdateMintBalances(token2Erc20, value2)
+
+		multiversXChainMock.AddTokensPair(token1Erc20, ticker1, withNativeTokens, true, zero, zero, value1)
+		multiversXChainMock.AddTokensPair(token2Erc20, ticker2, withNativeTokens, true, zero, zero, value2)
 	}
 
-	multiversXChainMock.AddTokensPair(token1Erc20, ticker1, withNativeTokens, token1NativeBalance)
-	multiversXChainMock.AddTokensPair(token2Erc20, ticker2, withNativeTokens, token2NativeBalance)
 	multiversXChainMock.SetLastExecutedEthBatchID(batchNonceOnEthereum)
 	multiversXChainMock.SetLastExecutedEthTxId(txNonceOnEthereum)
 	multiversXChainMock.GetStatusesAfterExecutionHandler = func() []byte {
@@ -200,6 +214,7 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 }
 
 func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t *testing.T, args argsForSCCallsTest) {
+	zero := big.NewInt(0)
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	scExecProxyEthAddress := testsCommon.CreateRandomEthereumAddress()
 
@@ -267,6 +282,18 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	ethereumChainMock.AddBatch(batch)
 	ethereumChainMock.SetQuorum(numRelayers)
 
+	ethereumChainMock.UpdateNativeTokens(token1Erc20, true)
+	ethereumChainMock.UpdateMintBurnTokens(token1Erc20, false)
+	ethereumChainMock.UpdateTotalBalances(token1Erc20, value1)
+
+	ethereumChainMock.UpdateNativeTokens(token2Erc20, true)
+	ethereumChainMock.UpdateMintBurnTokens(token2Erc20, false)
+	ethereumChainMock.UpdateTotalBalances(token2Erc20, value2)
+
+	ethereumChainMock.UpdateNativeTokens(token3Erc20, true)
+	ethereumChainMock.UpdateMintBurnTokens(token3Erc20, false)
+	ethereumChainMock.UpdateTotalBalances(token3Erc20, value3)
+
 	ethereumChainMock.FilterLogsCalled = func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
 		expectedBatchNonceHash := []common.Hash{
 			common.BytesToHash(big.NewInt(int64(batchNonceOnEthereum + 1)).Bytes()),
@@ -289,9 +316,9 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	}
 
 	multiversXChainMock := mock.NewMultiversXChainMock()
-	multiversXChainMock.AddTokensPair(token1Erc20, ticker1, false, nil)
-	multiversXChainMock.AddTokensPair(token2Erc20, ticker2, false, nil)
-	multiversXChainMock.AddTokensPair(token3Erc20, ticker3, false, nil)
+	multiversXChainMock.AddTokensPair(token1Erc20, ticker1, false, true, zero, zero, zero)
+	multiversXChainMock.AddTokensPair(token2Erc20, ticker2, false, true, zero, zero, zero)
+	multiversXChainMock.AddTokensPair(token3Erc20, ticker3, false, true, zero, zero, zero)
 	multiversXChainMock.SetLastExecutedEthBatchID(batchNonceOnEthereum)
 	multiversXChainMock.SetLastExecutedEthTxId(txNonceOnEthereum)
 	multiversXChainMock.GetStatusesAfterExecutionHandler = func() []byte {
