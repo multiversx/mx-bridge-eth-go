@@ -130,6 +130,8 @@ func (validator *balanceValidator) CheckToken(ctx context.Context, ethToken comm
 	}
 
 	// TODO(jls): fix this
+	_ = mvxAmount
+	_ = ethAmount
 	//if ethAmount.Cmp(mvxAmount) != 0 {
 	//	return fmt.Errorf("%w, balance for ERC20 token %s is %s and the balance for ESDT token %s is %s",
 	//		ErrBalanceMismatch, token.String(), ethAmount.String(), convertedToken, mvxAmount.String())
