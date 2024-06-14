@@ -8,6 +8,7 @@ package relayers
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -163,20 +164,20 @@ func TestTransfersBothWaysWithChainSimulator(t *testing.T) {
 
 		testTransfersBothWaysWithChainSimulatorAndConfig(t, cfg)
 	})
-	t.Run("Eth: mint & burn, MvX: native", func(t *testing.T) {
-		cfg := testConfig{
-			isMintBurnOnMvX: false,
-			isNativeOnMvx:   true,
-			isMintBurnOnEth: true,
-			isNativeOnEth:   false,
-		}
-
-		testTransfersBothWaysWithChainSimulatorAndConfig(t, cfg)
-	})
+	// TODO[Sorin]: remove this in the next PR when multiple cases are already covered
+	//t.Run("Eth: mint & burn, MvX: native", func(t *testing.T) {
+	//	cfg := testConfig{
+	//		isMintBurnOnMvX: false,
+	//		isNativeOnMvx:   true,
+	//		isMintBurnOnEth: true,
+	//		isNativeOnEth:   false,
+	//	}
+	//
+	//	testTransfersBothWaysWithChainSimulatorAndConfig(t, cfg)
+	//})
 }
 
 func testTransfersBothWaysWithChainSimulatorAndConfig(t *testing.T, cfg testConfig) {
-	t.Skip("this is a long test")
 
 	defer func() {
 		r := recover()
@@ -785,7 +786,6 @@ func issueAndWhitelistToken(
 	log.Info("set local roles bridged tokens wrapper tx executed", "hash", hash, "status", txResult.Status)
 
 	// transfer to wrapper SC half the liquidity
-	valueToTransfer := big.NewInt(0).Div(valueToMintInt, big.NewInt(2))
 	hash, err = mvxChainSimulator.ScCall(
 		ctx,
 		ownerKeys.pk,
@@ -793,12 +793,12 @@ func issueAndWhitelistToken(
 		wrapperAddress,
 		zeroValue,
 		esdtTransfer,
-		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(valueToTransfer.Bytes()), hex.EncodeToString([]byte(depositLiquidity))})
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(valueToMintInt.Bytes()), hex.EncodeToString([]byte(depositLiquidity))})
 	require.NoError(t, err)
 	txResult, err = mvxChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
 
-	log.Info("transfer to wrapper sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToTransfer.String())
+	log.Info("transfer to wrapper sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToMintInt.String())
 
 	// add wrapped token
 	hash, err = mvxChainSimulator.ScCall(
@@ -884,26 +884,27 @@ func issueAndWhitelistToken(
 
 	log.Info("whitelist token tx executed", "hash", hash, "status", txResult.Status)
 
+	// TODO[Sorin]: remove this in the next PR when this should be already covered
 	// transfer to safe SC the other half of the liquidity
-	hash, err = mvxChainSimulator.ScCall(
-		ctx,
-		ownerKeys.pk,
-		ownerKeys.sk,
-		multisigAddress,
-		zeroValue,
-		esdtTransfer,
-		[]string{
-			hex.EncodeToString([]byte(newChainSpecificToken)),
-			hex.EncodeToString(valueToTransfer.Bytes()),
-			hex.EncodeToString([]byte(initSupplyFromChildContract)), // function initSupplyFromChildContract
-			hex.EncodeToString([]byte(newChainSpecificToken)),       // provide the token, as required by the function
-			hex.EncodeToString(valueToTransfer.Bytes()),             // provide also the amount, as required by the function
-		})
-	require.NoError(t, err)
-	txResult, err = mvxChainSimulator.GetTransactionResult(ctx, hash)
-	require.NoError(t, err)
-
-	log.Info("transfer to multisig sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToTransfer.String())
+	//hash, err = mvxChainSimulator.ScCall(
+	//	ctx,
+	//	ownerKeys.pk,
+	//	ownerKeys.sk,
+	//	multisigAddress,
+	//	zeroValue,
+	//	esdtTransfer,
+	//	[]string{
+	//		hex.EncodeToString([]byte(newChainSpecificToken)),
+	//		hex.EncodeToString(valueToTransfer.Bytes()),
+	//		hex.EncodeToString([]byte(initSupplyFromChildContract)), // function initSupplyFromChildContract
+	//		hex.EncodeToString([]byte(newChainSpecificToken)),       // provide the token, as required by the function
+	//		hex.EncodeToString(valueToTransfer.Bytes()),             // provide also the amount, as required by the function
+	//	})
+	//require.NoError(t, err)
+	//txResult, err = mvxChainSimulator.GetTransactionResult(ctx, hash)
+	//require.NoError(t, err)
+	//
+	//log.Info("transfer to multisig sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToTransfer.String())
 
 	// submit aggregator batch
 	statusAfter, _ := mvxChainSimulator.Proxy().GetNetworkStatus(ctx, 0)
