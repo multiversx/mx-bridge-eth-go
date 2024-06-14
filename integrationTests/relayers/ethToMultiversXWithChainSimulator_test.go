@@ -282,19 +282,20 @@ func testRelayersShouldExecuteTransfersMVXToETH(argsSimulatedSetup argSimulatedS
 
 		checkESDTBalance(t, testSetup.testContext, testSetup.mvxChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
 
+		safeAddr, err := data.NewAddressFromBech32String(testSetup.mvxSafeAddress)
+		require.NoError(t, err)
+
+		initialSafeValue, err := testSetup.mvxChainSimulator.GetESDTBalance(testSetup.testContext, safeAddr, testSetup.mvxChainSpecificToken)
+		require.NoError(t, err)
+
 		createBatch(t, testSetup, batchProcessor.FromMultiversX)
 
 		// wait for signal interrupt or time out
 		interrupt := make(chan os.Signal, 1)
 		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-		safeAddr, err := data.NewAddressFromBech32String(testSetup.mvxSafeAddress)
-		require.NoError(t, err)
-
 		// send half of the amount back to ETH
 		valueSentFromETH := big.NewInt(0).Div(mintAmount, big.NewInt(2))
-		initialSafeValue, err := testSetup.mvxChainSimulator.GetESDTBalance(testSetup.testContext, safeAddr, testSetup.mvxChainSpecificToken)
-		require.NoError(t, err)
 		initialSafeValueInt, _ := big.NewInt(0).SetString(initialSafeValue, 10)
 		expectedFinalValueOnMVXSafe := initialSafeValueInt.Add(initialSafeValueInt, valueSentFromETH)
 		expectedFinalValueOnETH := big.NewInt(0).Sub(valueSentFromETH, feeInt)
