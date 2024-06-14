@@ -56,8 +56,6 @@ var addressPubkeyConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, "er
 
 const (
 	numRelayers                                  = 3
-	ownerPem                                     = "testdata/wallets/owner.pem"
-	mvxReceiverPem                               = "testdata/wallets/mvxReceiver.pem"
 	safeContract                                 = "testdata/contracts/mvx/esdt-safe.wasm"
 	multisigContract                             = "testdata/contracts/mvx/multisig.wasm"
 	multiTransferContract                        = "testdata/contracts/mvx/multi-transfer-esdt.wasm"
@@ -164,7 +162,7 @@ type keysHolder struct {
 }
 
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
-	t.Run("ETH->MVX and back, ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true", testRelayersShouldExecuteTransfersMVXToETH(
+	t.Run("ETH->MVX and back, ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true", testRelayersShouldExecuteTransfersEthToMVX(
 		argSimulatedSetup{
 			mvxHexIsMintBurn: hexTrue,
 			mvxHexIsNative:   hexFalse,
@@ -172,7 +170,7 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 			ethIsNative:      true,
 		},
 	))
-	t.Run("MVX->ETH, ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = false", testRelayersShouldExecuteTransfersETHToMVX(
+	t.Run("MVX->ETH, ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = false", testRelayersShouldExecuteTransfersMVXToETH(
 		argSimulatedSetup{
 			mvxHexIsMintBurn: hexFalse,
 			mvxHexIsNative:   hexTrue,
@@ -180,6 +178,93 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 			ethIsNative:      false,
 		},
 	))
+}
+
+func testRelayersShouldExecuteTransfersEthToMVX(argsSimulatedSetup argSimulatedSetup) func(t *testing.T) {
+	return func(t *testing.T) {
+		defer func() {
+			r := recover()
+			if r != nil {
+				require.Fail(t, "should have not panicked")
+			}
+		}()
+
+		argsSimulatedSetup.t = t
+		testSetup := prepareSimulatedSetup(argsSimulatedSetup)
+		defer testSetup.close(t)
+
+		checkESDTBalance(t, testSetup.testContext, testSetup.mvxChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
+
+		createBatch(t, testSetup, batchProcessor.ToMultiversX)
+
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
+		ethToMVXDone := false
+		mvxToETHDone := false
+
+		safeAddr, err := data.NewAddressFromBech32String(testSetup.mvxSafeAddress)
+		require.NoError(t, err)
+
+		// send half of the amount back to ETH
+		valueToSendFromMVX := big.NewInt(0).Div(mintAmount, big.NewInt(2))
+		initialSafeValue, err := testSetup.mvxChainSimulator.GetESDTBalance(testSetup.testContext, safeAddr, testSetup.mvxChainSpecificToken)
+		require.NoError(t, err)
+		initialSafeValueInt, _ := big.NewInt(0).SetString(initialSafeValue, 10)
+		expectedFinalValueOnMVXSafe := initialSafeValueInt.Add(initialSafeValueInt, feeInt)
+		expectedFinalValueOnETH := big.NewInt(0).Sub(valueToSendFromMVX, feeInt)
+		for {
+			select {
+			case <-interrupt:
+				require.Fail(t, "signal interrupted")
+				return
+			case <-time.After(time.Minute * 15):
+				require.Fail(t, "time out")
+				return
+			default:
+				isTransferDoneFromETH := checkESDTBalance(t, testSetup.testContext, testSetup.mvxChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, mintAmount.String(), false)
+				if !ethToMVXDone && isTransferDoneFromETH {
+					ethToMVXDone = true
+					log.Info("ETH->MVX transfer finished, now sending back to ETH...")
+
+					sendMVXToEthTransaction(
+						t,
+						testSetup.testContext,
+						testSetup.mvxChainSimulator,
+						valueToSendFromMVX.Bytes(),
+						testSetup.mvxUniversalToken,
+						testSetup.mvxChainSpecificToken,
+						testSetup.mvxReceiverKeys,
+						testSetup.mvxSafeAddress,
+						testSetup.mvxWrapperAddress,
+						testSetup.ethOwnerAddress.Bytes(),
+					)
+				}
+
+				isTransferDoneFromMVX := checkETHStatus(t, testSetup.ethGenericTokenContract, testSetup.ethOwnerAddress, expectedFinalValueOnETH.Uint64())
+				safeSavedFee := checkESDTBalance(t, testSetup.testContext, testSetup.mvxChainSimulator, safeAddr, testSetup.mvxChainSpecificToken, expectedFinalValueOnMVXSafe.String(), false)
+				if !mvxToETHDone && isTransferDoneFromMVX && safeSavedFee {
+					mvxToETHDone = true
+				}
+
+				if ethToMVXDone && mvxToETHDone {
+					log.Info("MVX<->ETH transfers done")
+					return
+				}
+
+				// commit blocks in order to execute incoming txs from relayers
+				testSetup.simulatedETHChain.Commit()
+
+				testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
+
+			case <-interrupt:
+				require.Fail(t, "signal interrupted")
+				return
+			case <-time.After(time.Minute * 15):
+				require.Fail(t, "time out")
+				return
+			}
+		}
+	}
 }
 
 func testRelayersShouldExecuteTransfersMVXToETH(argsSimulatedSetup argSimulatedSetup) func(t *testing.T) {
@@ -195,108 +280,20 @@ func testRelayersShouldExecuteTransfersMVXToETH(argsSimulatedSetup argSimulatedS
 		testSetup := prepareSimulatedSetup(argsSimulatedSetup)
 		defer testSetup.close(t)
 
-		checkESDTBalance(t, testSetup.testContext, testSetup.mvxProxyWithChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
-
-		createBatch(t, testSetup, batchProcessor.ToMultiversX)
-
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
-	ethToMVXDone := false
-	mvxToETHDone := false
-
-		safeAddr, err := data.NewAddressFromBech32String(testSetup.mvxSafeAddress)
-		require.NoError(t, err)
-
-		// send half of the amount back to ETH
-		valueToSendFromMVX := big.NewInt(0).Div(mintAmount, big.NewInt(2))
-		initialSafeValue, err := testSetup.mvxProxyWithChainSimulator.GetESDTBalance(testSetup.testContext, safeAddr, testSetup.mvxChainSpecificToken)
-		require.NoError(t, err)
-		initialSafeValueInt, _ := big.NewInt(0).SetString(initialSafeValue, 10)
-		expectedFinalValueOnMVXSafe := initialSafeValueInt.Add(initialSafeValueInt, feeInt)
-		expectedFinalValueOnETH := big.NewInt(0).Sub(valueToSendFromMVX, feeInt)
-		for {
-			select {
-			case <-interrupt:
-				require.Fail(t, "signal interrupted")
-				return
-			case <-time.After(time.Minute * 15):
-				require.Fail(t, "time out")
-				return
-			default:
-				isTransferDoneFromETH := checkESDTBalance(t, testSetup.testContext, testSetup.mvxProxyWithChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, mintAmount.String(), false)
-				if !ethToMVXDone && isTransferDoneFromETH {
-					ethToMVXDone = true
-					log.Info("ETH->MVX transfer finished, now sending back to ETH...")
-
-					sendMVXToEthTransaction(
-						t,
-						testSetup.testContext,
-						testSetup.mvxProxyWithChainSimulator,
-						valueToSendFromMVX.Bytes(),
-						testSetup.mvxUniversalToken,
-						testSetup.mvxChainSpecificToken,
-						testSetup.mvxReceiverKeys,
-						testSetup.mvxSafeAddress,
-						testSetup.mvxWrapperAddress,
-						testSetup.ethOwnerAddress.Bytes(),
-					)
-				}
-
-				isTransferDoneFromMVX := checkETHStatus(t, testSetup.ethGenericTokenContract, testSetup.ethOwnerAddress, expectedFinalValueOnETH.Uint64())
-				safeSavedFee := checkESDTBalance(t, testSetup.testContext, testSetup.mvxProxyWithChainSimulator, safeAddr, testSetup.mvxChainSpecificToken, expectedFinalValueOnMVXSafe.String(), false)
-				if !mvxToETHDone && isTransferDoneFromMVX && safeSavedFee {
-					mvxToETHDone = true
-				}
-
-				if ethToMVXDone && mvxToETHDone {
-					log.Info("MVX<->ETH transfers done")
-					return
-				}
-
-				// commit blocks in order to execute incoming txs from relayers
-				testSetup.simulatedETHChain.Commit()
-
-				mvxChainSimulatorWrapper.GenerateBlocks(ctx, 1)
-
-			case <-interrupt:
-				require.Fail(t, "signal interrupted")
-				return
-			case <-time.After(time.Minute * 15):
-				require.Fail(t, "time out")
-				return
-			}
-		}
-	}
-}
-
-func testRelayersShouldExecuteTransfersETHToMVX(argsSimulatedSetup argSimulatedSetup) func(t *testing.T) {
-	return func(t *testing.T) {
-		defer func() {
-			r := recover()
-			if r != nil {
-				require.Fail(t, "should have not panicked")
-			}
-		}()
-
-		argsSimulatedSetup.t = t
-		testSetup := prepareSimulatedSetup(argsSimulatedSetup)
-		defer testSetup.close(t)
-
-		checkESDTBalance(t, testSetup.testContext, testSetup.mvxProxyWithChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
+		checkESDTBalance(t, testSetup.testContext, testSetup.mvxChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
 
 		createBatch(t, testSetup, batchProcessor.FromMultiversX)
 
 		// wait for signal interrupt or time out
 		interrupt := make(chan os.Signal, 1)
 		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
-		mvxToETHDone := false
 
 		safeAddr, err := data.NewAddressFromBech32String(testSetup.mvxSafeAddress)
 		require.NoError(t, err)
 
 		// send half of the amount back to ETH
 		valueSentFromETH := big.NewInt(0).Div(mintAmount, big.NewInt(2))
-		initialSafeValue, err := testSetup.mvxProxyWithChainSimulator.GetESDTBalance(testSetup.testContext, safeAddr, testSetup.mvxChainSpecificToken)
+		initialSafeValue, err := testSetup.mvxChainSimulator.GetESDTBalance(testSetup.testContext, safeAddr, testSetup.mvxChainSpecificToken)
 		require.NoError(t, err)
 		initialSafeValueInt, _ := big.NewInt(0).SetString(initialSafeValue, 10)
 		expectedFinalValueOnMVXSafe := initialSafeValueInt.Add(initialSafeValueInt, valueSentFromETH)
@@ -312,9 +309,8 @@ func testRelayersShouldExecuteTransfersETHToMVX(argsSimulatedSetup argSimulatedS
 				return
 			default:
 				isTransferDoneFromMVX := checkETHStatus(t, testSetup.ethGenericTokenContract, testSetup.ethOwnerAddress, expectedFinalValueOnETH.Uint64())
-				safeSavedFunds := checkESDTBalance(t, testSetup.testContext, testSetup.mvxProxyWithChainSimulator, safeAddr, testSetup.mvxChainSpecificToken, expectedFinalValueOnMVXSafe.String(), false)
-				if !mvxToETHDone && isTransferDoneFromMVX && safeSavedFunds {
-					mvxToETHDone = true
+				safeSavedFunds := checkESDTBalance(t, testSetup.testContext, testSetup.mvxChainSimulator, safeAddr, testSetup.mvxChainSpecificToken, expectedFinalValueOnMVXSafe.String(), false)
+				if isTransferDoneFromMVX && safeSavedFunds {
 					log.Info("MVX->ETH transfer finished")
 
 					return
@@ -323,16 +319,13 @@ func testRelayersShouldExecuteTransfersETHToMVX(argsSimulatedSetup argSimulatedS
 				// commit blocks in order to execute incoming txs from relayers
 				testSetup.simulatedETHChain.Commit()
 
-				mvxChainSimulatorWrapper.GenerateBlocks(ctx, 1)
-
+				testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
 			}
 		}
 	}
 }
 
 func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
-	t.Skip("this is a long test")
-
 	t.Run("ETH->MVX, ethNative = true, ethMintBurn = false, mvxNative = true, mvxMintBurn = false", testRelayersShouldNotExecuteTransfers(
 		argSimulatedSetup{
 			mvxHexIsMintBurn: hexFalse,
@@ -377,7 +370,6 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 			ethIsNative:      false,
 		},
 	))
-
 	t.Run("MVX->ETH, ethNative = true, ethMintBurn = false, mvxNative = true, mvxMintBurn = false", testRelayersShouldNotExecuteTransfers(
 		argSimulatedSetup{
 			mvxHexIsMintBurn: hexFalse,
@@ -407,7 +399,7 @@ func testRelayersShouldNotExecuteTransfers(
 		testSetup := prepareSimulatedSetup(argsSimulatedSetup)
 		defer testSetup.close(t)
 
-		checkESDTBalance(t, testSetup.testContext, testSetup.mvxProxyWithChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
+		checkESDTBalance(t, testSetup.testContext, testSetup.mvxChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
 
 		createBatch(t, testSetup, direction)
 
@@ -424,32 +416,34 @@ func testRelayersShouldNotExecuteTransfers(
 		numOfErrorsToWait := numOfTimesToRepeatErrorForRelayer * numRelayers
 
 		// wait for signal interrupt or time out
-		roundDuration := time.Duration(roundDurationInMs) * time.Millisecond
-		timerBetweenBalanceChecks := time.NewTimer(roundDuration)
+		roundDuration := time.Second
+		roundTimer := time.NewTimer(roundDuration)
 		interrupt := make(chan os.Signal, 1)
 		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 		for {
-			timerBetweenBalanceChecks.Reset(roundDuration)
+			roundTimer.Reset(roundDuration)
 			select {
-			case <-mockLogObserver.LogFoundChan():
-				chanCnt++
-				if chanCnt >= numOfErrorsToWait {
-					checkESDTBalance(t, testSetup.testContext, testSetup.mvxProxyWithChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
-
-					log.Info(fmt.Sprintf("test passed, relayers are stuck, expected string `%s` found in all relayers' logs for %d times", expectedStringInLogs, numOfErrorsToWait))
-
-					return
-				}
-			case <-timerBetweenBalanceChecks.C:
-				// commit blocks in so eth advances as well
-				testSetup.simulatedETHChain.Commit()
 			case <-interrupt:
 				require.Fail(t, "signal interrupted")
 				return
 			case <-time.After(time.Minute * 15):
 				require.Fail(t, "time out")
 				return
+			case <-mockLogObserver.LogFoundChan():
+				chanCnt++
+				if chanCnt >= numOfErrorsToWait {
+					checkESDTBalance(t, testSetup.testContext, testSetup.mvxChainSimulator, testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
+
+					log.Info(fmt.Sprintf("test passed, relayers are stuck, expected string `%s` found in all relayers' logs for %d times", expectedStringInLogs, numOfErrorsToWait))
+
+					return
+				}
+			case <-roundTimer.C:
+				// commit blocks
+				testSetup.simulatedETHChain.Commit()
+
+				testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
 			}
 		}
 	}
@@ -468,10 +462,12 @@ func testEthContractsShouldError(argsSimulatedSetup argSimulatedSetup) func(t *t
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		relayersKeys := getRelayersKeys(t)
+		tempDir := t.TempDir()
+
+		relayersKeys := getRelayersKeys(t, tempDir)
 
 		receiverKeys := generateMvxPrivatePublicKey(t)
-		receiverAddress, err := data.NewAddressFromBech32String(receiverKeys.pk)
+		mvxReceiverAddress, err := data.NewAddressFromBech32String(receiverKeys.pk)
 		require.NoError(t, err)
 
 		ethOwnerAddr := crypto.PubkeyToAddress(ethOwnerSK.PublicKey)
@@ -497,24 +493,25 @@ func testEthContractsShouldError(argsSimulatedSetup argSimulatedSetup) func(t *t
 }
 
 type simulatedSetup struct {
-	testContextCancel          func()
-	testContext                context.Context
-	simulatedETHChain          *backends.SimulatedBackend
-	mvxProxyWithChainSimulator proxyWithChainSimulator
-	relayers                   []bridgeComponents
-	mvxUniversalToken          string
-	mvxChainSpecificToken      string
-	mvxReceiverAddress         sdkCore.AddressHandler
-	mvxReceiverKeys            keysHolder
-	mvxSafeAddress             string
-	mvxWrapperAddress          string
-	mvxOwnerKeys               keysHolder
-	ethOwnerAddress            common.Address
-	ethGenericTokenAddress     common.Address
-	ethGenericTokenContract    *contract.GenericERC20
-	ethChainID                 *big.Int
-	ethSafeAddress             common.Address
-	ethSafeContract            *contract.ERC20Safe
+	testContextCancel       func()
+	testContext             context.Context
+	simulatedETHChain       *backends.SimulatedBackend
+	mvxChainSimulator       chainSimulatorWrapper
+	relayers                []bridgeComponents
+	mvxUniversalToken       string
+	mvxChainSpecificToken   string
+	mvxReceiverAddress      sdkCore.AddressHandler
+	mvxReceiverKeys         keysHolder
+	mvxSafeAddress          string
+	mvxWrapperAddress       string
+	mvxOwnerKeys            keysHolder
+	ethOwnerAddress         common.Address
+	ethGenericTokenAddress  common.Address
+	ethGenericTokenContract *contract.GenericERC20
+	ethChainID              *big.Int
+	ethSafeAddress          common.Address
+	ethSafeContract         *contract.ERC20Safe
+	workingDir              string
 }
 
 type argSimulatedSetup struct {
@@ -533,17 +530,13 @@ func prepareSimulatedSetup(args argSimulatedSetup) *simulatedSetup {
 	testSetup.testContextCancel = cancel
 	testSetup.testContext = ctx
 
-	relayersKeys := getRelayersKeys(args.t)
+	testSetup.workingDir = args.t.TempDir()
 
-	// read the receiver keys
-	receiverSK, receiverPK, err := core.LoadSkPkFromPemFile(mvxReceiverPem, 0)
-	require.NoError(args.t, err)
-	receiverKeys := keysHolder{
-		pk: receiverPK,
-		sk: receiverSK,
-	}
+	relayersKeys := getRelayersKeys(args.t, testSetup.workingDir)
 
-	receiverAddress, err := data.NewAddressFromBech32String(receiverPK)
+	// generate the mvx receiver keys
+	receiverKeys := generateMvxPrivatePublicKey(args.t)
+	receiverAddress, err := data.NewAddressFromBech32String(receiverKeys.pk)
 	require.NoError(args.t, err)
 
 	testSetup.mvxReceiverKeys = receiverKeys
@@ -563,13 +556,8 @@ func prepareSimulatedSetup(args argSimulatedSetup) *simulatedSetup {
 
 	testSetup.ethChainID, _ = simulatedETHChainWrapper.ChainID(ctx)
 
-	// read the owner keys
-	ownerSK, ownerPK, err := core.LoadSkPkFromPemFile(ownerPem, 0)
-	require.NoError(args.t, err)
-	ownerKeys := keysHolder{
-		pk: ownerPK,
-		sk: ownerSK,
-	}
+	// generate the mvx owner keys
+	ownerKeys := generateMvxPrivatePublicKey(args.t)
 	testSetup.mvxOwnerKeys = ownerKeys
 
 	erc20ContractsHolder, err := ethereum.NewErc20SafeContractsHolder(ethereum.ArgsErc20SafeContractsHolder{
@@ -586,21 +574,22 @@ func prepareSimulatedSetup(args argSimulatedSetup) *simulatedSetup {
 	})
 	require.NoError(args.t, err)
 
-	multiversXProxyWithChainSimulator := startProxyWithChainSimulator(args.t)
-	testSetup.mvxProxyWithChainSimulator = multiversXProxyWithChainSimulator
+	mvxChainSimulator := startChainSimulatorWrapper(args.t)
+	mvxChainSimulator.GenerateBlocksUntilEpochReached(testSetup.testContext, 1)
+	testSetup.mvxChainSimulator = mvxChainSimulator
 
 	// deploy all contracts and execute all txs needed
-	safeAddress, multisigAddress, wrapperAddress, aggregatorAddress := executeContractsTxs(args.t, ctx, multiversXProxyWithChainSimulator, relayersKeys, ownerKeys, receiverKeys)
+	safeAddress, multisigAddress, wrapperAddress, aggregatorAddress := executeContractsTxs(args.t, ctx, mvxChainSimulator, relayersKeys, ownerKeys, receiverKeys)
 	testSetup.mvxSafeAddress = safeAddress
 	testSetup.mvxWrapperAddress = wrapperAddress
 
 	// issue and whitelist token
-	newUniversalToken, newChainSpecificToken := issueAndWhitelistToken(args.t, ctx, multiversXProxyWithChainSimulator, ownerKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(ethGenericTokenAddress.Bytes()), args.mvxHexIsMintBurn, args.mvxHexIsNative)
+	newUniversalToken, newChainSpecificToken := issueAndWhitelistToken(args.t, ctx, mvxChainSimulator, ownerKeys, wrapperAddress, safeAddress, multisigAddress, aggregatorAddress, hex.EncodeToString(ethGenericTokenAddress.Bytes()), args.mvxHexIsMintBurn, args.mvxHexIsNative)
 	testSetup.mvxUniversalToken = newUniversalToken
 	testSetup.mvxChainSpecificToken = newChainSpecificToken
 
 	// start relayers
-	relayers := startRelayers(args.t, numRelayers, multiversXProxyWithChainSimulator, ethChainWrapper, ethSafeAddress, erc20ContractsHolder, safeAddress, multisigAddress)
+	relayers := startRelayers(args.t, testSetup.workingDir, mvxChainSimulator, ethChainWrapper, ethSafeAddress, erc20ContractsHolder, safeAddress, multisigAddress)
 	testSetup.relayers = relayers
 
 	return testSetup
@@ -609,31 +598,26 @@ func prepareSimulatedSetup(args argSimulatedSetup) *simulatedSetup {
 func (testSetup *simulatedSetup) close(t *testing.T) {
 	closeRelayers(testSetup.relayers)
 
-	testSetup.mvxProxyWithChainSimulator.Close()
-
 	require.NoError(t, testSetup.simulatedETHChain.Close())
 
 	testSetup.testContextCancel()
 }
 
-func getRelayersKeys(t *testing.T) []keysHolder {
+func getRelayersKeys(t *testing.T, workingDir string) []keysHolder {
 	relayersKeys := make([]keysHolder, 0, numRelayers)
 	for i := 0; i < numRelayers; i++ {
-		relayerSK, relayerPK, err := core.LoadSkPkFromPemFile(fmt.Sprintf(relayerPemPathFormat, i), 0)
-		require.Nil(t, err)
+		relayerKeys := generateMvxPrivatePublicKey(t)
+		log.Info("generated relayer", "index", i, "address", relayerKeys.pk)
 
 		relayerETHSKBytes, err := os.ReadFile(fmt.Sprintf(relayerETHKeyPathFormat, i))
 		require.Nil(t, err)
-		relayerETHSK, err := crypto.HexToECDSA(string(relayerETHSKBytes))
+		relayerKeys.ethSK, err = crypto.HexToECDSA(string(relayerETHSKBytes))
 		require.Nil(t, err)
-		relayerETHAddress := crypto.PubkeyToAddress(relayerETHSK.PublicKey)
+		relayerKeys.ethAddress = crypto.PubkeyToAddress(relayerKeys.ethSK.PublicKey)
 
-		relayersKeys = append(relayersKeys, keysHolder{
-			pk:         relayerPK,
-			sk:         relayerSK,
-			ethSK:      relayerETHSK,
-			ethAddress: relayerETHAddress,
-		})
+		relayersKeys = append(relayersKeys, relayerKeys)
+
+		saveRelayerKey(t, workingDir, i, relayerKeys)
 	}
 
 	return relayersKeys
@@ -692,7 +676,6 @@ func startChainSimulatorWrapper(t *testing.T) chainSimulatorWrapper {
 func startRelayers(
 	t *testing.T,
 	workingDir string,
-	numRelayers int,
 	mvxChainSimulator chainSimulatorWrapper,
 	ethereumChain ethereum.ClientWrapper,
 	safeContractEthAddress common.Address,
@@ -1118,7 +1101,7 @@ func issueAndWhitelistToken(
 		esdtTransfer,
 		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(initialMintValue.Bytes()), hex.EncodeToString([]byte(depositLiquidity))})
 	require.NoError(t, err)
-	txResult, err = multiversXProxyWithChainSimulator.GetTransactionResult(ctx, hash)
+	txResult, err = mvxChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
 
 	log.Info("transfer to wrapper sc tx executed", "hash", hash, "status", txResult.Status)
@@ -1199,6 +1182,7 @@ func issueAndWhitelistToken(
 	log.Info("add mapping tx executed", "hash", hash, "status", txResult.Status)
 
 	// whitelist token
+	statusBefore, _ := mvxChainSimulator.Proxy().GetNetworkStatus(ctx, 0)
 	hash, err = mvxChainSimulator.ScCall(
 		ctx,
 		ownerKeys.pk,
@@ -1539,7 +1523,7 @@ func createBatchOnMultiversX(t *testing.T, testSetup *simulatedSetup) {
 	checkETHStatus(t, testSetup.ethGenericTokenContract, testSetup.ethSafeAddress, mintAmount.Uint64())
 
 	// transfer to sender tx
-	hash, err := testSetup.mvxProxyWithChainSimulator.ScCall(
+	hash, err := testSetup.mvxChainSimulator.ScCall(
 		testSetup.testContext,
 		testSetup.mvxOwnerKeys.pk,
 		testSetup.mvxOwnerKeys.sk,
@@ -1548,7 +1532,7 @@ func createBatchOnMultiversX(t *testing.T, testSetup *simulatedSetup) {
 		esdtTransfer,
 		[]string{hex.EncodeToString([]byte(testSetup.mvxChainSpecificToken)), hex.EncodeToString(valueToSendFromMVX.Bytes())})
 	require.NoError(t, err)
-	txResult, err := testSetup.mvxProxyWithChainSimulator.GetTransactionResult(testSetup.testContext, hash)
+	txResult, err := testSetup.mvxChainSimulator.GetTransactionResult(testSetup.testContext, hash)
 	require.NoError(t, err)
 
 	log.Info("transfer to sender tx executed", "hash", hash, "status", txResult.Status)
@@ -1560,9 +1544,9 @@ func createBatchOnMultiversX(t *testing.T, testSetup *simulatedSetup) {
 		hex.EncodeToString([]byte(createTransactionParam)),
 		hex.EncodeToString(testSetup.ethOwnerAddress.Bytes()),
 	}
-	hash, err = testSetup.mvxProxyWithChainSimulator.ScCall(testSetup.testContext, testSetup.mvxReceiverKeys.pk, testSetup.mvxReceiverKeys.sk, testSetup.mvxSafeAddress, zeroValue, esdtTransfer, params)
+	hash, err = testSetup.mvxChainSimulator.ScCall(testSetup.testContext, testSetup.mvxReceiverKeys.pk, testSetup.mvxReceiverKeys.sk, testSetup.mvxSafeAddress, zeroValue, esdtTransfer, params)
 	require.NoError(t, err)
-	txResult, err = testSetup.mvxProxyWithChainSimulator.GetTransactionResult(testSetup.testContext, hash)
+	txResult, err = testSetup.mvxChainSimulator.GetTransactionResult(testSetup.testContext, hash)
 	require.NoError(t, err)
 
 	log.Info("MVX->ETH transaction sent", "hash", hash, "status", txResult.Status)
