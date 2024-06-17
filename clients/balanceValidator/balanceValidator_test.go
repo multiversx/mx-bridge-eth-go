@@ -397,12 +397,7 @@ func validatorTester(cfg testConfiguration) testResult {
 				return nil, err
 			}
 
-			value := cfg.totalBalancesOnMvx
-			if value == nil {
-				value = big.NewInt(0)
-			}
-
-			return value, nil
+			return returnBigIntOrZeroIfNil(cfg.totalBalancesOnMvx), nil
 		},
 		MintBalancesCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
 			err := cfg.errorsOnCalls["MintBalancesMvx"]
@@ -410,12 +405,7 @@ func validatorTester(cfg testConfiguration) testResult {
 				return nil, err
 			}
 
-			value := cfg.mintBalancesOnMvx
-			if value == nil {
-				value = big.NewInt(0)
-			}
-
-			return value, nil
+			return returnBigIntOrZeroIfNil(cfg.mintBalancesOnMvx), nil
 		},
 		BurnBalancesCalled: func(ctx context.Context, token []byte) (*big.Int, error) {
 			err := cfg.errorsOnCalls["BurnBalancesMvx"]
@@ -423,12 +413,7 @@ func validatorTester(cfg testConfiguration) testResult {
 				return nil, err
 			}
 
-			value := cfg.burnBalancesOnMvx
-			if value == nil {
-				value = big.NewInt(0)
-			}
-
-			return value, nil
+			return returnBigIntOrZeroIfNil(cfg.burnBalancesOnMvx), nil
 		},
 	}
 	args.EthereumClient = &bridge.EthereumClientStub{
@@ -458,12 +443,7 @@ func validatorTester(cfg testConfiguration) testResult {
 				return nil, err
 			}
 
-			value := cfg.totalBalancesOnEth
-			if value == nil {
-				value = big.NewInt(0)
-			}
-
-			return value, nil
+			return returnBigIntOrZeroIfNil(cfg.totalBalancesOnEth), nil
 		},
 		MintBalancesCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
 			err := cfg.errorsOnCalls["MintBalancesEth"]
@@ -471,12 +451,7 @@ func validatorTester(cfg testConfiguration) testResult {
 				return nil, err
 			}
 
-			value := cfg.mintBalancesOnEth
-			if value == nil {
-				value = big.NewInt(0)
-			}
-
-			return value, nil
+			return returnBigIntOrZeroIfNil(cfg.mintBalancesOnEth), nil
 		},
 		BurnBalancesCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
 			err := cfg.errorsOnCalls["BurnBalancesEth"]
@@ -484,12 +459,7 @@ func validatorTester(cfg testConfiguration) testResult {
 				return nil, err
 			}
 
-			value := cfg.burnBalancesOnEth
-			if value == nil {
-				value = big.NewInt(0)
-			}
-
-			return value, nil
+			return returnBigIntOrZeroIfNil(cfg.burnBalancesOnEth), nil
 		},
 	}
 
@@ -502,4 +472,12 @@ func validatorTester(cfg testConfiguration) testResult {
 	result.error = validator.CheckToken(context.Background(), cfg.ethToken, cfg.mvxToken, cfg.amount, cfg.direction)
 
 	return result
+}
+
+func returnBigIntOrZeroIfNil(value *big.Int) *big.Int {
+	if value == nil {
+		return big.NewInt(0)
+	}
+
+	return value
 }
