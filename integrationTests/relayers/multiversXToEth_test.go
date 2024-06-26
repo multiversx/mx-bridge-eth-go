@@ -48,7 +48,7 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 		return expectedStatuses
 	}
 	ethereumChainMock.BalanceAtCalled = func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
-		return big.NewInt(10000000), nil
+		return big.NewInt(260000000), nil
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
@@ -135,7 +135,7 @@ func testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearIn
 		return expectedStatuses
 	}
 	ethereumChainMock.BalanceAtCalled = func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
-		return big.NewInt(10000000), nil
+		return big.NewInt(260000000), nil
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {

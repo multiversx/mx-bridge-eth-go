@@ -3,7 +3,7 @@
 // To run these slow tests, simply add the slow tag on the go test command. Also, provide a chain simulator instance on the 8085 port
 // example: go test -tags slow
 
-package relayers_test
+package slowTests
 
 import (
 	"bytes"
@@ -21,19 +21,16 @@ import (
 	"testing"
 	"time"
 
-	goEthereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	ethCore "github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
-	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
@@ -53,8 +50,6 @@ import (
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/require"
 )
-
-var addressPubkeyConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, "erd")
 
 const (
 	numRelayers                                  = 3
@@ -130,40 +125,12 @@ const (
 )
 
 var (
-	ethOwnerSK, _     = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-	ethDepositorSK, _ = crypto.HexToECDSA("9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1")
-	mintAmount        = big.NewInt(20000)
-	feeInt, _         = big.NewInt(0).SetString(fee, 10)
+	addressPubkeyConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, "erd")
+	ethOwnerSK, _             = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	ethDepositorSK, _         = crypto.HexToECDSA("9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1")
+	mintAmount                = big.NewInt(20000)
+	feeInt, _                 = big.NewInt(0).SetString(fee, 10)
 )
-
-type chainSimulatorWrapper interface {
-	Proxy() multiversx.Proxy
-	GetNetworkAddress() string
-	DeploySC(ctx context.Context, path string, ownerPK string, ownerSK []byte, extraParams []string) (string, error)
-	ScCall(ctx context.Context, senderPK string, senderSK []byte, contract string, value string, function string, parameters []string) (string, error)
-	SendTx(ctx context.Context, senderPK string, senderSK []byte, receiver string, value string, dataField []byte) (string, error)
-	GetTransactionResult(ctx context.Context, hash string) (*data.TransactionOnNetwork, error)
-	FundWallets(ctx context.Context, wallets []string)
-	GenerateBlocksUntilEpochReached(ctx context.Context, epoch uint32)
-	GenerateBlocks(ctx context.Context, numBlocks int)
-	GetESDTBalance(ctx context.Context, address sdkCore.AddressHandler, token string) (string, error)
-	GetBlockchainTimeStamp(ctx context.Context) (uint64, error)
-}
-
-type blockchainClient interface {
-	BlockNumber(ctx context.Context) (uint64, error)
-	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
-	ChainID(ctx context.Context) (*big.Int, error)
-	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
-	FilterLogs(ctx context.Context, q goEthereum.FilterQuery) ([]types.Log, error)
-}
-
-type bridgeComponents interface {
-	MultiversXRelayerAddress() sdkCore.AddressHandler
-	EthereumRelayerAddress() common.Address
-	Start() error
-	Close() error
-}
 
 type keysHolder struct {
 	pk         string
@@ -260,7 +227,7 @@ func testRelayersShouldExecuteTransfersEthToMVX(t *testing.T, argsSimulatedSetup
 		case <-interrupt:
 			require.Fail(t, "signal interrupted")
 			return
-		case <-time.After(time.Minute * 15):
+		case <-time.After(timeout):
 			require.Fail(t, "time out")
 			return
 		}
@@ -304,7 +271,7 @@ func testRelayersShouldExecuteTransfersMVXToETH(t *testing.T, argsSimulatedSetup
 		case <-interrupt:
 			require.Fail(t, "signal interrupted")
 			return
-		case <-time.After(time.Minute * 15):
+		case <-time.After(timeout):
 			require.Fail(t, "time out")
 			return
 		default:
@@ -429,7 +396,7 @@ func testRelayersShouldNotExecuteTransfers(
 		case <-interrupt:
 			require.Fail(t, "signal interrupted")
 			return
-		case <-time.After(time.Minute * 15):
+		case <-time.After(timeout):
 			require.Fail(t, "time out")
 			return
 		case <-mockLogObserver.LogFoundChan():
