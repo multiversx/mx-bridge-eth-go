@@ -41,14 +41,5 @@ var ErrNilSignaturesHolder = errors.New("nil signatures holder")
 // ErrNilBatchValidator signals that a nil batch validator was provided
 var ErrNilBatchValidator = errors.New("nil batch validator")
 
-// ErrInvalidSetup signals that an invalid setup was provided
-var ErrInvalidSetup = errors.New("invalid setup")
-
-// ErrInvalidDirection signals that an invalid direction was provided
-var ErrInvalidDirection = errors.New("invalid direction")
-
-// ErrBalanceMismatch signals that the balances are not expected
-var ErrBalanceMismatch = errors.New("balance mismatch")
-
-// ErrNegativeAmount signals that a negative amount was provided
-var ErrNegativeAmount = errors.New("negative amount")
+// ErrNilBalanceValidator signals that a nil balance validator was provided
+var ErrNilBalanceValidator = errors.New("nil balance validator")
