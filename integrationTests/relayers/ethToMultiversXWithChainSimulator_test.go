@@ -8,6 +8,7 @@ package relayers
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -20,18 +21,25 @@ import (
 	"testing"
 	"time"
 
+	goEthereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	ethCore "github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/factory"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
-	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/status"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
-	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	"github.com/multiversx/mx-chain-crypto-go/signing"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519"
@@ -44,16 +52,25 @@ import (
 var addressPubkeyConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, "erd")
 
 const (
-	safeContract                                 = "testdata/contracts/esdt-safe.wasm"
-	multisigContract                             = "testdata/contracts/multisig.wasm"
-	multiTransferContract                        = "testdata/contracts/multi-transfer-esdt.wasm"
-	bridgeProxyContract                          = "testdata/contracts/bridge-proxy.wasm"
-	aggregatorContract                           = "testdata/contracts/aggregator.wasm"
-	wrapperContract                              = "testdata/contracts/bridged-tokens-wrapper.wasm"
+	safeContract                                 = "testdata/contracts/mvx/esdt-safe.wasm"
+	multisigContract                             = "testdata/contracts/mvx/multisig.wasm"
+	multiTransferContract                        = "testdata/contracts/mvx/multi-transfer-esdt.wasm"
+	bridgeProxyContract                          = "testdata/contracts/mvx/bridge-proxy.wasm"
+	aggregatorContract                           = "testdata/contracts/mvx/aggregator.wasm"
+	wrapperContract                              = "testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
+	bridgeABI                                    = "testdata/contracts/eth/bridgeABI.json"
+	bridgeBytecode                               = "testdata/contracts/eth/bridgeBytecode.hex"
+	erc20SafeABI                                 = "testdata/contracts/eth/erc20SafeABI.json"
+	erc20SafeBytecode                            = "testdata/contracts/eth/erc20SafeBytecode.hex"
+	genericERC20ABI                              = "testdata/contracts/eth/genericERC20ABI.json"
+	genericERC20Bytecode                         = "testdata/contracts/eth/genericERC20Bytecode.hex"
+	scExecProxyABI                               = "testdata/contracts/eth/scExecProxyABI.json"
+	scExecProxyBytecode                          = "testdata/contracts/eth/scExecProxyBytecode.hex"
 	minRelayerStake                              = "10000000000000000000" // 10egld
 	slashAmount                                  = "00"
 	quorum                                       = "03"
 	relayerPemPathFormat                         = "multiversx%d.pem"
+	relayerETHKeyPathFormat                      = "testdata/ethereum%d.sk"
 	proxyCacherExpirationSeconds                 = 600
 	proxyMaxNoncesDelta                          = 7
 	zeroValue                                    = "0"
@@ -90,12 +107,25 @@ const (
 	esdtSafeSetMaxBridgedAmountForToken          = "esdtSafeSetMaxBridgedAmountForToken"
 	multiTransferEsdtSetMaxBridgedAmountForToken = "multiTransferEsdtSetMaxBridgedAmountForToken"
 	gwei                                         = "GWEI"
-	fee                                          = "50000000"
-	maxBridgedAmountForToken                     = "50000000000"
+	fee                                          = "50"
+	maxBridgedAmountForToken                     = "500000"
 	createTransactionParam                       = "createTransaction"
 	unwrapToken                                  = "unwrapToken"
 	setPairDecimals                              = "setPairDecimals"
-	initSupplyFromChildContract                  = "initSupplyFromChildContract"
+	// initSupplyFromChildContract                  = "initSupplyFromChildContract"
+	ethStatusSuccess              = uint64(1)
+	ethTokenName                  = "ETHTOKEN"
+	ethTokenSymbol                = "ETHT"
+	ethMinAmountAllowedToTransfer = 25
+	ethMaxAmountAllowedToTransfer = 500000
+	ethSimulatedGasLimit          = 9000000
+)
+
+var (
+	ethOwnerSK, _     = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	ethDepositorSK, _ = crypto.HexToECDSA("9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1")
+	mintAmount        = big.NewInt(20000)
+	feeInt, _         = big.NewInt(0).SetString(fee, 10)
 )
 
 type chainSimulatorWrapper interface {
@@ -109,11 +139,22 @@ type chainSimulatorWrapper interface {
 	GenerateBlocksUntilEpochReached(ctx context.Context, epoch uint32)
 	GenerateBlocks(ctx context.Context, numBlocks int)
 	GetESDTBalance(ctx context.Context, address sdkCore.AddressHandler, token string) (string, error)
+	GetBlockchainTimeStamp(ctx context.Context) (uint64, error)
+}
+
+type blockchainClient interface {
+	BlockNumber(ctx context.Context) (uint64, error)
+	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
+	ChainID(ctx context.Context) (*big.Int, error)
+	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	FilterLogs(ctx context.Context, q goEthereum.FilterQuery) ([]types.Log, error)
 }
 
 type keysHolder struct {
-	pk string
-	sk []byte
+	pk         string
+	sk         []byte
+	ethSK      *ecdsa.PrivateKey
+	ethAddress common.Address
 }
 
 type testConfig struct {
@@ -134,95 +175,90 @@ func TestTransfersBothWaysWithChainSimulator(t *testing.T) {
 
 		testTransfersBothWaysWithChainSimulatorAndConfig(t, cfg)
 	})
-	t.Run("Eth: mint & burn, MvX: native", func(t *testing.T) {
-		cfg := testConfig{
-			isMintBurnOnMvX: false,
-			isNativeOnMvx:   true,
-			isMintBurnOnEth: true,
-			isNativeOnEth:   false,
-		}
-
-		testTransfersBothWaysWithChainSimulatorAndConfig(t, cfg)
-	})
+	// TODO[Sorin]: remove this in the next PR when multiple cases are already covered
+	//t.Run("Eth: mint & burn, MvX: native", func(t *testing.T) {
+	//	cfg := testConfig{
+	//		isMintBurnOnMvX: false,
+	//		isNativeOnMvx:   true,
+	//		isMintBurnOnEth: true,
+	//		isNativeOnEth:   false,
+	//	}
+	//
+	//	testTransfersBothWaysWithChainSimulatorAndConfig(t, cfg)
+	//})
 }
 
 func testTransfersBothWaysWithChainSimulatorAndConfig(t *testing.T, cfg testConfig) {
-	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
-	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
-	value1 := big.NewInt(200000000)
 
-	receiverKeys := generateMvxPrivatePublicKey(t)
-	log.Info("receiver is", "address", receiverKeys.pk)
-
-	receiverAddress, err := data.NewAddressFromBech32String(receiverKeys.pk)
-	require.NoError(t, err)
-
-	depositor := testsCommon.CreateRandomEthereumAddress()
-
-	tokens := []common.Address{token1Erc20}
-	availableBalances := []*big.Int{value1}
-
-	erc20ContractsHolder := createMockErc20ContractsHolder(tokens, safeContractEthAddress, availableBalances)
-
-	batchNonceOnEthereum := uint64(1)
-	txNonceOnEthereum := uint64(0)
-	batch := contract.Batch{
-		Nonce:                  big.NewInt(int64(batchNonceOnEthereum)),
-		BlockNumber:            0,
-		LastUpdatedBlockNumber: 0,
-		DepositsCount:          1,
-	}
-
-	numRelayers := 3
-	ethereumChainMock := mock.NewEthereumChainMock()
-	// prepare ethereum chain mock for ETH->MVX
-	ethereumChainMock.UpdateMintBurnTokens(token1Erc20, cfg.isMintBurnOnEth)
-	ethereumChainMock.UpdateNativeTokens(token1Erc20, cfg.isNativeOnEth)
-	ethereumChainMock.AddBatch(batch)
-	ethereumChainMock.AddDepositToBatch(batchNonceOnEthereum, contract.Deposit{
-		Nonce:        big.NewInt(int64(txNonceOnEthereum) + 1),
-		TokenAddress: token1Erc20,
-		Amount:       value1,
-		Depositor:    depositor,
-		Recipient:    receiverAddress.AddressSlice(),
-		Status:       0,
-	})
-	ethereumChainMock.AddBatch(batch)
-	ethereumChainMock.SetQuorum(numRelayers)
-	if cfg.isNativeOnEth {
-		ethereumChainMock.UpdateTotalBalances(token1Erc20, value1)
-	} else {
-		mvxSafeContractBalance, _ := big.NewInt(0).SetString(valueToMint, 10)
-		mvxSafeContractBalance.Div(mvxSafeContractBalance, big.NewInt(2))
-		ethereumChainMock.UpdateMintBalances(token1Erc20, big.NewInt(0).Sub(mvxSafeContractBalance, value1))
-	}
-
-	// prepare ethereum chain mock for MVX->ETH
-	expectedStatuses := []byte{clients.Executed}
-	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
-		return expectedStatuses
-	}
-
-	tempDir := t.TempDir()
-	relayersKeys := make([]keysHolder, 0, numRelayers)
-	for i := 0; i < numRelayers; i++ {
-		relayerKeys := generateMvxPrivatePublicKey(t)
-		log.Info("generated relayer", "index", i, "address", relayerKeys.pk)
-		relayersKeys = append(relayersKeys, relayerKeys)
-		saveRelayerKey(t, tempDir, i, relayerKeys)
-	}
-
-	mvxChainSimulatorWrapper := startChainSimulatorWrapper(t)
+	defer func() {
+		r := recover()
+		if r != nil {
+			require.Fail(t, "should have not panicked")
+		}
+	}()
 
 	// create a test context
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	tempDir := t.TempDir()
+
+	numRelayers := 3
+	relayersKeys := make([]keysHolder, 0, numRelayers)
+	for i := 0; i < numRelayers; i++ {
+		relayerKeys := generateMvxPrivatePublicKey(t)
+		log.Info("generated relayer", "index", i, "address", relayerKeys.pk)
+
+		relayerETHSKBytes, err := os.ReadFile(fmt.Sprintf(relayerETHKeyPathFormat, i))
+		require.Nil(t, err)
+		relayerKeys.ethSK, err = crypto.HexToECDSA(string(relayerETHSKBytes))
+		require.Nil(t, err)
+		relayerKeys.ethAddress = crypto.PubkeyToAddress(relayerKeys.ethSK.PublicKey)
+
+		relayersKeys = append(relayersKeys, relayerKeys)
+		saveRelayerKey(t, tempDir, i, relayerKeys)
+	}
+
+	receiverKeys := generateMvxPrivatePublicKey(t)
+	receiverAddress, err := data.NewAddressFromBech32String(receiverKeys.pk)
+	require.NoError(t, err)
+
+	mvxChainSimulatorWrapper := startChainSimulatorWrapper(t)
+
+	ethOwnerAddr := crypto.PubkeyToAddress(ethOwnerSK.PublicKey)
+	ethDepositorAddr := crypto.PubkeyToAddress(ethDepositorSK.PublicKey)
+
+	// create ethereum simulator
+	simulatedETHChain, simulatedETHChainWrapper, ethSafeContract, ethSafeAddress, ethBridgeContract, _, ethGenericTokenContract, ethGenericTokenAddress := createEthereumSimulatorAndDeployContracts(t, ctx, relayersKeys, ethOwnerAddr, ethDepositorAddr)
+	defer func() {
+		errCloseETH := simulatedETHChain.Close()
+		log.LogIfError(errCloseETH)
+	}()
+
+	ethChainID, _ := simulatedETHChainWrapper.ChainID(ctx)
+
+	// create a pending batch on ethereum
+	createBatchOnEthereum(t, ctx, simulatedETHChain, ethGenericTokenAddress, ethGenericTokenContract, ethSafeAddress, ethSafeContract, ethChainID, receiverAddress)
+
 	ownerKeys := generateMvxPrivatePublicKey(t)
-	log.Info("owner is", "address", receiverKeys.pk)
+	log.Info("mvx owner is", "address", receiverKeys.pk)
 
 	// we need to wait until epoch 1 is reached so SC deployment will work
 	mvxChainSimulatorWrapper.GenerateBlocksUntilEpochReached(ctx, 1)
+
+	erc20ContractsHolder, err := ethereum.NewErc20SafeContractsHolder(ethereum.ArgsErc20SafeContractsHolder{
+		EthClient:              simulatedETHChain,
+		EthClientStatusHandler: &testsCommon.StatusHandlerStub{},
+	})
+	require.NoError(t, err)
+
+	ethChainWrapper, err := wrappers.NewEthereumChainWrapper(wrappers.ArgsEthereumChainWrapper{
+		StatusHandler:    &testsCommon.StatusHandlerStub{},
+		MultiSigContract: ethBridgeContract,
+		SafeContract:     ethSafeContract,
+		BlockchainClient: simulatedETHChainWrapper,
+	})
+	require.NoError(t, err)
 
 	// deploy all contracts and execute all txs needed
 	safeAddress, multisigAddress, wrapperAddress, aggregatorAddress := executeContractsTxs(t, ctx, mvxChainSimulatorWrapper, relayersKeys, ownerKeys, receiverKeys)
@@ -237,13 +273,13 @@ func testTransfersBothWaysWithChainSimulatorAndConfig(t *testing.T, cfg testConf
 		safeAddress,
 		multisigAddress,
 		aggregatorAddress,
-		hex.EncodeToString(token1Erc20.Bytes()),
+		hex.EncodeToString(ethGenericTokenAddress.Bytes()),
 		cfg.isNativeOnMvx,
 		cfg.isMintBurnOnMvX,
 	)
 
 	// start relayers
-	relayers := startRelayers(t, tempDir, numRelayers, mvxChainSimulatorWrapper, ethereumChainMock, safeContractEthAddress, erc20ContractsHolder, safeAddress, multisigAddress)
+	relayers := startRelayers(t, tempDir, numRelayers, mvxChainSimulatorWrapper, ethChainWrapper, ethSafeAddress, erc20ContractsHolder, safeAddress, multisigAddress)
 	defer closeRelayers(relayers)
 
 	checkESDTBalance(t, ctx, mvxChainSimulatorWrapper, receiverAddress, newUniversalToken, "0", true)
@@ -252,6 +288,13 @@ func testTransfersBothWaysWithChainSimulatorAndConfig(t *testing.T, cfg testConf
 	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 	ethToMVXDone := false
 	mvxToETHDone := false
+
+	safeAddr, err := data.NewAddressFromBech32String(safeAddress)
+	require.NoError(t, err)
+
+	// send half of the amount back to ETH
+	valueToSendFromMVX := big.NewInt(0).Div(mintAmount, big.NewInt(2))
+	expectedFinalValueOnETH := big.NewInt(0).Sub(valueToSendFromMVX, feeInt)
 	for {
 		select {
 		case <-interrupt:
@@ -261,18 +304,17 @@ func testTransfersBothWaysWithChainSimulatorAndConfig(t *testing.T, cfg testConf
 			require.Fail(t, "time out")
 			return
 		default:
-			isTransferDoneFromETH := checkESDTBalance(t, ctx, mvxChainSimulatorWrapper, receiverAddress, newUniversalToken, value1.String(), false)
+			isTransferDoneFromETH := checkESDTBalance(t, ctx, mvxChainSimulatorWrapper, receiverAddress, newUniversalToken, mintAmount.String(), false)
 			if !ethToMVXDone && isTransferDoneFromETH {
 				ethToMVXDone = true
 				log.Info("ETH->MVX transfer finished, now sending back to ETH...")
 
-				// send half of the amount back to ETH
-				value := big.NewInt(0).Div(value1, big.NewInt(2))
-				sendMVXToEthTransaction(t, ctx, mvxChainSimulatorWrapper, value.Bytes(), newUniversalToken, newChainSpecificToken, receiverKeys, safeAddress, wrapperAddress, depositor.Bytes())
+				sendMVXToEthTransaction(t, ctx, mvxChainSimulatorWrapper, valueToSendFromMVX.Bytes(), newUniversalToken, newChainSpecificToken, receiverKeys, safeAddress, wrapperAddress, ethOwnerAddr.Bytes())
 			}
 
-			isTransferDoneFromMVX := checkETHStatus(ethereumChainMock, depositor, token1Erc20)
-			if !mvxToETHDone && isTransferDoneFromMVX {
+			isTransferDoneFromMVX := checkETHStatus(t, ethGenericTokenContract, ethOwnerAddr, expectedFinalValueOnETH.Uint64())
+			safeSavedFee := checkESDTBalance(t, ctx, mvxChainSimulatorWrapper, safeAddr, newChainSpecificToken, feeInt.String(), false)
+			if !mvxToETHDone && isTransferDoneFromMVX && safeSavedFee {
 				mvxToETHDone = true
 			}
 
@@ -280,6 +322,9 @@ func testTransfersBothWaysWithChainSimulatorAndConfig(t *testing.T, cfg testConf
 				log.Info("MVX<->ETH transfers done")
 				return
 			}
+
+			// commit blocks in order to execute incoming txs from relayers
+			simulatedETHChain.Commit()
 
 			mvxChainSimulatorWrapper.GenerateBlocks(ctx, 1)
 		}
@@ -341,9 +386,9 @@ func startRelayers(
 	workingDir string,
 	numRelayers int,
 	mvxChainSimulator chainSimulatorWrapper,
-	ethereumChainMock *mock.EthereumChainMock,
+	ethereumChain ethereum.ClientWrapper,
 	safeContractEthAddress common.Address,
-	erc20ContractsHolder *bridge.ERC20ContractsHolderStub,
+	erc20ContractsHolder ethereum.Erc20ContractsHolder,
 	safeAddress string,
 	multisigAddress string,
 ) []bridgeComponents {
@@ -362,7 +407,7 @@ func startRelayers(
 				},
 			},
 			Proxy:                         mvxChainSimulator.Proxy(),
-			ClientWrapper:                 ethereumChainMock,
+			ClientWrapper:                 ethereumChain,
 			Messenger:                     messengers[i],
 			StatusStorer:                  testsCommon.NewStorerMock(),
 			TimeForBootstrap:              time.Second * 5,
@@ -397,8 +442,6 @@ func startRelayers(
 		}()
 
 		relayers = append(relayers, relayer)
-
-		ethereumChainMock.AddRelayer(relayer.EthereumRelayerAddress())
 	}
 
 	return relayers
@@ -757,7 +800,6 @@ func issueAndWhitelistToken(
 	log.Info("set local roles bridged tokens wrapper tx executed", "hash", hash, "status", txResult.Status)
 
 	// transfer to wrapper SC half the liquidity
-	valueToTransfer := big.NewInt(0).Div(valueToMintInt, big.NewInt(2))
 	hash, err = mvxChainSimulator.ScCall(
 		ctx,
 		ownerKeys.pk,
@@ -765,12 +807,12 @@ func issueAndWhitelistToken(
 		wrapperAddress,
 		zeroValue,
 		esdtTransfer,
-		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(valueToTransfer.Bytes()), hex.EncodeToString([]byte(depositLiquidity))})
+		[]string{hex.EncodeToString([]byte(newChainSpecificToken)), hex.EncodeToString(valueToMintInt.Bytes()), hex.EncodeToString([]byte(depositLiquidity))})
 	require.NoError(t, err)
 	txResult, err = mvxChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
 
-	log.Info("transfer to wrapper sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToTransfer.String())
+	log.Info("transfer to wrapper sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToMintInt.String())
 
 	// add wrapped token
 	hash, err = mvxChainSimulator.ScCall(
@@ -855,26 +897,27 @@ func issueAndWhitelistToken(
 
 	log.Info("whitelist token tx executed", "hash", hash, "status", txResult.Status)
 
+	// TODO[Sorin]: remove this in the next PR when this should be already covered
 	// transfer to safe SC the other half of the liquidity
-	hash, err = mvxChainSimulator.ScCall(
-		ctx,
-		ownerKeys.pk,
-		ownerKeys.sk,
-		multisigAddress,
-		zeroValue,
-		esdtTransfer,
-		[]string{
-			hex.EncodeToString([]byte(newChainSpecificToken)),
-			hex.EncodeToString(valueToTransfer.Bytes()),
-			hex.EncodeToString([]byte(initSupplyFromChildContract)), // function initSupplyFromChildContract
-			hex.EncodeToString([]byte(newChainSpecificToken)),       // provide the token, as required by the function
-			hex.EncodeToString(valueToTransfer.Bytes()),             // provide also the amount, as required by the function
-		})
-	require.NoError(t, err)
-	txResult, err = mvxChainSimulator.GetTransactionResult(ctx, hash)
-	require.NoError(t, err)
-
-	log.Info("transfer to multisig sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToTransfer.String())
+	//hash, err = mvxChainSimulator.ScCall(
+	//	ctx,
+	//	ownerKeys.pk,
+	//	ownerKeys.sk,
+	//	multisigAddress,
+	//	zeroValue,
+	//	esdtTransfer,
+	//	[]string{
+	//		hex.EncodeToString([]byte(newChainSpecificToken)),
+	//		hex.EncodeToString(valueToTransfer.Bytes()),
+	//		hex.EncodeToString([]byte(initSupplyFromChildContract)), // function initSupplyFromChildContract
+	//		hex.EncodeToString([]byte(newChainSpecificToken)),       // provide the token, as required by the function
+	//		hex.EncodeToString(valueToTransfer.Bytes()),             // provide also the amount, as required by the function
+	//	})
+	//require.NoError(t, err)
+	//txResult, err = mvxChainSimulator.GetTransactionResult(ctx, hash)
+	//require.NoError(t, err)
+	//
+	//log.Info("transfer to multisig sc tx executed", "hash", hash, "status", txResult.Status, "ESDT value", valueToTransfer.String())
 
 	// submit aggregator batch
 	submitAggregatorBatch(t, ctx, mvxChainSimulator, aggregatorAddress, ownerKeys)
@@ -952,13 +995,11 @@ func checkESDTBalance(
 	return expectedBalance == balance
 }
 
-func checkETHStatus(ethereumChainMock *mock.EthereumChainMock, receiver common.Address, token common.Address) bool {
-	transfer := ethereumChainMock.GetLastProposedTransfer()
-	if transfer == nil {
-		return false
-	}
+func checkETHStatus(t *testing.T, ethGenericTokenContract *contract.GenericERC20, receiver common.Address, expectedBalance uint64) bool {
+	balance, err := ethGenericTokenContract.BalanceOf(nil, receiver)
+	require.NoError(t, err)
 
-	return transfer.Recipients[0] == receiver && transfer.Tokens[0] == token
+	return balance.Uint64() == expectedBalance
 }
 
 func sendMVXToEthTransaction(
@@ -1007,9 +1048,19 @@ func sendMVXToEthTransaction(
 	return hash
 }
 
-func submitAggregatorBatch(t *testing.T, ctx context.Context, mvxChainSimulator chainSimulatorWrapper, aggregatorAddress string, ownerKeys keysHolder) {
-	feeInt, _ := big.NewInt(0).SetString(fee, 10)
-	timestamp := big.NewInt(time.Now().Unix())
+func submitAggregatorBatch(
+	t *testing.T,
+	ctx context.Context,
+	mvxChainSimulator chainSimulatorWrapper,
+	aggregatorAddress string,
+	ownerKeys keysHolder,
+) {
+	timestamp, err := mvxChainSimulator.GetBlockchainTimeStamp(ctx)
+	require.Nil(t, err)
+	require.Greater(t, timestamp, uint64(0), "something went wrong and the chain simulator returned 0 for the current timestamp")
+
+	timestampAsBigInt := big.NewInt(0).SetUint64(timestamp)
+
 	hash, err := mvxChainSimulator.ScCall(
 		ctx,
 		ownerKeys.pk,
@@ -1017,11 +1068,162 @@ func submitAggregatorBatch(t *testing.T, ctx context.Context, mvxChainSimulator 
 		aggregatorAddress,
 		zeroValue,
 		submitBatch,
-		[]string{hex.EncodeToString([]byte(gwei)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), hex.EncodeToString(timestamp.Bytes()), hex.EncodeToString(feeInt.Bytes()), numOfDecimalsChainSpecific})
+		[]string{hex.EncodeToString([]byte(gwei)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), hex.EncodeToString(timestampAsBigInt.Bytes()), hex.EncodeToString(feeInt.Bytes()), numOfDecimalsChainSpecific})
 	require.NoError(t, err)
 	txResult, err := mvxChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
 
 	log.Info("submit aggregator batch tx executed", "hash", hash, "submitter", ownerKeys.pk, "status", txResult.Status)
 
+}
+
+func createEthereumSimulatorAndDeployContracts(
+	t *testing.T,
+	ctx context.Context,
+	relayersKeys []keysHolder,
+	ethOwnerAddr common.Address,
+	ethDepositorAddr common.Address,
+) (*backends.SimulatedBackend, blockchainClient, *contract.ERC20Safe, common.Address, *contract.Bridge, common.Address, *contract.GenericERC20, common.Address) {
+	addr := map[common.Address]ethCore.GenesisAccount{
+		ethOwnerAddr:     {Balance: new(big.Int).Lsh(big.NewInt(1), 100)},
+		ethDepositorAddr: {Balance: new(big.Int).Lsh(big.NewInt(1), 100)},
+	}
+	for _, relayerKeys := range relayersKeys {
+		addr[relayerKeys.ethAddress] = ethCore.GenesisAccount{Balance: new(big.Int).Lsh(big.NewInt(1), 100)}
+	}
+	alloc := ethCore.GenesisAlloc(addr)
+	simulatedETHChain := backends.NewSimulatedBackend(alloc, ethSimulatedGasLimit)
+
+	simulatedETHChainWrapper := integrationTests.NewSimulatedETHChainWrapper(simulatedETHChain)
+	ethChainID, _ := simulatedETHChainWrapper.ChainID(ctx)
+
+	// deploy safe
+	ethSafeAddress := deployETHContract(t, ctx, simulatedETHChain, ethChainID, erc20SafeABI, erc20SafeBytecode)
+	ethSafeContract, err := contract.NewERC20Safe(ethSafeAddress, simulatedETHChain)
+	require.NoError(t, err)
+
+	// deploy bridge
+	ethRelayersAddresses := make([]common.Address, 0, len(relayersKeys))
+	for _, relayerKeys := range relayersKeys {
+		ethRelayersAddresses = append(ethRelayersAddresses, relayerKeys.ethAddress)
+	}
+	quorumInt, _ := big.NewInt(0).SetString(quorum, 10)
+	ethBridgeAddress := deployETHContract(t, ctx, simulatedETHChain, ethChainID, bridgeABI, bridgeBytecode, ethRelayersAddresses, quorumInt, ethSafeAddress)
+	ethBridgeContract, err := contract.NewBridge(ethBridgeAddress, simulatedETHChain)
+	require.NoError(t, err)
+
+	// set bridge on safe
+	auth, _ := bind.NewKeyedTransactorWithChainID(ethOwnerSK, ethChainID)
+	tx, err := ethSafeContract.SetBridge(auth, ethBridgeAddress)
+	require.NoError(t, err)
+	simulatedETHChain.Commit()
+	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+
+	// deploy exec-proxy
+	ethExecProxyAddress := deployETHContract(t, ctx, simulatedETHChain, ethChainID, scExecProxyABI, scExecProxyBytecode, ethSafeAddress)
+	_, err = contract.NewSCExecProxy(ethExecProxyAddress, simulatedETHChain)
+	require.NoError(t, err)
+
+	// deploy generic eth token
+	ethGenericTokenAddress := deployETHContract(t, ctx, simulatedETHChain, ethChainID, genericERC20ABI, genericERC20Bytecode, ethTokenName, ethTokenSymbol)
+	ethGenericTokenContract, err := contract.NewGenericERC20(ethGenericTokenAddress, simulatedETHChain)
+	require.NoError(t, err)
+
+	// mint generic token
+	auth, _ = bind.NewKeyedTransactorWithChainID(ethDepositorSK, ethChainID)
+	tx, err = ethGenericTokenContract.Mint(auth, ethDepositorAddr, mintAmount)
+	require.NoError(t, err)
+	simulatedETHChain.Commit()
+	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+	checkETHStatus(t, ethGenericTokenContract, ethDepositorAddr, mintAmount.Uint64())
+
+	// whitelist eth token
+	auth, _ = bind.NewKeyedTransactorWithChainID(ethOwnerSK, ethChainID)
+	tx, err = ethSafeContract.WhitelistToken(auth, ethGenericTokenAddress, big.NewInt(ethMinAmountAllowedToTransfer), big.NewInt(ethMaxAmountAllowedToTransfer), false, true)
+	require.NoError(t, err)
+	simulatedETHChain.Commit()
+	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+
+	// unpause bridge contract
+	auth, _ = bind.NewKeyedTransactorWithChainID(ethOwnerSK, ethChainID)
+	tx, err = ethBridgeContract.Unpause(auth)
+	require.NoError(t, err)
+	simulatedETHChain.Commit()
+	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+
+	// unpause safe contract
+	auth, _ = bind.NewKeyedTransactorWithChainID(ethOwnerSK, ethChainID)
+	tx, err = ethSafeContract.Unpause(auth)
+	require.NoError(t, err)
+	simulatedETHChain.Commit()
+	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+
+	return simulatedETHChain, simulatedETHChainWrapper, ethSafeContract, ethSafeAddress, ethBridgeContract, ethBridgeAddress, ethGenericTokenContract, ethGenericTokenAddress
+}
+
+func deployETHContract(
+	t *testing.T,
+	ctx context.Context,
+	simulatedETHChain *backends.SimulatedBackend,
+	chainID *big.Int,
+	abiFile string,
+	bytecodeFile string,
+	params ...interface{},
+) common.Address {
+	abiBytes, err := os.ReadFile(abiFile)
+	require.NoError(t, err)
+	parsed, err := abi.JSON(bytes.NewReader(abiBytes))
+	require.NoError(t, err)
+
+	contractBytes, err := os.ReadFile(bytecodeFile)
+	require.NoError(t, err)
+
+	contractAuth, _ := bind.NewKeyedTransactorWithChainID(ethOwnerSK, chainID)
+	contractAddress, tx, _, err := bind.DeployContract(contractAuth, parsed, common.FromHex(converters.TrimWhiteSpaceCharacters(string(contractBytes))), simulatedETHChain, params...)
+	require.NoError(t, err)
+	simulatedETHChain.Commit()
+
+	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+
+	log.Info("deployed eth contract", "from file", bytecodeFile, "address", contractAddress.Hex())
+
+	return contractAddress
+}
+
+func createBatchOnEthereum(
+	t *testing.T,
+	ctx context.Context,
+	simulatedETHChain *backends.SimulatedBackend,
+	ethGenericTokenAddress common.Address,
+	ethGenericTokenContract *contract.GenericERC20,
+	ethSafeAddress common.Address,
+	ethSafeContract *contract.ERC20Safe,
+	ethChainID *big.Int,
+	mvxReceiverAddress sdkCore.AddressHandler,
+) {
+	// add allowance for the sender
+	auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, ethChainID)
+	tx, err := ethGenericTokenContract.Approve(auth, ethSafeAddress, mintAmount)
+	require.NoError(t, err)
+	simulatedETHChain.Commit()
+	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+
+	// deposit on ETH safe
+	auth, _ = bind.NewKeyedTransactorWithChainID(ethDepositorSK, ethChainID)
+	tx, err = ethSafeContract.Deposit(auth, ethGenericTokenAddress, mintAmount, mvxReceiverAddress.AddressSlice())
+	require.NoError(t, err)
+	simulatedETHChain.Commit()
+	checkEthTxResult(t, ctx, simulatedETHChain, tx.Hash())
+
+	// wait until batch is settled
+	batchSettleLimit, _ := ethSafeContract.BatchSettleLimit(nil)
+	for i := uint8(0); i < batchSettleLimit+1; i++ {
+		simulatedETHChain.Commit()
+	}
+}
+
+func checkEthTxResult(t *testing.T, ctx context.Context, simulatedETHChain *backends.SimulatedBackend, hash common.Hash) {
+	receipt, err := simulatedETHChain.TransactionReceipt(ctx, hash)
+	require.NoError(t, err)
+	require.Equal(t, ethStatusSuccess, receipt.Status)
 }
