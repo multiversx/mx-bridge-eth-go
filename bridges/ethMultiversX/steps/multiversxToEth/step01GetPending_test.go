@@ -118,7 +118,7 @@ func TestExecute_GetPending(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
 		bridgeStub.WasTransferPerformedOnEthereumCalled = func(ctx context.Context) (bool, error) {
-			return true, nil
+			return false, nil
 		}
 		bridgeStub.CheckAvailableTokensCalled = func(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
 			return expectedError
@@ -155,7 +155,7 @@ func TestExecute_GetPending(t *testing.T) {
 			expectedStepIdentifier := core.StepIdentifier(ResolvingSetStatusOnMultiversX)
 			stepIdentifier := step.Execute(context.Background())
 			assert.Equal(t, expectedStepIdentifier, stepIdentifier)
-			assert.True(t, checkAvailableTokensCalled)
+			assert.False(t, checkAvailableTokensCalled)
 		})
 		t.Run("if transfer was not performed next step should be SigningProposedTransferOnEthereum", func(t *testing.T) {
 			t.Parallel()
