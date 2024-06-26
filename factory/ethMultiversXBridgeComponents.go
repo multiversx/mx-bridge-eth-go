@@ -17,6 +17,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps/multiversxToEth"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/topology"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	balanceValidatorManagement "github.com/multiversx/mx-bridge-eth-go/clients/balanceValidator"
 	batchValidatorManagement "github.com/multiversx/mx-bridge-eth-go/clients/batchValidator"
 	batchManagementFactory "github.com/multiversx/mx-bridge-eth-go/clients/batchValidator/factory"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
@@ -531,6 +532,11 @@ func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXBridg
 		return err
 	}
 
+	balanceValidator, err := components.createBalanceValidator()
+	if err != nil {
+		return err
+	}
+
 	argsBridgeExecutor := ethmultiversx.ArgsBridgeExecutor{
 		Log:                          log,
 		TopologyProvider:             topologyHandler,
@@ -540,6 +546,7 @@ func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXBridg
 		TimeForWaitOnEthereum:        timeForTransferExecution,
 		SignaturesHolder:             disabled.NewDisabledSignaturesHolder(),
 		BatchValidator:               batchValidator,
+		BalanceValidator:             balanceValidator,
 		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:     args.Configs.GeneralConfig.MultiversX.MaxRetriesOnWasTransferProposed,
@@ -599,6 +606,11 @@ func (components *ethMultiversXBridgeComponents) createMultiversXToEthereumBridg
 		return err
 	}
 
+	balanceValidator, err := components.createBalanceValidator()
+	if err != nil {
+		return err
+	}
+
 	argsBridgeExecutor := ethmultiversx.ArgsBridgeExecutor{
 		Log:                          log,
 		TopologyProvider:             topologyHandler,
@@ -608,6 +620,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXToEthereumBridg
 		TimeForWaitOnEthereum:        timeForWaitOnEthereum,
 		SignaturesHolder:             components.ethToMultiversXSignaturesHolder,
 		BatchValidator:               batchValidator,
+		BalanceValidator:             balanceValidator,
 		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:     args.Configs.GeneralConfig.MultiversX.MaxRetriesOnWasTransferProposed,
@@ -679,6 +692,16 @@ func (components *ethMultiversXBridgeComponents) createBatchValidator(sourceChai
 		return nil, err
 	}
 	return batchValidator, err
+}
+
+func (components *ethMultiversXBridgeComponents) createBalanceValidator() (ethmultiversx.BalanceValidator, error) {
+	argsBalanceValidator := balanceValidatorManagement.ArgsBalanceValidator{
+		Log:              components.baseLogger,
+		MultiversXClient: components.multiversXClient,
+		EthereumClient:   components.ethClient,
+	}
+
+	return balanceValidatorManagement.NewBalanceValidator(argsBalanceValidator)
 }
 
 func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXStateMachine() error {

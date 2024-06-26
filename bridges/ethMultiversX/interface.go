@@ -76,3 +76,9 @@ type SignaturesHolder interface {
 	ClearStoredSignatures()
 	IsInterfaceNil() bool
 }
+
+// BalanceValidator defines the operations for a component that can validate the balances on both chains for a provided token
+type BalanceValidator interface {
+	CheckToken(ctx context.Context, ethToken common.Address, mvxToken []byte, amount *big.Int, direction batchProcessor.Direction) error
+	IsInterfaceNil() bool
+}
