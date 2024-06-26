@@ -400,7 +400,7 @@ func createMockBridgeComponentsArgs(
 	ethereumChainMock *mock.EthereumChainMock,
 ) factory.ArgsEthereumToMultiversXBridge {
 
-	generalConfigs := createBridgeComponentsConfig(index, "testdata")
+	generalConfigs := CreateBridgeComponentsConfig(index, "testdata")
 	return factory.ArgsEthereumToMultiversXBridge{
 		Configs: config.Configs{
 			GeneralConfig:   generalConfigs,
