@@ -55,7 +55,8 @@ func closeRelayers(relayers []bridgeComponents) {
 	}
 }
 
-func createBridgeComponentsConfig(index int, workingDir string) config.Config {
+// CreateBridgeComponentsConfig -
+func CreateBridgeComponentsConfig(index int, workingDir string) config.Config {
 	stateMachineConfig := config.ConfigStateMachine{
 		StepDurationInMillis:       1000,
 		IntervalForLeaderInSeconds: 60,
