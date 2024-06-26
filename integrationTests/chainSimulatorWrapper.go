@@ -304,7 +304,7 @@ func (instance *chainSimulatorWrapper) GetBlockchainTimeStamp(ctx context.Contex
 
 	err = json.Unmarshal(resultBytes, &resultStruct)
 	if err != nil {
-		return 0, fmt.Errorf("error %w, status code %d in chainSimulatorWrapper.GetBlockchainTimeStamp", err)
+		return 0, fmt.Errorf("error %w in chainSimulatorWrapper.GetBlockchainTimeStamp (json.Unmarshal)", err)
 	}
 
 	return resultStruct.Data.Status.ErdBlockTimestamp, nil
