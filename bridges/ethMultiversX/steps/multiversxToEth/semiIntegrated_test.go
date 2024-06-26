@@ -209,9 +209,6 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 	stub.ProcessMaxQuorumRetriesOnEthereumCalled = func() bool {
 		return args.maxRetriesReachedMultiversXHandler()
 	}
-	stub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
-		return true, nil
-	}
 
 	return stub, errHandler
 }

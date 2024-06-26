@@ -38,8 +38,5 @@ var ErrBatchNotFound = errors.New("batch not found")
 // ErrNilSignaturesHolder signals that a nil signatures holder was provided
 var ErrNilSignaturesHolder = errors.New("nil signatures holder")
 
-// ErrNilBatchValidator signals that a nil batch validator was provided
-var ErrNilBatchValidator = errors.New("nil batch validator")
-
 // ErrNilBalanceValidator signals that a nil balance validator was provided
 var ErrNilBalanceValidator = errors.New("nil balance validator")

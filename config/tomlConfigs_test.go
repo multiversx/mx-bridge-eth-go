@@ -205,11 +205,6 @@ func TestConfigs(t *testing.T) {
 				SameSourceResetIntervalInSec: 1,
 			},
 		},
-		BatchValidator: BatchValidatorConfig{
-			Enabled:              false,
-			URL:                  "https://devnet-bridge-api.multiversx.com/validateBatch",
-			RequestTimeInSeconds: 2,
-		},
 		PeersRatingConfig: PeersRatingConfig{
 			TopRatedCacheCapacity: 5000,
 			BadRatedCacheCapacity: 5000,
@@ -382,11 +377,6 @@ func TestConfigs(t *testing.T) {
             SameSourceRequests = 10000
             # SameSourceResetIntervalInSec time frame between counter reset, in seconds
             SameSourceResetIntervalInSec = 1
-
-[BatchValidator]
-    Enabled = false
-    URL = "https://devnet-bridge-api.multiversx.com/validateBatch" # batch validator URL.
-    RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the batch validation request
 
 [PeersRatingConfig]
     TopRatedCacheCapacity = 5000
