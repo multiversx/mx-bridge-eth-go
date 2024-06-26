@@ -7,18 +7,19 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-go/testscommon"
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO(jls): use these in next PR
-//var (
-//	ethToken = common.BytesToAddress([]byte("eth token"))
-//	mvxToken = []byte("mvx token")
-//	amount   = big.NewInt(37)
-//)
+var (
+	ethToken = common.BytesToAddress([]byte("eth token"))
+	mvxToken = []byte("mvx token")
+	amount   = big.NewInt(100)
+	amount2  = big.NewInt(200)
+)
 
 func createMockArgsBalanceValidator() ArgsBalanceValidator {
 	return ArgsBalanceValidator{
@@ -47,6 +48,11 @@ type testConfiguration struct {
 	mvxToken  []byte
 	amount    *big.Int
 	direction batchProcessor.Direction
+
+	lastExecutedEthBatch       uint64
+	pendingMvxBatchId          uint64
+	amountsOnMvxPendingBatches map[uint64][]*big.Int
+	amountsOnEthPendingBatches map[uint64][]*big.Int
 }
 
 type testResult struct {
@@ -211,6 +217,34 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 			assert.True(t, result.checkRequiredBalanceOnEthCalled)
 			assert.False(t, result.checkRequiredBalanceOnMvxCalled)
 		})
+		t.Run("on computeEthAmount, GetLastExecutedEthBatchID", func(t *testing.T) {
+			cfg := testConfiguration{
+				direction:       batchProcessor.FromMultiversX,
+				isNativeOnMvx:   true,
+				isMintBurnOnEth: true,
+				errorsOnCalls: map[string]error{
+					"GetLastExecutedEthBatchIDMvx": expectedError,
+				},
+			}
+			result := validatorTester(cfg)
+			assert.Equal(t, expectedError, result.error)
+			assert.True(t, result.checkRequiredBalanceOnEthCalled)
+			assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+		})
+		t.Run("on computeEthAmount, GetBatch", func(t *testing.T) {
+			cfg := testConfiguration{
+				direction:       batchProcessor.FromMultiversX,
+				isNativeOnMvx:   true,
+				isMintBurnOnEth: true,
+				errorsOnCalls: map[string]error{
+					"GetBatchEth": expectedError,
+				},
+			}
+			result := validatorTester(cfg)
+			assert.Equal(t, expectedError, result.error)
+			assert.True(t, result.checkRequiredBalanceOnEthCalled)
+			assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+		})
 		t.Run("on computeMvxAmount, TotalBalances", func(t *testing.T) {
 			cfg := testConfiguration{
 				direction:       batchProcessor.ToMultiversX,
@@ -246,6 +280,34 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 				isNativeOnEth:   true,
 				errorsOnCalls: map[string]error{
 					"MintBalancesMvx": expectedError,
+				},
+			}
+			result := validatorTester(cfg)
+			assert.Equal(t, expectedError, result.error)
+			assert.False(t, result.checkRequiredBalanceOnEthCalled)
+			assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+		})
+		t.Run("on computeMvxAmount, GetPendingBatch", func(t *testing.T) {
+			cfg := testConfiguration{
+				direction:       batchProcessor.ToMultiversX,
+				isMintBurnOnMvx: true,
+				isNativeOnEth:   true,
+				errorsOnCalls: map[string]error{
+					"GetPendingBatchMvx": expectedError,
+				},
+			}
+			result := validatorTester(cfg)
+			assert.Equal(t, expectedError, result.error)
+			assert.False(t, result.checkRequiredBalanceOnEthCalled)
+			assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+		})
+		t.Run("on computeMvxAmount, GetBatch", func(t *testing.T) {
+			cfg := testConfiguration{
+				direction:       batchProcessor.ToMultiversX,
+				isMintBurnOnMvx: true,
+				isNativeOnEth:   true,
+				errorsOnCalls: map[string]error{
+					"GetBatchMvx": expectedError,
 				},
 			}
 			result := validatorTester(cfg)
@@ -362,7 +424,817 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 			assert.True(t, result.checkRequiredBalanceOnMvxCalled)
 		})
 	})
-	// TODO(jls): add tests here for the correct balance computation when all pending batches are considered
+	t.Run("scenarios", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Ethereum -> MultiversX", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("native on MultiversX, mint-burn on Ethereum, ok values, no next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.ToMultiversX,
+					isMintBurnOnEth:    true,
+					isNativeOnMvx:      true,
+					burnBalancesOnEth:  big.NewInt(1100),  // initial burn (1000) + burn from this transfer (100)
+					mintBalancesOnEth:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnMvx: big.NewInt(10000),
+					amount:             amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on MultiversX, mint-burn on Ethereum, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.ToMultiversX,
+					isMintBurnOnEth:    true,
+					isNativeOnMvx:      true,
+					burnBalancesOnEth:  big.NewInt(1220),  // initial burn (1000) + burn from this transfer (100) + burn from next batches (120)
+					mintBalancesOnEth:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnMvx: big.NewInt(10000),
+					amount:             amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on MultiversX but with mint-burn, mint-burn on Ethereum, ok values, no next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.ToMultiversX,
+					isMintBurnOnEth:   true,
+					isNativeOnMvx:     true,
+					isMintBurnOnMvx:   true,
+					burnBalancesOnEth: big.NewInt(1100),  // initial burn (1000) + burn from this transfer (100)
+					mintBalancesOnEth: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnMvx: big.NewInt(12000),
+					mintBalancesOnMvx: big.NewInt(2000), // burn - mint on Mvx === mint - burn on Eth
+					amount:            amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on MultiversX but with mint-burn, mint-burn on Ethereum, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.ToMultiversX,
+					isMintBurnOnEth:   true,
+					isNativeOnMvx:     true,
+					isMintBurnOnMvx:   true,
+					burnBalancesOnEth: big.NewInt(1220),  // initial burn (1000) + burn from this transfer (100) + next batches (120)
+					mintBalancesOnEth: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnMvx: big.NewInt(12000),
+					mintBalancesOnMvx: big.NewInt(2000), // burn - mint on Mvx === mint - burn on Eth
+					amount:            amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on Ethereum, mint-burn on MultiversX, ok values, no next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.ToMultiversX,
+					isMintBurnOnMvx:    true,
+					isNativeOnEth:      true,
+					burnBalancesOnMvx:  big.NewInt(1000),  // initial burn (1000)
+					mintBalancesOnMvx:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnEth: big.NewInt(10100), // initial (10000) + locked from this transfer (100)
+					amount:             amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on Ethereum, mint-burn on MultiversX, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.ToMultiversX,
+					isMintBurnOnMvx:    true,
+					isNativeOnEth:      true,
+					burnBalancesOnMvx:  big.NewInt(1000),  // initial burn (1000)
+					mintBalancesOnMvx:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnEth: big.NewInt(10220), // initial (10000) + locked from this transfer (100) + next batches (120)
+					amount:             amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on Ethereum but with mint-burn, mint-burn on MultiversX, ok values, no next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.ToMultiversX,
+					isMintBurnOnMvx:   true,
+					isNativeOnEth:     true,
+					isMintBurnOnEth:   true,
+					burnBalancesOnMvx: big.NewInt(1000),  // initial burn (1000)
+					mintBalancesOnMvx: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnEth: big.NewInt(12100),
+					mintBalancesOnEth: big.NewInt(2000), // burn - mint - transfer on Eth === mint - burn on Mvx
+					amount:            amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on Ethereum but with mint-burn, mint-burn on MultiversX, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.ToMultiversX,
+					isMintBurnOnMvx:   true,
+					isNativeOnEth:     true,
+					isMintBurnOnEth:   true,
+					burnBalancesOnMvx: big.NewInt(1000),  // initial burn (1000)
+					mintBalancesOnMvx: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnEth: big.NewInt(12220),
+					mintBalancesOnEth: big.NewInt(2000), // burn - mint - transfer on Eth - next transfers === mint - burn on Mvx
+					amount:            amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+		})
+
+		t.Run("MultiversX -> Ethereum", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("native on MultiversX, mint-burn on Ethereum, ok values, no next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.FromMultiversX,
+					isMintBurnOnEth:    true,
+					isNativeOnMvx:      true,
+					burnBalancesOnEth:  big.NewInt(1000),  // initial burn (1000)
+					mintBalancesOnEth:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnMvx: big.NewInt(10100), // initial (10000) + transfer from this batch (100)
+					amount:             amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on MultiversX, mint-burn on Ethereum, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.FromMultiversX,
+					isMintBurnOnEth:    true,
+					isNativeOnMvx:      true,
+					burnBalancesOnEth:  big.NewInt(1000),  // initial burn (1000)
+					mintBalancesOnEth:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnMvx: big.NewInt(10220), // initial (10000) + transfer from this batch (100) + next batches (120)
+					amount:             amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on MultiversX but with mint-burn, mint-burn on Ethereum, ok values, no next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.FromMultiversX,
+					isMintBurnOnEth:   true,
+					isNativeOnMvx:     true,
+					isMintBurnOnMvx:   true,
+					burnBalancesOnEth: big.NewInt(1000),  // initial burn (1000)
+					mintBalancesOnEth: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnMvx: big.NewInt(12100),
+					mintBalancesOnMvx: big.NewInt(2000), // burn - mint - transfer on Mvx === mint - burn on Eth
+					amount:            amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on MultiversX but with mint-burn, mint-burn on Ethereum, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.FromMultiversX,
+					isMintBurnOnEth:   true,
+					isNativeOnMvx:     true,
+					isMintBurnOnMvx:   true,
+					burnBalancesOnEth: big.NewInt(1000),  // initial burn (1000)
+					mintBalancesOnEth: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnMvx: big.NewInt(12220),
+					mintBalancesOnMvx: big.NewInt(2000), // burn - mint - transfer - next batches on Mvx === mint - burn on Eth
+					amount:            amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on Ethereum, mint-burn on MultiversX, ok values, no next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.FromMultiversX,
+					isMintBurnOnMvx:    true,
+					isNativeOnEth:      true,
+					burnBalancesOnMvx:  big.NewInt(1100),  // initial burn (1000) + transfer from this batch (100)
+					mintBalancesOnMvx:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnEth: big.NewInt(10000), // initial (10000)
+					amount:             amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on Ethereum, mint-burn on MultiversX, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.FromMultiversX,
+					isMintBurnOnMvx:    true,
+					isNativeOnEth:      true,
+					burnBalancesOnMvx:  big.NewInt(1220),  // initial burn (1000) + transfer from this batch (100) + next batches (120)
+					mintBalancesOnMvx:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnEth: big.NewInt(10000), // initial (10000)
+					amount:             amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on Ethereum but with mint-burn, mint-burn on MultiversX, ok values, no next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.FromMultiversX,
+					isMintBurnOnMvx:   true,
+					isNativeOnEth:     true,
+					isMintBurnOnEth:   true,
+					burnBalancesOnMvx: big.NewInt(1100),  // initial burn (1000) + transfer from this batch (100)
+					mintBalancesOnMvx: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnEth: big.NewInt(12000),
+					mintBalancesOnEth: big.NewInt(2000), // burn - mint on Eth === mint - burn - transfer on Mvx
+					amount:            amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("native on Ethereum but with mint-burn, mint-burn on MultiversX, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.FromMultiversX,
+					isMintBurnOnMvx:   true,
+					isNativeOnEth:     true,
+					isMintBurnOnEth:   true,
+					burnBalancesOnMvx: big.NewInt(1220),  // initial burn (1000) + transfer from this batch (100) + transfer from next batches
+					mintBalancesOnMvx: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnEth: big.NewInt(12000),
+					mintBalancesOnEth: big.NewInt(2000), // burn - mint on Eth === mint - burn - transfer - next batches on Mvx
+					amount:            amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+		})
+
+		t.Run("MultiversX <-> Ethereum", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("from Ethereum: native on MultiversX, mint-burn on Ethereum, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.ToMultiversX,
+					isMintBurnOnEth:    true,
+					isNativeOnMvx:      true,
+					burnBalancesOnEth:  big.NewInt(1220),  // initial burn (1000) + burn from this transfer (100) + burn from next batches (120)
+					mintBalancesOnEth:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnMvx: big.NewInt(10440),
+					amount:             amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount2},
+						2: {big.NewInt(60), big.NewInt(80)},
+						3: {big.NewInt(100)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("from Ethereum: native on MultiversX but with mint-burn, mint-burn on Ethereum, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.ToMultiversX,
+					isMintBurnOnEth:   true,
+					isNativeOnMvx:     true,
+					isMintBurnOnMvx:   true,
+					burnBalancesOnEth: big.NewInt(1220),  // initial burn (1000) + burn from this transfer (100) + next batches (120)
+					mintBalancesOnEth: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnMvx: big.NewInt(12440),
+					mintBalancesOnMvx: big.NewInt(2000), // burn - mint on Mvx === mint - burn on Eth
+					amount:            amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount2},
+						2: {big.NewInt(60), big.NewInt(80)},
+						3: {big.NewInt(100)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("from Ethereum: native on Ethereum, mint-burn on MultiversX, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.ToMultiversX,
+					isMintBurnOnMvx:    true,
+					isNativeOnEth:      true,
+					burnBalancesOnMvx:  big.NewInt(1440),  // initial burn (1000)
+					mintBalancesOnMvx:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnEth: big.NewInt(10220), // initial (10000) + locked from this transfer (100) + next batches (120)
+					amount:             amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount2},
+						2: {big.NewInt(60), big.NewInt(80)},
+						3: {big.NewInt(100)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("from Ethereum: native on Ethereum but with mint-burn, mint-burn on MultiversX, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.ToMultiversX,
+					isMintBurnOnMvx:   true,
+					isNativeOnEth:     true,
+					isMintBurnOnEth:   true,
+					burnBalancesOnMvx: big.NewInt(1440),  // initial burn (1000)
+					mintBalancesOnMvx: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnEth: big.NewInt(12220),
+					mintBalancesOnEth: big.NewInt(2000), // burn - mint - transfer on Eth - next transfers === mint - burn on Mvx
+					amount:            amount,
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount2},
+						2: {big.NewInt(60), big.NewInt(80)},
+						3: {big.NewInt(100)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.False(t, result.checkRequiredBalanceOnEthCalled)
+				assert.True(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("from MultiversX: native on MultiversX, mint-burn on Ethereum, ok values, with next pending batches on both chains", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.FromMultiversX,
+					isMintBurnOnEth:    true,
+					isNativeOnMvx:      true,
+					burnBalancesOnEth:  big.NewInt(1440),  // initial burn (1000) + amount2 + transfers from eth
+					mintBalancesOnEth:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnMvx: big.NewInt(10220), // initial (10000) + transfer from this batch (100) + next batches (120)
+					amount:             amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount2},
+						2: {big.NewInt(60), big.NewInt(80)},
+						3: {big.NewInt(100)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("from MultiversX: native on MultiversX but with mint-burn, mint-burn on Ethereum, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.FromMultiversX,
+					isMintBurnOnEth:   true,
+					isNativeOnMvx:     true,
+					isMintBurnOnMvx:   true,
+					burnBalancesOnEth: big.NewInt(1440),  // initial burn (1000)
+					mintBalancesOnEth: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnMvx: big.NewInt(12220),
+					mintBalancesOnMvx: big.NewInt(2000), // burn - mint - transfer - next batches on Mvx === mint - burn on Eth
+					amount:            amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount2},
+						2: {big.NewInt(60), big.NewInt(80)},
+						3: {big.NewInt(100)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnEth.Add(cfg.burnBalancesOnEth, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("from MultiversX: native on Ethereum, mint-burn on MultiversX, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:          batchProcessor.FromMultiversX,
+					isMintBurnOnMvx:    true,
+					isNativeOnEth:      true,
+					burnBalancesOnMvx:  big.NewInt(1220),  // initial burn (1000) + transfer from this batch (100) + next batches (120)
+					mintBalancesOnMvx:  big.NewInt(11000), // minted (10000) + initial burn (1000)
+					totalBalancesOnEth: big.NewInt(10440), // initial (10000) + pending batches on eth
+					amount:             amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount2},
+						2: {big.NewInt(60), big.NewInt(80)},
+						3: {big.NewInt(100)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+			t.Run("from MultiversX: native on Ethereum but with mint-burn, mint-burn on MultiversX, ok values, with next pending batches", func(t *testing.T) {
+				t.Parallel()
+
+				cfg := testConfiguration{
+					direction:         batchProcessor.FromMultiversX,
+					isMintBurnOnMvx:   true,
+					isNativeOnEth:     true,
+					isMintBurnOnEth:   true,
+					burnBalancesOnMvx: big.NewInt(1220),  // initial burn (1000) + transfer from this batch (100) + transfer from next batches
+					mintBalancesOnMvx: big.NewInt(11000), // minted (10000) + initial burn (1000)
+					burnBalancesOnEth: big.NewInt(12440),
+					mintBalancesOnEth: big.NewInt(2000), // burn - mint on Eth === mint - burn - transfer - next batches on Mvx
+					amount:            amount,
+					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
+						1: {amount},
+						2: {big.NewInt(30), big.NewInt(40)},
+						3: {big.NewInt(50)},
+					},
+					amountsOnEthPendingBatches: map[uint64][]*big.Int{
+						1: {amount2},
+						2: {big.NewInt(60), big.NewInt(80)},
+						3: {big.NewInt(100)},
+					},
+					mvxToken: mvxToken,
+					ethToken: ethToken,
+				}
+
+				result := validatorTester(cfg)
+				assert.Nil(t, result.error)
+				assert.True(t, result.checkRequiredBalanceOnEthCalled)
+				assert.False(t, result.checkRequiredBalanceOnMvxCalled)
+
+				t.Run("mismatch should error", func(t *testing.T) {
+					cfg.burnBalancesOnMvx.Add(cfg.burnBalancesOnMvx, big.NewInt(1))
+					result = validatorTester(cfg)
+					assert.ErrorIs(t, result.error, ErrBalanceMismatch)
+				})
+			})
+		})
+
+	})
 }
 
 func validatorTester(cfg testConfiguration) testResult {
@@ -415,6 +1287,43 @@ func validatorTester(cfg testConfiguration) testResult {
 
 			return returnBigIntOrZeroIfNil(cfg.burnBalancesOnMvx), nil
 		},
+		GetPendingBatchCalled: func(ctx context.Context) (*clients.TransferBatch, error) {
+			err := cfg.errorsOnCalls["GetPendingBatchMvx"]
+			if err != nil {
+				return nil, err
+			}
+
+			batch := &clients.TransferBatch{
+				ID: cfg.pendingMvxBatchId,
+			}
+			applyDummyFromMvxDepositsToBatch(cfg, batch)
+
+			return batch, nil
+		},
+		GetBatchCalled: func(ctx context.Context, batchID uint64) (*clients.TransferBatch, error) {
+			err := cfg.errorsOnCalls["GetBatchMvx"]
+			if err != nil {
+				return nil, err
+			}
+
+			if batchID > getMaxMvxPendingBatchID(cfg) {
+				return nil, clients.ErrNoBatchAvailable
+			}
+			batch := &clients.TransferBatch{
+				ID: batchID,
+			}
+			applyDummyFromMvxDepositsToBatch(cfg, batch)
+
+			return batch, nil
+		},
+		GetLastExecutedEthBatchIDCalled: func(ctx context.Context) (uint64, error) {
+			err := cfg.errorsOnCalls["GetLastExecutedEthBatchIDMvx"]
+			if err != nil {
+				return 0, err
+			}
+
+			return cfg.lastExecutedEthBatch, nil
+		},
 	}
 	args.EthereumClient = &bridge.EthereumClientStub{
 		CheckRequiredBalanceCalled: func(ctx context.Context, erc20Address common.Address, value *big.Int) error {
@@ -461,6 +1370,19 @@ func validatorTester(cfg testConfiguration) testResult {
 
 			return returnBigIntOrZeroIfNil(cfg.burnBalancesOnEth), nil
 		},
+		GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+			err := cfg.errorsOnCalls["GetBatchEth"]
+			if err != nil {
+				return nil, err
+			}
+
+			batch := &clients.TransferBatch{
+				ID: nonce,
+			}
+			applyDummyFromEthDepositsToBatch(cfg, batch)
+
+			return batch, nil
+		},
 	}
 
 	validator, err := NewBalanceValidator(args)
@@ -472,6 +1394,55 @@ func validatorTester(cfg testConfiguration) testResult {
 	result.error = validator.CheckToken(context.Background(), cfg.ethToken, cfg.mvxToken, cfg.amount, cfg.direction)
 
 	return result
+}
+
+func applyDummyFromMvxDepositsToBatch(cfg testConfiguration, batch *clients.TransferBatch) {
+	if cfg.amountsOnMvxPendingBatches != nil {
+		values, found := cfg.amountsOnMvxPendingBatches[batch.ID]
+		if found {
+			depositCounter := uint64(0)
+
+			for _, deposit := range values {
+				batch.Deposits = append(batch.Deposits, &clients.DepositTransfer{
+					Nonce:            depositCounter,
+					Amount:           deposit,
+					SourceTokenBytes: mvxToken,
+				})
+			}
+		}
+	}
+}
+
+func applyDummyFromEthDepositsToBatch(cfg testConfiguration, batch *clients.TransferBatch) {
+	if cfg.amountsOnEthPendingBatches != nil {
+		values, found := cfg.amountsOnEthPendingBatches[batch.ID]
+		if found {
+			depositCounter := uint64(0)
+
+			for _, deposit := range values {
+				batch.Deposits = append(batch.Deposits, &clients.DepositTransfer{
+					Nonce:            depositCounter,
+					Amount:           deposit,
+					SourceTokenBytes: ethToken.Bytes(),
+				})
+			}
+		}
+	}
+}
+
+func getMaxMvxPendingBatchID(cfg testConfiguration) uint64 {
+	if cfg.amountsOnMvxPendingBatches == nil {
+		return 0
+	}
+
+	maxBatchIDFound := uint64(0)
+	for batchID := range cfg.amountsOnMvxPendingBatches {
+		if batchID > maxBatchIDFound {
+			maxBatchIDFound = batchID
+		}
+	}
+
+	return maxBatchIDFound
 }
 
 func returnBigIntOrZeroIfNil(value *big.Int) *big.Int {

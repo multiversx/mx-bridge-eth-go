@@ -229,7 +229,7 @@ func TestNewClient(t *testing.T) {
 	})
 }
 
-func TestClient_GetPending(t *testing.T) {
+func TestClient_GetPendingBatch(t *testing.T) {
 	t.Parallel()
 
 	t.Run("get pending batch failed should error", func(t *testing.T) {
@@ -244,7 +244,7 @@ func TestClient_GetPending(t *testing.T) {
 		}
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 		assert.Nil(t, batch)
 		assert.Equal(t, expectedErr, err)
 	})
@@ -255,9 +255,9 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy(make([][]byte, 0))
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 		assert.Nil(t, batch)
-		assert.Equal(t, ErrNoPendingBatchAvailable, err)
+		assert.Equal(t, clients.ErrNoPendingBatchAvailable, err)
 	})
 	t.Run("invalid length", func(t *testing.T) {
 		t.Parallel()
@@ -267,7 +267,7 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy(buff[:len(buff)-1])
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, errInvalidNumberOfArguments))
@@ -276,7 +276,7 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy([][]byte{{1}})
 		c, _ = NewClient(args)
 
-		batch, err = c.GetPending(context.Background())
+		batch, err = c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, errInvalidNumberOfArguments))
@@ -291,7 +291,7 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy(buff)
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, errNotUint64Bytes))
@@ -306,7 +306,7 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy(buff)
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, errNotUint64Bytes))
@@ -326,7 +326,7 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy(buff)
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, expectedErr))
@@ -375,7 +375,7 @@ func TestClient_GetPending(t *testing.T) {
 		}
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 		assert.Nil(t, err)
 
 		args.Log.Info("expected batch\n" + expectedBatch.String())
@@ -384,7 +384,163 @@ func TestClient_GetPending(t *testing.T) {
 		assert.Equal(t, expectedBatch, batch)
 		assert.Nil(t, err)
 	})
+}
 
+func TestClient_GetBatch(t *testing.T) {
+	t.Parallel()
+
+	t.Run("get batch failed should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		expectedErr := errors.New("expected error")
+		args.Proxy = &interactors.ProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return nil, expectedErr
+			},
+		}
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+		assert.Nil(t, batch)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("empty response", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+		assert.Nil(t, batch)
+		assert.Equal(t, clients.ErrNoBatchAvailable, err)
+	})
+	t.Run("invalid length", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		buff := createMockPendingBatchBytes(2)
+		args.Proxy = createMockProxy(buff[:len(buff)-1])
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, errInvalidNumberOfArguments))
+		assert.True(t, strings.Contains(err.Error(), "got 12 argument(s)"))
+
+		args.Proxy = createMockProxy([][]byte{{1}})
+		c, _ = NewClient(args)
+
+		batch, err = c.GetBatch(context.Background(), 37)
+
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, errInvalidNumberOfArguments))
+		assert.True(t, strings.Contains(err.Error(), "got 1 argument(s)"))
+	})
+	t.Run("invalid batch ID", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		buff := createMockPendingBatchBytes(2)
+		buff[0] = bytes.Repeat([]byte{1}, 32)
+		args.Proxy = createMockProxy(buff)
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, strings.Contains(err.Error(), "while parsing batch ID"))
+	})
+	t.Run("invalid deposit nonce", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		buff := createMockPendingBatchBytes(2)
+		buff[8] = bytes.Repeat([]byte{1}, 32)
+		args.Proxy = createMockProxy(buff)
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, strings.Contains(err.Error(), "while parsing the deposit nonce, transfer index 1"))
+	})
+	t.Run("tokens mapper errors", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		expectedErr := errors.New("expected error in convert tokens")
+		args.TokensMapper = &bridgeTests.TokensMapperStub{
+			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
+				return nil, expectedErr
+			},
+		}
+		buff := createMockPendingBatchBytes(2)
+		args.Proxy = createMockProxy(buff)
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, expectedErr))
+		assert.True(t, strings.Contains(err.Error(), "while converting token bytes, transfer index 0"))
+	})
+	t.Run("should create pending batch", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.TokensMapper = &bridgeTests.TokensMapperStub{
+			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
+				return append([]byte("converted_"), sourceBytes...), nil
+			},
+		}
+		args.Proxy = createMockProxy(createMockPendingBatchBytes(2))
+
+		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
+		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
+		expectedBatch := &clients.TransferBatch{
+			ID: 44562,
+			Deposits: []*clients.DepositTransfer{
+				{
+					Nonce:                 5000,
+					ToBytes:               bytes.Repeat([]byte{2}, 20),
+					DisplayableTo:         "0x0202020202020202020202020202020202020202",
+					FromBytes:             bytes.Repeat([]byte{1}, 32),
+					DisplayableFrom:       "erd1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsl6e0p7",
+					SourceTokenBytes:      tokenBytes1,
+					DestinationTokenBytes: append([]byte("converted_"), tokenBytes1...),
+					DisplayableToken:      string(tokenBytes1),
+					Amount:                big.NewInt(10000),
+				},
+				{
+					Nonce:                 5001,
+					ToBytes:               bytes.Repeat([]byte{5}, 20),
+					DisplayableTo:         "0x0505050505050505050505050505050505050505",
+					FromBytes:             bytes.Repeat([]byte{4}, 32),
+					DisplayableFrom:       "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn",
+					SourceTokenBytes:      tokenBytes2,
+					DestinationTokenBytes: append([]byte("converted_"), tokenBytes2...),
+					DisplayableToken:      string(tokenBytes2),
+					Amount:                big.NewInt(20000),
+				},
+			},
+			Statuses: make([]byte, 2),
+		}
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 44562)
+		assert.Nil(t, err)
+
+		args.Log.Info("expected batch\n" + expectedBatch.String())
+		args.Log.Info("batch\n" + batch.String())
+
+		assert.Equal(t, expectedBatch, batch)
+		assert.Nil(t, err)
+	})
 }
 
 func TestClient_ProposeSetStatus(t *testing.T) {

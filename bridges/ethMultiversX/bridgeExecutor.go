@@ -166,7 +166,7 @@ func (executor *bridgeExecutor) MyTurnAsLeader() bool {
 
 // GetBatchFromMultiversX fetches the pending batch from MultiversX
 func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*clients.TransferBatch, error) {
-	batch, err := executor.multiversXClient.GetPending(ctx)
+	batch, err := executor.multiversXClient.GetPendingBatch(ctx)
 	if err == nil {
 		executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
 	}

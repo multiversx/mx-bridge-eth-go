@@ -882,7 +882,7 @@ func TestMultiversXToEthBridgeExecutor_GetAndStoreBatchFromMultiversX(t *testing
 
 		args := createMockExecutorArgs()
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
-			GetPendingCalled: func(ctx context.Context) (*clients.TransferBatch, error) {
+			GetPendingBatchCalled: func(ctx context.Context) (*clients.TransferBatch, error) {
 				return nil, expectedErr
 			},
 		}
@@ -910,7 +910,7 @@ func TestMultiversXToEthBridgeExecutor_GetAndStoreBatchFromMultiversX(t *testing
 		wasCalled := false
 		args := createMockExecutorArgs()
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
-			GetPendingCalled: func(ctx context.Context) (*clients.TransferBatch, error) {
+			GetPendingBatchCalled: func(ctx context.Context) (*clients.TransferBatch, error) {
 				wasCalled = true
 				return providedBatch, nil
 			},

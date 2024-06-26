@@ -12,7 +12,8 @@ var errNotImplemented = errors.New("not implemented")
 
 // MultiversXClientStub -
 type MultiversXClientStub struct {
-	GetPendingCalled                               func(ctx context.Context) (*clients.TransferBatch, error)
+	GetPendingBatchCalled                          func(ctx context.Context) (*clients.TransferBatch, error)
+	GetBatchCalled                                 func(ctx context.Context, batchID uint64) (*clients.TransferBatch, error)
 	GetCurrentBatchAsDataBytesCalled               func(ctx context.Context) ([][]byte, error)
 	WasProposedTransferCalled                      func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 	QuorumReachedCalled                            func(ctx context.Context, actionID uint64) (bool, error)
@@ -40,10 +41,19 @@ type MultiversXClientStub struct {
 	CloseCalled                                    func() error
 }
 
-// GetPending -
-func (stub *MultiversXClientStub) GetPending(ctx context.Context) (*clients.TransferBatch, error) {
-	if stub.GetPendingCalled != nil {
-		return stub.GetPendingCalled(ctx)
+// GetPendingBatch -
+func (stub *MultiversXClientStub) GetPendingBatch(ctx context.Context) (*clients.TransferBatch, error) {
+	if stub.GetPendingBatchCalled != nil {
+		return stub.GetPendingBatchCalled(ctx)
+	}
+
+	return nil, errNotImplemented
+}
+
+// GetBatch -
+func (stub *MultiversXClientStub) GetBatch(ctx context.Context, batchID uint64) (*clients.TransferBatch, error) {
+	if stub.GetBatchCalled != nil {
+		return stub.GetBatchCalled(ctx, batchID)
 	}
 
 	return nil, errNotImplemented

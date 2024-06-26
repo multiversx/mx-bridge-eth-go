@@ -189,6 +189,13 @@ func testTransfersBothWaysWithChainSimulatorAndConfig(t *testing.T, cfg testConf
 	})
 	ethereumChainMock.AddBatch(batch)
 	ethereumChainMock.SetQuorum(numRelayers)
+	if cfg.isNativeOnEth {
+		ethereumChainMock.UpdateTotalBalances(token1Erc20, value1)
+	} else {
+		mvxSafeContractBalance, _ := big.NewInt(0).SetString(valueToMint, 10)
+		mvxSafeContractBalance.Div(mvxSafeContractBalance, big.NewInt(2))
+		ethereumChainMock.UpdateMintBalances(token1Erc20, big.NewInt(0).Sub(mvxSafeContractBalance, value1))
+	}
 
 	// prepare ethereum chain mock for MVX->ETH
 	expectedStatuses := []byte{clients.Executed}
