@@ -35,18 +35,15 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
-	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/factory"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
-	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/status"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	"github.com/multiversx/mx-chain-crypto-go/signing"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519"
 	"github.com/multiversx/mx-chain-go/testscommon/statusHandler"
-	logger "github.com/multiversx/mx-chain-logger-go"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/require"
@@ -144,6 +141,7 @@ type chainSimulatorWrapper interface {
 	GenerateBlocksUntilEpochReached(ctx context.Context, epoch uint32)
 	GenerateBlocks(ctx context.Context, numBlocks int)
 	GetESDTBalance(ctx context.Context, address sdkCore.AddressHandler, token string) (string, error)
+	GetBlockchainTimeStamp(ctx context.Context) (uint64, error)
 }
 
 type blockchainClient interface {
@@ -1183,7 +1181,6 @@ func issueAndWhitelistToken(
 	log.Info("add mapping tx executed", "hash", hash, "status", txResult.Status)
 
 	// whitelist token
-	statusBefore, _ := mvxChainSimulator.Proxy().GetNetworkStatus(ctx, 0)
 	hash, err = mvxChainSimulator.ScCall(
 		ctx,
 		ownerKeys.pk,
@@ -1199,13 +1196,7 @@ func issueAndWhitelistToken(
 	log.Info("whitelist token tx executed", "hash", hash, "status", txResult.Status)
 
 	// submit aggregator batch
-	statusAfter, _ := mvxChainSimulator.Proxy().GetNetworkStatus(ctx, 0)
-	networkConfig, err := mvxChainSimulator.Proxy().GetNetworkConfig(ctx)
-	require.NoError(t, err)
-	roundDurationInSeconds := networkConfig.RoundDuration / 1000
-	timePassed := (statusAfter.CurrentRound - statusBefore.CurrentRound - 1) * uint64(roundDurationInSeconds)
-	currentChainTimestamp := txResult.Timestamp + timePassed
-	submitAggregatorBatch(t, ctx, mvxChainSimulator, aggregatorAddress, ownerKeys, currentChainTimestamp)
+	submitAggregatorBatch(t, ctx, mvxChainSimulator, aggregatorAddress, ownerKeys)
 
 	// safe set max bridge amount for token
 	maxBridgedAmountForTokenInt, _ := big.NewInt(0).SetString(maxBridgedAmountForToken, 10)
@@ -1339,9 +1330,12 @@ func submitAggregatorBatch(
 	mvxChainSimulator chainSimulatorWrapper,
 	aggregatorAddress string,
 	ownerKeys keysHolder,
-	currentChainTimestamp uint64,
 ) {
-	timestamp := big.NewInt(0).SetUint64(currentChainTimestamp)
+	timestamp, err := mvxChainSimulator.GetBlockchainTimeStamp(ctx)
+	require.Nil(t, err)
+	require.Greater(t, timestamp, uint64(0), "something went wrong and the chain simulator returned 0 for the current timestamp")
+
+	timestampAsBigInt := big.NewInt(0).SetUint64(timestamp)
 
 	hash, err := mvxChainSimulator.ScCall(
 		ctx,
@@ -1350,7 +1344,7 @@ func submitAggregatorBatch(
 		aggregatorAddress,
 		zeroValue,
 		submitBatch,
-		[]string{hex.EncodeToString([]byte(gwei)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), hex.EncodeToString(timestamp.Bytes()), hex.EncodeToString(feeInt.Bytes()), numOfDecimalsChainSpecific})
+		[]string{hex.EncodeToString([]byte(gwei)), hex.EncodeToString([]byte(chainSpecificTokenTicker)), hex.EncodeToString(timestampAsBigInt.Bytes()), hex.EncodeToString(feeInt.Bytes()), numOfDecimalsChainSpecific})
 	require.NoError(t, err)
 	txResult, err := mvxChainSimulator.GetTransactionResult(ctx, hash)
 	require.NoError(t, err)
