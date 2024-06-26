@@ -277,8 +277,9 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingMvxBatches(ctx
 	}
 
 	amount := getTotalAmountFromBatch(batch, mvxToken)
+	batchID := batch.ID + 1
 	for {
-		batch, err = validator.multiversXClient.GetBatch(ctx, batch.ID+1)
+		batch, err = validator.multiversXClient.GetBatch(ctx, batchID)
 		if errors.Is(err, clients.ErrNoBatchAvailable) {
 			return amount, nil
 		}
@@ -288,6 +289,7 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingMvxBatches(ctx
 
 		amountFromBatch := getTotalAmountFromBatch(batch, mvxToken)
 		amount.Add(amount, amountFromBatch)
+		batchID++
 	}
 }
 
