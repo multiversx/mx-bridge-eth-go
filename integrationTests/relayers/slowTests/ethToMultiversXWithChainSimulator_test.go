@@ -53,20 +53,20 @@ import (
 
 const (
 	numRelayers                                  = 3
-	safeContract                                 = "../testdata/contracts/mvx/esdt-safe.wasm"
-	multisigContract                             = "../testdata/contracts/mvx/multisig.wasm"
-	multiTransferContract                        = "../testdata/contracts/mvx/multi-transfer-esdt.wasm"
-	bridgeProxyContract                          = "../testdata/contracts/mvx/bridge-proxy.wasm"
-	aggregatorContract                           = "../testdata/contracts/mvx/aggregator.wasm"
-	wrapperContract                              = "../testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
-	bridgeABI                                    = "../testdata/contracts/eth/bridgeABI.json"
-	bridgeBytecode                               = "../testdata/contracts/eth/bridgeBytecode.hex"
-	erc20SafeABI                                 = "../testdata/contracts/eth/erc20SafeABI.json"
-	erc20SafeBytecode                            = "../testdata/contracts/eth/erc20SafeBytecode.hex"
-	genericERC20ABI                              = "../testdata/contracts/eth/genericERC20ABI.json"
-	genericERC20Bytecode                         = "../testdata/contracts/eth/genericERC20Bytecode.hex"
-	scExecProxyABI                               = "../testdata/contracts/eth/scExecProxyABI.json"
-	scExecProxyBytecode                          = "../testdata/contracts/eth/scExecProxyBytecode.hex"
+	safeContract                                 = "testdata/contracts/mvx/esdt-safe.wasm"
+	multisigContract                             = "testdata/contracts/mvx/multisig.wasm"
+	multiTransferContract                        = "testdata/contracts/mvx/multi-transfer-esdt.wasm"
+	bridgeProxyContract                          = "testdata/contracts/mvx/bridge-proxy.wasm"
+	aggregatorContract                           = "testdata/contracts/mvx/aggregator.wasm"
+	wrapperContract                              = "testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
+	bridgeABI                                    = "testdata/contracts/eth/bridgeABI.json"
+	bridgeBytecode                               = "testdata/contracts/eth/bridgeBytecode.hex"
+	erc20SafeABI                                 = "testdata/contracts/eth/erc20SafeABI.json"
+	erc20SafeBytecode                            = "testdata/contracts/eth/erc20SafeBytecode.hex"
+	genericERC20ABI                              = "testdata/contracts/eth/genericERC20ABI.json"
+	genericERC20Bytecode                         = "testdata/contracts/eth/genericERC20Bytecode.hex"
+	scExecProxyABI                               = "testdata/contracts/eth/scExecProxyABI.json"
+	scExecProxyBytecode                          = "testdata/contracts/eth/scExecProxyBytecode.hex"
 	minRelayerStake                              = "10000000000000000000" // 10egld
 	slashAmount                                  = "00"
 	quorum                                       = "03"
@@ -642,6 +642,7 @@ func (testSetup *simulatedSetup) startRelayers(
 
 	for i := 0; i < numRelayers; i++ {
 		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, testSetup.workingDir)
+		generalConfigs.Eth.PrivateKeyFile = fmt.Sprintf(relayerETHKeyPathFormat, i)
 		argsBridgeComponents := factory.ArgsEthereumToMultiversXBridge{
 			Configs: config.Configs{
 				GeneralConfig:   generalConfigs,
