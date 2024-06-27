@@ -55,7 +55,6 @@ type BridgeExecutorStub struct {
 	ProcessMaxQuorumRetriesOnEthereumCalled                    func() bool
 	ResetRetriesCountOnEthereumCalled                          func()
 	ClearStoredP2PSignaturesForEthereumCalled                  func()
-	ValidateBatchCalled                                        func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 	CheckMultiversXClientAvailabilityCalled                    func(ctx context.Context) error
 	CheckEthereumClientAvailabilityCalled                      func(ctx context.Context) error
 	CheckAvailableTokensCalled                                 func(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error
@@ -375,14 +374,6 @@ func (stub *BridgeExecutorStub) ClearStoredP2PSignaturesForEthereum() {
 	if stub.ClearStoredP2PSignaturesForEthereumCalled != nil {
 		stub.ClearStoredP2PSignaturesForEthereumCalled()
 	}
-}
-
-// ValidateBatch -
-func (stub *BridgeExecutorStub) ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
-	if stub.ValidateBatchCalled != nil {
-		return stub.ValidateBatchCalled(ctx, batch)
-	}
-	return false, notImplemented
 }
 
 // CheckMultiversXClientAvailability -

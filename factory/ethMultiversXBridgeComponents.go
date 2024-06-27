@@ -18,8 +18,6 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/topology"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	balanceValidatorManagement "github.com/multiversx/mx-bridge-eth-go/clients/balanceValidator"
-	batchValidatorManagement "github.com/multiversx/mx-bridge-eth-go/clients/batchValidator"
-	batchManagementFactory "github.com/multiversx/mx-bridge-eth-go/clients/batchValidator/factory"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement"
@@ -527,11 +525,6 @@ func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXBridg
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	batchValidator, err := components.createBatchValidator(components.evmCompatibleChain, chain.MultiversX, args.Configs.GeneralConfig.BatchValidator)
-	if err != nil {
-		return err
-	}
-
 	balanceValidator, err := components.createBalanceValidator()
 	if err != nil {
 		return err
@@ -545,7 +538,6 @@ func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXBridg
 		StatusHandler:                components.ethToMultiversXStatusHandler,
 		TimeForWaitOnEthereum:        timeForTransferExecution,
 		SignaturesHolder:             disabled.NewDisabledSignaturesHolder(),
-		BatchValidator:               batchValidator,
 		BalanceValidator:             balanceValidator,
 		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
@@ -601,11 +593,6 @@ func (components *ethMultiversXBridgeComponents) createMultiversXToEthereumBridg
 
 	timeForWaitOnEthereum := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	batchValidator, err := components.createBatchValidator(chain.MultiversX, components.evmCompatibleChain, args.Configs.GeneralConfig.BatchValidator)
-	if err != nil {
-		return err
-	}
-
 	balanceValidator, err := components.createBalanceValidator()
 	if err != nil {
 		return err
@@ -619,7 +606,6 @@ func (components *ethMultiversXBridgeComponents) createMultiversXToEthereumBridg
 		StatusHandler:                components.multiversXToEthStatusHandler,
 		TimeForWaitOnEthereum:        timeForWaitOnEthereum,
 		SignaturesHolder:             components.ethToMultiversXSignaturesHolder,
-		BatchValidator:               batchValidator,
 		BalanceValidator:             balanceValidator,
 		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
@@ -677,21 +663,6 @@ func (components *ethMultiversXBridgeComponents) Start() error {
 	go components.startBroadcastJoinRetriesLoop(ctx)
 
 	return nil
-}
-
-func (components *ethMultiversXBridgeComponents) createBatchValidator(sourceChain chain.Chain, destinationChain chain.Chain, args config.BatchValidatorConfig) (clients.BatchValidator, error) {
-	argsBatchValidator := batchValidatorManagement.ArgsBatchValidator{
-		SourceChain:      sourceChain,
-		DestinationChain: destinationChain,
-		RequestURL:       args.URL,
-		RequestTime:      time.Second * time.Duration(args.RequestTimeInSeconds),
-	}
-
-	batchValidator, err := batchManagementFactory.CreateBatchValidator(argsBatchValidator, args.Enabled)
-	if err != nil {
-		return nil, err
-	}
-	return batchValidator, err
 }
 
 func (components *ethMultiversXBridgeComponents) createBalanceValidator() (ethmultiversx.BalanceValidator, error) {

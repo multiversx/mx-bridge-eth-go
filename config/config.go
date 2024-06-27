@@ -22,7 +22,6 @@ type Config struct {
 	Relayer           ConfigRelayer
 	Logs              LogsConfig
 	WebAntiflood      WebAntifloodConfig
-	BatchValidator    BatchValidatorConfig
 	PeersRatingConfig PeersRatingConfig
 }
 
@@ -103,13 +102,6 @@ type WebServerAntifloodConfig struct {
 type WebAntifloodConfig struct {
 	Enabled   bool
 	WebServer WebServerAntifloodConfig
-}
-
-// BatchValidatorConfig represents the configuration for the batch validator
-type BatchValidatorConfig struct {
-	Enabled              bool
-	URL                  string
-	RequestTimeInSeconds int
 }
 
 // ApiRoutesConfig holds the configuration related to Rest API routes

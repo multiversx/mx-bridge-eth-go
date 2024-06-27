@@ -19,7 +19,6 @@ const (
 	getAndStoreBatchFromEthereum                      = "GetAndStoreBatchFromEthereum"
 	getLastExecutedEthBatchIDFromMultiversX           = "GetLastExecutedEthBatchIDFromMultiversX"
 	verifyLastDepositNonceExecutedOnEthereumBatch     = "VerifyLastDepositNonceExecutedOnEthereumBatch"
-	validateBatch                                     = "ValidateBatch"
 	wasTransferProposedOnMultiversX                   = "WasTransferProposedOnMultiversX"
 	wasActionSignedOnMultiversX                       = "WasActionSignedOnMultiversX"
 	signActionOnMultiversX                            = "SignActionOnMultiversX"
@@ -149,12 +148,6 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 	stub.ProcessMaxQuorumRetriesOnMultiversXCalled = func() bool {
 		return args.maxRetriesReachedHandler()
 	}
-	stub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
-		if args.failingStep == validateBatch {
-			return false, errHandler.storeAndReturnError(expectedErr)
-		}
-		return args.validateBatchHandler(), errHandler.storeAndReturnError(nil)
-	}
 
 	return stub, errHandler
 }
@@ -264,7 +257,6 @@ func TestOneStepErrors_ShouldReturnToPendingBatch(t *testing.T) {
 		getAndStoreBatchFromEthereum,
 		getLastExecutedEthBatchIDFromMultiversX,
 		verifyLastDepositNonceExecutedOnEthereumBatch,
-		validateBatch,
 		wasTransferProposedOnMultiversX,
 		proposeTransferOnMultiversX,
 		wasTransferProposedOnMultiversX,

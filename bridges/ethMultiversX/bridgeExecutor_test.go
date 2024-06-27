@@ -36,7 +36,6 @@ func createMockExecutorArgs() ArgsBridgeExecutor {
 		StatusHandler:                testsCommon.NewStatusHandlerMock("test"),
 		TimeForWaitOnEthereum:        time.Second,
 		SignaturesHolder:             &testsCommon.SignaturesHolderStub{},
-		BatchValidator:               &testsCommon.BatchValidatorStub{},
 		BalanceValidator:             &testsCommon.BalanceValidatorStub{},
 		MaxQuorumRetriesOnEthereum:   minRetries,
 		MaxQuorumRetriesOnMultiversX: minRetries,
@@ -116,16 +115,6 @@ func TestNewBridgeExecutor(t *testing.T) {
 
 		assert.True(t, check.IfNil(executor))
 		assert.Equal(t, ErrNilSignaturesHolder, err)
-	})
-	t.Run("nil batch validator", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockExecutorArgs()
-		args.BatchValidator = nil
-		executor, err := NewBridgeExecutor(args)
-
-		assert.True(t, check.IfNil(executor))
-		assert.Equal(t, ErrNilBatchValidator, err)
 	})
 	t.Run("nil balance validator", func(t *testing.T) {
 		t.Parallel()
@@ -1719,30 +1708,6 @@ func TestBridgeExecutor_CheckEthereumClientAvailability(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.True(t, checkAvailabilityCalled)
-}
-
-func TestBridgeExecutor_ValidateBatch(t *testing.T) {
-	t.Parallel()
-
-	validateBatchCalled := false
-	args := createMockExecutorArgs()
-	validationBatch := &clients.TransferBatch{
-		ID: 45,
-	}
-	args.BatchValidator = &testsCommon.BatchValidatorStub{
-		ValidateBatchCalled: func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
-			assert.True(t, validationBatch == batch) // pointer testing
-			validateBatchCalled = true
-
-			return true, nil
-		},
-	}
-	executor, _ := NewBridgeExecutor(args)
-	result, err := executor.ValidateBatch(context.Background(), validationBatch)
-
-	assert.Nil(t, err)
-	assert.True(t, result)
-	assert.True(t, validateBatchCalled)
 }
 
 func TestBridgeExecutor_CheckAvailableTokens(t *testing.T) {

@@ -2,7 +2,6 @@ package ethtomultiversx
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps"
 	"github.com/multiversx/mx-bridge-eth-go/core"
@@ -40,18 +39,6 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 	batch := step.bridge.GetStoredBatch()
 	if batch == nil {
 		step.bridge.PrintInfo(logger.LogDebug, "no new batch found on eth", "last executed on MultiversX", lastEthBatchExecuted)
-		return step.Identifier()
-	}
-
-	isValid, err := step.bridge.ValidateBatch(ctx, batch)
-	if err != nil {
-		body, _ := json.Marshal(batch)
-		step.bridge.PrintInfo(logger.LogError, "error validating Ethereum batch", "error", err, "batch", string(body))
-		return step.Identifier()
-	}
-
-	if !isValid {
-		step.bridge.PrintInfo(logger.LogError, "batch not valid "+batch.String())
 		return step.Identifier()
 	}
 
