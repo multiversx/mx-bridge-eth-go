@@ -288,9 +288,9 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		args := createMockExecutorArgs()
 		providedNonce := uint64(8346)
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
 				assert.Equal(t, providedNonce, nonce)
-				return nil, expectedErr
+				return nil, false, expectedErr
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
@@ -307,15 +307,15 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 			ID: 0,
 		}
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
 				assert.Equal(t, providedNonce, nonce)
-				return expectedBatch, nil
+				return expectedBatch, true, nil
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
 
-		assert.True(t, errors.Is(err, ErrBatchNotFound))
+		assert.True(t, errors.Is(err, ErrFinalBatchNotFound))
 		assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("%d", providedNonce)))
 		assert.Nil(t, executor.GetStoredBatch())
 		assert.Nil(t, executor.batch)
@@ -329,15 +329,43 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 			ID: providedNonce,
 		}
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
 				assert.Equal(t, providedNonce, nonce)
-				return expectedBatch, nil
+				return expectedBatch, true, nil
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
 
-		assert.True(t, errors.Is(err, ErrBatchNotFound))
+		assert.True(t, errors.Is(err, ErrFinalBatchNotFound))
+		assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("%d", providedNonce)))
+		assert.Nil(t, executor.GetStoredBatch())
+		assert.Nil(t, executor.batch)
+	})
+	t.Run("not a final batch should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		providedNonce := uint64(8346)
+		expectedBatch := &clients.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*clients.DepositTransfer{
+				{},
+			},
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return expectedBatch, false, nil
+			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
+				return make([]*contract.SCExecProxyERC20SCDeposit, 0), nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+		assert.True(t, errors.Is(err, ErrFinalBatchNotFound))
 		assert.True(t, strings.Contains(err.Error(), fmt.Sprintf("%d", providedNonce)))
 		assert.Nil(t, executor.GetStoredBatch())
 		assert.Nil(t, executor.batch)
@@ -354,9 +382,9 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 			},
 		}
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
 				assert.Equal(t, providedNonce, nonce)
-				return expectedBatch, nil
+				return expectedBatch, true, nil
 			},
 			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
 				return make([]*contract.SCExecProxyERC20SCDeposit, 0), nil
@@ -383,9 +411,9 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 			},
 		}
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
 				assert.Equal(t, providedNonce, nonce)
-				return expectedBatch, nil
+				return expectedBatch, true, nil
 			},
 			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
 				return []*contract.SCExecProxyERC20SCDeposit{{
@@ -415,9 +443,9 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 			},
 		}
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
-			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
 				assert.Equal(t, providedNonce, nonce)
-				return expectedBatch, nil
+				return expectedBatch, true, nil
 			},
 			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
 				return []*contract.SCExecProxyERC20SCDeposit{{

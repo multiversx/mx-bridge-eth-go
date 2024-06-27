@@ -147,19 +147,19 @@ func checkArgs(args ArgsEthereumClient) error {
 }
 
 // GetBatch returns the batch (if existing) from the Ethereum contract by providing the nonce
-func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
 	c.log.Info("Getting batch", "nonce", nonce)
 	nonceAsBigInt := big.NewInt(0).SetUint64(nonce)
-	batch, err := c.clientWrapper.GetBatch(ctx, nonceAsBigInt)
+	batch, isFinalBatch, err := c.clientWrapper.GetBatch(ctx, nonceAsBigInt)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	deposits, err := c.clientWrapper.GetBatchDeposits(ctx, nonceAsBigInt)
+	deposits, areFinalDeposits, err := c.clientWrapper.GetBatchDeposits(ctx, nonceAsBigInt)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if int(batch.DepositsCount) != len(deposits) {
-		return nil, fmt.Errorf("%w, batch.DepositsCount: %d, fetched deposits len: %d",
+		return nil, false, fmt.Errorf("%w, batch.DepositsCount: %d, fetched deposits len: %d",
 			errDepositsAndBatchDepositsCountDiffer, batch.DepositsCount, len(deposits))
 	}
 
@@ -188,7 +188,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 		if !exists {
 			depositTransfer.DestinationTokenBytes, err = c.tokensMapper.ConvertToken(ctx, depositTransfer.SourceTokenBytes)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			cachedTokens[depositTransfer.DisplayableToken] = depositTransfer.DestinationTokenBytes
 		} else {
@@ -200,7 +200,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 
 	transferBatch.Statuses = make([]byte, len(transferBatch.Deposits))
 
-	return transferBatch, nil
+	return transferBatch, isFinalBatch && areFinalDeposits, nil
 }
 
 // GetBatchSCMetadata returns the emitted logs in a batch that hold metadata for SC execution on MVX

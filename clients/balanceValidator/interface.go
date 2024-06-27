@@ -24,7 +24,7 @@ type MultiversXClient interface {
 
 // EthereumClient defines the behavior of the Ethereum client able to communicate with the Ethereum chain
 type EthereumClient interface {
-	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
+	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error)
 	TotalBalances(ctx context.Context, token common.Address) (*big.Int, error)
 	MintBalances(ctx context.Context, token common.Address) (*big.Int, error)
 	BurnBalances(ctx context.Context, token common.Address) (*big.Int, error)

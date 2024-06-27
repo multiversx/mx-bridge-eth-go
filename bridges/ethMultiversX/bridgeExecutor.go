@@ -449,15 +449,15 @@ func (executor *bridgeExecutor) ResetRetriesCountOnMultiversX() {
 
 // GetAndStoreBatchFromEthereum fetches and stores the batch from the ethereum client
 func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error {
-	batch, err := executor.ethereumClient.GetBatch(ctx, nonce)
+	batch, isFinal, err := executor.ethereumClient.GetBatch(ctx, nonce)
 	if err != nil {
 		return err
 	}
 
-	isBatchInvalid := batch.ID != nonce || len(batch.Deposits) == 0
+	isBatchInvalid := batch.ID != nonce || len(batch.Deposits) == 0 || !isFinal
 	if isBatchInvalid {
-		return fmt.Errorf("%w, requested nonce: %d, fetched nonce: %d, num deposits: %d",
-			ErrBatchNotFound, nonce, batch.ID, len(batch.Deposits))
+		return fmt.Errorf("%w, requested nonce: %d, fetched nonce: %d, num deposits: %d, isFinal: %v",
+			ErrFinalBatchNotFound, nonce, batch.ID, len(batch.Deposits), isFinal)
 	}
 
 	batch, err = executor.addBatchSCMetadata(ctx, batch)

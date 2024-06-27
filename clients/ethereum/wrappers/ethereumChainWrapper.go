@@ -62,13 +62,13 @@ func checkArgs(args ArgsEthereumChainWrapper) error {
 }
 
 // GetBatch returns the batch of transactions by providing the batch nonce
-func (wrapper *ethereumChainWrapper) GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+func (wrapper *ethereumChainWrapper) GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.multiSigContract.GetBatch(&bind.CallOpts{Context: ctx}, batchNonce)
 }
 
 // GetBatchDeposits returns the transactions of a batch by providing the batch nonce
-func (wrapper *ethereumChainWrapper) GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+func (wrapper *ethereumChainWrapper) GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.multiSigContract.GetBatchDeposits(&bind.CallOpts{Context: ctx}, batchNonce)
 }

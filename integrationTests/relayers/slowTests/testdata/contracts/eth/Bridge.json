@@ -254,6 +254,11 @@
         "internalType": "struct Batch",
         "name": "",
         "type": "tuple"
+      },
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -305,6 +310,11 @@
         "internalType": "struct Deposit[]",
         "name": "",
         "type": "tuple[]"
+      },
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",

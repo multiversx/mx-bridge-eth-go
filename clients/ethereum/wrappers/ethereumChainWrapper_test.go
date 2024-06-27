@@ -93,17 +93,18 @@ func TestEthClientWrapper_GetBatch(t *testing.T) {
 	handlerCalled := false
 	providedBatchID := big.NewInt(223)
 	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
-		GetBatchCalled: func(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, error) {
+		GetBatchCalled: func(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, bool, error) {
 			handlerCalled = true
 			assert.Equal(t, providedBatchID, batchNonce)
-			return contract.Batch{}, nil
+			return contract.Batch{}, false, nil
 		},
 	}
 	wrapper, _ := NewEthereumChainWrapper(args)
-	batch, err := wrapper.GetBatch(context.Background(), providedBatchID)
+	batch, isFinal, err := wrapper.GetBatch(context.Background(), providedBatchID)
 	assert.Nil(t, err)
 	assert.Equal(t, contract.Batch{}, batch)
 	assert.True(t, handlerCalled)
+	assert.False(t, isFinal)
 	assert.Equal(t, 1, statusHandler.GetIntMetric(core.MetricNumEthClientRequests))
 }
 

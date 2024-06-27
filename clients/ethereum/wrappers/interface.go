@@ -16,8 +16,8 @@ type genericErc20Contract interface {
 }
 
 type multiSigContract interface {
-	GetBatch(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, error)
-	GetBatchDeposits(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, error)
+	GetBatch(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, bool, error)
+	GetBatchDeposits(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, bool, error)
 	GetRelayers(opts *bind.CallOpts) ([]common.Address, error)
 	WasBatchExecuted(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, depositNonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)

@@ -48,7 +48,6 @@ func TestRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T) {
 }
 
 func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNativeTokens bool) {
-	zero := big.NewInt(0)
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	token1Erc20 := testsCommon.CreateRandomEthereumAddress()
 	ticker1 := "tck-000001"
@@ -99,6 +98,7 @@ func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNat
 	})
 	ethereumChainMock.AddBatch(batch)
 	ethereumChainMock.SetQuorum(numRelayers)
+	ethereumChainMock.SetFinalNonce(batchNonceOnEthereum + 1)
 
 	multiversXChainMock := mock.NewMultiversXChainMock()
 
@@ -281,6 +281,7 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	})
 	ethereumChainMock.AddBatch(batch)
 	ethereumChainMock.SetQuorum(numRelayers)
+	ethereumChainMock.SetFinalNonce(batchNonceOnEthereum + 1)
 
 	ethereumChainMock.UpdateNativeTokens(token1Erc20, true)
 	ethereumChainMock.UpdateMintBurnTokens(token1Erc20, false)

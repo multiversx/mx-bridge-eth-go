@@ -15,8 +15,8 @@ import (
 // ClientWrapper represents the Ethereum client wrapper that the ethereum client can rely on
 type ClientWrapper interface {
 	core.StatusHandler
-	GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, error)
-	GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error)
+	GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error)
+	GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error)
 	GetRelayers(ctx context.Context) ([]common.Address, error)
 	WasBatchExecuted(ctx context.Context, batchNonce *big.Int) (bool, error)
 	ChainID(ctx context.Context) (*big.Int, error)

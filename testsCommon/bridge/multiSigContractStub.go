@@ -11,8 +11,8 @@ import (
 
 // MultiSigContractStub -
 type MultiSigContractStub struct {
-	GetBatchCalled         func(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, error)
-	GetBatchDepositsCalled func(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, error)
+	GetBatchCalled         func(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, bool, error)
+	GetBatchDepositsCalled func(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, bool, error)
 	GetRelayersCalled      func(opts *bind.CallOpts) ([]common.Address, error)
 	WasBatchExecutedCalled func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	ExecuteTransferCalled  func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
@@ -23,21 +23,21 @@ type MultiSigContractStub struct {
 }
 
 // GetBatch -
-func (stub *MultiSigContractStub) GetBatch(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, error) {
+func (stub *MultiSigContractStub) GetBatch(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, bool, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchCalled(opts, batchNonce)
 	}
 
-	return contract.Batch{}, nil
+	return contract.Batch{}, false, nil
 }
 
 // GetBatchDeposits -
-func (stub *MultiSigContractStub) GetBatchDeposits(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, error) {
+func (stub *MultiSigContractStub) GetBatchDeposits(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchDepositsCalled(opts, batchNonce)
 	}
 
-	return make([]contract.Deposit, 0), nil
+	return make([]contract.Deposit, 0), false, nil
 }
 
 // GetRelayers -
