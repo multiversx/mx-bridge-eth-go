@@ -58,7 +58,6 @@ type Executor interface {
 	ResetRetriesCountOnEthereum()
 	ClearStoredP2PSignaturesForEthereum()
 
-	ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 	CheckMultiversXClientAvailability(ctx context.Context) error
 	CheckEthereumClientAvailability(ctx context.Context) error
 	CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error

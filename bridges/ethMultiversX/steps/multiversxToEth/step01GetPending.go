@@ -2,7 +2,6 @@ package multiversxtoeth
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps"
 	"github.com/multiversx/mx-bridge-eth-go/core"
@@ -40,18 +39,6 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 	err = step.bridge.StoreBatchFromMultiversX(batch)
 	if err != nil {
 		step.bridge.PrintInfo(logger.LogError, "error storing MultiversX batch", "error", err)
-		return step.Identifier()
-	}
-
-	isValid, err := step.bridge.ValidateBatch(ctx, batch)
-	if err != nil {
-		body, _ := json.Marshal(batch)
-		step.bridge.PrintInfo(logger.LogError, "error validating MultiversX batch", "error", err, "batch", string(body))
-		return step.Identifier()
-	}
-
-	if !isValid {
-		step.bridge.PrintInfo(logger.LogError, "batch not valid "+batch.String())
 		return step.Identifier()
 	}
 

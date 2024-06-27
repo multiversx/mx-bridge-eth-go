@@ -40,7 +40,6 @@ type ArgsBridgeExecutor struct {
 	TimeForWaitOnEthereum        time.Duration
 	StatusHandler                core.StatusHandler
 	SignaturesHolder             SignaturesHolder
-	BatchValidator               clients.BatchValidator
 	BalanceValidator             BalanceValidator
 	MaxQuorumRetriesOnEthereum   uint64
 	MaxQuorumRetriesOnMultiversX uint64
@@ -55,7 +54,6 @@ type bridgeExecutor struct {
 	timeForWaitOnEthereum        time.Duration
 	statusHandler                core.StatusHandler
 	sigsHolder                   SignaturesHolder
-	batchValidator               clients.BatchValidator
 	balanceValidator             BalanceValidator
 	maxQuorumRetriesOnEthereum   uint64
 	maxQuorumRetriesOnMultiversX uint64
@@ -102,9 +100,6 @@ func checkArgs(args ArgsBridgeExecutor) error {
 	if check.IfNil(args.SignaturesHolder) {
 		return ErrNilSignaturesHolder
 	}
-	if check.IfNil(args.BatchValidator) {
-		return ErrNilBatchValidator
-	}
 	if check.IfNil(args.BalanceValidator) {
 		return ErrNilBalanceValidator
 	}
@@ -132,7 +127,6 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 		statusHandler:                args.StatusHandler,
 		timeForWaitOnEthereum:        args.TimeForWaitOnEthereum,
 		sigsHolder:                   args.SignaturesHolder,
-		batchValidator:               args.BatchValidator,
 		balanceValidator:             args.BalanceValidator,
 		maxQuorumRetriesOnEthereum:   args.MaxQuorumRetriesOnEthereum,
 		maxQuorumRetriesOnMultiversX: args.MaxQuorumRetriesOnMultiversX,
@@ -636,11 +630,6 @@ func (executor *bridgeExecutor) ResetRetriesCountOnEthereum() {
 func (executor *bridgeExecutor) ClearStoredP2PSignaturesForEthereum() {
 	executor.sigsHolder.ClearStoredSignatures()
 	executor.log.Info("cleared stored P2P signatures")
-}
-
-// ValidateBatch returns true if the given batch is validated on microservice side
-func (executor *bridgeExecutor) ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
-	return executor.batchValidator.ValidateBatch(ctx, batch)
 }
 
 // CheckMultiversXClientAvailability trigger a self availability check for the MultiversX client
