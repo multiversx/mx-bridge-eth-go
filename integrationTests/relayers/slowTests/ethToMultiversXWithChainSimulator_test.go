@@ -142,19 +142,19 @@ type keysHolder struct {
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
 	t.Run("ETH->MVX and back, ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true", func(t *testing.T) {
 		args := argSimulatedSetup{
-			mvxHexIsMintBurn: true,
-			mvxHexIsNative:   false,
-			ethIsMintBurn:    false,
-			ethIsNative:      true,
+			mvxIsMintBurn: true,
+			mvxIsNative:   false,
+			ethIsMintBurn: false,
+			ethIsNative:   true,
 		}
 		testRelayersShouldExecuteTransfersEthToMVX(t, args)
 	})
 	t.Run("MVX->ETH, ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = false", func(t *testing.T) {
 		args := argSimulatedSetup{
-			mvxHexIsMintBurn: false,
-			mvxHexIsNative:   true,
-			ethIsMintBurn:    true,
-			ethIsNative:      false,
+			mvxIsMintBurn: false,
+			mvxIsNative:   true,
+			ethIsMintBurn: true,
+			ethIsNative:   false,
 		}
 		testRelayersShouldExecuteTransfersMVXToETH(t, args)
 	})
@@ -294,57 +294,57 @@ func testRelayersShouldExecuteTransfersMVXToETH(t *testing.T, argsSimulatedSetup
 func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 	t.Run("ETH->MVX, ethNative = true, ethMintBurn = false, mvxNative = true, mvxMintBurn = false", func(t *testing.T) {
 		args := argSimulatedSetup{
-			mvxHexIsMintBurn: false,
-			mvxHexIsNative:   true,
-			ethIsMintBurn:    false,
-			ethIsNative:      true,
+			mvxIsMintBurn: false,
+			mvxIsNative:   true,
+			ethIsMintBurn: false,
+			ethIsNative:   true,
 		}
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, args, expectedStringInLogs, batchProcessor.ToMultiversX)
 	})
 	t.Run("ETH->MVX, ethNative = true, ethMintBurn = false, mvxNative = true, mvxMintBurn = true", func(t *testing.T) {
 		args := argSimulatedSetup{
-			mvxHexIsMintBurn: true,
-			mvxHexIsNative:   true,
-			ethIsMintBurn:    false,
-			ethIsNative:      true,
+			mvxIsMintBurn: true,
+			mvxIsNative:   true,
+			ethIsMintBurn: false,
+			ethIsNative:   true,
 		}
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, args, expectedStringInLogs, batchProcessor.ToMultiversX)
 	})
 	t.Run("ETH->MVX, ethNative = true, ethMintBurn = true, mvxNative = true, mvxMintBurn = false", func(t *testing.T) {
 		args := argSimulatedSetup{
-			mvxHexIsMintBurn: false,
-			mvxHexIsNative:   true,
-			ethIsMintBurn:    true,
-			ethIsNative:      true,
+			mvxIsMintBurn: false,
+			mvxIsNative:   true,
+			ethIsMintBurn: true,
+			ethIsNative:   true,
 		}
 		testEthContractsShouldError(t, args)
 	})
 	t.Run("ETH->MVX, ethNative = true, ethMintBurn = true, mvxNative = true, mvxMintBurn = true", func(t *testing.T) {
 		args := argSimulatedSetup{
-			mvxHexIsMintBurn: true,
-			mvxHexIsNative:   true,
-			ethIsMintBurn:    true,
-			ethIsNative:      true,
+			mvxIsMintBurn: true,
+			mvxIsNative:   true,
+			ethIsMintBurn: true,
+			ethIsNative:   true,
 		}
 		testEthContractsShouldError(t, args)
 	})
 	t.Run("ETH->MVX, ethNative = false, ethMintBurn = true, mvxNative = false, mvxMintBurn = true", func(t *testing.T) {
 		args := argSimulatedSetup{
-			mvxHexIsMintBurn: true,
-			mvxHexIsNative:   false,
-			ethIsMintBurn:    true,
-			ethIsNative:      false,
+			mvxIsMintBurn: true,
+			mvxIsNative:   false,
+			ethIsMintBurn: true,
+			ethIsNative:   false,
 		}
 		testEthContractsShouldError(t, args)
 	})
 	t.Run("MVX->ETH, ethNative = true, ethMintBurn = false, mvxNative = true, mvxMintBurn = false", func(t *testing.T) {
 		args := argSimulatedSetup{
-			mvxHexIsMintBurn: false,
-			mvxHexIsNative:   true,
-			ethIsMintBurn:    false,
-			ethIsNative:      true,
+			mvxIsMintBurn: false,
+			mvxIsNative:   true,
+			ethIsMintBurn: false,
+			ethIsNative:   true,
 		}
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, args, expectedStringInLogs, batchProcessor.FromMultiversX)
@@ -488,11 +488,11 @@ type simulatedSetup struct {
 }
 
 type argSimulatedSetup struct {
-	t                *testing.T
-	mvxHexIsMintBurn bool
-	mvxHexIsNative   bool
-	ethIsMintBurn    bool
-	ethIsNative      bool
+	t             *testing.T
+	mvxIsMintBurn bool
+	mvxIsNative   bool
+	ethIsMintBurn bool
+	ethIsNative   bool
 }
 
 func prepareSimulatedSetup(args argSimulatedSetup) *simulatedSetup {
@@ -542,7 +542,7 @@ func prepareSimulatedSetup(args argSimulatedSetup) *simulatedSetup {
 	testSetup.executeContractsTxs()
 
 	// issue and whitelist token
-	testSetup.issueAndWhitelistToken(args.mvxHexIsMintBurn, args.mvxHexIsNative)
+	testSetup.issueAndWhitelistToken(args.mvxIsMintBurn, args.mvxIsNative)
 
 	// start relayers
 	testSetup.startRelayers(ethChainWrapper, erc20ContractsHolder)
