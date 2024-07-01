@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -45,6 +46,7 @@ type EthereumChainMock struct {
 	ProposeMultiTransferEsdtBatchCalled func()
 	BalanceAtCalled                     func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 	FilterLogsCalled                    func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
+	finalNonce                          uint64
 }
 
 // NewEthereumChainMock -
@@ -82,7 +84,7 @@ func (mock *EthereumChainMock) Name() string {
 }
 
 // GetBatch -
-func (mock *EthereumChainMock) GetBatch(_ context.Context, batchNonce *big.Int) (contract.Batch, error) {
+func (mock *EthereumChainMock) GetBatch(_ context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()
 
@@ -90,23 +92,29 @@ func (mock *EthereumChainMock) GetBatch(_ context.Context, batchNonce *big.Int) 
 	if !found {
 		return contract.Batch{
 			Nonce: big.NewInt(0),
-		}, nil
+		}, false, nil
 	}
 
-	return *batch, nil
+	finalNonce := atomic.LoadUint64(&mock.finalNonce)
+	isFinal := finalNonce >= batchNonce.Uint64()
+
+	return *batch, isFinal, nil
 }
 
 // GetBatchDeposits -
-func (mock *EthereumChainMock) GetBatchDeposits(_ context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+func (mock *EthereumChainMock) GetBatchDeposits(_ context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
 	mock.mutState.RLock()
 	defer mock.mutState.RUnlock()
 
 	deposits, found := mock.deposits[batchNonce.Uint64()]
 	if !found {
-		return make([]contract.Deposit, 0), nil
+		return make([]contract.Deposit, 0), false, nil
 	}
 
-	return deposits, nil
+	finalNonce := atomic.LoadUint64(&mock.finalNonce)
+	isFinal := finalNonce >= batchNonce.Uint64()
+
+	return deposits, isFinal, nil
 }
 
 // GetRelayers -
@@ -370,6 +378,11 @@ func (mock *EthereumChainMock) UpdateWhitelistedTokens(account common.Address, v
 	mock.mutState.Lock()
 	mock.whitelistedTokens[account] = value
 	mock.mutState.Unlock()
+}
+
+// SetFinalNonce -
+func (mock *EthereumChainMock) SetFinalNonce(nonce uint64) {
+	atomic.StoreUint64(&mock.finalNonce, nonce)
 }
 
 // IsInterfaceNil -

@@ -44,7 +44,7 @@ type MultiversXClient interface {
 
 // EthereumClient defines the behavior of the Ethereum client able to communicate with the Ethereum chain
 type EthereumClient interface {
-	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
+	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error)
 	WasExecuted(ctx context.Context, batchID uint64) (bool, error)
 	GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error)
 

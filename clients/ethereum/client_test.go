@@ -214,67 +214,71 @@ func TestClient_GetBatch(t *testing.T) {
 
 	t.Run("error while getting batch", func(t *testing.T) {
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
-				return contract.Batch{}, expectedErr
+			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
+				return contract.Batch{}, false, expectedErr
 			},
 		}
-		batch, err := c.GetBatch(context.Background(), 1)
+		batch, isFinal, err := c.GetBatch(context.Background(), 1)
 		assert.Nil(t, batch)
 		assert.Equal(t, expectedErr, err)
+		assert.False(t, isFinal)
 	})
 	t.Run("error while getting deposits", func(t *testing.T) {
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
 				return contract.Batch{
 					Nonce:         batchNonce,
 					DepositsCount: 2,
-				}, nil
+				}, true, nil
 			},
-			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
-				return nil, expectedErr
+			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
+				return nil, false, expectedErr
 			},
 		}
-		batch, err := c.GetBatch(context.Background(), 1)
+		batch, isFinal, err := c.GetBatch(context.Background(), 1)
 		assert.Nil(t, batch)
 		assert.Equal(t, expectedErr, err)
+		assert.False(t, isFinal)
 	})
 	t.Run("deposits mismatch - with 0", func(t *testing.T) {
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
 				return contract.Batch{
 					Nonce:         batchNonce,
 					DepositsCount: 2,
-				}, nil
+				}, true, nil
 			},
-			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
-				return make([]contract.Deposit, 0), nil
+			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
+				return make([]contract.Deposit, 0), true, nil
 			},
 		}
-		batch, err := c.GetBatch(context.Background(), 1)
+		batch, isFinal, err := c.GetBatch(context.Background(), 1)
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, errDepositsAndBatchDepositsCountDiffer))
 		assert.True(t, strings.Contains(err.Error(), "batch.DepositsCount: 2, fetched deposits len: 0"))
+		assert.False(t, isFinal)
 	})
 	t.Run("deposits mismatch - with non zero value", func(t *testing.T) {
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
 				return contract.Batch{
 					Nonce:         batchNonce,
 					DepositsCount: 2,
-				}, nil
+				}, true, nil
 			},
-			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
 				return []contract.Deposit{
 					{
 						Nonce: big.NewInt(22),
 					},
-				}, nil
+				}, true, nil
 			},
 		}
-		batch, err := c.GetBatch(context.Background(), 1)
+		batch, isFinal, err := c.GetBatch(context.Background(), 1)
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, errDepositsAndBatchDepositsCountDiffer))
 		assert.True(t, strings.Contains(err.Error(), "batch.DepositsCount: 2, fetched deposits len: 1"))
+		assert.False(t, isFinal)
 	})
 	t.Run("returns batch should work", func(t *testing.T) {
 		from1 := testsCommon.CreateRandomEthereumAddress()
@@ -286,15 +290,15 @@ func TestClient_GetBatch(t *testing.T) {
 		recipient2 := testsCommon.CreateRandomMultiversXAddress()
 
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
 				return contract.Batch{
 					Nonce:                  big.NewInt(112243),
 					BlockNumber:            0,
 					LastUpdatedBlockNumber: 0,
 					DepositsCount:          2,
-				}, nil
+				}, true, nil
 			},
-			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
 				return []contract.Deposit{
 					{
 						Nonce:        big.NewInt(10),
@@ -310,7 +314,7 @@ func TestClient_GetBatch(t *testing.T) {
 						Depositor:    from2,
 						Recipient:    recipient2.AddressSlice(),
 					},
-				}, nil
+				}, true, nil
 			},
 		}
 
@@ -345,11 +349,85 @@ func TestClient_GetBatch(t *testing.T) {
 			Statuses: make([]byte, 2),
 		}
 
-		batch, err := c.GetBatch(context.Background(), 1)
+		batch, isFinal, err := c.GetBatch(context.Background(), 1)
 		assert.Equal(t, expectedBatch, batch)
 		assert.Nil(t, err)
+		assert.True(t, isFinal)
 	})
+	t.Run("returns non final batch should work", func(t *testing.T) {
+		from1 := testsCommon.CreateRandomEthereumAddress()
+		token1 := testsCommon.CreateRandomEthereumAddress()
+		recipient1 := testsCommon.CreateRandomMultiversXAddress()
 
+		from2 := testsCommon.CreateRandomEthereumAddress()
+		token2 := testsCommon.CreateRandomEthereumAddress()
+		recipient2 := testsCommon.CreateRandomMultiversXAddress()
+
+		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			GetBatchCalled: func(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
+				return contract.Batch{
+					Nonce:                  big.NewInt(112243),
+					BlockNumber:            0,
+					LastUpdatedBlockNumber: 0,
+					DepositsCount:          2,
+				}, false, nil
+			},
+			GetBatchDepositsCalled: func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
+				return []contract.Deposit{
+					{
+						Nonce:        big.NewInt(10),
+						TokenAddress: token1,
+						Amount:       big.NewInt(20),
+						Depositor:    from1,
+						Recipient:    recipient1.AddressSlice(),
+					},
+					{
+						Nonce:        big.NewInt(30),
+						TokenAddress: token2,
+						Amount:       big.NewInt(40),
+						Depositor:    from2,
+						Recipient:    recipient2.AddressSlice(),
+					},
+				}, false, nil
+			},
+		}
+
+		bech32Recipient1Address, _ := recipient1.AddressAsBech32String()
+		bech32Recipient2Address, _ := recipient2.AddressAsBech32String()
+		expectedBatch := &clients.TransferBatch{
+			ID: 112243,
+			Deposits: []*clients.DepositTransfer{
+				{
+					Nonce:                 10,
+					ToBytes:               recipient1.AddressBytes(),
+					DisplayableTo:         bech32Recipient1Address,
+					FromBytes:             from1[:],
+					DisplayableFrom:       hex.EncodeToString(from1[:]),
+					SourceTokenBytes:      token1[:],
+					DisplayableToken:      hex.EncodeToString(token1[:]),
+					Amount:                big.NewInt(20),
+					DestinationTokenBytes: append([]byte("ERC20"), token1[:]...),
+				},
+				{
+					Nonce:                 30,
+					ToBytes:               recipient2.AddressBytes(),
+					DisplayableTo:         bech32Recipient2Address,
+					FromBytes:             from2[:],
+					DisplayableFrom:       hex.EncodeToString(from2[:]),
+					SourceTokenBytes:      token2[:],
+					DisplayableToken:      hex.EncodeToString(token2[:]),
+					Amount:                big.NewInt(40),
+					DestinationTokenBytes: append([]byte("ERC20"), token2[:]...),
+				},
+			},
+			Statuses: make([]byte, 2),
+		}
+
+		batch, isFinal, err := c.GetBatch(context.Background(), 1)
+		assert.Equal(t, expectedBatch, batch)
+		assert.Nil(t, err)
+		assert.False(t, isFinal)
+	})
 }
 
 func TestClient_GenerateMessageHash(t *testing.T) {

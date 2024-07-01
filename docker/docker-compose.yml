@@ -3,7 +3,6 @@ version: "3.9"
 services:
  multiversx:
   image: multiversx/chainsimulator:v1.7.12-fix1
-  restart: unless-stopped
   ports:
     - 8085:8085
   volumes:

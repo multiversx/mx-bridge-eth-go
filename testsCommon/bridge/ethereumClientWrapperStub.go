@@ -16,8 +16,8 @@ import (
 // EthereumClientWrapperStub -
 type EthereumClientWrapperStub struct {
 	core.StatusHandler
-	GetBatchCalled         func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error)
-	GetBatchDepositsCalled func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error)
+	GetBatchCalled         func(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error)
+	GetBatchDepositsCalled func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error)
 	GetRelayersCalled      func(ctx context.Context) ([]common.Address, error)
 	WasBatchExecutedCalled func(ctx context.Context, batchNonce *big.Int) (bool, error)
 	ChainIDCalled          func(ctx context.Context) (*big.Int, error)
@@ -99,21 +99,21 @@ func (stub *EthereumClientWrapperStub) Name() string {
 }
 
 // GetBatch -
-func (stub *EthereumClientWrapperStub) GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+func (stub *EthereumClientWrapperStub) GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchCalled(ctx, batchNonce)
 	}
 
-	return contract.Batch{}, nil
+	return contract.Batch{}, false, nil
 }
 
 // GetBatchDeposits -
-func (stub *EthereumClientWrapperStub) GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+func (stub *EthereumClientWrapperStub) GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchDepositsCalled(ctx, batchNonce)
 	}
 
-	return make([]contract.Deposit, 0), nil
+	return make([]contract.Deposit, 0), false, nil
 }
 
 // GetRelayers -

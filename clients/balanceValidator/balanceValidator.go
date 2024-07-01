@@ -302,7 +302,7 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingEthBatches(ctx
 	var batch *clients.TransferBatch
 	amount := big.NewInt(0)
 	for {
-		batch, err = validator.ethereumClient.GetBatch(ctx, batchID+1)
+		batch, _, err = validator.ethereumClient.GetBatch(ctx, batchID+1) // we take all batches, regardless if they are final or not
 		if err != nil {
 			return nil, err
 		}

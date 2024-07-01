@@ -12,7 +12,7 @@ import (
 
 // EthereumClientStub -
 type EthereumClientStub struct {
-	GetBatchCalled                         func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
+	GetBatchCalled                         func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error)
 	WasExecutedCalled                      func(ctx context.Context, batchID uint64) (bool, error)
 	GenerateMessageHashCalled              func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error)
 	BroadcastSignatureForMessageHashCalled func(msgHash common.Hash)
@@ -32,12 +32,12 @@ type EthereumClientStub struct {
 }
 
 // GetBatch -
-func (stub *EthereumClientStub) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+func (stub *EthereumClientStub) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchCalled(ctx, nonce)
 	}
 
-	return nil, errNotImplemented
+	return nil, false, errNotImplemented
 }
 
 // WasExecuted -

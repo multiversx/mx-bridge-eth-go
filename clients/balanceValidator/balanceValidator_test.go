@@ -1370,10 +1370,10 @@ func validatorTester(cfg testConfiguration) testResult {
 
 			return returnBigIntOrZeroIfNil(cfg.burnBalancesOnEth), nil
 		},
-		GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, error) {
+		GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
 			err := cfg.errorsOnCalls["GetBatchEth"]
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 
 			batch := &clients.TransferBatch{
@@ -1381,7 +1381,7 @@ func validatorTester(cfg testConfiguration) testResult {
 			}
 			applyDummyFromEthDepositsToBatch(cfg, batch)
 
-			return batch, nil
+			return batch, false, nil
 		},
 	}
 
