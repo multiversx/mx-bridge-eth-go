@@ -5,10 +5,14 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
 )
 
 // MultiversXClient defines the behavior of the MultiversX client able to communicate with the MultiversX chain
 type MultiversXClient interface {
+	GetPendingBatch(ctx context.Context) (*clients.TransferBatch, error)
+	GetBatch(ctx context.Context, batchID uint64) (*clients.TransferBatch, error)
+	GetLastExecutedEthBatchID(ctx context.Context) (uint64, error)
 	IsMintBurnToken(ctx context.Context, token []byte) (bool, error)
 	IsNativeToken(ctx context.Context, token []byte) (bool, error)
 	TotalBalances(ctx context.Context, token []byte) (*big.Int, error)
@@ -20,6 +24,7 @@ type MultiversXClient interface {
 
 // EthereumClient defines the behavior of the Ethereum client able to communicate with the Ethereum chain
 type EthereumClient interface {
+	GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, error)
 	TotalBalances(ctx context.Context, token common.Address) (*big.Int, error)
 	MintBalances(ctx context.Context, token common.Address) (*big.Int, error)
 	BurnBalances(ctx context.Context, token common.Address) (*big.Int, error)

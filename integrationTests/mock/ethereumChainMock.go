@@ -88,7 +88,9 @@ func (mock *EthereumChainMock) GetBatch(_ context.Context, batchNonce *big.Int) 
 
 	batch, found := mock.batches[batchNonce.Uint64()]
 	if !found {
-		return contract.Batch{}, fmt.Errorf("batch %d not found", batchNonce)
+		return contract.Batch{
+			Nonce: big.NewInt(0),
+		}, nil
 	}
 
 	return *batch, nil
@@ -101,7 +103,7 @@ func (mock *EthereumChainMock) GetBatchDeposits(_ context.Context, batchNonce *b
 
 	deposits, found := mock.deposits[batchNonce.Uint64()]
 	if !found {
-		return make([]contract.Deposit, 0), fmt.Errorf("deposits for batch %d not found", batchNonce)
+		return make([]contract.Deposit, 0), nil
 	}
 
 	return deposits, nil
@@ -381,5 +383,5 @@ func getValueFromBalanceMap(m map[common.Address]*big.Int, address common.Addres
 		return big.NewInt(0)
 	}
 
-	return value
+	return big.NewInt(0).Set(value)
 }

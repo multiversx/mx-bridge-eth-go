@@ -203,8 +203,8 @@ func checkGasMapValues(gasMap config.MultiversXGasMapConfig) error {
 	return nil
 }
 
-// GetPending returns the pending batch
-func (c *client) GetPending(ctx context.Context) (*clients.TransferBatch, error) {
+// GetPendingBatch returns the pending batch
+func (c *client) GetPendingBatch(ctx context.Context) (*clients.TransferBatch, error) {
 	c.log.Info("getting pending batch...")
 	responseData, err := c.GetCurrentBatchAsDataBytes(ctx)
 	if err != nil {
@@ -212,7 +212,22 @@ func (c *client) GetPending(ctx context.Context) (*clients.TransferBatch, error)
 	}
 
 	if emptyResponse(responseData) {
-		return nil, ErrNoPendingBatchAvailable
+		return nil, clients.ErrNoPendingBatchAvailable
+	}
+
+	return c.createPendingBatchFromResponse(ctx, responseData)
+}
+
+// GetBatch returns the batch (if existing)
+func (c *client) GetBatch(ctx context.Context, batchID uint64) (*clients.TransferBatch, error) {
+	c.log.Debug("getting batch", "ID", batchID)
+	responseData, err := c.GetBatchAsDataBytes(ctx, batchID)
+	if err != nil {
+		return nil, err
+	}
+
+	if emptyResponse(responseData) {
+		return nil, clients.ErrNoBatchAvailable
 	}
 
 	return c.createPendingBatchFromResponse(ctx, responseData)

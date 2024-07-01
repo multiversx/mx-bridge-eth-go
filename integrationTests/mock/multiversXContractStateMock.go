@@ -249,6 +249,8 @@ func (mock *multiversXContractStateMock) processVmRequests(vmRequest *data.VmVal
 		return mock.vmRequestGetErc20AddressForTokenId(vmRequest), nil
 	case "getCurrentTxBatch":
 		return mock.vmRequestGetCurrentPendingBatch(vmRequest), nil
+	case "getBatch":
+		return mock.vmRequestGetBatch(vmRequest), nil
 	case "getAllStakedRelayers":
 		return mock.vmRequestGetAllStakedRelayers(vmRequest), nil
 	case "getLastExecutedEthBatchId":
@@ -443,6 +445,10 @@ func (mock *multiversXContractStateMock) vmRequestGetCurrentPendingBatch(_ *data
 		args = append(args, deposit.Amount.Bytes())
 	}
 	return createOkVmResponse(args)
+}
+
+func (mock *multiversXContractStateMock) vmRequestGetBatch(_ *data.VmValueRequest) *data.VmValuesResponseData {
+	return createOkVmResponse(make([][]byte, 0))
 }
 
 func (mock *multiversXContractStateMock) setPendingBatch(pendingBatch *MultiversXPendingBatch) {

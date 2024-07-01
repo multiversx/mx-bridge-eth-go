@@ -12,7 +12,8 @@ import (
 
 // MultiversXClient defines the behavior of the MultiversX client able to communicate with the MultiversX chain
 type MultiversXClient interface {
-	GetPending(ctx context.Context) (*clients.TransferBatch, error)
+	GetPendingBatch(ctx context.Context) (*clients.TransferBatch, error)
+	GetBatch(ctx context.Context, batchID uint64) (*clients.TransferBatch, error)
 	GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error)
 	WasProposedTransfer(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 	QuorumReached(ctx context.Context, actionID uint64) (bool, error)

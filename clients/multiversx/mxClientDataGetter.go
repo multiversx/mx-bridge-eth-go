@@ -19,6 +19,7 @@ const (
 	okCodeAfterExecution                                      = "ok"
 	internalError                                             = "internal error"
 	getCurrentTxBatchFuncName                                 = "getCurrentTxBatch"
+	getBatchFuncName                                          = "getBatch"
 	wasTransferActionProposedFuncName                         = "wasTransferActionProposed"
 	wasActionExecutedFuncName                                 = "wasActionExecuted"
 	getActionIdForTransferBatchFuncName                       = "getActionIdForTransferBatch"
@@ -292,6 +293,15 @@ func (dataGetter *mxClientDataGetter) createSafeDefaultVmQueryBuilder() builders
 func (dataGetter *mxClientDataGetter) GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error) {
 	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(getCurrentTxBatchFuncName)
+
+	return dataGetter.executeQueryFromBuilder(ctx, builder)
+}
+
+// GetBatchAsDataBytes will assemble a builder and query the proxy for the batch info
+func (dataGetter *mxClientDataGetter) GetBatchAsDataBytes(ctx context.Context, batchID uint64) ([][]byte, error) {
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
+	builder.Function(getBatchFuncName)
+	builder.ArgInt64(int64(batchID))
 
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }

@@ -779,6 +779,30 @@
         },
         {
             "docs": [
+                "Returns the EsdtSafe batch that has the provided batch_id.",
+                "",
+                "First result is the batch ID, then pairs of 6 results, representing transactions",
+                "split by fields:",
+                "",
+                "Block Nonce, Tx Nonce, Sender Address, Receiver Address, Token ID, Amount"
+            ],
+            "name": "getBatch",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "optional<multi<u64,variadic<multi<u64,u64,bytes,bytes,TokenIdentifier,BigUint>>>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "docs": [
                 "Returns a batch of failed Ethereum -> Elrond transactions.",
                 "The result format is the same as getCurrentTxBatch"
             ],

@@ -1,11 +1,14 @@
 package balanceValidator
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -108,30 +111,10 @@ func (validator *balanceValidator) CheckToken(ctx context.Context, ethToken comm
 		"amount", amount.String(),
 	)
 
-	switch direction {
-	case batchProcessor.FromMultiversX:
-		if isNativeOnMultiversX {
-			mvxAmount = big.NewInt(0).Sub(mvxAmount, amount)
-		} else {
-			mvxAmount = big.NewInt(0).Add(mvxAmount, amount)
-		}
-	case batchProcessor.ToMultiversX:
-		if isNativeOnEthereum {
-			ethAmount = big.NewInt(0).Sub(ethAmount, amount)
-		} else {
-			ethAmount = big.NewInt(0).Add(ethAmount, amount)
-		}
-	default:
-		return fmt.Errorf("%w, direction: %s", ErrInvalidDirection, direction)
+	if ethAmount.Cmp(mvxAmount) != 0 {
+		return fmt.Errorf("%w, balance for ERC20 token %s is %s and the balance for ESDT token %s is %s, direction %s",
+			ErrBalanceMismatch, ethToken.String(), ethAmount.String(), mvxToken, mvxAmount.String(), direction)
 	}
-
-	// TODO(jls): fix this
-	_ = mvxAmount
-	_ = ethAmount
-	//if ethAmount.Cmp(mvxAmount) != 0 {
-	//	return fmt.Errorf("%w, balance for ERC20 token %s is %s and the balance for ESDT token %s is %s",
-	//		ErrBalanceMismatch, token.String(), ethAmount.String(), convertedToken, mvxAmount.String())
-	//}
 	return nil
 }
 
@@ -179,9 +162,26 @@ func (validator *balanceValidator) isNativeOnMultiversX(ctx context.Context, tok
 	return isNative, nil
 }
 
-func (validator *balanceValidator) computeEthAmount(ctx context.Context, token common.Address, isMintBurn bool, isNative bool) (*big.Int, error) {
+func (validator *balanceValidator) computeEthAmount(
+	ctx context.Context,
+	token common.Address,
+	isMintBurn bool,
+	isNative bool,
+) (*big.Int, error) {
+	ethAmountInPendingBatches, err := validator.getTotalTransferAmountInPendingEthBatches(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
 	if !isMintBurn {
-		return validator.ethereumClient.TotalBalances(ctx, token)
+		// we need to subtract all locked balances on the Ethereum side (all pending, un-executed batches) so the balances
+		// with the minted MultiversX tokens will match
+		total, errTotal := validator.ethereumClient.TotalBalances(ctx, token)
+		if errTotal != nil {
+			return nil, errTotal
+		}
+
+		return total.Sub(total, ethAmountInPendingBatches), nil
 	}
 
 	burnBalances, err := validator.ethereumClient.BurnBalances(ctx, token)
@@ -192,6 +192,9 @@ func (validator *balanceValidator) computeEthAmount(ctx context.Context, token c
 	if err != nil {
 		return nil, err
 	}
+
+	// we need to cancel out what was burned in advance when the deposit was registered in the contract
+	burnBalances.Sub(burnBalances, ethAmountInPendingBatches)
 
 	var ethAmount *big.Int
 	if isNative {
@@ -206,10 +209,28 @@ func (validator *balanceValidator) computeEthAmount(ctx context.Context, token c
 	return ethAmount, nil
 }
 
-func (validator *balanceValidator) computeMvxAmount(ctx context.Context, token []byte, isMintBurn bool, isNative bool) (*big.Int, error) {
-	if !isMintBurn {
-		return validator.multiversXClient.TotalBalances(ctx, token)
+func (validator *balanceValidator) computeMvxAmount(
+	ctx context.Context,
+	token []byte,
+	isMintBurn bool,
+	isNative bool,
+) (*big.Int, error) {
+	mvxAmountInPendingBatches, err := validator.getTotalTransferAmountInPendingMvxBatches(ctx, token)
+	if err != nil {
+		return nil, err
 	}
+
+	if !isMintBurn {
+		// we need to subtract all locked balances on the MultiversX side (all pending, un-executed batches) so the balances
+		// with the minted Ethereum tokens will match
+		total, errTotal := validator.multiversXClient.TotalBalances(ctx, token)
+		if errTotal != nil {
+			return nil, errTotal
+		}
+
+		return total.Sub(total, mvxAmountInPendingBatches), nil
+	}
+
 	burnBalances, err := validator.multiversXClient.BurnBalances(ctx, token)
 	if err != nil {
 		return nil, err
@@ -219,6 +240,10 @@ func (validator *balanceValidator) computeMvxAmount(ctx context.Context, token [
 		return nil, err
 	}
 	var mvxAmount *big.Int
+
+	// we need to cancel out what was burned in advance when the deposit was registered in the contract
+	burnBalances.Sub(burnBalances, mvxAmountInPendingBatches)
+
 	if isNative {
 		mvxAmount = big.NewInt(0).Sub(burnBalances, mintBalances)
 	} else {
@@ -229,6 +254,68 @@ func (validator *balanceValidator) computeMvxAmount(ctx context.Context, token [
 		return big.NewInt(0), fmt.Errorf("%w, mvxAmount: %s", ErrNegativeAmount, mvxAmount.String())
 	}
 	return mvxAmount, nil
+}
+
+func getTotalAmountFromBatch(batch *clients.TransferBatch, token []byte) *big.Int {
+	amount := big.NewInt(0)
+	for _, deposit := range batch.Deposits {
+		if bytes.Equal(deposit.SourceTokenBytes, token) {
+			amount.Add(amount, deposit.Amount)
+		}
+	}
+
+	return amount
+}
+
+func (validator *balanceValidator) getTotalTransferAmountInPendingMvxBatches(ctx context.Context, mvxToken []byte) (*big.Int, error) {
+	batch, err := validator.multiversXClient.GetPendingBatch(ctx)
+	if errors.Is(err, clients.ErrNoPendingBatchAvailable) {
+		return big.NewInt(0), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	amount := getTotalAmountFromBatch(batch, mvxToken)
+	batchID := batch.ID + 1
+	for {
+		batch, err = validator.multiversXClient.GetBatch(ctx, batchID)
+		if errors.Is(err, clients.ErrNoBatchAvailable) {
+			return amount, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		amountFromBatch := getTotalAmountFromBatch(batch, mvxToken)
+		amount.Add(amount, amountFromBatch)
+		batchID++
+	}
+}
+
+func (validator *balanceValidator) getTotalTransferAmountInPendingEthBatches(ctx context.Context, ethToken common.Address) (*big.Int, error) {
+	batchID, err := validator.multiversXClient.GetLastExecutedEthBatchID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var batch *clients.TransferBatch
+	amount := big.NewInt(0)
+	for {
+		batch, err = validator.ethereumClient.GetBatch(ctx, batchID+1)
+		if err != nil {
+			return nil, err
+		}
+
+		isBatchInvalid := batch.ID != batchID+1 || len(batch.Deposits) == 0
+		if isBatchInvalid {
+			return amount, nil
+		}
+
+		amountFromBatch := getTotalAmountFromBatch(batch, ethToken.Bytes())
+		amount.Add(amount, amountFromBatch)
+		batchID++
+	}
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
