@@ -1,7 +1,6 @@
 package ethmultiversx
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -721,21 +720,12 @@ func extractString(callData []byte) ([]byte, string, error) {
 
 func extractGasLimit(callData []byte) ([]byte, uint64, error) {
 	// Check for gas limit
-	if len(callData) < uint64ArgBytes { // 8 bytes for gas limit length
-		return nil, 0, fmt.Errorf("callData too short for gas limit length")
-	}
-
-	gasLimitLength := int(binary.BigEndian.Uint64(callData[:uint64ArgBytes]))
-	callData = callData[uint64ArgBytes:]
-
-	// Check for gas limit
-	if len(callData) < gasLimitLength {
+	if len(callData) < uint64ArgBytes { // 8 bytes for gas limit
 		return nil, 0, fmt.Errorf("callData too short for gas limit")
 	}
 
-	gasLimitBytes := append(bytes.Repeat([]byte{0x00}, 8-int(gasLimitLength)), callData[:gasLimitLength]...)
-	gasLimit := binary.BigEndian.Uint64(gasLimitBytes)
-	callData = callData[gasLimitLength:] // remove the gas limit bytes
+	gasLimit := binary.BigEndian.Uint64(callData[:uint64ArgBytes])
+	callData = callData[uint64ArgBytes:]
 
 	return callData, gasLimit, nil
 }
@@ -749,4 +739,37 @@ func extractArgumentsLen(callData []byte) ([]byte, int, error) {
 	callData = callData[uint32ArgBytes:] // remove the len bytes
 
 	return callData, length, nil
+}
+
+// EncodeParametersForValidData will provide a valid data byte slice with encoded parameters so the ConvertToDisplayableData can decode this result
+func EncodeParametersForValidData(function string, gasLimit uint64, arguments ...string) []byte {
+	initialAlloc := 1024 * 1024 // 1MB initial buffer
+	buff32Bits := make([]byte, 4)
+	buff64Bits := make([]byte, 8)
+
+	result := make([]byte, 0, initialAlloc)
+
+	result = append(result, DataPresentProtocolMarker) // marker
+	funcLen := len(function)
+
+	binary.BigEndian.PutUint32(buff32Bits, uint32(funcLen))
+	result = append(result, buff32Bits...) // append the function len
+	result = append(result, function...)   // append the function as string
+
+	binary.BigEndian.PutUint64(buff64Bits, gasLimit)
+
+	result = append(result, buff64Bits...) // append the gas limit as 8 bytes
+
+	binary.BigEndian.PutUint32(buff32Bits, uint32(len(arguments)))
+	result = append(result, buff32Bits...) // append the number of arguments
+
+	for _, arg := range arguments {
+		lenArg := len(arg)
+
+		binary.BigEndian.PutUint32(buff32Bits, uint32(lenArg))
+		result = append(result, buff32Bits...) // append the length of the current argument
+		result = append(result, arg...)        // append the argument as string
+	}
+
+	return result
 }

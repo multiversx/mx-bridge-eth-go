@@ -60,13 +60,17 @@
             "outputs": []
         },
         {
-            "name": "refundTransactions",
-            "mutability": "mutable",
-            "inputs": [],
+            "name": "getPendingTransactionById",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32"
+                }
+            ],
             "outputs": [
                 {
-                    "type": "variadic<EthTransactionPayment>",
-                    "multi_result": true
+                    "type": "EthTransaction"
                 }
             ]
         },
@@ -84,19 +88,17 @@
             "outputs": []
         },
         {
-            "name": "getEthTransactionById",
-            "mutability": "readonly",
+            "name": "setupEsdtSafe",
+            "onlyOwner": true,
+            "mutability": "mutable",
             "inputs": [
                 {
-                    "name": "id",
-                    "type": "u32"
+                    "name": "opt_esdt_safe_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
                 }
             ],
-            "outputs": [
-                {
-                    "type": "EthTransaction"
-                }
-            ]
+            "outputs": []
         },
         {
             "name": "getMultiTransferAddress",
@@ -109,23 +111,22 @@
             ]
         },
         {
-            "name": "getEthTransactionList",
+            "name": "getEsdtSafeAddress",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [
                 {
-                    "type": "variadic<EthTransactionPayment>",
-                    "multi_result": true
+                    "type": "Address"
                 }
             ]
         },
         {
-            "name": "getEthFailedTransactionList",
+            "name": "getPendingTransactions",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [
                 {
-                    "type": "variadic<EthTransactionPayment>",
+                    "type": "variadic<EthTransaction>",
                     "multi_result": true
                 }
             ]
@@ -155,8 +156,11 @@
             ]
         }
     ],
+    "promisesCallbackNames": [
+        "execution_callback"
+    ],
     "esdtAttributes": [],
-    "hasCallback": true,
+    "hasCallback": false,
     "types": {
         "CallData": {
             "type": "struct",
@@ -213,27 +217,6 @@
                 {
                     "name": "call_data",
                     "type": "Option<CallData>"
-                }
-            ]
-        },
-        "EthTransactionPayment": {
-            "type": "struct",
-            "fields": [
-                {
-                    "name": "token_id",
-                    "type": "TokenIdentifier"
-                },
-                {
-                    "name": "nonce",
-                    "type": "u64"
-                },
-                {
-                    "name": "amount",
-                    "type": "BigUint"
-                },
-                {
-                    "name": "eth_tx",
-                    "type": "EthTransaction"
                 }
             ]
         }
