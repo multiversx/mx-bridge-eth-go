@@ -14,6 +14,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
@@ -749,7 +750,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
 					dataStrings = append(dataStrings, depositToStrings(dt)...)
-					if bytes.Equal(dt.Data, []byte{ethmultiversx.MissingDataProtocolMarker}) {
+					if bytes.Equal(dt.Data, []byte{parsers.MissingDataProtocolMarker}) {
 						continue
 					}
 					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
@@ -970,7 +971,7 @@ func TestClient_PerformAction(t *testing.T) {
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
 					dataStrings = append(dataStrings, depositToStrings(dt)...)
-					if bytes.Equal(dt.Data, []byte{ethmultiversx.MissingDataProtocolMarker}) {
+					if bytes.Equal(dt.Data, []byte{parsers.MissingDataProtocolMarker}) {
 						continue
 					}
 					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte

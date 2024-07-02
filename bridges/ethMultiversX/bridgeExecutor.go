@@ -2,7 +2,6 @@ package ethmultiversx
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"math/big"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
+	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -21,14 +21,6 @@ import (
 // we wait for the transfer confirmation on Ethereum
 const splits = 10
 const minRetries = 1
-const uint32ArgBytes = 4
-const uint64ArgBytes = 8
-
-// MissingDataProtocolMarker defines the marker for missing data (simple transfers)
-const MissingDataProtocolMarker byte = 0x00
-
-// DataPresentProtocolMarker defines the marker for existing data (transfers with SC calls)
-const DataPresentProtocolMarker byte = 0x01
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
@@ -500,7 +492,7 @@ func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositT
 		}
 	}
 
-	transfer.Data = []byte{MissingDataProtocolMarker}
+	transfer.Data = []byte{parsers.MissingDataProtocolMarker}
 	transfer.DisplayableData = ""
 
 	return transfer
@@ -652,124 +644,20 @@ func (executor *bridgeExecutor) IsInterfaceNil() bool {
 *        num_arguments_length (4 bytes) + [argument_length (4 bytes) + argument]...
 *        This payload includes the endpoint name, gas limit for the execution, and the arguments for the call.
  */
-func ConvertToDisplayableData(callData []byte) (string, error) {
-	if len(callData) == 0 {
-		return "", fmt.Errorf("callData too short for protocol indicator")
+func ConvertToDisplayableData(buff []byte) (string, error) {
+	codec := parsers.MultiversxCodec{}
+
+	callData, err := codec.DecodeCallData(buff)
+	if err != nil {
+		return "", err
 	}
 
-	marker := callData[0]
-	callData = callData[1:]
-
-	switch marker {
-	case MissingDataProtocolMarker:
+	if callData.Type == parsers.MissingDataProtocolMarker {
 		return "", nil
-	case DataPresentProtocolMarker:
-		return convertBytesToDisplayableData(callData)
-	default:
-		return "", fmt.Errorf("callData unexpected protocol indicator: %d", marker)
-	}
-}
-
-func convertBytesToDisplayableData(callData []byte) (string, error) {
-	callData, endpointName, err := extractString(callData)
-	if err != nil {
-		return "", fmt.Errorf("%w for endpoint", err)
 	}
 
-	callData, gasLimit, err := extractGasLimit(callData)
-	if err != nil {
-		return "", err
-	}
-
-	callData, numArgumentsLength, err := extractArgumentsLen(callData)
-	if err != nil {
-		return "", err
-	}
-
-	arguments := make([]string, 0)
-	for i := 0; i < numArgumentsLength; i++ {
-		var argument string
-		callData, argument, err = extractString(callData)
-		if err != nil {
-			return "", fmt.Errorf("%w for argument %d", err, i)
-		}
-
-		arguments = append(arguments, argument)
-	}
-
-	return fmt.Sprintf("Endpoint: %s, Gas: %d, Arguments: %s", endpointName, gasLimit, strings.Join(arguments, "@")), nil
-}
-
-func extractString(callData []byte) ([]byte, string, error) {
-	// Ensure there's enough length for the 4 bytes for length
-	if len(callData) < uint32ArgBytes {
-		return nil, "", fmt.Errorf("callData too short while extracting the length")
-	}
-	argumentLength := int(binary.BigEndian.Uint32(callData[:uint32ArgBytes]))
-	callData = callData[uint32ArgBytes:] // remove the len bytes
-
-	// Check for the argument data
-	if len(callData) < argumentLength {
-		return nil, "", fmt.Errorf("callData too short while extracting the string data")
-	}
-	endpointName := string(callData[:argumentLength])
-	callData = callData[argumentLength:] // remove the string bytes
-
-	return callData, endpointName, nil
-}
-
-func extractGasLimit(callData []byte) ([]byte, uint64, error) {
-	// Check for gas limit
-	if len(callData) < uint64ArgBytes { // 8 bytes for gas limit
-		return nil, 0, fmt.Errorf("callData too short for gas limit")
-	}
-
-	gasLimit := binary.BigEndian.Uint64(callData[:uint64ArgBytes])
-	callData = callData[uint64ArgBytes:]
-
-	return callData, gasLimit, nil
-}
-
-func extractArgumentsLen(callData []byte) ([]byte, int, error) {
-	// Ensure there's enough length for the 4 bytes for endpoint name length
-	if len(callData) < uint32ArgBytes {
-		return nil, 0, fmt.Errorf("callData too short for numArguments length")
-	}
-	length := int(binary.BigEndian.Uint32(callData[:uint32ArgBytes]))
-	callData = callData[uint32ArgBytes:] // remove the len bytes
-
-	return callData, length, nil
-}
-
-// EncodeParametersForValidData will provide a valid data byte slice with encoded parameters so the ConvertToDisplayableData can decode this result
-func EncodeParametersForValidData(function string, gasLimit uint64, arguments ...string) []byte {
-	initialAlloc := 1024 * 1024 // 1MB initial buffer
-	buff32Bits := make([]byte, 4)
-	buff64Bits := make([]byte, 8)
-
-	result := make([]byte, 0, initialAlloc)
-
-	result = append(result, DataPresentProtocolMarker) // marker
-	funcLen := len(function)
-
-	binary.BigEndian.PutUint32(buff32Bits, uint32(funcLen))
-	result = append(result, buff32Bits...) // append the function len
-	result = append(result, function...)   // append the function as string
-
-	binary.BigEndian.PutUint64(buff64Bits, gasLimit)
-
-	result = append(result, buff64Bits...) // append the gas limit as 8 bytes
-
-	binary.BigEndian.PutUint32(buff32Bits, uint32(len(arguments)))
-	result = append(result, buff32Bits...) // append the number of arguments
-
-	for _, arg := range arguments {
-		lenArg := len(arg)
-
-		binary.BigEndian.PutUint32(buff32Bits, uint32(lenArg))
-		result = append(result, buff32Bits...) // append the length of the current argument
-		result = append(result, arg...)        // append the argument as string
-	}
-
-	return result
+	return fmt.Sprintf("Endpoint: %s, Gas: %d, Arguments: %s",
+		callData.Function,
+		callData.GasLimit,
+		strings.Join(callData.Arguments, "@")), nil
 }

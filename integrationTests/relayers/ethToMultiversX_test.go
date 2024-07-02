@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	ethmultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/config"
@@ -20,6 +19,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/factory"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
+	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-bridge-eth-go/status"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
@@ -180,14 +180,14 @@ func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNat
 	assert.Equal(t, value1, transfer.Transfers[0].Amount)
 	assert.Equal(t, depositor1, common.BytesToAddress(transfer.Transfers[0].From))
 	assert.Equal(t, txNonceOnEthereum+1, transfer.Transfers[0].Nonce.Uint64())
-	assert.Equal(t, []byte{ethmultiversx.MissingDataProtocolMarker}, transfer.Transfers[0].Data)
+	assert.Equal(t, []byte{parsers.MissingDataProtocolMarker}, transfer.Transfers[0].Data)
 
 	assert.Equal(t, destination2.AddressBytes(), transfer.Transfers[1].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker2)), transfer.Transfers[1].Token)
 	assert.Equal(t, value2, transfer.Transfers[1].Amount)
 	assert.Equal(t, depositor2, common.BytesToAddress(transfer.Transfers[1].From))
 	assert.Equal(t, txNonceOnEthereum+2, transfer.Transfers[1].Nonce.Uint64())
-	assert.Equal(t, []byte{ethmultiversx.MissingDataProtocolMarker}, transfer.Transfers[1].Data)
+	assert.Equal(t, []byte{parsers.MissingDataProtocolMarker}, transfer.Transfers[1].Data)
 }
 
 func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t *testing.T) {
@@ -205,8 +205,8 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	})
 	t.Run("no SC call", func(t *testing.T) {
 		testArgs := argsForSCCallsTest{
-			providedScCallData: string([]byte{ethmultiversx.MissingDataProtocolMarker}),
-			expectedScCallData: string([]byte{ethmultiversx.MissingDataProtocolMarker}),
+			providedScCallData: string([]byte{parsers.MissingDataProtocolMarker}),
+			expectedScCallData: string([]byte{parsers.MissingDataProtocolMarker}),
 		}
 
 		testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t, testArgs)
@@ -377,14 +377,14 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	assert.Equal(t, value1, transfer.Transfers[0].Amount)
 	assert.Equal(t, depositor1, common.BytesToAddress(transfer.Transfers[0].From))
 	assert.Equal(t, txNonceOnEthereum+1, transfer.Transfers[0].Nonce.Uint64())
-	assert.Equal(t, []byte{ethmultiversx.MissingDataProtocolMarker}, transfer.Transfers[0].Data)
+	assert.Equal(t, []byte{parsers.MissingDataProtocolMarker}, transfer.Transfers[0].Data)
 
 	assert.Equal(t, destination2.AddressBytes(), transfer.Transfers[1].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker2)), transfer.Transfers[1].Token)
 	assert.Equal(t, value2, transfer.Transfers[1].Amount)
 	assert.Equal(t, depositor2, common.BytesToAddress(transfer.Transfers[1].From))
 	assert.Equal(t, txNonceOnEthereum+2, transfer.Transfers[1].Nonce.Uint64())
-	assert.Equal(t, []byte{ethmultiversx.MissingDataProtocolMarker}, transfer.Transfers[1].Data)
+	assert.Equal(t, []byte{parsers.MissingDataProtocolMarker}, transfer.Transfers[1].Data)
 
 	assert.Equal(t, destination3Sc.AddressBytes(), transfer.Transfers[2].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker3)), transfer.Transfers[2].Token)

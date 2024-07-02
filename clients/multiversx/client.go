@@ -14,6 +14,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
+	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/api"
 	crypto "github.com/multiversx/mx-chain-crypto-go"
@@ -403,7 +404,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 func (c *client) computeExtraGasForSCCallsBasic(batch *clients.TransferBatch, performAction bool) uint64 {
 	gasLimit := uint64(0)
 	for _, deposit := range batch.Deposits {
-		if bytes.Equal(deposit.Data, []byte{ethmultiversx.MissingDataProtocolMarker}) {
+		if bytes.Equal(deposit.Data, []byte{parsers.MissingDataProtocolMarker}) {
 			continue
 		}
 

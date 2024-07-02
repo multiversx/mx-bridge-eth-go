@@ -1,4 +1,4 @@
-//TODO: revert
+//go:build slow
 
 package slowTests
 

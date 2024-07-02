@@ -7,5 +7,4 @@ services:
     - 8085:8085
   volumes:
     - "../scripts:/docker/scripts"
-  # TODO: revert
-  entrypoint: "./chainsimulator -log-level *:DEBUG,process:TRACE,vm:TRACE -log-save"
+  entrypoint: "./chainsimulator -log-level *:INFO"

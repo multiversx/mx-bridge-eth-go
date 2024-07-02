@@ -35,9 +35,6 @@ type safeContract interface {
 	WhitelistedTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error)
 }
 
-type scExecProxyContract interface {
-}
-
 type blockchainClient interface {
 	BlockNumber(ctx context.Context) (uint64, error)
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
