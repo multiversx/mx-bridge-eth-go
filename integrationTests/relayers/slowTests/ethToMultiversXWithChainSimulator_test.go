@@ -1,4 +1,4 @@
-//go:build slow
+//TODO
 
 // To run these slow tests, simply add the slow tag on the go test command. Also, provide a chain simulator instance on the 8085 port
 // example: go test -tags slow
@@ -27,7 +27,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethCore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
-	ethmultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
@@ -39,6 +38,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	testsRelayers "github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers"
+	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-bridge-eth-go/status"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
@@ -163,7 +163,7 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		testRelayersShouldExecuteTransfersMVXToETH(t, args)
 	})
 	t.Run("ETH->MVX with SC call that works, ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true", func(t *testing.T) {
-		t.Skip("TODO(jls): fix this test")
+		// t.Skip("TODO(jls): fix this test")
 
 		args := argSimulatedSetup{
 			mvxIsMintBurn:        true,
@@ -1469,14 +1469,22 @@ func (testSetup *simulatedSetup) createBatchOnEthereum() {
 		testSetup.simulatedETHChain.Commit()
 		testSetup.checkEthTxResult(tx.Hash())
 
-		callData := ethmultiversx.EncodeParametersForValidData(testSetup.ethSCCallMethod, testSetup.ethSCCallGasLimit, testSetup.ethSCCallArguments...)
+		codec := parsers.MultiversxCodec{}
+		callData := parsers.CallData{
+			Type:      parsers.DataPresentProtocolMarker,
+			Function:  testSetup.ethSCCallMethod,
+			GasLimit:  testSetup.ethSCCallGasLimit,
+			Arguments: testSetup.ethSCCallArguments,
+		}
+
+		buff := codec.EncodeCallData(callData)
 
 		tx, err = testSetup.ethSCProxyContract.Deposit(
 			auth,
 			testSetup.ethGenericTokenAddress,
 			mintAmount,
 			testSetup.mvxTestCallerAddress.AddressSlice(),
-			string(callData),
+			string(buff),
 		)
 		require.NoError(testSetup.t, err)
 		testSetup.simulatedETHChain.Commit()

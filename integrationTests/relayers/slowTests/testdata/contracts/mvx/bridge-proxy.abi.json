@@ -75,6 +75,17 @@
             ]
         },
         {
+            "name": "getPendingTransactions",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<multi<u32,EthTransaction>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
             "name": "setupMultiTransfer",
             "onlyOwner": true,
             "mutability": "mutable",
@@ -117,17 +128,6 @@
             "outputs": [
                 {
                     "type": "Address"
-                }
-            ]
-        },
-        {
-            "name": "getPendingTransactions",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "variadic<EthTransaction>",
-                    "multi_result": true
                 }
             ]
         },
