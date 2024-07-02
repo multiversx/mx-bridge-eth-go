@@ -917,6 +917,12 @@ func (testSetup *simulatedSetup) executeContractsTxs() {
 
 	log.Info("ChangeOwnerAddress for multi-transfer tx executed", "hash", hash, "status", txResult.Status)
 
+	// unpause sc proxy
+	hash = testSetup.unpauseContract(testSetup.mvxScProxyAddress, []byte(unpause))
+	txResult, err = testSetup.mvxChainSimulator.GetTransactionResult(testSetup.testContext, hash)
+	require.NoError(testSetup.t, err)
+	log.Info("unpaused sc proxy executed", "hash", hash, "status", txResult.Status)
+
 	// ChangeOwnerAddress for bridge proxy
 	hash, err = testSetup.mvxChainSimulator.ScCall(
 		testSetup.testContext,
@@ -1468,7 +1474,6 @@ func (testSetup *simulatedSetup) createBatchOnEthereum() {
 			testSetup.ethGenericTokenAddress,
 			mintAmount,
 			testSetup.mvxTestCallerAddress.AddressSlice(),
-			// testSetup.mvxReceiverAddress.AddressSlice(), // TODO: remove this
 			string(callData),
 		)
 		require.NoError(testSetup.t, err)
