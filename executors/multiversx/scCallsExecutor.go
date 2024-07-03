@@ -21,7 +21,7 @@ import (
 const (
 	getPendingTransactionsFunction = "getPendingTransactions"
 	okCodeAfterExecution           = "ok"
-	scProxyCallFunction            = "executeWithAsnyc"
+	scProxyCallFunction            = "execute"
 )
 
 // ArgsScCallExecutor represents the DTO struct for creating a new instance of type scCallExecutor
@@ -148,7 +148,7 @@ func (executor *scCallExecutor) parseResponse(response *data.VmValuesResponseDat
 		return nil, fmt.Errorf("%w: expected an even number, got %d", errInvalidNumberOfResponseLines, numResponseLines)
 	}
 
-	result := make(map[uint64]parsers.ProxySCCompleteCallData)
+	result := make(map[uint64]parsers.ProxySCCompleteCallData, numResponseLines/2)
 
 	for i := 0; i < numResponseLines; i += 2 {
 		pendingOperationID := big.NewInt(0).SetBytes(response.Data.ReturnData[i])
