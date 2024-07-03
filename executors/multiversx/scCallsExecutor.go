@@ -100,8 +100,9 @@ func checkArgs(args ArgsScCallExecutor) error {
 	if check.IfNil(args.SingleSigner) {
 		return errNilSingleSigner
 	}
+	_, err := data.NewAddressFromBech32String(args.ScProxyBech32Address)
 
-	return nil
+	return err
 }
 
 // Execute will execute one step: get all pending operations, call the filter and send execution transactions

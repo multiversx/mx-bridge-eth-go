@@ -125,6 +125,16 @@ func TestNewScCallExecutor(t *testing.T) {
 		assert.Nil(t, executor)
 		assert.Equal(t, errNilSingleSigner, err)
 	})
+	t.Run("invalid sc proxy bech32 address should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.ScProxyBech32Address = "not a valid bech32 address"
+
+		executor, err := NewScCallExecutor(args)
+		assert.Nil(t, executor)
+		assert.NotNil(t, err)
+	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 

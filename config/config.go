@@ -172,3 +172,28 @@ type PeersRatingConfig struct {
 	TopRatedCacheCapacity int
 	BadRatedCacheCapacity int
 }
+
+// PendingOperationsFilterConfig defines the filter structure
+type PendingOperationsFilterConfig struct {
+	DeniedEthAddresses  []string
+	AllowedEthAddresses []string
+	DeniedMvxAddresses  []string
+	AllowedMvxAddresses []string
+	DeniedTokens        []string
+	AllowedTokens       []string
+}
+
+// ScCallsModuleConfig will hold the settings for the SC calls module
+type ScCallsModuleConfig struct {
+	ScProxyBech32Address         string
+	ExtraGasToExecute            uint64
+	NetworkAddress               string
+	ProxyMaxNoncesDelta          int
+	ProxyFinalityCheck           bool
+	ProxyCacherExpirationSeconds uint64
+	ProxyRestAPIEntityType       string
+	IntervalToResendTxsInSeconds uint64
+	PrivateKeyFile               string
+	PollingIntervalInMillis      uint64
+	FilterConfig                 PendingOperationsFilterConfig
+}
