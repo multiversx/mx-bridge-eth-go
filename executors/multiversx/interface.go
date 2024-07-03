@@ -1,4 +1,4 @@
-package executors
+package multiversx
 
 import (
 	"context"
@@ -30,10 +30,20 @@ type NonceTransactionsHandler interface {
 	ApplyNonceAndGasPrice(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error
 	SendTransaction(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
 	Close() error
+	IsInterfaceNil() bool
 }
 
 // ScCallsExecuteFilter defines the operations supported by a filter that allows selective executions of batches
 type ScCallsExecuteFilter interface {
 	ShouldExecute(callData parsers.ProxySCCompleteCallData) bool
+	IsInterfaceNil() bool
+}
+
+// Codec defines the operations implemented by a MultiversX codec
+type Codec interface {
+	EncodeCallData(callData parsers.CallData) []byte
+	EncodeProxySCCompleteCallData(completeData parsers.ProxySCCompleteCallData) ([]byte, error)
+	DecodeCallData(buff []byte) (parsers.CallData, error)
+	DecodeProxySCCompleteCallData(buff []byte) (parsers.ProxySCCompleteCallData, error)
 	IsInterfaceNil() bool
 }

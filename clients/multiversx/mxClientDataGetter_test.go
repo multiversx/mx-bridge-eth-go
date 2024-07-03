@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	bridgeErrors "github.com/multiversx/mx-bridge-eth-go/errors"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
@@ -198,7 +199,7 @@ func TestMXClientDataGetter_ExecuteQueryReturningBytes(t *testing.T) {
 
 		dg, _ := NewMXClientDataGetter(args)
 
-		expectedErr := NewQueryResponseError(returnCode, returnMessage, calledFunction, getBech32Address(dg.multisigContractAddress), calledArgs...)
+		expectedErr := bridgeErrors.NewQueryResponseError(returnCode, returnMessage, calledFunction, getBech32Address(dg.multisigContractAddress), calledArgs...)
 		dg.proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				return &data.VmValuesResponseData{
@@ -306,7 +307,7 @@ func TestMXClientDataGetter_ExecuteQueryReturningBool(t *testing.T) {
 		dg, _ := NewMXClientDataGetter(args)
 		dg.proxy = createMockProxy([][]byte{[]byte("random bytes")})
 
-		expectedError := NewQueryResponseError(
+		expectedError := bridgeErrors.NewQueryResponseError(
 			internalError,
 			`error converting the received bytes to bool, strconv.ParseBool: parsing "114": invalid syntax`,
 			"",
@@ -374,7 +375,7 @@ func TestMXClientDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
 		dg, _ := NewMXClientDataGetter(args)
 		dg.proxy = createMockProxy([][]byte{[]byte("random bytes")})
 
-		expectedError := NewQueryResponseError(
+		expectedError := bridgeErrors.NewQueryResponseError(
 			internalError,
 			errNotUint64Bytes.Error(),
 			"",
@@ -960,7 +961,7 @@ func TestMXClientDataGetter_GetTransactionsStatuses(t *testing.T) {
 
 		result, err := dg.GetTransactionsStatuses(context.Background(), batchID)
 		assert.Nil(t, result)
-		expectedErr := NewQueryResponseError(internalError, `error converting the received bytes to bool, strconv.ParseBool: parsing "56": invalid syntax`,
+		expectedErr := bridgeErrors.NewQueryResponseError(internalError, `error converting the received bytes to bool, strconv.ParseBool: parsing "56": invalid syntax`,
 			"getStatusesAfterExecution", "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
 		assert.Equal(t, expectedErr, err)
 	})

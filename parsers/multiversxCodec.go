@@ -238,3 +238,8 @@ func (codec *MultiversxCodec) DecodeProxySCCompleteCallData(buff []byte) (ProxyS
 
 	return result, nil
 }
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (codec *MultiversxCodec) IsInterfaceNil() bool {
+	return codec == nil
+}

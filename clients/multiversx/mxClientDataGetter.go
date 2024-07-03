@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/errors"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/builders"
@@ -111,7 +112,7 @@ func (dataGetter *mxClientDataGetter) ExecuteQueryReturningBytes(ctx context.Con
 		"response.ReturnCode", response.Data.ReturnCode,
 		"response.ReturnData", fmt.Sprintf("%+v", response.Data.ReturnData))
 	if response.Data.ReturnCode != okCodeAfterExecution {
-		return nil, NewQueryResponseError(
+		return nil, errors.NewQueryResponseError(
 			response.Data.ReturnCode,
 			response.Data.ReturnMessage,
 			request.FuncName,
@@ -178,7 +179,7 @@ func (dataGetter *mxClientDataGetter) parseBool(buff []byte, funcName string, ad
 
 	result, err := strconv.ParseBool(fmt.Sprintf("%d", buff[0]))
 	if err != nil {
-		return false, NewQueryResponseError(
+		return false, errors.NewQueryResponseError(
 			internalError,
 			fmt.Sprintf("error converting the received bytes to bool, %s", err.Error()),
 			funcName,
@@ -206,7 +207,7 @@ func (dataGetter *mxClientDataGetter) ExecuteQueryReturningUint64(ctx context.Co
 
 	num, err := parseUInt64FromByteSlice(response[0])
 	if err != nil {
-		return 0, NewQueryResponseError(
+		return 0, errors.NewQueryResponseError(
 			internalError,
 			err.Error(),
 			request.FuncName,

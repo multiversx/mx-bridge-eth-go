@@ -43,6 +43,16 @@ func createTestProxySCCompleteCallData() ProxySCCompleteCallData {
 	return completeCallData
 }
 
+func TestMultiversxCodec_IsInterfaceNil(t *testing.T) {
+	t.Parallel()
+
+	var instance *MultiversxCodec
+	assert.True(t, instance.IsInterfaceNil())
+
+	instance = &MultiversxCodec{}
+	assert.False(t, instance.IsInterfaceNil())
+}
+
 func TestMultiversXCodec_EncodeDecodeCallData(t *testing.T) {
 	t.Parallel()
 
