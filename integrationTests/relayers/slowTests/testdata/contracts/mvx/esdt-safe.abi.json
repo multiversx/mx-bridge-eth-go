@@ -31,6 +31,10 @@
                 "type": "Address"
             },
             {
+                "name": "multi_transfer_contract_address",
+                "type": "Address"
+            },
+            {
                 "name": "eth_tx_gas_limit",
                 "type": "BigUint"
             }

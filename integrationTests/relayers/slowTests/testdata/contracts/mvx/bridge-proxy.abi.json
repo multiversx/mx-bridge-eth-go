@@ -49,7 +49,7 @@
             "outputs": []
         },
         {
-            "name": "executeWithAsnyc",
+            "name": "execute",
             "mutability": "mutable",
             "inputs": [
                 {

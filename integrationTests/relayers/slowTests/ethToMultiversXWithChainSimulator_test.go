@@ -79,7 +79,6 @@ const (
 	unpause                                      = "unpause"
 	unpauseEsdtSafe                              = "unpauseEsdtSafe"
 	setEsdtSafeOnMultiTransfer                   = "setEsdtSafeOnMultiTransfer"
-	setMultiTransferOnEsdtSafe                   = "setMultiTransferOnEsdtSafe"
 	changeOwnerAddress                           = "ChangeOwnerAddress"
 	setWrappingContractAddress                   = "setWrappingContractAddress"
 	setBridgeProxyContractAddress                = "setBridgeProxyContractAddress"
@@ -782,19 +781,6 @@ func (testSetup *simulatedSetup) executeContractsTxs() {
 
 	log.Info("wrapper contract deployed", "address", testSetup.mvxWrapperAddress)
 
-	// deploy safe
-	testSetup.mvxSafeAddress, err = testSetup.mvxChainSimulator.DeploySC(
-		testSetup.testContext,
-		safeContract,
-		testSetup.mvxOwnerKeys.pk,
-		testSetup.mvxOwnerKeys.sk,
-		[]string{getHexAddress(testSetup.t, testSetup.mvxAggregatorAddress), "01"},
-	)
-	require.NoError(testSetup.t, err)
-	require.NotEqual(testSetup.t, emptyAddress, testSetup.mvxSafeAddress)
-
-	log.Info("safe contract deployed", "address", testSetup.mvxSafeAddress)
-
 	// deploy multi-transfer
 	multiTransferAddress, err := testSetup.mvxChainSimulator.DeploySC(
 		testSetup.testContext,
@@ -807,6 +793,23 @@ func (testSetup *simulatedSetup) executeContractsTxs() {
 	require.NotEqual(testSetup.t, emptyAddress, multiTransferAddress)
 
 	log.Info("multi-transfer contract deployed", "address", multiTransferAddress)
+
+	// deploy safe
+	testSetup.mvxSafeAddress, err = testSetup.mvxChainSimulator.DeploySC(
+		testSetup.testContext,
+		safeContract,
+		testSetup.mvxOwnerKeys.pk,
+		testSetup.mvxOwnerKeys.sk,
+		[]string{
+			getHexAddress(testSetup.t, testSetup.mvxAggregatorAddress),
+			getHexAddress(testSetup.t, multiTransferAddress),
+			"01",
+		},
+	)
+	require.NoError(testSetup.t, err)
+	require.NotEqual(testSetup.t, emptyAddress, testSetup.mvxSafeAddress)
+
+	log.Info("safe contract deployed", "address", testSetup.mvxSafeAddress)
 
 	// deploy multisig
 	minRelayerStakeInt, _ := big.NewInt(0).SetString(minRelayerStake, 10)
@@ -940,22 +943,6 @@ func (testSetup *simulatedSetup) executeContractsTxs() {
 	require.NoError(testSetup.t, err)
 
 	log.Info("ChangeOwnerAddress for bridge proxy tx executed", "hash", hash, "status", txResult.Status)
-
-	// setMultiTransferOnEsdtSafe
-	hash, err = testSetup.mvxChainSimulator.ScCall(
-		testSetup.testContext,
-		testSetup.mvxOwnerKeys.pk,
-		testSetup.mvxOwnerKeys.sk,
-		testSetup.mvxMultisigAddress,
-		zeroValue,
-		setMultiTransferOnEsdtSafe,
-		[]string{},
-	)
-	require.NoError(testSetup.t, err)
-	txResult, err = testSetup.mvxChainSimulator.GetTransactionResult(testSetup.testContext, hash)
-	require.NoError(testSetup.t, err)
-
-	log.Info("setMultiTransferOnEsdtSafe tx executed", "hash", hash, "status", txResult.Status)
 
 	// setEsdtSafeOnMultiTransfer
 	hash, err = testSetup.mvxChainSimulator.ScCall(
