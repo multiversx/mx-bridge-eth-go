@@ -92,12 +92,6 @@
             "outputs": []
         },
         {
-            "name": "getFailedTxFromBridgeProxy",
-            "mutability": "mutable",
-            "inputs": [],
-            "outputs": []
-        },
-        {
             "name": "getWrappingContractAddress",
             "mutability": "readonly",
             "inputs": [],

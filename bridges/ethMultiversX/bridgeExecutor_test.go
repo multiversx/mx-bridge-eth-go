@@ -997,6 +997,7 @@ func TestMultiversXToEthBridgeExecutor_GetAndStoreActionIDForProposeSetStatusFro
 		assert.Equal(t, providedActionId, actionId)
 	})
 }
+
 func TestMultiversXToEthBridgeExecutor_WasSetStatusProposedOnMultiversX(t *testing.T) {
 	t.Parallel()
 
@@ -1844,9 +1845,8 @@ func TestConvertToDisplayableData_ValidCallDataWithNoArguments(t *testing.T) {
 
 	callData := func() []byte {
 		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
-		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
-		b = append(b, 0x00, 0x00, 0x00, 0x00)                        // numArguments
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00) // Gas limit
+		b = append(b, 0x00, 0x00, 0x00, 0x00)                         // numArguments
 		return b
 	}()
 
@@ -1861,120 +1861,32 @@ func TestConvertToDisplayableData_MultipleTypesArguments(t *testing.T) {
 
 	callData := func() []byte {
 		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
-		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
-		b = append(b, 0x00, 0x00, 0x00, 0x02)                        // numArguments
-		b = append(b, 0x00, 0x00, 0x00, 0x05)                        // Argument 0 length
-		b = append(b, bytes.Repeat([]byte{'A'}, 5)...)               // Argument 0 data
-		b = append(b, 0x00, 0x00, 0x00, 0x32)                        // Argument 1 length
-		b = append(b, bytes.Repeat([]byte{'B'}, 50)...)              // Argument 1 data
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00) // Gas limit
+		b = append(b, 0x00, 0x00, 0x00, 0x02)                         // numArguments
+		b = append(b, 0x00, 0x00, 0x00, 0x05)                         // Argument 0 length
+		b = append(b, bytes.Repeat([]byte{'A'}, 5)...)                // Argument 0 data
+		b = append(b, 0x00, 0x00, 0x00, 0x32)                         // Argument 1 length
+		b = append(b, bytes.Repeat([]byte{'B'}, 50)...)               // Argument 1 data
 		return b
 	}()
 
 	want := "Endpoint: abc, Gas: 500000000, Arguments: AAAAA@BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 	got, err := ConvertToDisplayableData(callData)
+	require.Equal(t, want, got)
 	require.Nil(t, err)
-	if got != want {
-		t.Errorf("Test with multiple types arguments failed. Got: %v, want: %v", got, want)
-	}
-}
-
-func TestConvertToDisplayableData_TooShortForProtocolIndicator(t *testing.T) {
-	t.Parallel()
-	_, err := ConvertToDisplayableData([]byte{})
-	require.NotNil(t, err)
-	if err != nil {
-		require.Equal(t, "callData too short for protocol indicator", err.Error())
-	}
-}
-
-func TestConvertToDisplayableData_TooShortForEndpointNameLength(t *testing.T) {
-	t.Parallel()
-	_, err := ConvertToDisplayableData([]byte{0x01})
-	require.NotNil(t, err)
-	require.Equal(t, "callData too short while extracting the length for endpoint", err.Error())
-}
-
-func TestConvertToDisplayableData_UnexpectedProtocolIndicator(t *testing.T) {
-	t.Parallel()
-	_, err := ConvertToDisplayableData([]byte{0x02})
-	require.NotNil(t, err)
-	require.Equal(t, "callData unexpected protocol indicator: 2", err.Error())
-}
-
-func TestConvertToDisplayableData_TooShortForEndpointName(t *testing.T) {
-	t.Parallel()
-	_, err := ConvertToDisplayableData([]byte{0x01, 0x00, 0x00, 0x00, 0x05})
-	require.NotNil(t, err)
-	require.Equal(t, "callData too short while extracting the string data for endpoint", err.Error())
-}
-
-func TestConvertToDisplayableData_TooShortForGasLimitLength(t *testing.T) {
-	t.Parallel()
-	callData := func() []byte {
-		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		b = append(b, 0x00, 0x00, 0x04) // Bad Gas limit length
-		return b
-	}()
-	_, err := ConvertToDisplayableData(callData)
-	require.NotNil(t, err)
-	require.Equal(t, "callData too short for gas limit length", err.Error())
-}
-
-func TestConvertToDisplayableData_TooShortForGasLimit(t *testing.T) {
-	t.Parallel()
-	callData := func() []byte {
-		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
-		b = append(b, 0x03, 0x00, 0x03)                              // Bad Gas limit
-		return b
-	}()
-	_, err := ConvertToDisplayableData(callData)
-	require.NotNil(t, err)
-	require.Equal(t, "callData too short for gas limit", err.Error())
-}
-
-func TestConvertToDisplayableData_TooShortForNumberOfArgumentsLength(t *testing.T) {
-	t.Parallel()
-	callData := func() []byte {
-		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
-		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
-		b = append(b, 0x00, 0x00, 0x03)                              // Bad numArgument
-		return b
-	}()
-	_, err := ConvertToDisplayableData(callData)
-	require.NotNil(t, err)
-	require.Equal(t, "callData too short for numArguments length", err.Error())
-}
-
-func TestConvertToDisplayableData_TooShortForArgumentLength(t *testing.T) {
-	t.Parallel()
-	callData := func() []byte {
-		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
-		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
-		b = append(b, 0x00, 0x00, 0x00, 0x01)                        // numArguments
-		b = append(b, 0x00, 0x00, 0x04)                              // Bad Argument 0 length
-		return b
-	}()
-	_, err := ConvertToDisplayableData(callData)
-	require.NotNil(t, err)
-	require.Equal(t, "callData too short while extracting the length for argument 0", err.Error())
 }
 
 func TestConvertToDisplayableData_TooShortForArgumentData(t *testing.T) {
 	t.Parallel()
 	callData := func() []byte {
 		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0, 0x04) // Gas limit length
-		b = append(b, 0x1D, 0xCD, 0x65, 0x00)                        // Gas limit
-		b = append(b, 0x00, 0x00, 0x00, 0x01)                        // numArguments
-		b = append(b, 0x00, 0x00, 0x00, 0x04)                        // Argument 0 length
-		b = append(b, 0x00, 0x00, 0x04)                              // Bad Argument 0 data
+		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00) // Gas limit length
+		b = append(b, 0x00, 0x00, 0x00, 0x01)                         // numArguments
+		b = append(b, 0x00, 0x00, 0x00, 0x04)                         // Argument 0 length
+		b = append(b, 0x00, 0x00, 0x04)                               // Bad Argument 0 data
 		return b
 	}()
 	_, err := ConvertToDisplayableData(callData)
 	require.NotNil(t, err)
-	require.Equal(t, "callData too short while extracting the string data for argument 0", err.Error())
+	require.Equal(t, "buffer too short while extracting the string data for argument 0", err.Error())
 }
