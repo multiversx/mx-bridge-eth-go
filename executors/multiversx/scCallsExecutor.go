@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/multiversx/mx-bridge-eth-go/errors"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -171,6 +172,8 @@ func (executor *scCallExecutor) filterOperations(pendingOperations map[uint64]pa
 		}
 	}
 
+	executor.log.Debug("scCallExecutor.filterOperations", "input pending ops", len(pendingOperations), "result pending ops", len(result))
+
 	return result
 }
 
@@ -181,6 +184,7 @@ func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOp
 	}
 
 	for id, callData := range pendingOperations {
+		log.Debug("scCallExecutor.executeOperations", "executing ID", id, "call data", callData)
 		err = executor.executeOperation(id, callData, networkConfig)
 		if err != nil {
 			return fmt.Errorf("%w for call data: %s", err, callData)
@@ -233,7 +237,7 @@ func (executor *scCallExecutor) executeOperation(
 		return err
 	}
 
-	executor.log.Info("sent transaction from executor",
+	executor.log.Info("scCallExecutor.executeOperation: sent transaction from executor",
 		"hash", hash,
 		"tx ID", id,
 		"call data", callData.String(),
