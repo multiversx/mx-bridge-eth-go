@@ -49,7 +49,7 @@
             "outputs": []
         },
         {
-            "name": "executeWithAsnyc",
+            "name": "execute",
             "mutability": "mutable",
             "inputs": [
                 {
@@ -71,6 +71,17 @@
             "outputs": [
                 {
                     "type": "EthTransaction"
+                }
+            ]
+        },
+        {
+            "name": "getPendingTransactions",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<multi<u32,EthTransaction>>",
+                    "multi_result": true
                 }
             ]
         },
@@ -117,17 +128,6 @@
             "outputs": [
                 {
                     "type": "Address"
-                }
-            ]
-        },
-        {
-            "name": "getPendingTransactions",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "variadic<EthTransaction>",
-                    "multi_result": true
                 }
             ]
         },

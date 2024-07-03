@@ -2,6 +2,8 @@ package parsers
 
 const uint32ArgBytes = 4
 const uint64ArgBytes = 8
+const lenEthAddress = 20
+const lenMvxAddress = 32
 
 // MissingDataProtocolMarker defines the marker for missing data (simple transfers)
 const MissingDataProtocolMarker byte = 0x00

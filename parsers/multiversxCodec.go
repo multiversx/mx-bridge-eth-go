@@ -3,6 +3,11 @@ package parsers
 import (
 	"encoding/binary"
 	"fmt"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-sdk-go/data"
 )
 
 // MultiversxCodec defines the codec operations to be used for MultiversX contracts
@@ -42,6 +47,40 @@ func (codec *MultiversxCodec) EncodeCallData(callData CallData) []byte {
 	return result
 }
 
+// EncodeProxySCCompleteCallData will provide a valid byte slice with the encoded parameters
+func (codec *MultiversxCodec) EncodeProxySCCompleteCallData(completeData ProxySCCompleteCallData) ([]byte, error) {
+	if check.IfNil(completeData.To) {
+		return nil, fmt.Errorf("%w for To field", errNilAddressHandler)
+	}
+	if completeData.Amount == nil {
+		return nil, errNilAmount
+	}
+
+	initialAlloc := 1024 * 1024 // 1MB initial buffer
+	buff32Bits := make([]byte, 4)
+	buff64Bits := make([]byte, 8)
+
+	result := make([]byte, 0, initialAlloc)
+	result = append(result, completeData.From.Bytes()...)      // append To
+	result = append(result, completeData.To.AddressBytes()...) // append From
+
+	binary.BigEndian.PutUint32(buff32Bits, uint32(len(completeData.Token)))
+	result = append(result, buff32Bits...)         // append len(token)
+	result = append(result, completeData.Token...) // append token
+
+	amountBytes := big.NewInt(0).Set(completeData.Amount).Bytes()
+	binary.BigEndian.PutUint32(buff32Bits, uint32(len(amountBytes)))
+	result = append(result, buff32Bits...)  // append len(amount)
+	result = append(result, amountBytes...) // append amount
+
+	binary.BigEndian.PutUint64(buff64Bits, completeData.Nonce)
+	result = append(result, buff64Bits...) // append nonce
+
+	result = append(result, codec.EncodeCallData(completeData.CallData)...)
+
+	return result, nil
+}
+
 // DecodeCallData will try to decode the provided bytes into a CallData struct
 func (codec *MultiversxCodec) DecodeCallData(buff []byte) (CallData, error) {
 	if len(buff) == 0 {
@@ -69,9 +108,9 @@ func decodeCallData(buff []byte, marker byte) (CallData, error) {
 		return CallData{}, fmt.Errorf("%w for function", err)
 	}
 
-	buff, gasLimit, err := extractGasLimit(buff)
+	buff, gasLimit, err := extractUint64(buff)
 	if err != nil {
-		return CallData{}, err
+		return CallData{}, fmt.Errorf("%w for gas limit", err)
 	}
 
 	buff, numArgumentsLength, err := extractArgumentsLen(buff)
@@ -116,10 +155,28 @@ func extractString(buff []byte) ([]byte, string, error) {
 	return buff, endpointName, nil
 }
 
-func extractGasLimit(buff []byte) ([]byte, uint64, error) {
-	// Check for gas limit
+func extractBigInt(buff []byte) ([]byte, *big.Int, error) {
+	// Ensure there's enough length for the 4 bytes for length
+	if len(buff) < uint32ArgBytes {
+		return nil, nil, errBufferTooShortForLength
+	}
+	argumentLength := int(binary.BigEndian.Uint32(buff[:uint32ArgBytes]))
+	buff = buff[uint32ArgBytes:] // remove the len bytes
+
+	// Check for the argument data
+	if len(buff) < argumentLength {
+		return nil, nil, errBufferTooShortForBigInt
+	}
+
+	value := big.NewInt(0).SetBytes(buff[:argumentLength])
+	buff = buff[argumentLength:] // remove the value bytes
+
+	return buff, value, nil
+}
+
+func extractUint64(buff []byte) ([]byte, uint64, error) {
 	if len(buff) < uint64ArgBytes { // 8 bytes for gas limit
-		return nil, 0, errBufferTooShortForGasLimit
+		return nil, 0, errBufferTooShortForUint64
 	}
 
 	gasLimit := binary.BigEndian.Uint64(buff[:uint64ArgBytes])
@@ -137,4 +194,52 @@ func extractArgumentsLen(buff []byte) ([]byte, int, error) {
 	buff = buff[uint32ArgBytes:] // remove the len bytes
 
 	return buff, length, nil
+}
+
+// DecodeProxySCCompleteCallData will try to decode the provided bytes into a ProxySCCompleteCallData struct
+func (codec *MultiversxCodec) DecodeProxySCCompleteCallData(buff []byte) (ProxySCCompleteCallData, error) {
+	result := ProxySCCompleteCallData{}
+
+	if len(buff) < lenEthAddress {
+		return ProxySCCompleteCallData{}, errBufferTooShortForEthAddress
+	}
+	result.From = common.Address{}
+	result.From.SetBytes(buff[:lenEthAddress])
+	buff = buff[lenEthAddress:]
+
+	if len(buff) < lenMvxAddress {
+		return ProxySCCompleteCallData{}, errBufferTooShortForMvxAddress
+	}
+	result.To = data.NewAddressFromBytes(buff[:lenMvxAddress])
+	buff = buff[lenMvxAddress:]
+
+	buff, token, err := extractString(buff)
+	if err != nil {
+		return ProxySCCompleteCallData{}, fmt.Errorf("%w for token", err)
+	}
+	result.Token = token
+
+	buff, amount, err := extractBigInt(buff)
+	if err != nil {
+		return ProxySCCompleteCallData{}, fmt.Errorf("%w for amount", err)
+	}
+	result.Amount = amount
+
+	buff, nonce, err := extractUint64(buff)
+	if err != nil {
+		return ProxySCCompleteCallData{}, fmt.Errorf("%w for nonce", err)
+	}
+	result.Nonce = nonce
+
+	result.CallData, err = codec.DecodeCallData(buff)
+	if err != nil {
+		return ProxySCCompleteCallData{}, err
+	}
+
+	return result, nil
+}
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (codec *MultiversxCodec) IsInterfaceNil() bool {
+	return codec == nil
 }
