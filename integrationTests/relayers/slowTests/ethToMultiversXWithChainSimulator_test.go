@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"math/big"
 	"os"
 	"os/signal"
@@ -34,6 +35,7 @@ import (
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
+	"github.com/multiversx/mx-bridge-eth-go/executors/multiversx/module"
 	"github.com/multiversx/mx-bridge-eth-go/factory"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
@@ -73,6 +75,7 @@ const (
 	quorum                                       = "03"
 	relayerPemPathFormat                         = "multiversx%d.pem"
 	relayerETHKeyPathFormat                      = "../testdata/ethereum%d.sk"
+	scCallerFilename                             = "scCaller.pem"
 	proxyCacherExpirationSeconds                 = 600
 	proxyMaxNoncesDelta                          = 7
 	zeroValue                                    = "0"
@@ -162,8 +165,6 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		testRelayersShouldExecuteTransfersMVXToETH(t, args)
 	})
 	t.Run("ETH->MVX with SC call that works, ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true", func(t *testing.T) {
-		t.Skip("TODO(jls): fix this test")
-
 		args := argSimulatedSetup{
 			mvxIsMintBurn:        true,
 			mvxIsNative:          false,
@@ -218,7 +219,12 @@ func testRelayersShouldExecuteTransfersEthToMVX(t *testing.T, argsSimulatedSetup
 			require.Fail(t, "time out")
 			return
 		default:
-			isTransferDoneFromETH := testSetup.checkESDTBalance(testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, mintAmount.String(), false)
+			receiverToCheckBalance := testSetup.mvxReceiverAddress
+			if len(testSetup.ethSCCallMethod) > 0 {
+				receiverToCheckBalance = testSetup.mvxTestCallerAddress
+			}
+
+			isTransferDoneFromETH := testSetup.checkESDTBalance(receiverToCheckBalance, testSetup.mvxUniversalToken, mintAmount.String(), false)
 			if !ethToMVXDone && isTransferDoneFromETH {
 				ethToMVXDone = true
 
@@ -491,6 +497,7 @@ type simulatedSetup struct {
 	mvxChainSimulator        chainSimulatorWrapper
 	relayers                 []bridgeComponents
 	relayersKeys             []keysHolder
+	scCallerKeys             keysHolder
 	mvxUniversalToken        string
 	mvxChainSpecificToken    string
 	mvxReceiverAddress       sdkCore.AddressHandler
@@ -516,6 +523,7 @@ type simulatedSetup struct {
 	ethBridgeAddress         common.Address
 	ethBridgeContract        *contract.Bridge
 	workingDir               string
+	scCallerModule           io.Closer
 }
 
 type argSimulatedSetup struct {
@@ -585,6 +593,8 @@ func prepareSimulatedSetup(args argSimulatedSetup) *simulatedSetup {
 	// start relayers
 	testSetup.startRelayers(ethChainWrapper, erc20ContractsHolder)
 
+	testSetup.startScCallerModule()
+
 	return testSetup
 }
 
@@ -594,6 +604,7 @@ func (testSetup *simulatedSetup) close() {
 	require.NoError(testSetup.t, testSetup.simulatedETHChain.Close())
 
 	testSetup.testContextCancel()
+	_ = testSetup.scCallerModule.Close()
 }
 
 func (testSetup *simulatedSetup) closeRelayers() {
@@ -616,10 +627,14 @@ func (testSetup *simulatedSetup) getRelayersKeys() {
 
 		relayersKeys = append(relayersKeys, relayerKeys)
 
-		saveRelayerKey(testSetup.t, testSetup.workingDir, i, relayerKeys)
+		filename := path.Join(testSetup.workingDir, fmt.Sprintf(relayerPemPathFormat, i))
+		saveMvxKey(testSetup.t, filename, relayerKeys)
 	}
 
 	testSetup.relayersKeys = relayersKeys
+	testSetup.scCallerKeys = generateMvxPrivatePublicKey(testSetup.t)
+	filename := path.Join(testSetup.workingDir, scCallerFilename)
+	saveMvxKey(testSetup.t, filename, testSetup.scCallerKeys)
 }
 
 func generateMvxPrivatePublicKey(t *testing.T) keysHolder {
@@ -641,7 +656,7 @@ func generateMvxPrivatePublicKey(t *testing.T) keysHolder {
 	}
 }
 
-func saveRelayerKey(t *testing.T, tempDir string, index int, key keysHolder) {
+func saveMvxKey(t *testing.T, filename string, key keysHolder) {
 	blk := pem.Block{
 		Type:  "PRIVATE KEY for " + key.pk,
 		Bytes: []byte(hex.EncodeToString(key.sk)),
@@ -651,7 +666,7 @@ func saveRelayerKey(t *testing.T, tempDir string, index int, key keysHolder) {
 	err := pem.Encode(buff, &blk)
 	require.Nil(t, err)
 
-	err = os.WriteFile(path.Join(tempDir, fmt.Sprintf(relayerPemPathFormat, index)), buff.Bytes(), os.ModePerm)
+	err = os.WriteFile(filename, buff.Bytes(), os.ModePerm)
 	require.Nil(t, err)
 }
 
@@ -731,6 +746,32 @@ func (testSetup *simulatedSetup) startRelayers(
 	testSetup.relayers = relayers
 }
 
+func (testSetup *simulatedSetup) startScCallerModule() {
+	cfg := config.ScCallsModuleConfig{
+		ScProxyBech32Address:         testSetup.mvxScProxyAddress,
+		ExtraGasToExecute:            20_000_000, // 20 million
+		NetworkAddress:               testSetup.mvxChainSimulator.GetNetworkAddress(),
+		ProxyMaxNoncesDelta:          5,
+		ProxyFinalityCheck:           false,
+		ProxyCacherExpirationSeconds: 60, // 1 minute
+		ProxyRestAPIEntityType:       string(sdkCore.Proxy),
+		IntervalToResendTxsInSeconds: 1,
+		PrivateKeyFile:               path.Join(testSetup.workingDir, scCallerFilename),
+		PollingIntervalInMillis:      1000, // 1 second
+		FilterConfig: config.PendingOperationsFilterConfig{
+			AllowedEthAddresses: []string{"*"},
+			AllowedMvxAddresses: []string{"*"},
+			AllowedTokens:       []string{"*"},
+		},
+	}
+
+	var err error
+	testSetup.scCallerModule, err = module.NewScCallsModule(cfg, log)
+	require.Nil(testSetup.t, err)
+
+	log.Info("started SC calls module", "monitoring SC proxy address", testSetup.mvxScProxyAddress)
+}
+
 func (testSetup *simulatedSetup) executeContractsTxs() {
 	var err error
 
@@ -741,6 +782,7 @@ func (testSetup *simulatedSetup) executeContractsTxs() {
 	}
 	walletsToFund = append(walletsToFund, testSetup.mvxOwnerKeys.pk)
 	walletsToFund = append(walletsToFund, testSetup.mvxReceiverKeys.pk)
+	walletsToFund = append(walletsToFund, testSetup.scCallerKeys.pk)
 	testSetup.mvxChainSimulator.FundWallets(testSetup.testContext, walletsToFund)
 
 	testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
