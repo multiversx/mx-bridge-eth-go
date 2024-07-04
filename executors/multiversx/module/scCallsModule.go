@@ -110,8 +110,8 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger) (*scCal
 
 // Close closes any components started
 func (module *scCallsModule) Close() error {
-	errNonceTxsHandler := module.nonceTxsHandler.Close()
 	errPollingHandler := module.pollingHandler.Close()
+	errNonceTxsHandler := module.nonceTxsHandler.Close()
 
 	if errPollingHandler != nil {
 		return errPollingHandler

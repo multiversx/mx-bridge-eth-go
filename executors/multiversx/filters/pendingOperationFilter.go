@@ -121,22 +121,22 @@ func parseList(list []string, unsupportedMarker string) ([]string, error) {
 }
 
 func (filter *pendingOperationFilter) checkLists() error {
-	err := filter.checkEthList(filter.allowedEthAddresses)
+	err := filter.checkList(filter.allowedEthAddresses, checkEthItemValid)
 	if err != nil {
 		return fmt.Errorf("%w in list AllowedEthAddresses", err)
 	}
 
-	err = filter.checkEthList(filter.deniedEthAddresses)
+	err = filter.checkList(filter.deniedEthAddresses, checkEthItemValid)
 	if err != nil {
 		return fmt.Errorf("%w in list DeniedEthAddresses", err)
 	}
 
-	err = filter.checkMvxList(filter.allowedMvxAddresses)
+	err = filter.checkList(filter.allowedMvxAddresses, checkMvxItemValid)
 	if err != nil {
 		return fmt.Errorf("%w in list AllowedMvxAddresses", err)
 	}
 
-	err = filter.checkMvxList(filter.deniedMvxAddresses)
+	err = filter.checkList(filter.deniedMvxAddresses, checkMvxItemValid)
 	if err != nil {
 		return fmt.Errorf("%w in list DeniedMvxAddresses", err)
 	}
@@ -144,30 +144,29 @@ func (filter *pendingOperationFilter) checkLists() error {
 	return nil
 }
 
-func (filter *pendingOperationFilter) checkEthList(list []string) error {
+func (filter *pendingOperationFilter) checkList(list []string, checkItem func(item string) error) error {
 	for index, item := range list {
 		if item == wildcardString {
 			continue
 		}
 
-		if !strings.HasPrefix(item, ethAddressPrefix) {
-			return fmt.Errorf("%w (%s) on item at index %d", errMissingEthPrefix, ethAddressPrefix, index)
+		err := checkItem(item)
+		if err != nil {
+			return fmt.Errorf("%w on item at index %d", err, index)
 		}
 	}
 
 	return nil
 }
 
-func (filter *pendingOperationFilter) checkMvxList(list []string) error {
-	for index, item := range list {
-		if item == wildcardString {
-			continue
-		}
+func checkMvxItemValid(item string) error {
+	_, errNewAddr := data.NewAddressFromBech32String(item)
+	return errNewAddr
+}
 
-		_, err := data.NewAddressFromBech32String(item)
-		if err != nil {
-			return fmt.Errorf("%w on item at index %d", err, index)
-		}
+func checkEthItemValid(item string) error {
+	if !strings.HasPrefix(item, ethAddressPrefix) {
+		return fmt.Errorf("%w (missing %s prefix)", errMissingEthPrefix, ethAddressPrefix)
 	}
 
 	return nil
