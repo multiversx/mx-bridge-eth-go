@@ -153,19 +153,8 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, tokens ...testTokenP
 		}
 	}
 
-	processFunc := func(tb testing.TB, testSetup *simulatedSetup, stopChan chan os.Signal) bool {
-		// TODO: remove select
-		select {
-		default:
-			if startsFromEthFlow.process() && startsFromMvXFlow.process() {
-				return true
-			}
-
-		case <-stopChan:
-			require.Fail(tb, "signal interrupted")
-			return true
-		case <-time.After(timeout):
-			require.Fail(tb, "time out")
+	processFunc := func(tb testing.TB, testSetup *simulatedSetup) bool {
+		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
 			return true
 		}
 
