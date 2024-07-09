@@ -10,11 +10,11 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"math"
 	"math/big"
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	ethCore "github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
@@ -107,17 +108,20 @@ const (
 
 	// Ethereum related consts
 	ethSimulatedGasLimit          = 9000000
-	erc20SafeABI                  = "testdata/contracts/eth/ERC20Safe.json"
+	erc20SafeABI                  = "testdata/contracts/eth/ERC20Safe.abi.json"
 	erc20SafeBytecode             = "testdata/contracts/eth/ERC20Safe.hex"
-	bridgeABI                     = "testdata/contracts/eth/Bridge.json"
+	bridgeABI                     = "testdata/contracts/eth/Bridge.abi.json"
 	bridgeBytecode                = "testdata/contracts/eth/Bridge.hex"
-	scExecProxyABI                = "testdata/contracts/eth/SCExecProxy.json"
+	scExecProxyABI                = "testdata/contracts/eth/SCExecProxy.abi.json"
 	scExecProxyBytecode           = "testdata/contracts/eth/SCExecProxy.hex"
-	genericERC20ABI               = "testdata/contracts/eth/GenericERC20.json"
+	genericERC20ABI               = "testdata/contracts/eth/GenericERC20.abi.json"
 	genericERC20Bytecode          = "testdata/contracts/eth/GenericERC20.hex"
+	mintBurnERC20ABI              = "testdata/contracts/eth/MintBurnERC20.abi.json"
+	mintBurnERC20Bytecode         = "testdata/contracts/eth/MintBurnERC20.hex"
 	ethMinAmountAllowedToTransfer = 25
 	ethMaxAmountAllowedToTransfer = 500000
 	ethStatusSuccess              = uint64(1)
+	minterRoleString              = "MINTER_ROLE"
 )
 
 var (
@@ -125,7 +129,9 @@ var (
 	log                       = logger.GetOrCreate("integrationTests/relayers/slowTests")
 	ethOwnerSK, _             = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	ethDepositorSK, _         = crypto.HexToECDSA("9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1")
+	ethTestAddress, _         = crypto.HexToECDSA("dafea2c94bfe5d25f1a508808c2bc2c2e6c6f18b6b010fc841d8eb80755ba27a")
 	feeInt, _                 = big.NewInt(0).SetString(fee, 10)
+	zeroValueBigInt           = big.NewInt(0)
 )
 
 type keysHolder struct {
@@ -158,6 +164,7 @@ type simulatedSetup struct {
 	mvxOwnerKeys             keysHolder
 	ethOwnerAddress          common.Address
 	ethDepositorAddr         common.Address
+	ethTestAddr              common.Address
 	ethChainID               *big.Int
 	ethSafeAddress           common.Address
 	ethSafeContract          *contract.ERC20Safe
@@ -169,6 +176,9 @@ type simulatedSetup struct {
 	scCallerModule           io.Closer
 	erc20ContractsHolder     ethereum.Erc20ContractsHolder
 	ethChainWrapper          ethereum.ClientWrapper
+	mutBalances              sync.RWMutex
+	esdtBalanceForSafe       map[string]*big.Int
+	ethBalanceTestAddress    map[string]*big.Int
 }
 
 type issueTokenParams struct {
@@ -176,7 +186,7 @@ type issueTokenParams struct {
 
 	// MultiversX
 	numOfDecimalsUniversal           int
-	numOfDecimalsChainSpecific       int
+	numOfDecimalsChainSpecific       byte
 	mvxUniversalTokenTicker          string
 	mvxChainSpecificTokenTicker      string
 	mvxUniversalTokenDisplayName     string
@@ -193,16 +203,34 @@ type issueTokenParams struct {
 	isNativeOnEth    bool
 }
 
+type tokenOperations struct {
+	valueToTransferToMvx *big.Int
+	valueToSendFromMvX   *big.Int
+	ethSCCallMethod      string
+	ethSCCallGasLimit    uint64
+	ethSCCallArguments   []string
+}
+
+type testTokenParams struct {
+	issueTokenParams
+	testOperations          []tokenOperations
+	esdtSafeExtraBalance    *big.Int
+	ethTestAddrExtraBalance *big.Int
+}
+
 func prepareSimulatedSetup(tb testing.TB) *simulatedSetup {
 	log.Info(fmt.Sprintf(logStepMarker, "starting setup"))
 
 	var err error
 	testSetup := &simulatedSetup{
-		TB:               tb,
-		tokensRegistry:   newTokenRegistry(tb),
-		workingDir:       tb.TempDir(),
-		ethOwnerAddress:  crypto.PubkeyToAddress(ethOwnerSK.PublicKey),
-		ethDepositorAddr: crypto.PubkeyToAddress(ethDepositorSK.PublicKey),
+		TB:                    tb,
+		tokensRegistry:        newTokenRegistry(tb),
+		workingDir:            tb.TempDir(),
+		ethOwnerAddress:       crypto.PubkeyToAddress(ethOwnerSK.PublicKey),
+		ethDepositorAddr:      crypto.PubkeyToAddress(ethDepositorSK.PublicKey),
+		ethTestAddr:           crypto.PubkeyToAddress(ethTestAddress.PublicKey),
+		esdtBalanceForSafe:    make(map[string]*big.Int),
+		ethBalanceTestAddress: make(map[string]*big.Int),
 	}
 
 	// create a test context
@@ -244,7 +272,7 @@ func prepareSimulatedSetup(tb testing.TB) *simulatedSetup {
 	return testSetup
 }
 
-func (testSetup *simulatedSetup) issueAndConfigureTokens(tokens ...issueTokenParams) {
+func (testSetup *simulatedSetup) issueAndConfigureTokens(tokens ...testTokenParams) {
 	log.Info(fmt.Sprintf(logStepMarker, fmt.Sprintf("issuing %d tokens", len(tokens))))
 
 	require.Greater(testSetup, len(tokens), 0)
@@ -253,22 +281,64 @@ func (testSetup *simulatedSetup) issueAndConfigureTokens(tokens ...issueTokenPar
 	testSetup.pauseMvxContractsForTokenChanges()
 
 	for _, token := range tokens {
-		testSetup.addToken(token)
-		testSetup.issueAndWhitelistTokenOnEth(token)
-		testSetup.issueAndWhitelistTokenOnMvx(token)
+		testSetup.addToken(token.issueTokenParams)
+		testSetup.issueAndWhitelistTokenOnEth(token.issueTokenParams)
+		testSetup.issueAndWhitelistTokenOnMvx(token.issueTokenParams)
 	}
 
 	testSetup.unPauseEthContractsForTokenChanges()
 	testSetup.unPauseMvxContractsForTokenChanges()
 
-	timestamp, err := testSetup.mvxChainSimulator.GetBlockchainTimeStamp(testSetup.testContext)
-	require.Nil(testSetup, err)
-	require.Greater(testSetup, timestamp, uint64(0), "something went wrong and the chain simulator returned 0 for the current timestamp")
-
-	timestampAsBigInt := big.NewInt(0).SetUint64(timestamp)
 	for _, token := range tokens {
-		testSetup.submitAggregatorBatch(token, timestampAsBigInt)
+		testSetup.submitAggregatorBatch(token.issueTokenParams)
 	}
+}
+
+func (testSetup *simulatedSetup) checkForZeroBalanceOnReceivers(tokens ...testTokenParams) {
+	for _, params := range tokens {
+		testSetup.checkForZeroBalanceOnReceiversForToken(params)
+	}
+}
+
+func (testSetup *simulatedSetup) checkForZeroBalanceOnReceiversForToken(token testTokenParams) {
+	balance := testSetup.getESDTUniversalTokenBalance(testSetup.mvxReceiverAddress, token.abstractTokenIdentifier)
+	require.Equal(testSetup, big.NewInt(0).String(), balance.String())
+
+	balance = testSetup.getESDTUniversalTokenBalance(testSetup.mvxTestCallerAddress, token.abstractTokenIdentifier)
+	require.Equal(testSetup, big.NewInt(0).String(), balance.String())
+}
+
+func (testSetup *simulatedSetup) isTransferDoneFromEthereum(tokens ...testTokenParams) bool {
+	isDone := true
+	for _, params := range tokens {
+		isDone = isDone && testSetup.isTransferDoneFromEthereumForToken(params)
+	}
+
+	return isDone
+}
+
+func (testSetup *simulatedSetup) isTransferDoneFromEthereumForToken(params testTokenParams) bool {
+	expectedValueOnReceiver := big.NewInt(0)
+	expectedValueOnContract := big.NewInt(0)
+	for _, operation := range params.testOperations {
+		if operation.valueToTransferToMvx == nil {
+			continue
+		}
+
+		if len(operation.ethSCCallMethod) > 0 {
+			expectedValueOnContract.Add(expectedValueOnContract, operation.valueToTransferToMvx)
+		} else {
+			expectedValueOnReceiver.Add(expectedValueOnReceiver, operation.valueToTransferToMvx)
+		}
+	}
+
+	receiverBalance := testSetup.getESDTUniversalTokenBalance(testSetup.mvxReceiverAddress, params.abstractTokenIdentifier)
+	if receiverBalance.String() != expectedValueOnReceiver.String() {
+		return false
+	}
+
+	contractBalance := testSetup.getESDTUniversalTokenBalance(testSetup.mvxTestCallerAddress, params.abstractTokenIdentifier)
+	return contractBalance.String() == expectedValueOnContract.String()
 }
 
 func (testSetup *simulatedSetup) startRelayersAndScModule() {
@@ -898,7 +968,7 @@ func (testSetup *simulatedSetup) issueAndWhitelistTokenOnMvx(params issueTokenPa
 		zeroValue,
 		addMapping,
 		[]string{
-			hex.EncodeToString(token.ethGenericTokenAddress.Bytes()),
+			hex.EncodeToString(token.ethErc20Address.Bytes()),
 			hex.EncodeToString([]byte(mvxChainSpecificToken))})
 	require.NoError(testSetup, err)
 	txResult, err = testSetup.mvxChainSimulator.GetTransactionResult(testSetup.testContext, hash)
@@ -977,6 +1047,16 @@ func (testSetup *simulatedSetup) issueAndWhitelistTokenOnMvx(params issueTokenPa
 	require.NoError(testSetup, err)
 
 	log.Info("multi-transfer set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status)
+
+	esdtBalanceForSafe := testSetup.getESDTChainSpecificTokenBalance(testSetup.mvxSafeAddress, params.abstractTokenIdentifier)
+	ethBalanceForTestAddr := testSetup.getEthBalance(testSetup.ethTestAddr, params.abstractTokenIdentifier)
+	testSetup.mutBalances.Lock()
+	testSetup.esdtBalanceForSafe[params.abstractTokenIdentifier] = esdtBalanceForSafe
+	testSetup.ethBalanceTestAddress[params.abstractTokenIdentifier] = ethBalanceForTestAddr
+	testSetup.mutBalances.Unlock()
+
+	log.Info("recorded the ESDT balance for safe contract", "token", params.abstractTokenIdentifier, "balance", esdtBalanceForSafe.String())
+	log.Info("recorded the ETH balance for test address", "token", params.abstractTokenIdentifier, "balance", ethBalanceForTestAddr.String())
 }
 
 func (testSetup *simulatedSetup) unPauseMvxContractsForTokenChanges() {
@@ -1118,18 +1198,66 @@ func (testSetup *simulatedSetup) getESDTChainSpecificTokenBalance(
 func (testSetup *simulatedSetup) getEthBalance(receiver common.Address, abstractTokenIdentifier string) *big.Int {
 	token := testSetup.getTokenData(abstractTokenIdentifier)
 	require.NotNil(testSetup, token)
-	require.NotNil(testSetup, token.ethGenericTokenContract)
+	require.NotNil(testSetup, token.ethErc20Address)
 
-	balance, err := token.ethGenericTokenContract.BalanceOf(nil, receiver)
+	balance, err := token.ethErc20Contract.BalanceOf(nil, receiver)
 	require.NoError(testSetup, err)
 
 	return balance
 }
 
-func (testSetup *simulatedSetup) sendMVXToEthTransaction(abstractTokenIdentifier string, value *big.Int) string {
-	token := testSetup.getTokenData(abstractTokenIdentifier)
+func (testSetup *simulatedSetup) sendFromMultiversxToEthereum(tokensParams ...testTokenParams) {
+	for _, params := range tokensParams {
+		testSetup.sendFromMultiversxToEthereumForToken(params)
+	}
+}
+
+func (testSetup *simulatedSetup) sendFromMultiversxToEthereumForToken(params testTokenParams) {
+	token := testSetup.getTokenData(params.abstractTokenIdentifier)
 	require.NotNil(testSetup, token)
 
+	for _, operation := range params.testOperations {
+		if operation.valueToSendFromMvX == nil {
+			continue
+		}
+
+		testSetup.sendDepositTransactionFromMultiversx(token, operation.valueToSendFromMvX)
+	}
+}
+
+func (testSetup *simulatedSetup) sendFromEthereumToMultiversX(tokensParams ...testTokenParams) {
+	for _, params := range tokensParams {
+		testSetup.createDepositsOnEthereumForToken(params, ethTestAddress)
+	}
+}
+
+func (testSetup *simulatedSetup) isTransferDoneFromMultiversX(tokens ...testTokenParams) bool {
+	isDone := true
+	for _, params := range tokens {
+		isDone = isDone && testSetup.isTransferDoneFromMultiversXForToken(params)
+	}
+
+	return isDone
+}
+
+func (testSetup *simulatedSetup) isTransferDoneFromMultiversXForToken(params testTokenParams) bool {
+	testSetup.mutBalances.Lock()
+	initialBalanceForSafe := testSetup.esdtBalanceForSafe[params.abstractTokenIdentifier]
+	expectedReceiver := big.NewInt(0).Set(testSetup.ethBalanceTestAddress[params.abstractTokenIdentifier])
+	expectedReceiver.Add(expectedReceiver, params.ethTestAddrExtraBalance)
+	testSetup.mutBalances.Unlock()
+
+	ethTestBalance := testSetup.getEthBalance(testSetup.ethTestAddr, params.abstractTokenIdentifier)
+	isTransferDoneFromMultiversX := ethTestBalance.String() == expectedReceiver.String()
+
+	expectedEsdtSafe := big.NewInt(0).Add(initialBalanceForSafe, params.esdtSafeExtraBalance)
+	balanceForSafe := testSetup.getESDTChainSpecificTokenBalance(testSetup.mvxSafeAddress, params.abstractTokenIdentifier)
+	isSafeContractOnCorrectBalance := expectedEsdtSafe.String() == balanceForSafe.String()
+
+	return isTransferDoneFromMultiversX && isSafeContractOnCorrectBalance
+}
+
+func (testSetup *simulatedSetup) sendDepositTransactionFromMultiversx(token *tokenData, value *big.Int) {
 	// unwrap token
 	paramsUnwrap := []string{
 		hex.EncodeToString([]byte(token.mvxUniversalToken)),
@@ -1150,7 +1278,7 @@ func (testSetup *simulatedSetup) sendMVXToEthTransaction(abstractTokenIdentifier
 		hex.EncodeToString([]byte(token.mvxChainSpecificToken)),
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(createTransactionParam)),
-		hex.EncodeToString(testSetup.ethOwnerAddress.Bytes()),
+		hex.EncodeToString(testSetup.ethTestAddr.Bytes()),
 	}
 
 	hash, err = testSetup.mvxChainSimulator.ScCall(
@@ -1166,12 +1294,16 @@ func (testSetup *simulatedSetup) sendMVXToEthTransaction(abstractTokenIdentifier
 	txResult, err = testSetup.mvxChainSimulator.GetTransactionResult(testSetup.testContext, hash)
 	require.NoError(testSetup, err)
 
-	log.Info("MVX->ETH transaction sent", "hash", hash, "status", txResult.Status)
-
-	return hash
+	log.Info("MultiversX->Ethereum transaction sent", "hash", hash, "status", txResult.Status)
 }
 
-func (testSetup *simulatedSetup) submitAggregatorBatch(params issueTokenParams, timestampAsBigInt *big.Int) {
+func (testSetup *simulatedSetup) submitAggregatorBatch(params issueTokenParams) {
+	timestamp, err := testSetup.mvxChainSimulator.GetBlockchainTimeStamp(testSetup.testContext)
+	require.Nil(testSetup, err)
+	require.Greater(testSetup, timestamp, uint64(0), "something went wrong and the chain simulator returned 0 for the current timestamp")
+
+	timestampAsBigInt := big.NewInt(0).SetUint64(timestamp)
+
 	hash, err := testSetup.mvxChainSimulator.ScCall(
 		testSetup.testContext,
 		testSetup.mvxOwnerKeys.pk,
@@ -1196,6 +1328,7 @@ func (testSetup *simulatedSetup) createEthereumSimulatorAndDeployContracts() {
 	addr := map[common.Address]ethCore.GenesisAccount{
 		testSetup.ethOwnerAddress:  {Balance: new(big.Int).Lsh(big.NewInt(1), 100)},
 		testSetup.ethDepositorAddr: {Balance: new(big.Int).Lsh(big.NewInt(1), 100)},
+		testSetup.ethTestAddr:      {Balance: new(big.Int).Lsh(big.NewInt(1), 100)},
 	}
 	for _, relayerKeys := range testSetup.relayersKeys {
 		addr[relayerKeys.ethAddress] = ethCore.GenesisAccount{Balance: new(big.Int).Lsh(big.NewInt(1), 100)}
@@ -1239,43 +1372,90 @@ func (testSetup *simulatedSetup) createEthereumSimulatorAndDeployContracts() {
 }
 
 func (testSetup *simulatedSetup) issueAndWhitelistTokenOnEth(params issueTokenParams) {
+	erc20Address, erc20ContractInstance := testSetup.deployTestERC20Contract(params)
+
+	testSetup.registerEthAddressAndContract(params.abstractTokenIdentifier, erc20Address, erc20ContractInstance)
+
+	// whitelist eth token
+	auth, _ := bind.NewKeyedTransactorWithChainID(ethOwnerSK, testSetup.ethChainID)
+	tx, err := testSetup.ethSafeContract.WhitelistToken(auth, erc20Address, big.NewInt(ethMinAmountAllowedToTransfer), big.NewInt(ethMaxAmountAllowedToTransfer), params.isMintBurnOnEth, params.isNativeOnEth)
+	require.NoError(testSetup, err)
+	testSetup.simulatedETHChain.Commit()
+	testSetup.checkEthTxResult(tx.Hash())
+}
+
+func (testSetup *simulatedSetup) deployTestERC20Contract(params issueTokenParams) (common.Address, erc20Contract) {
+	if params.isMintBurnOnEth {
+		ethMintBurnAddress := testSetup.deployETHContract(
+			mintBurnERC20ABI,
+			mintBurnERC20Bytecode,
+			params.ethTokenName,
+			params.ethTokenSymbol,
+			params.numOfDecimalsChainSpecific,
+		)
+
+		ethMintBurnContract, err := contract.NewMintBurnERC20(ethMintBurnAddress, testSetup.simulatedETHChain)
+		require.NoError(testSetup, err)
+
+		ownerAuth, _ := bind.NewKeyedTransactorWithChainID(ethOwnerSK, testSetup.ethChainID)
+		minterRoleBytes := [32]byte(crypto.Keccak256([]byte(minterRoleString)))
+
+		// grant mint role to the depositor address for the initial mint
+		txGrantRole, err := ethMintBurnContract.GrantRole(ownerAuth, minterRoleBytes, testSetup.ethDepositorAddr)
+		require.NoError(testSetup, err)
+		testSetup.simulatedETHChain.Commit()
+		testSetup.checkEthTxResult(txGrantRole.Hash())
+
+		// grant mint role to the safe contract
+		txGrantRole, err = ethMintBurnContract.GrantRole(ownerAuth, minterRoleBytes, testSetup.ethSafeAddress)
+		require.NoError(testSetup, err)
+		testSetup.simulatedETHChain.Commit()
+		testSetup.checkEthTxResult(txGrantRole.Hash())
+
+		// mint generic token on the behalf of the depositor
+		auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, testSetup.ethChainID)
+
+		mintAmount, ok := big.NewInt(0).SetString(params.valueToMintOnEth, 10)
+		require.True(testSetup, ok)
+		tx, err := ethMintBurnContract.Mint(auth, testSetup.ethDepositorAddr, mintAmount)
+		require.NoError(testSetup, err)
+		testSetup.simulatedETHChain.Commit()
+		testSetup.checkEthTxResult(tx.Hash())
+
+		balance, err := ethMintBurnContract.BalanceOf(nil, testSetup.ethDepositorAddr)
+		require.NoError(testSetup, err)
+		require.Equal(testSetup, mintAmount.String(), balance.String())
+
+		return ethMintBurnAddress, ethMintBurnContract
+	}
+
 	// deploy generic eth token
 	ethGenericTokenAddress := testSetup.deployETHContract(
 		genericERC20ABI,
 		genericERC20Bytecode,
 		params.ethTokenName,
 		params.ethTokenSymbol,
+		params.numOfDecimalsChainSpecific,
 	)
 
 	ethGenericTokenContract, err := contract.NewGenericERC20(ethGenericTokenAddress, testSetup.simulatedETHChain)
 	require.NoError(testSetup, err)
 
-	testSetup.registerEthAddressAndContract(params.abstractTokenIdentifier, ethGenericTokenAddress, ethGenericTokenContract)
-
-	// mint generic token
+	// mint the address that will create the transfers
 	auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, testSetup.ethChainID)
 
 	mintAmount, ok := big.NewInt(0).SetString(params.valueToMintOnEth, 10)
 	require.True(testSetup, ok)
-
-	tx, err := ethGenericTokenContract.Mint(auth, testSetup.ethDepositorAddr, mintAmount)
+	tx, err := ethGenericTokenContract.Mint(auth, testSetup.ethTestAddr, mintAmount)
 	require.NoError(testSetup, err)
 	testSetup.simulatedETHChain.Commit()
 	testSetup.checkEthTxResult(tx.Hash())
 
-	balance := testSetup.getEthBalance(testSetup.ethDepositorAddr, params.abstractTokenIdentifier)
-
-	denominationFactor := big.NewInt(int64(math.Pow(10, float64(params.numOfDecimalsUniversal))))
-	mintAmountWithDenomination := big.NewInt(0).Mul(mintAmount, denominationFactor)
-
-	require.Equal(testSetup, mintAmountWithDenomination.String(), balance.String())
-
-	// whitelist eth token
-	auth, _ = bind.NewKeyedTransactorWithChainID(ethOwnerSK, testSetup.ethChainID)
-	tx, err = testSetup.ethSafeContract.WhitelistToken(auth, ethGenericTokenAddress, big.NewInt(ethMinAmountAllowedToTransfer), big.NewInt(ethMaxAmountAllowedToTransfer), params.isMintBurnOnEth, params.isNativeOnEth)
+	balance, err := ethGenericTokenContract.BalanceOf(nil, testSetup.ethTestAddr)
 	require.NoError(testSetup, err)
-	testSetup.simulatedETHChain.Commit()
-	testSetup.checkEthTxResult(tx.Hash())
+	require.Equal(testSetup, mintAmount.String(), balance.String())
+
+	return ethGenericTokenAddress, ethGenericTokenContract
 }
 
 func (testSetup *simulatedSetup) deployETHContract(
@@ -1303,58 +1483,9 @@ func (testSetup *simulatedSetup) deployETHContract(
 	return contractAddress
 }
 
-func (testSetup *simulatedSetup) createBatchOnEthereum(
-	abstractTokenIdentifier string,
-	value *big.Int,
-	ethSCCallMethod string,
-	ethSCCallGasLimit uint64,
-	ethSCCallArguments ...string,
-) {
-	// add allowance for the sender
-	auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, testSetup.ethChainID)
-
-	token := testSetup.getTokenData(abstractTokenIdentifier)
-	require.NotNil(testSetup, token)
-	require.NotNil(testSetup, token.ethGenericTokenContract)
-
-	if len(ethSCCallMethod) > 0 {
-		tx, err := token.ethGenericTokenContract.Approve(auth, testSetup.ethSCProxyAddress, value)
-		require.NoError(testSetup, err)
-		testSetup.simulatedETHChain.Commit()
-		testSetup.checkEthTxResult(tx.Hash())
-
-		codec := parsers.MultiversxCodec{}
-		callData := parsers.CallData{
-			Type:      parsers.DataPresentProtocolMarker,
-			Function:  ethSCCallMethod,
-			GasLimit:  ethSCCallGasLimit,
-			Arguments: ethSCCallArguments,
-		}
-
-		buff := codec.EncodeCallData(callData)
-
-		tx, err = testSetup.ethSCProxyContract.Deposit(
-			auth,
-			token.ethGenericTokenAddress,
-			value,
-			testSetup.mvxTestCallerAddress.AddressSlice(),
-			string(buff),
-		)
-		require.NoError(testSetup, err)
-		testSetup.simulatedETHChain.Commit()
-		testSetup.checkEthTxResult(tx.Hash())
-	} else {
-		tx, err := token.ethGenericTokenContract.Approve(auth, testSetup.ethSafeAddress, value)
-		require.NoError(testSetup, err)
-		testSetup.simulatedETHChain.Commit()
-		testSetup.checkEthTxResult(tx.Hash())
-
-		// deposit on ETH safe as a simple transfer
-		auth, _ = bind.NewKeyedTransactorWithChainID(ethDepositorSK, testSetup.ethChainID)
-		tx, err = testSetup.ethSafeContract.Deposit(auth, token.ethGenericTokenAddress, value, testSetup.mvxReceiverAddress.AddressSlice())
-		require.NoError(testSetup, err)
-		testSetup.simulatedETHChain.Commit()
-		testSetup.checkEthTxResult(tx.Hash())
+func (testSetup *simulatedSetup) createBatchOnEthereum(tokensParams ...testTokenParams) {
+	for _, params := range tokensParams {
+		testSetup.createDepositsOnEthereumForToken(params, ethTestAddress)
 	}
 
 	// wait until batch is settled
@@ -1364,55 +1495,139 @@ func (testSetup *simulatedSetup) createBatchOnEthereum(
 	}
 }
 
-func (testSetup *simulatedSetup) createBatchOnMultiversX(abstractTokenIdentifier string, value *big.Int) {
-	token := testSetup.getTokenData(abstractTokenIdentifier)
+func (testSetup *simulatedSetup) createDepositsOnEthereumForToken(params testTokenParams, from *ecdsa.PrivateKey) {
+	// add allowance for the sender
+	auth, _ := bind.NewKeyedTransactorWithChainID(from, testSetup.ethChainID)
+
+	token := testSetup.getTokenData(params.abstractTokenIdentifier)
 	require.NotNil(testSetup, token)
-	require.NotNil(testSetup, token.ethGenericTokenContract)
+	require.NotNil(testSetup, token.ethErc20Contract)
+
+	allowanceValueForSafe := big.NewInt(0)
+	allowanceValueForScProxy := big.NewInt(0)
+	for _, operation := range params.testOperations {
+		if operation.valueToTransferToMvx == nil {
+			continue
+		}
+		if len(operation.ethSCCallMethod) > 0 {
+			allowanceValueForScProxy.Add(allowanceValueForScProxy, operation.valueToTransferToMvx)
+		} else {
+			allowanceValueForSafe.Add(allowanceValueForSafe, operation.valueToTransferToMvx)
+		}
+	}
+
+	if allowanceValueForSafe.Cmp(zeroValueBigInt) > 0 {
+		tx, err := token.ethErc20Contract.Approve(auth, testSetup.ethSafeAddress, allowanceValueForSafe)
+		require.NoError(testSetup, err)
+		testSetup.simulatedETHChain.Commit()
+		testSetup.checkEthTxResult(tx.Hash())
+	}
+	if allowanceValueForScProxy.Cmp(zeroValueBigInt) > 0 {
+		tx, err := token.ethErc20Contract.Approve(auth, testSetup.ethSCProxyAddress, allowanceValueForScProxy)
+		require.NoError(testSetup, err)
+		testSetup.simulatedETHChain.Commit()
+		testSetup.checkEthTxResult(tx.Hash())
+	}
+
+	var err error
+	for _, operation := range params.testOperations {
+		if operation.valueToTransferToMvx == nil {
+			continue
+		}
+
+		var tx *types.Transaction
+		if len(operation.ethSCCallMethod) > 0 {
+			codec := parsers.MultiversxCodec{}
+			callData := parsers.CallData{
+				Type:      parsers.DataPresentProtocolMarker,
+				Function:  operation.ethSCCallMethod,
+				GasLimit:  operation.ethSCCallGasLimit,
+				Arguments: operation.ethSCCallArguments,
+			}
+
+			buff := codec.EncodeCallData(callData)
+
+			tx, err = testSetup.ethSCProxyContract.Deposit(
+				auth,
+				token.ethErc20Address,
+				operation.valueToTransferToMvx,
+				testSetup.mvxTestCallerAddress.AddressSlice(),
+				string(buff),
+			)
+		} else {
+			tx, err = testSetup.ethSafeContract.Deposit(auth, token.ethErc20Address, operation.valueToTransferToMvx, testSetup.mvxReceiverAddress.AddressSlice())
+		}
+
+		require.NoError(testSetup, err)
+		testSetup.simulatedETHChain.Commit()
+		testSetup.checkEthTxResult(tx.Hash())
+	}
+}
+
+func (testSetup *simulatedSetup) createBatchOnMultiversX(tokensParams ...testTokenParams) {
+	for _, params := range tokensParams {
+		testSetup.createBatchOnMultiversXForToken(params)
+	}
+}
+
+func (testSetup *simulatedSetup) createBatchOnMultiversXForToken(params testTokenParams) {
+	token := testSetup.getTokenData(params.abstractTokenIdentifier)
+	require.NotNil(testSetup, token)
+	require.NotNil(testSetup, token.ethErc20Contract)
+
+	valueToMintOnEthereum := big.NewInt(0)
+	for _, operation := range params.testOperations {
+		if operation.valueToSendFromMvX == nil {
+			continue
+		}
+
+		valueToMintOnEthereum.Add(valueToMintOnEthereum, operation.valueToSendFromMvX)
+
+		// transfer to sender tx
+		hash, err := testSetup.mvxChainSimulator.ScCall(
+			testSetup.testContext,
+			testSetup.mvxOwnerKeys.pk,
+			testSetup.mvxOwnerKeys.sk,
+			testSetup.mvxReceiverKeys.pk,
+			zeroValue,
+			esdtTransfer,
+			[]string{
+				hex.EncodeToString([]byte(token.mvxChainSpecificToken)),
+				hex.EncodeToString(operation.valueToSendFromMvX.Bytes())})
+		require.NoError(testSetup, err)
+		txResult, err := testSetup.mvxChainSimulator.GetTransactionResult(testSetup.testContext, hash)
+		require.NoError(testSetup, err)
+
+		log.Info("transfer to sender tx executed", "hash", hash, "status", txResult.Status)
+
+		// send tx to safe contract
+		scCallParams := []string{
+			hex.EncodeToString([]byte(token.mvxChainSpecificToken)),
+			hex.EncodeToString(operation.valueToSendFromMvX.Bytes()),
+			hex.EncodeToString([]byte(createTransactionParam)),
+			hex.EncodeToString(testSetup.ethTestAddr.Bytes()),
+		}
+		hash, err = testSetup.mvxChainSimulator.ScCall(
+			testSetup.testContext,
+			testSetup.mvxReceiverKeys.pk,
+			testSetup.mvxReceiverKeys.sk,
+			testSetup.mvxSafeAddressString,
+			zeroValue,
+			esdtTransfer,
+			scCallParams)
+		require.NoError(testSetup, err)
+		txResult, err = testSetup.mvxChainSimulator.GetTransactionResult(testSetup.testContext, hash)
+		require.NoError(testSetup, err)
+
+		log.Info("MultiversX->Ethereum transaction sent", "hash", hash, "status", txResult.Status)
+	}
 
 	// mint erc20 token into eth safe
 	auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, testSetup.ethChainID)
-	tx, err := token.ethGenericTokenContract.Mint(auth, testSetup.ethSafeAddress, value)
+	tx, err := token.ethErc20Contract.Mint(auth, testSetup.ethSafeAddress, valueToMintOnEthereum)
 	require.NoError(testSetup, err)
 	testSetup.simulatedETHChain.Commit()
 	testSetup.checkEthTxResult(tx.Hash())
-
-	// transfer to sender tx
-	hash, err := testSetup.mvxChainSimulator.ScCall(
-		testSetup.testContext,
-		testSetup.mvxOwnerKeys.pk,
-		testSetup.mvxOwnerKeys.sk,
-		testSetup.mvxReceiverKeys.pk,
-		zeroValue,
-		esdtTransfer,
-		[]string{
-			hex.EncodeToString([]byte(token.mvxChainSpecificToken)),
-			hex.EncodeToString(value.Bytes())})
-	require.NoError(testSetup, err)
-	txResult, err := testSetup.mvxChainSimulator.GetTransactionResult(testSetup.testContext, hash)
-	require.NoError(testSetup, err)
-
-	log.Info("transfer to sender tx executed", "hash", hash, "status", txResult.Status)
-
-	// send tx to safe contract
-	params := []string{
-		hex.EncodeToString([]byte(token.mvxChainSpecificToken)),
-		hex.EncodeToString(value.Bytes()),
-		hex.EncodeToString([]byte(createTransactionParam)),
-		hex.EncodeToString(testSetup.ethOwnerAddress.Bytes()),
-	}
-	hash, err = testSetup.mvxChainSimulator.ScCall(
-		testSetup.testContext,
-		testSetup.mvxReceiverKeys.pk,
-		testSetup.mvxReceiverKeys.sk,
-		testSetup.mvxSafeAddressString,
-		zeroValue,
-		esdtTransfer,
-		params)
-	require.NoError(testSetup, err)
-	txResult, err = testSetup.mvxChainSimulator.GetTransactionResult(testSetup.testContext, hash)
-	require.NoError(testSetup, err)
-
-	log.Info("MVX->ETH transaction sent", "hash", hash, "status", txResult.Status)
 }
 
 func (testSetup *simulatedSetup) checkEthTxResult(hash common.Hash) {

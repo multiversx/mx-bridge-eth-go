@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,9 +20,10 @@ const (
 )
 
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
-	t.Run("ETH->MVX and back, ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true", func(t *testing.T) {
-		token1 := issueTokenParams{
-			abstractTokenIdentifier:          "ETHUSDC",
+	// USDC is ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true
+	usdcToken := testTokenParams{
+		issueTokenParams: issueTokenParams{
+			abstractTokenIdentifier:          "USDC",
 			numOfDecimalsUniversal:           6,
 			numOfDecimalsChainSpecific:       6,
 			mvxUniversalTokenTicker:          "USDC",
@@ -38,77 +38,147 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 			valueToMintOnEth:                 "10000000000",
 			isMintBurnOnEth:                  false,
 			isNativeOnEth:                    true,
+		},
+		testOperations: []tokenOperations{
+			{
+				valueToTransferToMvx: big.NewInt(5000),
+				valueToSendFromMvX:   big.NewInt(2500),
+				ethSCCallMethod:      "",
+				ethSCCallGasLimit:    0,
+				ethSCCallArguments:   nil,
+			},
+			{
+				valueToTransferToMvx: big.NewInt(7000),
+				valueToSendFromMvX:   big.NewInt(300),
+				ethSCCallMethod:      "",
+				ethSCCallGasLimit:    0,
+				ethSCCallArguments:   nil,
+			},
+			{
+				valueToTransferToMvx: big.NewInt(1000),
+				valueToSendFromMvX:   nil,
+				ethSCCallMethod:      "callPayable",
+				ethSCCallGasLimit:    50000000,
+				ethSCCallArguments:   nil,
+			},
+		},
+		esdtSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
+		ethTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000), // -(eth->mvx) + (mvx->eth) - fees
+	}
+
+	//MEME is ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = false
+	memeToken := testTokenParams{
+		issueTokenParams: issueTokenParams{
+			abstractTokenIdentifier:          "MEME",
+			numOfDecimalsUniversal:           1,
+			numOfDecimalsChainSpecific:       1,
+			mvxUniversalTokenTicker:          "MEME",
+			mvxChainSpecificTokenTicker:      "ETHMEME",
+			mvxUniversalTokenDisplayName:     "WrappedMEME",
+			mvxChainSpecificTokenDisplayName: "EthereumWrappedMEME",
+			valueToMintOnMvx:                 "10000000000",
+			isMintBurnOnMvX:                  false,
+			isNativeOnMvX:                    true,
+			ethTokenName:                     "ETHMEME",
+			ethTokenSymbol:                   "ETHM",
+			valueToMintOnEth:                 "10000000000",
+			isMintBurnOnEth:                  true,
+			isNativeOnEth:                    false,
+		},
+		testOperations: []tokenOperations{
+			{
+				valueToTransferToMvx: big.NewInt(2400),
+				valueToSendFromMvX:   big.NewInt(4000),
+				ethSCCallMethod:      "",
+				ethSCCallGasLimit:    0,
+				ethSCCallArguments:   nil,
+			},
+			{
+				valueToTransferToMvx: big.NewInt(200),
+				valueToSendFromMvX:   big.NewInt(6000),
+				ethSCCallMethod:      "",
+				ethSCCallGasLimit:    0,
+				ethSCCallArguments:   nil,
+			},
+			{
+				valueToTransferToMvx: big.NewInt(1000),
+				valueToSendFromMvX:   big.NewInt(2000),
+				ethSCCallMethod:      "callPayable",
+				ethSCCallGasLimit:    50000000,
+				ethSCCallArguments:   nil,
+			},
+		},
+		esdtSafeExtraBalance:    big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
+		ethTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
+	}
+
+	testRelayersWithChainSimulatorAndTokens(t, usdcToken, memeToken)
+}
+
+func testRelayersWithChainSimulatorAndTokens(tb testing.TB, tokens ...testTokenParams) {
+	startsFromEthFlow := &startsFromEthereumFlow{
+		TB:     tb,
+		tokens: make([]testTokenParams, 0, len(tokens)),
+	}
+
+	startsFromMvXFlow := &startsFromMultiversXFlow{
+		TB:     tb,
+		tokens: make([]testTokenParams, 0, len(tokens)),
+	}
+
+	// split the tokens from where should the bridge start
+	for _, token := range tokens {
+		if token.isNativeOnEth {
+			startsFromEthFlow.tokens = append(startsFromEthFlow.tokens, token)
+			continue
 		}
-
-		valueToTransferToMvx := big.NewInt(5000)
-		// todo: refactor this
-		valueToSendFromMvX := big.NewInt(0).Div(valueToTransferToMvx, big.NewInt(2))
-		var expectedFinalValueOnEth *big.Int
-		var expectedFinalValueOnMvXSafe *big.Int
-		setupFunc := func(tb testing.TB, testSetup *simulatedSetup) {
-			testSetup.issueAndConfigureTokens(token1)
-
-			balance := testSetup.getESDTUniversalTokenBalance(testSetup.mvxReceiverAddress, token1.abstractTokenIdentifier)
-			assert.Equal(tb, big.NewInt(0).String(), balance.String())
-
-			testSetup.createBatchOnEthereum(token1.abstractTokenIdentifier, valueToTransferToMvx, "", 0)
-
-			initialSafeValue := testSetup.getESDTChainSpecificTokenBalance(testSetup.mvxSafeAddress, token1.abstractTokenIdentifier)
-			expectedFinalValueOnMvXSafe = big.NewInt(0).Add(initialSafeValue, feeInt)
-			expectedFinalValueOnEth = big.NewInt(0).Sub(valueToSendFromMvX, feeInt)
+		if token.isNativeOnMvX {
+			startsFromMvXFlow.tokens = append(startsFromMvXFlow.tokens, token)
+			continue
 		}
+		require.Fail(tb, "invalid setup, found a token that is not native on any chain", "abstract identifier", token.abstractTokenIdentifier)
+	}
 
-		ethToMVXDone := false
-		mvxToETHDone := false
-		processFunc := func(tb testing.TB, testSetup *simulatedSetup, stopChan chan os.Signal) bool {
-			select {
-			default:
-				receiverToCheckBalance := testSetup.mvxReceiverAddress
-				balance := testSetup.getESDTUniversalTokenBalance(receiverToCheckBalance, token1.abstractTokenIdentifier)
-				isTransferDoneFromETH := balance.String() == valueToTransferToMvx.String()
-				if !ethToMVXDone && isTransferDoneFromETH {
-					ethToMVXDone = true
-					log.Info("ETH->MvX transfer finished, now sending back to ETH...")
+	setupFunc := func(tb testing.TB, testSetup *simulatedSetup) {
+		startsFromMvXFlow.testSetup = testSetup
+		startsFromEthFlow.testSetup = testSetup
 
-					testSetup.sendMVXToEthTransaction(token1.abstractTokenIdentifier, valueToSendFromMvX)
-				}
+		testSetup.issueAndConfigureTokens(tokens...)
+		testSetup.checkForZeroBalanceOnReceivers(tokens...)
+		if len(startsFromEthFlow.tokens) > 0 {
+			testSetup.createBatchOnEthereum(startsFromEthFlow.tokens...)
+		}
+		if len(startsFromMvXFlow.tokens) > 0 {
+			testSetup.createBatchOnMultiversX(startsFromMvXFlow.tokens...)
+		}
+	}
 
-				ethOwnerBalance := testSetup.getEthBalance(testSetup.ethOwnerAddress, token1.abstractTokenIdentifier)
-				isTransferDoneFromMVX := ethOwnerBalance.String() == expectedFinalValueOnEth.String()
-
-				balance = testSetup.getESDTChainSpecificTokenBalance(testSetup.mvxSafeAddress, token1.abstractTokenIdentifier)
-				safeSavedFee := expectedFinalValueOnMvXSafe.String() == balance.String()
-
-				if !mvxToETHDone && isTransferDoneFromMVX && safeSavedFee {
-					mvxToETHDone = true
-				}
-
-				if ethToMVXDone && mvxToETHDone {
-					log.Info("MvX<->ETH transfers done")
-					return true
-				}
-
-				// commit blocks in order to execute incoming txs from relayers
-				testSetup.simulatedETHChain.Commit()
-
-				testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
-
-			case <-stopChan:
-				require.Fail(t, "signal interrupted")
-				return true
-			case <-time.After(timeout):
-				require.Fail(t, "time out")
+	processFunc := func(tb testing.TB, testSetup *simulatedSetup, stopChan chan os.Signal) bool {
+		select {
+		default:
+			if startsFromEthFlow.process() && startsFromMvXFlow.process() {
 				return true
 			}
 
-			return false
+		case <-stopChan:
+			require.Fail(tb, "signal interrupted")
+			return true
+		case <-time.After(timeout):
+			require.Fail(tb, "time out")
+			return true
 		}
 
-		testRelayersWithChainSimulator(t,
-			setupFunc,
-			processFunc,
-		)
-	})
+		// commit blocks in order to execute incoming txs from relayers
+		testSetup.simulatedETHChain.Commit()
+		testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
+
+		return false
+	}
+
+	testRelayersWithChainSimulator(tb,
+		setupFunc,
+		processFunc,
+	)
 }
 
 func testRelayersWithChainSimulator(tb testing.TB,
@@ -118,7 +188,7 @@ func testRelayersWithChainSimulator(tb testing.TB,
 	defer func() {
 		r := recover()
 		if r != nil {
-			require.Fail(tb, "should have not panicked")
+			require.Fail(tb, fmt.Sprintf("should have not panicked: %v", r))
 		}
 	}()
 

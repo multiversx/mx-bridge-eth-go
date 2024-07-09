@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,10 +18,10 @@ type tokenData struct {
 	ethTokenName                string
 	ethTokenSymbol              string
 
-	mvxUniversalToken       string
-	mvxChainSpecificToken   string
-	ethGenericTokenAddress  common.Address
-	ethGenericTokenContract *contract.GenericERC20
+	mvxUniversalToken     string
+	mvxChainSpecificToken string
+	ethErc20Address       common.Address
+	ethErc20Contract      erc20Contract
 }
 
 type tokensRegistry struct {
@@ -78,8 +77,8 @@ func (registry *tokensRegistry) registerChainSpecificToken(abstractTokenIdentifi
 
 func (registry *tokensRegistry) registerEthAddressAndContract(
 	abstractTokenIdentifier string,
-	ethGenericTokenAddress common.Address,
-	ethGenericTokenContract *contract.GenericERC20,
+	ethErc20Address common.Address,
+	ethErc20Contract erc20Contract,
 ) {
 	registry.mut.Lock()
 	defer registry.mut.Unlock()
@@ -87,8 +86,8 @@ func (registry *tokensRegistry) registerEthAddressAndContract(
 	data, found := registry.tokens[abstractTokenIdentifier]
 	require.True(registry, found, "abstract token identifier not registered %s", abstractTokenIdentifier)
 
-	data.ethGenericTokenAddress = ethGenericTokenAddress
-	data.ethGenericTokenContract = ethGenericTokenContract
+	data.ethErc20Address = ethErc20Address
+	data.ethErc20Contract = ethErc20Contract
 }
 
 func (registry *tokensRegistry) getTokenData(abstractTokenIdentifier string) *tokenData {
