@@ -60,46 +60,35 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 
 		ethToMVXDone := false
 		mvxToETHDone := false
-		processFunc := func(tb testing.TB, testSetup *simulatedSetup, stopChan chan os.Signal) bool {
-			select {
-			default:
-				receiverToCheckBalance := testSetup.mvxReceiverAddress
-				balance := testSetup.getESDTUniversalTokenBalance(receiverToCheckBalance, token1.abstractTokenIdentifier)
-				isTransferDoneFromETH := balance.String() == valueToTransferToMvx.String()
-				if !ethToMVXDone && isTransferDoneFromETH {
-					ethToMVXDone = true
-					log.Info("ETH->MvX transfer finished, now sending back to ETH...")
+		processFunc := func(tb testing.TB, testSetup *simulatedSetup) bool {
+			receiverToCheckBalance := testSetup.mvxReceiverAddress
+			balance := testSetup.getESDTUniversalTokenBalance(receiverToCheckBalance, token1.abstractTokenIdentifier)
+			isTransferDoneFromETH := balance.String() == valueToTransferToMvx.String()
+			if !ethToMVXDone && isTransferDoneFromETH {
+				ethToMVXDone = true
+				log.Info("ETH->MvX transfer finished, now sending back to ETH...")
 
-					testSetup.sendMVXToEthTransaction(token1.abstractTokenIdentifier, valueToSendFromMvX)
-				}
+				testSetup.sendMVXToEthTransaction(token1.abstractTokenIdentifier, valueToSendFromMvX)
+			}
 
-				ethOwnerBalance := testSetup.getEthBalance(testSetup.ethOwnerAddress, token1.abstractTokenIdentifier)
-				isTransferDoneFromMVX := ethOwnerBalance.String() == expectedFinalValueOnEth.String()
+			ethOwnerBalance := testSetup.getEthBalance(testSetup.ethOwnerAddress, token1.abstractTokenIdentifier)
+			isTransferDoneFromMVX := ethOwnerBalance.String() == expectedFinalValueOnEth.String()
 
-				balance = testSetup.getESDTChainSpecificTokenBalance(testSetup.mvxSafeAddress, token1.abstractTokenIdentifier)
-				safeSavedFee := expectedFinalValueOnMvXSafe.String() == balance.String()
+			balance = testSetup.getESDTChainSpecificTokenBalance(testSetup.mvxSafeAddress, token1.abstractTokenIdentifier)
+			safeSavedFee := expectedFinalValueOnMvXSafe.String() == balance.String()
 
-				if !mvxToETHDone && isTransferDoneFromMVX && safeSavedFee {
-					mvxToETHDone = true
-				}
+			if !mvxToETHDone && isTransferDoneFromMVX && safeSavedFee {
+				mvxToETHDone = true
+			}
 
-				if ethToMVXDone && mvxToETHDone {
-					log.Info("MvX<->ETH transfers done")
-					return true
-				}
-
-				// commit blocks in order to execute incoming txs from relayers
-				testSetup.simulatedETHChain.Commit()
-
-				testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
-
-			case <-stopChan:
-				require.Fail(t, "signal interrupted")
-				return true
-			case <-time.After(timeout):
-				require.Fail(t, "time out")
+			if ethToMVXDone && mvxToETHDone {
+				log.Info("MvX<->ETH transfers done")
 				return true
 			}
+
+			// commit blocks in order to execute incoming txs from relayers
+			testSetup.simulatedETHChain.Commit()
+			testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
 
 			return false
 		}
@@ -113,7 +102,7 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 
 func testRelayersWithChainSimulator(tb testing.TB,
 	setupFunc func(tb testing.TB, testSetup *simulatedSetup),
-	processLoopFunc func(tb testing.TB, testSetup *simulatedSetup, stopChan chan os.Signal) bool,
+	processLoopFunc func(tb testing.TB, testSetup *simulatedSetup) bool,
 ) {
 	defer func() {
 		r := recover()
@@ -140,7 +129,7 @@ func testRelayersWithChainSimulator(tb testing.TB,
 			require.Fail(tb, "time out")
 			return
 		default:
-			testDone := processLoopFunc(tb, testSetup, interrupt)
+			testDone := processLoopFunc(tb, testSetup)
 			if testDone {
 				return
 			}
