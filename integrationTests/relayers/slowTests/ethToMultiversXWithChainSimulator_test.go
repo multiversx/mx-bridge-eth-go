@@ -154,6 +154,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, tokens ...testTokenP
 	}
 
 	processFunc := func(tb testing.TB, testSetup *simulatedSetup, stopChan chan os.Signal) bool {
+		// TODO: remove select
 		select {
 		default:
 			if startsFromEthFlow.process() && startsFromMvXFlow.process() {
@@ -183,7 +184,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, tokens ...testTokenP
 
 func testRelayersWithChainSimulator(tb testing.TB,
 	setupFunc func(tb testing.TB, testSetup *simulatedSetup),
-	processLoopFunc func(tb testing.TB, testSetup *simulatedSetup, stopChan chan os.Signal) bool,
+	processLoopFunc func(tb testing.TB, testSetup *simulatedSetup) bool,
 ) {
 	defer func() {
 		r := recover()
@@ -210,7 +211,7 @@ func testRelayersWithChainSimulator(tb testing.TB,
 			require.Fail(tb, "time out")
 			return
 		default:
-			testDone := processLoopFunc(tb, testSetup, interrupt)
+			testDone := processLoopFunc(tb, testSetup)
 			if testDone {
 				return
 			}
