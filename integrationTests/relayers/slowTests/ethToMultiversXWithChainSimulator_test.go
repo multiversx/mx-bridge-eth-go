@@ -6,12 +6,17 @@
 package slowTests
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/require"
 )
 
@@ -116,28 +121,7 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 }
 
 func testRelayersWithChainSimulatorAndTokens(tb testing.TB, tokens ...testTokenParams) {
-	startsFromEthFlow := &startsFromEthereumFlow{
-		TB:     tb,
-		tokens: make([]testTokenParams, 0, len(tokens)),
-	}
-
-	startsFromMvXFlow := &startsFromMultiversXFlow{
-		TB:     tb,
-		tokens: make([]testTokenParams, 0, len(tokens)),
-	}
-
-	// split the tokens from where should the bridge start
-	for _, token := range tokens {
-		if token.isNativeOnEth {
-			startsFromEthFlow.tokens = append(startsFromEthFlow.tokens, token)
-			continue
-		}
-		if token.isNativeOnMvX {
-			startsFromMvXFlow.tokens = append(startsFromMvXFlow.tokens, token)
-			continue
-		}
-		require.Fail(tb, "invalid setup, found a token that is not native on any chain", "abstract identifier", token.abstractTokenIdentifier)
-	}
+	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, testSetup *simulatedSetup) {
 		startsFromMvXFlow.testSetup = testSetup
@@ -168,12 +152,41 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, tokens ...testTokenP
 	testRelayersWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
+		make(chan struct{}),
 	)
+}
+
+func createFlowsBasedOnToken(tb testing.TB, tokens ...testTokenParams) (*startsFromEthereumFlow, *startsFromMultiversXFlow) {
+	startsFromEthFlow := &startsFromEthereumFlow{
+		TB:     tb,
+		tokens: make([]testTokenParams, 0, len(tokens)),
+	}
+
+	startsFromMvXFlow := &startsFromMultiversXFlow{
+		TB:     tb,
+		tokens: make([]testTokenParams, 0, len(tokens)),
+	}
+
+	// split the tokens from where should the bridge start
+	for _, token := range tokens {
+		if token.isNativeOnEth {
+			startsFromEthFlow.tokens = append(startsFromEthFlow.tokens, token)
+			continue
+		}
+		if token.isNativeOnMvX {
+			startsFromMvXFlow.tokens = append(startsFromMvXFlow.tokens, token)
+			continue
+		}
+		require.Fail(tb, "invalid setup, found a token that is not native on any chain", "abstract identifier", token.abstractTokenIdentifier)
+	}
+
+	return startsFromEthFlow, startsFromMvXFlow
 }
 
 func testRelayersWithChainSimulator(tb testing.TB,
 	setupFunc func(tb testing.TB, testSetup *simulatedSetup),
 	processLoopFunc func(tb testing.TB, testSetup *simulatedSetup) bool,
+	successManualStopChan chan struct{},
 ) {
 	defer func() {
 		r := recover()
@@ -199,6 +212,8 @@ func testRelayersWithChainSimulator(tb testing.TB,
 		case <-time.After(timeout):
 			require.Fail(tb, "time out")
 			return
+		case <-successManualStopChan:
+			return
 		default:
 			testDone := processLoopFunc(tb, testSetup)
 			if testDone {
@@ -208,348 +223,186 @@ func testRelayersWithChainSimulator(tb testing.TB,
 	}
 }
 
-// TODO: next PRs: fix these tests
-//func TestRelayersShouldExecuteTransfers(t *testing.T) {
-//	t.Run("ETH->MVX and back, ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true", func(t *testing.T) {
-//		args := argSimulatedSetup{
-//			mvxIsMintBurn:        true,
-//			mvxIsNative:          false,
-//			ethIsMintBurn:        false,
-//			ethIsNative:          true,
-//			transferBackAndForth: true,
-//		}
-//		testRelayersShouldExecuteTransfersEthToMVX(t, args)
-//	})
-//	t.Run("MVX->ETH, ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = false", func(t *testing.T) {
-//		args := argSimulatedSetup{
-//			mvxIsMintBurn:        false,
-//			mvxIsNative:          true,
-//			ethIsMintBurn:        true,
-//			ethIsNative:          false,
-//			transferBackAndForth: true,
-//		}
-//		testRelayersShouldExecuteTransfersMVXToETH(t, args)
-//	})
-//	t.Run("ETH->MVX with SC call that works, ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true", func(t *testing.T) {
-//		args := argSimulatedSetup{
-//			mvxIsMintBurn:        true,
-//			mvxIsNative:          false,
-//			ethIsMintBurn:        false,
-//			ethIsNative:          true,
-//			ethSCCallMethod:      "callPayable",
-//			ethSCCallGasLimit:    50000000,
-//			ethSCCallArguments:   nil,
-//			transferBackAndForth: false,
-//		}
-//		testRelayersShouldExecuteTransfersEthToMVX(t, args)
-//	})
-//}
-//
-//func testRelayersShouldExecuteTransfersEthToMVX(t *testing.T, argsSimulatedSetup argSimulatedSetup) {
-//	defer func() {
-//		r := recover()
-//		if r != nil {
-//			require.Fail(t, "should have not panicked")
-//		}
-//	}()
-//
-//	argsSimulatedSetup.t = t
-//	testSetup := prepareSimulatedSetup(argsSimulatedSetup)
-//	defer testSetup.close()
-//
-//	testSetup.checkESDTBalance(testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
-//
-//	testSetup.createBatch(batchProcessor.ToMultiversX)
-//
-//	interrupt := make(chan os.Signal, 1)
-//	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
-//	ethToMVXDone := false
-//	mvxToETHDone := false
-//
-//	safeAddr, err := data.NewAddressFromBech32String(testSetup.mvxSafeAddress)
-//	require.NoError(t, err)
-//
-//	// send half of the amount back to ETH
-//	valueToSendFromMVX := big.NewInt(0).Div(mintAmount, big.NewInt(2))
-//	initialSafeValue, err := testSetup.mvxChainSimulator.GetESDTBalance(testSetup.testContext, safeAddr, testSetup.mvxChainSpecificToken)
-//	require.NoError(t, err)
-//	initialSafeValueInt, _ := big.NewInt(0).SetString(initialSafeValue, 10)
-//	expectedFinalValueOnMVXSafe := initialSafeValueInt.Add(initialSafeValueInt, feeInt)
-//	expectedFinalValueOnETH := big.NewInt(0).Sub(valueToSendFromMVX, feeInt)
-//	for {
-//		select {
-//		case <-interrupt:
-//			require.Fail(t, "signal interrupted")
-//			return
-//		case <-time.After(timeout):
-//			require.Fail(t, "time out")
-//			return
-//		default:
-//			receiverToCheckBalance := testSetup.mvxReceiverAddress
-//			if len(testSetup.ethSCCallMethod) > 0 {
-//				receiverToCheckBalance = testSetup.mvxTestCallerAddress
-//			}
-//
-//			isTransferDoneFromETH := testSetup.checkESDTBalance(receiverToCheckBalance, testSetup.mvxUniversalToken, mintAmount.String(), false)
-//			if !ethToMVXDone && isTransferDoneFromETH {
-//				ethToMVXDone = true
-//
-//				if argsSimulatedSetup.transferBackAndForth {
-//					log.Info("ETH->MvX transfer finished, now sending back to ETH...")
-//
-//					testSetup.sendMVXToEthTransaction(valueToSendFromMVX.Bytes())
-//				} else {
-//					log.Info("ETH->MvX transfers done")
-//					return
-//				}
-//			}
-//
-//			isTransferDoneFromMVX := testSetup.checkETHStatus(testSetup.ethOwnerAddress, expectedFinalValueOnETH.Uint64())
-//			safeSavedFee := testSetup.checkESDTBalance(safeAddr, testSetup.mvxChainSpecificToken, expectedFinalValueOnMVXSafe.String(), false)
-//			if !mvxToETHDone && isTransferDoneFromMVX && safeSavedFee {
-//				mvxToETHDone = true
-//			}
-//
-//			if ethToMVXDone && mvxToETHDone {
-//				log.Info("MvX<->ETH transfers done")
-//				return
-//			}
-//
-//			// commit blocks in order to execute incoming txs from relayers
-//			testSetup.simulatedETHChain.Commit()
-//
-//			testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
-//
-//		case <-interrupt:
-//			require.Fail(t, "signal interrupted")
-//			return
-//		case <-time.After(timeout):
-//			require.Fail(t, "time out")
-//			return
-//		}
-//	}
-//}
-//
-//func testRelayersShouldExecuteTransfersMVXToETH(t *testing.T, argsSimulatedSetup argSimulatedSetup) {
-//	defer func() {
-//		r := recover()
-//		if r != nil {
-//			require.Fail(t, "should have not panicked")
-//		}
-//	}()
-//
-//	argsSimulatedSetup.t = t
-//	testSetup := prepareSimulatedSetup(argsSimulatedSetup)
-//	defer testSetup.close()
-//
-//	testSetup.checkESDTBalance(testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
-//
-//	safeAddr, err := data.NewAddressFromBech32String(testSetup.mvxSafeAddress)
-//	require.NoError(t, err)
-//
-//	initialSafeValue, err := testSetup.mvxChainSimulator.GetESDTBalance(testSetup.testContext, safeAddr, testSetup.mvxChainSpecificToken)
-//	require.NoError(t, err)
-//
-//	testSetup.createBatch(batchProcessor.FromMultiversX)
-//
-//	// wait for signal interrupt or time out
-//	interrupt := make(chan os.Signal, 1)
-//	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
-//
-//	// send half of the amount back to ETH
-//	valueSentFromETH := big.NewInt(0).Div(mintAmount, big.NewInt(2))
-//	initialSafeValueInt, _ := big.NewInt(0).SetString(initialSafeValue, 10)
-//	expectedFinalValueOnMVXSafe := initialSafeValueInt.Add(initialSafeValueInt, valueSentFromETH)
-//	expectedFinalValueOnETH := big.NewInt(0).Sub(valueSentFromETH, feeInt)
-//	expectedFinalValueOnETH = expectedFinalValueOnETH.Mul(expectedFinalValueOnETH, big.NewInt(1000000))
-//	for {
-//		select {
-//		case <-interrupt:
-//			require.Fail(t, "signal interrupted")
-//			return
-//		case <-time.After(timeout):
-//			require.Fail(t, "time out")
-//			return
-//		default:
-//			isTransferDoneFromMVX := testSetup.checkETHStatus(testSetup.ethOwnerAddress, expectedFinalValueOnETH.Uint64())
-//			safeSavedFunds := testSetup.checkESDTBalance(safeAddr, testSetup.mvxChainSpecificToken, expectedFinalValueOnMVXSafe.String(), false)
-//			if isTransferDoneFromMVX && safeSavedFunds {
-//				log.Info("MVX->ETH transfer finished")
-//
-//				return
-//			}
-//
-//			// commit blocks in order to execute incoming txs from relayers
-//			testSetup.simulatedETHChain.Commit()
-//
-//			testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
-//		}
-//	}
-//}
-//
-//func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
-//	t.Run("ETH->MVX, ethNative = true, ethMintBurn = false, mvxNative = true, mvxMintBurn = false", func(t *testing.T) {
-//		args := argSimulatedSetup{
-//			mvxIsMintBurn: false,
-//			mvxIsNative:   true,
-//			ethIsMintBurn: false,
-//			ethIsNative:   true,
-//		}
-//		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
-//		testRelayersShouldNotExecuteTransfers(t, args, expectedStringInLogs, batchProcessor.ToMultiversX)
-//	})
-//	t.Run("ETH->MVX, ethNative = true, ethMintBurn = false, mvxNative = true, mvxMintBurn = true", func(t *testing.T) {
-//		args := argSimulatedSetup{
-//			mvxIsMintBurn: true,
-//			mvxIsNative:   true,
-//			ethIsMintBurn: false,
-//			ethIsNative:   true,
-//		}
-//		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
-//		testRelayersShouldNotExecuteTransfers(t, args, expectedStringInLogs, batchProcessor.ToMultiversX)
-//	})
-//	t.Run("ETH->MVX, ethNative = true, ethMintBurn = true, mvxNative = true, mvxMintBurn = false", func(t *testing.T) {
-//		args := argSimulatedSetup{
-//			mvxIsMintBurn: false,
-//			mvxIsNative:   true,
-//			ethIsMintBurn: true,
-//			ethIsNative:   true,
-//		}
-//		testEthContractsShouldError(t, args)
-//	})
-//	t.Run("ETH->MVX, ethNative = true, ethMintBurn = true, mvxNative = true, mvxMintBurn = true", func(t *testing.T) {
-//		args := argSimulatedSetup{
-//			mvxIsMintBurn: true,
-//			mvxIsNative:   true,
-//			ethIsMintBurn: true,
-//			ethIsNative:   true,
-//		}
-//		testEthContractsShouldError(t, args)
-//	})
-//	t.Run("ETH->MVX, ethNative = false, ethMintBurn = true, mvxNative = false, mvxMintBurn = true", func(t *testing.T) {
-//		args := argSimulatedSetup{
-//			mvxIsMintBurn: true,
-//			mvxIsNative:   false,
-//			ethIsMintBurn: true,
-//			ethIsNative:   false,
-//		}
-//		testEthContractsShouldError(t, args)
-//	})
-//	t.Run("MVX->ETH, ethNative = true, ethMintBurn = false, mvxNative = true, mvxMintBurn = false", func(t *testing.T) {
-//		args := argSimulatedSetup{
-//			mvxIsMintBurn: false,
-//			mvxIsNative:   true,
-//			ethIsMintBurn: false,
-//			ethIsNative:   true,
-//		}
-//		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
-//		testRelayersShouldNotExecuteTransfers(t, args, expectedStringInLogs, batchProcessor.FromMultiversX)
-//	})
-//}
-//
-//func testRelayersShouldNotExecuteTransfers(
-//	t *testing.T,
-//	argsSimulatedSetup argSimulatedSetup,
-//	expectedStringInLogs string,
-//	direction batchProcessor.Direction,
-//) {
-//	defer func() {
-//		r := recover()
-//		if r != nil {
-//			require.Fail(t, "should have not panicked")
-//		}
-//	}()
-//
-//	argsSimulatedSetup.t = t
-//	testSetup := prepareSimulatedSetup(argsSimulatedSetup)
-//	defer testSetup.close()
-//
-//	testSetup.checkESDTBalance(testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
-//
-//	testSetup.createBatch(direction)
-//
-//	// start a mocked log observer that is looking for a specific relayer error
-//	chanCnt := 0
-//	mockLogObserver := mock.NewMockLogObserver(expectedStringInLogs)
-//	err := logger.AddLogObserver(mockLogObserver, &logger.PlainFormatter{})
-//	require.NoError(t, err)
-//	defer func() {
-//		require.NoError(t, logger.RemoveLogObserver(mockLogObserver))
-//	}()
-//
-//	numOfTimesToRepeatErrorForRelayer := 10
-//	numOfErrorsToWait := numOfTimesToRepeatErrorForRelayer * numRelayers
-//
-//	// wait for signal interrupt or time out
-//	roundDuration := time.Second
-//	roundTimer := time.NewTimer(roundDuration)
-//	interrupt := make(chan os.Signal, 1)
-//	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
-//
-//	for {
-//		roundTimer.Reset(roundDuration)
-//		select {
-//		case <-interrupt:
-//			require.Fail(t, "signal interrupted")
-//			return
-//		case <-time.After(timeout):
-//			require.Fail(t, "time out")
-//			return
-//		case <-mockLogObserver.LogFoundChan():
-//			chanCnt++
-//			if chanCnt >= numOfErrorsToWait {
-//				testSetup.checkESDTBalance(testSetup.mvxReceiverAddress, testSetup.mvxUniversalToken, "0", true)
-//
-//				log.Info(fmt.Sprintf("test passed, relayers are stuck, expected string `%s` found in all relayers' logs for %d times", expectedStringInLogs, numOfErrorsToWait))
-//
-//				return
-//			}
-//		case <-roundTimer.C:
-//			// commit blocks
-//			testSetup.simulatedETHChain.Commit()
-//
-//			testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
-//		}
-//	}
-//}
-//
-//func testEthContractsShouldError(t *testing.T, argsSimulatedSetup argSimulatedSetup) {
-//	defer func() {
-//		r := recover()
-//		if r != nil {
-//			require.Fail(t, "should have not panicked")
-//		}
-//	}()
-//
-//	testSetup := &simulatedSetup{}
-//	testSetup.T = t
-//
-//	// create a test context
-//	testSetup.testContext, testSetup.testContextCancel = context.WithCancel(context.Background())
-//
-//	testSetup.workingDir = t.TempDir()
-//
-//	testSetup.generateKeys()
-//
-//	receiverKeys := generateMvxPrivatePublicKey(t)
-//	mvxReceiverAddress, err := data.NewAddressFromBech32String(receiverKeys.pk)
-//	require.NoError(t, err)
-//
-//	testSetup.ethOwnerAddress = crypto.PubkeyToAddress(ethOwnerSK.PublicKey)
-//	ethDepositorAddr := crypto.PubkeyToAddress(ethDepositorSK.PublicKey)
-//
-//	// create ethereum simulator
-//	testSetup.createEthereumSimulatorAndDeployContracts(ethDepositorAddr, argsSimulatedSetup.ethIsMintBurn, argsSimulatedSetup.ethIsNative)
-//
-//	// add allowance for the sender
-//	auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, testSetup.ethChainID)
-//	tx, err := testSetup.ethGenericTokenContract.Approve(auth, testSetup.ethSafeAddress, mintAmount)
-//	require.NoError(t, err)
-//	testSetup.simulatedETHChain.Commit()
-//	testSetup.checkEthTxResult(tx.Hash())
-//
-//	// deposit on ETH safe should fail due to bad setup
-//	auth, _ = bind.NewKeyedTransactorWithChainID(ethDepositorSK, testSetup.ethChainID)
-//	_, err = testSetup.ethSafeContract.Deposit(auth, testSetup.ethGenericTokenAddress, mintAmount, mvxReceiverAddress.AddressSlice())
-//	require.Error(t, err)
-//}
+func createBadToken() testTokenParams {
+	return testTokenParams{
+		issueTokenParams: issueTokenParams{
+			abstractTokenIdentifier:          "BAD",
+			numOfDecimalsUniversal:           6,
+			numOfDecimalsChainSpecific:       6,
+			mvxUniversalTokenTicker:          "BAD",
+			mvxChainSpecificTokenTicker:      "ETHBAD",
+			mvxUniversalTokenDisplayName:     "WrappedBAD",
+			mvxChainSpecificTokenDisplayName: "EthereumWrappedBAD",
+			valueToMintOnMvx:                 "10000000000",
+			ethTokenName:                     "ETHTOKEN",
+			ethTokenSymbol:                   "ETHT",
+			valueToMintOnEth:                 "10000000000",
+		},
+		testOperations: []tokenOperations{
+			{
+				valueToTransferToMvx: big.NewInt(5000),
+				valueToSendFromMvX:   big.NewInt(2500),
+				ethSCCallMethod:      "",
+				ethSCCallGasLimit:    0,
+				ethSCCallArguments:   nil,
+			},
+			{
+				valueToTransferToMvx: big.NewInt(7000),
+				valueToSendFromMvX:   big.NewInt(300),
+				ethSCCallMethod:      "",
+				ethSCCallGasLimit:    0,
+				ethSCCallArguments:   nil,
+			},
+			{
+				valueToTransferToMvx: big.NewInt(1000),
+				valueToSendFromMvX:   nil,
+				ethSCCallMethod:      "callPayable",
+				ethSCCallGasLimit:    50000000,
+				ethSCCallArguments:   nil,
+			},
+		},
+		esdtSafeExtraBalance:    big.NewInt(0),
+		ethTestAddrExtraBalance: big.NewInt(0),
+	}
+}
+
+func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
+	t.Run("isNativeOnEth = true, isMintBurnOnEth = false, isNativeOnMvX = true, isMintBurnOnMvX = false", func(t *testing.T) {
+		badToken := createBadToken()
+		badToken.isNativeOnEth = true
+		badToken.isMintBurnOnEth = false
+		badToken.isNativeOnMvX = true
+		badToken.isMintBurnOnMvX = false
+
+		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
+		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
+	})
+	t.Run("isNativeOnEth = true, isMintBurnOnEth = false, isNativeOnMvX = true, isMintBurnOnMvX = true", func(t *testing.T) {
+		badToken := createBadToken()
+		badToken.isNativeOnEth = true
+		badToken.isMintBurnOnEth = false
+		badToken.isNativeOnMvX = true
+		badToken.isMintBurnOnMvX = true
+
+		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
+		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
+	})
+	t.Run("isNativeOnEth = true, isMintBurnOnEth = true, isNativeOnMvX = true, isMintBurnOnMvX = false", func(t *testing.T) {
+		badToken := createBadToken()
+		badToken.isNativeOnEth = true
+		badToken.isMintBurnOnEth = true
+		badToken.isNativeOnMvX = true
+		badToken.isMintBurnOnMvX = false
+
+		testEthContractsShouldError(t, badToken)
+	})
+	t.Run("isNativeOnEth = false, isMintBurnOnEth = true, isNativeOnMvX = false, isMintBurnOnMvX = true", func(t *testing.T) {
+		badToken := createBadToken()
+		badToken.isNativeOnEth = false
+		badToken.isMintBurnOnEth = true
+		badToken.isNativeOnMvX = false
+		badToken.isMintBurnOnMvX = true
+
+		testEthContractsShouldError(t, badToken)
+	})
+}
+
+func testRelayersShouldNotExecuteTransfers(
+	tb testing.TB,
+	expectedStringInLogs string,
+	tokens ...testTokenParams,
+) {
+	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
+
+	setupFunc := func(tb testing.TB, testSetup *simulatedSetup) {
+		startsFromMvXFlow.testSetup = testSetup
+		startsFromEthFlow.testSetup = testSetup
+
+		testSetup.issueAndConfigureTokens(tokens...)
+		testSetup.checkForZeroBalanceOnReceivers(tokens...)
+		if len(startsFromEthFlow.tokens) > 0 {
+			testSetup.createBatchOnEthereum(startsFromEthFlow.tokens...)
+		}
+		if len(startsFromMvXFlow.tokens) > 0 {
+			testSetup.createBatchOnMultiversX(startsFromMvXFlow.tokens...)
+		}
+	}
+
+	processFunc := func(tb testing.TB, testSetup *simulatedSetup) bool {
+		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
+			return true
+		}
+
+		// commit blocks in order to execute incoming txs from relayers
+		testSetup.simulatedETHChain.Commit()
+		testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
+
+		return false
+	}
+
+	// start a mocked log observer that is looking for a specific relayer error
+	chanCnt := 0
+	mockLogObserver := mock.NewMockLogObserver(expectedStringInLogs)
+	err := logger.AddLogObserver(mockLogObserver, &logger.PlainFormatter{})
+	require.NoError(tb, err)
+	defer func() {
+		require.NoError(tb, logger.RemoveLogObserver(mockLogObserver))
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	numOfTimesToRepeatErrorForRelayer := 10
+	numOfErrorsToWait := numOfTimesToRepeatErrorForRelayer * numRelayers
+
+	successManualStopChan := make(chan struct{}, 1)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-mockLogObserver.LogFoundChan():
+				chanCnt++
+				if chanCnt >= numOfErrorsToWait {
+					log.Info(fmt.Sprintf("test passed, relayers are stuck, expected string `%s` found in all relayers' logs for %d times", expectedStringInLogs, numOfErrorsToWait))
+					successManualStopChan <- struct{}{}
+					return
+				}
+			}
+		}
+	}()
+
+	testRelayersWithChainSimulator(tb, setupFunc, processFunc, successManualStopChan)
+}
+
+func testEthContractsShouldError(tb testing.TB, testToken testTokenParams) {
+	setupFunc := func(tb testing.TB, testSetup *simulatedSetup) {
+		testSetup.issueAndConfigureTokens(testToken)
+
+		token := testSetup.getTokenData(testToken.abstractTokenIdentifier)
+		require.NotNil(tb, token)
+
+		valueToMintOnEth, ok := big.NewInt(0).SetString(testToken.valueToMintOnEth, 10)
+		require.True(tb, ok)
+
+		receiverKeys := generateMvxPrivatePublicKey(tb)
+		mvxReceiverAddress, err := data.NewAddressFromBech32String(receiverKeys.pk)
+		require.NoError(tb, err)
+
+		auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, testSetup.ethChainID)
+		_, err = testSetup.ethSafeContract.Deposit(auth, token.ethErc20Address, valueToMintOnEth, mvxReceiverAddress.AddressSlice())
+		require.Error(tb, err)
+	}
+
+	processFunc := func(tb testing.TB, testSetup *simulatedSetup) bool {
+		time.Sleep(time.Second) // allow go routines to start
+		return true
+	}
+
+	testRelayersWithChainSimulator(tb,
+		setupFunc,
+		processFunc,
+		make(chan struct{}),
+	)
+}
