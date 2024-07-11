@@ -111,6 +111,8 @@ func (validator *balanceValidator) CheckToken(ctx context.Context, ethToken comm
 		"amount", amount.String(),
 	)
 
+	// TODO(next PRs): fix here to not consider the pending batch in the mvx->eth direction that executed on eth.
+
 	if ethAmount.Cmp(mvxAmount) != 0 {
 		return fmt.Errorf("%w, balance for ERC20 token %s is %s and the balance for ESDT token %s is %s, direction %s",
 			ErrBalanceMismatch, ethToken.String(), ethAmount.String(), mvxToken, mvxAmount.String(), direction)

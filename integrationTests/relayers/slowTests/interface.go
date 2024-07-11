@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	goEthereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
@@ -41,4 +42,10 @@ type bridgeComponents interface {
 	EthereumRelayerAddress() common.Address
 	Start() error
 	Close() error
+}
+
+type erc20Contract interface {
+	BalanceOf(opts *bind.CallOpts, account common.Address) (*big.Int, error)
+	Mint(opts *bind.TransactOpts, recipientAddress common.Address, amount *big.Int) (*types.Transaction, error)
+	Approve(opts *bind.TransactOpts, spender common.Address, value *big.Int) (*types.Transaction, error)
 }
