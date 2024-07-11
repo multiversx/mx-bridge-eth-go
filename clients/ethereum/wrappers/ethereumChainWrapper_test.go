@@ -277,16 +277,17 @@ func TestEthClientWrapper_GetStatusesAfterExecution(t *testing.T) {
 	args, statusHandler := createMockArgsEthereumChainWrapper()
 	handlerCalled := false
 	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
-		GetStatusesAfterExecutionCalled: func(opts *bind.CallOpts, batchNonceMultiversXETH *big.Int) ([]uint8, error) {
+		GetStatusesAfterExecutionCalled: func(opts *bind.CallOpts, batchNonceMultiversXETH *big.Int) ([]uint8, bool, error) {
 			handlerCalled = true
-			return nil, nil
+			return nil, true, nil
 		},
 	}
 	wrapper, _ := NewEthereumChainWrapper(args)
-	statuses, err := wrapper.GetStatusesAfterExecution(context.Background(), nil)
+	statuses, isFinal, err := wrapper.GetStatusesAfterExecution(context.Background(), nil)
 	assert.Nil(t, err)
 	assert.Nil(t, statuses)
 	assert.True(t, handlerCalled)
+	assert.True(t, isFinal)
 	assert.Equal(t, 1, statusHandler.GetIntMetric(core.MetricNumEthClientRequests))
 }
 

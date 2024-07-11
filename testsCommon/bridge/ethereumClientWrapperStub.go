@@ -26,7 +26,7 @@ type EthereumClientWrapperStub struct {
 	ExecuteTransferCalled  func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
 		amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	QuorumCalled                    func(ctx context.Context) (*big.Int, error)
-	GetStatusesAfterExecutionCalled func(ctx context.Context, batchID *big.Int) ([]byte, error)
+	GetStatusesAfterExecutionCalled func(ctx context.Context, batchID *big.Int) ([]byte, bool, error)
 	BalanceAtCalled                 func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 	TotalBalancesCalled             func(ctx context.Context, account common.Address) (*big.Int, error)
 	MintBalancesCalled              func(ctx context.Context, account common.Address) (*big.Int, error)
@@ -180,12 +180,12 @@ func (stub *EthereumClientWrapperStub) Quorum(ctx context.Context) (*big.Int, er
 }
 
 // GetStatusesAfterExecution -
-func (stub *EthereumClientWrapperStub) GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, error) {
+func (stub *EthereumClientWrapperStub) GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, bool, error) {
 	if stub.GetStatusesAfterExecutionCalled != nil {
 		return stub.GetStatusesAfterExecutionCalled(ctx, batchID)
 	}
 
-	return make([]byte, 0), nil
+	return make([]byte, 0), false, nil
 }
 
 // BalanceAt -

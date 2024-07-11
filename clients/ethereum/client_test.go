@@ -964,19 +964,55 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 
 	expectedStatuses := []byte{1, 2, 3}
 	expectedBatchID := big.NewInt(2232)
-	args := createMockEthereumClientArgs()
-	args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
-		GetStatusesAfterExecutionCalled: func(ctx context.Context, batchID *big.Int) ([]byte, error) {
-			assert.Equal(t, expectedBatchID, batchID)
-			return expectedStatuses, nil
-		},
-	}
+	expectedErr := errors.New("expected error")
+	t.Run("operation error, should error", func(t *testing.T) {
+		t.Parallel()
 
-	c, _ := NewEthereumClient(args)
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			GetStatusesAfterExecutionCalled: func(ctx context.Context, batchID *big.Int) ([]byte, bool, error) {
+				assert.Equal(t, expectedBatchID, batchID)
+				return nil, false, expectedErr
+			},
+		}
 
-	statuses, err := c.GetTransactionsStatuses(context.Background(), expectedBatchID.Uint64())
-	assert.Nil(t, err)
-	assert.Equal(t, expectedStatuses, statuses)
+		c, _ := NewEthereumClient(args)
+		statuses, err := c.GetTransactionsStatuses(context.Background(), expectedBatchID.Uint64())
+		assert.Nil(t, statuses)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("statuses are not final, should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			GetStatusesAfterExecutionCalled: func(ctx context.Context, batchID *big.Int) ([]byte, bool, error) {
+				assert.Equal(t, expectedBatchID, batchID)
+				return []byte("dummy"), false, nil
+			},
+		}
+
+		c, _ := NewEthereumClient(args)
+		statuses, err := c.GetTransactionsStatuses(context.Background(), expectedBatchID.Uint64())
+		assert.Nil(t, statuses)
+		assert.Equal(t, errStatusIsNotFinal, err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
+			GetStatusesAfterExecutionCalled: func(ctx context.Context, batchID *big.Int) ([]byte, bool, error) {
+				assert.Equal(t, expectedBatchID, batchID)
+				return expectedStatuses, true, nil
+			},
+		}
+
+		c, _ := NewEthereumClient(args)
+		statuses, err := c.GetTransactionsStatuses(context.Background(), expectedBatchID.Uint64())
+		assert.Equal(t, expectedStatuses, statuses)
+		assert.Nil(t, err)
+	})
 }
 
 func TestClient_GetQuorumSize(t *testing.T) {

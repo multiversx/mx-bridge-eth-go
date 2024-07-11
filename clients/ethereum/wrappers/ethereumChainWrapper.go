@@ -129,7 +129,7 @@ func (wrapper *ethereumChainWrapper) Quorum(ctx context.Context) (*big.Int, erro
 }
 
 // GetStatusesAfterExecution returns the statuses of the last executed transfer
-func (wrapper *ethereumChainWrapper) GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, error) {
+func (wrapper *ethereumChainWrapper) GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, bool, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.multiSigContract.GetStatusesAfterExecution(&bind.CallOpts{Context: ctx}, batchID)
 }

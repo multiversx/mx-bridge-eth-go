@@ -26,7 +26,7 @@ type ClientWrapper interface {
 		recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int,
 		signatures [][]byte) (*types.Transaction, error)
 	Quorum(ctx context.Context) (*big.Int, error)
-	GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, error)
+	GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, bool, error)
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
 	TotalBalances(ctx context.Context, arg0 common.Address) (*big.Int, error)
 	MintBalances(ctx context.Context, arg0 common.Address) (*big.Int, error)

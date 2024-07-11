@@ -15,4 +15,5 @@ var (
 	errInvalidGasLimit                     = errors.New("invalid gas limit")
 	errNilEthClient                        = errors.New("nil eth client")
 	errDepositsAndBatchDepositsCountDiffer = errors.New("deposits and batch.DepositsCount differs")
+	errStatusIsNotFinal                    = errors.New("status is not final")
 )

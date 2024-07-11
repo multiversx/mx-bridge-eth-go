@@ -18,7 +18,7 @@ type MultiSigContractStub struct {
 	ExecuteTransferCalled  func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
 		amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	QuorumCalled                    func(opts *bind.CallOpts) (*big.Int, error)
-	GetStatusesAfterExecutionCalled func(opts *bind.CallOpts, batchID *big.Int) ([]byte, error)
+	GetStatusesAfterExecutionCalled func(opts *bind.CallOpts, batchID *big.Int) ([]byte, bool, error)
 	PausedCalled                    func(opts *bind.CallOpts) (bool, error)
 }
 
@@ -85,12 +85,12 @@ func (stub *MultiSigContractStub) Quorum(opts *bind.CallOpts) (*big.Int, error) 
 }
 
 // GetStatusesAfterExecution -
-func (stub *MultiSigContractStub) GetStatusesAfterExecution(opts *bind.CallOpts, batchID *big.Int) ([]byte, error) {
+func (stub *MultiSigContractStub) GetStatusesAfterExecution(opts *bind.CallOpts, batchID *big.Int) ([]byte, bool, error) {
 	if stub.GetStatusesAfterExecutionCalled != nil {
 		return stub.GetStatusesAfterExecutionCalled(opts, batchID)
 	}
 
-	return make([]byte, 0), nil
+	return make([]byte, 0), false, nil
 }
 
 // Paused -

@@ -31,5 +31,6 @@ type EthereumClient interface {
 	MintBurnTokens(ctx context.Context, token common.Address) (bool, error)
 	NativeTokens(ctx context.Context, token common.Address) (bool, error)
 	CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error
+	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
 	IsInterfaceNil() bool
 }

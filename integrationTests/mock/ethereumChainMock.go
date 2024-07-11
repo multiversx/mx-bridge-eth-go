@@ -39,7 +39,7 @@ type EthereumChainMock struct {
 	mintBurnTokens                      map[common.Address]bool
 	nativeTokens                        map[common.Address]bool
 	whitelistedTokens                   map[common.Address]bool
-	GetStatusesAfterExecutionHandler    func() []byte
+	GetStatusesAfterExecutionHandler    func() ([]byte, bool)
 	ProcessFinishedHandler              func()
 	quorum                              int
 	relayers                            []common.Address
@@ -256,8 +256,10 @@ func (mock *EthereumChainMock) SetQuorum(quorum int) {
 }
 
 // GetStatusesAfterExecution -
-func (mock *EthereumChainMock) GetStatusesAfterExecution(_ context.Context, _ *big.Int) ([]byte, error) {
-	return mock.GetStatusesAfterExecutionHandler(), nil
+func (mock *EthereumChainMock) GetStatusesAfterExecution(_ context.Context, _ *big.Int) ([]byte, bool, error) {
+	statuses, isFinal := mock.GetStatusesAfterExecutionHandler()
+
+	return statuses, isFinal, nil
 }
 
 // GetLastProposedTransfer -

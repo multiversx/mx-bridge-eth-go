@@ -185,7 +185,7 @@
       },
       {
         "internalType": "uint256",
-        "name": "batchNonceElrondETH",
+        "name": "batchNonceMvx",
         "type": "uint256"
       },
       {
@@ -369,7 +369,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "batchNonceElrondETH",
+        "name": "batchNonceMvx",
         "type": "uint256"
       }
     ],
@@ -379,6 +379,11 @@
         "internalType": "enum DepositStatus[]",
         "name": "",
         "type": "uint8[]"
+      },
+      {
+        "internalType": "bool",
+        "name": "isFinal",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -519,7 +524,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "batchNonceElrondETH",
+        "name": "batchNonceMvx",
         "type": "uint256"
       }
     ],

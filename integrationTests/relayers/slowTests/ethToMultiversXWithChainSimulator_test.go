@@ -7,6 +7,7 @@ package slowTests
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -22,6 +23,54 @@ import (
 
 const (
 	timeout = time.Minute * 15
+)
+
+var (
+	//MEME is ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = false
+	memeToken = testTokenParams{
+		issueTokenParams: issueTokenParams{
+			abstractTokenIdentifier:          "MEME",
+			numOfDecimalsUniversal:           1,
+			numOfDecimalsChainSpecific:       1,
+			mvxUniversalTokenTicker:          "MEME",
+			mvxChainSpecificTokenTicker:      "ETHMEME",
+			mvxUniversalTokenDisplayName:     "WrappedMEME",
+			mvxChainSpecificTokenDisplayName: "EthereumWrappedMEME",
+			valueToMintOnMvx:                 "10000000000",
+			isMintBurnOnMvX:                  false,
+			isNativeOnMvX:                    true,
+			ethTokenName:                     "ETHMEME",
+			ethTokenSymbol:                   "ETHM",
+			valueToMintOnEth:                 "10000000000",
+			isMintBurnOnEth:                  true,
+			isNativeOnEth:                    false,
+		},
+		testOperations: []tokenOperations{
+			{
+				valueToTransferToMvx: big.NewInt(2400),
+				valueToSendFromMvX:   big.NewInt(4000),
+				ethSCCallMethod:      "",
+				ethSCCallGasLimit:    0,
+				ethSCCallArguments:   nil,
+			},
+			{
+				valueToTransferToMvx: big.NewInt(200),
+				valueToSendFromMvX:   big.NewInt(6000),
+				ethSCCallMethod:      "",
+				ethSCCallGasLimit:    0,
+				ethSCCallArguments:   nil,
+			},
+			{
+				valueToTransferToMvx: big.NewInt(1000),
+				valueToSendFromMvX:   big.NewInt(2000),
+				ethSCCallMethod:      "callPayable",
+				ethSCCallGasLimit:    50000000,
+				ethSCCallArguments:   nil,
+			},
+		},
+		esdtSafeExtraBalance:    big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
+		ethTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
+	}
 )
 
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
@@ -71,56 +120,38 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		ethTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000), // -(eth->mvx) + (mvx->eth) - fees
 	}
 
-	//MEME is ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = false
-	memeToken := testTokenParams{
-		issueTokenParams: issueTokenParams{
-			abstractTokenIdentifier:          "MEME",
-			numOfDecimalsUniversal:           1,
-			numOfDecimalsChainSpecific:       1,
-			mvxUniversalTokenTicker:          "MEME",
-			mvxChainSpecificTokenTicker:      "ETHMEME",
-			mvxUniversalTokenDisplayName:     "WrappedMEME",
-			mvxChainSpecificTokenDisplayName: "EthereumWrappedMEME",
-			valueToMintOnMvx:                 "10000000000",
-			isMintBurnOnMvX:                  false,
-			isNativeOnMvX:                    true,
-			ethTokenName:                     "ETHMEME",
-			ethTokenSymbol:                   "ETHM",
-			valueToMintOnEth:                 "10000000000",
-			isMintBurnOnEth:                  true,
-			isNativeOnEth:                    false,
-		},
-		testOperations: []tokenOperations{
-			{
-				valueToTransferToMvx: big.NewInt(2400),
-				valueToSendFromMvX:   big.NewInt(4000),
-				ethSCCallMethod:      "",
-				ethSCCallGasLimit:    0,
-				ethSCCallArguments:   nil,
-			},
-			{
-				valueToTransferToMvx: big.NewInt(200),
-				valueToSendFromMvX:   big.NewInt(6000),
-				ethSCCallMethod:      "",
-				ethSCCallGasLimit:    0,
-				ethSCCallArguments:   nil,
-			},
-			{
-				valueToTransferToMvx: big.NewInt(1000),
-				valueToSendFromMvX:   big.NewInt(2000),
-				ethSCCallMethod:      "callPayable",
-				ethSCCallGasLimit:    50000000,
-				ethSCCallArguments:   nil,
-			},
-		},
-		esdtSafeExtraBalance:    big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
-		ethTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
-	}
-
-	testRelayersWithChainSimulatorAndTokens(t, usdcToken, memeToken)
+	testRelayersWithChainSimulatorAndTokens(t, make(chan error), usdcToken, memeToken)
 }
 
-func testRelayersWithChainSimulatorAndTokens(tb testing.TB, tokens ...testTokenParams) {
+func TestRelayerShouldExecuteTransfersAndNotCatchErrors(t *testing.T) {
+	errorString := "ERROR"
+	mockLogObserver := mock.NewMockLogObserver(errorString)
+	err := logger.AddLogObserver(mockLogObserver, &logger.PlainFormatter{})
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, logger.RemoveLogObserver(mockLogObserver))
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	stopChan := make(chan error, 1000) // ensure sufficient error buffer
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-mockLogObserver.LogFoundChan():
+				stopChan <- errors.New("logger should have not caught errors")
+			}
+		}
+	}()
+
+	testRelayersWithChainSimulatorAndTokens(t, stopChan, memeToken)
+}
+
+func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan error, tokens ...testTokenParams) {
 	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, testSetup *simulatedSetup) {
@@ -152,7 +183,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, tokens ...testTokenP
 	testRelayersWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
-		make(chan struct{}),
+		manualStopChan,
 	)
 }
 
@@ -186,7 +217,7 @@ func createFlowsBasedOnToken(tb testing.TB, tokens ...testTokenParams) (*startsF
 func testRelayersWithChainSimulator(tb testing.TB,
 	setupFunc func(tb testing.TB, testSetup *simulatedSetup),
 	processLoopFunc func(tb testing.TB, testSetup *simulatedSetup) bool,
-	successManualStopChan chan struct{},
+	stopChan chan error,
 ) {
 	defer func() {
 		r := recover()
@@ -212,7 +243,8 @@ func testRelayersWithChainSimulator(tb testing.TB,
 		case <-time.After(timeout):
 			require.Fail(tb, "time out")
 			return
-		case <-successManualStopChan:
+		case err := <-stopChan:
+			require.Nil(tb, err)
 			return
 		default:
 			testDone := processLoopFunc(tb, testSetup)
@@ -355,7 +387,7 @@ func testRelayersShouldNotExecuteTransfers(
 	numOfTimesToRepeatErrorForRelayer := 10
 	numOfErrorsToWait := numOfTimesToRepeatErrorForRelayer * numRelayers
 
-	successManualStopChan := make(chan struct{}, 1)
+	stopChan := make(chan error, 1)
 
 	go func() {
 		for {
@@ -366,14 +398,14 @@ func testRelayersShouldNotExecuteTransfers(
 				chanCnt++
 				if chanCnt >= numOfErrorsToWait {
 					log.Info(fmt.Sprintf("test passed, relayers are stuck, expected string `%s` found in all relayers' logs for %d times", expectedStringInLogs, numOfErrorsToWait))
-					successManualStopChan <- struct{}{}
+					stopChan <- nil
 					return
 				}
 			}
 		}
 	}()
 
-	testRelayersWithChainSimulator(tb, setupFunc, processFunc, successManualStopChan)
+	testRelayersWithChainSimulator(tb, setupFunc, processFunc, stopChan)
 }
 
 func testEthContractsShouldError(tb testing.TB, testToken testTokenParams) {
@@ -403,6 +435,6 @@ func testEthContractsShouldError(tb testing.TB, testToken testTokenParams) {
 	testRelayersWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
-		make(chan struct{}),
+		make(chan error),
 	)
 }
