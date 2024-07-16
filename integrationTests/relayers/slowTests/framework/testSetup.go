@@ -129,7 +129,7 @@ func (setup *TestSetup) startScCallerModule() {
 	var err error
 	setup.ScCallerModule, err = module.NewScCallsModule(cfg, log)
 	require.Nil(setup, err)
-	log.Info("started SC calls module", "monitoring SC proxy address", setup.MultiversxHandler.ScProxyAddress.Bech32())
+	log.Info("started SC calls module", "monitoring SC proxy address", setup.MultiversxHandler.ScProxyAddress)
 }
 
 // IssueAndConfigureTokens will issue and configure the provided tokens on both chains

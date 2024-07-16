@@ -36,6 +36,8 @@ const (
 	generateBlocksUntilEpochReachedEndpoint = "simulator/generate-blocks-until-epoch-reached/%d"
 	numProbeRetries                         = 10
 	networkConfigEndpointTemplate           = "network/status/%d"
+	maxNumBlocksToBeProcessed               = 15
+	minNumBlocksToBeProcessedForEachTx      = 5
 )
 
 var (
@@ -119,7 +121,7 @@ func (instance *chainSimulatorWrapper) GetNetworkAddress() string {
 }
 
 // DeploySC will deploy the provided smart contract and return its address
-func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePath string, ownerSK []byte, parameters []string) *MvxAddress {
+func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePath string, ownerSK []byte, parameters []string) (*MvxAddress, string, *data.TransactionOnNetwork) {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	require.Nil(instance.TB, err)
 
@@ -145,19 +147,28 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 	}
 
 	hash := instance.signAndSend(ctx, ownerSK, ftx)
-	log.Info("contract deployed", "hash", hash)
+	txResult := instance.getTransactionResult(ctx, hash)
 
-	txResult := instance.GetTransactionResult(ctx, hash)
-
-	return NewMvxAddressFromBech32(instance.TB, txResult.Logs.Events[0].Address)
+	return NewMvxAddressFromBech32(instance.TB, txResult.Logs.Events[0].Address), hash, txResult
 }
 
 // GetTransactionResult tries to get a transaction result. It may wait a few blocks
-func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context, hash string) *data.TransactionOnNetwork {
-	// TODO: refactor here
-	instance.GenerateBlocks(ctx, 10)
+func (instance *chainSimulatorWrapper) getTransactionResult(ctx context.Context, hash string) *data.TransactionOnNetwork {
+	instance.GenerateBlocks(ctx, minNumBlocksToBeProcessedForEachTx)
 
-	return instance.getTxInfoWithResultsIfTxProcessingFinished(ctx, hash)
+	for i := 0; i < maxNumBlocksToBeProcessed; i++ {
+		instance.GenerateBlocks(ctx, 1)
+
+		status, txOnNetwork := instance.getTxInfoWithResultsIfTxProcessingFinished(ctx, hash)
+		if status == transaction.TxStatusPending {
+			continue
+		}
+		require.Equal(instance.TB, transaction.TxStatusSuccess, status, fmt.Sprintf("status not OK for transaction hash %s", hash))
+		return txOnNetwork
+	}
+
+	require.Fail(instance.TB, fmt.Sprintf("status still pending for transaction hash %s", hash))
+	return nil
 }
 
 // GenerateBlocks calls the chain simulator generate block endpoint
@@ -178,27 +189,22 @@ func (instance *chainSimulatorWrapper) GenerateBlocksUntilEpochReached(ctx conte
 	}
 }
 
-func (instance *chainSimulatorWrapper) getTxInfoWithResultsIfTxProcessingFinished(ctx context.Context, hash string) *data.TransactionOnNetwork {
+func (instance *chainSimulatorWrapper) getTxInfoWithResultsIfTxProcessingFinished(ctx context.Context, hash string) (transaction.TxStatus, *data.TransactionOnNetwork) {
 	txStatus, err := instance.proxyInstance.ProcessTransactionStatus(ctx, hash)
 	require.Nil(instance, err)
 
-	if txStatus == transaction.TxStatusPending {
-		return nil
-	}
-
 	if txStatus != transaction.TxStatusSuccess {
-		log.Warn("something went wrong with the transaction", "hash", hash, "status", txStatus)
+		return txStatus, nil
 	}
 
 	txResult, errGet := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
 	require.Nil(instance, errGet)
 
-	return &txResult.Data.Transaction
-
+	return txStatus, &txResult.Data.Transaction
 }
 
 // ScCall will make the provided sc call
-func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, function string, parameters []string) string {
+func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, function string, parameters []string) (string, *data.TransactionOnNetwork) {
 	params := []string{function}
 	params = append(params, parameters...)
 	txData := strings.Join(params, "@")
@@ -207,7 +213,7 @@ func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []by
 }
 
 // SendTx will build and send a transaction
-func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, dataField []byte) string {
+func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, dataField []byte) (string, *data.TransactionOnNetwork) {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	require.Nil(instance, err)
 
@@ -227,7 +233,10 @@ func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []by
 		Version:  1,
 	}
 
-	return instance.signAndSend(ctx, senderSK, ftx)
+	hash := instance.signAndSend(ctx, senderSK, ftx)
+	txResult := instance.getTransactionResult(ctx, hash)
+
+	return hash, txResult
 }
 
 // FundWallets sends funds to the provided addresses
