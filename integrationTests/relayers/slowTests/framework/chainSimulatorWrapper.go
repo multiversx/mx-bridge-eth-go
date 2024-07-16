@@ -1,4 +1,4 @@
-package integrationTests
+package framework
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
@@ -19,14 +20,12 @@ import (
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519/singlesig"
 	"github.com/multiversx/mx-chain-go/integrationTests/vm/wasm"
 	"github.com/multiversx/mx-chain-go/node/chainSimulator/dtos"
-	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/blockchain"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	sdkHttp "github.com/multiversx/mx-sdk-go/core/http"
 	"github.com/multiversx/mx-sdk-go/data"
+	"github.com/stretchr/testify/require"
 )
-
-var log = logger.GetOrCreate("testscommon/chainsimulator")
 
 const (
 	proxyURL                                = "http://127.0.0.1:8085"
@@ -39,20 +38,27 @@ const (
 	networkConfigEndpointTemplate           = "network/status/%d"
 )
 
+var (
+	signer       = &singlesig.Ed25519Signer{}
+	keyGenerator = signing.NewKeyGenerator(ed25519.NewEd25519())
+)
+
 // ArgChainSimulatorWrapper is the DTO used to create a new instance of proxy that relies on a chain simulator
 type ArgChainSimulatorWrapper struct {
+	TB                           testing.TB
 	ProxyCacherExpirationSeconds uint64
 	ProxyMaxNoncesDelta          int
 }
 
 type chainSimulatorWrapper struct {
+	testing.TB
 	clientWrapper httpClientWrapper
 	proxyInstance multiversx.Proxy
 	pkConv        core.PubkeyConverter
 }
 
 // CreateChainSimulatorWrapper creates a new instance of the chain simulator wrapper
-func CreateChainSimulatorWrapper(args ArgChainSimulatorWrapper) (*chainSimulatorWrapper, error) {
+func CreateChainSimulatorWrapper(args ArgChainSimulatorWrapper) *chainSimulatorWrapper {
 	argsProxy := blockchain.ArgsProxy{
 		ProxyURL:            proxyURL,
 		SameScState:         false,
@@ -63,30 +69,24 @@ func CreateChainSimulatorWrapper(args ArgChainSimulatorWrapper) (*chainSimulator
 		EntityType:          sdkCore.Proxy,
 	}
 	proxyInstance, err := blockchain.NewProxy(argsProxy)
-	if err != nil {
-		return nil, err
-	}
+	require.Nil(args.TB, err)
 
 	pubKeyConverter, err := pubkeyConverter.NewBech32PubkeyConverter(32, "erd")
-	if err != nil {
-		return nil, err
-	}
+	require.Nil(args.TB, err)
 
 	instance := &chainSimulatorWrapper{
+		TB:            args.TB,
 		clientWrapper: sdkHttp.NewHttpClientWrapper(nil, proxyURL),
 		proxyInstance: proxyInstance,
 		pkConv:        pubKeyConverter,
 	}
 
-	err = instance.probeURLWithRetries()
-	if err != nil {
-		return nil, err
-	}
+	instance.probeURLWithRetries()
 
-	return instance, nil
+	return instance
 }
 
-func (instance *chainSimulatorWrapper) probeURLWithRetries() error {
+func (instance *chainSimulatorWrapper) probeURLWithRetries() {
 	// at this point we should be able to get the network configs
 
 	var err error
@@ -99,13 +99,13 @@ func (instance *chainSimulatorWrapper) probeURLWithRetries() error {
 
 		if err == nil {
 			log.Info("probe ok, chain simulator instance found", "url", proxyURL)
-			return nil
+			return
 		}
 
 		time.Sleep(maxAllowedTimeout)
 	}
 
-	return fmt.Errorf("%w while probing the network config. Please ensure that a chain simulator is running on %s", err, proxyURL)
+	require.Fail(instance, fmt.Sprintf("%s while probing the network config. Please ensure that a chain simulator is running on %s", err.Error(), proxyURL))
 }
 
 // Proxy returns the managed proxy instance
@@ -119,21 +119,13 @@ func (instance *chainSimulatorWrapper) GetNetworkAddress() string {
 }
 
 // DeploySC will deploy the provided smart contract and return its address
-func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePath string, ownerPK string, ownerSK []byte, parameters []string) (string, error) {
+func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePath string, ownerSK []byte, parameters []string) *MvxAddress {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
-	if err != nil {
-		return "", err
-	}
+	require.Nil(instance.TB, err)
 
+	ownerPK := instance.getPublicKey(ownerSK)
 	nonce, err := instance.getNonce(ctx, ownerPK)
-	if err != nil {
-		return "", err
-	}
-
-	emptyAddress, err := instance.pkConv.Encode(make([]byte, 32))
-	if err != nil {
-		return "", err
-	}
+	require.Nil(instance.TB, err)
 
 	scCode := wasm.GetSCCode(wasmFilePath)
 	params := []string{scCode, wasm.VMTypeHex, wasm.DummyCodeMetadataHex}
@@ -152,23 +144,17 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 		Version:  1,
 	}
 
-	hash, err := instance.signAndSend(ctx, ownerSK, ftx)
-	if err != nil {
-		return "", err
-	}
-
+	hash := instance.signAndSend(ctx, ownerSK, ftx)
 	log.Info("contract deployed", "hash", hash)
 
-	txResult, errGet := instance.GetTransactionResult(ctx, hash)
-	if errGet != nil {
-		return "", errGet
-	}
+	txResult := instance.GetTransactionResult(ctx, hash)
 
-	return txResult.Logs.Events[0].Address, nil
+	return NewMvxAddressFromBech32(instance.TB, txResult.Logs.Events[0].Address)
 }
 
 // GetTransactionResult tries to get a transaction result. It may wait a few blocks
-func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context, hash string) (*data.TransactionOnNetwork, error) {
+func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context, hash string) *data.TransactionOnNetwork {
+	// TODO: refactor here
 	instance.GenerateBlocks(ctx, 10)
 
 	return instance.getTxInfoWithResultsIfTxProcessingFinished(ctx, hash)
@@ -192,14 +178,12 @@ func (instance *chainSimulatorWrapper) GenerateBlocksUntilEpochReached(ctx conte
 	}
 }
 
-func (instance *chainSimulatorWrapper) getTxInfoWithResultsIfTxProcessingFinished(ctx context.Context, hash string) (*data.TransactionOnNetwork, error) {
+func (instance *chainSimulatorWrapper) getTxInfoWithResultsIfTxProcessingFinished(ctx context.Context, hash string) *data.TransactionOnNetwork {
 	txStatus, err := instance.proxyInstance.ProcessTransactionStatus(ctx, hash)
-	if err != nil {
-		return nil, err
-	}
+	require.Nil(instance, err)
 
 	if txStatus == transaction.TxStatusPending {
-		return nil, nil
+		return nil
 	}
 
 	if txStatus != transaction.TxStatusSuccess {
@@ -207,39 +191,34 @@ func (instance *chainSimulatorWrapper) getTxInfoWithResultsIfTxProcessingFinishe
 	}
 
 	txResult, errGet := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
-	if errGet != nil {
-		return nil, err
-	}
+	require.Nil(instance, errGet)
 
-	return &txResult.Data.Transaction, nil
+	return &txResult.Data.Transaction
 
 }
 
 // ScCall will make the provided sc call
-func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderPK string, senderSK []byte, contract string, value string, function string, parameters []string) (string, error) {
+func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, function string, parameters []string) string {
 	params := []string{function}
 	params = append(params, parameters...)
 	txData := strings.Join(params, "@")
 
-	return instance.SendTx(ctx, senderPK, senderSK, contract, value, []byte(txData))
+	return instance.SendTx(ctx, senderSK, contract, value, []byte(txData))
 }
 
 // SendTx will build and send a transaction
-func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderPK string, senderSK []byte, receiver string, value string, dataField []byte) (string, error) {
+func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, dataField []byte) string {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
-	if err != nil {
-		return "", err
-	}
+	require.Nil(instance, err)
 
+	senderPK := instance.getPublicKey(senderSK)
 	nonce, err := instance.getNonce(ctx, senderPK)
-	if err != nil {
-		return "", err
-	}
+	require.Nil(instance, err)
 
 	ftx := &transaction.FrontendTransaction{
 		Nonce:    nonce,
 		Value:    value,
-		Receiver: receiver,
+		Receiver: receiver.Bech32(),
 		Sender:   senderPK,
 		GasPrice: networkConfig.MinGasPrice,
 		GasLimit: 600000000,
@@ -276,22 +255,20 @@ func (instance *chainSimulatorWrapper) FundWallets(ctx context.Context, wallets 
 }
 
 // GetESDTBalance returns the balance of the esdt token for the provided address
-func (instance *chainSimulatorWrapper) GetESDTBalance(ctx context.Context, address sdkCore.AddressHandler, token string) (string, error) {
+func (instance *chainSimulatorWrapper) GetESDTBalance(ctx context.Context, address *MvxAddress, token string) string {
 	tokenData, err := instance.proxyInstance.GetESDTTokenData(ctx, address, token, apiCore.AccountQueryOptions{
 		OnFinalBlock: true,
 	})
-	if err != nil {
-		return "", err
-	}
+	require.Nil(instance, err)
 
-	return tokenData.Balance, nil
+	return tokenData.Balance
 }
 
 // GetBlockchainTimeStamp will return the latest block timestamp by querying the endpoint route: /network/status/4294967295
-func (instance *chainSimulatorWrapper) GetBlockchainTimeStamp(ctx context.Context) (uint64, error) {
+func (instance *chainSimulatorWrapper) GetBlockchainTimeStamp(ctx context.Context) uint64 {
 	resultBytes, status, err := instance.clientWrapper.GetHTTP(ctx, fmt.Sprintf(networkConfigEndpointTemplate, core.MetachainShardId))
 	if err != nil || status != http.StatusOK {
-		return 0, fmt.Errorf("error %w, status code %d in chainSimulatorWrapper.GetBlockchainTimeStamp", err, status)
+		require.Fail(instance, fmt.Sprintf("error %v, status code %d in chainSimulatorWrapper.GetBlockchainTimeStamp", err, status))
 	}
 
 	resultStruct := struct {
@@ -303,11 +280,9 @@ func (instance *chainSimulatorWrapper) GetBlockchainTimeStamp(ctx context.Contex
 	}{}
 
 	err = json.Unmarshal(resultBytes, &resultStruct)
-	if err != nil {
-		return 0, fmt.Errorf("error %w in chainSimulatorWrapper.GetBlockchainTimeStamp (json.Unmarshal)", err)
-	}
+	require.Nil(instance, err)
 
-	return resultStruct.Data.Status.ErdBlockTimestamp, nil
+	return resultStruct.Data.Status.ErdBlockTimestamp
 }
 
 func (instance *chainSimulatorWrapper) getNonce(ctx context.Context, bech32Address string) (uint64, error) {
@@ -324,27 +299,35 @@ func (instance *chainSimulatorWrapper) getNonce(ctx context.Context, bech32Addre
 	return account.Nonce, nil
 }
 
-func (instance *chainSimulatorWrapper) signAndSend(ctx context.Context, senderSK []byte, ftx *transaction.FrontendTransaction) (string, error) {
+func (instance *chainSimulatorWrapper) signAndSend(ctx context.Context, senderSK []byte, ftx *transaction.FrontendTransaction) string {
 	sig, err := computeTransactionSignature(senderSK, ftx)
-	if err != nil {
-		return "", err
-	}
+	require.Nil(instance, err)
+
 	ftx.Signature = hex.EncodeToString(sig)
 
 	hash, err := instance.proxyInstance.SendTransaction(ctx, ftx)
-	if err != nil {
-		return "", err
-	}
+	require.Nil(instance, err)
 
 	instance.GenerateBlocks(ctx, 1)
 
-	return hash, nil
+	return hash
+}
+
+func (instance *chainSimulatorWrapper) getPublicKey(privateKeyBytes []byte) string {
+	sk, err := keyGenerator.PrivateKeyFromByteArray(privateKeyBytes)
+	require.Nil(instance, err)
+
+	pk := sk.GeneratePublic()
+	pkBytes, err := pk.ToByteArray()
+	require.Nil(instance, err)
+
+	pkString, err := addressPubkeyConverter.Encode(pkBytes)
+	require.Nil(instance, err)
+
+	return pkString
 }
 
 func computeTransactionSignature(senderSk []byte, tx *transaction.FrontendTransaction) ([]byte, error) {
-	signer := &singlesig.Ed25519Signer{}
-	keyGenerator := signing.NewKeyGenerator(ed25519.NewEd25519())
-
 	privateKey, err := keyGenerator.PrivateKeyFromByteArray(senderSk)
 	if err != nil {
 		return nil, err
