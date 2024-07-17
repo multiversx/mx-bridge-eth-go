@@ -16,8 +16,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
+	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	logger "github.com/multiversx/mx-chain-logger-go"
-	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,98 +26,99 @@ const (
 )
 
 var (
+	log = logger.GetOrCreate("integrationTests/relayers/slowTests")
 	//MEME is ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = false
-	memeToken = testTokenParams{
-		issueTokenParams: issueTokenParams{
-			abstractTokenIdentifier:          "MEME",
-			numOfDecimalsUniversal:           1,
-			numOfDecimalsChainSpecific:       1,
-			mvxUniversalTokenTicker:          "MEME",
-			mvxChainSpecificTokenTicker:      "ETHMEME",
-			mvxUniversalTokenDisplayName:     "WrappedMEME",
-			mvxChainSpecificTokenDisplayName: "EthereumWrappedMEME",
-			valueToMintOnMvx:                 "10000000000",
-			isMintBurnOnMvX:                  false,
-			isNativeOnMvX:                    true,
-			ethTokenName:                     "ETHMEME",
-			ethTokenSymbol:                   "ETHM",
-			valueToMintOnEth:                 "10000000000",
-			isMintBurnOnEth:                  true,
-			isNativeOnEth:                    false,
+	memeToken = framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "MEME",
+			NumOfDecimalsUniversal:           1,
+			NumOfDecimalsChainSpecific:       1,
+			MvxUniversalTokenTicker:          "MEME",
+			MvxChainSpecificTokenTicker:      "ETHMEME",
+			MvxUniversalTokenDisplayName:     "WrappedMEME",
+			MvxChainSpecificTokenDisplayName: "EthereumWrappedMEME",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  false,
+			IsNativeOnMvX:                    true,
+			EthTokenName:                     "ETHMEME",
+			EthTokenSymbol:                   "ETHM",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  true,
+			IsNativeOnEth:                    false,
 		},
-		testOperations: []tokenOperations{
+		TestOperations: []framework.TokenOperations{
 			{
-				valueToTransferToMvx: big.NewInt(2400),
-				valueToSendFromMvX:   big.NewInt(4000),
-				ethSCCallMethod:      "",
-				ethSCCallGasLimit:    0,
-				ethSCCallArguments:   nil,
+				ValueToTransferToMvx: big.NewInt(2400),
+				ValueToSendFromMvX:   big.NewInt(4000),
+				MvxSCCallMethod:      "",
+				MvxSCCallGasLimit:    0,
+				MvxSCCallArguments:   nil,
 			},
 			{
-				valueToTransferToMvx: big.NewInt(200),
-				valueToSendFromMvX:   big.NewInt(6000),
-				ethSCCallMethod:      "",
-				ethSCCallGasLimit:    0,
-				ethSCCallArguments:   nil,
+				ValueToTransferToMvx: big.NewInt(200),
+				ValueToSendFromMvX:   big.NewInt(6000),
+				MvxSCCallMethod:      "",
+				MvxSCCallGasLimit:    0,
+				MvxSCCallArguments:   nil,
 			},
 			{
-				valueToTransferToMvx: big.NewInt(1000),
-				valueToSendFromMvX:   big.NewInt(2000),
-				ethSCCallMethod:      "callPayable",
-				ethSCCallGasLimit:    50000000,
-				ethSCCallArguments:   nil,
+				ValueToTransferToMvx: big.NewInt(1000),
+				ValueToSendFromMvX:   big.NewInt(2000),
+				MvxSCCallMethod:      "callPayable",
+				MvxSCCallGasLimit:    50000000,
+				MvxSCCallArguments:   nil,
 			},
 		},
-		esdtSafeExtraBalance:    big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
-		ethTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
+		ESDTSafeExtraBalance:    big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
+		EthTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
 	}
 )
 
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
 	// USDC is ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true
-	usdcToken := testTokenParams{
-		issueTokenParams: issueTokenParams{
-			abstractTokenIdentifier:          "USDC",
-			numOfDecimalsUniversal:           6,
-			numOfDecimalsChainSpecific:       6,
-			mvxUniversalTokenTicker:          "USDC",
-			mvxChainSpecificTokenTicker:      "ETHUSDC",
-			mvxUniversalTokenDisplayName:     "WrappedUSDC",
-			mvxChainSpecificTokenDisplayName: "EthereumWrappedUSDC",
-			valueToMintOnMvx:                 "10000000000",
-			isMintBurnOnMvX:                  true,
-			isNativeOnMvX:                    false,
-			ethTokenName:                     "ETHTOKEN",
-			ethTokenSymbol:                   "ETHT",
-			valueToMintOnEth:                 "10000000000",
-			isMintBurnOnEth:                  false,
-			isNativeOnEth:                    true,
+	usdcToken := framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "USDC",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "USDC",
+			MvxChainSpecificTokenTicker:      "ETHUSDC",
+			MvxUniversalTokenDisplayName:     "WrappedUSDC",
+			MvxChainSpecificTokenDisplayName: "EthereumWrappedUSDC",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			EthTokenName:                     "ETHTOKEN",
+			EthTokenSymbol:                   "ETHT",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  false,
+			IsNativeOnEth:                    true,
 		},
-		testOperations: []tokenOperations{
+		TestOperations: []framework.TokenOperations{
 			{
-				valueToTransferToMvx: big.NewInt(5000),
-				valueToSendFromMvX:   big.NewInt(2500),
-				ethSCCallMethod:      "",
-				ethSCCallGasLimit:    0,
-				ethSCCallArguments:   nil,
+				ValueToTransferToMvx: big.NewInt(5000),
+				ValueToSendFromMvX:   big.NewInt(2500),
+				MvxSCCallMethod:      "",
+				MvxSCCallGasLimit:    0,
+				MvxSCCallArguments:   nil,
 			},
 			{
-				valueToTransferToMvx: big.NewInt(7000),
-				valueToSendFromMvX:   big.NewInt(300),
-				ethSCCallMethod:      "",
-				ethSCCallGasLimit:    0,
-				ethSCCallArguments:   nil,
+				ValueToTransferToMvx: big.NewInt(7000),
+				ValueToSendFromMvX:   big.NewInt(300),
+				MvxSCCallMethod:      "",
+				MvxSCCallGasLimit:    0,
+				MvxSCCallArguments:   nil,
 			},
 			{
-				valueToTransferToMvx: big.NewInt(1000),
-				valueToSendFromMvX:   nil,
-				ethSCCallMethod:      "callPayable",
-				ethSCCallGasLimit:    50000000,
-				ethSCCallArguments:   nil,
+				ValueToTransferToMvx: big.NewInt(1000),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallMethod:      "callPayable",
+				MvxSCCallGasLimit:    50000000,
+				MvxSCCallArguments:   nil,
 			},
 		},
-		esdtSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
-		ethTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000), // -(eth->mvx) + (mvx->eth) - fees
+		ESDTSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
+		EthTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000), // -(eth->mvx) + (mvx->eth) - fees
 	}
 
 	testRelayersWithChainSimulatorAndTokens(t, make(chan error), usdcToken, memeToken)
@@ -151,31 +152,31 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrors(t *testing.T) {
 	testRelayersWithChainSimulatorAndTokens(t, stopChan, memeToken)
 }
 
-func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan error, tokens ...testTokenParams) {
+func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) {
 	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
 
-	setupFunc := func(tb testing.TB, testSetup *simulatedSetup) {
-		startsFromMvXFlow.testSetup = testSetup
-		startsFromEthFlow.testSetup = testSetup
+	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
+		startsFromMvXFlow.setup = setup
+		startsFromEthFlow.setup = setup
 
-		testSetup.issueAndConfigureTokens(tokens...)
-		testSetup.checkForZeroBalanceOnReceivers(tokens...)
+		setup.IssueAndConfigureTokens(tokens...)
+		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
 		if len(startsFromEthFlow.tokens) > 0 {
-			testSetup.createBatchOnEthereum(startsFromEthFlow.tokens...)
+			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
 		}
 		if len(startsFromMvXFlow.tokens) > 0 {
-			testSetup.createBatchOnMultiversX(startsFromMvXFlow.tokens...)
+			setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
 		}
 	}
 
-	processFunc := func(tb testing.TB, testSetup *simulatedSetup) bool {
+	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
 		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
 			return true
 		}
 
 		// commit blocks in order to execute incoming txs from relayers
-		testSetup.simulatedETHChain.Commit()
-		testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
+		setup.EthereumHandler.SimulatedChain.Commit()
+		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 
 		return false
 	}
@@ -187,36 +188,36 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 	)
 }
 
-func createFlowsBasedOnToken(tb testing.TB, tokens ...testTokenParams) (*startsFromEthereumFlow, *startsFromMultiversXFlow) {
+func createFlowsBasedOnToken(tb testing.TB, tokens ...framework.TestTokenParams) (*startsFromEthereumFlow, *startsFromMultiversXFlow) {
 	startsFromEthFlow := &startsFromEthereumFlow{
 		TB:     tb,
-		tokens: make([]testTokenParams, 0, len(tokens)),
+		tokens: make([]framework.TestTokenParams, 0, len(tokens)),
 	}
 
 	startsFromMvXFlow := &startsFromMultiversXFlow{
 		TB:     tb,
-		tokens: make([]testTokenParams, 0, len(tokens)),
+		tokens: make([]framework.TestTokenParams, 0, len(tokens)),
 	}
 
 	// split the tokens from where should the bridge start
 	for _, token := range tokens {
-		if token.isNativeOnEth {
+		if token.IsNativeOnEth {
 			startsFromEthFlow.tokens = append(startsFromEthFlow.tokens, token)
 			continue
 		}
-		if token.isNativeOnMvX {
+		if token.IsNativeOnMvX {
 			startsFromMvXFlow.tokens = append(startsFromMvXFlow.tokens, token)
 			continue
 		}
-		require.Fail(tb, "invalid setup, found a token that is not native on any chain", "abstract identifier", token.abstractTokenIdentifier)
+		require.Fail(tb, "invalid setup, found a token that is not native on any chain", "abstract identifier", token.AbstractTokenIdentifier)
 	}
 
 	return startsFromEthFlow, startsFromMvXFlow
 }
 
 func testRelayersWithChainSimulator(tb testing.TB,
-	setupFunc func(tb testing.TB, testSetup *simulatedSetup),
-	processLoopFunc func(tb testing.TB, testSetup *simulatedSetup) bool,
+	setupFunc func(tb testing.TB, setup *framework.TestSetup),
+	processLoopFunc func(tb testing.TB, setup *framework.TestSetup) bool,
 	stopChan chan error,
 ) {
 	defer func() {
@@ -226,14 +227,14 @@ func testRelayersWithChainSimulator(tb testing.TB,
 		}
 	}()
 
-	testSetup := prepareSimulatedSetup(tb)
-	log.Info(fmt.Sprintf(logStepMarker, "calling setupFunc"))
+	testSetup := framework.NewTestSetup(tb)
+	log.Info(fmt.Sprintf(framework.LogStepMarker, "calling setupFunc"))
 	setupFunc(tb, testSetup)
 
-	testSetup.startRelayersAndScModule()
-	defer testSetup.close()
+	testSetup.StartRelayersAndScModule()
+	defer testSetup.Close()
 
-	log.Info(fmt.Sprintf(logStepMarker, "running and continously call processLoopFunc"))
+	log.Info(fmt.Sprintf(framework.LogStepMarker, "running and continously call processLoopFunc"))
 	interrupt := make(chan os.Signal, 1)
 	for {
 		select {
@@ -255,85 +256,85 @@ func testRelayersWithChainSimulator(tb testing.TB,
 	}
 }
 
-func createBadToken() testTokenParams {
-	return testTokenParams{
-		issueTokenParams: issueTokenParams{
-			abstractTokenIdentifier:          "BAD",
-			numOfDecimalsUniversal:           6,
-			numOfDecimalsChainSpecific:       6,
-			mvxUniversalTokenTicker:          "BAD",
-			mvxChainSpecificTokenTicker:      "ETHBAD",
-			mvxUniversalTokenDisplayName:     "WrappedBAD",
-			mvxChainSpecificTokenDisplayName: "EthereumWrappedBAD",
-			valueToMintOnMvx:                 "10000000000",
-			ethTokenName:                     "ETHTOKEN",
-			ethTokenSymbol:                   "ETHT",
-			valueToMintOnEth:                 "10000000000",
+func createBadToken() framework.TestTokenParams {
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "BAD",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "BAD",
+			MvxChainSpecificTokenTicker:      "ETHBAD",
+			MvxUniversalTokenDisplayName:     "WrappedBAD",
+			MvxChainSpecificTokenDisplayName: "EthereumWrappedBAD",
+			ValueToMintOnMvx:                 "10000000000",
+			EthTokenName:                     "ETHTOKEN",
+			EthTokenSymbol:                   "ETHT",
+			ValueToMintOnEth:                 "10000000000",
 		},
-		testOperations: []tokenOperations{
+		TestOperations: []framework.TokenOperations{
 			{
-				valueToTransferToMvx: big.NewInt(5000),
-				valueToSendFromMvX:   big.NewInt(2500),
-				ethSCCallMethod:      "",
-				ethSCCallGasLimit:    0,
-				ethSCCallArguments:   nil,
+				ValueToTransferToMvx: big.NewInt(5000),
+				ValueToSendFromMvX:   big.NewInt(2500),
+				MvxSCCallMethod:      "",
+				MvxSCCallGasLimit:    0,
+				MvxSCCallArguments:   nil,
 			},
 			{
-				valueToTransferToMvx: big.NewInt(7000),
-				valueToSendFromMvX:   big.NewInt(300),
-				ethSCCallMethod:      "",
-				ethSCCallGasLimit:    0,
-				ethSCCallArguments:   nil,
+				ValueToTransferToMvx: big.NewInt(7000),
+				ValueToSendFromMvX:   big.NewInt(300),
+				MvxSCCallMethod:      "",
+				MvxSCCallGasLimit:    0,
+				MvxSCCallArguments:   nil,
 			},
 			{
-				valueToTransferToMvx: big.NewInt(1000),
-				valueToSendFromMvX:   nil,
-				ethSCCallMethod:      "callPayable",
-				ethSCCallGasLimit:    50000000,
-				ethSCCallArguments:   nil,
+				ValueToTransferToMvx: big.NewInt(1000),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallMethod:      "callPayable",
+				MvxSCCallGasLimit:    50000000,
+				MvxSCCallArguments:   nil,
 			},
 		},
-		esdtSafeExtraBalance:    big.NewInt(0),
-		ethTestAddrExtraBalance: big.NewInt(0),
+		ESDTSafeExtraBalance:    big.NewInt(0),
+		EthTestAddrExtraBalance: big.NewInt(0),
 	}
 }
 
 func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 	t.Run("isNativeOnEth = true, isMintBurnOnEth = false, isNativeOnMvX = true, isMintBurnOnMvX = false", func(t *testing.T) {
 		badToken := createBadToken()
-		badToken.isNativeOnEth = true
-		badToken.isMintBurnOnEth = false
-		badToken.isNativeOnMvX = true
-		badToken.isMintBurnOnMvX = false
+		badToken.IsNativeOnEth = true
+		badToken.IsMintBurnOnEth = false
+		badToken.IsNativeOnMvX = true
+		badToken.IsMintBurnOnMvX = false
 
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
 	})
 	t.Run("isNativeOnEth = true, isMintBurnOnEth = false, isNativeOnMvX = true, isMintBurnOnMvX = true", func(t *testing.T) {
 		badToken := createBadToken()
-		badToken.isNativeOnEth = true
-		badToken.isMintBurnOnEth = false
-		badToken.isNativeOnMvX = true
-		badToken.isMintBurnOnMvX = true
+		badToken.IsNativeOnEth = true
+		badToken.IsMintBurnOnEth = false
+		badToken.IsNativeOnMvX = true
+		badToken.IsMintBurnOnMvX = true
 
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
 	})
 	t.Run("isNativeOnEth = true, isMintBurnOnEth = true, isNativeOnMvX = true, isMintBurnOnMvX = false", func(t *testing.T) {
 		badToken := createBadToken()
-		badToken.isNativeOnEth = true
-		badToken.isMintBurnOnEth = true
-		badToken.isNativeOnMvX = true
-		badToken.isMintBurnOnMvX = false
+		badToken.IsNativeOnEth = true
+		badToken.IsMintBurnOnEth = true
+		badToken.IsNativeOnMvX = true
+		badToken.IsMintBurnOnMvX = false
 
 		testEthContractsShouldError(t, badToken)
 	})
 	t.Run("isNativeOnEth = false, isMintBurnOnEth = true, isNativeOnMvX = false, isMintBurnOnMvX = true", func(t *testing.T) {
 		badToken := createBadToken()
-		badToken.isNativeOnEth = false
-		badToken.isMintBurnOnEth = true
-		badToken.isNativeOnMvX = false
-		badToken.isMintBurnOnMvX = true
+		badToken.IsNativeOnEth = false
+		badToken.IsMintBurnOnEth = true
+		badToken.IsNativeOnMvX = false
+		badToken.IsMintBurnOnMvX = true
 
 		testEthContractsShouldError(t, badToken)
 	})
@@ -342,32 +343,32 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 func testRelayersShouldNotExecuteTransfers(
 	tb testing.TB,
 	expectedStringInLogs string,
-	tokens ...testTokenParams,
+	tokens ...framework.TestTokenParams,
 ) {
 	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
 
-	setupFunc := func(tb testing.TB, testSetup *simulatedSetup) {
-		startsFromMvXFlow.testSetup = testSetup
-		startsFromEthFlow.testSetup = testSetup
+	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
+		startsFromMvXFlow.setup = setup
+		startsFromEthFlow.setup = setup
 
-		testSetup.issueAndConfigureTokens(tokens...)
-		testSetup.checkForZeroBalanceOnReceivers(tokens...)
+		setup.IssueAndConfigureTokens(tokens...)
+		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
 		if len(startsFromEthFlow.tokens) > 0 {
-			testSetup.createBatchOnEthereum(startsFromEthFlow.tokens...)
+			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
 		}
 		if len(startsFromMvXFlow.tokens) > 0 {
-			testSetup.createBatchOnMultiversX(startsFromMvXFlow.tokens...)
+			setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
 		}
 	}
 
-	processFunc := func(tb testing.TB, testSetup *simulatedSetup) bool {
+	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
 		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
 			return true
 		}
 
 		// commit blocks in order to execute incoming txs from relayers
-		testSetup.simulatedETHChain.Commit()
-		testSetup.mvxChainSimulator.GenerateBlocks(testSetup.testContext, 1)
+		setup.EthereumHandler.SimulatedChain.Commit()
+		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 
 		return false
 	}
@@ -385,7 +386,7 @@ func testRelayersShouldNotExecuteTransfers(
 	defer cancel()
 
 	numOfTimesToRepeatErrorForRelayer := 10
-	numOfErrorsToWait := numOfTimesToRepeatErrorForRelayer * numRelayers
+	numOfErrorsToWait := numOfTimesToRepeatErrorForRelayer * framework.NumRelayers
 
 	stopChan := make(chan error, 1)
 
@@ -408,26 +409,23 @@ func testRelayersShouldNotExecuteTransfers(
 	testRelayersWithChainSimulator(tb, setupFunc, processFunc, stopChan)
 }
 
-func testEthContractsShouldError(tb testing.TB, testToken testTokenParams) {
-	setupFunc := func(tb testing.TB, testSetup *simulatedSetup) {
-		testSetup.issueAndConfigureTokens(testToken)
+func testEthContractsShouldError(tb testing.TB, testToken framework.TestTokenParams) {
+	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
+		setup.IssueAndConfigureTokens(testToken)
 
-		token := testSetup.getTokenData(testToken.abstractTokenIdentifier)
+		token := setup.GetTokenData(testToken.AbstractTokenIdentifier)
 		require.NotNil(tb, token)
 
-		valueToMintOnEth, ok := big.NewInt(0).SetString(testToken.valueToMintOnEth, 10)
+		valueToMintOnEth, ok := big.NewInt(0).SetString(testToken.ValueToMintOnEth, 10)
 		require.True(tb, ok)
 
-		receiverKeys := generateMvxPrivatePublicKey(tb)
-		mvxReceiverAddress, err := data.NewAddressFromBech32String(receiverKeys.pk)
-		require.NoError(tb, err)
-
-		auth, _ := bind.NewKeyedTransactorWithChainID(ethDepositorSK, testSetup.ethChainID)
-		_, err = testSetup.ethSafeContract.Deposit(auth, token.ethErc20Address, valueToMintOnEth, mvxReceiverAddress.AddressSlice())
+		receiverKeys := framework.GenerateMvxPrivatePublicKey(tb)
+		auth, _ := bind.NewKeyedTransactorWithChainID(setup.DepositorKeys.EthSK, setup.EthereumHandler.ChainID)
+		_, err := setup.EthereumHandler.SafeContract.Deposit(auth, token.EthErc20Address, valueToMintOnEth, receiverKeys.MvxAddress.AddressSlice())
 		require.Error(tb, err)
 	}
 
-	processFunc := func(tb testing.TB, testSetup *simulatedSetup) bool {
+	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
 		time.Sleep(time.Second) // allow go routines to start
 		return true
 	}

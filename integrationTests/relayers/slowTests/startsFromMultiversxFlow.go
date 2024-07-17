@@ -2,14 +2,18 @@
 
 package slowTests
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
+)
 
 type startsFromMultiversXFlow struct {
 	testing.TB
-	testSetup    *simulatedSetup
+	setup        *framework.TestSetup
 	ethToMvxDone bool
 	mvxToEthDone bool
-	tokens       []testTokenParams
+	tokens       []framework.TestTokenParams
 }
 
 func (flow *startsFromMultiversXFlow) process() (finished bool) {
@@ -20,19 +24,19 @@ func (flow *startsFromMultiversXFlow) process() (finished bool) {
 		return true
 	}
 
-	isTransferDoneFromMultiversX := flow.testSetup.isTransferDoneFromMultiversX(flow.tokens...)
+	isTransferDoneFromMultiversX := flow.setup.IsTransferDoneFromMultiversX(flow.tokens...)
 	if !flow.mvxToEthDone && isTransferDoneFromMultiversX {
 		flow.mvxToEthDone = true
 		log.Info("MultiversX->Ethereum transfer finished, now sending back to MultiversX...")
 
-		flow.testSetup.sendFromEthereumToMultiversX(flow.tokens...)
+		flow.setup.EthereumHandler.SendFromEthereumToMultiversX(flow.setup.Ctx, flow.setup.MultiversxHandler.TestCallerAddress, flow.tokens...)
 	}
 	if !flow.mvxToEthDone {
 		// return here, no reason to check downwards
 		return false
 	}
 
-	isTransferDoneFromEthereum := flow.testSetup.isTransferDoneFromEthereum(flow.tokens...)
+	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.tokens...)
 	if !flow.ethToMvxDone && isTransferDoneFromEthereum {
 		flow.ethToMvxDone = true
 		log.Info("MultiversX<->Ethereum transfers done")
