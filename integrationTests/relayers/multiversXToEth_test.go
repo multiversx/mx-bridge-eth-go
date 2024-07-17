@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"runtime/debug"
+	"strings"
 	"testing"
 	"time"
 
@@ -44,8 +46,13 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.SetQuorum(numRelayers)
 	expectedStatuses := []byte{clients.Executed, clients.Rejected}
-	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
-		return expectedStatuses
+	ethereumChainMock.GetStatusesAfterExecutionHandler = func() ([]byte, bool) {
+		if callIsFromBalanceValidator() {
+			// statuses can not be final at this point as the batch was not executed yet
+			return expectedStatuses, false
+		}
+
+		return expectedStatuses, true
 	}
 	ethereumChainMock.BalanceAtCalled = func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
 		return big.NewInt(260000000), nil
@@ -106,6 +113,11 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 	checkTestStatus(t, multiversXChainMock, ethereumChainMock, numTransactions, deposits, tokensAddresses)
 }
 
+func callIsFromBalanceValidator() bool {
+	callStack := string(debug.Stack())
+	return strings.Contains(callStack, "(*balanceValidator).getTotalTransferAmountInPendingMvxBatches")
+}
+
 func TestRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("this is not a short test")
@@ -131,15 +143,20 @@ func testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearIn
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.SetQuorum(numRelayers)
 	expectedStatuses := []byte{clients.Executed, clients.Rejected}
-	ethereumChainMock.GetStatusesAfterExecutionHandler = func() []byte {
-		return expectedStatuses
+	ethereumChainMock.GetStatusesAfterExecutionHandler = func() ([]byte, bool) {
+		if callIsFromBalanceValidator() {
+			// statuses can not be final at this point as the batch was not executed yet
+			return expectedStatuses, false
+		}
+
+		return expectedStatuses, true
 	}
 	ethereumChainMock.BalanceAtCalled = func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
 		return big.NewInt(260000000), nil
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
-		nativeBalanceValue := big.NewInt(int64(i * 1000))
+		nativeBalanceValue := deposits[i].Amount
 
 		if !withNativeTokens {
 			ethereumChainMock.UpdateNativeTokens(tokensAddresses[i], true)
@@ -235,7 +252,7 @@ func createTransaction(index int) (mock.MultiversXDeposit, common.Address) {
 		From:   testsCommon.CreateRandomMultiversXAddress(),
 		To:     testsCommon.CreateRandomEthereumAddress(),
 		Ticker: fmt.Sprintf("tck-00000%d", index+1),
-		Amount: big.NewInt(int64(index * 1000)),
+		Amount: big.NewInt(int64(index*1000) + 500), // 0 as amount is not relevant
 	}, tokenAddress
 }
 

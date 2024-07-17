@@ -49,7 +49,7 @@ type Deposit struct {
 
 // BridgeMetaData contains all meta data concerning the Bridge contract.
 var BridgeMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"board\",\"type\":\"address[]\"},{\"internalType\":\"uint256\",\"name\":\"initialQuorum\",\"type\":\"uint256\"},{\"internalType\":\"contractERC20Safe\",\"name\":\"erc20Safe\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousAdmin\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"AdminRoleTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isPause\",\"type\":\"bool\"}],\"name\":\"Pause\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"quorum\",\"type\":\"uint256\"}],\"name\":\"QuorumChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RelayerAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RelayerRemoved\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"addRelayer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"admin\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchSettleBlockCount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"crossTransferStatuses\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"createdBlockNumber\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"tokens\",\"type\":\"address[]\"},{\"internalType\":\"address[]\",\"name\":\"recipients\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"depositNonces\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256\",\"name\":\"batchNonceElrondETH\",\"type\":\"uint256\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures\",\"type\":\"bytes[]\"}],\"name\":\"executeTransfer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"executedBatches\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonce\",\"type\":\"uint256\"}],\"name\":\"getBatch\",\"outputs\":[{\"components\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"uint64\",\"name\":\"blockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"lastUpdatedBlockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint16\",\"name\":\"depositsCount\",\"type\":\"uint16\"}],\"internalType\":\"structBatch\",\"name\":\"\",\"type\":\"tuple\"},{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonce\",\"type\":\"uint256\"}],\"name\":\"getBatchDeposits\",\"outputs\":[{\"components\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"depositor\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"recipient\",\"type\":\"bytes32\"},{\"internalType\":\"enumDepositStatus\",\"name\":\"status\",\"type\":\"uint8\"}],\"internalType\":\"structDeposit[]\",\"name\":\"\",\"type\":\"tuple[]\"},{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"getRelayer\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRelayers\",\"outputs\":[{\"internalType\":\"address[]\",\"name\":\"\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRelayersCount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonceElrondETH\",\"type\":\"uint256\"}],\"name\":\"getStatusesAfterExecution\",\"outputs\":[{\"internalType\":\"enumDepositStatus[]\",\"name\":\"\",\"type\":\"uint8[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"isRelayer\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"paused\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"quorum\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"removeRelayer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"renounceRelayer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"newBatchSettleLimit\",\"type\":\"uint8\"}],\"name\":\"setBatchSettleLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"newQuorum\",\"type\":\"uint256\"}],\"name\":\"setQuorum\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"transferAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonceElrondETH\",\"type\":\"uint256\"}],\"name\":\"wasBatchExecuted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"board\",\"type\":\"address[]\"},{\"internalType\":\"uint256\",\"name\":\"initialQuorum\",\"type\":\"uint256\"},{\"internalType\":\"contractERC20Safe\",\"name\":\"erc20Safe\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousAdmin\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"AdminRoleTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"isPause\",\"type\":\"bool\"}],\"name\":\"Pause\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"quorum\",\"type\":\"uint256\"}],\"name\":\"QuorumChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RelayerAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RelayerRemoved\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"addRelayer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"admin\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchSettleBlockCount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"crossTransferStatuses\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"createdBlockNumber\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address[]\",\"name\":\"tokens\",\"type\":\"address[]\"},{\"internalType\":\"address[]\",\"name\":\"recipients\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"depositNonces\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256\",\"name\":\"batchNonceMvx\",\"type\":\"uint256\"},{\"internalType\":\"bytes[]\",\"name\":\"signatures\",\"type\":\"bytes[]\"}],\"name\":\"executeTransfer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"executedBatches\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonce\",\"type\":\"uint256\"}],\"name\":\"getBatch\",\"outputs\":[{\"components\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"uint64\",\"name\":\"blockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"lastUpdatedBlockNumber\",\"type\":\"uint64\"},{\"internalType\":\"uint16\",\"name\":\"depositsCount\",\"type\":\"uint16\"}],\"internalType\":\"structBatch\",\"name\":\"\",\"type\":\"tuple\"},{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonce\",\"type\":\"uint256\"}],\"name\":\"getBatchDeposits\",\"outputs\":[{\"components\":[{\"internalType\":\"uint112\",\"name\":\"nonce\",\"type\":\"uint112\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"depositor\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"recipient\",\"type\":\"bytes32\"},{\"internalType\":\"enumDepositStatus\",\"name\":\"status\",\"type\":\"uint8\"}],\"internalType\":\"structDeposit[]\",\"name\":\"\",\"type\":\"tuple[]\"},{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"index\",\"type\":\"uint256\"}],\"name\":\"getRelayer\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRelayers\",\"outputs\":[{\"internalType\":\"address[]\",\"name\":\"\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getRelayersCount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonceMvx\",\"type\":\"uint256\"}],\"name\":\"getStatusesAfterExecution\",\"outputs\":[{\"internalType\":\"enumDepositStatus[]\",\"name\":\"\",\"type\":\"uint8[]\"},{\"internalType\":\"bool\",\"name\":\"isFinal\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"isRelayer\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"paused\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"quorum\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"removeRelayer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"renounceRelayer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"newBatchSettleLimit\",\"type\":\"uint8\"}],\"name\":\"setBatchSettleLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"newQuorum\",\"type\":\"uint256\"}],\"name\":\"setQuorum\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newAdmin\",\"type\":\"address\"}],\"name\":\"transferAdmin\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"batchNonceMvx\",\"type\":\"uint256\"}],\"name\":\"wasBatchExecuted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
 }
 
 // BridgeABI is the input ABI used to generate the binding from.
@@ -481,33 +481,34 @@ func (_Bridge *BridgeCallerSession) GetRelayersCount() (*big.Int, error) {
 
 // GetStatusesAfterExecution is a free data retrieval call binding the contract method 0xdb626c2d.
 //
-// Solidity: function getStatusesAfterExecution(uint256 batchNonceElrondETH) view returns(uint8[])
-func (_Bridge *BridgeCaller) GetStatusesAfterExecution(opts *bind.CallOpts, batchNonceElrondETH *big.Int) ([]uint8, error) {
+// Solidity: function getStatusesAfterExecution(uint256 batchNonceMvx) view returns(uint8[], bool isFinal)
+func (_Bridge *BridgeCaller) GetStatusesAfterExecution(opts *bind.CallOpts, batchNonceMvx *big.Int) ([]uint8, bool, error) {
 	var out []interface{}
-	err := _Bridge.contract.Call(opts, &out, "getStatusesAfterExecution", batchNonceElrondETH)
+	err := _Bridge.contract.Call(opts, &out, "getStatusesAfterExecution", batchNonceMvx)
 
 	if err != nil {
-		return *new([]uint8), err
+		return *new([]uint8), *new(bool), err
 	}
 
 	out0 := *abi.ConvertType(out[0], new([]uint8)).(*[]uint8)
+	out1 := *abi.ConvertType(out[1], new(bool)).(*bool)
 
-	return out0, err
+	return out0, out1, err
 
 }
 
 // GetStatusesAfterExecution is a free data retrieval call binding the contract method 0xdb626c2d.
 //
-// Solidity: function getStatusesAfterExecution(uint256 batchNonceElrondETH) view returns(uint8[])
-func (_Bridge *BridgeSession) GetStatusesAfterExecution(batchNonceElrondETH *big.Int) ([]uint8, error) {
-	return _Bridge.Contract.GetStatusesAfterExecution(&_Bridge.CallOpts, batchNonceElrondETH)
+// Solidity: function getStatusesAfterExecution(uint256 batchNonceMvx) view returns(uint8[], bool isFinal)
+func (_Bridge *BridgeSession) GetStatusesAfterExecution(batchNonceMvx *big.Int) ([]uint8, bool, error) {
+	return _Bridge.Contract.GetStatusesAfterExecution(&_Bridge.CallOpts, batchNonceMvx)
 }
 
 // GetStatusesAfterExecution is a free data retrieval call binding the contract method 0xdb626c2d.
 //
-// Solidity: function getStatusesAfterExecution(uint256 batchNonceElrondETH) view returns(uint8[])
-func (_Bridge *BridgeCallerSession) GetStatusesAfterExecution(batchNonceElrondETH *big.Int) ([]uint8, error) {
-	return _Bridge.Contract.GetStatusesAfterExecution(&_Bridge.CallOpts, batchNonceElrondETH)
+// Solidity: function getStatusesAfterExecution(uint256 batchNonceMvx) view returns(uint8[], bool isFinal)
+func (_Bridge *BridgeCallerSession) GetStatusesAfterExecution(batchNonceMvx *big.Int) ([]uint8, bool, error) {
+	return _Bridge.Contract.GetStatusesAfterExecution(&_Bridge.CallOpts, batchNonceMvx)
 }
 
 // IsRelayer is a free data retrieval call binding the contract method 0x541d5548.
@@ -605,10 +606,10 @@ func (_Bridge *BridgeCallerSession) Quorum() (*big.Int, error) {
 
 // WasBatchExecuted is a free data retrieval call binding the contract method 0x84aa1ad0.
 //
-// Solidity: function wasBatchExecuted(uint256 batchNonceElrondETH) view returns(bool)
-func (_Bridge *BridgeCaller) WasBatchExecuted(opts *bind.CallOpts, batchNonceElrondETH *big.Int) (bool, error) {
+// Solidity: function wasBatchExecuted(uint256 batchNonceMvx) view returns(bool)
+func (_Bridge *BridgeCaller) WasBatchExecuted(opts *bind.CallOpts, batchNonceMvx *big.Int) (bool, error) {
 	var out []interface{}
-	err := _Bridge.contract.Call(opts, &out, "wasBatchExecuted", batchNonceElrondETH)
+	err := _Bridge.contract.Call(opts, &out, "wasBatchExecuted", batchNonceMvx)
 
 	if err != nil {
 		return *new(bool), err
@@ -622,16 +623,16 @@ func (_Bridge *BridgeCaller) WasBatchExecuted(opts *bind.CallOpts, batchNonceElr
 
 // WasBatchExecuted is a free data retrieval call binding the contract method 0x84aa1ad0.
 //
-// Solidity: function wasBatchExecuted(uint256 batchNonceElrondETH) view returns(bool)
-func (_Bridge *BridgeSession) WasBatchExecuted(batchNonceElrondETH *big.Int) (bool, error) {
-	return _Bridge.Contract.WasBatchExecuted(&_Bridge.CallOpts, batchNonceElrondETH)
+// Solidity: function wasBatchExecuted(uint256 batchNonceMvx) view returns(bool)
+func (_Bridge *BridgeSession) WasBatchExecuted(batchNonceMvx *big.Int) (bool, error) {
+	return _Bridge.Contract.WasBatchExecuted(&_Bridge.CallOpts, batchNonceMvx)
 }
 
 // WasBatchExecuted is a free data retrieval call binding the contract method 0x84aa1ad0.
 //
-// Solidity: function wasBatchExecuted(uint256 batchNonceElrondETH) view returns(bool)
-func (_Bridge *BridgeCallerSession) WasBatchExecuted(batchNonceElrondETH *big.Int) (bool, error) {
-	return _Bridge.Contract.WasBatchExecuted(&_Bridge.CallOpts, batchNonceElrondETH)
+// Solidity: function wasBatchExecuted(uint256 batchNonceMvx) view returns(bool)
+func (_Bridge *BridgeCallerSession) WasBatchExecuted(batchNonceMvx *big.Int) (bool, error) {
+	return _Bridge.Contract.WasBatchExecuted(&_Bridge.CallOpts, batchNonceMvx)
 }
 
 // AddRelayer is a paid mutator transaction binding the contract method 0xdd39f00d.
@@ -657,23 +658,23 @@ func (_Bridge *BridgeTransactorSession) AddRelayer(account common.Address) (*typ
 
 // ExecuteTransfer is a paid mutator transaction binding the contract method 0x51db0518.
 //
-// Solidity: function executeTransfer(address[] tokens, address[] recipients, uint256[] amounts, uint256[] depositNonces, uint256 batchNonceElrondETH, bytes[] signatures) returns()
-func (_Bridge *BridgeTransactor) ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, depositNonces []*big.Int, batchNonceElrondETH *big.Int, signatures [][]byte) (*types.Transaction, error) {
-	return _Bridge.contract.Transact(opts, "executeTransfer", tokens, recipients, amounts, depositNonces, batchNonceElrondETH, signatures)
+// Solidity: function executeTransfer(address[] tokens, address[] recipients, uint256[] amounts, uint256[] depositNonces, uint256 batchNonceMvx, bytes[] signatures) returns()
+func (_Bridge *BridgeTransactor) ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, depositNonces []*big.Int, batchNonceMvx *big.Int, signatures [][]byte) (*types.Transaction, error) {
+	return _Bridge.contract.Transact(opts, "executeTransfer", tokens, recipients, amounts, depositNonces, batchNonceMvx, signatures)
 }
 
 // ExecuteTransfer is a paid mutator transaction binding the contract method 0x51db0518.
 //
-// Solidity: function executeTransfer(address[] tokens, address[] recipients, uint256[] amounts, uint256[] depositNonces, uint256 batchNonceElrondETH, bytes[] signatures) returns()
-func (_Bridge *BridgeSession) ExecuteTransfer(tokens []common.Address, recipients []common.Address, amounts []*big.Int, depositNonces []*big.Int, batchNonceElrondETH *big.Int, signatures [][]byte) (*types.Transaction, error) {
-	return _Bridge.Contract.ExecuteTransfer(&_Bridge.TransactOpts, tokens, recipients, amounts, depositNonces, batchNonceElrondETH, signatures)
+// Solidity: function executeTransfer(address[] tokens, address[] recipients, uint256[] amounts, uint256[] depositNonces, uint256 batchNonceMvx, bytes[] signatures) returns()
+func (_Bridge *BridgeSession) ExecuteTransfer(tokens []common.Address, recipients []common.Address, amounts []*big.Int, depositNonces []*big.Int, batchNonceMvx *big.Int, signatures [][]byte) (*types.Transaction, error) {
+	return _Bridge.Contract.ExecuteTransfer(&_Bridge.TransactOpts, tokens, recipients, amounts, depositNonces, batchNonceMvx, signatures)
 }
 
 // ExecuteTransfer is a paid mutator transaction binding the contract method 0x51db0518.
 //
-// Solidity: function executeTransfer(address[] tokens, address[] recipients, uint256[] amounts, uint256[] depositNonces, uint256 batchNonceElrondETH, bytes[] signatures) returns()
-func (_Bridge *BridgeTransactorSession) ExecuteTransfer(tokens []common.Address, recipients []common.Address, amounts []*big.Int, depositNonces []*big.Int, batchNonceElrondETH *big.Int, signatures [][]byte) (*types.Transaction, error) {
-	return _Bridge.Contract.ExecuteTransfer(&_Bridge.TransactOpts, tokens, recipients, amounts, depositNonces, batchNonceElrondETH, signatures)
+// Solidity: function executeTransfer(address[] tokens, address[] recipients, uint256[] amounts, uint256[] depositNonces, uint256 batchNonceMvx, bytes[] signatures) returns()
+func (_Bridge *BridgeTransactorSession) ExecuteTransfer(tokens []common.Address, recipients []common.Address, amounts []*big.Int, depositNonces []*big.Int, batchNonceMvx *big.Int, signatures [][]byte) (*types.Transaction, error) {
+	return _Bridge.Contract.ExecuteTransfer(&_Bridge.TransactOpts, tokens, recipients, amounts, depositNonces, batchNonceMvx, signatures)
 }
 
 // Pause is a paid mutator transaction binding the contract method 0x8456cb59.

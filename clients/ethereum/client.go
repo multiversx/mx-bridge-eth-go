@@ -519,7 +519,15 @@ func (c *client) getNonce(ctx context.Context, fromAddress common.Address) (int6
 
 // GetTransactionsStatuses will return the transactions statuses from the batch
 func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error) {
-	return c.clientWrapper.GetStatusesAfterExecution(ctx, big.NewInt(0).SetUint64(batchId))
+	buff, isFinal, err := c.clientWrapper.GetStatusesAfterExecution(ctx, big.NewInt(0).SetUint64(batchId))
+	if err != nil {
+		return nil, err
+	}
+	if !isFinal {
+		return nil, errStatusIsNotFinal
+	}
+
+	return buff, nil
 }
 
 // GetQuorumSize returns the size of the quorum

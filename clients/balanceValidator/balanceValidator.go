@@ -278,7 +278,12 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingMvxBatches(ctx
 		return nil, err
 	}
 
-	amount := getTotalAmountFromBatch(batch, mvxToken)
+	// check if the pending batch is executed on Ethereum and is not final
+	amount := big.NewInt(0)
+	if validator.batchExecutedAndNotFinalOnEth(ctx, batch.ID) {
+		amount.Add(amount, getTotalAmountFromBatch(batch, mvxToken))
+	}
+
 	batchID := batch.ID + 1
 	for {
 		batch, err = validator.multiversXClient.GetBatch(ctx, batchID)
@@ -293,6 +298,12 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingMvxBatches(ctx
 		amount.Add(amount, amountFromBatch)
 		batchID++
 	}
+}
+
+func (validator *balanceValidator) batchExecutedAndNotFinalOnEth(ctx context.Context, nonce uint64) bool {
+	// TODO: analyze if we need to check the statuses returned
+	_, err := validator.ethereumClient.GetTransactionsStatuses(ctx, nonce)
+	return err != nil
 }
 
 func (validator *balanceValidator) getTotalTransferAmountInPendingEthBatches(ctx context.Context, ethToken common.Address) (*big.Int, error) {
