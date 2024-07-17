@@ -31,10 +31,9 @@ type Relayer interface {
 type ChainSimulatorWrapper interface {
 	Proxy() multiversx.Proxy
 	GetNetworkAddress() string
-	DeploySC(ctx context.Context, path string, ownerSK []byte, extraParams []string) *MvxAddress
-	ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, function string, parameters []string) string
-	SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, dataField []byte) string
-	GetTransactionResult(ctx context.Context, hash string) *data.TransactionOnNetwork
+	DeploySC(ctx context.Context, path string, ownerSK []byte, extraParams []string) (*MvxAddress, string, *data.TransactionOnNetwork)
+	ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, function string, parameters []string) (string, *data.TransactionOnNetwork)
+	SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, dataField []byte) (string, *data.TransactionOnNetwork)
 	FundWallets(ctx context.Context, wallets []string)
 	GenerateBlocksUntilEpochReached(ctx context.Context, epoch uint32)
 	GenerateBlocks(ctx context.Context, numBlocks int)

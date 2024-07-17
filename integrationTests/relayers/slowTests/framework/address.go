@@ -60,3 +60,8 @@ func (address *MvxAddress) Bech32() string {
 func (address *MvxAddress) Hex() string {
 	return address.hex
 }
+
+// String returns the address in bech32 format
+func (address *MvxAddress) String() string {
+	return address.bech32
+}
