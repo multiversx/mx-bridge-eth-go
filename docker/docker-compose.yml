@@ -7,4 +7,4 @@ services:
     - 8085:8085
   volumes:
     - "../scripts:/docker/scripts"
-  entrypoint: "./chainsimulator -log-level *:INFO,process:TRACE,vm:TRACE -log-save"
+  entrypoint: "./chainsimulator -log-level *:INFO"

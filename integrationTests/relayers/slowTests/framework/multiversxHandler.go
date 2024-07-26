@@ -725,7 +725,6 @@ func (handler *MultiversxHandler) CreateDepositsOnMultiversxForToken(
 		log.Info("transfer to sender tx executed", "hash", hash, "status", txResult.Status)
 
 		// send tx to safe contract
-		// TODO: remove duplicated code
 		scCallParams := []string{
 			hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
 			hex.EncodeToString(operation.ValueToSendFromMvX.Bytes()),
