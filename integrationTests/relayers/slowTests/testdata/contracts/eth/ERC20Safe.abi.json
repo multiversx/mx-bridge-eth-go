@@ -98,6 +98,31 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "uint112",
+        "name": "batchId",
+        "type": "uint112"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint112",
+        "name": "depositNonce",
+        "type": "uint112"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "callData",
+        "type": "string"
+      }
+    ],
+    "name": "ERC20SCDeposit",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": false,
         "internalType": "bool",
         "name": "isPause",
@@ -311,6 +336,34 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "recipientAddress",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "callData",
+        "type": "string"
+      }
+    ],
+    "name": "depositWithSCExecution",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "depositsCount",
     "outputs": [
@@ -362,7 +415,7 @@
       },
       {
         "internalType": "bool",
-        "name": "",
+        "name": "isBatchFinal",
         "type": "bool"
       }
     ],
@@ -418,7 +471,7 @@
       },
       {
         "internalType": "bool",
-        "name": "",
+        "name": "areDepositsFinal",
         "type": "bool"
       }
     ],

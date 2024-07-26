@@ -38,7 +38,6 @@ type ArgsEthereumClient struct {
 	TokensMapper            TokensMapper
 	SignatureHolder         SignaturesHolder
 	SafeContractAddress     common.Address
-	SCExecProxyAddress      common.Address
 	GasHandler              GasHandler
 	TransferGasLimitBase    uint64
 	TransferGasLimitForEach uint64
@@ -56,7 +55,6 @@ type client struct {
 	tokensMapper            TokensMapper
 	signatureHolder         SignaturesHolder
 	safeContractAddress     common.Address
-	scExecProxyAddress      common.Address
 	gasHandler              GasHandler
 	transferGasLimitBase    uint64
 	transferGasLimitForEach uint64
@@ -91,7 +89,6 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 		tokensMapper:            args.TokensMapper,
 		signatureHolder:         args.SignatureHolder,
 		safeContractAddress:     args.SafeContractAddress,
-		scExecProxyAddress:      args.SCExecProxyAddress,
 		gasHandler:              args.GasHandler,
 		transferGasLimitBase:    args.TransferGasLimitBase,
 		transferGasLimitForEach: args.TransferGasLimitForEach,
@@ -204,14 +201,14 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 }
 
 // GetBatchSCMetadata returns the emitted logs in a batch that hold metadata for SC execution on MVX
-func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
-	scExecAbi, err := contract.SCExecProxyMetaData.GetAbi()
+func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+	scExecAbi, err := contract.ERC20SafeMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
 
 	query := ethereum.FilterQuery{
-		Addresses: []common.Address{c.scExecProxyAddress},
+		Addresses: []common.Address{c.safeContractAddress},
 		Topics: [][]common.Hash{
 			{scExecAbi.Events["ERC20SCDeposit"].ID},
 			{common.BytesToHash(new(big.Int).SetUint64(nonce).Bytes())},
@@ -223,16 +220,16 @@ func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contr
 		return nil, err
 	}
 
-	depositEvents := make([]*contract.SCExecProxyERC20SCDeposit, 0)
+	depositEvents := make([]*contract.ERC20SafeERC20SCDeposit, 0)
 	for _, vLog := range logs {
-		event := new(contract.SCExecProxyERC20SCDeposit)
+		event := new(contract.ERC20SafeERC20SCDeposit)
 		err = scExecAbi.UnpackIntoInterface(event, "ERC20SCDeposit", vLog.Data)
 		if err != nil {
 			return nil, err
 		}
 
 		// Add this manually since UnpackIntoInterface only unpacks non-indexed arguments
-		event.BatchNonce = nonce
+		event.BatchId = big.NewInt(0).SetUint64(nonce)
 		depositEvents = append(depositEvents, event)
 	}
 

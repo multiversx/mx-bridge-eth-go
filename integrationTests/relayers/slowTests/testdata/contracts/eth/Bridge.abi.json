@@ -257,7 +257,7 @@
       },
       {
         "internalType": "bool",
-        "name": "",
+        "name": "isBatchFinal",
         "type": "bool"
       }
     ],
@@ -313,7 +313,7 @@
       },
       {
         "internalType": "bool",
-        "name": "",
+        "name": "areDepositsFinal",
         "type": "bool"
       }
     ],

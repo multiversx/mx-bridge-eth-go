@@ -36,7 +36,6 @@ func NewBridgeComponents(
 	erc20ContractsHolder ethereum.Erc20ContractsHolder,
 	numRelayers int,
 	ethSafeContractAddress string,
-	ethSCExecProxyAddress string,
 	mvxSafeAddress *MvxAddress,
 	mvxMultisigAddress *MvxAddress,
 ) *BridgeComponents {
@@ -69,7 +68,6 @@ func NewBridgeComponents(
 			MultiversXClientStatusHandler: &testsCommon.StatusHandlerStub{},
 		}
 		argsBridgeComponents.Configs.GeneralConfig.Eth.SafeContractAddress = ethSafeContractAddress
-		argsBridgeComponents.Configs.GeneralConfig.Eth.SCExecProxyAddress = ethSCExecProxyAddress
 		argsBridgeComponents.Erc20ContractsHolder = erc20ContractsHolder
 		argsBridgeComponents.Configs.GeneralConfig.MultiversX.NetworkAddress = chainSimulator.GetNetworkAddress()
 		argsBridgeComponents.Configs.GeneralConfig.MultiversX.SafeContractAddress = mvxSafeAddress.Bech32()

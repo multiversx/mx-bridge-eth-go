@@ -358,8 +358,8 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 				assert.Equal(t, providedNonce, nonce)
 				return expectedBatch, false, nil
 			},
-			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
-				return make([]*contract.SCExecProxyERC20SCDeposit, 0), nil
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+				return make([]*contract.ERC20SafeERC20SCDeposit, 0), nil
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
@@ -386,8 +386,8 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 				assert.Equal(t, providedNonce, nonce)
 				return expectedBatch, true, nil
 			},
-			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
-				return make([]*contract.SCExecProxyERC20SCDeposit, 0), nil
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+				return make([]*contract.ERC20SafeERC20SCDeposit, 0), nil
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
@@ -415,9 +415,9 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 				assert.Equal(t, providedNonce, nonce)
 				return expectedBatch, true, nil
 			},
-			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
-				return []*contract.SCExecProxyERC20SCDeposit{{
-					DepositNonce: depositNonce,
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+				return []*contract.ERC20SafeERC20SCDeposit{{
+					DepositNonce: big.NewInt(0).SetUint64(depositNonce),
 					CallData:     depositData,
 				}}, nil
 			},
@@ -447,9 +447,9 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 				assert.Equal(t, providedNonce, nonce)
 				return expectedBatch, true, nil
 			},
-			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error) {
-				return []*contract.SCExecProxyERC20SCDeposit{{
-					DepositNonce: depositNonce,
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+				return []*contract.ERC20SafeERC20SCDeposit{{
+					DepositNonce: big.NewInt(0).SetUint64(depositNonce),
 					CallData:     depositData,
 				}}, nil
 			},
