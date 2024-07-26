@@ -391,3 +391,59 @@ func TestConfigs(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, expectedConfig, cfg)
 }
+
+func TestScCallsExecutorConfigs(t *testing.T) {
+	t.Parallel()
+
+	expectedConfig := ScCallsModuleConfig{
+		ScProxyBech32Address:         "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s",
+		ExtraGasToExecute:            50000000,
+		NetworkAddress:               "127.0.0.1:8085",
+		ProxyMaxNoncesDelta:          7,
+		ProxyFinalityCheck:           true,
+		ProxyCacherExpirationSeconds: 600,
+		ProxyRestAPIEntityType:       "observer",
+		IntervalToResendTxsInSeconds: 60,
+		PrivateKeyFile:               "keys/multiversx.pem",
+		PollingIntervalInMillis:      6000,
+		FilterConfig: PendingOperationsFilterConfig{
+			AllowedEthAddresses: []string{"*"},
+			AllowedMvxAddresses: []string{"*"},
+			AllowedTokens:       []string{"MEME-a43fa1"},
+		},
+		Logs: LogsConfig{
+			LogFileLifeSpanInSec: 86400,
+			LogFileLifeSpanInMB:  1024,
+		},
+	}
+
+	testString := `
+ScProxyBech32Address = "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s"
+ExtraGasToExecute = 50000000
+NetworkAddress = "127.0.0.1:8085"
+ProxyMaxNoncesDelta = 7
+ProxyFinalityCheck = true
+ProxyCacherExpirationSeconds = 600
+ProxyRestAPIEntityType = "observer"
+IntervalToResendTxsInSeconds = 60
+PrivateKeyFile = "keys/multiversx.pem"
+PollingIntervalInMillis = 6000
+
+[FilterConfig]
+	AllowedEthAddresses = ["*"]		# execute SC calls from all ETH addresses
+	AllowedMvxAddresses = ["*"]     # execute SC calls to all MvX contracts
+	AllowedTokens = ["MEME-a43fa1"] # execute SC calls for this token only
+
+[Logs]
+	LogFileLifeSpanInSec = 86400 # 24h
+    LogFileLifeSpanInMB = 1024 # 1GB
+`
+
+	cfg := ScCallsModuleConfig{}
+
+	err := toml.Unmarshal([]byte(testString), &cfg)
+
+	require.Nil(t, err)
+	require.Equal(t, expectedConfig, cfg)
+
+}

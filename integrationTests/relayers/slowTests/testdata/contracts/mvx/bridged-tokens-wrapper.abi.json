@@ -158,6 +158,37 @@
             "outputs": []
         },
         {
+            "name": "unwrapTokenCreateTransaction",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "requested_token",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "to",
+                    "type": "EthAddress"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setEsdtSafeContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "getUniversalBridgedTokenIds",
             "mutability": "readonly",
             "inputs": [],
@@ -211,6 +242,16 @@
                 {
                     "type": "variadic<TokenIdentifier>",
                     "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getEsdtSafeContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
                 }
             ]
         },
@@ -288,6 +329,18 @@
                 {
                     "name": "amount",
                     "type": "BigUint"
+                }
+            ]
+        },
+        "EthAddress": {
+            "type": "struct",
+            "docs": [
+                "Wrapper over a 20-byte array"
+            ],
+            "fields": [
+                {
+                    "name": "raw_addr",
+                    "type": "array20<u8>"
                 }
             ]
         }

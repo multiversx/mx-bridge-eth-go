@@ -45,6 +45,7 @@ type TestSetup struct {
 	ethBalanceTestAddress map[string]*big.Int
 }
 
+// NewTestSetup creates a new e2e test setup
 func NewTestSetup(tb testing.TB) *TestSetup {
 	log.Info(fmt.Sprintf(LogStepMarker, "starting setup"))
 
@@ -109,7 +110,7 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 func (setup *TestSetup) startScCallerModule() {
 	cfg := config.ScCallsModuleConfig{
 		ScProxyBech32Address:         setup.MultiversxHandler.ScProxyAddress.Bech32(),
-		ExtraGasToExecute:            20_000_000, // 20 million
+		ExtraGasToExecute:            30_000_000, // 30 million (50 mil call -> provided + 20 mil callback + 10 mil extra)
 		NetworkAddress:               setup.ChainSimulator.GetNetworkAddress(),
 		ProxyMaxNoncesDelta:          5,
 		ProxyFinalityCheck:           false,
@@ -184,7 +185,9 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(params TestTokenParam
 		}
 
 		if len(operation.MvxSCCallMethod) > 0 {
-			expectedValueOnContract.Add(expectedValueOnContract, operation.ValueToTransferToMvx)
+			if !operation.MvxFaultySCCall {
+				expectedValueOnContract.Add(expectedValueOnContract, operation.ValueToTransferToMvx)
+			}
 		} else {
 			expectedValueOnReceiver.Add(expectedValueOnReceiver, operation.ValueToTransferToMvx)
 		}
@@ -197,6 +200,45 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(params TestTokenParam
 
 	contractBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, params.AbstractTokenIdentifier)
 	return contractBalance.String() == expectedValueOnContract.String()
+}
+
+// IsTransferDoneFromEthereumWithRefund returns true if all provided tokens are bridged from Ethereum towards MultiversX including refunds
+func (setup *TestSetup) IsTransferDoneFromEthereumWithRefund(tokens ...TestTokenParams) bool {
+	isDone := true
+	for _, params := range tokens {
+		isDone = isDone && setup.isTransferDoneFromEthereumWithRefundForToken(params)
+	}
+
+	return isDone
+}
+
+func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params TestTokenParams) bool {
+	expectedValueOnReceiver := big.NewInt(0)
+	for _, operation := range params.TestOperations {
+		valueToTransferToMvx := big.NewInt(0)
+		if operation.ValueToTransferToMvx != nil {
+			valueToTransferToMvx.Set(operation.ValueToTransferToMvx)
+		}
+
+		valueToSendFromMvX := big.NewInt(0)
+		if operation.ValueToSendFromMvX != nil {
+			valueToSendFromMvX.Set(operation.ValueToSendFromMvX)
+			// we subtract the fee also
+			expectedValueOnReceiver.Sub(expectedValueOnReceiver, feeInt)
+		}
+
+		expectedValueOnReceiver.Add(expectedValueOnReceiver, big.NewInt(0).Sub(valueToSendFromMvX, valueToTransferToMvx))
+		if len(operation.MvxSCCallMethod) > 0 {
+			if operation.MvxFaultySCCall {
+				// the balance should be bridged back to the receiver on Ethereum - fee
+				expectedValueOnReceiver.Add(expectedValueOnReceiver, valueToTransferToMvx)
+				expectedValueOnReceiver.Sub(expectedValueOnReceiver, feeInt)
+			}
+		}
+	}
+
+	receiverBalance := setup.EthereumHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
+	return receiverBalance.String() == expectedValueOnReceiver.String()
 }
 
 // IsTransferDoneFromMultiversX returns true if all provided tokens are bridged from MultiversX towards Ethereum

@@ -97,12 +97,12 @@
             "outputs": []
         },
         {
-            "name": "setupEsdtSafe",
+            "name": "setBridgedTokensWrapper",
             "onlyOwner": true,
             "mutability": "mutable",
             "inputs": [
                 {
-                    "name": "opt_esdt_safe_address",
+                    "name": "opt_address",
                     "type": "optional<Address>",
                     "multi_arg": true
                 }
@@ -120,7 +120,7 @@
             ]
         },
         {
-            "name": "getEsdtSafeAddress",
+            "name": "getBridgedTokensWrapperAddress",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [
