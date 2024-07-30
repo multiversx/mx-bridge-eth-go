@@ -53,7 +53,7 @@ type EthereumClient interface {
 	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
 	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
-	GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.SCExecProxyERC20SCDeposit, error)
+	GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error)
 	CheckClientAvailability(ctx context.Context) error
 	CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error
 	TotalBalances(ctx context.Context, token common.Address) (*big.Int, error)

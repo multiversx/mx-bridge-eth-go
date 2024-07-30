@@ -37,8 +37,6 @@ const (
 	erc20SafeBytecode     = "testdata/contracts/eth/ERC20Safe.hex"
 	bridgeABI             = "testdata/contracts/eth/Bridge.abi.json"
 	bridgeBytecode        = "testdata/contracts/eth/Bridge.hex"
-	scExecProxyABI        = "testdata/contracts/eth/SCExecProxy.abi.json"
-	scExecProxyBytecode   = "testdata/contracts/eth/SCExecProxy.hex"
 	genericERC20ABI       = "testdata/contracts/eth/GenericERC20.abi.json"
 	genericERC20Bytecode  = "testdata/contracts/eth/GenericERC20.hex"
 	mintBurnERC20ABI      = "testdata/contracts/eth/MintBurnERC20.abi.json"
@@ -57,8 +55,6 @@ type EthereumHandler struct {
 	ChainID               *big.Int
 	SafeAddress           common.Address
 	SafeContract          *contract.ERC20Safe
-	SCProxyAddress        common.Address
-	SCProxyContract       *contract.SCExecProxy
 	BridgeAddress         common.Address
 	BridgeContract        *contract.Bridge
 	Erc20ContractsHolder  ethereum.Erc20ContractsHolder
@@ -125,12 +121,6 @@ func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
-
-	// deploy exec-proxy
-	handler.SCProxyAddress = handler.DeployContract(ctx, scExecProxyABI, scExecProxyBytecode, handler.SafeAddress)
-	scProxyContract, err := contract.NewSCExecProxy(handler.SCProxyAddress, handler.SimulatedChain)
-	require.NoError(handler, err)
-	handler.SCProxyContract = scProxyContract
 
 	handler.EthChainWrapper, err = wrappers.NewEthereumChainWrapper(wrappers.ArgsEthereumChainWrapper{
 		StatusHandler:    &testsCommon.StatusHandlerStub{},
@@ -342,27 +332,17 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.EthErc20Contract)
 
-	allowanceValueForSafe := big.NewInt(0)
-	allowanceValueForScProxy := big.NewInt(0)
+	allowanceValue := big.NewInt(0)
 	for _, operation := range params.TestOperations {
 		if operation.ValueToTransferToMvx == nil {
 			continue
 		}
-		if len(operation.MvxSCCallMethod) > 0 {
-			allowanceValueForScProxy.Add(allowanceValueForScProxy, operation.ValueToTransferToMvx)
-		} else {
-			allowanceValueForSafe.Add(allowanceValueForSafe, operation.ValueToTransferToMvx)
-		}
+
+		allowanceValue.Add(allowanceValue, operation.ValueToTransferToMvx)
 	}
 
-	if allowanceValueForSafe.Cmp(zeroValueBigInt) > 0 {
-		tx, err := token.EthErc20Contract.Approve(auth, handler.SafeAddress, allowanceValueForSafe)
-		require.NoError(handler, err)
-		handler.SimulatedChain.Commit()
-		handler.checkEthTxResult(ctx, tx.Hash())
-	}
-	if allowanceValueForScProxy.Cmp(zeroValueBigInt) > 0 {
-		tx, err := token.EthErc20Contract.Approve(auth, handler.SCProxyAddress, allowanceValueForScProxy)
+	if allowanceValue.Cmp(zeroValueBigInt) > 0 {
+		tx, err := token.EthErc20Contract.Approve(auth, handler.SafeAddress, allowanceValue)
 		require.NoError(handler, err)
 		handler.SimulatedChain.Commit()
 		handler.checkEthTxResult(ctx, tx.Hash())
@@ -386,7 +366,7 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 
 			buff := codec.EncodeCallData(callData)
 
-			tx, err = handler.SCProxyContract.Deposit(
+			tx, err = handler.SafeContract.DepositWithSCExecution(
 				auth,
 				token.EthErc20Address,
 				operation.ValueToTransferToMvx,

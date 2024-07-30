@@ -394,7 +394,6 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 	}
 
 	safeContractAddress := common.HexToAddress(ethereumConfigs.SafeContractAddress)
-	scExecProxyAddress := common.HexToAddress(ethereumConfigs.SCExecProxyAddress)
 
 	ethClientLogId := components.evmCompatibleChain.EvmCompatibleChainClientLogId()
 	argsEthClient := ethereum.ArgsEthereumClient{
@@ -407,7 +406,6 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 		TokensMapper:            tokensMapper,
 		SignatureHolder:         signaturesHolder,
 		SafeContractAddress:     safeContractAddress,
-		SCExecProxyAddress:      scExecProxyAddress,
 		GasHandler:              gs,
 		TransferGasLimitBase:    ethereumConfigs.GasLimitBase,
 		TransferGasLimitForEach: ethereumConfigs.GasLimitForEach,

@@ -14,7 +14,7 @@ import (
 
 const (
 	minRelayerStake          = "10000000000000000000" // 10 EGLD
-	esdtIssueCost            = "5000000000000000000"  // 5 EGLD
+	esdtIssueCost            = "50000000000000000"    // 0.05 EGLD
 	emptyAddress             = "erd1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6gq4hu"
 	esdtSystemSCAddress      = "erd1qqqqqqqqqqqqqqqpqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzllls8a5w6u"
 	slashAmount              = "00"

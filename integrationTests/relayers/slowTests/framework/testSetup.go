@@ -99,7 +99,6 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 		setup.EthereumHandler.Erc20ContractsHolder,
 		NumRelayers,
 		setup.EthereumHandler.SafeAddress.Hex(),
-		setup.EthereumHandler.SCProxyAddress.Hex(),
 		setup.MultiversxHandler.SafeAddress,
 		setup.MultiversxHandler.MultisigAddress,
 	)

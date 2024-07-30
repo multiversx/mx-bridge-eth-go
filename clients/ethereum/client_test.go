@@ -25,6 +25,7 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var expectedAmounts = []*big.Int{big.NewInt(20), big.NewInt(40)}
@@ -54,7 +55,6 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 		},
 		SignatureHolder:         &testsCommon.SignaturesHolderStub{},
 		SafeContractAddress:     testsCommon.CreateRandomEthereumAddress(),
-		SCExecProxyAddress:      testsCommon.CreateRandomEthereumAddress(),
 		GasHandler:              &testsCommon.GasHandlerStub{},
 		TransferGasLimitBase:    50,
 		TransferGasLimitForEach: 20,
@@ -1216,15 +1216,16 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 	})
 
 	t.Run("returns expected logs", func(t *testing.T) {
-		scExecAbi, _ := contract.SCExecProxyMetaData.GetAbi()
-		expectedEvent := &contract.SCExecProxyERC20SCDeposit{
-			BatchNonce:   1,
-			DepositNonce: 1,
+		scExecAbi, _ := contract.ERC20SafeMetaData.GetAbi()
+		expectedEvent := &contract.ERC20SafeERC20SCDeposit{
+			BatchId:      big.NewInt(1),
+			DepositNonce: big.NewInt(2),
 			CallData:     "call_data_to_unpack",
 		}
 
 		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs.NonIndexed()
-		packedArgs, _ := eventInputs.Pack(expectedEvent.DepositNonce, expectedEvent.CallData)
+		packedArgs, err := eventInputs.Pack(expectedEvent.DepositNonce, expectedEvent.CallData)
+		require.Nil(t, err)
 
 		args := createMockEthereumClientArgs()
 		args.ClientWrapper = &bridgeTests.EthereumClientWrapperStub{
@@ -1237,11 +1238,11 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 			},
 		}
 		c, _ := NewEthereumClient(args)
-		batch, err := c.GetBatchSCMetadata(context.Background(), expectedEvent.BatchNonce)
+		batch, err := c.GetBatchSCMetadata(context.Background(), expectedEvent.BatchId.Uint64())
 
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(batch))
-		assert.Equal(t, expectedEvent.BatchNonce, batch[0].BatchNonce)
+		assert.Equal(t, expectedEvent.BatchId, batch[0].BatchId)
 		assert.Equal(t, expectedEvent.DepositNonce, batch[0].DepositNonce)
 		assert.Equal(t, expectedEvent.CallData, batch[0].CallData)
 	})
