@@ -248,7 +248,7 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 	)
 	log.Info("setWrappingContractAddress tx executed", "hash", hash, "status", txResult.Status)
 
-	// set ESDT safe contract in SC bridge proxy
+	// setBridgedTokensWrapper in SC bridge proxy
 	hash, txResult = handler.ChainSimulator.ScCall(
 		ctx,
 		handler.OwnerKeys.MvxSk,
