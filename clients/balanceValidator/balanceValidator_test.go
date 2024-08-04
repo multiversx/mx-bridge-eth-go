@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-go/testscommon"
@@ -1516,20 +1517,20 @@ func validatorTester(cfg testConfiguration) testResult {
 
 			return returnBigIntOrZeroIfNil(cfg.burnBalancesOnMvx), nil
 		},
-		GetPendingBatchCalled: func(ctx context.Context) (*clients.TransferBatch, error) {
+		GetPendingBatchCalled: func(ctx context.Context) (*bridgeCommon.TransferBatch, error) {
 			err := cfg.errorsOnCalls["GetPendingBatchMvx"]
 			if err != nil {
 				return nil, err
 			}
 
-			batch := &clients.TransferBatch{
+			batch := &bridgeCommon.TransferBatch{
 				ID: cfg.pendingMvxBatchId,
 			}
 			applyDummyFromMvxDepositsToBatch(cfg, batch)
 
 			return batch, nil
 		},
-		GetBatchCalled: func(ctx context.Context, batchID uint64) (*clients.TransferBatch, error) {
+		GetBatchCalled: func(ctx context.Context, batchID uint64) (*bridgeCommon.TransferBatch, error) {
 			err := cfg.errorsOnCalls["GetBatchMvx"]
 			if err != nil {
 				return nil, err
@@ -1538,7 +1539,7 @@ func validatorTester(cfg testConfiguration) testResult {
 			if batchID > getMaxMvxPendingBatchID(cfg) {
 				return nil, clients.ErrNoBatchAvailable
 			}
-			batch := &clients.TransferBatch{
+			batch := &bridgeCommon.TransferBatch{
 				ID: batchID,
 			}
 			applyDummyFromMvxDepositsToBatch(cfg, batch)
@@ -1599,13 +1600,13 @@ func validatorTester(cfg testConfiguration) testResult {
 
 			return returnBigIntOrZeroIfNil(cfg.burnBalancesOnEth), nil
 		},
-		GetBatchCalled: func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
+		GetBatchCalled: func(ctx context.Context, nonce uint64) (*bridgeCommon.TransferBatch, bool, error) {
 			err := cfg.errorsOnCalls["GetBatchEth"]
 			if err != nil {
 				return nil, false, err
 			}
 
-			batch := &clients.TransferBatch{
+			batch := &bridgeCommon.TransferBatch{
 				ID: nonce,
 			}
 			applyDummyFromEthDepositsToBatch(cfg, batch)
@@ -1632,14 +1633,14 @@ func validatorTester(cfg testConfiguration) testResult {
 	return result
 }
 
-func applyDummyFromMvxDepositsToBatch(cfg testConfiguration, batch *clients.TransferBatch) {
+func applyDummyFromMvxDepositsToBatch(cfg testConfiguration, batch *bridgeCommon.TransferBatch) {
 	if cfg.amountsOnMvxPendingBatches != nil {
 		values, found := cfg.amountsOnMvxPendingBatches[batch.ID]
 		if found {
 			depositCounter := uint64(0)
 
 			for _, deposit := range values {
-				batch.Deposits = append(batch.Deposits, &clients.DepositTransfer{
+				batch.Deposits = append(batch.Deposits, &bridgeCommon.DepositTransfer{
 					Nonce:            depositCounter,
 					Amount:           big.NewInt(0).Set(deposit),
 					SourceTokenBytes: mvxToken,
@@ -1649,14 +1650,14 @@ func applyDummyFromMvxDepositsToBatch(cfg testConfiguration, batch *clients.Tran
 	}
 }
 
-func applyDummyFromEthDepositsToBatch(cfg testConfiguration, batch *clients.TransferBatch) {
+func applyDummyFromEthDepositsToBatch(cfg testConfiguration, batch *bridgeCommon.TransferBatch) {
 	if cfg.amountsOnEthPendingBatches != nil {
 		values, found := cfg.amountsOnEthPendingBatches[batch.ID]
 		if found {
 			depositCounter := uint64(0)
 
 			for _, deposit := range values {
-				batch.Deposits = append(batch.Deposits, &clients.DepositTransfer{
+				batch.Deposits = append(batch.Deposits, &bridgeCommon.DepositTransfer{
 					Nonce:            depositCounter,
 					Amount:           big.NewInt(0).Set(deposit),
 					SourceTokenBytes: ethToken.Bytes(),

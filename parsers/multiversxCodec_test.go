@@ -65,9 +65,10 @@ func TestMultiversXCodec_EncodeDecodeCallData(t *testing.T) {
 		localCallData.Arguments = make([]string, 0)
 
 		buff := codec.EncodeCallData(localCallData)
-		expectedBuff := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		expectedBuff = append(expectedBuff, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00) // Gas limit
-		expectedBuff = append(expectedBuff, 0x00, 0x00, 0x00, 0x00)                         // numArguments
+		expectedBuff := []byte{0x01, 0x00, 0x00, 0x00, 0x10}                                // num bytes for call data
+		expectedBuff = append(expectedBuff, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c')          // function
+		expectedBuff = append(expectedBuff, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00) // gas limit
+		expectedBuff = append(expectedBuff, 0x00)                                           // no arguments
 		assert.Equal(t, expectedBuff, buff)
 
 		callData, err := codec.DecodeCallData(buff)
@@ -78,7 +79,8 @@ func TestMultiversXCodec_EncodeDecodeCallData(t *testing.T) {
 		t.Parallel()
 
 		buff := codec.EncodeCallData(testCallData)
-		expectedBuff := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
+		expectedBuff := []byte{0x01, 0x00, 0x00, 0x00, 0x52}                                // num bytes for call data
+		expectedBuff = append(expectedBuff, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c')          // function
 		expectedBuff = append(expectedBuff, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00) // Gas limit
 		expectedBuff = append(expectedBuff, 0x00, 0x00, 0x00, 0x02)                         // numArguments
 		expectedBuff = append(expectedBuff, 0x00, 0x00, 0x00, 0x05)                         // Argument 0 length
@@ -200,7 +202,7 @@ func TestMultiversxCodec_DecodeCallData(t *testing.T) {
 		buff = append(buff, 0x00, 0x00, 0x03)                               // Bad numArgument
 
 		callData, err := codec.DecodeCallData(buff)
-		assert.ErrorIs(t, err, errBufferTooShortForNumArgs)
+		assert.ErrorIs(t, err, errBufferTooShortForUint32)
 		assert.Equal(t, emptyCallData, callData)
 	})
 	t.Run("buffer to short for argument length should error", func(t *testing.T) {
@@ -312,8 +314,8 @@ func TestMultiversxCodec_EncodeProxySCCompleteCallData(t *testing.T) {
 	t.Run("should work with function and with 2 arguments", func(t *testing.T) {
 		t.Parallel()
 
-		//           |--------------FROM---------------------|---------------------TO----------------------------------------|-len-TK|------ETHUSDC-0ae8ee-------|-len-A-|20k|--tx-nonce=1---|M|-len-f-|--func-callPayable---|-gas-limit-50M-|-no-arg|-arg0-l|-ABC-|-arg1-l|-DEFG--|
-		hexedData := "880ec53af800b5cd051531672ef4fc4de233bd5d00000000000000000500871bc8f6332939a55a80b23012564523bea3291fa4370000000e455448555344432d306165386565000000024e200000000000000001010000000b63616c6c50617961626c650000000002faf08000000002000000034142430000000444454647"
+		//           |--------------FROM---------------------|---------------------TO----------------------------------------|-len-TK|------ETHUSDC-0ae8ee-------|-len-A-|20k|--tx-nonce=1---|M|--len--|-len-f-|--func-callPayable---|-gas-limit-50M-|-no-arg|-arg0-l|-ABC-|-arg1-l|-DEFG--|
+		hexedData := "880ec53af800b5cd051531672ef4fc4de233bd5d00000000000000000500871bc8f6332939a55a80b23012564523bea3291fa4370000000e455448555344432d306165386565000000024e200000000000000001010000002a0000000b63616c6c50617961626c650000000002faf08000000002000000034142430000000444454647"
 
 		ethUnhexed, err := hex.DecodeString("880ec53af800b5cd051531672ef4fc4de233bd5d")
 		require.Nil(t, err)
@@ -346,8 +348,8 @@ func TestMultiversxCodec_EncodeProxySCCompleteCallData(t *testing.T) {
 	t.Run("should work with no function and no arguments", func(t *testing.T) {
 		t.Parallel()
 
-		//           |--------------FROM---------------------|---------------------TO----------------------------------------|-len-TK|------ETHUSDC-0ae8ee-------|-len-A-|20k|--tx-nonce=1---|M|-len-f-|-gas-limit-50M-|-no-arg|
-		hexedData := "880ec53af800b5cd051531672ef4fc4de233bd5d00000000000000000500871bc8f6332939a55a80b23012564523bea3291fa4370000000e455448555344432d306165386565000000024e20000000000000000101000000000000000002faf08000000000"
+		//           |--------------FROM---------------------|---------------------TO----------------------------------------|-len-TK|------ETHUSDC-0ae8ee-------|-len-A-|20k|--tx-nonce=1---|M|--len--|-len-f-|-gas-limit-50M-|-no-arg|
+		hexedData := "880ec53af800b5cd051531672ef4fc4de233bd5d00000000000000000500871bc8f6332939a55a80b23012564523bea3291fa4370000000e455448555344432d306165386565000000024e200000000000000001010000000d000000000000000002faf08000"
 		completeCallData := createTestProxySCCompleteCallData()
 		buff, err := hex.DecodeString(hexedData)
 		require.Nil(t, err)
@@ -457,8 +459,8 @@ func TestMultiversxCodec_DecodeProxySCCompleteCallData(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		//           |--------------FROM---------------------|---------------------TO----------------------------------------|-len-TK|------ETHUSDC-0ae8ee-------|-len-A-|20k|--tx-nonce=1---|M|-len-f-|-gas-limit-50M-|-no-arg|
-		hexedData := "880ec53af800b5cd051531672ef4fc4de233bd5d00000000000000000500871bc8f6332939a55a80b23012564523bea3291fa4370000000e455448555344432d306165386565000000024e20000000000000000101000000000000000002faf08000000000"
+		//           |--------------FROM---------------------|---------------------TO----------------------------------------|-len-TK|------ETHUSDC-0ae8ee-------|-len-A-|20k|--tx-nonce=1---|M|--len--|-len-f-|-gas-limit-50M-|-no-arg|
+		hexedData := "880ec53af800b5cd051531672ef4fc4de233bd5d00000000000000000500871bc8f6332939a55a80b23012564523bea3291fa4370000000e455448555344432d306165386565000000024e200000000000000001010000000d000000000000000002faf08000"
 		buff, err := hex.DecodeString(hexedData)
 		require.Nil(t, err)
 

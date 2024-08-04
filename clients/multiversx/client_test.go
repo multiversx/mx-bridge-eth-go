@@ -12,6 +12,7 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
@@ -346,9 +347,9 @@ func TestClient_GetPendingBatch(t *testing.T) {
 
 		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
 		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
-		expectedBatch := &clients.TransferBatch{
+		expectedBatch := &common.TransferBatch{
 			ID: 44562,
-			Deposits: []*clients.DepositTransfer{
+			Deposits: []*common.DepositTransfer{
 				{
 					Nonce:                 5000,
 					ToBytes:               bytes.Repeat([]byte{2}, 20),
@@ -503,9 +504,9 @@ func TestClient_GetBatch(t *testing.T) {
 
 		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
 		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
-		expectedBatch := &clients.TransferBatch{
+		expectedBatch := &common.TransferBatch{
 			ID: 44562,
-			Deposits: []*clients.DepositTransfer{
+			Deposits: []*common.DepositTransfer{
 				{
 					Nonce:                 5000,
 					ToBytes:               bytes.Repeat([]byte{2}, 20),
@@ -569,7 +570,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeSetStatus(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeSetStatus(context.Background(), &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -589,7 +590,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeSetStatus(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeSetStatus(context.Background(), &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -658,7 +659,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeTransfer(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeTransfer(context.Background(), &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -678,7 +679,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeTransfer(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeTransfer(context.Background(), &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -773,7 +774,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 	})
 }
 
-func depositToStrings(dt *clients.DepositTransfer) []string {
+func depositToStrings(dt *common.DepositTransfer) []string {
 	result := []string{
 		hex.EncodeToString(dt.FromBytes),
 		hex.EncodeToString(dt.ToBytes),
@@ -881,7 +882,7 @@ func TestClient_PerformAction(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.PerformAction(context.Background(), actionID, &clients.TransferBatch{})
+		hash, err := c.PerformAction(context.Background(), actionID, &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -901,7 +902,7 @@ func TestClient_PerformAction(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.PerformAction(context.Background(), actionID, &clients.TransferBatch{})
+		hash, err := c.PerformAction(context.Background(), actionID, &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})

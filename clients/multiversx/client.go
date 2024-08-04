@@ -11,6 +11,7 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
@@ -54,6 +55,7 @@ type ClientArgs struct {
 // client represents the MultiversX Client implementation
 type client struct {
 	*mxClientDataGetter
+	codec                     *parsers.MultiversxCodec
 	txHandler                 txHandler
 	tokensMapper              TokensMapper
 	relayerPublicKey          crypto.PublicKey
@@ -123,6 +125,7 @@ func NewClient(args ClientArgs) (*client, error) {
 	}
 
 	c := &client{
+		codec: &parsers.MultiversxCodec{},
 		txHandler: &transactionHandler{
 			proxy:                   args.Proxy,
 			relayerAddress:          relayerAddress,
@@ -205,7 +208,7 @@ func checkGasMapValues(gasMap config.MultiversXGasMapConfig) error {
 }
 
 // GetPendingBatch returns the pending batch
-func (c *client) GetPendingBatch(ctx context.Context) (*clients.TransferBatch, error) {
+func (c *client) GetPendingBatch(ctx context.Context) (*common.TransferBatch, error) {
 	c.log.Info("getting pending batch...")
 	responseData, err := c.GetCurrentBatchAsDataBytes(ctx)
 	if err != nil {
@@ -220,7 +223,7 @@ func (c *client) GetPendingBatch(ctx context.Context) (*clients.TransferBatch, e
 }
 
 // GetBatch returns the batch (if existing)
-func (c *client) GetBatch(ctx context.Context, batchID uint64) (*clients.TransferBatch, error) {
+func (c *client) GetBatch(ctx context.Context, batchID uint64) (*common.TransferBatch, error) {
 	c.log.Debug("getting batch", "ID", batchID)
 	responseData, err := c.GetBatchAsDataBytes(ctx, batchID)
 	if err != nil {
@@ -238,7 +241,7 @@ func emptyResponse(response [][]byte) bool {
 	return len(response) == 0 || (len(response) == 1 && len(response[0]) == 0)
 }
 
-func (c *client) createPendingBatchFromResponse(ctx context.Context, responseData [][]byte) (*clients.TransferBatch, error) {
+func (c *client) createPendingBatchFromResponse(ctx context.Context, responseData [][]byte) (*common.TransferBatch, error) {
 	numFieldsForTransaction := 6
 	dataLen := len(responseData)
 	haveCorrectNumberOfArgs := (dataLen-1)%numFieldsForTransaction == 0 && dataLen > 1
@@ -251,7 +254,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		return nil, fmt.Errorf("%w while parsing batch ID", err)
 	}
 
-	batch := &clients.TransferBatch{
+	batch := &common.TransferBatch{
 		ID: batchID,
 	}
 
@@ -265,7 +268,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		}
 
 		amount := big.NewInt(0).SetBytes(responseData[i+5])
-		deposit := &clients.DepositTransfer{
+		deposit := &common.DepositTransfer{
 			Nonce:            depositNonce,
 			FromBytes:        responseData[i+2],
 			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
@@ -303,7 +306,7 @@ func (c *client) createCommonTxDataBuilder(funcName string, id int64) builders.T
 }
 
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
-func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error) {
+func (c *client) ProposeSetStatus(ctx context.Context, batch *common.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", clients.ErrNilBatch
 	}
@@ -328,7 +331,7 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 }
 
 // ProposeTransfer will trigger the propose transfer operation
-func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error) {
+func (c *client) ProposeTransfer(ctx context.Context, batch *common.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", clients.ErrNilBatch
 	}
@@ -340,21 +343,19 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 
 	txBuilder := c.createCommonTxDataBuilder(proposeTransferFuncName, int64(batch.ID))
 
-	for _, dt := range batch.Deposits {
-		txBuilder.ArgBytes(dt.FromBytes).
-			ArgBytes(dt.ToBytes).
-			ArgBytes(dt.DestinationTokenBytes).
-			ArgBigInt(dt.Amount).
-			ArgInt64(int64(dt.Nonce)).
-			ArgBytes(dt.Data)
+	depositsBytes, err := c.codec.EncodeDeposits(batch.Deposits)
+	if err != nil {
+		return "", err
 	}
+
+	txBuilder.ArgBytes(depositsBytes)
 
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
 	extraGasForScCalls := c.computeExtraGasForSCCallsBasic(batch, false)
 	gasLimit += extraGasForScCalls
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
-		c.log.Info("proposed transfer"+batch.String(), "transaction hash", hash)
+		c.log.Info("proposed transfer "+batch.String(), "transaction hash", hash)
 	}
 
 	return hash, err
@@ -378,7 +379,7 @@ func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
 }
 
 // PerformAction will trigger the execution of the provided action ID
-func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error) {
+func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *common.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", clients.ErrNilBatch
 	}
@@ -401,7 +402,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	return hash, err
 }
 
-func (c *client) computeExtraGasForSCCallsBasic(batch *clients.TransferBatch, performAction bool) uint64 {
+func (c *client) computeExtraGasForSCCallsBasic(batch *common.TransferBatch, performAction bool) uint64 {
 	gasLimit := uint64(0)
 	for _, deposit := range batch.Deposits {
 		if bytes.Equal(deposit.Data, []byte{parsers.MissingDataProtocolMarker}) {

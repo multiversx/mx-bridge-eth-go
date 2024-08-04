@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +15,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("nil batch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *common.TransferBatch {
 			return nil
 		}
 
@@ -31,7 +31,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("error on WasTransferProposedOnMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *common.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -50,7 +50,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("not leader", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *common.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -72,7 +72,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("error on ProposeTransferOnMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *common.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -97,7 +97,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("should work - transfer already proposed", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *common.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -116,7 +116,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *common.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {

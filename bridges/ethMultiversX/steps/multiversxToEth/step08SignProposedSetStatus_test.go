@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +18,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 	t.Run("nil batch on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedSetStatus()
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *common.TransferBatch {
 			return nil
 		}
 
@@ -135,7 +135,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 
 func createStubExecutorSignProposedSetStatus() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
+	stub.GetStoredBatchCalled = func() *common.TransferBatch {
 		return testBatch
 	}
 	stub.GetAndStoreActionIDForProposeSetStatusFromMultiversXCalled = func(ctx context.Context) (uint64, error) {

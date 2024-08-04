@@ -5,32 +5,32 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 )
 
 var errNotImplemented = errors.New("not implemented")
 
 // MultiversXClientStub -
 type MultiversXClientStub struct {
-	GetPendingBatchCalled                          func(ctx context.Context) (*clients.TransferBatch, error)
-	GetBatchCalled                                 func(ctx context.Context, batchID uint64) (*clients.TransferBatch, error)
+	GetPendingBatchCalled                          func(ctx context.Context) (*common.TransferBatch, error)
+	GetBatchCalled                                 func(ctx context.Context, batchID uint64) (*common.TransferBatch, error)
 	GetCurrentBatchAsDataBytesCalled               func(ctx context.Context) ([][]byte, error)
-	WasProposedTransferCalled                      func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
+	WasProposedTransferCalled                      func(ctx context.Context, batch *common.TransferBatch) (bool, error)
 	QuorumReachedCalled                            func(ctx context.Context, actionID uint64) (bool, error)
 	WasExecutedCalled                              func(ctx context.Context, actionID uint64) (bool, error)
-	GetActionIDForProposeTransferCalled            func(ctx context.Context, batch *clients.TransferBatch) (uint64, error)
-	WasProposedSetStatusCalled                     func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
+	GetActionIDForProposeTransferCalled            func(ctx context.Context, batch *common.TransferBatch) (uint64, error)
+	WasProposedSetStatusCalled                     func(ctx context.Context, batch *common.TransferBatch) (bool, error)
 	GetTransactionsStatusesCalled                  func(ctx context.Context, batchID uint64) ([]byte, error)
-	GetActionIDForSetStatusOnPendingTransferCalled func(ctx context.Context, batch *clients.TransferBatch) (uint64, error)
+	GetActionIDForSetStatusOnPendingTransferCalled func(ctx context.Context, batch *common.TransferBatch) (uint64, error)
 	GetLastExecutedEthBatchIDCalled                func(ctx context.Context) (uint64, error)
 	GetLastExecutedEthTxIDCalled                   func(ctx context.Context) (uint64, error)
 	GetCurrentNonceCalled                          func(ctx context.Context) (uint64, error)
-	ProposeSetStatusCalled                         func(ctx context.Context, batch *clients.TransferBatch) (string, error)
-	ResolveNewDepositsCalled                       func(ctx context.Context, batch *clients.TransferBatch) error
-	ProposeTransferCalled                          func(ctx context.Context, batch *clients.TransferBatch) (string, error)
+	ProposeSetStatusCalled                         func(ctx context.Context, batch *common.TransferBatch) (string, error)
+	ResolveNewDepositsCalled                       func(ctx context.Context, batch *common.TransferBatch) error
+	ProposeTransferCalled                          func(ctx context.Context, batch *common.TransferBatch) (string, error)
 	SignCalled                                     func(ctx context.Context, actionID uint64) (string, error)
 	WasSignedCalled                                func(ctx context.Context, actionID uint64) (bool, error)
-	PerformActionCalled                            func(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error)
+	PerformActionCalled                            func(ctx context.Context, actionID uint64, batch *common.TransferBatch) (string, error)
 	CheckClientAvailabilityCalled                  func(ctx context.Context) error
 	IsMintBurnTokenCalled                          func(ctx context.Context, token []byte) (bool, error)
 	IsNativeTokenCalled                            func(ctx context.Context, token []byte) (bool, error)
@@ -42,7 +42,7 @@ type MultiversXClientStub struct {
 }
 
 // GetPendingBatch -
-func (stub *MultiversXClientStub) GetPendingBatch(ctx context.Context) (*clients.TransferBatch, error) {
+func (stub *MultiversXClientStub) GetPendingBatch(ctx context.Context) (*common.TransferBatch, error) {
 	if stub.GetPendingBatchCalled != nil {
 		return stub.GetPendingBatchCalled(ctx)
 	}
@@ -51,7 +51,7 @@ func (stub *MultiversXClientStub) GetPendingBatch(ctx context.Context) (*clients
 }
 
 // GetBatch -
-func (stub *MultiversXClientStub) GetBatch(ctx context.Context, batchID uint64) (*clients.TransferBatch, error) {
+func (stub *MultiversXClientStub) GetBatch(ctx context.Context, batchID uint64) (*common.TransferBatch, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchCalled(ctx, batchID)
 	}
@@ -69,7 +69,7 @@ func (stub *MultiversXClientStub) GetCurrentBatchAsDataBytes(ctx context.Context
 }
 
 // WasProposedTransfer -
-func (stub *MultiversXClientStub) WasProposedTransfer(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+func (stub *MultiversXClientStub) WasProposedTransfer(ctx context.Context, batch *common.TransferBatch) (bool, error) {
 	if stub.WasProposedTransferCalled != nil {
 		return stub.WasProposedTransferCalled(ctx, batch)
 	}
@@ -96,7 +96,7 @@ func (stub *MultiversXClientStub) WasExecuted(ctx context.Context, actionID uint
 }
 
 // GetActionIDForProposeTransfer -
-func (stub *MultiversXClientStub) GetActionIDForProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
+func (stub *MultiversXClientStub) GetActionIDForProposeTransfer(ctx context.Context, batch *common.TransferBatch) (uint64, error) {
 	if stub.GetActionIDForProposeTransferCalled != nil {
 		return stub.GetActionIDForProposeTransferCalled(ctx, batch)
 	}
@@ -105,7 +105,7 @@ func (stub *MultiversXClientStub) GetActionIDForProposeTransfer(ctx context.Cont
 }
 
 // WasProposedSetStatus -
-func (stub *MultiversXClientStub) WasProposedSetStatus(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
+func (stub *MultiversXClientStub) WasProposedSetStatus(ctx context.Context, batch *common.TransferBatch) (bool, error) {
 	if stub.WasProposedSetStatusCalled != nil {
 		return stub.WasProposedSetStatusCalled(ctx, batch)
 	}
@@ -123,7 +123,7 @@ func (stub *MultiversXClientStub) GetTransactionsStatuses(ctx context.Context, b
 }
 
 // GetActionIDForSetStatusOnPendingTransfer -
-func (stub *MultiversXClientStub) GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *clients.TransferBatch) (uint64, error) {
+func (stub *MultiversXClientStub) GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *common.TransferBatch) (uint64, error) {
 	if stub.GetActionIDForSetStatusOnPendingTransferCalled != nil {
 		return stub.GetActionIDForSetStatusOnPendingTransferCalled(ctx, batch)
 	}
@@ -159,7 +159,7 @@ func (stub *MultiversXClientStub) GetCurrentNonce(ctx context.Context) (uint64, 
 }
 
 // ProposeSetStatus -
-func (stub *MultiversXClientStub) ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error) {
+func (stub *MultiversXClientStub) ProposeSetStatus(ctx context.Context, batch *common.TransferBatch) (string, error) {
 	if stub.ProposeSetStatusCalled != nil {
 		return stub.ProposeSetStatusCalled(ctx, batch)
 	}
@@ -168,7 +168,7 @@ func (stub *MultiversXClientStub) ProposeSetStatus(ctx context.Context, batch *c
 }
 
 // ProposeTransfer -
-func (stub *MultiversXClientStub) ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error) {
+func (stub *MultiversXClientStub) ProposeTransfer(ctx context.Context, batch *common.TransferBatch) (string, error) {
 	if stub.ProposeTransferCalled != nil {
 		return stub.ProposeTransferCalled(ctx, batch)
 	}
@@ -195,7 +195,7 @@ func (stub *MultiversXClientStub) WasSigned(ctx context.Context, actionID uint64
 }
 
 // PerformAction -
-func (stub *MultiversXClientStub) PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error) {
+func (stub *MultiversXClientStub) PerformAction(ctx context.Context, actionID uint64, batch *common.TransferBatch) (string, error) {
 	if stub.PerformActionCalled != nil {
 		return stub.PerformActionCalled(ctx, actionID, batch)
 	}

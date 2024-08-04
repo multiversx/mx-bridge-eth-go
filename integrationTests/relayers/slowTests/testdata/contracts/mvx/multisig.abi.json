@@ -847,8 +847,7 @@
                 },
                 {
                     "name": "transfers",
-                    "type": "variadic<EthTransaction>",
-                    "multi_arg": true
+                    "type": "List<EthTransaction>"
                 }
             ],
             "outputs": [
@@ -872,8 +871,7 @@
                 },
                 {
                     "name": "transfers",
-                    "type": "variadic<EthTransaction>",
-                    "multi_arg": true
+                    "type": "List<EthTransaction>"
                 }
             ],
             "outputs": [
@@ -1240,7 +1238,7 @@
                 },
                 {
                     "name": "call_data",
-                    "type": "bytes"
+                    "type": "Option<bytes>"
                 }
             ]
         },

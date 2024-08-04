@@ -1,9 +1,10 @@
-package clients
+package common
 
 import (
 	"math/big"
 	"testing"
 
+	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -78,7 +79,7 @@ func TestTransferBatch_Clone(t *testing.T) {
 				Data:                  []byte("tx data"),
 			},
 		},
-		Statuses: []byte{Executed, Rejected},
+		Statuses: []byte{clients.Executed, clients.Rejected},
 	}
 
 	cloned := tb.Clone()
@@ -114,7 +115,7 @@ func TestTransferBatch_String(t *testing.T) {
 				Amount:           big.NewInt(5566),
 			},
 		},
-		Statuses: []byte{Executed, Rejected},
+		Statuses: []byte{clients.Executed, clients.Rejected},
 	}
 
 	expectedString := `Batch id 2243:
@@ -144,11 +145,11 @@ func TestTransferBatch_ResolveNewDeposits(t *testing.T) {
 
 		workingBatch := batch.Clone()
 		workingBatch.ResolveNewDeposits(0)
-		assert.Equal(t, []byte{Rejected, Rejected}, workingBatch.Statuses)
+		assert.Equal(t, []byte{clients.Rejected, clients.Rejected}, workingBatch.Statuses)
 
 		workingBatch = batch.Clone()
 		workingBatch.ResolveNewDeposits(1)
-		assert.Equal(t, []byte{0, Rejected}, workingBatch.Statuses)
+		assert.Equal(t, []byte{0, clients.Rejected}, workingBatch.Statuses)
 	})
 	t.Run("equal new deposits", func(t *testing.T) {
 		t.Parallel()
@@ -162,6 +163,6 @@ func TestTransferBatch_ResolveNewDeposits(t *testing.T) {
 
 		workingBatch := batch.Clone()
 		workingBatch.ResolveNewDeposits(3)
-		assert.Equal(t, []byte{0, 0, Rejected}, workingBatch.Statuses)
+		assert.Equal(t, []byte{0, 0, clients.Rejected}, workingBatch.Statuses)
 	})
 }

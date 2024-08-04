@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/stateMachine"
@@ -79,8 +79,8 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 
 		return errHandler.storeAndReturnError(nil)
 	}
-	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
-		return &clients.TransferBatch{}
+	stub.GetStoredBatchCalled = func() *common.TransferBatch {
+		return &common.TransferBatch{}
 	}
 	stub.GetLastExecutedEthBatchIDFromMultiversXCalled = func(ctx context.Context) (uint64, error) {
 		if args.failingStep == getLastExecutedEthBatchIDFromMultiversX {

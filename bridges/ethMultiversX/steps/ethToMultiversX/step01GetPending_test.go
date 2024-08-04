@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
@@ -15,9 +15,9 @@ import (
 )
 
 var expectedError = errors.New("expected error")
-var testBatch = &clients.TransferBatch{
+var testBatch = &bridgeCommon.TransferBatch{
 	ID: 112233,
-	Deposits: []*clients.DepositTransfer{
+	Deposits: []*bridgeCommon.DepositTransfer{
 		{
 			Nonce:                 0,
 			ToBytes:               []byte("to"),
@@ -74,7 +74,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetAndStoreBatchFromEthereumCalled = func(ctx context.Context, nonce uint64) error {
 			return nil
 		}
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *bridgeCommon.TransferBatch {
 			return nil
 		}
 
@@ -95,7 +95,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetAndStoreBatchFromEthereumCalled = func(ctx context.Context, nonce uint64) error {
 			return nil
 		}
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *bridgeCommon.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled = func(ctx context.Context) error {
@@ -122,7 +122,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetAndStoreBatchFromEthereumCalled = func(ctx context.Context, nonce uint64) error {
 			return nil
 		}
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *bridgeCommon.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled = func(ctx context.Context) error {
@@ -146,7 +146,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetAndStoreBatchFromEthereumCalled = func(ctx context.Context, nonce uint64) error {
 			return nil
 		}
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *bridgeCommon.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnEthereumBatchCalled = func(ctx context.Context) error {

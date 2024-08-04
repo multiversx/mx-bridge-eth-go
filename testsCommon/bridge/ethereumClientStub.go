@@ -5,14 +5,14 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 )
 
 // EthereumClientStub -
 type EthereumClientStub struct {
-	GetBatchCalled                         func(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error)
+	GetBatchCalled                         func(ctx context.Context, nonce uint64) (*bridgeCommon.TransferBatch, bool, error)
 	WasExecutedCalled                      func(ctx context.Context, batchID uint64) (bool, error)
 	GenerateMessageHashCalled              func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error)
 	BroadcastSignatureForMessageHashCalled func(msgHash common.Hash)
@@ -32,7 +32,7 @@ type EthereumClientStub struct {
 }
 
 // GetBatch -
-func (stub *EthereumClientStub) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
+func (stub *EthereumClientStub) GetBatch(ctx context.Context, nonce uint64) (*bridgeCommon.TransferBatch, bool, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchCalled(ctx, nonce)
 	}

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/stateMachine"
@@ -96,17 +96,17 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 	stub.GetStoredActionIDCalled = func() uint64 {
 		return 2
 	}
-	stub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
+	stub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*common.TransferBatch, error) {
 		if args.failingStep == getBatchFromMultiversX {
-			return &clients.TransferBatch{}, errHandler.storeAndReturnError(expectedErr)
+			return &common.TransferBatch{}, errHandler.storeAndReturnError(expectedErr)
 		}
-		return &clients.TransferBatch{}, errHandler.storeAndReturnError(nil)
+		return &common.TransferBatch{}, errHandler.storeAndReturnError(nil)
 	}
-	stub.StoreBatchFromMultiversXCalled = func(batch *clients.TransferBatch) error {
+	stub.StoreBatchFromMultiversXCalled = func(batch *common.TransferBatch) error {
 		return nil
 	}
-	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
-		return &clients.TransferBatch{}
+	stub.GetStoredBatchCalled = func() *common.TransferBatch {
+		return &common.TransferBatch{}
 	}
 	stub.WasTransferPerformedOnEthereumCalled = func(ctx context.Context) (bool, error) {
 		if args.failingStep == wasTransferPerformedOnEthereum {

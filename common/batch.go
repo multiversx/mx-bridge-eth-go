@@ -1,10 +1,11 @@
-package clients
+package common
 
 import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
 
+	"github.com/multiversx/mx-bridge-eth-go/clients"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
@@ -53,11 +54,11 @@ func (tb *TransferBatch) ResolveNewDeposits(newNumDeposits int) {
 	}
 
 	for i := newNumDeposits; i < oldLen; i++ {
-		tb.Statuses[i] = Rejected
+		tb.Statuses[i] = clients.Rejected
 	}
 
 	for newNumDeposits > len(tb.Statuses) {
-		tb.Statuses = append(tb.Statuses, Rejected)
+		tb.Statuses = append(tb.Statuses, clients.Rejected)
 	}
 
 	log.Warn("recovered num statuses", "len statuses", oldLen, "new num deposits", newNumDeposits)

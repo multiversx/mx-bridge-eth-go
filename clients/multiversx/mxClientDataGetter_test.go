@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 	bridgeErrors "github.com/multiversx/mx-bridge-eth-go/errors"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
@@ -64,10 +65,10 @@ func createMockProxy(returningBytes [][]byte) *interactors.ProxyStub {
 	}
 }
 
-func createMockBatch() *clients.TransferBatch {
-	return &clients.TransferBatch{
+func createMockBatch() *common.TransferBatch {
+	return &common.TransferBatch{
 		ID: 112233,
-		Deposits: []*clients.DepositTransfer{
+		Deposits: []*common.DepositTransfer{
 			{
 				Nonce:                 1,
 				ToBytes:               []byte("to1"),
