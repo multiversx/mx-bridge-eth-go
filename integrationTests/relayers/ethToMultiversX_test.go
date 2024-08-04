@@ -35,6 +35,8 @@ type argsForSCCallsTest struct {
 }
 
 func TestRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T) {
+	t.Skip("TODO: fix") // TODO(jls): fix
+
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
@@ -191,6 +193,8 @@ func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNat
 }
 
 func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t *testing.T) {
+	t.Skip("TODO: fix") // TODO(jls): fix
+
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}

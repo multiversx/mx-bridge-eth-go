@@ -1845,9 +1845,14 @@ func TestConvertToDisplayableData_ValidCallDataWithNoArguments(t *testing.T) {
 	t.Parallel()
 
 	callData := func() []byte {
-		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00) // Gas limit
-		b = append(b, 0x00, 0x00, 0x00, 0x00)                         // numArguments
+		b := []byte{
+			1,
+			0, 0, 0, 16,
+			0, 0, 0, 3, 'a', 'b', 'c',
+			0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00, // gas limit
+			0, // numArguments
+		}
+
 		return b
 	}()
 
@@ -1861,17 +1866,22 @@ func TestConvertToDisplayableData_MultipleTypesArguments(t *testing.T) {
 	t.Parallel()
 
 	callData := func() []byte {
-		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00) // Gas limit
-		b = append(b, 0x00, 0x00, 0x00, 0x02)                         // numArguments
-		b = append(b, 0x00, 0x00, 0x00, 0x05)                         // Argument 0 length
-		b = append(b, bytes.Repeat([]byte{'A'}, 5)...)                // Argument 0 data
-		b = append(b, 0x00, 0x00, 0x00, 0x32)                         // Argument 1 length
-		b = append(b, bytes.Repeat([]byte{'B'}, 50)...)               // Argument 1 data
+		b := []byte{
+			1,
+			0, 0, 0, 82,
+			0, 0, 0, 3, 'a', 'b', 'c',
+			0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00, // gas limit
+			0, 0, 0, 2, // numArguments
+			0, 0, 0, 5, // argument 0 length
+			'd', 'e', 'f', 'g', 'h', // argument 0 data
+			0, 0, 0, 50, // /argument 1 length
+		}
+		b = append(b, bytes.Repeat([]byte{'B'}, 50)...) // argument 1 data
+
 		return b
 	}()
 
-	want := "Endpoint: abc, Gas: 500000000, Arguments: AAAAA@BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+	want := "Endpoint: abc, Gas: 500000000, Arguments: defgh@BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
 	got, err := ConvertToDisplayableData(callData)
 	require.Equal(t, want, got)
 	require.Nil(t, err)
@@ -1880,11 +1890,16 @@ func TestConvertToDisplayableData_MultipleTypesArguments(t *testing.T) {
 func TestConvertToDisplayableData_TooShortForArgumentData(t *testing.T) {
 	t.Parallel()
 	callData := func() []byte {
-		b := []byte{0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c'}
-		b = append(b, 0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00) // Gas limit length
-		b = append(b, 0x00, 0x00, 0x00, 0x01)                         // numArguments
-		b = append(b, 0x00, 0x00, 0x00, 0x04)                         // Argument 0 length
-		b = append(b, 0x00, 0x00, 0x04)                               // Bad Argument 0 data
+		b := []byte{
+			1,
+			0, 0, 0, 26,
+			0, 0, 0, 3, 'a', 'b', 'c',
+			0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00, // gas limit
+			0, 0, 0, 1, // numArguments
+			0, 0, 0, 4, // argument 0 length
+			0, 0, 4, // bad argument 0 data
+		}
+
 		return b
 	}()
 	_, err := ConvertToDisplayableData(callData)

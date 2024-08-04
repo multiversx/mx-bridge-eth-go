@@ -164,7 +164,7 @@ func decodeCallData(buff []byte, marker byte) (CallData, error) {
 
 	arguments, err := extractArguments(buff)
 	if err != nil {
-		return CallData{}, fmt.Errorf("%w for arguments", err)
+		return CallData{}, err
 	}
 
 	return CallData{

@@ -3,6 +3,7 @@ package multiversx
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -704,9 +705,11 @@ func TestClient_ProposeTransfer(t *testing.T) {
 					proposeTransferFuncName,
 					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
 				}
+				depositsString := ""
 				for _, dt := range batch.Deposits {
-					dataStrings = append(dataStrings, depositToStrings(dt)...)
+					depositsString = depositsString + depositToString(dt)
 				}
+				dataStrings = append(dataStrings, depositsString)
 
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
@@ -749,13 +752,15 @@ func TestClient_ProposeTransfer(t *testing.T) {
 					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
 				}
 				extraGas := uint64(0)
+				depositsString := ""
 				for _, dt := range batch.Deposits {
-					dataStrings = append(dataStrings, depositToStrings(dt)...)
+					depositsString = depositsString + depositToString(dt)
 					if bytes.Equal(dt.Data, []byte{parsers.MissingDataProtocolMarker}) {
 						continue
 					}
 					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
 				}
+				dataStrings = append(dataStrings, depositsString)
 
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
@@ -774,17 +779,34 @@ func TestClient_ProposeTransfer(t *testing.T) {
 	})
 }
 
-func depositToStrings(dt *common.DepositTransfer) []string {
-	result := []string{
-		hex.EncodeToString(dt.FromBytes),
-		hex.EncodeToString(dt.ToBytes),
-		hex.EncodeToString(dt.DestinationTokenBytes),
-		hex.EncodeToString(dt.Amount.Bytes()),
-		hex.EncodeToString(big.NewInt(int64(dt.Nonce)).Bytes()),
-		hex.EncodeToString(dt.Data),
-	}
+func depositToString(dt *common.DepositTransfer) string {
+	result := hex.EncodeToString(dt.FromBytes)
+	result = result + hex.EncodeToString(dt.ToBytes)
+
+	tokenLength := len(dt.DestinationTokenBytes)
+	result = result + encodeLenAsHex(tokenLength) + hex.EncodeToString(dt.DestinationTokenBytes)
+
+	amountLength := len(dt.Amount.Bytes())
+	result = result + encodeLenAsHex(amountLength) + hex.EncodeToString(dt.Amount.Bytes())
+
+	result = result + encodeUint64AsHex(dt.Nonce)
+	result = result + hex.EncodeToString(dt.Data)
 
 	return result
+}
+
+func encodeLenAsHex(length int) string {
+	buff := make([]byte, 4)
+	binary.BigEndian.PutUint32(buff, uint32(length))
+
+	return hex.EncodeToString(buff)
+}
+
+func encodeUint64AsHex(value uint64) string {
+	buff := make([]byte, 8)
+	binary.BigEndian.PutUint64(buff, value)
+
+	return hex.EncodeToString(buff)
 }
 
 func TestClient_Sign(t *testing.T) {
@@ -968,16 +990,18 @@ func TestClient_PerformAction(t *testing.T) {
 				}
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
+				depositsString := ""
 
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
-					dataStrings = append(dataStrings, depositToStrings(dt)...)
+					depositsString = depositsString + depositToString(dt)
 					if bytes.Equal(dt.Data, []byte{parsers.MissingDataProtocolMarker}) {
 						continue
 					}
 					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
 					extraGas += args.GasMapConfig.ScCallPerformForEach
 				}
+				dataStrings = append(dataStrings, depositsString)
 
 				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
 				expectedGasLimit += extraGas
