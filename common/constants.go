@@ -1,4 +1,4 @@
-package clients
+package common
 
 const (
 	// Executed is the Executed with success status value

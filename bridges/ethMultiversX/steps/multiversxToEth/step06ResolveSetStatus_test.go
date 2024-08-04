@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
@@ -102,7 +101,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
 		bridgeStub.WaitAndReturnFinalBatchStatusesCalled = func(ctx context.Context) []byte {
-			return []byte{clients.Executed, clients.Rejected}
+			return []byte{common.Executed, common.Rejected}
 		}
 
 		wasCalled := false

@@ -95,7 +95,7 @@ func createMockBatch() *common.TransferBatch {
 				DisplayableData:       "00",
 			},
 		},
-		Statuses: []byte{clients.Rejected, clients.Executed},
+		Statuses: []byte{common.Rejected, common.Executed},
 	}
 }
 

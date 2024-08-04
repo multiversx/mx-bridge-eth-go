@@ -1476,7 +1476,7 @@ func TestGetBatchStatusesFromEthereum(t *testing.T) {
 		t.Parallel()
 
 		wasCalled := false
-		providedStatuses := []byte{clients.Executed, clients.Rejected}
+		providedStatuses := []byte{bridgeCommon.Executed, bridgeCommon.Rejected}
 		args := createMockExecutorArgs()
 		args.EthereumClient = &bridgeTests.EthereumClientStub{
 			GetTransactionsStatusesCalled: func(ctx context.Context, batchId uint64) ([]byte, error) {
@@ -1554,7 +1554,7 @@ func TestWaitAndReturnFinalBatchStatuses(t *testing.T) {
 	t.Run("GetBatchStatusesFromEthereum always returns success+statuses only after 4 checks", func(t *testing.T) {
 		t.Parallel()
 
-		providedStatuses := []byte{clients.Executed, clients.Rejected}
+		providedStatuses := []byte{bridgeCommon.Executed, bridgeCommon.Rejected}
 		args := createMockExecutorArgs()
 		args.TimeForWaitOnEthereum = 10 * time.Second
 		counter := 0
@@ -1585,7 +1585,7 @@ func TestWaitAndReturnFinalBatchStatuses(t *testing.T) {
 	t.Run("GetBatchStatusesFromEthereum always returns success+statuses only after 4 checks, otherwise empty slice", func(t *testing.T) {
 		t.Parallel()
 
-		providedStatuses := []byte{clients.Executed, clients.Rejected}
+		providedStatuses := []byte{bridgeCommon.Executed, bridgeCommon.Rejected}
 		args := createMockExecutorArgs()
 		args.TimeForWaitOnEthereum = 10 * time.Second
 		counter := 0
@@ -1638,11 +1638,11 @@ func TestResolveNewDepositsStatuses(t *testing.T) {
 		executor.batch = providedBatchForResolve.Clone()
 
 		executor.ResolveNewDepositsStatuses(uint64(0))
-		assert.Equal(t, []byte{clients.Rejected, clients.Rejected}, executor.batch.Statuses)
+		assert.Equal(t, []byte{bridgeCommon.Rejected, bridgeCommon.Rejected}, executor.batch.Statuses)
 
 		executor.batch = providedBatchForResolve.Clone()
 		executor.batch.ResolveNewDeposits(1)
-		assert.Equal(t, []byte{0, clients.Rejected}, executor.batch.Statuses)
+		assert.Equal(t, []byte{0, bridgeCommon.Rejected}, executor.batch.Statuses)
 	})
 	t.Run("equal new deposits", func(t *testing.T) {
 		t.Parallel()
@@ -1662,7 +1662,7 @@ func TestResolveNewDepositsStatuses(t *testing.T) {
 		executor.batch = providedBatchForResolve.Clone()
 
 		executor.ResolveNewDepositsStatuses(uint64(3))
-		assert.Equal(t, []byte{0, 0, clients.Rejected}, executor.batch.Statuses)
+		assert.Equal(t, []byte{0, 0, bridgeCommon.Rejected}, executor.batch.Statuses)
 	})
 }
 

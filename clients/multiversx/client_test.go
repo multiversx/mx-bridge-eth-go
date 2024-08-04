@@ -614,7 +614,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 					proposeSetStatusFuncName,
 					hex.EncodeToString(big.NewInt(112233).Bytes()),
 				}
-				expectedStatus := []byte{clients.Rejected, clients.Executed}
+				expectedStatus := []byte{common.Rejected, common.Executed}
 				for _, stat := range expectedStatus {
 					expectedArgs = append(expectedArgs, hex.EncodeToString([]byte{stat}))
 				}
@@ -990,18 +990,15 @@ func TestClient_PerformAction(t *testing.T) {
 				}
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
-				depositsString := ""
 
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
-					depositsString = depositsString + depositToString(dt)
 					if bytes.Equal(dt.Data, []byte{parsers.MissingDataProtocolMarker}) {
 						continue
 					}
 					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
 					extraGas += args.GasMapConfig.ScCallPerformForEach
 				}
-				dataStrings = append(dataStrings, depositsString)
 
 				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
 				expectedGasLimit += extraGas

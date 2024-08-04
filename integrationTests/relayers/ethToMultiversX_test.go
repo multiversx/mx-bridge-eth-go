@@ -12,8 +12,8 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/factory"
@@ -35,8 +35,6 @@ type argsForSCCallsTest struct {
 }
 
 func TestRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T) {
-	t.Skip("TODO: fix") // TODO(jls): fix
-
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
@@ -133,7 +131,7 @@ func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNat
 	multiversXChainMock.SetLastExecutedEthBatchID(batchNonceOnEthereum)
 	multiversXChainMock.SetLastExecutedEthTxId(txNonceOnEthereum)
 	multiversXChainMock.GetStatusesAfterExecutionHandler = func() []byte {
-		return []byte{clients.Executed, clients.Rejected}
+		return []byte{bridgeCommon.Executed, bridgeCommon.Rejected}
 	}
 	multiversXChainMock.SetQuorum(numRelayers)
 
@@ -193,8 +191,6 @@ func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNat
 }
 
 func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t *testing.T) {
-	t.Skip("TODO: fix") // TODO(jls): fix
-
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
@@ -327,7 +323,7 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	multiversXChainMock.SetLastExecutedEthBatchID(batchNonceOnEthereum)
 	multiversXChainMock.SetLastExecutedEthTxId(txNonceOnEthereum)
 	multiversXChainMock.GetStatusesAfterExecutionHandler = func() []byte {
-		return []byte{clients.Executed, clients.Rejected, clients.Executed}
+		return []byte{bridgeCommon.Executed, bridgeCommon.Rejected, bridgeCommon.Executed}
 	}
 	multiversXChainMock.SetQuorum(numRelayers)
 
