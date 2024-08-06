@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
@@ -50,7 +51,7 @@ type bridgeExecutor struct {
 	maxQuorumRetriesOnMultiversX uint64
 	maxRetriesOnWasProposed      uint64
 
-	batch                     *clients.TransferBatch
+	batch                     *bridgeCommon.TransferBatch
 	actionID                  uint64
 	msgHash                   common.Hash
 	quorumRetriesOnEthereum   uint64
@@ -150,7 +151,7 @@ func (executor *bridgeExecutor) MyTurnAsLeader() bool {
 }
 
 // GetBatchFromMultiversX fetches the pending batch from MultiversX
-func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*clients.TransferBatch, error) {
+func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*bridgeCommon.TransferBatch, error) {
 	batch, err := executor.multiversXClient.GetPendingBatch(ctx)
 	if err == nil {
 		executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
@@ -159,7 +160,7 @@ func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*cl
 }
 
 // StoreBatchFromMultiversX saves the pending batch from MultiversX
-func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *clients.TransferBatch) error {
+func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *bridgeCommon.TransferBatch) error {
 	if batch == nil {
 		return ErrNilBatch
 	}
@@ -169,7 +170,7 @@ func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *clients.Transfer
 }
 
 // GetStoredBatch returns the stored batch
-func (executor *bridgeExecutor) GetStoredBatch() *clients.TransferBatch {
+func (executor *bridgeExecutor) GetStoredBatch() *bridgeCommon.TransferBatch {
 	return executor.batch
 }
 
@@ -461,7 +462,7 @@ func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context
 }
 
 // addBatchSCMetadata fetches the logs containing sc calls metadata for the current batch
-func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfers *clients.TransferBatch) (*clients.TransferBatch, error) {
+func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfers *bridgeCommon.TransferBatch) (*bridgeCommon.TransferBatch, error) {
 	if transfers == nil {
 		return nil, ErrNilBatch
 	}
@@ -478,7 +479,7 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 	return transfers, nil
 }
 
-func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositTransfer, events []*contract.ERC20SafeERC20SCDeposit) *clients.DepositTransfer {
+func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCommon.DepositTransfer, events []*contract.ERC20SafeERC20SCDeposit) *bridgeCommon.DepositTransfer {
 	for _, event := range events {
 		if event.DepositNonce.Uint64() == transfer.Nonce {
 			transfer.Data = []byte(event.CallData)
@@ -492,7 +493,7 @@ func (executor *bridgeExecutor) addMetadataToTransfer(transfer *clients.DepositT
 		}
 	}
 
-	transfer.Data = []byte{parsers.MissingDataProtocolMarker}
+	transfer.Data = []byte{parsers.MissingDataProtocolMarker} // make([]byte, 0)
 	transfer.DisplayableData = ""
 
 	return transfer

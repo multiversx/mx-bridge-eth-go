@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/factory"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
@@ -45,7 +45,7 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 	numRelayers := 3
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.SetQuorum(numRelayers)
-	expectedStatuses := []byte{clients.Executed, clients.Rejected}
+	expectedStatuses := []byte{bridgeCommon.Executed, bridgeCommon.Rejected}
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() ([]byte, bool) {
 		if callIsFromBalanceValidator() {
 			// statuses can not be final at this point as the batch was not executed yet
@@ -142,7 +142,7 @@ func testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearIn
 	numRelayers := 3
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.SetQuorum(numRelayers)
-	expectedStatuses := []byte{clients.Executed, clients.Rejected}
+	expectedStatuses := []byte{bridgeCommon.Executed, bridgeCommon.Rejected}
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() ([]byte, bool) {
 		if callIsFromBalanceValidator() {
 			// statuses can not be final at this point as the batch was not executed yet

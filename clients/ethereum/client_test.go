@@ -17,6 +17,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
@@ -62,10 +63,10 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 	}
 }
 
-func createMockTransferBatch() *clients.TransferBatch {
-	return &clients.TransferBatch{
+func createMockTransferBatch() *bridgeCommon.TransferBatch {
+	return &bridgeCommon.TransferBatch{
 		ID: 332,
-		Deposits: []*clients.DepositTransfer{
+		Deposits: []*bridgeCommon.DepositTransfer{
 			{
 				Nonce:                 10,
 				ToBytes:               []byte("to1"),
@@ -320,9 +321,9 @@ func TestClient_GetBatch(t *testing.T) {
 
 		bech32Recipient1Address, _ := recipient1.AddressAsBech32String()
 		bech32Recipient2Address, _ := recipient2.AddressAsBech32String()
-		expectedBatch := &clients.TransferBatch{
+		expectedBatch := &bridgeCommon.TransferBatch{
 			ID: 112243,
-			Deposits: []*clients.DepositTransfer{
+			Deposits: []*bridgeCommon.DepositTransfer{
 				{
 					Nonce:                 10,
 					ToBytes:               recipient1.AddressBytes(),
@@ -394,9 +395,9 @@ func TestClient_GetBatch(t *testing.T) {
 
 		bech32Recipient1Address, _ := recipient1.AddressAsBech32String()
 		bech32Recipient2Address, _ := recipient2.AddressAsBech32String()
-		expectedBatch := &clients.TransferBatch{
+		expectedBatch := &bridgeCommon.TransferBatch{
 			ID: 112243,
-			Deposits: []*clients.DepositTransfer{
+			Deposits: []*bridgeCommon.DepositTransfer{
 				{
 					Nonce:                 10,
 					ToBytes:               recipient1.AddressBytes(),
@@ -621,7 +622,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 			},
 		}
 		newBatch := batch.Clone()
-		newBatch.Deposits = append(newBatch.Deposits, &clients.DepositTransfer{
+		newBatch.Deposits = append(newBatch.Deposits, &bridgeCommon.DepositTransfer{
 			Nonce:                 40,
 			ToBytes:               []byte("to3"),
 			DisplayableTo:         "to3",

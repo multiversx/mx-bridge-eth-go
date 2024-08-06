@@ -195,4 +195,5 @@ type ScCallsModuleConfig struct {
 	PrivateKeyFile               string
 	PollingIntervalInMillis      uint64
 	FilterConfig                 PendingOperationsFilterConfig
+	Logs                         LogsConfig
 }

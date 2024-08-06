@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
@@ -15,7 +15,7 @@ import (
 )
 
 var expectedError = errors.New("expected error")
-var testBatch = &clients.TransferBatch{
+var testBatch = &bridgeCommon.TransferBatch{
 	ID:       112233,
 	Deposits: nil,
 	Statuses: nil,
@@ -27,7 +27,7 @@ func TestExecute_GetPending(t *testing.T) {
 	t.Run("error on GetBatchFromMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
-		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
+		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCommon.TransferBatch, error) {
 			return nil, expectedError
 		}
 
@@ -42,7 +42,7 @@ func TestExecute_GetPending(t *testing.T) {
 	t.Run("nil batch on GetBatchFromMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
-		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
+		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCommon.TransferBatch, error) {
 			return nil, nil
 		}
 
@@ -57,7 +57,7 @@ func TestExecute_GetPending(t *testing.T) {
 	t.Run("error on StoreBatchFromMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
-		bridgeStub.StoreBatchFromMultiversXCalled = func(batch *clients.TransferBatch) error {
+		bridgeStub.StoreBatchFromMultiversXCalled = func(batch *bridgeCommon.TransferBatch) error {
 			return expectedError
 		}
 
@@ -153,10 +153,10 @@ func TestExecute_GetPending(t *testing.T) {
 
 func createStubExecutorGetPending() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
+	stub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCommon.TransferBatch, error) {
 		return testBatch, nil
 	}
-	stub.StoreBatchFromMultiversXCalled = func(batch *clients.TransferBatch) error {
+	stub.StoreBatchFromMultiversXCalled = func(batch *bridgeCommon.TransferBatch) error {
 		return nil
 	}
 	return stub

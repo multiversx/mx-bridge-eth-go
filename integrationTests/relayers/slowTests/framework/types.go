@@ -36,6 +36,7 @@ type TokenOperations struct {
 	MvxSCCallMethod      string
 	MvxSCCallGasLimit    uint64
 	MvxSCCallArguments   []string
+	MvxFaultySCCall      bool
 }
 
 // TestTokenParams defines a token collection of operations in one or 2 batches

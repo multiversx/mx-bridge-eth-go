@@ -15,6 +15,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
@@ -144,7 +145,7 @@ func checkArgs(args ArgsEthereumClient) error {
 }
 
 // GetBatch returns the batch (if existing) from the Ethereum contract by providing the nonce
-func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferBatch, bool, error) {
+func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCommon.TransferBatch, bool, error) {
 	c.log.Info("Getting batch", "nonce", nonce)
 	nonceAsBigInt := big.NewInt(0).SetUint64(nonce)
 	batch, isFinalBatch, err := c.clientWrapper.GetBatch(ctx, nonceAsBigInt)
@@ -160,9 +161,9 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 			errDepositsAndBatchDepositsCountDiffer, batch.DepositsCount, len(deposits))
 	}
 
-	transferBatch := &clients.TransferBatch{
+	transferBatch := &bridgeCommon.TransferBatch{
 		ID:       batch.Nonce.Uint64(),
-		Deposits: make([]*clients.DepositTransfer, 0, batch.DepositsCount),
+		Deposits: make([]*bridgeCommon.DepositTransfer, 0, batch.DepositsCount),
 	}
 	cachedTokens := make(map[string][]byte)
 	for i := range deposits {
@@ -171,7 +172,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*clients.TransferB
 		fromBytes := deposit.Depositor[:]
 		tokenBytes := deposit.TokenAddress[:]
 
-		depositTransfer := &clients.DepositTransfer{
+		depositTransfer := &bridgeCommon.DepositTransfer{
 			Nonce:            deposit.Nonce.Uint64(),
 			ToBytes:          toBytes,
 			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),

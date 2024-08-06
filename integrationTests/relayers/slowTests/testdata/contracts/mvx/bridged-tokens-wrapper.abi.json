@@ -1,11 +1,11 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.78.0",
-            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
-            "commitDate": "2024-04-29",
+            "version": "1.80.0",
+            "commitHash": "051478957371ee0084a7c0913941d2a8c4757bb9",
+            "commitDate": "2024-07-21",
             "channel": "Stable",
-            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
+            "short": "rustc 1.80.0 (051478957 2024-07-21)"
         },
         "contractCrate": {
             "name": "bridged-tokens-wrapper",
@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.51.1"
+            "version": "0.52.2"
         }
     },
     "name": "BridgedTokensWrapper",
@@ -158,6 +158,37 @@
             "outputs": []
         },
         {
+            "name": "unwrapTokenCreateTransaction",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "requested_token",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "to",
+                    "type": "EthAddress"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setEsdtSafeContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "getUniversalBridgedTokenIds",
             "mutability": "readonly",
             "inputs": [],
@@ -211,6 +242,16 @@
                 {
                     "type": "variadic<TokenIdentifier>",
                     "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getEsdtSafeContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
                 }
             ]
         },
@@ -288,6 +329,18 @@
                 {
                     "name": "amount",
                     "type": "BigUint"
+                }
+            ]
+        },
+        "EthAddress": {
+            "type": "struct",
+            "docs": [
+                "Wrapper over a 20-byte array"
+            ],
+            "fields": [
+                {
+                    "name": "raw_addr",
+                    "type": "array20<u8>"
                 }
             ]
         }

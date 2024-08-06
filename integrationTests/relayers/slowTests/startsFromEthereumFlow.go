@@ -3,6 +3,7 @@
 package slowTests
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
@@ -27,7 +28,7 @@ func (flow *startsFromEthereumFlow) process() (finished bool) {
 	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.tokens...)
 	if !flow.ethToMvxDone && isTransferDoneFromEthereum {
 		flow.ethToMvxDone = true
-		log.Info("Ethereum->MultiversX transfer finished, now sending back to Ethereum...")
+		log.Info(fmt.Sprintf(framework.LogStepMarker, "Ethereum->MultiversX transfer finished, now sending back to Ethereum..."))
 
 		flow.setup.SendFromMultiversxToEthereum(flow.tokens...)
 	}
@@ -39,7 +40,7 @@ func (flow *startsFromEthereumFlow) process() (finished bool) {
 	isTransferDoneFromMultiversX := flow.setup.IsTransferDoneFromMultiversX(flow.tokens...)
 	if !flow.mvxToEthDone && isTransferDoneFromMultiversX {
 		flow.mvxToEthDone = true
-		log.Info("MultiversX<->Ethereum transfers done")
+		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX<->Ethereum from Ethereum transfers done"))
 		return true
 	}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 	t.Run("nil batch on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *common.TransferBatch {
 			return nil
 		}
 		clearWasCalled := false
@@ -35,7 +35,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 	t.Run("error on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
-		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
+		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*common.TransferBatch, error) {
 			return nil, expectedError
 		}
 		clearWasCalled := false
@@ -54,7 +54,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 	t.Run("nil batch on GetBatchFromMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
-		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
+		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*common.TransferBatch, error) {
 			return nil, nil
 		}
 		clearWasCalled := false
@@ -101,7 +101,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
 		bridgeStub.WaitAndReturnFinalBatchStatusesCalled = func(ctx context.Context) []byte {
-			return []byte{clients.Executed, clients.Rejected}
+			return []byte{common.Executed, common.Rejected}
 		}
 
 		wasCalled := false
@@ -130,10 +130,10 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 
 func createStubExecutorResolveSetStatus() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
+	stub.GetStoredBatchCalled = func() *common.TransferBatch {
 		return testBatch
 	}
-	stub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*clients.TransferBatch, error) {
+	stub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*common.TransferBatch, error) {
 		return testBatch, nil
 	}
 	return stub

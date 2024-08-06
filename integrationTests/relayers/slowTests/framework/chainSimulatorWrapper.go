@@ -121,7 +121,7 @@ func (instance *chainSimulatorWrapper) GetNetworkAddress() string {
 }
 
 // DeploySC will deploy the provided smart contract and return its address
-func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePath string, ownerSK []byte, parameters []string) (*MvxAddress, string, *data.TransactionOnNetwork) {
+func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePath string, ownerSK []byte, gasLimit uint64, parameters []string) (*MvxAddress, string, *data.TransactionOnNetwork) {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	require.Nil(instance.TB, err)
 
@@ -140,7 +140,7 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 		Receiver: emptyAddress,
 		Sender:   ownerPK,
 		GasPrice: networkConfig.MinGasPrice,
-		GasLimit: 600000000,
+		GasLimit: gasLimit,
 		Data:     []byte(txData),
 		ChainID:  networkConfig.ChainID,
 		Version:  1,
@@ -204,16 +204,16 @@ func (instance *chainSimulatorWrapper) getTxInfoWithResultsIfTxProcessingFinishe
 }
 
 // ScCall will make the provided sc call
-func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, function string, parameters []string) (string, *data.TransactionOnNetwork) {
+func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork) {
 	params := []string{function}
 	params = append(params, parameters...)
 	txData := strings.Join(params, "@")
 
-	return instance.SendTx(ctx, senderSK, contract, value, []byte(txData))
+	return instance.SendTx(ctx, senderSK, contract, value, gasLimit, []byte(txData))
 }
 
 // SendTx will build and send a transaction
-func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, dataField []byte) (string, *data.TransactionOnNetwork) {
+func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork) {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	require.Nil(instance, err)
 
@@ -227,7 +227,7 @@ func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []by
 		Receiver: receiver.Bech32(),
 		Sender:   senderPK,
 		GasPrice: networkConfig.MinGasPrice,
-		GasLimit: 600000000,
+		GasLimit: gasLimit,
 		Data:     dataField,
 		ChainID:  networkConfig.ChainID,
 		Version:  1,

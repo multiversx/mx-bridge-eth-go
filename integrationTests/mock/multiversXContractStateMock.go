@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -8,11 +9,19 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
+	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-chain-core-go/data/vm"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
+)
+
+const (
+	lenToField   = 32
+	lenFromField = 20
+	lenUint32    = 4
+	lenUint64    = 8
 )
 
 type multiversXProposedStatus struct {
@@ -170,46 +179,11 @@ func (mock *multiversXContractStateMock) createProposedTransfer(dataSplit []stri
 		BatchId: big.NewInt(0).SetBytes(buff),
 	}
 
-	currentIndex := 2
-	for currentIndex < len(dataSplit) {
-		from, errDecode := hex.DecodeString(dataSplit[currentIndex])
-		if errDecode != nil {
-			panic(errDecode)
-		}
-
-		to, errDecode := hex.DecodeString(dataSplit[currentIndex+1])
-		if errDecode != nil {
-			panic(errDecode)
-		}
-
-		amountBytes, errDecode := hex.DecodeString(dataSplit[currentIndex+3])
-		if errDecode != nil {
-			panic(errDecode)
-		}
-
-		nonceBytes, errDecode := hex.DecodeString(dataSplit[currentIndex+4])
-		if errDecode != nil {
-			panic(errDecode)
-		}
-
-		dataBytes, errDecode := hex.DecodeString(dataSplit[currentIndex+5])
-		if errDecode != nil {
-			panic(errDecode)
-		}
-
-		t := Transfer{
-			From:   from,
-			To:     to,
-			Token:  dataSplit[currentIndex+2],
-			Amount: big.NewInt(0).SetBytes(amountBytes),
-			Nonce:  big.NewInt(0).SetBytes(nonceBytes),
-			Data:   dataBytes,
-		}
-
-		indexIncrementValue := 6
-
+	depositsBuff, _ := hex.DecodeString(dataSplit[2])
+	for len(depositsBuff) > 0 {
+		var t Transfer
+		t, depositsBuff = mock.decodeDeposit(depositsBuff)
 		transfer.Transfers = append(transfer.Transfers, t)
-		currentIndex += indexIncrementValue
 	}
 
 	hash, err := core.CalculateHash(integrationTests.TestMarshalizer, integrationTests.TestHasher, transfer)
@@ -221,6 +195,49 @@ func (mock *multiversXContractStateMock) createProposedTransfer(dataSplit []stri
 	integrationTests.Log.Debug("actionID for createProposedTransfer", "value", actionID.String())
 
 	return transfer, string(hash)
+}
+
+func (mock *multiversXContractStateMock) decodeDeposit(buff []byte) (Transfer, []byte) {
+	from := buff[:lenFromField]
+	buff = buff[lenFromField:]
+
+	to := buff[:lenToField]
+	buff = buff[lenToField:]
+
+	lenTokenBytes := buff[:lenUint32]
+	buff = buff[lenUint32:]
+	lenToken := int(binary.BigEndian.Uint32(lenTokenBytes))
+	token := buff[:lenToken]
+	buff = buff[lenToken:]
+
+	lenAmountBytes := buff[:lenUint32]
+	buff = buff[lenUint32:]
+	lenAmount := int(binary.BigEndian.Uint32(lenAmountBytes))
+	amount := big.NewInt(0).SetBytes(buff[:lenAmount])
+	buff = buff[lenAmount:]
+
+	nonceBytes := buff[:lenUint64]
+	buff = buff[lenUint64:]
+	nonce := binary.BigEndian.Uint64(nonceBytes)
+
+	codec := &parsers.MultiversxCodec{}
+	callData, _ := codec.DecodeCallData(buff)
+	var reconstructedCallData []byte
+	if callData.Type == parsers.MissingDataProtocolMarker {
+		reconstructedCallData = []byte{parsers.MissingDataProtocolMarker}
+	} else {
+		reconstructedCallData = codec.EncodeCallData(callData)
+	}
+	buff = buff[len(reconstructedCallData):]
+
+	return Transfer{
+		Nonce:  big.NewInt(0).SetUint64(nonce),
+		To:     to,
+		From:   from,
+		Token:  hex.EncodeToString(token),
+		Amount: amount,
+		Data:   reconstructedCallData,
+	}, buff
 }
 
 func (mock *multiversXContractStateMock) processVmRequests(vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {

@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 	bridgeErrors "github.com/multiversx/mx-bridge-eth-go/errors"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -64,10 +64,10 @@ func createMockProxy(returningBytes [][]byte) *interactors.ProxyStub {
 	}
 }
 
-func createMockBatch() *clients.TransferBatch {
-	return &clients.TransferBatch{
+func createMockBatch() *common.TransferBatch {
+	return &common.TransferBatch{
 		ID: 112233,
-		Deposits: []*clients.DepositTransfer{
+		Deposits: []*common.DepositTransfer{
 			{
 				Nonce:                 1,
 				ToBytes:               []byte("to1"),
@@ -79,7 +79,7 @@ func createMockBatch() *clients.TransferBatch {
 				DisplayableToken:      "token1",
 				Amount:                big.NewInt(2),
 				Data:                  []byte{0x00},
-				DisplayableData:       "",
+				DisplayableData:       "00",
 			},
 			{
 				Nonce:                 3,
@@ -92,10 +92,10 @@ func createMockBatch() *clients.TransferBatch {
 				DisplayableToken:      "token2",
 				Amount:                big.NewInt(4),
 				Data:                  []byte{0x00},
-				DisplayableData:       "",
+				DisplayableData:       "00",
 			},
 		},
-		Statuses: []byte{clients.Rejected, clients.Executed},
+		Statuses: []byte{common.Rejected, common.Executed},
 	}
 }
 
@@ -588,6 +588,8 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 
 		args := createMockArgsMXClientDataGetter()
 		proxyCalled := false
+		batch := createMockBatch()
+
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				proxyCalled = true
@@ -596,22 +598,14 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 				assert.Equal(t, "", vmRequest.CallValue)
 				assert.Equal(t, wasTransferActionProposedFuncName, vmRequest.FuncName)
 
+				depositsString := ""
+				for _, dt := range batch.Deposits {
+					depositsString += depositToString(dt)
+				}
+
 				expectedArgs := []string{
 					hex.EncodeToString(big.NewInt(112233).Bytes()),
-
-					hex.EncodeToString([]byte("from1")),
-					hex.EncodeToString([]byte("to1")),
-					hex.EncodeToString([]byte("converted_token1")),
-					hex.EncodeToString(big.NewInt(2).Bytes()),
-					hex.EncodeToString(big.NewInt(1).Bytes()),
-					hex.EncodeToString([]byte{parsers.MissingDataProtocolMarker}),
-
-					hex.EncodeToString([]byte("from2")),
-					hex.EncodeToString([]byte("to2")),
-					hex.EncodeToString([]byte("converted_token2")),
-					hex.EncodeToString(big.NewInt(4).Bytes()),
-					hex.EncodeToString(big.NewInt(3).Bytes()),
-					hex.EncodeToString([]byte{parsers.MissingDataProtocolMarker}),
+					depositsString,
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -626,8 +620,6 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 		}
 
 		dg, _ := NewMXClientDataGetter(args)
-
-		batch := createMockBatch()
 
 		result, err := dg.WasProposedTransfer(context.Background(), batch)
 		assert.True(t, result)
@@ -639,6 +631,9 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 
 		args := createMockArgsMXClientDataGetter()
 		proxyCalled := false
+		batch := createMockBatch()
+		batch.Deposits[0].Data = bridgeTests.CallDataMock
+
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				proxyCalled = true
@@ -647,22 +642,14 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 				assert.Equal(t, "", vmRequest.CallValue)
 				assert.Equal(t, wasTransferActionProposedFuncName, vmRequest.FuncName)
 
+				depositsString := ""
+				for _, dt := range batch.Deposits {
+					depositsString += depositToString(dt)
+				}
+
 				expectedArgs := []string{
 					hex.EncodeToString(big.NewInt(112233).Bytes()),
-
-					hex.EncodeToString([]byte("from1")),
-					hex.EncodeToString([]byte("to1")),
-					hex.EncodeToString([]byte("converted_token1")),
-					hex.EncodeToString(big.NewInt(2).Bytes()),
-					hex.EncodeToString(big.NewInt(1).Bytes()),
-					hex.EncodeToString(bridgeTests.CallDataMock),
-
-					hex.EncodeToString([]byte("from2")),
-					hex.EncodeToString([]byte("to2")),
-					hex.EncodeToString([]byte("converted_token2")),
-					hex.EncodeToString(big.NewInt(4).Bytes()),
-					hex.EncodeToString(big.NewInt(3).Bytes()),
-					hex.EncodeToString([]byte{parsers.MissingDataProtocolMarker}),
+					depositsString,
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -677,9 +664,6 @@ func TestMXClientDataGetter_WasProposedTransfer(t *testing.T) {
 		}
 
 		dg, _ := NewMXClientDataGetter(args)
-
-		batch := createMockBatch()
-		batch.Deposits[0].Data = bridgeTests.CallDataMock
 
 		result, err := dg.WasProposedTransfer(context.Background(), batch)
 		assert.True(t, result)
@@ -763,6 +747,7 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 
 		args := createMockArgsMXClientDataGetter()
 		proxyCalled := false
+		batch := createMockBatch()
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				proxyCalled = true
@@ -771,22 +756,14 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 				assert.Equal(t, "", vmRequest.CallValue)
 				assert.Equal(t, getActionIdForTransferBatchFuncName, vmRequest.FuncName)
 
+				depositsString := ""
+				for _, dt := range batch.Deposits {
+					depositsString += depositToString(dt)
+				}
+
 				expectedArgs := []string{
 					hex.EncodeToString(big.NewInt(112233).Bytes()),
-
-					hex.EncodeToString([]byte("from1")),
-					hex.EncodeToString([]byte("to1")),
-					hex.EncodeToString([]byte("converted_token1")),
-					hex.EncodeToString(big.NewInt(2).Bytes()),
-					hex.EncodeToString(big.NewInt(1).Bytes()),
-					hex.EncodeToString([]byte{parsers.MissingDataProtocolMarker}),
-
-					hex.EncodeToString([]byte("from2")),
-					hex.EncodeToString([]byte("to2")),
-					hex.EncodeToString([]byte("converted_token2")),
-					hex.EncodeToString(big.NewInt(4).Bytes()),
-					hex.EncodeToString(big.NewInt(3).Bytes()),
-					hex.EncodeToString([]byte{parsers.MissingDataProtocolMarker}),
+					depositsString,
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -801,8 +778,6 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 		}
 
 		dg, _ := NewMXClientDataGetter(args)
-
-		batch := createMockBatch()
 
 		result, err := dg.GetActionIDForProposeTransfer(context.Background(), batch)
 		assert.Equal(t, uint64(1234), result)
@@ -814,6 +789,8 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 
 		args := createMockArgsMXClientDataGetter()
 		proxyCalled := false
+		batch := createMockBatch()
+		batch.Deposits[0].Data = bridgeTests.CallDataMock
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				proxyCalled = true
@@ -822,22 +799,14 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 				assert.Equal(t, "", vmRequest.CallValue)
 				assert.Equal(t, getActionIdForTransferBatchFuncName, vmRequest.FuncName)
 
+				depositsString := ""
+				for _, dt := range batch.Deposits {
+					depositsString += depositToString(dt)
+				}
+
 				expectedArgs := []string{
 					hex.EncodeToString(big.NewInt(112233).Bytes()),
-
-					hex.EncodeToString([]byte("from1")),
-					hex.EncodeToString([]byte("to1")),
-					hex.EncodeToString([]byte("converted_token1")),
-					hex.EncodeToString(big.NewInt(2).Bytes()),
-					hex.EncodeToString(big.NewInt(1).Bytes()),
-					hex.EncodeToString(bridgeTests.CallDataMock),
-
-					hex.EncodeToString([]byte("from2")),
-					hex.EncodeToString([]byte("to2")),
-					hex.EncodeToString([]byte("converted_token2")),
-					hex.EncodeToString(big.NewInt(4).Bytes()),
-					hex.EncodeToString(big.NewInt(3).Bytes()),
-					hex.EncodeToString([]byte{parsers.MissingDataProtocolMarker}),
+					depositsString,
 				}
 
 				assert.Equal(t, expectedArgs, vmRequest.Args)
@@ -852,9 +821,6 @@ func TestMXClientDataGetter_GetActionIDForProposeTransfer(t *testing.T) {
 		}
 
 		dg, _ := NewMXClientDataGetter(args)
-
-		batch := createMockBatch()
-		batch.Deposits[0].Data = bridgeTests.CallDataMock
 
 		result, err := dg.GetActionIDForProposeTransfer(context.Background(), batch)
 		assert.Equal(t, uint64(1234), result)

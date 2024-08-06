@@ -1,0 +1,19 @@
+ScProxyBech32Address = "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s"
+ExtraGasToExecute = 50000000
+NetworkAddress = "127.0.0.1:8085"
+ProxyMaxNoncesDelta = 7
+ProxyFinalityCheck = true
+ProxyCacherExpirationSeconds = 600
+ProxyRestAPIEntityType = "observer"
+IntervalToResendTxsInSeconds = 60
+PrivateKeyFile = "keys/multiversx.pem"
+PollingIntervalInMillis = 6000
+
+[FilterConfig]
+    AllowedEthAddresses = ["*"]   # execute SC calls from all ETH addresses
+    AllowedMvxAddresses = ["*"]   # execute SC calls to all MvX contracts
+    AllowedTokens = ["*"]         # execute SC calls for all tokens
+
+[Logs]
+    LogFileLifeSpanInSec = 86400 # 24h
+    LogFileLifeSpanInMB = 1024 # 1GB

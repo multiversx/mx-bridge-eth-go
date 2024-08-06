@@ -1,11 +1,11 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.78.0",
-            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
-            "commitDate": "2024-04-29",
+            "version": "1.80.0",
+            "commitHash": "051478957371ee0084a7c0913941d2a8c4757bb9",
+            "commitDate": "2024-07-21",
             "channel": "Stable",
-            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
+            "short": "rustc 1.80.0 (051478957 2024-07-21)"
         },
         "contractCrate": {
             "name": "multisig",
@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.51.1"
+            "version": "0.52.2"
         }
     },
     "docs": [
@@ -144,8 +144,7 @@
                 },
                 {
                     "name": "transfers",
-                    "type": "variadic<multi<EthAddress,Address,TokenIdentifier,BigUint,u64,Option<CallData>>>",
-                    "multi_arg": true
+                    "type": "List<EthTransaction>"
                 }
             ],
             "outputs": [
@@ -848,8 +847,7 @@
                 },
                 {
                     "name": "transfers",
-                    "type": "variadic<multi<EthAddress,Address,TokenIdentifier,BigUint,u64,Option<CallData>>>",
-                    "multi_arg": true
+                    "type": "List<EthTransaction>"
                 }
             ],
             "outputs": [
@@ -873,8 +871,7 @@
                 },
                 {
                     "name": "transfers",
-                    "type": "variadic<multi<EthAddress,Address,TokenIdentifier,BigUint,u64,Option<CallData>>>",
-                    "multi_arg": true
+                    "type": "List<EthTransaction>"
                 }
             ],
             "outputs": [
@@ -1204,23 +1201,6 @@
                 }
             ]
         },
-        "CallData": {
-            "type": "struct",
-            "fields": [
-                {
-                    "name": "endpoint",
-                    "type": "bytes"
-                },
-                {
-                    "name": "gas_limit",
-                    "type": "u64"
-                },
-                {
-                    "name": "args",
-                    "type": "List<bytes>"
-                }
-            ]
-        },
         "EthAddress": {
             "type": "struct",
             "docs": [
@@ -1258,7 +1238,7 @@
                 },
                 {
                     "name": "call_data",
-                    "type": "Option<CallData>"
+                    "type": "Option<bytes>"
                 }
             ]
         },

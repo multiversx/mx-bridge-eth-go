@@ -3,6 +3,7 @@ package multiversx
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
@@ -346,9 +348,9 @@ func TestClient_GetPendingBatch(t *testing.T) {
 
 		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
 		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
-		expectedBatch := &clients.TransferBatch{
+		expectedBatch := &common.TransferBatch{
 			ID: 44562,
-			Deposits: []*clients.DepositTransfer{
+			Deposits: []*common.DepositTransfer{
 				{
 					Nonce:                 5000,
 					ToBytes:               bytes.Repeat([]byte{2}, 20),
@@ -503,9 +505,9 @@ func TestClient_GetBatch(t *testing.T) {
 
 		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
 		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
-		expectedBatch := &clients.TransferBatch{
+		expectedBatch := &common.TransferBatch{
 			ID: 44562,
-			Deposits: []*clients.DepositTransfer{
+			Deposits: []*common.DepositTransfer{
 				{
 					Nonce:                 5000,
 					ToBytes:               bytes.Repeat([]byte{2}, 20),
@@ -569,7 +571,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeSetStatus(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeSetStatus(context.Background(), &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -589,7 +591,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeSetStatus(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeSetStatus(context.Background(), &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -612,7 +614,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 					proposeSetStatusFuncName,
 					hex.EncodeToString(big.NewInt(112233).Bytes()),
 				}
-				expectedStatus := []byte{clients.Rejected, clients.Executed}
+				expectedStatus := []byte{common.Rejected, common.Executed}
 				for _, stat := range expectedStatus {
 					expectedArgs = append(expectedArgs, hex.EncodeToString([]byte{stat}))
 				}
@@ -658,7 +660,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeTransfer(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeTransfer(context.Background(), &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -678,7 +680,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeTransfer(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeTransfer(context.Background(), &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -703,9 +705,11 @@ func TestClient_ProposeTransfer(t *testing.T) {
 					proposeTransferFuncName,
 					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
 				}
+				depositsString := ""
 				for _, dt := range batch.Deposits {
-					dataStrings = append(dataStrings, depositToStrings(dt)...)
+					depositsString = depositsString + depositToString(dt)
 				}
+				dataStrings = append(dataStrings, depositsString)
 
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
@@ -748,13 +752,15 @@ func TestClient_ProposeTransfer(t *testing.T) {
 					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
 				}
 				extraGas := uint64(0)
+				depositsString := ""
 				for _, dt := range batch.Deposits {
-					dataStrings = append(dataStrings, depositToStrings(dt)...)
+					depositsString = depositsString + depositToString(dt)
 					if bytes.Equal(dt.Data, []byte{parsers.MissingDataProtocolMarker}) {
 						continue
 					}
 					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
 				}
+				dataStrings = append(dataStrings, depositsString)
 
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
@@ -773,17 +779,34 @@ func TestClient_ProposeTransfer(t *testing.T) {
 	})
 }
 
-func depositToStrings(dt *clients.DepositTransfer) []string {
-	result := []string{
-		hex.EncodeToString(dt.FromBytes),
-		hex.EncodeToString(dt.ToBytes),
-		hex.EncodeToString(dt.DestinationTokenBytes),
-		hex.EncodeToString(dt.Amount.Bytes()),
-		hex.EncodeToString(big.NewInt(int64(dt.Nonce)).Bytes()),
-		hex.EncodeToString(dt.Data),
-	}
+func depositToString(dt *common.DepositTransfer) string {
+	result := hex.EncodeToString(dt.FromBytes)
+	result = result + hex.EncodeToString(dt.ToBytes)
+
+	tokenLength := len(dt.DestinationTokenBytes)
+	result = result + encodeLenAsHex(tokenLength) + hex.EncodeToString(dt.DestinationTokenBytes)
+
+	amountLength := len(dt.Amount.Bytes())
+	result = result + encodeLenAsHex(amountLength) + hex.EncodeToString(dt.Amount.Bytes())
+
+	result = result + encodeUint64AsHex(dt.Nonce)
+	result = result + hex.EncodeToString(dt.Data)
 
 	return result
+}
+
+func encodeLenAsHex(length int) string {
+	buff := make([]byte, 4)
+	binary.BigEndian.PutUint32(buff, uint32(length))
+
+	return hex.EncodeToString(buff)
+}
+
+func encodeUint64AsHex(value uint64) string {
+	buff := make([]byte, 8)
+	binary.BigEndian.PutUint64(buff, value)
+
+	return hex.EncodeToString(buff)
 }
 
 func TestClient_Sign(t *testing.T) {
@@ -881,7 +904,7 @@ func TestClient_PerformAction(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.PerformAction(context.Background(), actionID, &clients.TransferBatch{})
+		hash, err := c.PerformAction(context.Background(), actionID, &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -901,7 +924,7 @@ func TestClient_PerformAction(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.PerformAction(context.Background(), actionID, &clients.TransferBatch{})
+		hash, err := c.PerformAction(context.Background(), actionID, &common.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -970,7 +993,6 @@ func TestClient_PerformAction(t *testing.T) {
 
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
-					dataStrings = append(dataStrings, depositToStrings(dt)...)
 					if bytes.Equal(dt.Data, []byte{parsers.MissingDataProtocolMarker}) {
 						continue
 					}

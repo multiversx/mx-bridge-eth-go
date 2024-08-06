@@ -1,4 +1,4 @@
-package clients
+package common
 
 import (
 	"math/big"

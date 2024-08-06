@@ -20,17 +20,10 @@ var (
 	configurationFile = cli.StringFlag{
 		Name: "config",
 		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contain the main " +
-			"configurations such as storage setups, epoch duration and so on.",
+			"configurations such as monitored SC, gateway URL, timings and so on",
 		Value: "config/config.toml",
 	}
-	// configurationApiFile defines a flag for the path to the api routes toml configuration file
-	configurationApiFile = cli.StringFlag{
-		Name: "config-api",
-		Usage: "The `" + filePathPlaceholder + "` for the api configuration file. This TOML file contains " +
-			"all available routes for Rest API and options to enable or disable them.",
-		Value: "config/api.toml",
-	}
-	// logSaveFile is used when the log output needs to be logged in a file
+	// logFile is used when the log output needs to be logged in a file
 	logSaveFile = cli.BoolFlag{
 		Name:  "log-save",
 		Usage: "Boolean option for enabling log saving. If set, it will automatically save all the logs into a file.",
@@ -83,7 +76,6 @@ func getFlags() []cli.Flag {
 		logLevel,
 		disableAnsiColor,
 		configurationFile,
-		configurationApiFile,
 		logSaveFile,
 		logWithLoggerName,
 		profileMode,
@@ -97,7 +89,6 @@ func getFlagsConfig(ctx *cli.Context) config.ContextFlagsConfig {
 	flagsConfig.LogLevel = ctx.GlobalString(logLevel.Name)
 	flagsConfig.DisableAnsiColor = ctx.GlobalBool(disableAnsiColor.Name)
 	flagsConfig.ConfigurationFile = ctx.GlobalString(configurationFile.Name)
-	flagsConfig.ConfigurationApiFile = ctx.GlobalString(configurationApiFile.Name)
 	flagsConfig.SaveLogFile = ctx.GlobalBool(logSaveFile.Name)
 	flagsConfig.EnableLogName = ctx.GlobalBool(logWithLoggerName.Name)
 	flagsConfig.EnablePprof = ctx.GlobalBool(profileMode.Name)
