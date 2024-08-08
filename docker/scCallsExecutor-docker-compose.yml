@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
     volumes:
       - "../keys:/multiversx/keys"
+    # change the `network-address`, `sc-proxy-address` and `private-key-file` accordingly
     entrypoint: "./scCallsExecutor \
     -log-level *:DEBUG \
     -log-save \
