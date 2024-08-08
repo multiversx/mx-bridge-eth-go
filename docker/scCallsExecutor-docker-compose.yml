@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  sc-calls-executor:
+    build:
+      context: ..
+      dockerfile: scCallsExecutor.Dockerfile
+    restart: unless-stopped
+    volumes:
+      - "../keys:/multiversx/keys"
+    entrypoint: "./scCallsExecutor \
+    -log-level *:DEBUG \
+    -log-save \
+    -network-address https://devnet-gateway.multiversx.com \
+    -sc-proxy-address erd1qqqqqqqqqqqqqpgq5l0743nyv45vdptmfh3jydkqtyzjqpgsrcjq8yuzxk \
+    -private-key-file ./keys/walletKey.pem"
+
