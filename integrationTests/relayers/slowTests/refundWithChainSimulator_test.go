@@ -10,25 +10,134 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
+	"github.com/multiversx/mx-bridge-eth-go/parsers"
 )
 
 func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
-	usdcToken := GenerateTestUSDCToken()
-	usdcToken.TestOperations[2].MvxSCCallMethod = "unknownFunction"
-	usdcToken.TestOperations[2].MvxFaultySCCall = true
-	usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
-	usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+	t.Run("unknown marker and damaged SC call data should refund", func(t *testing.T) {
+		t.Skip("TODO: fix this test") // TODO: fix this test
 
-	memeToken := GenerateTestMEMEToken()
-	memeToken.TestOperations[2].MvxSCCallMethod = "unknownFunction"
-	memeToken.TestOperations[2].MvxFaultySCCall = true
+		callData := []byte{5, 4, 55}
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
-	testRelayersWithChainSimulatorAndTokensAndRefund(
-		t,
-		make(chan error),
-		usdcToken,
-		memeToken,
-	)
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
+	t.Run("damaged SC call data should refund", func(t *testing.T) {
+		t.Skip("TODO: fix this test") // TODO: fix this test
+
+		callData := []byte{parsers.DataPresentProtocolMarker, 4, 55}
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
+	t.Run("unknown function should refund", func(t *testing.T) {
+		callData := createScCallData("unknownFunction", 50000000)
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
+	t.Run("0 gas limit should refund", func(t *testing.T) {
+		t.Skip("TODO: fix this test") // TODO: fix this test
+
+		callData := createScCallData("callPayable", 0)
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
+	t.Run("small gas limit should refund", func(t *testing.T) {
+		t.Skip("TODO: fix this test") // TODO: fix this test
+
+		callData := createScCallData("callPayable", 2000)
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
+	t.Run("extra parameter should refund", func(t *testing.T) {
+		t.Skip("TODO: fix this test") // TODO: fix this test
+
+		callData := createScCallData("callPayable", 50000000, "extra parameter")
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
 }
 
 func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) {

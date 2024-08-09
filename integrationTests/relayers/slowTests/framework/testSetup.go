@@ -110,7 +110,7 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 func (setup *TestSetup) startScCallerModule() {
 	cfg := config.ScCallsModuleConfig{
 		ScProxyBech32Address:         setup.MultiversxHandler.ScProxyAddress.Bech32(),
-		ExtraGasToExecute:            30_000_000, // 30 million (50 mil call -> provided + 20 mil callback + 10 mil extra)
+		ExtraGasToExecute:            60_000_000, // 60 million: this ensures that a SC call with 0 gas limit is refunded
 		NetworkAddress:               setup.ChainSimulator.GetNetworkAddress(),
 		ProxyMaxNoncesDelta:          5,
 		ProxyFinalityCheck:           false,
@@ -184,7 +184,7 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(params TestTokenParam
 			continue
 		}
 
-		if len(operation.MvxSCCallMethod) > 0 {
+		if len(operation.MvxSCCallData) > 0 {
 			if !operation.MvxFaultySCCall {
 				expectedValueOnContract.Add(expectedValueOnContract, operation.ValueToTransferToMvx)
 			}
@@ -228,7 +228,7 @@ func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params Test
 		}
 
 		expectedValueOnReceiver.Add(expectedValueOnReceiver, big.NewInt(0).Sub(valueToSendFromMvX, valueToTransferToMvx))
-		if len(operation.MvxSCCallMethod) > 0 {
+		if len(operation.MvxSCCallData) > 0 {
 			if operation.MvxFaultySCCall {
 				// the balance should be bridged back to the receiver on Ethereum - fee
 				expectedValueOnReceiver.Add(expectedValueOnReceiver, valueToTransferToMvx)

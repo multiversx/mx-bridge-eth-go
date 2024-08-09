@@ -483,6 +483,13 @@ func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCommon.Dep
 	for _, event := range events {
 		if event.DepositNonce.Uint64() == transfer.Nonce {
 			transfer.Data = []byte(event.CallData)
+			if len(transfer.Data) > 0 && transfer.Data[0] != parsers.DataPresentProtocolMarker {
+				executor.log.Warn("found a call data that does not adhere to the protocol, adding data present marker on the first byte",
+					"deposit nonce", transfer.Nonce, "call data", []byte(transfer.Data))
+
+				transfer.Data = append([]byte{parsers.DataPresentProtocolMarker}, transfer.Data...)
+			}
+
 			var err error
 			transfer.DisplayableData, err = ConvertToDisplayableData(transfer.Data)
 			if err != nil {
