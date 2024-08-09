@@ -23,8 +23,9 @@ var keyGen = signing.NewKeyGenerator(suite)
 var singleSigner = &singlesig.Ed25519Signer{}
 
 type scCallsModule struct {
-	nonceTxsHandler nonceTransactionsHandler
-	pollingHandler  pollingHandler
+	nonceTxsHandler  nonceTransactionsHandler
+	pollingHandler   pollingHandler
+	executorInstance executor
 }
 
 // NewScCallsModule creates a starts a new scCallsModule instance
@@ -82,7 +83,7 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger) (*scCal
 		PrivateKey:           privateKey,
 		SingleSigner:         singleSigner,
 	}
-	executor, err := multiversx.NewScCallExecutor(argsExecutor)
+	module.executorInstance, err = multiversx.NewScCallExecutor(argsExecutor)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger) (*scCal
 		Name:             "MultiversX SC calls",
 		PollingInterval:  time.Duration(cfg.PollingIntervalInMillis) * time.Millisecond,
 		PollingWhenError: time.Duration(cfg.PollingIntervalInMillis) * time.Millisecond,
-		Executor:         executor,
+		Executor:         module.executorInstance,
 	}
 
 	module.pollingHandler, err = polling.NewPollingHandler(argsPollingHandler)
@@ -106,6 +107,11 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger) (*scCal
 	}
 
 	return module, nil
+}
+
+// GetNumSentTransaction returns the total sent transactions
+func (module *scCallsModule) GetNumSentTransaction() uint32 {
+	return module.executorInstance.GetNumSentTransaction()
 }
 
 // Close closes any components started

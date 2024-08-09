@@ -1,11 +1,11 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.80.0",
-            "commitHash": "051478957371ee0084a7c0913941d2a8c4757bb9",
-            "commitDate": "2024-07-21",
+            "version": "1.78.0",
+            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
+            "commitDate": "2024-04-29",
             "channel": "Stable",
-            "short": "rustc 1.80.0 (051478957 2024-07-21)"
+            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
         },
         "contractCrate": {
             "name": "esdt-safe",
@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.52.2"
+            "version": "0.52.3"
         }
     },
     "name": "EsdtSafe",
@@ -84,10 +84,10 @@
         },
         {
             "docs": [
-                "Converts failed Ethereum -> Elrond transactions to Elrond -> Ethereum transaction.",
+                "Converts failed Ethereum -> MultiversX transactions to MultiversX -> Ethereum transaction.",
                 "This is done every now and then to refund the tokens.",
                 "",
-                "As with normal Elrond -> Ethereum transactions, a part of the tokens will be",
+                "As with normal MultiversX -> Ethereum transactions, a part of the tokens will be",
                 "subtracted to pay for the fees"
             ],
             "name": "addRefundBatch",
@@ -105,7 +105,7 @@
         },
         {
             "docs": [
-                "Create an Elrond -> Ethereum transaction. Only fungible tokens are accepted.",
+                "Create an MultiversX -> Ethereum transaction. Only fungible tokens are accepted.",
                 "",
                 "Every transfer will have a part of the tokens subtracted as fees.",
                 "The fee amount depends on the global eth_tx_gas_limit",
@@ -128,7 +128,7 @@
         },
         {
             "docs": [
-                "Claim funds for failed Elrond -> Ethereum transactions.",
+                "Claim funds for failed MultiversX -> Ethereum transactions.",
                 "These are not sent automatically to prevent the contract getting stuck.",
                 "For example, if the receiver is a SC, a frozen account, etc."
             ],
@@ -796,6 +796,14 @@
                     "indexed": true
                 }
             ]
+        },
+        {
+            "identifier": "pauseContract",
+            "inputs": []
+        },
+        {
+            "identifier": "unpauseContract",
+            "inputs": []
         }
     ],
     "esdtAttributes": [],

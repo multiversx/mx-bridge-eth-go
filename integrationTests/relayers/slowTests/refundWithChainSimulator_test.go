@@ -11,12 +11,11 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
-	t.Run("unknown marker and damaged SC call data should refund", func(t *testing.T) {
-		t.Skip("TODO: fix this test") // TODO: fix this test
-
+	t.Run("unknown marker and malformed SC call data should refund", func(t *testing.T) {
 		callData := []byte{5, 4, 55}
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
@@ -35,9 +34,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			memeToken,
 		)
 	})
-	t.Run("damaged SC call data should refund", func(t *testing.T) {
-		t.Skip("TODO: fix this test") // TODO: fix this test
-
+	t.Run("malformed SC call data should refund", func(t *testing.T) {
 		callData := []byte{parsers.DataPresentProtocolMarker, 4, 55}
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
@@ -76,8 +73,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		)
 	})
 	t.Run("0 gas limit should refund", func(t *testing.T) {
-		t.Skip("TODO: fix this test") // TODO: fix this test
-
 		callData := createScCallData("callPayable", 0)
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
@@ -97,8 +92,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		)
 	})
 	t.Run("small gas limit should refund", func(t *testing.T) {
-		t.Skip("TODO: fix this test") // TODO: fix this test
-
 		callData := createScCallData("callPayable", 2000)
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
@@ -165,6 +158,7 @@ func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopC
 		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
+		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
 
 		return false
 	}

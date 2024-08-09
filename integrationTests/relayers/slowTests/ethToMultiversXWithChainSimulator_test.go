@@ -95,6 +95,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
+		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
 
 		return false
 	}

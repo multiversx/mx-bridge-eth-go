@@ -28,6 +28,7 @@ import (
 var expectedErr = errors.New("expected error")
 var providedBatch = &bridgeCommon.TransferBatch{}
 var expectedMaxRetries = uint64(3)
+var codec = parsers.MultiversxCodec{}
 
 func createMockExecutorArgs() ArgsBridgeExecutor {
 	return ArgsBridgeExecutor{
@@ -400,41 +401,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		assert.True(t, expectedBatch == executor.batch)
 	})
 	t.Run("should add deposits metadata for sc calls", func(t *testing.T) {
-		t.Run("data contains the marker", func(t *testing.T) {
-			t.Parallel()
-
-			args := createMockExecutorArgs()
-			providedNonce := uint64(8346)
-			depositNonce := uint64(100)
-			depositData := string([]byte{parsers.DataPresentProtocolMarker}) + "testData"
-			expectedBatch := &bridgeCommon.TransferBatch{
-				ID: providedNonce,
-				Deposits: []*bridgeCommon.DepositTransfer{
-					{
-						Nonce: depositNonce,
-					},
-				},
-			}
-			args.EthereumClient = &bridgeTests.EthereumClientStub{
-				GetBatchCalled: func(ctx context.Context, nonce uint64) (*bridgeCommon.TransferBatch, bool, error) {
-					assert.Equal(t, providedNonce, nonce)
-					return expectedBatch, true, nil
-				},
-				GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
-					return []*contract.ERC20SafeERC20SCDeposit{{
-						DepositNonce: big.NewInt(0).SetUint64(depositNonce),
-						CallData:     depositData,
-					}}, nil
-				},
-			}
-			executor, _ := NewBridgeExecutor(args)
-			err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
-
-			assert.Nil(t, err)
-			assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
-			assert.Equal(t, depositData, string(executor.batch.Deposits[0].Data))
-		})
-		t.Run("data does not contain the marker", func(t *testing.T) {
+		t.Run("invalid data", func(t *testing.T) {
 			t.Parallel()
 
 			args := createMockExecutorArgs()
@@ -466,8 +433,47 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 
 			assert.Nil(t, err)
 			assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
-			expectedData := append([]byte{parsers.DataPresentProtocolMarker}, depositData...)
-			assert.Equal(t, string(expectedData), string(executor.batch.Deposits[0].Data))
+			expectedDepositData := codec.EncodeCallData(emtpyCallData)
+			assert.Equal(t, string(expectedDepositData), string(executor.batch.Deposits[0].Data))
+		})
+		t.Run("correct data", func(t *testing.T) {
+			t.Parallel()
+
+			args := createMockExecutorArgs()
+			providedNonce := uint64(8346)
+			depositNonce := uint64(100)
+			depositData := string(codec.EncodeCallData(parsers.CallData{
+				Type:      parsers.DataPresentProtocolMarker,
+				Function:  "function",
+				GasLimit:  37,
+				Arguments: []string{"arg1", "arg2"},
+			}))
+			expectedBatch := &bridgeCommon.TransferBatch{
+				ID: providedNonce,
+				Deposits: []*bridgeCommon.DepositTransfer{
+					{
+						Nonce: depositNonce,
+					},
+				},
+			}
+			args.EthereumClient = &bridgeTests.EthereumClientStub{
+				GetBatchCalled: func(ctx context.Context, nonce uint64) (*bridgeCommon.TransferBatch, bool, error) {
+					assert.Equal(t, providedNonce, nonce)
+					return expectedBatch, true, nil
+				},
+				GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+					return []*contract.ERC20SafeERC20SCDeposit{{
+						DepositNonce: big.NewInt(0).SetUint64(depositNonce),
+						CallData:     depositData,
+					}}, nil
+				},
+			}
+			executor, _ := NewBridgeExecutor(args)
+			err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+			assert.Nil(t, err)
+			assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
+			assert.Equal(t, depositData, string(executor.batch.Deposits[0].Data))
 		})
 	})
 	t.Run("should add deposits metadata for sc calls even if with no data", func(t *testing.T) {
@@ -500,7 +506,8 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
-		assert.Equal(t, "", string(executor.batch.Deposits[0].Data))
+		expectedDepositData := codec.EncodeCallData(emtpyCallData)
+		assert.Equal(t, string(expectedDepositData), string(executor.batch.Deposits[0].Data))
 	})
 }
 

@@ -38,6 +38,13 @@ type ArgsBridgeExecutor struct {
 	MaxRestriesOnWasProposed     uint64
 }
 
+var emtpyCallData = parsers.CallData{
+	Type:      parsers.DataPresentProtocolMarker,
+	Function:  "",
+	GasLimit:  0,
+	Arguments: nil,
+}
+
 type bridgeExecutor struct {
 	log                          logger.Logger
 	topologyProvider             TopologyProvider
@@ -483,17 +490,15 @@ func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCommon.Dep
 	for _, event := range events {
 		if event.DepositNonce.Uint64() == transfer.Nonce {
 			transfer.Data = []byte(event.CallData)
-			if len(transfer.Data) > 0 && transfer.Data[0] != parsers.DataPresentProtocolMarker {
-				executor.log.Warn("found a call data that does not adhere to the protocol, adding data present marker on the first byte",
-					"deposit nonce", transfer.Nonce, "call data", []byte(transfer.Data))
-
-				transfer.Data = append([]byte{parsers.DataPresentProtocolMarker}, transfer.Data...)
-			}
-
 			var err error
 			transfer.DisplayableData, err = ConvertToDisplayableData(transfer.Data)
 			if err != nil {
-				executor.log.Warn("failed to convert call data to displayable data", "error", err)
+				executor.log.Warn("failed to convert call data to displayable data, will alter and call with an empty call data struct",
+					"error", err,
+					"call data", fmt.Sprintf("%+v", emtpyCallData))
+
+				codec := parsers.MultiversxCodec{}
+				transfer.Data = codec.EncodeCallData(emtpyCallData)
 			}
 
 			return transfer
