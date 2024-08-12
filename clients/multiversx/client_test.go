@@ -209,7 +209,7 @@ func TestNewClient(t *testing.T) {
 		require.True(t, check.IfNil(c))
 		require.Equal(t, clients.ErrNilStatusHandler, err)
 	})
-	t.Run("invalid AllowDelta should error", func(t *testing.T) {
+	t.Run("invalid ClientAvailabilityAllowDelta should error", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockClientArgs()
@@ -219,7 +219,7 @@ func TestNewClient(t *testing.T) {
 
 		require.True(t, check.IfNil(c))
 		require.True(t, errors.Is(err, clients.ErrInvalidValue))
-		require.True(t, strings.Contains(err.Error(), "for args.AllowedDelta"))
+		require.True(t, strings.Contains(err.Error(), "for args.ClientAvailabilityAllowDelta"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
