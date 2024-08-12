@@ -69,3 +69,9 @@ type TokensRegistry interface {
 	RegisterUniversalToken(abstractTokenIdentifier string, mvxUniversalToken string)
 	RegisterChainSpecificToken(abstractTokenIdentifier string, mvxChainSpecificToken string)
 }
+
+// SCCallerModule defines the operation for the module able to execute smart contract calls
+type SCCallerModule interface {
+	GetNumSentTransaction() uint32
+	Close() error
+}
