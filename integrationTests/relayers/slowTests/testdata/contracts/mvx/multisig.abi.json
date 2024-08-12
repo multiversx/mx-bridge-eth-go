@@ -1,11 +1,11 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.80.0",
-            "commitHash": "051478957371ee0084a7c0913941d2a8c4757bb9",
-            "commitDate": "2024-07-21",
+            "version": "1.78.0",
+            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
+            "commitDate": "2024-04-29",
             "channel": "Stable",
-            "short": "rustc 1.80.0 (051478957 2024-07-21)"
+            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
         },
         "contractCrate": {
             "name": "multisig",
@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.52.2"
+            "version": "0.52.3"
         }
     },
     "docs": [
@@ -33,6 +33,10 @@
             },
             {
                 "name": "multi_transfer_sc_address",
+                "type": "Address"
+            },
+            {
+                "name": "proxy_sc_address",
                 "type": "Address"
             },
             {
@@ -56,7 +60,20 @@
         "outputs": []
     },
     "upgradeConstructor": {
-        "inputs": [],
+        "inputs": [
+            {
+                "name": "esdt_safe_sc_address",
+                "type": "Address"
+            },
+            {
+                "name": "multi_transfer_sc_address",
+                "type": "Address"
+            },
+            {
+                "name": "proxy_sc_address",
+                "type": "Address"
+            }
+        ],
         "outputs": []
     },
     "endpoints": [
@@ -131,7 +148,7 @@
         },
         {
             "docs": [
-                "Proposes a batch of Ethereum -> Elrond transfers.",
+                "Proposes a batch of Ethereum -> MultiversX transfers.",
                 "Transactions have to be separated by fields, in the following order:",
                 "Sender Address, Destination Address, Token ID, Amount, Tx Nonce"
             ],
@@ -155,11 +172,11 @@
         },
         {
             "docs": [
-                "Failed Ethereum -> Elrond transactions are saved in the MultiTransfer SC",
+                "Failed Ethereum -> MultiversX transactions are saved in the MultiTransfer SC",
                 "as \"refund transactions\", and stored in batches, using the same mechanism as EsdtSafe.",
                 "",
                 "This function moves the first refund batch into the EsdtSafe SC,",
-                "converting the transactions into Elrond -> Ethereum transactions",
+                "converting the transactions into MultiversX -> Ethereum transactions",
                 "and adding them into EsdtSafe batches"
             ],
             "name": "moveRefundBatchToSafeFromChildContract",
@@ -346,6 +363,20 @@
             "outputs": []
         },
         {
+            "name": "pauseProxy",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "unpauseProxy",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
             "name": "changeFeeEstimatorContractAddress",
             "onlyOwner": true,
             "mutability": "mutable",
@@ -366,7 +397,7 @@
                 "",
                 "where price_per_gas_unit is queried from the aggregator (fee estimator SC)"
             ],
-            "name": "changeElrondToEthGasLimit",
+            "name": "changeMultiversXToEthGasLimit",
             "onlyOwner": true,
             "mutability": "mutable",
             "inputs": [
@@ -507,7 +538,7 @@
         },
         {
             "docs": [
-                "Sets the maximum bridged amount for the token for the Elrond -> Ethereum direction.",
+                "Sets the maximum bridged amount for the token for the MultiversX -> Ethereum direction.",
                 "Any attempt to transfer over this amount will be rejected."
             ],
             "name": "esdtSafeSetMaxBridgedAmountForToken",
@@ -527,7 +558,7 @@
         },
         {
             "docs": [
-                "Same as the function above, but for Ethereum -> Elrond transactions."
+                "Same as the function above, but for Ethereum -> MultiversX transactions."
             ],
             "name": "multiTransferEsdtSetMaxBridgedAmountForToken",
             "onlyOwner": true,
@@ -546,7 +577,7 @@
         },
         {
             "docs": [
-                "Any failed Ethereum -> Elrond transactions are added into so-called \"refund batches\\",
+                "Any failed Ethereum -> MultiversX transactions are added into so-called \"refund batches\\",
                 "This configures the size of a batch."
             ],
             "name": "multiTransferEsdtSetMaxRefundTxBatchSize",
@@ -704,7 +735,7 @@
         },
         {
             "docs": [
-                "Mapping between ERC20 Ethereum address and Elrond ESDT Token Identifiers"
+                "Mapping between ERC20 Ethereum address and MultiversX ESDT Token Identifiers"
             ],
             "name": "getErc20AddressForTokenId",
             "mutability": "readonly",
@@ -747,6 +778,16 @@
         },
         {
             "name": "getMultiTransferEsdtAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getProxyAddress",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [
@@ -800,7 +841,7 @@
         },
         {
             "docs": [
-                "Returns a batch of failed Ethereum -> Elrond transactions.",
+                "Returns a batch of failed Ethereum -> MultiversX transactions.",
                 "The result format is the same as getCurrentTxBatch"
             ],
             "name": "getCurrentRefundBatch",
@@ -834,7 +875,7 @@
         },
         {
             "docs": [
-                "Used for Ethereum -> Elrond batches.",
+                "Used for Ethereum -> MultiversX batches.",
                 "If the mapping was made, it means that the transfer action was proposed in the past.",
                 "To check if it was executed as well, use the wasActionExecuted view"
             ],
@@ -1158,6 +1199,14 @@
         },
         {
             "identifier": "unpause_esdt_safe",
+            "inputs": []
+        },
+        {
+            "identifier": "pauseContract",
+            "inputs": []
+        },
+        {
+            "identifier": "unpauseContract",
             "inputs": []
         }
     ],

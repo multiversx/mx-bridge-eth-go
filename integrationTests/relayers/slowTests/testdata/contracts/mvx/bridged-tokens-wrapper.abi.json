@@ -1,11 +1,11 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.80.0",
-            "commitHash": "051478957371ee0084a7c0913941d2a8c4757bb9",
-            "commitDate": "2024-07-21",
+            "version": "1.78.0",
+            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
+            "commitDate": "2024-04-29",
             "channel": "Stable",
-            "short": "rustc 1.80.0 (051478957 2024-07-21)"
+            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
         },
         "contractCrate": {
             "name": "bridged-tokens-wrapper",
@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.52.2"
+            "version": "0.52.3"
         }
     },
     "name": "BridgedTokensWrapper",
@@ -281,6 +281,14 @@
         }
     ],
     "events": [
+        {
+            "identifier": "pauseContract",
+            "inputs": []
+        },
+        {
+            "identifier": "unpauseContract",
+            "inputs": []
+        },
         {
             "identifier": "wrap_tokens",
             "inputs": [
