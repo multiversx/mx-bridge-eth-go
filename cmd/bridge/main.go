@@ -162,10 +162,10 @@ func startRelay(ctx *cli.Context, version string) error {
 		ProxyURL:            cfg.MultiversX.NetworkAddress,
 		SameScState:         false,
 		ShouldBeSynced:      false,
-		FinalityCheck:       cfg.MultiversX.ProxyFinalityCheck,
-		AllowedDeltaToFinal: cfg.MultiversX.ProxyMaxNoncesDelta,
-		CacheExpirationTime: time.Second * time.Duration(cfg.MultiversX.ProxyCacherExpirationSeconds),
-		EntityType:          sdkCore.RestAPIEntityType(cfg.MultiversX.ProxyRestAPIEntityType),
+		FinalityCheck:       cfg.MultiversX.Proxy.FinalityCheck,
+		AllowedDeltaToFinal: cfg.MultiversX.Proxy.MaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.MultiversX.Proxy.CacherExpirationSeconds),
+		EntityType:          sdkCore.RestAPIEntityType(cfg.MultiversX.Proxy.RestAPIEntityType),
 	}
 	proxy, err := blockchain.NewProxy(argsProxy)
 	if err != nil {

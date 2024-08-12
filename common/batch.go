@@ -12,9 +12,10 @@ var log = logger.GetOrCreate("clients")
 
 // TransferBatch is the transfer batch structure agnostic of any chain implementation
 type TransferBatch struct {
-	ID       uint64             `json:"batchId"`
-	Deposits []*DepositTransfer `json:"deposits"`
-	Statuses []byte             `json:"statuses"`
+	ID          uint64             `json:"batchId"`
+	BlockNumber uint64             `json:"blockNumber"`
+	Deposits    []*DepositTransfer `json:"deposits"`
+	Statuses    []byte             `json:"statuses"`
 }
 
 // Clone will deep clone the current TransferBatch instance

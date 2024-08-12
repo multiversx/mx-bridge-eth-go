@@ -38,7 +38,9 @@ type EthereumConfig struct {
 	GasStation                         GasStationConfig
 	MaxRetriesOnQuorumReached          uint64
 	IntervalToWaitForTransferInSeconds uint64
-	MaxBlocksDelta                     uint64
+	ClientAvailabilityAllowDelta       uint64
+	EventsBlockRangeFrom               int64
+	EventsBlockRangeTo                 int64
 }
 
 // GasStationConfig represents the configuration for the gas station handler
@@ -147,10 +149,16 @@ type MultiversXConfig struct {
 	GasMap                          MultiversXGasMapConfig
 	MaxRetriesOnQuorumReached       uint64
 	MaxRetriesOnWasTransferProposed uint64
-	ProxyCacherExpirationSeconds    uint64
-	ProxyRestAPIEntityType          string
-	ProxyMaxNoncesDelta             int
-	ProxyFinalityCheck              bool
+	ClientAvailabilityAllowDelta    uint64
+	Proxy                           ProxyConfig
+}
+
+// ProxyConfig represents the configuration for the MultiversX proxy
+type ProxyConfig struct {
+	CacherExpirationSeconds uint64
+	RestAPIEntityType       string
+	MaxNoncesDelta          int
+	FinalityCheck           bool
 }
 
 // MultiversXGasMapConfig represents the gas limits for MultiversX operations

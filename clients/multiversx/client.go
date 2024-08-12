@@ -28,11 +28,11 @@ import (
 )
 
 const (
-	proposeTransferFuncName  = "proposeMultiTransferEsdtBatch"
-	proposeSetStatusFuncName = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
-	signFuncName             = "sign"
-	performActionFuncName    = "performAction"
-	minAllowedDelta          = 1
+	proposeTransferFuncName         = "proposeMultiTransferEsdtBatch"
+	proposeSetStatusFuncName        = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
+	signFuncName                    = "sign"
+	performActionFuncName           = "performAction"
+	minClientAvailabilityAllowDelta = 1
 
 	multiversXDataGetterLogId = "MultiversXEth-MultiversXDataGetter"
 )
@@ -49,24 +49,24 @@ type ClientArgs struct {
 	TokensMapper                 TokensMapper
 	RoleProvider                 roleProvider
 	StatusHandler                bridgeCore.StatusHandler
-	AllowDelta                   uint64
+	ClientAvailabilityAllowDelta uint64
 }
 
 // client represents the MultiversX Client implementation
 type client struct {
 	*mxClientDataGetter
-	codec                     *parsers.MultiversxCodec
-	txHandler                 txHandler
-	tokensMapper              TokensMapper
-	relayerPublicKey          crypto.PublicKey
-	relayerAddress            core.AddressHandler
-	multisigContractAddress   core.AddressHandler
-	safeContractAddress       core.AddressHandler
-	log                       logger.Logger
-	gasMapConfig              config.MultiversXGasMapConfig
-	addressPublicKeyConverter bridgeCore.AddressConverter
-	statusHandler             bridgeCore.StatusHandler
-	allowDelta                uint64
+	codec                        *parsers.MultiversxCodec
+	txHandler                    txHandler
+	tokensMapper                 TokensMapper
+	relayerPublicKey             crypto.PublicKey
+	relayerAddress               core.AddressHandler
+	multisigContractAddress      core.AddressHandler
+	safeContractAddress          core.AddressHandler
+	log                          logger.Logger
+	gasMapConfig                 config.MultiversXGasMapConfig
+	addressPublicKeyConverter    bridgeCore.AddressConverter
+	statusHandler                bridgeCore.StatusHandler
+	clientAvailabilityAllowDelta uint64
 
 	lastNonce                uint64
 	retriesAvailabilityCheck uint64
@@ -135,17 +135,17 @@ func NewClient(args ClientArgs) (*client, error) {
 			singleSigner:            &singlesig.Ed25519Signer{},
 			roleProvider:            args.RoleProvider,
 		},
-		mxClientDataGetter:        getter,
-		relayerPublicKey:          publicKey,
-		relayerAddress:            relayerAddress,
-		multisigContractAddress:   args.MultisigContractAddress,
-		safeContractAddress:       args.SafeContractAddress,
-		log:                       args.Log,
-		gasMapConfig:              args.GasMapConfig,
-		addressPublicKeyConverter: addressConverter,
-		tokensMapper:              args.TokensMapper,
-		statusHandler:             args.StatusHandler,
-		allowDelta:                args.AllowDelta,
+		mxClientDataGetter:           getter,
+		relayerPublicKey:             publicKey,
+		relayerAddress:               relayerAddress,
+		multisigContractAddress:      args.MultisigContractAddress,
+		safeContractAddress:          args.SafeContractAddress,
+		log:                          args.Log,
+		gasMapConfig:                 args.GasMapConfig,
+		addressPublicKeyConverter:    addressConverter,
+		tokensMapper:                 args.TokensMapper,
+		statusHandler:                args.StatusHandler,
+		clientAvailabilityAllowDelta: args.ClientAvailabilityAllowDelta,
 	}
 
 	bech32RelayerAddress, _ := relayerAddress.AddressAsBech32String()
@@ -182,9 +182,9 @@ func checkArgs(args ClientArgs) error {
 	if check.IfNil(args.StatusHandler) {
 		return clients.ErrNilStatusHandler
 	}
-	if args.AllowDelta < minAllowedDelta {
-		return fmt.Errorf("%w for args.AllowedDelta, got: %d, minimum: %d",
-			clients.ErrInvalidValue, args.AllowDelta, minAllowedDelta)
+	if args.ClientAvailabilityAllowDelta < minClientAvailabilityAllowDelta {
+		return fmt.Errorf("%w for args.ClientAvailabilityAllowDelta, got: %d, minimum: %d",
+			clients.ErrInvalidValue, args.ClientAvailabilityAllowDelta, minClientAvailabilityAllowDelta)
 	}
 	err := checkGasMapValues(args.GasMapConfig)
 	if err != nil {
@@ -516,7 +516,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 	// if we reached this point we will need to increment the retries counter
 	defer c.incrementRetriesAvailabilityCheck()
 
-	if c.retriesAvailabilityCheck > c.allowDelta {
+	if c.retriesAvailabilityCheck > c.clientAvailabilityAllowDelta {
 		message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck)
 		c.setStatusForAvailabilityCheck(ethmultiversx.Unavailable, message, currentNonce)
 

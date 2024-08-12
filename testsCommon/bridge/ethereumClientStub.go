@@ -21,7 +21,7 @@ type EthereumClientStub struct {
 	GetTransactionsStatusesCalled          func(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSizeCalled                    func(ctx context.Context) (*big.Int, error)
 	IsQuorumReachedCalled                  func(ctx context.Context, msgHash common.Hash) (bool, error)
-	GetBatchSCMetadataCalled               func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error)
+	GetBatchSCMetadataCalled               func(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error)
 	CheckRequiredBalanceCalled             func(ctx context.Context, erc20Address common.Address, value *big.Int) error
 	TotalBalancesCalled                    func(ctx context.Context, account common.Address) (*big.Int, error)
 	MintBalancesCalled                     func(ctx context.Context, account common.Address) (*big.Int, error)
@@ -111,9 +111,9 @@ func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash com
 }
 
 // GetBatchSCMetadata -
-func (stub *EthereumClientStub) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+func (stub *EthereumClientStub) GetBatchSCMetadata(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
 	if stub.GetBatchSCMetadataCalled != nil {
-		return stub.GetBatchSCMetadataCalled(ctx, nonce)
+		return stub.GetBatchSCMetadataCalled(ctx, nonce, blockNumber)
 	}
 
 	return []*contract.ERC20SafeERC20SCDeposit{}, errNotImplemented
