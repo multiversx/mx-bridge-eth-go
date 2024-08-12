@@ -111,8 +111,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		)
 	})
 	t.Run("extra parameter should refund", func(t *testing.T) {
-		t.Skip("TODO: fix this test") // TODO: fix this test
-
 		callData := createScCallData("callPayable", 50000000, "extra parameter")
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
