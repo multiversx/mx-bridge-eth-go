@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
+	"github.com/multiversx/mx-bridge-eth-go/parsers"
 )
 
 // GenerateTestUSDCToken will generate a test USDC token
@@ -33,23 +34,15 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(5000),
 				ValueToSendFromMvX:   big.NewInt(2500),
-				MvxSCCallMethod:      "",
-				MvxSCCallGasLimit:    0,
-				MvxSCCallArguments:   nil,
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(7000),
 				ValueToSendFromMvX:   big.NewInt(300),
-				MvxSCCallMethod:      "",
-				MvxSCCallGasLimit:    0,
-				MvxSCCallArguments:   nil,
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(1000),
 				ValueToSendFromMvX:   nil,
-				MvxSCCallMethod:      "callPayable",
-				MvxSCCallGasLimit:    50000000,
-				MvxSCCallArguments:   nil,
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
 		ESDTSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
@@ -82,26 +75,30 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(2400),
 				ValueToSendFromMvX:   big.NewInt(4000),
-				MvxSCCallMethod:      "",
-				MvxSCCallGasLimit:    0,
-				MvxSCCallArguments:   nil,
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(200),
 				ValueToSendFromMvX:   big.NewInt(6000),
-				MvxSCCallMethod:      "",
-				MvxSCCallGasLimit:    0,
-				MvxSCCallArguments:   nil,
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(1000),
 				ValueToSendFromMvX:   big.NewInt(2000),
-				MvxSCCallMethod:      "callPayable",
-				MvxSCCallGasLimit:    50000000,
-				MvxSCCallArguments:   nil,
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
 		ESDTSafeExtraBalance:    big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
 		EthTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
 	}
+}
+
+func createScCallData(function string, gasLimit uint64, args ...string) []byte {
+	codec := parsers.MultiversxCodec{}
+	callData := parsers.CallData{
+		Type:      parsers.DataPresentProtocolMarker,
+		Function:  function,
+		GasLimit:  gasLimit,
+		Arguments: args,
+	}
+
+	return codec.EncodeCallData(callData)
 }

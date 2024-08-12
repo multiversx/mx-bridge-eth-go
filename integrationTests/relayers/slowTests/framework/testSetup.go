@@ -3,11 +3,11 @@ package framework
 import (
 	"context"
 	"fmt"
-	"io"
 	"math/big"
 	"os"
 	"path"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/config"
@@ -30,19 +30,20 @@ type TestSetup struct {
 	testing.TB
 	TokensRegistry
 	*KeysStore
-	Bridge            *BridgeComponents
-	EthereumHandler   *EthereumHandler
-	MultiversxHandler *MultiversxHandler
-	WorkingDir        string
-	ChainSimulator    ChainSimulatorWrapper
-	ScCallerKeys      KeysHolder
-	ScCallerModule    io.Closer
+	Bridge                 *BridgeComponents
+	EthereumHandler        *EthereumHandler
+	MultiversxHandler      *MultiversxHandler
+	WorkingDir             string
+	ChainSimulator         ChainSimulatorWrapper
+	ScCallerKeys           KeysHolder
+	ScCallerModuleInstance SCCallerModule
 
 	ctxCancel             func()
 	Ctx                   context.Context
 	mutBalances           sync.RWMutex
 	esdtBalanceForSafe    map[string]*big.Int
 	ethBalanceTestAddress map[string]*big.Int
+	numScCallsInTest      uint32
 }
 
 // NewTestSetup creates a new e2e test setup
@@ -110,7 +111,7 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 func (setup *TestSetup) startScCallerModule() {
 	cfg := config.ScCallsModuleConfig{
 		ScProxyBech32Address:         setup.MultiversxHandler.ScProxyAddress.Bech32(),
-		ExtraGasToExecute:            30_000_000, // 30 million (50 mil call -> provided + 20 mil callback + 10 mil extra)
+		ExtraGasToExecute:            60_000_000, // 60 million: this ensures that a SC call with 0 gas limit is refunded
 		NetworkAddress:               setup.ChainSimulator.GetNetworkAddress(),
 		ProxyMaxNoncesDelta:          5,
 		ProxyFinalityCheck:           false,
@@ -127,7 +128,7 @@ func (setup *TestSetup) startScCallerModule() {
 	}
 
 	var err error
-	setup.ScCallerModule, err = module.NewScCallsModule(cfg, log)
+	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, log)
 	require.Nil(setup, err)
 	log.Info("started SC calls module", "monitoring SC proxy address", setup.MultiversxHandler.ScProxyAddress)
 }
@@ -142,6 +143,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 	setup.MultiversxHandler.PauseContractsForTokenChanges(setup.Ctx)
 
 	for _, token := range tokens {
+		setup.processNumScCallsOperations(token)
 		setup.AddToken(token.IssueTokenParams)
 		setup.EthereumHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 		setup.MultiversxHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
@@ -166,6 +168,19 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 	}
 }
 
+func (setup *TestSetup) processNumScCallsOperations(token TestTokenParams) {
+	for _, op := range token.TestOperations {
+		if len(op.MvxSCCallData) > 0 {
+			atomic.AddUint32(&setup.numScCallsInTest, 1)
+		}
+	}
+}
+
+// GetNumScCallsOperations returns the number of SC calls in this test setup
+func (setup *TestSetup) GetNumScCallsOperations() uint32 {
+	return atomic.LoadUint32(&setup.numScCallsInTest)
+}
+
 // IsTransferDoneFromEthereum returns true if all provided tokens are bridged from Ethereum towards MultiversX
 func (setup *TestSetup) IsTransferDoneFromEthereum(tokens ...TestTokenParams) bool {
 	isDone := true
@@ -184,7 +199,7 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(params TestTokenParam
 			continue
 		}
 
-		if len(operation.MvxSCCallMethod) > 0 {
+		if len(operation.MvxSCCallData) > 0 {
 			if !operation.MvxFaultySCCall {
 				expectedValueOnContract.Add(expectedValueOnContract, operation.ValueToTransferToMvx)
 			}
@@ -228,7 +243,7 @@ func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params Test
 		}
 
 		expectedValueOnReceiver.Add(expectedValueOnReceiver, big.NewInt(0).Sub(valueToSendFromMvX, valueToTransferToMvx))
-		if len(operation.MvxSCCallMethod) > 0 {
+		if len(operation.MvxSCCallData) > 0 {
 			if operation.MvxFaultySCCall {
 				// the balance should be bridged back to the receiver on Ethereum - fee
 				expectedValueOnReceiver.Add(expectedValueOnReceiver, valueToTransferToMvx)
@@ -312,5 +327,5 @@ func (setup *TestSetup) Close() {
 	require.NoError(setup, setup.EthereumHandler.Close())
 
 	setup.ctxCancel()
-	_ = setup.ScCallerModule.Close()
+	_ = setup.ScCallerModuleInstance.Close()
 }

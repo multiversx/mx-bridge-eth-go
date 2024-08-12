@@ -33,9 +33,7 @@ type IssueTokenParams struct {
 type TokenOperations struct {
 	ValueToTransferToMvx *big.Int
 	ValueToSendFromMvX   *big.Int
-	MvxSCCallMethod      string
-	MvxSCCallGasLimit    uint64
-	MvxSCCallArguments   []string
+	MvxSCCallData        []byte
 	MvxFaultySCCall      bool
 }
 

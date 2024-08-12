@@ -187,6 +187,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.Equal(t, expectedError, err)
+		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("get pending returns a not ok status, should error", func(t *testing.T) {
 		t.Parallel()
@@ -206,6 +207,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		err := executor.Execute(context.Background())
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "got response code 'NOT OK'")
+		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("get pending returns an odd number of lines, should error", func(t *testing.T) {
 		t.Parallel()
@@ -228,6 +230,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		err := executor.Execute(context.Background())
 		assert.ErrorIs(t, err, errInvalidNumberOfResponseLines)
 		assert.Contains(t, err.Error(), "expected an even number, got 1")
+		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("decoder errors, should error", func(t *testing.T) {
 		t.Parallel()
@@ -257,6 +260,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.ErrorIs(t, err, expectedError)
+		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("get network configs errors, should error", func(t *testing.T) {
 		t.Parallel()
@@ -289,6 +293,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.ErrorIs(t, err, expectedError)
+		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("ApplyNonceAndGasPrice errors, should error", func(t *testing.T) {
 		t.Parallel()
@@ -330,6 +335,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.ErrorIs(t, err, expectedError)
+		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("Sign errors, should error", func(t *testing.T) {
 		t.Parallel()
@@ -376,6 +382,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.ErrorIs(t, err, expectedError)
+		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("SendTransaction errors, should error", func(t *testing.T) {
 		t.Parallel()
@@ -409,13 +416,20 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (parsers.ProxySCCompleteCallData, error) {
 				assert.Equal(t, []byte{0x03, 0x04}, buff)
 
-				return parsers.ProxySCCompleteCallData{}, nil
+				return parsers.ProxySCCompleteCallData{
+					CallData: parsers.CallData{
+						Type:     parsers.DataPresentProtocolMarker,
+						Function: "func",
+						GasLimit: 1000000,
+					},
+				}, nil
 			},
 		}
 
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.ErrorIs(t, err, expectedError)
+		assert.Equal(t, uint32(0), executor.GetNumSentTransaction())
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -505,5 +519,6 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		err := executor.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.True(t, sendWasCalled)
+		assert.Equal(t, uint32(1), executor.GetNumSentTransaction())
 	})
 }

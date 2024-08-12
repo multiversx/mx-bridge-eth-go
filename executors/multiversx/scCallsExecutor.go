@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/multiversx/mx-bridge-eth-go/errors"
@@ -49,6 +50,7 @@ type scCallExecutor struct {
 	privateKey           crypto.PrivateKey
 	singleSigner         crypto.SingleSigner
 	senderAddress        core.AddressHandler
+	numSentTransactions  uint32
 }
 
 // NewScCallExecutor creates a new instance of type scCallExecutor
@@ -244,6 +246,8 @@ func (executor *scCallExecutor) executeOperation(
 		"extra gas", executor.extraGasToExecute,
 		"sender", bech32Address)
 
+	atomic.AddUint32(&executor.numSentTransactions, 1)
+
 	return nil
 }
 
@@ -263,6 +267,11 @@ func (executor *scCallExecutor) signTransactionWithPrivateKey(tx *transaction.Fr
 	tx.Signature = hex.EncodeToString(signature)
 
 	return nil
+}
+
+// GetNumSentTransaction returns the total sent transactions
+func (executor *scCallExecutor) GetNumSentTransaction() uint32 {
+	return atomic.LoadUint32(&executor.numSentTransactions)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
