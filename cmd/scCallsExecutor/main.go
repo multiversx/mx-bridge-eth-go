@@ -72,7 +72,7 @@ func startRelay(ctx *cli.Context, version string) error {
 		return errLogger
 	}
 
-	log.Info("starting bridge node", "version", version, "pid", os.Getpid())
+	log.Info("starting SC calls executor node", "version", version, "pid", os.Getpid())
 
 	err := logger.SetLogLevel(flagsConfig.LogLevel)
 	if err != nil {
@@ -91,6 +91,19 @@ func startRelay(ctx *cli.Context, version string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if ctx.IsSet(scProxyBech32Address.Name) {
+		cfg.ScProxyBech32Address = ctx.GlobalString(scProxyBech32Address.Name)
+		log.Info("using flag-defined SC proxy address", "address", cfg.ScProxyBech32Address)
+	}
+	if ctx.IsSet(networkAddress.Name) {
+		cfg.NetworkAddress = ctx.GlobalString(networkAddress.Name)
+		log.Info("using flag-defined network address", "address", cfg.NetworkAddress)
+	}
+	if ctx.IsSet(privateKeyFile.Name) {
+		cfg.PrivateKeyFile = ctx.GlobalString(privateKeyFile.Name)
+		log.Info("using flag-defined private key file", "filename", cfg.PrivateKeyFile)
 	}
 
 	if len(cfg.NetworkAddress) == 0 {
