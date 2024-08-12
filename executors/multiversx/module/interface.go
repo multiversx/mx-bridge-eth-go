@@ -19,3 +19,9 @@ type pollingHandler interface {
 	Close() error
 	IsInterfaceNil() bool
 }
+
+type executor interface {
+	Execute(ctx context.Context) error
+	GetNumSentTransaction() uint32
+	IsInterfaceNil() bool
+}

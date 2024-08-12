@@ -95,6 +95,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
+		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
 
 		return false
 	}
@@ -193,23 +194,15 @@ func createBadToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(5000),
 				ValueToSendFromMvX:   big.NewInt(2500),
-				MvxSCCallMethod:      "",
-				MvxSCCallGasLimit:    0,
-				MvxSCCallArguments:   nil,
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(7000),
 				ValueToSendFromMvX:   big.NewInt(300),
-				MvxSCCallMethod:      "",
-				MvxSCCallGasLimit:    0,
-				MvxSCCallArguments:   nil,
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(1000),
 				ValueToSendFromMvX:   nil,
-				MvxSCCallMethod:      "callPayable",
-				MvxSCCallGasLimit:    50000000,
-				MvxSCCallArguments:   nil,
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
 		ESDTSafeExtraBalance:    big.NewInt(0),

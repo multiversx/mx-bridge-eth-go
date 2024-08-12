@@ -36,8 +36,8 @@
                     "type": "u64"
                 },
                 {
-                    "name": "transfers",
-                    "type": "List<EthTransaction>"
+                    "name": "raw_transfers",
+                    "type": "bytes"
                 }
             ],
             "outputs": []
@@ -391,35 +391,6 @@
                 {
                     "name": "raw_addr",
                     "type": "array20<u8>"
-                }
-            ]
-        },
-        "EthTransaction": {
-            "type": "struct",
-            "fields": [
-                {
-                    "name": "from",
-                    "type": "EthAddress"
-                },
-                {
-                    "name": "to",
-                    "type": "Address"
-                },
-                {
-                    "name": "token_id",
-                    "type": "TokenIdentifier"
-                },
-                {
-                    "name": "amount",
-                    "type": "BigUint"
-                },
-                {
-                    "name": "tx_nonce",
-                    "type": "u64"
-                },
-                {
-                    "name": "call_data",
-                    "type": "Option<bytes>"
                 }
             ]
         }

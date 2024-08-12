@@ -20,7 +20,6 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/require"
@@ -355,23 +354,13 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 		}
 
 		var tx *types.Transaction
-		if len(operation.MvxSCCallMethod) > 0 {
-			codec := parsers.MultiversxCodec{}
-			callData := parsers.CallData{
-				Type:      parsers.DataPresentProtocolMarker,
-				Function:  operation.MvxSCCallMethod,
-				GasLimit:  operation.MvxSCCallGasLimit,
-				Arguments: operation.MvxSCCallArguments,
-			}
-
-			buff := codec.EncodeCallData(callData)
-
+		if len(operation.MvxSCCallData) > 0 {
 			tx, err = handler.SafeContract.DepositWithSCExecution(
 				auth,
 				token.EthErc20Address,
 				operation.ValueToTransferToMvx,
 				mvxTestCallerAddress.AddressSlice(),
-				string(buff),
+				string(operation.MvxSCCallData),
 			)
 		} else {
 			tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
