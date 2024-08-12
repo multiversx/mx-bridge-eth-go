@@ -416,14 +416,20 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (parsers.ProxySCCompleteCallData, error) {
 				assert.Equal(t, []byte{0x03, 0x04}, buff)
 
-				return parsers.ProxySCCompleteCallData{}, nil
+				return parsers.ProxySCCompleteCallData{
+					CallData: parsers.CallData{
+						Type:     parsers.DataPresentProtocolMarker,
+						Function: "func",
+						GasLimit: 1000000,
+					},
+				}, nil
 			},
 		}
 
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.ErrorIs(t, err, expectedError)
-		assert.Equal(t, uint32(1), executor.GetNumSentTransaction())
+		assert.Equal(t, uint32(0), executor.GetNumSentTransaction())
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
