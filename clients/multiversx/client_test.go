@@ -63,9 +63,9 @@ func createMockClientArgs() ClientArgs {
 				return append([]byte("converted "), sourceBytes...), nil
 			},
 		},
-		RoleProvider:  &roleproviders.MultiversXRoleProviderStub{},
-		StatusHandler: &testsCommon.StatusHandlerStub{},
-		AllowDelta:    5,
+		RoleProvider:                 &roleproviders.MultiversXRoleProviderStub{},
+		StatusHandler:                &testsCommon.StatusHandlerStub{},
+		ClientAvailabilityAllowDelta: 5,
 	}
 }
 
@@ -213,7 +213,7 @@ func TestNewClient(t *testing.T) {
 		t.Parallel()
 
 		args := createMockClientArgs()
-		args.AllowDelta = 0
+		args.ClientAvailabilityAllowDelta = 0
 
 		c, err := NewClient(args)
 
@@ -1076,14 +1076,14 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		statusHandler.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, "random")
 
 		// this will just increment the retry counter
-		for i := 0; i < int(args.AllowDelta); i++ {
+		for i := 0; i < int(args.ClientAvailabilityAllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
 			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
-			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
+			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.ClientAvailabilityAllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
 			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
@@ -1096,14 +1096,14 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		incrementor = 0
 
 		// this will just increment the retry counter
-		for i := 0; i < int(args.AllowDelta); i++ {
+		for i := 0; i < int(args.ClientAvailabilityAllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
 			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
-			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
+			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.ClientAvailabilityAllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
 			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
