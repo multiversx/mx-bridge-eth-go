@@ -474,7 +474,7 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 		return nil, ErrNilBatch
 	}
 
-	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, transfers.ID)
+	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, transfers.ID, int64(transfers.BlockNumber))
 	if err != nil {
 		return nil, err
 	}

@@ -52,7 +52,7 @@ func createMockEthMultiversXBridgeArgs() ArgsEthereumToMultiversXBridge {
 			},
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,
-			MaxBlocksDelta:                     10,
+			ClientAvailabilityAllowDelta:       10,
 		},
 		MultiversX: config.MultiversXConfig{
 			PrivateKeyFile:                  "testdata/grace.pem",
@@ -63,7 +63,13 @@ func createMockEthMultiversXBridgeArgs() ArgsEthereumToMultiversXBridge {
 			GasMap:                          testsCommon.CreateTestMultiversXGasMap(),
 			MaxRetriesOnQuorumReached:       1,
 			MaxRetriesOnWasTransferProposed: 1,
-			ProxyMaxNoncesDelta:             5,
+			ClientAvailabilityAllowDelta:    10,
+			Proxy: config.ProxyConfig{
+				CacherExpirationSeconds: 600,
+				RestAPIEntityType:       "observer",
+				MaxNoncesDelta:          10,
+				FinalityCheck:           true,
+			},
 		},
 		Relayer: config.ConfigRelayer{
 			RoleProvider: config.RoleProviderConfig{

@@ -302,7 +302,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXClient(args Arg
 		TokensMapper:                 tokensMapper,
 		RoleProvider:                 components.multiversXRoleProvider,
 		StatusHandler:                args.MultiversXClientStatusHandler,
-		AllowDelta:                   uint64(chainConfigs.ProxyMaxNoncesDelta),
+		ClientAvailabilityAllowDelta: chainConfigs.ClientAvailabilityAllowDelta,
 	}
 
 	components.multiversXClient, err = multiversx.NewClient(clientArgs)
@@ -397,19 +397,21 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 
 	ethClientLogId := components.evmCompatibleChain.EvmCompatibleChainClientLogId()
 	argsEthClient := ethereum.ArgsEthereumClient{
-		ClientWrapper:           args.ClientWrapper,
-		Erc20ContractsHandler:   args.Erc20ContractsHolder,
-		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
-		AddressConverter:        components.addressConverter,
-		Broadcaster:             components.broadcaster,
-		PrivateKey:              privateKey,
-		TokensMapper:            tokensMapper,
-		SignatureHolder:         signaturesHolder,
-		SafeContractAddress:     safeContractAddress,
-		GasHandler:              gs,
-		TransferGasLimitBase:    ethereumConfigs.GasLimitBase,
-		TransferGasLimitForEach: ethereumConfigs.GasLimitForEach,
-		AllowDelta:              ethereumConfigs.MaxBlocksDelta,
+		ClientWrapper:                args.ClientWrapper,
+		Erc20ContractsHandler:        args.Erc20ContractsHolder,
+		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
+		AddressConverter:             components.addressConverter,
+		Broadcaster:                  components.broadcaster,
+		PrivateKey:                   privateKey,
+		TokensMapper:                 tokensMapper,
+		SignatureHolder:              signaturesHolder,
+		SafeContractAddress:          safeContractAddress,
+		GasHandler:                   gs,
+		TransferGasLimitBase:         ethereumConfigs.GasLimitBase,
+		TransferGasLimitForEach:      ethereumConfigs.GasLimitForEach,
+		ClientAvailabilityAllowDelta: ethereumConfigs.ClientAvailabilityAllowDelta,
+		EventsBlockRangeFrom:         ethereumConfigs.EventsBlockRangeFrom,
+		EventsBlockRangeTo:           ethereumConfigs.EventsBlockRangeTo,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)
