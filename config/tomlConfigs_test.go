@@ -34,8 +34,10 @@ func TestConfigs(t *testing.T) {
 				GasPriceSelector:           "SafeGasPrice",
 				GasPriceMultiplier:         1000000000,
 			},
-			MaxRetriesOnQuorumReached: 3,
-			MaxBlocksDelta:            10,
+			MaxRetriesOnQuorumReached:    3,
+			ClientAvailabilityAllowDelta: 10,
+			EventsBlockRangeFrom:         -100,
+			EventsBlockRangeTo:           400,
 		},
 		MultiversX: MultiversXConfig{
 			NetworkAddress:               "https://devnet-gateway.multiversx.com",
@@ -54,10 +56,13 @@ func TestConfigs(t *testing.T) {
 			},
 			MaxRetriesOnQuorumReached:       3,
 			MaxRetriesOnWasTransferProposed: 3,
-			ProxyCacherExpirationSeconds:    600,
-			ProxyRestAPIEntityType:          "observer",
-			ProxyMaxNoncesDelta:             7,
-			ProxyFinalityCheck:              true,
+			ClientAvailabilityAllowDelta:    10,
+			Proxy: ProxyConfig{
+				CacherExpirationSeconds: 600,
+				RestAPIEntityType:       "observer",
+				MaxNoncesDelta:          7,
+				FinalityCheck:           true,
+			},
 		},
 		P2P: ConfigP2P{
 			Port:            "10010",
@@ -222,7 +227,9 @@ func TestConfigs(t *testing.T) {
     GasLimitForEach = 30000
     IntervalToWaitForTransferInSeconds = 600 #10 minutes
     MaxRetriesOnQuorumReached = 3
-    MaxBlocksDelta = 10
+    ClientAvailabilityAllowDelta = 10
+    EventsBlockRangeFrom = -100
+    EventsBlockRangeTo = 400
     [Eth.GasStation]
         Enabled = true
         URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
@@ -243,13 +250,15 @@ func TestConfigs(t *testing.T) {
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
     MaxRetriesOnQuorumReached = 3
     MaxRetriesOnWasTransferProposed = 3
-    ProxyCacherExpirationSeconds = 600 # the caching time in seconds
+    ClientAvailabilityAllowDelta = 10
+    [MultiversX.Proxy]
+        CacherExpirationSeconds = 600 # the caching time in seconds
 
-    # valid options for ProxyRestAPIEntityType are "observer" and "proxy". Any other value will trigger an error.
-    # "observer" is useful when querying an observer, directly and "proxy" is useful when querying a squad's proxy (gateway)
-    ProxyRestAPIEntityType = "observer"
-    ProxyFinalityCheck = true
-    ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
+        # valid options for ProxyRestAPIEntityType are "observer" and "proxy". Any other value will trigger an error.
+        # "observer" is useful when querying an observer, directly and "proxy" is useful when querying a squad's proxy (gateway)
+        RestAPIEntityType = "observer"
+        FinalityCheck = true
+        MaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
     [MultiversX.GasMap]
         Sign = 8000000
         ProposeTransferBase = 11000000

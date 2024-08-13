@@ -76,7 +76,9 @@ func CreateBridgeComponentsConfig(index int, workingDir string) config.Config {
 			},
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,
-			MaxBlocksDelta:                     5,
+			ClientAvailabilityAllowDelta:       5,
+			EventsBlockRangeFrom:               -5,
+			EventsBlockRangeTo:                 50,
 		},
 		MultiversX: config.MultiversXConfig{
 			NetworkAddress:                  "mock",
@@ -87,7 +89,13 @@ func CreateBridgeComponentsConfig(index int, workingDir string) config.Config {
 			GasMap:                          testsCommon.CreateTestMultiversXGasMap(),
 			MaxRetriesOnQuorumReached:       1,
 			MaxRetriesOnWasTransferProposed: 3,
-			ProxyMaxNoncesDelta:             5,
+			ClientAvailabilityAllowDelta:    5,
+			Proxy: config.ProxyConfig{
+				CacherExpirationSeconds: 600,
+				RestAPIEntityType:       "observer",
+				MaxNoncesDelta:          10,
+				FinalityCheck:           true,
+			},
 		},
 		P2P: config.ConfigP2P{},
 		StateMachine: map[string]config.ConfigStateMachine{

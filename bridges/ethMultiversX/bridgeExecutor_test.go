@@ -361,7 +361,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 				assert.Equal(t, providedNonce, nonce)
 				return expectedBatch, false, nil
 			},
-			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
 				return make([]*contract.ERC20SafeERC20SCDeposit, 0), nil
 			},
 		}
@@ -389,7 +389,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 				assert.Equal(t, providedNonce, nonce)
 				return expectedBatch, true, nil
 			},
-			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
 				return make([]*contract.ERC20SafeERC20SCDeposit, 0), nil
 			},
 		}
@@ -421,7 +421,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 					assert.Equal(t, providedNonce, nonce)
 					return expectedBatch, true, nil
 				},
-				GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+				GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
 					return []*contract.ERC20SafeERC20SCDeposit{{
 						DepositNonce: big.NewInt(0).SetUint64(depositNonce),
 						CallData:     depositData,
@@ -461,7 +461,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 					assert.Equal(t, providedNonce, nonce)
 					return expectedBatch, true, nil
 				},
-				GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+				GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
 					return []*contract.ERC20SafeERC20SCDeposit{{
 						DepositNonce: big.NewInt(0).SetUint64(depositNonce),
 						CallData:     depositData,
@@ -494,7 +494,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 				assert.Equal(t, providedNonce, nonce)
 				return expectedBatch, true, nil
 			},
-			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
 				return []*contract.ERC20SafeERC20SCDeposit{{
 					DepositNonce: big.NewInt(0).SetUint64(depositNonce),
 					CallData:     depositData,

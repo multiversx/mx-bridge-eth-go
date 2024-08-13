@@ -54,12 +54,14 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 				return append([]byte("ERC20"), sourceBytes...), nil
 			},
 		},
-		SignatureHolder:         &testsCommon.SignaturesHolderStub{},
-		SafeContractAddress:     testsCommon.CreateRandomEthereumAddress(),
-		GasHandler:              &testsCommon.GasHandlerStub{},
-		TransferGasLimitBase:    50,
-		TransferGasLimitForEach: 20,
-		AllowDelta:              5,
+		SignatureHolder:              &testsCommon.SignaturesHolderStub{},
+		SafeContractAddress:          testsCommon.CreateRandomEthereumAddress(),
+		GasHandler:                   &testsCommon.GasHandlerStub{},
+		TransferGasLimitBase:         50,
+		TransferGasLimitForEach:      20,
+		ClientAvailabilityAllowDelta: 5,
+		EventsBlockRangeFrom:         -100,
+		EventsBlockRangeTo:           400,
 	}
 }
 
@@ -185,17 +187,31 @@ func TestNewEthereumClient(t *testing.T) {
 		assert.Equal(t, errInvalidGasLimit, err)
 		assert.True(t, check.IfNil(c))
 	})
-	t.Run("invalid AllowDelta should error", func(t *testing.T) {
+	t.Run("invalid ClientAvailabilityAllowDelta should error", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockEthereumClientArgs()
-		args.AllowDelta = 0
+		args.ClientAvailabilityAllowDelta = 0
 
 		c, err := NewEthereumClient(args)
 
 		assert.True(t, check.IfNil(c))
 		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "for args.AllowedDelta"))
+	})
+	t.Run("invalid events block range from should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockEthereumClientArgs()
+		args.EventsBlockRangeFrom = 100
+		args.EventsBlockRangeTo = 50
+
+		c, err := NewEthereumClient(args)
+
+		assert.True(t, check.IfNil(c))
+		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
+		assert.True(t, strings.Contains(err.Error(), "args.EventsBlockRangeFrom"))
+		assert.True(t, strings.Contains(err.Error(), "args.EventsBlockRangeTo"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		args := createMockEthereumClientArgs()
@@ -1144,14 +1160,14 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		statusHandler.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, "random")
 
 		// this will just increment the retry counter
-		for i := 0; i < int(args.AllowDelta); i++ {
+		for i := 0; i < int(args.ClientAvailabilityAllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
 			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
-			message := fmt.Sprintf("block %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
+			message := fmt.Sprintf("block %d fetched for %d times in a row", currentNonce, args.ClientAvailabilityAllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
 			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
@@ -1164,14 +1180,14 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		incrementor = 0
 
 		// this will just increment the retry counter
-		for i := 0; i < int(args.AllowDelta); i++ {
+		for i := 0; i < int(args.ClientAvailabilityAllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
 			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
-			message := fmt.Sprintf("block %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
+			message := fmt.Sprintf("block %d fetched for %d times in a row", currentNonce, args.ClientAvailabilityAllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
 			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
@@ -1211,7 +1227,7 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 			},
 		}
 		c, _ := NewEthereumClient(args)
-		batch, err := c.GetBatchSCMetadata(context.Background(), 0)
+		batch, err := c.GetBatchSCMetadata(context.Background(), 0, 0)
 		assert.Nil(t, batch)
 		assert.Equal(t, expectedErr, err)
 	})
@@ -1239,7 +1255,7 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 			},
 		}
 		c, _ := NewEthereumClient(args)
-		batch, err := c.GetBatchSCMetadata(context.Background(), expectedEvent.BatchId.Uint64())
+		batch, err := c.GetBatchSCMetadata(context.Background(), expectedEvent.BatchId.Uint64(), 500)
 
 		assert.Nil(t, err)
 		assert.Equal(t, 1, len(batch))

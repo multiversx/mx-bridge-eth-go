@@ -23,43 +23,47 @@ import (
 )
 
 const (
-	messagePrefix   = "\u0019Ethereum Signed Message:\n32"
-	minQuorumValue  = uint64(1)
-	minAllowedDelta = 1
+	messagePrefix                   = "\u0019Ethereum Signed Message:\n32"
+	minQuorumValue                  = uint64(1)
+	minClientAvailabilityAllowDelta = 1
 )
 
 // ArgsEthereumClient is the DTO used in the ethereum's client constructor
 type ArgsEthereumClient struct {
-	ClientWrapper           ClientWrapper
-	Erc20ContractsHandler   Erc20ContractsHolder
-	Log                     chainCore.Logger
-	AddressConverter        core.AddressConverter
-	Broadcaster             Broadcaster
-	PrivateKey              *ecdsa.PrivateKey
-	TokensMapper            TokensMapper
-	SignatureHolder         SignaturesHolder
-	SafeContractAddress     common.Address
-	GasHandler              GasHandler
-	TransferGasLimitBase    uint64
-	TransferGasLimitForEach uint64
-	AllowDelta              uint64
+	ClientWrapper                ClientWrapper
+	Erc20ContractsHandler        Erc20ContractsHolder
+	Log                          chainCore.Logger
+	AddressConverter             core.AddressConverter
+	Broadcaster                  Broadcaster
+	PrivateKey                   *ecdsa.PrivateKey
+	TokensMapper                 TokensMapper
+	SignatureHolder              SignaturesHolder
+	SafeContractAddress          common.Address
+	GasHandler                   GasHandler
+	TransferGasLimitBase         uint64
+	TransferGasLimitForEach      uint64
+	ClientAvailabilityAllowDelta uint64
+	EventsBlockRangeFrom         int64
+	EventsBlockRangeTo           int64
 }
 
 type client struct {
-	clientWrapper           ClientWrapper
-	erc20ContractsHandler   Erc20ContractsHolder
-	log                     chainCore.Logger
-	addressConverter        core.AddressConverter
-	broadcaster             Broadcaster
-	privateKey              *ecdsa.PrivateKey
-	publicKey               *ecdsa.PublicKey
-	tokensMapper            TokensMapper
-	signatureHolder         SignaturesHolder
-	safeContractAddress     common.Address
-	gasHandler              GasHandler
-	transferGasLimitBase    uint64
-	transferGasLimitForEach uint64
-	allowDelta              uint64
+	clientWrapper                ClientWrapper
+	erc20ContractsHandler        Erc20ContractsHolder
+	log                          chainCore.Logger
+	addressConverter             core.AddressConverter
+	broadcaster                  Broadcaster
+	privateKey                   *ecdsa.PrivateKey
+	publicKey                    *ecdsa.PublicKey
+	tokensMapper                 TokensMapper
+	signatureHolder              SignaturesHolder
+	safeContractAddress          common.Address
+	gasHandler                   GasHandler
+	transferGasLimitBase         uint64
+	transferGasLimitForEach      uint64
+	clientAvailabilityAllowDelta uint64
+	eventsBlockRangeFrom         int64
+	eventsBlockRangeTo           int64
 
 	lastBlockNumber          uint64
 	retriesAvailabilityCheck uint64
@@ -80,20 +84,22 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 	}
 
 	c := &client{
-		clientWrapper:           args.ClientWrapper,
-		erc20ContractsHandler:   args.Erc20ContractsHandler,
-		log:                     args.Log,
-		addressConverter:        args.AddressConverter,
-		broadcaster:             args.Broadcaster,
-		privateKey:              args.PrivateKey,
-		publicKey:               publicKeyECDSA,
-		tokensMapper:            args.TokensMapper,
-		signatureHolder:         args.SignatureHolder,
-		safeContractAddress:     args.SafeContractAddress,
-		gasHandler:              args.GasHandler,
-		transferGasLimitBase:    args.TransferGasLimitBase,
-		transferGasLimitForEach: args.TransferGasLimitForEach,
-		allowDelta:              args.AllowDelta,
+		clientWrapper:                args.ClientWrapper,
+		erc20ContractsHandler:        args.Erc20ContractsHandler,
+		log:                          args.Log,
+		addressConverter:             args.AddressConverter,
+		broadcaster:                  args.Broadcaster,
+		privateKey:                   args.PrivateKey,
+		publicKey:                    publicKeyECDSA,
+		tokensMapper:                 args.TokensMapper,
+		signatureHolder:              args.SignatureHolder,
+		safeContractAddress:          args.SafeContractAddress,
+		gasHandler:                   args.GasHandler,
+		transferGasLimitBase:         args.TransferGasLimitBase,
+		transferGasLimitForEach:      args.TransferGasLimitForEach,
+		clientAvailabilityAllowDelta: args.ClientAvailabilityAllowDelta,
+		eventsBlockRangeFrom:         args.EventsBlockRangeFrom,
+		eventsBlockRangeTo:           args.EventsBlockRangeTo,
 	}
 
 	c.log.Info("NewEthereumClient",
@@ -137,9 +143,13 @@ func checkArgs(args ArgsEthereumClient) error {
 	if args.TransferGasLimitForEach == 0 {
 		return errInvalidGasLimit
 	}
-	if args.AllowDelta < minAllowedDelta {
+	if args.ClientAvailabilityAllowDelta < minClientAvailabilityAllowDelta {
 		return fmt.Errorf("%w for args.AllowedDelta, got: %d, minimum: %d",
-			clients.ErrInvalidValue, args.AllowDelta, minAllowedDelta)
+			clients.ErrInvalidValue, args.ClientAvailabilityAllowDelta, minClientAvailabilityAllowDelta)
+	}
+	if args.EventsBlockRangeFrom > args.EventsBlockRangeTo {
+		return fmt.Errorf("%w, args.EventsBlockRangeFrom: %d, args.EventsBlockRangeTo: %d",
+			clients.ErrInvalidValue, args.EventsBlockRangeFrom, args.EventsBlockRangeTo)
 	}
 	return nil
 }
@@ -162,8 +172,9 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCommon.Tran
 	}
 
 	transferBatch := &bridgeCommon.TransferBatch{
-		ID:       batch.Nonce.Uint64(),
-		Deposits: make([]*bridgeCommon.DepositTransfer, 0, batch.DepositsCount),
+		ID:          batch.Nonce.Uint64(),
+		BlockNumber: batch.BlockNumber,
+		Deposits:    make([]*bridgeCommon.DepositTransfer, 0, batch.DepositsCount),
 	}
 	cachedTokens := make(map[string][]byte)
 	for i := range deposits {
@@ -202,7 +213,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCommon.Tran
 }
 
 // GetBatchSCMetadata returns the emitted logs in a batch that hold metadata for SC execution on MVX
-func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
 	scExecAbi, err := contract.ERC20SafeMetaData.GetAbi()
 	if err != nil {
 		return nil, err
@@ -214,6 +225,8 @@ func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64) ([]*contr
 			{scExecAbi.Events["ERC20SCDeposit"].ID},
 			{common.BytesToHash(new(big.Int).SetUint64(nonce).Bytes())},
 		},
+		FromBlock: big.NewInt(blockNumber + c.eventsBlockRangeFrom),
+		ToBlock:   big.NewInt(blockNumber + c.eventsBlockRangeTo),
 	}
 
 	logs, err := c.clientWrapper.FilterLogs(ctx, query)
@@ -401,7 +414,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 	// if we reached this point we will need to increment the retries counter
 	defer c.incrementRetriesAvailabilityCheck()
 
-	if c.retriesAvailabilityCheck > c.allowDelta {
+	if c.retriesAvailabilityCheck > c.clientAvailabilityAllowDelta {
 		message := fmt.Sprintf("block %d fetched for %d times in a row", currentBlock, c.retriesAvailabilityCheck)
 		c.setStatusForAvailabilityCheck(ethmultiversx.Unavailable, message, currentBlock)
 
