@@ -77,6 +77,8 @@ func CreateBridgeComponentsConfig(index int, workingDir string) config.Config {
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,
 			ClientAvailabilityAllowDelta:       5,
+			EventsBlockRangeFrom:               -5,
+			EventsBlockRangeTo:                 50,
 		},
 		MultiversX: config.MultiversXConfig{
 			NetworkAddress:                  "mock",

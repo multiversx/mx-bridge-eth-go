@@ -228,8 +228,8 @@ func TestConfigs(t *testing.T) {
     IntervalToWaitForTransferInSeconds = 600 #10 minutes
     MaxRetriesOnQuorumReached = 3
     ClientAvailabilityAllowDelta = 10
-	EventsBlockRangeFrom = -100
-	EventsBlockRangeTo = 400
+    EventsBlockRangeFrom = -100
+    EventsBlockRangeTo = 400
     [Eth.GasStation]
         Enabled = true
         URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
