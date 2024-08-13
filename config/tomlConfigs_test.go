@@ -250,15 +250,15 @@ func TestConfigs(t *testing.T) {
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
     MaxRetriesOnQuorumReached = 3
     MaxRetriesOnWasTransferProposed = 3
-	ClientAvailabilityAllowDelta = 10
-	[MultiversX.Proxy]
-		CacherExpirationSeconds = 600 # the caching time in seconds
-	
-		# valid options for ProxyRestAPIEntityType are "observer" and "proxy". Any other value will trigger an error.
-		# "observer" is useful when querying an observer, directly and "proxy" is useful when querying a squad's proxy (gateway)
-		RestAPIEntityType = "observer"
-		FinalityCheck = true
-		MaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
+    ClientAvailabilityAllowDelta = 10
+    [MultiversX.Proxy]
+        CacherExpirationSeconds = 600 # the caching time in seconds
+
+        # valid options for ProxyRestAPIEntityType are "observer" and "proxy". Any other value will trigger an error.
+        # "observer" is useful when querying an observer, directly and "proxy" is useful when querying a squad's proxy (gateway)
+        RestAPIEntityType = "observer"
+        FinalityCheck = true
+        MaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
     [MultiversX.GasMap]
         Sign = 8000000
         ProposeTransferBase = 11000000
