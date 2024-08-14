@@ -14,7 +14,7 @@ type CallData struct {
 	Type      byte
 	Function  string
 	GasLimit  uint64
-	Arguments []interface{}
+	Arguments []string
 }
 
 // ProxySCCompleteCallData defines the struct holding Proxy SC complete call data

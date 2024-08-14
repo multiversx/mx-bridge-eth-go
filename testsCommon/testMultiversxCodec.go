@@ -44,7 +44,6 @@ func (codec *TestMultiversXCodec) EncodeCallDataStrict(callData parsers.CallData
 	result = append(result, callData.Function...) // append the function as string
 
 	binary.BigEndian.PutUint64(buff64Bits, callData.GasLimit)
-
 	result = append(result, buff64Bits...) // append the gas limit as 8 bytes
 
 	if len(callData.Arguments) == 0 {
@@ -54,21 +53,27 @@ func (codec *TestMultiversXCodec) EncodeCallDataStrict(callData parsers.CallData
 		return result
 	}
 
-	binary.BigEndian.PutUint32(buff32Bits, uint32(len(callData.Arguments)))
+	result = append(result, bridgeCore.DataPresentProtocolMarker)
+	encodedArgs := codec.encodeArgs(callData.Arguments)
+	result = append(result, encodedArgs...)
+
+	return result
+}
+
+func (codec *TestMultiversXCodec) encodeArgs(args []string) []byte {
+	buff32Bits := make([]byte, 4)
+
+	initialAlloc := 1024 * 1024 // 1MB initial buffer
+	result := make([]byte, 0, initialAlloc)
+
+	binary.BigEndian.PutUint32(buff32Bits, uint32(len(args)))
 	result = append(result, buff32Bits...) // append the number of arguments
 
-	for i, arg := range callData.Arguments {
-		switch v := arg.(type) {
-		case uint64:
-			binary.BigEndian.PutUint64(buff64Bits, v)
-		case string:
-			lenArg := len(v)
-			binary.BigEndian.PutUint32(buff32Bits, uint32(lenArg))
-			result = append(result, buff32Bits...) // append the length of the current argument
-			result = append(result, v...)          // append the argument as string
-		default:
-			panic(fmt.Sprintf("unsupported argument on position %d, type %T, value %+v", i, arg, arg))
-		}
+	for _, arg := range args {
+		lenArg := len(arg)
+		binary.BigEndian.PutUint32(buff32Bits, uint32(lenArg))
+		result = append(result, buff32Bits...) // append the length of the current argument
+		result = append(result, arg...)        // append the argument as string
 	}
 
 	return result
@@ -114,7 +119,7 @@ func decodeCallData(buff []byte, marker byte) parsers.CallData {
 		panic(err)
 	}
 
-	arguments, err := extractArgumentsAsStrings(buff)
+	arguments, err := extractArguments(buff)
 	if err != nil {
 		panic(err)
 	}
@@ -127,14 +132,14 @@ func decodeCallData(buff []byte, marker byte) parsers.CallData {
 	}
 }
 
-func extractArgumentsAsStrings(buff []byte) ([]interface{}, error) {
+func extractArguments(buff []byte) ([]string, error) {
 	if len(buff) == 0 {
 		panic("empty buffer")
 	}
 
 	if len(buff) == 1 && buff[0] == bridgeCore.MissingDataProtocolMarker {
 		// no arguments provided
-		return make([]interface{}, 0), nil
+		return make([]string, 0), nil
 	}
 
 	buff, numArgumentsLength, err := parsers.ExtractUint32(buff)
@@ -142,7 +147,7 @@ func extractArgumentsAsStrings(buff []byte) ([]interface{}, error) {
 		panic(err)
 	}
 
-	arguments := make([]interface{}, 0)
+	arguments := make([]string, 0)
 	for i := 0; i < numArgumentsLength; i++ {
 		var argument string
 		buff, argument, err = parsers.ExtractString(buff)
