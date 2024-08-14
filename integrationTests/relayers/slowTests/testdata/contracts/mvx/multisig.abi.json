@@ -36,6 +36,10 @@
                 "type": "Address"
             },
             {
+                "name": "proxy_sc_address",
+                "type": "Address"
+            },
+            {
                 "name": "required_stake",
                 "type": "BigUint"
             },
@@ -56,7 +60,20 @@
         "outputs": []
     },
     "upgradeConstructor": {
-        "inputs": [],
+        "inputs": [
+            {
+                "name": "esdt_safe_sc_address",
+                "type": "Address"
+            },
+            {
+                "name": "multi_transfer_sc_address",
+                "type": "Address"
+            },
+            {
+                "name": "proxy_sc_address",
+                "type": "Address"
+            }
+        ],
         "outputs": []
     },
     "endpoints": [
@@ -340,6 +357,20 @@
         },
         {
             "name": "unpauseEsdtSafe",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "pauseProxy",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "unpauseProxy",
             "onlyOwner": true,
             "mutability": "mutable",
             "inputs": [],
@@ -747,6 +778,16 @@
         },
         {
             "name": "getMultiTransferEsdtAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getProxyAddress",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [

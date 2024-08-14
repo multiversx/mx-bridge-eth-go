@@ -49,6 +49,7 @@ const (
 	stakeFunction                                        = "stake"
 	unpauseFunction                                      = "unpause"
 	unpauseEsdtSafeFunction                              = "unpauseEsdtSafe"
+	unpauseProxyFunction                                 = "unpauseProxy"
 	pauseEsdtSafeFunction                                = "pauseEsdtSafe"
 	pauseFunction                                        = "pause"
 	issueFunction                                        = "issue"
@@ -174,12 +175,26 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 	require.NotEqual(handler, emptyAddress, handler.SafeAddress)
 	log.Info("safe contract deployed", "address", handler.SafeAddress, "transaction hash", hash)
 
+	// deploy bridge proxy
+	handler.ScProxyAddress, hash, _ = handler.ChainSimulator.DeploySC(
+		ctx,
+		bridgeProxyContractPath,
+		handler.OwnerKeys.MvxSk,
+		deployGasLimit,
+		[]string{
+			multiTransferAddress.Hex(),
+		},
+	)
+	require.NotEqual(handler, emptyAddress, handler.ScProxyAddress)
+	log.Info("bridge proxy contract deployed", "address", handler.ScProxyAddress, "transaction hash", hash)
+
 	// deploy multisig
 	minRelayerStakeInt, _ := big.NewInt(0).SetString(minRelayerStake, 10)
 	minRelayerStakeHex := hex.EncodeToString(minRelayerStakeInt.Bytes())
 	params := []string{
 		handler.SafeAddress.Hex(),
 		multiTransferAddress.Hex(),
+		handler.ScProxyAddress.Hex(),
 		minRelayerStakeHex,
 		slashAmount,
 		handler.Quorum}
@@ -195,19 +210,6 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 	)
 	require.NotEqual(handler, emptyAddress, handler.MultisigAddress)
 	log.Info("multisig contract deployed", "address", handler.MultisigAddress, "transaction hash", hash)
-
-	// deploy bridge proxy
-	handler.ScProxyAddress, hash, _ = handler.ChainSimulator.DeploySC(
-		ctx,
-		bridgeProxyContractPath,
-		handler.OwnerKeys.MvxSk,
-		deployGasLimit,
-		[]string{
-			multiTransferAddress.Hex(),
-		},
-	)
-	require.NotEqual(handler, emptyAddress, handler.ScProxyAddress)
-	log.Info("bridge proxy contract deployed", "address", handler.ScProxyAddress, "transaction hash", hash)
 
 	// deploy test-caller
 	handler.TestCallerAddress, hash, _ = handler.ChainSimulator.DeploySC(
@@ -304,10 +306,6 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 	)
 	log.Info("ChangeOwnerAddress for multi-transfer tx executed", "hash", hash, "status", txResult.Status)
 
-	// unpause sc proxy
-	hash, txResult = handler.callContractNoParams(ctx, handler.ScProxyAddress, unpauseFunction)
-	log.Info("unpaused sc proxy executed", "hash", hash, "status", txResult.Status)
-
 	// ChangeOwnerAddress for bridge proxy
 	hash, txResult = handler.ChainSimulator.ScCall(
 		ctx,
@@ -321,6 +319,10 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 		},
 	)
 	log.Info("ChangeOwnerAddress for bridge proxy tx executed", "hash", hash, "status", txResult.Status)
+
+	// unpause sc proxy
+	hash, txResult = handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseProxyFunction)
+	log.Info("unpaused sc proxy executed", "hash", hash, "status", txResult.Status)
 
 	// setEsdtSafeOnMultiTransfer
 	hash, txResult = handler.ChainSimulator.ScCall(
