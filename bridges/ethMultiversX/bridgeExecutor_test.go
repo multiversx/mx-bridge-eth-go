@@ -497,7 +497,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
-		assert.Equal(t, "", string(executor.batch.Deposits[0].Data))
+		assert.Equal(t, string([]byte{bridgeCore.MissingDataProtocolMarker}), string(executor.batch.Deposits[0].Data))
 	})
 	t.Run("should bypass data if the data is the missing marker", func(t *testing.T) {
 		args := createMockExecutorArgs()

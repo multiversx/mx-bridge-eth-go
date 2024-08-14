@@ -170,7 +170,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 
 func (setup *TestSetup) processNumScCallsOperations(token TestTokenParams) {
 	for _, op := range token.TestOperations {
-		if len(op.MvxSCCallData) > 0 {
+		if len(op.MvxSCCallData) > 0 || op.MvxForceSCCall {
 			atomic.AddUint32(&setup.numScCallsInTest, 1)
 		}
 	}
@@ -199,7 +199,7 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(params TestTokenParam
 			continue
 		}
 
-		if len(operation.MvxSCCallData) > 0 {
+		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
 			if !operation.MvxFaultySCCall {
 				expectedValueOnContract.Add(expectedValueOnContract, operation.ValueToTransferToMvx)
 			}
@@ -243,7 +243,7 @@ func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params Test
 		}
 
 		expectedValueOnReceiver.Add(expectedValueOnReceiver, big.NewInt(0).Sub(valueToSendFromMvX, valueToTransferToMvx))
-		if len(operation.MvxSCCallData) > 0 {
+		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
 			if operation.MvxFaultySCCall {
 				// the balance should be bridged back to the receiver on Ethereum - fee
 				expectedValueOnReceiver.Add(expectedValueOnReceiver, valueToTransferToMvx)
