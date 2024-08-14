@@ -4,13 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/multiversx/mx-bridge-eth-go/common"
-	"github.com/multiversx/mx-bridge-eth-go/core"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/stretchr/testify/assert"
 )
 
-var initialStep = core.StepIdentifier(GettingPendingBatchFromMultiversX)
+var initialStep = bridgeCore.StepIdentifier(GettingPendingBatchFromMultiversX)
 
 func TestExecute_SignProposedTransfer(t *testing.T) {
 	t.Parallel()
@@ -18,7 +17,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 	t.Run("nil batch on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedTransfer()
-		bridgeStub.GetStoredBatchCalled = func() *common.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
 			return nil
 		}
 
@@ -55,7 +54,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 
 		assert.False(t, step.IsInterfaceNil())
 
-		expectedStepIdentifier := core.StepIdentifier(WaitingForQuorumOnTransfer)
+		expectedStepIdentifier := bridgeCore.StepIdentifier(WaitingForQuorumOnTransfer)
 		stepIdentifier := step.Execute(context.Background())
 		assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 	})
@@ -63,7 +62,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 
 func createStubExecutorSignProposedTransfer() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetStoredBatchCalled = func() *common.TransferBatch {
+	stub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
 		return testBatch
 	}
 	stub.SignTransferOnEthereumCalled = func() error {

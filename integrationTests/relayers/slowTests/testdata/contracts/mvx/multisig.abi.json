@@ -160,8 +160,9 @@
                     "type": "u64"
                 },
                 {
-                    "name": "raw_transfers",
-                    "type": "bytes"
+                    "name": "transfers",
+                    "type": "variadic<multi<EthAddress,Address,TokenIdentifier,BigUint,u64,Option<bytes>>>",
+                    "multi_arg": true
                 }
             ],
             "outputs": [
@@ -887,8 +888,9 @@
                     "type": "u64"
                 },
                 {
-                    "name": "raw_transfers",
-                    "type": "bytes"
+                    "name": "transfers",
+                    "type": "variadic<multi<EthAddress,Address,TokenIdentifier,BigUint,u64,Option<bytes>>>",
+                    "multi_arg": true
                 }
             ],
             "outputs": [
@@ -911,8 +913,9 @@
                     "type": "u64"
                 },
                 {
-                    "name": "raw_transfers",
-                    "type": "bytes"
+                    "name": "transfers",
+                    "type": "variadic<multi<EthAddress,Address,TokenIdentifier,BigUint,u64,Option<bytes>>>",
+                    "multi_arg": true
                 }
             ],
             "outputs": [

@@ -5,16 +5,16 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestExtractListEthToMvx(t *testing.T) {
 	t.Parallel()
 
-	testBatch := &bridgeCommon.TransferBatch{
+	testBatch := &bridgeCore.TransferBatch{
 		ID: 37,
-		Deposits: []*bridgeCommon.DepositTransfer{
+		Deposits: []*bridgeCore.DepositTransfer{
 			{
 				Nonce:                 1,
 				ToBytes:               []byte("to 1"),
@@ -71,9 +71,9 @@ func TestExtractListEthToMvx(t *testing.T) {
 func TestExtractListMvxToEth(t *testing.T) {
 	t.Parallel()
 
-	testBatch := &bridgeCommon.TransferBatch{
+	testBatch := &bridgeCore.TransferBatch{
 		ID: 37,
-		Deposits: []*bridgeCommon.DepositTransfer{
+		Deposits: []*bridgeCore.DepositTransfer{
 			{
 				Nonce:                 1,
 				ToBytes:               []byte("to 1"),

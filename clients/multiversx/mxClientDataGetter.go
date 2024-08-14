@@ -8,9 +8,8 @@ import (
 	"sync"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/common"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/errors"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/builders"
@@ -54,7 +53,6 @@ type ArgsMXClientDataGetter struct {
 }
 
 type mxClientDataGetter struct {
-	codec                         *parsers.MultiversxCodec
 	multisigContractAddress       core.AddressHandler
 	safeContractAddress           core.AddressHandler
 	bech32MultisigContractAddress string
@@ -89,7 +87,6 @@ func NewMXClientDataGetter(args ArgsMXClientDataGetter) (*mxClientDataGetter, er
 	}
 
 	return &mxClientDataGetter{
-		codec:                         &parsers.MultiversxCodec{},
 		multisigContractAddress:       args.MultisigContractAddress,
 		safeContractAddress:           args.SafeContractAddress,
 		bech32MultisigContractAddress: bech32Address,
@@ -329,17 +326,14 @@ func (dataGetter *mxClientDataGetter) GetERC20AddressForTokenId(ctx context.Cont
 }
 
 // WasProposedTransfer returns true if the transfer action proposed was triggered
-func (dataGetter *mxClientDataGetter) WasProposedTransfer(ctx context.Context, batch *common.TransferBatch) (bool, error) {
+func (dataGetter *mxClientDataGetter) WasProposedTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (bool, error) {
 	if batch == nil {
 		return false, clients.ErrNilBatch
 	}
 
 	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(wasTransferActionProposedFuncName).ArgInt64(int64(batch.ID))
-	err := dataGetter.addBatchInfo(builder, batch)
-	if err != nil {
-		return false, err
-	}
+	dataGetter.addBatchInfo(builder, batch)
 
 	return dataGetter.executeQueryBoolFromBuilder(ctx, builder)
 }
@@ -353,23 +347,20 @@ func (dataGetter *mxClientDataGetter) WasExecuted(ctx context.Context, actionID 
 }
 
 // GetActionIDForProposeTransfer returns the action ID for the proposed transfer operation
-func (dataGetter *mxClientDataGetter) GetActionIDForProposeTransfer(ctx context.Context, batch *common.TransferBatch) (uint64, error) {
+func (dataGetter *mxClientDataGetter) GetActionIDForProposeTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (uint64, error) {
 	if batch == nil {
 		return 0, clients.ErrNilBatch
 	}
 
 	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(getActionIdForTransferBatchFuncName).ArgInt64(int64(batch.ID))
-	err := dataGetter.addBatchInfo(builder, batch)
-	if err != nil {
-		return 0, err
-	}
+	dataGetter.addBatchInfo(builder, batch)
 
 	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
 
 // WasProposedSetStatus returns true if the proposed set status was triggered
-func (dataGetter *mxClientDataGetter) WasProposedSetStatus(ctx context.Context, batch *common.TransferBatch) (bool, error) {
+func (dataGetter *mxClientDataGetter) WasProposedSetStatus(ctx context.Context, batch *bridgeCore.TransferBatch) (bool, error) {
 	if batch == nil {
 		return false, clients.ErrNilBatch
 	}
@@ -420,7 +411,7 @@ func (dataGetter *mxClientDataGetter) GetTransactionsStatuses(ctx context.Contex
 }
 
 // GetActionIDForSetStatusOnPendingTransfer returns the action ID for setting the status on the pending transfer batch
-func (dataGetter *mxClientDataGetter) GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *common.TransferBatch) (uint64, error) {
+func (dataGetter *mxClientDataGetter) GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (uint64, error) {
 	if batch == nil {
 		return 0, clients.ErrNilBatch
 	}
@@ -516,15 +507,15 @@ func (dataGetter *mxClientDataGetter) getBurnBalances(ctx context.Context, token
 	return dataGetter.executeQueryBigIntFromBuilder(ctx, builder)
 }
 
-func (dataGetter *mxClientDataGetter) addBatchInfo(builder builders.VMQueryBuilder, batch *common.TransferBatch) error {
-	depositsData, err := dataGetter.codec.EncodeDeposits(batch.Deposits)
-	if err != nil {
-		return err
+func (dataGetter *mxClientDataGetter) addBatchInfo(builder builders.VMQueryBuilder, batch *bridgeCore.TransferBatch) {
+	for _, dt := range batch.Deposits {
+		builder.ArgBytes(dt.FromBytes).
+			ArgBytes(dt.ToBytes).
+			ArgBytes(dt.DestinationTokenBytes).
+			ArgBigInt(dt.Amount).
+			ArgInt64(int64(dt.Nonce)).
+			ArgBytes(dt.Data)
 	}
-
-	builder.ArgBytes(depositsData)
-
-	return nil
 }
 
 func getStatusFromBuff(buff []byte) (byte, error) {

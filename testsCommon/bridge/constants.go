@@ -20,3 +20,16 @@ var CallDataMock = func() []byte {
 
 	return b
 }()
+
+// EthCallDataMock -
+var EthCallDataMock = func() []byte {
+	b := []byte{
+		0, 0, 0, 3, 'a', 'b', 'c',
+		0x00, 0x00, 0x00, 0x00, 0x1D, 0xCD, 0x65, 0x00, // gas limit
+		0, 0, 0, 1, // numArguments
+		0, 0, 0, 5, // argument 0 length
+		'd', 'e', 'f', 'g', 'h', // argument 0 data
+	}
+
+	return b
+}()

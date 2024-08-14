@@ -2,18 +2,18 @@ package ethmultiversx
 
 import (
 	"context"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/big"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -38,13 +38,6 @@ type ArgsBridgeExecutor struct {
 	MaxRestriesOnWasProposed     uint64
 }
 
-var emtpyCallData = parsers.CallData{
-	Type:      parsers.DataPresentProtocolMarker,
-	Function:  "",
-	GasLimit:  0,
-	Arguments: nil,
-}
-
 type bridgeExecutor struct {
 	log                          logger.Logger
 	topologyProvider             TopologyProvider
@@ -58,7 +51,7 @@ type bridgeExecutor struct {
 	maxQuorumRetriesOnMultiversX uint64
 	maxRetriesOnWasProposed      uint64
 
-	batch                     *bridgeCommon.TransferBatch
+	batch                     *bridgeCore.TransferBatch
 	actionID                  uint64
 	msgHash                   common.Hash
 	quorumRetriesOnEthereum   uint64
@@ -158,7 +151,7 @@ func (executor *bridgeExecutor) MyTurnAsLeader() bool {
 }
 
 // GetBatchFromMultiversX fetches the pending batch from MultiversX
-func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*bridgeCommon.TransferBatch, error) {
+func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 	batch, err := executor.multiversXClient.GetPendingBatch(ctx)
 	if err == nil {
 		executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
@@ -167,7 +160,7 @@ func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*br
 }
 
 // StoreBatchFromMultiversX saves the pending batch from MultiversX
-func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *bridgeCommon.TransferBatch) error {
+func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *bridgeCore.TransferBatch) error {
 	if batch == nil {
 		return ErrNilBatch
 	}
@@ -177,7 +170,7 @@ func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *bridgeCommon.Tra
 }
 
 // GetStoredBatch returns the stored batch
-func (executor *bridgeExecutor) GetStoredBatch() *bridgeCommon.TransferBatch {
+func (executor *bridgeExecutor) GetStoredBatch() *bridgeCore.TransferBatch {
 	return executor.batch
 }
 
@@ -469,7 +462,7 @@ func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context
 }
 
 // addBatchSCMetadata fetches the logs containing sc calls metadata for the current batch
-func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfers *bridgeCommon.TransferBatch) (*bridgeCommon.TransferBatch, error) {
+func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfers *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
 	if transfers == nil {
 		return nil, ErrNilBatch
 	}
@@ -486,29 +479,38 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 	return transfers, nil
 }
 
-func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCommon.DepositTransfer, events []*contract.ERC20SafeERC20SCDeposit) *bridgeCommon.DepositTransfer {
+func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCore.DepositTransfer, events []*contract.ERC20SafeERC20SCDeposit) *bridgeCore.DepositTransfer {
 	for _, event := range events {
 		if event.DepositNonce.Uint64() == transfer.Nonce {
-			transfer.Data = []byte(event.CallData)
-			var err error
-			transfer.DisplayableData, err = ConvertToDisplayableData(transfer.Data)
-			if err != nil {
-				executor.log.Warn("failed to convert call data to displayable data, will alter and call with an empty call data struct",
-					"error", err,
-					"call data", fmt.Sprintf("%+v", emtpyCallData))
-
-				codec := parsers.MultiversxCodec{}
-				transfer.Data = codec.EncodeCallData(emtpyCallData)
-			}
-
+			processData(transfer, []byte(event.CallData))
 			return transfer
 		}
 	}
 
-	transfer.Data = []byte{parsers.MissingDataProtocolMarker} // make([]byte, 0)
+	transfer.Data = []byte{bridgeCore.MissingDataProtocolMarker}
 	transfer.DisplayableData = ""
 
 	return transfer
+}
+
+func processData(transfer *bridgeCore.DepositTransfer, buff []byte) {
+	transfer.Data = buff
+	dataLen := len(transfer.Data)
+	if dataLen == 0 {
+		return
+	}
+	if dataLen == 1 && buff[0] == bridgeCore.MissingDataProtocolMarker {
+		return
+	}
+
+	// we have a data field, add the marker & the correct length
+	transfer.DisplayableData = hex.EncodeToString(transfer.Data)
+	buff32 := make([]byte, bridgeCore.Uint32ArgBytes)
+	binary.BigEndian.PutUint32(buff32, uint32(dataLen))
+
+	prefix := append([]byte{bridgeCore.DataPresentProtocolMarker}, buff32...)
+
+	transfer.Data = append(prefix, transfer.Data...)
 }
 
 // WasTransferPerformedOnEthereum returns true if the batch was performed on Ethereum
@@ -649,28 +651,4 @@ func (executor *bridgeExecutor) CheckEthereumClientAvailability(ctx context.Cont
 // IsInterfaceNil returns true if there is no value under the interface
 func (executor *bridgeExecutor) IsInterfaceNil() bool {
 	return executor == nil
-}
-
-// ConvertToDisplayableData
-/** @param callData The encoded data specifying the cross-chain call details. The expected format is:
-*        0x01 + endpoint_name_length (4 bytes) + endpoint_name + gas_limit (8 bytes) +
-*        num_arguments_length (4 bytes) + [argument_length (4 bytes) + argument]...
-*        This payload includes the endpoint name, gas limit for the execution, and the arguments for the call.
- */
-func ConvertToDisplayableData(buff []byte) (string, error) {
-	codec := parsers.MultiversxCodec{}
-
-	callData, err := codec.DecodeCallData(buff)
-	if err != nil {
-		return "", err
-	}
-
-	if callData.Type == parsers.MissingDataProtocolMarker {
-		return "", nil
-	}
-
-	return fmt.Sprintf("Endpoint: %s, Gas: %d, Arguments: %s",
-		callData.Function,
-		callData.GasLimit,
-		strings.Join(callData.Arguments, "@")), nil
 }

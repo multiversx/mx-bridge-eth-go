@@ -9,7 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -259,7 +259,7 @@ func (validator *balanceValidator) computeMvxAmount(
 	return mvxAmount, nil
 }
 
-func getTotalAmountFromBatch(batch *bridgeCommon.TransferBatch, token []byte) *big.Int {
+func getTotalAmountFromBatch(batch *bridgeCore.TransferBatch, token []byte) *big.Int {
 	amount := big.NewInt(0)
 	for _, deposit := range batch.Deposits {
 		if bytes.Equal(deposit.SourceTokenBytes, token) {
@@ -313,7 +313,7 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingEthBatches(ctx
 		return nil, err
 	}
 
-	var batch *bridgeCommon.TransferBatch
+	var batch *bridgeCore.TransferBatch
 	amount := big.NewInt(0)
 	for {
 		batch, _, err = validator.ethereumClient.GetBatch(ctx, batchID+1) // we take all batches, regardless if they are final or not
