@@ -188,20 +188,6 @@ func (instance *chainSimulatorWrapper) GenerateBlocksUntilTxProcessed(ctx contex
 	}
 }
 
-func (instance *chainSimulatorWrapper) getTxInfoWithResultsIfTxProcessingFinished(ctx context.Context, hash string) (transaction.TxStatus, *data.TransactionOnNetwork) {
-	txStatus, err := instance.proxyInstance.ProcessTransactionStatus(ctx, hash)
-	require.Nil(instance, err)
-
-	if txStatus != transaction.TxStatusSuccess {
-		return txStatus, nil
-	}
-
-	txResult, errGet := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
-	require.Nil(instance, errGet)
-
-	return txStatus, &txResult.Data.Transaction
-}
-
 // ScCall will make the provided sc call
 func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork) {
 	params := []string{function}
