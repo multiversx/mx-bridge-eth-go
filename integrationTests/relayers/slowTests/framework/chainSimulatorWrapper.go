@@ -34,10 +34,9 @@ const (
 	setMultipleEndpoint                     = "simulator/set-state-overwrite"
 	generateBlocksEndpoint                  = "simulator/generate-blocks/%d"
 	generateBlocksUntilEpochReachedEndpoint = "simulator/generate-blocks-until-epoch-reached/%d"
+	generateBlocksUntilTxProcessedEndpoint  = "simulator/generate-blocks-until-transaction-processed/%s"
 	numProbeRetries                         = 10
 	networkConfigEndpointTemplate           = "network/status/%d"
-	maxNumBlocksToBeProcessed               = 15
-	minNumBlocksToBeProcessedForEachTx      = 5
 )
 
 var (
@@ -154,21 +153,12 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 
 // GetTransactionResult tries to get a transaction result. It may wait a few blocks
 func (instance *chainSimulatorWrapper) getTransactionResult(ctx context.Context, hash string) *data.TransactionOnNetwork {
-	instance.GenerateBlocks(ctx, minNumBlocksToBeProcessedForEachTx)
+	instance.GenerateBlocksUntilTxProcessed(ctx, hash)
 
-	for i := 0; i < maxNumBlocksToBeProcessed; i++ {
-		instance.GenerateBlocks(ctx, 1)
+	txResult, errGet := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
+	require.Nil(instance, errGet)
 
-		status, txOnNetwork := instance.getTxInfoWithResultsIfTxProcessingFinished(ctx, hash)
-		if status == transaction.TxStatusPending {
-			continue
-		}
-		require.Equal(instance.TB, transaction.TxStatusSuccess, status, fmt.Sprintf("status not OK for transaction hash %s", hash))
-		return txOnNetwork
-	}
-
-	require.Fail(instance.TB, fmt.Sprintf("status still pending for transaction hash %s", hash))
-	return nil
+	return &txResult.Data.Transaction
 }
 
 // GenerateBlocks calls the chain simulator generate block endpoint
@@ -185,6 +175,15 @@ func (instance *chainSimulatorWrapper) GenerateBlocksUntilEpochReached(ctx conte
 	_, status, err := instance.clientWrapper.PostHTTP(ctx, fmt.Sprintf(generateBlocksUntilEpochReachedEndpoint, epoch), nil)
 	if err != nil || status != http.StatusOK {
 		log.Error("error in chainSimulatorWrapper.GenerateBlocksUntilEpochReached", "error", err, "status", status)
+		return
+	}
+}
+
+// GenerateBlocksUntilTxProcessed will generate blocks until the provided tx hash is executed
+func (instance *chainSimulatorWrapper) GenerateBlocksUntilTxProcessed(ctx context.Context, hexTxHash string) {
+	_, status, err := instance.clientWrapper.PostHTTP(ctx, fmt.Sprintf(generateBlocksUntilTxProcessedEndpoint, hexTxHash), nil)
+	if err != nil || status != http.StatusOK {
+		log.Error("error in chainSimulatorWrapper.GenerateBlocksUntilTxProcessed", "error", err, "status", status)
 		return
 	}
 }
