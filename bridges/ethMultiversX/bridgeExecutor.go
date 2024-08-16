@@ -482,7 +482,7 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCore.DepositTransfer, events []*contract.ERC20SafeERC20SCDeposit) *bridgeCore.DepositTransfer {
 	for _, event := range events {
 		if event.DepositNonce.Uint64() == transfer.Nonce {
-			processData(transfer, []byte(event.CallData))
+			processData(transfer, event.CallData)
 			return transfer
 		}
 	}

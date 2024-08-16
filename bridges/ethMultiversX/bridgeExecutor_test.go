@@ -401,7 +401,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		args := createMockExecutorArgs()
 		providedNonce := uint64(8346)
 		depositNonce := uint64(100)
-		depositData := "testData"
+		depositData := []byte("testData")
 		expectedBatch := &bridgeCore.TransferBatch{
 			ID: providedNonce,
 			Deposits: []*bridgeCore.DepositTransfer{
@@ -437,7 +437,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		args := createMockExecutorArgs()
 		providedNonce := uint64(8346)
 		depositNonce := uint64(100)
-		depositData := string([]byte{bridgeCore.MissingDataProtocolMarker}) + "testData"
+		depositData := append([]byte{bridgeCore.MissingDataProtocolMarker}, "testData"...)
 		expectedBatch := &bridgeCore.TransferBatch{
 			ID: providedNonce,
 			Deposits: []*bridgeCore.DepositTransfer{
@@ -471,7 +471,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		args := createMockExecutorArgs()
 		providedNonce := uint64(8346)
 		depositNonce := uint64(100)
-		depositData := ""
+		depositData := make([]byte, 0)
 		expectedBatch := &bridgeCore.TransferBatch{
 			ID: providedNonce,
 			Deposits: []*bridgeCore.DepositTransfer{
@@ -503,7 +503,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		args := createMockExecutorArgs()
 		providedNonce := uint64(8346)
 		depositNonce := uint64(100)
-		depositData := string([]byte{bridgeCore.MissingDataProtocolMarker})
+		depositData := []byte{bridgeCore.MissingDataProtocolMarker}
 		expectedBatch := &bridgeCore.TransferBatch{
 			ID: providedNonce,
 			Deposits: []*bridgeCore.DepositTransfer{
@@ -529,7 +529,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
-		assert.Equal(t, depositData, string(executor.batch.Deposits[0].Data))
+		assert.Equal(t, depositData, executor.batch.Deposits[0].Data)
 	})
 }
 

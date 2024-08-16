@@ -1235,7 +1235,7 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 		expectedEvent := &contract.ERC20SafeERC20SCDeposit{
 			BatchId:      big.NewInt(1),
 			DepositNonce: big.NewInt(2),
-			CallData:     "call_data_to_unpack",
+			CallData:     []byte("call_data_to_unpack"),
 		}
 
 		eventInputs := scExecAbi.Events["ERC20SCDeposit"].Inputs.NonIndexed()

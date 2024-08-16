@@ -360,7 +360,7 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 				token.EthErc20Address,
 				operation.ValueToTransferToMvx,
 				mvxTestCallerAddress.AddressSlice(),
-				string(operation.MvxSCCallData),
+				operation.MvxSCCallData,
 			)
 		} else {
 			tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())

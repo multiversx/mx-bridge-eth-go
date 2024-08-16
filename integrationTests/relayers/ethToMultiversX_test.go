@@ -28,8 +28,8 @@ import (
 )
 
 type argsForSCCallsTest struct {
-	providedScCallData string
-	expectedScCallData string
+	providedScCallData []byte
+	expectedScCallData []byte
 }
 
 func TestRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T) {
@@ -195,16 +195,16 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 
 	t.Run("correct SC call", func(t *testing.T) {
 		testArgs := argsForSCCallsTest{
-			providedScCallData: string(bridge.EthCallDataMock),
-			expectedScCallData: string(bridge.CallDataMock),
+			providedScCallData: bridge.EthCallDataMock,
+			expectedScCallData: bridge.CallDataMock,
 		}
 
 		testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t, testArgs)
 	})
 	t.Run("no SC call", func(t *testing.T) {
 		testArgs := argsForSCCallsTest{
-			providedScCallData: string([]byte{bridgeCore.MissingDataProtocolMarker}),
-			expectedScCallData: string([]byte{bridgeCore.MissingDataProtocolMarker}),
+			providedScCallData: []byte{bridgeCore.MissingDataProtocolMarker},
+			expectedScCallData: []byte{bridgeCore.MissingDataProtocolMarker},
 		}
 
 		testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t, testArgs)
@@ -388,7 +388,7 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	assert.Equal(t, value3, transfer.Transfers[2].Amount)
 	assert.Equal(t, depositor3, common.BytesToAddress(transfer.Transfers[2].From))
 	assert.Equal(t, txNonceOnEthereum+3, transfer.Transfers[2].Nonce.Uint64())
-	assert.Equal(t, args.expectedScCallData, string(transfer.Transfers[2].Data))
+	assert.Equal(t, args.expectedScCallData, transfer.Transfers[2].Data)
 }
 
 func createMockBridgeComponentsArgs(
