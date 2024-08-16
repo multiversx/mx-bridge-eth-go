@@ -7,10 +7,12 @@ package slowTests
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +20,8 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-sdk-go/data"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,17 +29,35 @@ const (
 	timeout = time.Minute * 15
 )
 
-var (
-	log = logger.GetOrCreate("integrationTests/relayers/slowTests")
-)
-
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
-	testRelayersWithChainSimulatorAndTokens(
+	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
 		GenerateTestUSDCToken(),
 		GenerateTestMEMEToken(),
 	)
+}
+
+func TestRelayersShouldExecuteTransfersWithSCCallsWithParameters(t *testing.T) {
+	dummyAddress := strings.Repeat("2", 32)
+	dummyUint64 := string([]byte{37})
+
+	callData := createScCallData("callPayableWithParams", 50000000, dummyUint64, dummyAddress)
+
+	usdcToken := GenerateTestUSDCToken()
+	usdcToken.TestOperations[2].MvxSCCallData = callData
+
+	memeToken := GenerateTestMEMEToken()
+	memeToken.TestOperations[2].MvxSCCallData = callData
+
+	testSetup := testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		usdcToken,
+		memeToken,
+	)
+
+	testCallPayableWithParamsWasCalled(testSetup, 37, usdcToken.AbstractTokenIdentifier, memeToken.AbstractTokenIdentifier)
 }
 
 func TestRelayerShouldExecuteTransfersAndNotCatchErrors(t *testing.T) {
@@ -63,14 +85,14 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrors(t *testing.T) {
 		}
 	}()
 
-	testRelayersWithChainSimulatorAndTokens(
+	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		stopChan,
 		GenerateTestMEMEToken(),
 	)
 }
 
-func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) {
+func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
 	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
@@ -100,7 +122,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 		return false
 	}
 
-	testRelayersWithChainSimulator(tb,
+	return testRelayersWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
@@ -138,7 +160,7 @@ func testRelayersWithChainSimulator(tb testing.TB,
 	setupFunc func(tb testing.TB, setup *framework.TestSetup),
 	processLoopFunc func(tb testing.TB, setup *framework.TestSetup) bool,
 	stopChan chan error,
-) {
+) *framework.TestSetup {
 	defer func() {
 		r := recover()
 		if r != nil {
@@ -159,17 +181,17 @@ func testRelayersWithChainSimulator(tb testing.TB,
 		select {
 		case <-interrupt:
 			require.Fail(tb, "signal interrupted")
-			return
+			return testSetup
 		case <-time.After(timeout):
 			require.Fail(tb, "time out")
-			return
+			return testSetup
 		case err := <-stopChan:
 			require.Nil(tb, err)
-			return
+			return testSetup
 		default:
 			testDone := processLoopFunc(tb, testSetup)
 			if testDone {
-				return
+				return testSetup
 			}
 		}
 	}
@@ -317,7 +339,7 @@ func testRelayersShouldNotExecuteTransfers(
 		}
 	}()
 
-	testRelayersWithChainSimulator(tb, setupFunc, processFunc, stopChan)
+	_ = testRelayersWithChainSimulator(tb, setupFunc, processFunc, stopChan)
 }
 
 func testEthContractsShouldError(tb testing.TB, testToken framework.TestTokenParams) {
@@ -341,9 +363,43 @@ func testEthContractsShouldError(tb testing.TB, testToken framework.TestTokenPar
 		return true
 	}
 
-	testRelayersWithChainSimulator(tb,
+	_ = testRelayersWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		make(chan error),
 	)
+}
+
+func testCallPayableWithParamsWasCalled(testSetup *framework.TestSetup, value uint64, tokens ...string) {
+	if len(tokens) == 0 {
+		return
+	}
+
+	vmRequest := &data.VmValueRequest{
+		Address:  testSetup.MultiversxHandler.TestCallerAddress.Bech32(),
+		FuncName: "getCalledDataParams",
+	}
+
+	vmResponse, err := testSetup.ChainSimulator.Proxy().ExecuteVMQuery(context.Background(), vmRequest)
+	require.Nil(testSetup, err)
+
+	returnedData := vmResponse.Data.ReturnData
+	require.Equal(testSetup, len(tokens), len(returnedData))
+
+	for i, token := range tokens {
+		buff := returnedData[i]
+		parsedValue, parsedToken := processCalledDataParams(buff)
+		assert.Equal(testSetup, value, parsedValue)
+		assert.Contains(testSetup, parsedToken, token)
+	}
+}
+
+func processCalledDataParams(buff []byte) (uint64, string) {
+	valBuff := buff[:8]
+	value := binary.BigEndian.Uint64(valBuff)
+
+	buff = buff[8+32+4:] // trim the nonce, address and length of the token
+	token := string(buff)
+
+	return value, token
 }

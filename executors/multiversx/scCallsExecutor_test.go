@@ -43,7 +43,7 @@ func createTestProxySCCompleteCallData(token string) parsers.ProxySCCompleteCall
 				Type:      1,
 				Function:  "callMe",
 				GasLimit:  5000000,
-				Arguments: []interface{}{"arg1", "arg2"},
+				Arguments: []string{"arg1", "arg2"},
 			}),
 		From:   common.Address{},
 		Token:  token,

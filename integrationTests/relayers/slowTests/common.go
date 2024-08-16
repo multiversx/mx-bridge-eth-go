@@ -9,6 +9,11 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	logger "github.com/multiversx/mx-chain-logger-go"
+)
+
+var (
+	log = logger.GetOrCreate("integrationTests/relayers/slowTests")
 )
 
 // GenerateTestUSDCToken will generate a test USDC token
@@ -93,7 +98,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 	}
 }
 
-func createScCallData(function string, gasLimit uint64, args ...interface{}) []byte {
+func createScCallData(function string, gasLimit uint64, args ...string) []byte {
 	codec := testsCommon.TestMultiversXCodec{}
 	callData := parsers.CallData{
 		Type:      bridgeCore.DataPresentProtocolMarker,

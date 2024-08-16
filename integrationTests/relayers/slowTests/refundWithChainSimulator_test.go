@@ -7,6 +7,7 @@ package slowTests
 
 import (
 	"math/big"
+	"strings"
 	"testing"
 
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -149,6 +150,90 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			memeToken,
 		)
 	})
+	t.Run("no arguments should refund", func(t *testing.T) {
+		callData := createScCallData("callPayableWithParams", 50000000)
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
+	t.Run("wrong number of arguments should refund", func(t *testing.T) {
+		callData := createScCallData("callPayableWithParams", 50000000, string([]byte{37}))
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
+	t.Run("not an uint64 argument should refund", func(t *testing.T) {
+		malformedUint64String := string([]byte{37, 36, 35, 34, 33, 32, 31, 32, 33}) // 9 bytes instead of 8
+		dummyAddress := strings.Repeat("2", 32)
+
+		callData := createScCallData("callPayableWithParams", 50000000, malformedUint64String, dummyAddress)
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
+	t.Run("wrong arguments encoding should refund", func(t *testing.T) {
+		callData := createScCallData("callPayableWithParams", 50000000)
+		// the last byte is the data missing marker, we will replace that
+		callData[len(callData)-1] = bridgeCore.DataPresentProtocolMarker
+		// add garbage data
+		callData = append(callData, []byte{5, 4, 55}...)
+
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
 }
 
 func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) {
@@ -181,7 +266,7 @@ func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopC
 		return false
 	}
 
-	testRelayersWithChainSimulator(tb,
+	_ = testRelayersWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
