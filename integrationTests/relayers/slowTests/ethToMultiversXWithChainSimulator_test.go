@@ -38,7 +38,7 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 	)
 }
 
-func TestRelayersShouldExecuteTransfersWithSCCallsWithParameters(t *testing.T) {
+func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 	dummyAddress := strings.Repeat("2", 32)
 	dummyUint64 := string([]byte{37})
 

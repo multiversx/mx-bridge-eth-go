@@ -81,13 +81,13 @@
       {
         "indexed": false,
         "internalType": "uint112",
-        "name": "depositNonce",
+        "name": "batchId",
         "type": "uint112"
       },
       {
         "indexed": false,
         "internalType": "uint112",
-        "name": "batchId",
+        "name": "depositNonce",
         "type": "uint112"
       }
     ],
@@ -111,9 +111,9 @@
       },
       {
         "indexed": false,
-        "internalType": "string",
+        "internalType": "bytes",
         "name": "callData",
-        "type": "string"
+        "type": "bytes"
       }
     ],
     "name": "ERC20SCDeposit",
@@ -353,9 +353,9 @@
         "type": "bytes32"
       },
       {
-        "internalType": "string",
+        "internalType": "bytes",
         "name": "callData",
-        "type": "string"
+        "type": "bytes"
       }
     ],
     "name": "depositWithSCExecution",
