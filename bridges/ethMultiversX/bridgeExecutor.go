@@ -497,8 +497,11 @@ func processData(transfer *bridgeCore.DepositTransfer, buff []byte) {
 	transfer.Data = buff
 	dataLen := len(transfer.Data)
 	if dataLen == 0 {
+		transfer.Data = []byte{bridgeCore.MissingDataProtocolMarker}
+		transfer.DisplayableData = ""
 		return
 	}
+	// this check is optional, but brings an optimisation to reduce the gas used in case of a bad callData
 	if dataLen == 1 && buff[0] == bridgeCore.MissingDataProtocolMarker {
 		return
 	}

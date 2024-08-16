@@ -354,7 +354,7 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 		}
 
 		var tx *types.Transaction
-		if len(operation.MvxSCCallData) > 0 {
+		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
 			tx, err = handler.SafeContract.DepositWithSCExecution(
 				auth,
 				token.EthErc20Address,
