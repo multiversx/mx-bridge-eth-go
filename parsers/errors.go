@@ -9,8 +9,6 @@ var (
 	errBufferTooShortForString     = errors.New("buffer too short while extracting the string data")
 	errBufferTooShortForUint64     = errors.New("buffer too short for uint64")
 	errBufferTooShortForUint32     = errors.New("buffer too short for uint32 length")
-	errNilAddressHandler           = errors.New("nil address handler")
-	errNilAmount                   = errors.New("nil amount")
 	errBufferTooShortForEthAddress = errors.New("buffer too short for Ethereum address")
 	errBufferTooShortForMvxAddress = errors.New("buffer too short for MultiversX address")
 	errBufferTooShortForBigInt     = errors.New("buffer too short while extracting the big.Int value")

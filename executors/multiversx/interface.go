@@ -41,9 +41,7 @@ type ScCallsExecuteFilter interface {
 
 // Codec defines the operations implemented by a MultiversX codec
 type Codec interface {
-	EncodeCallData(callData parsers.CallData) []byte
-	EncodeProxySCCompleteCallData(completeData parsers.ProxySCCompleteCallData) ([]byte, error)
-	DecodeCallData(buff []byte) (parsers.CallData, error)
 	DecodeProxySCCompleteCallData(buff []byte) (parsers.ProxySCCompleteCallData, error)
+	ExtractGasLimitFromRawCallData(buff []byte) (uint64, error)
 	IsInterfaceNil() bool
 }

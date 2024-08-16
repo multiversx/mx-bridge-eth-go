@@ -13,13 +13,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
-	"github.com/multiversx/mx-bridge-eth-go/core"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/factory"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-bridge-eth-go/status"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
@@ -131,7 +129,7 @@ func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNat
 	multiversXChainMock.SetLastExecutedEthBatchID(batchNonceOnEthereum)
 	multiversXChainMock.SetLastExecutedEthTxId(txNonceOnEthereum)
 	multiversXChainMock.GetStatusesAfterExecutionHandler = func() []byte {
-		return []byte{bridgeCommon.Executed, bridgeCommon.Rejected}
+		return []byte{bridgeCore.Executed, bridgeCore.Rejected}
 	}
 	multiversXChainMock.SetQuorum(numRelayers)
 
@@ -180,14 +178,14 @@ func testRelayersShouldExecuteTransfersFromEthToMultiversX(t *testing.T, withNat
 	assert.Equal(t, value1, transfer.Transfers[0].Amount)
 	assert.Equal(t, depositor1, common.BytesToAddress(transfer.Transfers[0].From))
 	assert.Equal(t, txNonceOnEthereum+1, transfer.Transfers[0].Nonce.Uint64())
-	assert.Equal(t, []byte{parsers.MissingDataProtocolMarker}, transfer.Transfers[0].Data)
+	assert.Equal(t, []byte{bridgeCore.MissingDataProtocolMarker}, transfer.Transfers[0].Data)
 
 	assert.Equal(t, destination2.AddressBytes(), transfer.Transfers[1].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker2)), transfer.Transfers[1].Token)
 	assert.Equal(t, value2, transfer.Transfers[1].Amount)
 	assert.Equal(t, depositor2, common.BytesToAddress(transfer.Transfers[1].From))
 	assert.Equal(t, txNonceOnEthereum+2, transfer.Transfers[1].Nonce.Uint64())
-	assert.Equal(t, []byte{parsers.MissingDataProtocolMarker}, transfer.Transfers[1].Data)
+	assert.Equal(t, []byte{bridgeCore.MissingDataProtocolMarker}, transfer.Transfers[1].Data)
 }
 
 func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t *testing.T) {
@@ -197,7 +195,7 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 
 	t.Run("correct SC call", func(t *testing.T) {
 		testArgs := argsForSCCallsTest{
-			providedScCallData: string(bridge.CallDataMock),
+			providedScCallData: string(bridge.EthCallDataMock),
 			expectedScCallData: string(bridge.CallDataMock),
 		}
 
@@ -205,8 +203,8 @@ func TestRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	})
 	t.Run("no SC call", func(t *testing.T) {
 		testArgs := argsForSCCallsTest{
-			providedScCallData: string([]byte{parsers.MissingDataProtocolMarker}),
-			expectedScCallData: string([]byte{parsers.MissingDataProtocolMarker}),
+			providedScCallData: string([]byte{bridgeCore.MissingDataProtocolMarker}),
+			expectedScCallData: string([]byte{bridgeCore.MissingDataProtocolMarker}),
 		}
 
 		testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t, testArgs)
@@ -323,7 +321,7 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	multiversXChainMock.SetLastExecutedEthBatchID(batchNonceOnEthereum)
 	multiversXChainMock.SetLastExecutedEthTxId(txNonceOnEthereum)
 	multiversXChainMock.GetStatusesAfterExecutionHandler = func() []byte {
-		return []byte{bridgeCommon.Executed, bridgeCommon.Rejected, bridgeCommon.Executed}
+		return []byte{bridgeCore.Executed, bridgeCore.Rejected, bridgeCore.Executed}
 	}
 	multiversXChainMock.SetQuorum(numRelayers)
 
@@ -376,14 +374,14 @@ func testRelayersShouldExecuteTransferFromEthToMultiversXHavingTxsWithSCcalls(t 
 	assert.Equal(t, value1, transfer.Transfers[0].Amount)
 	assert.Equal(t, depositor1, common.BytesToAddress(transfer.Transfers[0].From))
 	assert.Equal(t, txNonceOnEthereum+1, transfer.Transfers[0].Nonce.Uint64())
-	assert.Equal(t, []byte{parsers.MissingDataProtocolMarker}, transfer.Transfers[0].Data)
+	assert.Equal(t, []byte{bridgeCore.MissingDataProtocolMarker}, transfer.Transfers[0].Data)
 
 	assert.Equal(t, destination2.AddressBytes(), transfer.Transfers[1].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker2)), transfer.Transfers[1].Token)
 	assert.Equal(t, value2, transfer.Transfers[1].Amount)
 	assert.Equal(t, depositor2, common.BytesToAddress(transfer.Transfers[1].From))
 	assert.Equal(t, txNonceOnEthereum+2, transfer.Transfers[1].Nonce.Uint64())
-	assert.Equal(t, []byte{parsers.MissingDataProtocolMarker}, transfer.Transfers[1].Data)
+	assert.Equal(t, []byte{bridgeCore.MissingDataProtocolMarker}, transfer.Transfers[1].Data)
 
 	assert.Equal(t, destination3Sc.AddressBytes(), transfer.Transfers[2].To)
 	assert.Equal(t, hex.EncodeToString([]byte(ticker3)), transfer.Transfers[2].Token)
@@ -406,7 +404,7 @@ func createMockBridgeComponentsArgs(
 			GeneralConfig:   generalConfigs,
 			ApiRoutesConfig: config.ApiRoutesConfig{},
 			FlagsConfig: config.ContextFlagsConfig{
-				RestApiInterface: core.WebServerOffString,
+				RestApiInterface: bridgeCore.WebServerOffString,
 			},
 		},
 		Proxy:                         multiversXChainMock,

@@ -9,8 +9,8 @@ import (
 	"math/big"
 	"testing"
 
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +35,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		)
 	})
 	t.Run("malformed SC call data should refund", func(t *testing.T) {
-		callData := []byte{parsers.DataPresentProtocolMarker, 4, 55}
+		callData := []byte{bridgeCore.DataPresentProtocolMarker, 4, 55}
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
@@ -64,6 +64,26 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+		)
+	})
+	t.Run("wrong deposit with empty sc call data should refund", func(t *testing.T) {
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = nil
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.TestOperations[2].MvxForceSCCall = true
+		usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                 // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = nil
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.TestOperations[2].MvxForceSCCall = true
 
 		testRelayersWithChainSimulatorAndTokensAndRefund(
 			t,

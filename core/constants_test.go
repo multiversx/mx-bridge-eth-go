@@ -1,4 +1,4 @@
-package ethmultiversx
+package core
 
 import (
 	"testing"

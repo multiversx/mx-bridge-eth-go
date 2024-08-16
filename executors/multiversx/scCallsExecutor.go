@@ -214,10 +214,17 @@ func (executor *scCallExecutor) executeOperation(
 		return err
 	}
 
+	gasLimit, err := executor.codec.ExtractGasLimitFromRawCallData(callData.RawCallData)
+	if err != nil {
+		log.Warn("scCallExecutor.executeOperation found a non-parsable raw call data",
+			"raw call data", callData.RawCallData, "error", err)
+		gasLimit = 0
+	}
+
 	tx := &transaction.FrontendTransaction{
 		ChainID:  networkConfig.ChainID,
 		Version:  networkConfig.MinTransactionVersion,
-		GasLimit: callData.GasLimit + executor.extraGasToExecute,
+		GasLimit: gasLimit + executor.extraGasToExecute,
 		Data:     dataBytes,
 		Sender:   bech32Address,
 		Receiver: executor.scProxyBech32Address,

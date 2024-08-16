@@ -14,10 +14,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
@@ -65,10 +63,10 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 	}
 }
 
-func createMockTransferBatch() *bridgeCommon.TransferBatch {
-	return &bridgeCommon.TransferBatch{
+func createMockTransferBatch() *bridgeCore.TransferBatch {
+	return &bridgeCore.TransferBatch{
 		ID: 332,
-		Deposits: []*bridgeCommon.DepositTransfer{
+		Deposits: []*bridgeCore.DepositTransfer{
 			{
 				Nonce:                 10,
 				ToBytes:               []byte("to1"),
@@ -337,9 +335,9 @@ func TestClient_GetBatch(t *testing.T) {
 
 		bech32Recipient1Address, _ := recipient1.AddressAsBech32String()
 		bech32Recipient2Address, _ := recipient2.AddressAsBech32String()
-		expectedBatch := &bridgeCommon.TransferBatch{
+		expectedBatch := &bridgeCore.TransferBatch{
 			ID: 112243,
-			Deposits: []*bridgeCommon.DepositTransfer{
+			Deposits: []*bridgeCore.DepositTransfer{
 				{
 					Nonce:                 10,
 					ToBytes:               recipient1.AddressBytes(),
@@ -411,9 +409,9 @@ func TestClient_GetBatch(t *testing.T) {
 
 		bech32Recipient1Address, _ := recipient1.AddressAsBech32String()
 		bech32Recipient2Address, _ := recipient2.AddressAsBech32String()
-		expectedBatch := &bridgeCommon.TransferBatch{
+		expectedBatch := &bridgeCore.TransferBatch{
 			ID: 112243,
-			Deposits: []*bridgeCommon.DepositTransfer{
+			Deposits: []*bridgeCore.DepositTransfer{
 				{
 					Nonce:                 10,
 					ToBytes:               recipient1.AddressBytes(),
@@ -638,7 +636,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 			},
 		}
 		newBatch := batch.Clone()
-		newBatch.Deposits = append(newBatch.Deposits, &bridgeCommon.DepositTransfer{
+		newBatch.Deposits = append(newBatch.Deposits, &bridgeCore.DepositTransfer{
 			Nonce:                 40,
 			ToBytes:               []byte("to3"),
 			DisplayableTo:         "to3",
@@ -1145,7 +1143,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+			checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 		}
 		assert.True(t, statusHandler.GetIntMetric(bridgeCore.MetricLastBlockNonce) > 0)
 	})
@@ -1156,21 +1154,21 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		incrementor = 0
 
 		// place a random message as to test it is reset
-		statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, ethmultiversx.ClientStatus(3).String())
+		statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, bridgeCore.ClientStatus(3).String())
 		statusHandler.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, "random")
 
 		// this will just increment the retry counter
 		for i := 0; i < int(args.ClientAvailabilityAllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+			checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
 			message := fmt.Sprintf("block %d fetched for %d times in a row", currentNonce, args.ClientAvailabilityAllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
+			checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, message)
 		}
 	})
 	t.Run("same current nonce should error after a while and then recovers", func(t *testing.T) {
@@ -1183,20 +1181,20 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		for i := 0; i < int(args.ClientAvailabilityAllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+			checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
 			message := fmt.Sprintf("block %d fetched for %d times in a row", currentNonce, args.ClientAvailabilityAllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
+			checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, message)
 		}
 
 		incrementor = 1
 		err := c.CheckClientAvailability(context.Background())
 		assert.Nil(t, err)
-		checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+		checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 	})
 	t.Run("get current nonce errors", func(t *testing.T) {
 		resetClient(c)
@@ -1208,7 +1206,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		}
 
 		err := c.CheckClientAvailability(context.Background())
-		checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, expectedErr.Error())
+		checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, expectedErr.Error())
 		assert.Equal(t, expectedErr, err)
 	})
 }
@@ -1273,7 +1271,7 @@ func resetClient(c *client) {
 	c.clientWrapper.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, "")
 }
 
-func checkStatusHandler(t *testing.T, statusHandler *testsCommon.StatusHandlerMock, status ethmultiversx.ClientStatus, message string) {
+func checkStatusHandler(t *testing.T, statusHandler *testsCommon.StatusHandlerMock, status bridgeCore.ClientStatus, message string) {
 	assert.Equal(t, status.String(), statusHandler.GetStringMetric(bridgeCore.MetricMultiversXClientStatus))
 	assert.Equal(t, message, statusHandler.GetStringMetric(bridgeCore.MetricLastMultiversXClientError))
 }

@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -22,9 +22,9 @@ type BridgeExecutorStub struct {
 
 	PrintInfoCalled                                            func(logLevel logger.LogLevel, message string, extras ...interface{})
 	MyTurnAsLeaderCalled                                       func() bool
-	GetBatchFromMultiversXCalled                               func(ctx context.Context) (*bridgeCommon.TransferBatch, error)
-	StoreBatchFromMultiversXCalled                             func(batch *bridgeCommon.TransferBatch) error
-	GetStoredBatchCalled                                       func() *bridgeCommon.TransferBatch
+	GetBatchFromMultiversXCalled                               func(ctx context.Context) (*bridgeCore.TransferBatch, error)
+	StoreBatchFromMultiversXCalled                             func(batch *bridgeCore.TransferBatch) error
+	GetStoredBatchCalled                                       func() *bridgeCore.TransferBatch
 	GetLastExecutedEthBatchIDFromMultiversXCalled              func(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatchCalled        func(ctx context.Context) error
 	GetAndStoreActionIDForProposeTransferOnMultiversXCalled    func(ctx context.Context) (uint64, error)
@@ -86,7 +86,7 @@ func (stub *BridgeExecutorStub) MyTurnAsLeader() bool {
 }
 
 // GetBatchFromMultiversX -
-func (stub *BridgeExecutorStub) GetBatchFromMultiversX(ctx context.Context) (*bridgeCommon.TransferBatch, error) {
+func (stub *BridgeExecutorStub) GetBatchFromMultiversX(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 	stub.incrementFunctionCounter()
 	if stub.GetBatchFromMultiversXCalled != nil {
 		return stub.GetBatchFromMultiversXCalled(ctx)
@@ -95,7 +95,7 @@ func (stub *BridgeExecutorStub) GetBatchFromMultiversX(ctx context.Context) (*br
 }
 
 // StoreBatchFromMultiversX -
-func (stub *BridgeExecutorStub) StoreBatchFromMultiversX(batch *bridgeCommon.TransferBatch) error {
+func (stub *BridgeExecutorStub) StoreBatchFromMultiversX(batch *bridgeCore.TransferBatch) error {
 	stub.incrementFunctionCounter()
 	if stub.StoreBatchFromMultiversXCalled != nil {
 		return stub.StoreBatchFromMultiversXCalled(batch)
@@ -104,7 +104,7 @@ func (stub *BridgeExecutorStub) StoreBatchFromMultiversX(batch *bridgeCommon.Tra
 }
 
 // GetStoredBatch -
-func (stub *BridgeExecutorStub) GetStoredBatch() *bridgeCommon.TransferBatch {
+func (stub *BridgeExecutorStub) GetStoredBatch() *bridgeCore.TransferBatch {
 	stub.incrementFunctionCounter()
 	if stub.GetStoredBatchCalled != nil {
 		return stub.GetStoredBatchCalled()

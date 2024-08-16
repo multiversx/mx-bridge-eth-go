@@ -4,7 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 )
 
 // Direction is the direction of the transfer
@@ -29,7 +29,7 @@ type ArgListsBatch struct {
 
 // ExtractListMvxToEth will extract the batch data into a format that is easy to use
 // The transfer is from MultiversX to Ethereum
-func ExtractListMvxToEth(batch *bridgeCommon.TransferBatch) *ArgListsBatch {
+func ExtractListMvxToEth(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 	arg := &ArgListsBatch{
 		Direction: FromMultiversX,
 	}
@@ -55,7 +55,7 @@ func ExtractListMvxToEth(batch *bridgeCommon.TransferBatch) *ArgListsBatch {
 
 // ExtractListEthToMvx will extract the batch data into a format that is easy to use
 // The transfer is from Ehtereum to MultiversX
-func ExtractListEthToMvx(batch *bridgeCommon.TransferBatch) *ArgListsBatch {
+func ExtractListEthToMvx(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 	arg := &ArgListsBatch{
 		Direction: ToMultiversX,
 	}

@@ -5,7 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -15,9 +15,9 @@ type Executor interface {
 	PrintInfo(logLevel logger.LogLevel, message string, extras ...interface{})
 	MyTurnAsLeader() bool
 
-	GetBatchFromMultiversX(ctx context.Context) (*bridgeCommon.TransferBatch, error)
-	StoreBatchFromMultiversX(batch *bridgeCommon.TransferBatch) error
-	GetStoredBatch() *bridgeCommon.TransferBatch
+	GetBatchFromMultiversX(ctx context.Context) (*bridgeCore.TransferBatch, error)
+	StoreBatchFromMultiversX(batch *bridgeCore.TransferBatch) error
+	GetStoredBatch() *bridgeCore.TransferBatch
 
 	GetLastExecutedEthBatchIDFromMultiversX(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error

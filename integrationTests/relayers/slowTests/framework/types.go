@@ -35,6 +35,7 @@ type TokenOperations struct {
 	ValueToSendFromMvX   *big.Int
 	MvxSCCallData        []byte
 	MvxFaultySCCall      bool
+	MvxForceSCCall       bool
 }
 
 // TestTokenParams defines a token collection of operations in one or 2 batches

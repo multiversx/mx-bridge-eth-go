@@ -3,7 +3,6 @@ package multiversx
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -11,12 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
@@ -348,9 +344,9 @@ func TestClient_GetPendingBatch(t *testing.T) {
 
 		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
 		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
-		expectedBatch := &common.TransferBatch{
+		expectedBatch := &bridgeCore.TransferBatch{
 			ID: 44562,
-			Deposits: []*common.DepositTransfer{
+			Deposits: []*bridgeCore.DepositTransfer{
 				{
 					Nonce:                 5000,
 					ToBytes:               bytes.Repeat([]byte{2}, 20),
@@ -505,9 +501,9 @@ func TestClient_GetBatch(t *testing.T) {
 
 		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
 		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
-		expectedBatch := &common.TransferBatch{
+		expectedBatch := &bridgeCore.TransferBatch{
 			ID: 44562,
-			Deposits: []*common.DepositTransfer{
+			Deposits: []*bridgeCore.DepositTransfer{
 				{
 					Nonce:                 5000,
 					ToBytes:               bytes.Repeat([]byte{2}, 20),
@@ -571,7 +567,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeSetStatus(context.Background(), &common.TransferBatch{})
+		hash, err := c.ProposeSetStatus(context.Background(), &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -591,7 +587,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeSetStatus(context.Background(), &common.TransferBatch{})
+		hash, err := c.ProposeSetStatus(context.Background(), &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -614,7 +610,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 					proposeSetStatusFuncName,
 					hex.EncodeToString(big.NewInt(112233).Bytes()),
 				}
-				expectedStatus := []byte{common.Rejected, common.Executed}
+				expectedStatus := []byte{bridgeCore.Rejected, bridgeCore.Executed}
 				for _, stat := range expectedStatus {
 					expectedArgs = append(expectedArgs, hex.EncodeToString([]byte{stat}))
 				}
@@ -660,7 +656,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeTransfer(context.Background(), &common.TransferBatch{})
+		hash, err := c.ProposeTransfer(context.Background(), &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -680,7 +676,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeTransfer(context.Background(), &common.TransferBatch{})
+		hash, err := c.ProposeTransfer(context.Background(), &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -705,11 +701,9 @@ func TestClient_ProposeTransfer(t *testing.T) {
 					proposeTransferFuncName,
 					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
 				}
-				depositsString := ""
 				for _, dt := range batch.Deposits {
-					depositsString = depositsString + depositToString(dt)
+					dataStrings = append(dataStrings, depositToString(dt))
 				}
-				dataStrings = append(dataStrings, depositsString)
 
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
@@ -737,8 +731,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		batch := createMockBatch()
 		batch.Deposits[0].Data = bridgeTests.CallDataMock
 		var err error
-		batch.Deposits[0].DisplayableData, err = ethmultiversx.ConvertToDisplayableData(batch.Deposits[0].Data)
-		require.Nil(t, err)
+		batch.Deposits[0].DisplayableData = hex.EncodeToString(batch.Deposits[0].Data)
 
 		c.txHandler = &bridgeTests.TxHandlerStub{
 			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
@@ -752,15 +745,13 @@ func TestClient_ProposeTransfer(t *testing.T) {
 					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
 				}
 				extraGas := uint64(0)
-				depositsString := ""
 				for _, dt := range batch.Deposits {
-					depositsString = depositsString + depositToString(dt)
-					if bytes.Equal(dt.Data, []byte{parsers.MissingDataProtocolMarker}) {
+					dataStrings = append(dataStrings, depositToString(dt))
+					if bytes.Equal(dt.Data, []byte{bridgeCore.MissingDataProtocolMarker}) {
 						continue
 					}
 					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
 				}
-				dataStrings = append(dataStrings, depositsString)
 
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
@@ -779,34 +770,15 @@ func TestClient_ProposeTransfer(t *testing.T) {
 	})
 }
 
-func depositToString(dt *common.DepositTransfer) string {
+func depositToString(dt *bridgeCore.DepositTransfer) string {
 	result := hex.EncodeToString(dt.FromBytes)
-	result = result + hex.EncodeToString(dt.ToBytes)
-
-	tokenLength := len(dt.DestinationTokenBytes)
-	result = result + encodeLenAsHex(tokenLength) + hex.EncodeToString(dt.DestinationTokenBytes)
-
-	amountLength := len(dt.Amount.Bytes())
-	result = result + encodeLenAsHex(amountLength) + hex.EncodeToString(dt.Amount.Bytes())
-
-	result = result + encodeUint64AsHex(dt.Nonce)
-	result = result + hex.EncodeToString(dt.Data)
+	result = result + "@" + hex.EncodeToString(dt.ToBytes)
+	result = result + "@" + hex.EncodeToString(dt.DestinationTokenBytes)
+	result = result + "@" + hex.EncodeToString(dt.Amount.Bytes())
+	result = result + "@" + hex.EncodeToString(big.NewInt(0).SetUint64(dt.Nonce).Bytes())
+	result = result + "@" + hex.EncodeToString(dt.Data)
 
 	return result
-}
-
-func encodeLenAsHex(length int) string {
-	buff := make([]byte, 4)
-	binary.BigEndian.PutUint32(buff, uint32(length))
-
-	return hex.EncodeToString(buff)
-}
-
-func encodeUint64AsHex(value uint64) string {
-	buff := make([]byte, 8)
-	binary.BigEndian.PutUint64(buff, value)
-
-	return hex.EncodeToString(buff)
 }
 
 func TestClient_Sign(t *testing.T) {
@@ -904,7 +876,7 @@ func TestClient_PerformAction(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.PerformAction(context.Background(), actionID, &common.TransferBatch{})
+		hash, err := c.PerformAction(context.Background(), actionID, &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -924,7 +896,7 @@ func TestClient_PerformAction(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.PerformAction(context.Background(), actionID, &common.TransferBatch{})
+		hash, err := c.PerformAction(context.Background(), actionID, &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -974,8 +946,7 @@ func TestClient_PerformAction(t *testing.T) {
 		batch := createMockBatch()
 		batch.Deposits[0].Data = bridgeTests.CallDataMock
 		var err error
-		batch.Deposits[0].DisplayableData, err = ethmultiversx.ConvertToDisplayableData(batch.Deposits[0].Data)
-		require.Nil(t, err)
+		batch.Deposits[0].DisplayableData = hex.EncodeToString(batch.Deposits[0].Data)
 
 		c.txHandler = &bridgeTests.TxHandlerStub{
 			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
@@ -993,7 +964,7 @@ func TestClient_PerformAction(t *testing.T) {
 
 				extraGas := uint64(0)
 				for _, dt := range batch.Deposits {
-					if bytes.Equal(dt.Data, []byte{parsers.MissingDataProtocolMarker}) {
+					if bytes.Equal(dt.Data, []byte{bridgeCore.MissingDataProtocolMarker}) {
 						continue
 					}
 					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
@@ -1061,7 +1032,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+			checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 		}
 		assert.True(t, statusHandler.GetIntMetric(bridgeCore.MetricLastBlockNonce) > 0)
 	})
@@ -1072,21 +1043,21 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		incrementor = 0
 
 		// place a random message as to test it is reset
-		statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, ethmultiversx.ClientStatus(3).String())
+		statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, bridgeCore.ClientStatus(3).String())
 		statusHandler.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, "random")
 
 		// this will just increment the retry counter
 		for i := 0; i < int(args.ClientAvailabilityAllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+			checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
 			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.ClientAvailabilityAllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
+			checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, message)
 		}
 	})
 	t.Run("same current nonce should error after a while and then recovers", func(t *testing.T) {
@@ -1099,21 +1070,21 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		for i := 0; i < int(args.ClientAvailabilityAllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+			checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
 			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.ClientAvailabilityAllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
+			checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, message)
 		}
 
 		incrementor = 1
 
 		err := c.CheckClientAvailability(context.Background())
 		assert.Nil(t, err)
-		checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+		checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 	})
 	t.Run("get current nonce errors", func(t *testing.T) {
 		resetClient(c)
@@ -1127,7 +1098,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		}
 
 		err := c.CheckClientAvailability(context.Background())
-		checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, expectedErr.Error())
+		checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, expectedErr.Error())
 		assert.Equal(t, expectedErr, err)
 	})
 }
@@ -1141,7 +1112,7 @@ func resetClient(c *client) {
 	c.statusHandler.SetIntMetric(bridgeCore.MetricLastBlockNonce, 0)
 }
 
-func checkStatusHandler(t *testing.T, statusHandler *testsCommon.StatusHandlerMock, status ethmultiversx.ClientStatus, message string) {
+func checkStatusHandler(t *testing.T, statusHandler *testsCommon.StatusHandlerMock, status bridgeCore.ClientStatus, message string) {
 	assert.Equal(t, status.String(), statusHandler.GetStringMetric(bridgeCore.MetricMultiversXClientStatus))
 	assert.Equal(t, message, statusHandler.GetStringMetric(bridgeCore.MetricLastMultiversXClientError))
 }

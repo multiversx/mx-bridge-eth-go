@@ -6,31 +6,31 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 )
 
 // MultiversXClient defines the behavior of the MultiversX client able to communicate with the MultiversX chain
 type MultiversXClient interface {
-	GetPendingBatch(ctx context.Context) (*bridgeCommon.TransferBatch, error)
-	GetBatch(ctx context.Context, batchID uint64) (*bridgeCommon.TransferBatch, error)
+	GetPendingBatch(ctx context.Context) (*bridgeCore.TransferBatch, error)
+	GetBatch(ctx context.Context, batchID uint64) (*bridgeCore.TransferBatch, error)
 	GetCurrentBatchAsDataBytes(ctx context.Context) ([][]byte, error)
-	WasProposedTransfer(ctx context.Context, batch *bridgeCommon.TransferBatch) (bool, error)
+	WasProposedTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (bool, error)
 	QuorumReached(ctx context.Context, actionID uint64) (bool, error)
 	WasExecuted(ctx context.Context, actionID uint64) (bool, error)
-	GetActionIDForProposeTransfer(ctx context.Context, batch *bridgeCommon.TransferBatch) (uint64, error)
-	WasProposedSetStatus(ctx context.Context, batch *bridgeCommon.TransferBatch) (bool, error)
+	GetActionIDForProposeTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (uint64, error)
+	WasProposedSetStatus(ctx context.Context, batch *bridgeCore.TransferBatch) (bool, error)
 	GetTransactionsStatuses(ctx context.Context, batchID uint64) ([]byte, error)
-	GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *bridgeCommon.TransferBatch) (uint64, error)
+	GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (uint64, error)
 	GetLastExecutedEthBatchID(ctx context.Context) (uint64, error)
 	GetLastExecutedEthTxID(ctx context.Context) (uint64, error)
 	GetCurrentNonce(ctx context.Context) (uint64, error)
 
-	ProposeSetStatus(ctx context.Context, batch *bridgeCommon.TransferBatch) (string, error)
-	ProposeTransfer(ctx context.Context, batch *bridgeCommon.TransferBatch) (string, error)
+	ProposeSetStatus(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error)
+	ProposeTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error)
 	Sign(ctx context.Context, actionID uint64) (string, error)
 	WasSigned(ctx context.Context, actionID uint64) (bool, error)
-	PerformAction(ctx context.Context, actionID uint64, batch *bridgeCommon.TransferBatch) (string, error)
+	PerformAction(ctx context.Context, actionID uint64, batch *bridgeCore.TransferBatch) (string, error)
 	CheckClientAvailability(ctx context.Context) error
 	IsMintBurnToken(ctx context.Context, token []byte) (bool, error)
 	IsNativeToken(ctx context.Context, token []byte) (bool, error)
@@ -44,7 +44,7 @@ type MultiversXClient interface {
 
 // EthereumClient defines the behavior of the Ethereum client able to communicate with the Ethereum chain
 type EthereumClient interface {
-	GetBatch(ctx context.Context, nonce uint64) (*bridgeCommon.TransferBatch, bool, error)
+	GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error)
 	WasExecuted(ctx context.Context, batchID uint64) (bool, error)
 	GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error)
 

@@ -9,13 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/api"
 	crypto "github.com/multiversx/mx-chain-crypto-go"
@@ -55,7 +52,6 @@ type ClientArgs struct {
 // client represents the MultiversX Client implementation
 type client struct {
 	*mxClientDataGetter
-	codec                        *parsers.MultiversxCodec
 	txHandler                    txHandler
 	tokensMapper                 TokensMapper
 	relayerPublicKey             crypto.PublicKey
@@ -125,7 +121,6 @@ func NewClient(args ClientArgs) (*client, error) {
 	}
 
 	c := &client{
-		codec: &parsers.MultiversxCodec{},
 		txHandler: &transactionHandler{
 			proxy:                   args.Proxy,
 			relayerAddress:          relayerAddress,
@@ -208,7 +203,7 @@ func checkGasMapValues(gasMap config.MultiversXGasMapConfig) error {
 }
 
 // GetPendingBatch returns the pending batch
-func (c *client) GetPendingBatch(ctx context.Context) (*common.TransferBatch, error) {
+func (c *client) GetPendingBatch(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 	c.log.Info("getting pending batch...")
 	responseData, err := c.GetCurrentBatchAsDataBytes(ctx)
 	if err != nil {
@@ -223,7 +218,7 @@ func (c *client) GetPendingBatch(ctx context.Context) (*common.TransferBatch, er
 }
 
 // GetBatch returns the batch (if existing)
-func (c *client) GetBatch(ctx context.Context, batchID uint64) (*common.TransferBatch, error) {
+func (c *client) GetBatch(ctx context.Context, batchID uint64) (*bridgeCore.TransferBatch, error) {
 	c.log.Debug("getting batch", "ID", batchID)
 	responseData, err := c.GetBatchAsDataBytes(ctx, batchID)
 	if err != nil {
@@ -241,7 +236,7 @@ func emptyResponse(response [][]byte) bool {
 	return len(response) == 0 || (len(response) == 1 && len(response[0]) == 0)
 }
 
-func (c *client) createPendingBatchFromResponse(ctx context.Context, responseData [][]byte) (*common.TransferBatch, error) {
+func (c *client) createPendingBatchFromResponse(ctx context.Context, responseData [][]byte) (*bridgeCore.TransferBatch, error) {
 	numFieldsForTransaction := 6
 	dataLen := len(responseData)
 	haveCorrectNumberOfArgs := (dataLen-1)%numFieldsForTransaction == 0 && dataLen > 1
@@ -254,7 +249,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		return nil, fmt.Errorf("%w while parsing batch ID", err)
 	}
 
-	batch := &common.TransferBatch{
+	batch := &bridgeCore.TransferBatch{
 		ID: batchID,
 	}
 
@@ -268,7 +263,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		}
 
 		amount := big.NewInt(0).SetBytes(responseData[i+5])
-		deposit := &common.DepositTransfer{
+		deposit := &bridgeCore.DepositTransfer{
 			Nonce:            depositNonce,
 			FromBytes:        responseData[i+2],
 			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
@@ -306,7 +301,7 @@ func (c *client) createCommonTxDataBuilder(funcName string, id int64) builders.T
 }
 
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
-func (c *client) ProposeSetStatus(ctx context.Context, batch *common.TransferBatch) (string, error) {
+func (c *client) ProposeSetStatus(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", clients.ErrNilBatch
 	}
@@ -331,7 +326,7 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *common.TransferBat
 }
 
 // ProposeTransfer will trigger the propose transfer operation
-func (c *client) ProposeTransfer(ctx context.Context, batch *common.TransferBatch) (string, error) {
+func (c *client) ProposeTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", clients.ErrNilBatch
 	}
@@ -343,12 +338,14 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *common.TransferBatc
 
 	txBuilder := c.createCommonTxDataBuilder(proposeTransferFuncName, int64(batch.ID))
 
-	depositsBytes, err := c.codec.EncodeDeposits(batch.Deposits)
-	if err != nil {
-		return "", err
+	for _, dt := range batch.Deposits {
+		txBuilder.ArgBytes(dt.FromBytes).
+			ArgBytes(dt.ToBytes).
+			ArgBytes(dt.DestinationTokenBytes).
+			ArgBigInt(dt.Amount).
+			ArgInt64(int64(dt.Nonce)).
+			ArgBytes(dt.Data)
 	}
-
-	txBuilder.ArgBytes(depositsBytes)
 
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
 	extraGasForScCalls := c.computeExtraGasForSCCallsBasic(batch, false)
@@ -379,7 +376,7 @@ func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
 }
 
 // PerformAction will trigger the execution of the provided action ID
-func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *common.TransferBatch) (string, error) {
+func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *bridgeCore.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", clients.ErrNilBatch
 	}
@@ -402,10 +399,10 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *comm
 	return hash, err
 }
 
-func (c *client) computeExtraGasForSCCallsBasic(batch *common.TransferBatch, performAction bool) uint64 {
+func (c *client) computeExtraGasForSCCallsBasic(batch *bridgeCore.TransferBatch, performAction bool) uint64 {
 	gasLimit := uint64(0)
 	for _, deposit := range batch.Deposits {
-		if bytes.Equal(deposit.Data, []byte{parsers.MissingDataProtocolMarker}) {
+		if bytes.Equal(deposit.Data, []byte{bridgeCore.MissingDataProtocolMarker}) {
 			continue
 		}
 
@@ -503,7 +500,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	currentNonce, err := c.GetCurrentNonce(ctx)
 	if err != nil {
-		c.setStatusForAvailabilityCheck(ethmultiversx.Unavailable, err.Error(), currentNonce)
+		c.setStatusForAvailabilityCheck(bridgeCore.Unavailable, err.Error(), currentNonce)
 
 		return err
 	}
@@ -518,12 +515,12 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	if c.retriesAvailabilityCheck > c.clientAvailabilityAllowDelta {
 		message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck)
-		c.setStatusForAvailabilityCheck(ethmultiversx.Unavailable, message, currentNonce)
+		c.setStatusForAvailabilityCheck(bridgeCore.Unavailable, message, currentNonce)
 
 		return nil
 	}
 
-	c.setStatusForAvailabilityCheck(ethmultiversx.Available, "", currentNonce)
+	c.setStatusForAvailabilityCheck(bridgeCore.Available, "", currentNonce)
 
 	return nil
 }
@@ -532,7 +529,7 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 	c.retriesAvailabilityCheck++
 }
 
-func (c *client) setStatusForAvailabilityCheck(status ethmultiversx.ClientStatus, message string, nonce uint64) {
+func (c *client) setStatusForAvailabilityCheck(status bridgeCore.ClientStatus, message string, nonce uint64) {
 	c.statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, status.String())
 	c.statusHandler.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, message)
 	c.statusHandler.SetIntMetric(bridgeCore.MetricLastBlockNonce, int(nonce))

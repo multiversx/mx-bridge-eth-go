@@ -7,15 +7,14 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	bridgeCommon "github.com/multiversx/mx-bridge-eth-go/common"
-	"github.com/multiversx/mx-bridge-eth-go/core"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/stretchr/testify/assert"
 )
 
 var expectedError = errors.New("expected error")
-var testBatch = &bridgeCommon.TransferBatch{
+var testBatch = &bridgeCore.TransferBatch{
 	ID:       112233,
 	Deposits: nil,
 	Statuses: nil,
@@ -27,7 +26,7 @@ func TestExecute_GetPending(t *testing.T) {
 	t.Run("error on GetBatchFromMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
-		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCommon.TransferBatch, error) {
+		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 			return nil, expectedError
 		}
 
@@ -42,7 +41,7 @@ func TestExecute_GetPending(t *testing.T) {
 	t.Run("nil batch on GetBatchFromMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
-		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCommon.TransferBatch, error) {
+		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 			return nil, nil
 		}
 
@@ -57,7 +56,7 @@ func TestExecute_GetPending(t *testing.T) {
 	t.Run("error on StoreBatchFromMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
-		bridgeStub.StoreBatchFromMultiversXCalled = func(batch *bridgeCommon.TransferBatch) error {
+		bridgeStub.StoreBatchFromMultiversXCalled = func(batch *bridgeCore.TransferBatch) error {
 			return expectedError
 		}
 
@@ -122,7 +121,7 @@ func TestExecute_GetPending(t *testing.T) {
 
 			assert.False(t, step.IsInterfaceNil())
 
-			expectedStepIdentifier := core.StepIdentifier(ResolvingSetStatusOnMultiversX)
+			expectedStepIdentifier := bridgeCore.StepIdentifier(ResolvingSetStatusOnMultiversX)
 			stepIdentifier := step.Execute(context.Background())
 			assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 			assert.False(t, checkAvailableTokensCalled)
@@ -143,7 +142,7 @@ func TestExecute_GetPending(t *testing.T) {
 				bridge: bridgeStub,
 			}
 
-			expectedStepIdentifier := core.StepIdentifier(SigningProposedTransferOnEthereum)
+			expectedStepIdentifier := bridgeCore.StepIdentifier(SigningProposedTransferOnEthereum)
 			stepIdentifier := step.Execute(context.Background())
 			assert.Equal(t, expectedStepIdentifier, stepIdentifier)
 			assert.True(t, checkAvailableTokensCalled)
@@ -153,10 +152,10 @@ func TestExecute_GetPending(t *testing.T) {
 
 func createStubExecutorGetPending() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCommon.TransferBatch, error) {
+	stub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 		return testBatch, nil
 	}
-	stub.StoreBatchFromMultiversXCalled = func(batch *bridgeCommon.TransferBatch) error {
+	stub.StoreBatchFromMultiversXCalled = func(batch *bridgeCore.TransferBatch) error {
 		return nil
 	}
 	return stub
