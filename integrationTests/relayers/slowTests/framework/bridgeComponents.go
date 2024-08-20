@@ -2,6 +2,7 @@ package framework
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -50,8 +51,14 @@ func NewBridgeComponents(
 
 	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
 
+	gasStationURL := bridge.gasStationInstance.URL()
+	log.Info("started gas station server", "URL", gasStationURL)
+
+	wg := sync.WaitGroup{}
+	wg.Add(numRelayers)
+
 	for i := 0; i < numRelayers; i++ {
-		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir, bridge.gasStationInstance.URL())
+		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir, gasStationURL)
 		generalConfigs.Eth.PrivateKeyFile = fmt.Sprintf(relayerETHKeyPathFormat, i)
 		argsBridgeComponents := factory.ArgsEthereumToMultiversXBridge{
 			Configs: config.Configs{
@@ -94,10 +101,14 @@ func NewBridgeComponents(
 			err = relayer.Start()
 			log.LogIfError(err)
 			require.Nil(bridge, err)
+			wg.Done()
 		}()
 
 		bridge.RelayerInstances = append(bridge.RelayerInstances, relayer)
 	}
+
+	// ensure all relayers are successfully started before returning the bridge components instance
+	wg.Wait()
 
 	return bridge
 }

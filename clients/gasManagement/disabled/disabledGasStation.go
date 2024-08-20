@@ -12,6 +12,11 @@ func (dgs *DisabledGasStation) GetCurrentGasPrice() (*big.Int, error) {
 	return big.NewInt(defaultDisabledGasPrice), nil
 }
 
+// Close returns nil and does nothing
+func (dgs *DisabledGasStation) Close() error {
+	return nil
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
 func (dgs *DisabledGasStation) IsInterfaceNil() bool {
 	return dgs == nil

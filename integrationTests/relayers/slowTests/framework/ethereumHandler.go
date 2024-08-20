@@ -118,9 +118,6 @@ func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
 	tx, err := ethSafeContract.SetBridge(auth, handler.BridgeAddress)
 
-	gasprice, _ := handler.SimulatedChain.Client().SuggestGasPrice(context.Background())
-	log.Warn("gas price", "value", gasprice.Uint64())
-
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())

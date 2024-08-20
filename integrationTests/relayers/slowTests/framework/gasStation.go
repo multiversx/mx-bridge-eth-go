@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
-	"net/http/httptest"
 
 	"github.com/ethereum/go-ethereum/ethclient/simulated"
 )
@@ -27,7 +27,7 @@ type gasStationResponseResult struct {
 
 type gasStation struct {
 	ethBackend *simulated.Backend
-	server     *httptest.Server
+	listner    net.Listener
 }
 
 // NewGasStation will create a test gas station instance that will run a test http server that can respond to gas station
@@ -37,7 +37,10 @@ func NewGasStation(ethBackend *simulated.Backend) *gasStation {
 		ethBackend: ethBackend,
 	}
 
-	gasStationInstance.server = httptest.NewServer(http.HandlerFunc(gasStationInstance.handler))
+	gasStationInstance.listner, _ = net.Listen("tcp", "127.0.0.1:0")
+	go func() {
+		_ = http.Serve(gasStationInstance.listner, http.HandlerFunc(gasStationInstance.handler))
+	}()
 
 	return gasStationInstance
 }
@@ -70,10 +73,10 @@ func (station *gasStation) handler(w http.ResponseWriter, _ *http.Request) {
 
 // URL returns the URL for the test gas station
 func (station *gasStation) URL() string {
-	return station.server.URL
+	return "http://" + station.listner.Addr().String()
 }
 
 // Close will close the gas station server
 func (station *gasStation) Close() {
-	station.server.Close()
+	_ = station.listner.Close()
 }
