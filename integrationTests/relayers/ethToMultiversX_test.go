@@ -27,6 +27,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const noGasStationURL = ""
+
 type argsForSCCallsTest struct {
 	providedScCallData []byte
 	expectedScCallData []byte
@@ -398,7 +400,7 @@ func createMockBridgeComponentsArgs(
 	ethereumChainMock *mock.EthereumChainMock,
 ) factory.ArgsEthereumToMultiversXBridge {
 
-	generalConfigs := CreateBridgeComponentsConfig(index, "testdata")
+	generalConfigs := CreateBridgeComponentsConfig(index, "testdata", noGasStationURL)
 	return factory.ArgsEthereumToMultiversXBridge{
 		Configs: config.Configs{
 			GeneralConfig:   generalConfigs,

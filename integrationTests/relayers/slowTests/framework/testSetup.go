@@ -99,6 +99,7 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 		setup.ChainSimulator,
 		setup.EthereumHandler.EthChainWrapper,
 		setup.EthereumHandler.Erc20ContractsHolder,
+		setup.EthereumHandler.SimulatedChain,
 		NumRelayers,
 		setup.EthereumHandler.SafeAddress.Hex(),
 		setup.MultiversxHandler.SafeAddress,

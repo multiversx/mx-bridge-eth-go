@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/ethclient/simulated"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -24,7 +25,8 @@ const (
 // BridgeComponents holds and manages the relayers components
 type BridgeComponents struct {
 	testing.TB
-	RelayerInstances []Relayer
+	RelayerInstances   []Relayer
+	gasStationInstance *gasStation
 }
 
 // NewBridgeComponents will create the bridge components (relayers)
@@ -34,20 +36,22 @@ func NewBridgeComponents(
 	chainSimulator ChainSimulatorWrapper,
 	ethereumChain ethereum.ClientWrapper,
 	erc20ContractsHolder ethereum.Erc20ContractsHolder,
+	ethBackend *simulated.Backend,
 	numRelayers int,
 	ethSafeContractAddress string,
 	mvxSafeAddress *MvxAddress,
 	mvxMultisigAddress *MvxAddress,
 ) *BridgeComponents {
 	bridge := &BridgeComponents{
-		TB:               tb,
-		RelayerInstances: make([]Relayer, 0, numRelayers),
+		TB:                 tb,
+		RelayerInstances:   make([]Relayer, 0, numRelayers),
+		gasStationInstance: NewGasStation(ethBackend),
 	}
 
 	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
 
 	for i := 0; i < numRelayers; i++ {
-		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir)
+		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir, bridge.gasStationInstance.URL())
 		generalConfigs.Eth.PrivateKeyFile = fmt.Sprintf(relayerETHKeyPathFormat, i)
 		argsBridgeComponents := factory.ArgsEthereumToMultiversXBridge{
 			Configs: config.Configs{
@@ -100,6 +104,8 @@ func NewBridgeComponents(
 
 // CloseRelayers will call close on all created relayers
 func (bridge *BridgeComponents) CloseRelayers() {
+	bridge.gasStationInstance.Close()
+
 	for _, r := range bridge.RelayerInstances {
 		_ = r.Close()
 	}
