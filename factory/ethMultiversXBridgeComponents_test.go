@@ -258,7 +258,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		components, err := NewEthMultiversXBridgeComponents(args)
 		require.Nil(t, err)
 		require.NotNil(t, components)
-		require.Equal(t, 6, len(components.closableHandlers))
+		require.Equal(t, 7, len(components.closableHandlers))
 		require.False(t, check.IfNil(components.ethToMultiversXStatusHandler))
 		require.False(t, check.IfNil(components.multiversXToEthStatusHandler))
 	})
@@ -273,7 +273,7 @@ func TestEthMultiversXBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
 
 	err = components.Start()
 	assert.Nil(t, err)
-	assert.Equal(t, 6, len(components.closableHandlers))
+	assert.Equal(t, 7, len(components.closableHandlers))
 
 	time.Sleep(time.Second * 2) // allow go routines to start
 

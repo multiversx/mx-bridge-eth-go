@@ -2,9 +2,11 @@ package framework
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/ethclient/simulated"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -24,7 +26,8 @@ const (
 // BridgeComponents holds and manages the relayers components
 type BridgeComponents struct {
 	testing.TB
-	RelayerInstances []Relayer
+	RelayerInstances   []Relayer
+	gasStationInstance *gasStation
 }
 
 // NewBridgeComponents will create the bridge components (relayers)
@@ -34,20 +37,28 @@ func NewBridgeComponents(
 	chainSimulator ChainSimulatorWrapper,
 	ethereumChain ethereum.ClientWrapper,
 	erc20ContractsHolder ethereum.Erc20ContractsHolder,
+	ethBackend *simulated.Backend,
 	numRelayers int,
 	ethSafeContractAddress string,
 	mvxSafeAddress *MvxAddress,
 	mvxMultisigAddress *MvxAddress,
 ) *BridgeComponents {
 	bridge := &BridgeComponents{
-		TB:               tb,
-		RelayerInstances: make([]Relayer, 0, numRelayers),
+		TB:                 tb,
+		RelayerInstances:   make([]Relayer, 0, numRelayers),
+		gasStationInstance: NewGasStation(ethBackend),
 	}
 
 	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
 
+	gasStationURL := bridge.gasStationInstance.URL()
+	log.Info("started gas station server", "URL", gasStationURL)
+
+	wg := sync.WaitGroup{}
+	wg.Add(numRelayers)
+
 	for i := 0; i < numRelayers; i++ {
-		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir)
+		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir, gasStationURL)
 		generalConfigs.Eth.PrivateKeyFile = fmt.Sprintf(relayerETHKeyPathFormat, i)
 		argsBridgeComponents := factory.ArgsEthereumToMultiversXBridge{
 			Configs: config.Configs{
@@ -90,16 +101,22 @@ func NewBridgeComponents(
 			err = relayer.Start()
 			log.LogIfError(err)
 			require.Nil(bridge, err)
+			wg.Done()
 		}()
 
 		bridge.RelayerInstances = append(bridge.RelayerInstances, relayer)
 	}
+
+	// ensure all relayers are successfully started before returning the bridge components instance
+	wg.Wait()
 
 	return bridge
 }
 
 // CloseRelayers will call close on all created relayers
 func (bridge *BridgeComponents) CloseRelayers() {
+	bridge.gasStationInstance.Close()
+
 	for _, r := range bridge.RelayerInstances {
 		_ = r.Close()
 	}

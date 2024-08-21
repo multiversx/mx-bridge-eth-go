@@ -16,6 +16,11 @@ func (ghs *GasHandlerStub) GetCurrentGasPrice() (*big.Int, error) {
 	return big.NewInt(0), nil
 }
 
+// Close -
+func (ghs *GasHandlerStub) Close() error {
+	return nil
+}
+
 // IsInterfaceNil -
 func (ghs *GasHandlerStub) IsInterfaceNil() bool {
 	return ghs == nil

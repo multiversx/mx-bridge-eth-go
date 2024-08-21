@@ -10,16 +10,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
-	ethCore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient/simulated"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
-	"github.com/multiversx/mx-bridge-eth-go/integrationTests"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/require"
@@ -49,7 +47,7 @@ type EthereumHandler struct {
 	TokensRegistry        TokensRegistry
 	Quorum                string
 	MvxTestCallerAddress  core.AddressHandler
-	SimulatedChain        *backends.SimulatedBackend
+	SimulatedChain        *simulated.Backend
 	SimulatedChainWrapper EthereumBlockchainClient
 	ChainID               *big.Int
 	SafeAddress           common.Address
@@ -76,19 +74,21 @@ func NewEthereumHandler(
 	}
 
 	walletsToFundOnEthereum := handler.WalletsToFundOnEthereum()
-	addr := make(map[common.Address]ethCore.GenesisAccount, len(walletsToFundOnEthereum))
+	addr := make(map[common.Address]types.Account, len(walletsToFundOnEthereum))
 	for _, address := range walletsToFundOnEthereum {
-		addr[address] = ethCore.GenesisAccount{Balance: new(big.Int).Lsh(big.NewInt(1), 100)}
+		addr[address] = types.Account{Balance: new(big.Int).Lsh(big.NewInt(1), 100)}
 	}
-	alloc := ethCore.GenesisAlloc(addr)
-	handler.SimulatedChain = backends.NewSimulatedBackend(alloc, ethSimulatedGasLimit)
+	alloc := types.GenesisAlloc(addr)
+	handler.SimulatedChain = simulated.NewBackend(alloc,
+		simulated.WithBlockGasLimit(ethSimulatedGasLimit),
+	)
 
-	handler.SimulatedChainWrapper = integrationTests.NewSimulatedETHChainWrapper(handler.SimulatedChain)
+	handler.SimulatedChainWrapper = handler.SimulatedChain.Client()
 	handler.ChainID, _ = handler.SimulatedChainWrapper.ChainID(ctx)
 
 	var err error
 	handler.Erc20ContractsHolder, err = ethereum.NewErc20SafeContractsHolder(ethereum.ArgsErc20SafeContractsHolder{
-		EthClient:              handler.SimulatedChain,
+		EthClient:              handler.SimulatedChain.Client(),
 		EthClientStatusHandler: &testsCommon.StatusHandlerStub{},
 	})
 	require.NoError(tb, err)
@@ -100,7 +100,7 @@ func NewEthereumHandler(
 func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 	// deploy safe
 	handler.SafeAddress = handler.DeployContract(ctx, erc20SafeABI, erc20SafeBytecode)
-	ethSafeContract, err := contract.NewERC20Safe(handler.SafeAddress, handler.SimulatedChain)
+	ethSafeContract, err := contract.NewERC20Safe(handler.SafeAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 	handler.SafeContract = ethSafeContract
 
@@ -111,12 +111,13 @@ func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 	}
 	quorumInt, _ := big.NewInt(0).SetString(handler.Quorum, 10)
 	handler.BridgeAddress = handler.DeployContract(ctx, bridgeABI, bridgeBytecode, ethRelayersAddresses, quorumInt, handler.SafeAddress)
-	handler.BridgeContract, err = contract.NewBridge(handler.BridgeAddress, handler.SimulatedChain)
+	handler.BridgeContract, err = contract.NewBridge(handler.BridgeAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 
 	// set bridge on safe
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
 	tx, err := ethSafeContract.SetBridge(auth, handler.BridgeAddress)
+
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
@@ -148,7 +149,7 @@ func (handler *EthereumHandler) DeployContract(
 	require.NoError(handler, err)
 
 	contractAuth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
-	contractAddress, tx, _, err := bind.DeployContract(contractAuth, parsed, common.FromHex(converters.TrimWhiteSpaceCharacters(string(contractBytes))), handler.SimulatedChain, params...)
+	contractAddress, tx, _, err := bind.DeployContract(contractAuth, parsed, common.FromHex(converters.TrimWhiteSpaceCharacters(string(contractBytes))), handler.SimulatedChain.Client(), params...)
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 
@@ -160,7 +161,7 @@ func (handler *EthereumHandler) DeployContract(
 }
 
 func (handler *EthereumHandler) checkEthTxResult(ctx context.Context, hash common.Hash) {
-	receipt, err := handler.SimulatedChain.TransactionReceipt(ctx, hash)
+	receipt, err := handler.SimulatedChain.Client().TransactionReceipt(ctx, hash)
 	require.NoError(handler, err)
 	require.Equal(handler, ethStatusSuccess, receipt.Status)
 }
@@ -236,7 +237,7 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 			params.NumOfDecimalsChainSpecific,
 		)
 
-		ethMintBurnContract, err := contract.NewMintBurnERC20(ethMintBurnAddress, handler.SimulatedChain)
+		ethMintBurnContract, err := contract.NewMintBurnERC20(ethMintBurnAddress, handler.SimulatedChain.Client())
 		require.NoError(handler, err)
 
 		ownerAuth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
@@ -281,7 +282,7 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 		params.NumOfDecimalsChainSpecific,
 	)
 
-	ethGenericTokenContract, err := contract.NewGenericERC20(ethGenericTokenAddress, handler.SimulatedChain)
+	ethGenericTokenContract, err := contract.NewGenericERC20(ethGenericTokenAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 
 	// mint the address that will create the transfers

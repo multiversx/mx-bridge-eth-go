@@ -331,6 +331,8 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 		return err
 	}
 
+	components.addClosableComponent(gs)
+
 	antifloodComponents, err := components.createAntifloodComponents(args.Configs.GeneralConfig.P2P.AntifloodConfig)
 	if err != nil {
 		return err

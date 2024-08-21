@@ -7,6 +7,7 @@ import (
 	"path"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
@@ -56,7 +57,7 @@ func closeRelayers(relayers []bridgeComponents) {
 }
 
 // CreateBridgeComponentsConfig -
-func CreateBridgeComponentsConfig(index int, workingDir string) config.Config {
+func CreateBridgeComponentsConfig(index int, workingDir string, gasStationURL string) config.Config {
 	stateMachineConfig := config.ConfigStateMachine{
 		StepDurationInMillis:       1000,
 		IntervalForLeaderInSeconds: 60,
@@ -72,7 +73,15 @@ func CreateBridgeComponentsConfig(index int, workingDir string) config.Config {
 			GasLimitBase:                 200000,
 			GasLimitForEach:              30000,
 			GasStation: config.GasStationConfig{
-				Enabled: false,
+				Enabled:                    len(gasStationURL) > 0,
+				URL:                        gasStationURL,
+				PollingIntervalInSeconds:   1,
+				GasPriceMultiplier:         1,
+				GasPriceSelector:           "SafeGasPrice",
+				MaxFetchRetries:            3,
+				MaximumAllowedGasPrice:     math.MaxUint64 / 2,
+				RequestRetryDelayInSeconds: 1,
+				RequestTimeInSeconds:       1,
 			},
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,
