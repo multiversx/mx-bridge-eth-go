@@ -38,6 +38,10 @@ const (
 	genericERC20Bytecode  = "testdata/contracts/eth/GenericERC20.hex"
 	mintBurnERC20ABI      = "testdata/contracts/eth/MintBurnERC20.abi.json"
 	mintBurnERC20Bytecode = "testdata/contracts/eth/MintBurnERC20.hex"
+	proxyABI              = "testdata/contracts/eth/Proxy.abi.json"
+	proxyBytecode         = "testdata/contracts/eth/Proxy.hex"
+
+	proxyInitializeFunction = "initialize"
 )
 
 // EthereumHandler will handle all the operations on the Ethereum side
@@ -99,7 +103,7 @@ func NewEthereumHandler(
 // DeployContracts will deploy all required contracts on Ethereum side
 func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 	// deploy safe
-	handler.SafeAddress = handler.DeployContract(ctx, erc20SafeABI, erc20SafeBytecode)
+	handler.SafeAddress = handler.DeployUpgradeableContract(ctx, erc20SafeABI, erc20SafeBytecode)
 	ethSafeContract, err := contract.NewERC20Safe(handler.SafeAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 	handler.SafeContract = ethSafeContract
@@ -110,7 +114,7 @@ func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 		ethRelayersAddresses = append(ethRelayersAddresses, relayerKeys.EthAddress)
 	}
 	quorumInt, _ := big.NewInt(0).SetString(handler.Quorum, 10)
-	handler.BridgeAddress = handler.DeployContract(ctx, bridgeABI, bridgeBytecode, ethRelayersAddresses, quorumInt, handler.SafeAddress)
+	handler.BridgeAddress = handler.DeployUpgradeableContract(ctx, bridgeABI, bridgeBytecode, ethRelayersAddresses, quorumInt, handler.SafeAddress)
 	handler.BridgeContract, err = contract.NewBridge(handler.BridgeAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 
@@ -158,6 +162,44 @@ func (handler *EthereumHandler) DeployContract(
 	log.Info("deployed eth contract", "from file", bytecodeFile, "address", contractAddress.Hex())
 
 	return contractAddress
+}
+
+// DeployUpgradeableContract can deploy an upgradeable Ethereum contract
+func (handler *EthereumHandler) DeployUpgradeableContract(
+	ctx context.Context,
+	abiFile string,
+	bytecodeFile string,
+	params ...interface{},
+) common.Address {
+	abiBytes, err := os.ReadFile(abiFile)
+	require.NoError(handler, err)
+	parsed, err := abi.JSON(bytes.NewReader(abiBytes))
+	require.NoError(handler, err)
+
+	contractBytes, err := os.ReadFile(bytecodeFile)
+	require.NoError(handler, err)
+
+	contractAuth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
+	contractAddress, tx, _, err := bind.DeployContract(contractAuth, parsed, common.FromHex(converters.TrimWhiteSpaceCharacters(string(contractBytes))), handler.SimulatedChain.Client()) // no parameters on the logic contract constructor
+	require.NoError(handler, err)
+	handler.SimulatedChain.Commit()
+
+	handler.checkEthTxResult(ctx, tx.Hash())
+
+	log.Info("deployed eth logic contract", "from file", bytecodeFile, "address", contractAddress.Hex())
+
+	packedParams, err := parsed.Pack(proxyInitializeFunction, params...)
+	require.NoError(handler, err)
+	proxyParams := []interface{}{
+		contractAddress,
+		handler.OwnerKeys.EthAddress, // make the owner of the logic contract the admin for the proxy
+		packedParams,
+	}
+	proxyAddress := handler.DeployContract(ctx, proxyABI, proxyBytecode, proxyParams...)
+
+	log.Info("deployed proxy contract", "address", proxyAddress.Hex())
+
+	return proxyAddress // return the proxy to test that it behaves just the same as the logic contract
 }
 
 func (handler *EthereumHandler) checkEthTxResult(ctx context.Context, hash common.Hash) {
@@ -228,7 +270,7 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 
 func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, params IssueTokenParams) (common.Address, ERC20Contract) {
 	if params.IsMintBurnOnEth {
-		ethMintBurnAddress := handler.DeployContract(
+		ethMintBurnAddress := handler.DeployUpgradeableContract(
 			ctx,
 			mintBurnERC20ABI,
 			mintBurnERC20Bytecode,
