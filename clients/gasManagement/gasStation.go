@@ -20,6 +20,7 @@ const minPollingInterval = time.Second
 const minRequestTime = time.Millisecond
 const logPath = "EthClient/gasStation"
 const minGasPriceMultiplier = 1
+const minGasPriceValue = 1
 const minFetchRetries = 2
 
 // ArgsGasStation is the DTO used for the creating a new gas handler instance
@@ -47,6 +48,7 @@ type gasStation struct {
 	gasPriceSelector       core.EthGasPriceSelector
 	loopStatus             *atomic.Flag
 	gasPriceMultiplier     *big.Int
+	minGasPriceValue       *big.Int
 
 	mut            sync.RWMutex
 	latestGasPrice int
@@ -71,6 +73,7 @@ func NewGasStation(args ArgsGasStation) (*gasStation, error) {
 		gasPriceSelector:       args.GasPriceSelector,
 		loopStatus:             &atomic.Flag{},
 		gasPriceMultiplier:     big.NewInt(int64(args.GasPriceMultiplier)),
+		minGasPriceValue:       big.NewInt(minGasPriceValue),
 		latestGasPrice:         -1,
 		fetchRetries:           0,
 	}
@@ -221,6 +224,9 @@ func (gs *gasStation) GetCurrentGasPrice() (*big.Int, error) {
 	}
 
 	result := big.NewInt(int64(gs.latestGasPrice))
+	if result.Cmp(gs.minGasPriceValue) < 0 {
+		result.Set(gs.minGasPriceValue)
+	}
 	return result.Mul(result, gs.gasPriceMultiplier), nil
 }
 
