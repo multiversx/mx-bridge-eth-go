@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethereumClient "github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx/mappers"
 	"github.com/multiversx/mx-bridge-eth-go/cmd/migration/disabled"
@@ -74,7 +76,7 @@ func execute(ctx *cli.Context) error {
 	operationMode := strings.ToLower(ctx.GlobalString(mode.Name))
 	switch operationMode {
 	case generateMode:
-		return generate(cfg)
+		return generate(ctx, cfg)
 	case signMode:
 		//TODO: implement
 	case executeMode:
@@ -84,7 +86,7 @@ func execute(ctx *cli.Context) error {
 	return fmt.Errorf("unknown execution mode: %s", operationMode)
 }
 
-func generate(cfg config.MigrationToolConfig) error {
+func generate(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 	argsProxy := blockchain.ArgsProxy{
 		ProxyURL:            cfg.MultiversX.NetworkAddress,
 		SameScState:         false,
@@ -99,16 +101,16 @@ func generate(cfg config.MigrationToolConfig) error {
 		return err
 	}
 
-	emptyAddress := data.NewAddressFromBytes(make([]byte, 0))
-	safeAddress, err := data.NewAddressFromBech32String(cfg.MultiversX.SafeContractAddress)
+	dummyAddress := data.NewAddressFromBytes(bytes.Repeat([]byte{0x1}, 32))
+	multisigAddress, err := data.NewAddressFromBech32String(cfg.MultiversX.MultisigContractAddress)
 	if err != nil {
 		return err
 	}
 
 	argsMXClientDataGetter := multiversx.ArgsMXClientDataGetter{
-		MultisigContractAddress: emptyAddress,
-		SafeContractAddress:     safeAddress,
-		RelayerAddress:          emptyAddress,
+		MultisigContractAddress: multisigAddress,
+		SafeContractAddress:     dummyAddress,
+		RelayerAddress:          dummyAddress,
 		Proxy:                   proxy,
 		Log:                     log,
 	}
@@ -136,12 +138,18 @@ func generate(cfg config.MigrationToolConfig) error {
 		return err
 	}
 
+	safeEthAddress := common.HexToAddress(cfg.Eth.SafeContractAddress)
+	safeInstance, err := contract.NewERC20Safe(safeEthAddress, ethClient)
+	if err != nil {
+		return err
+	}
+
 	argsCreator := ethereum.ArgsMigrationBatchCreator{
 		TokensList:           cfg.WhitelistedTokens.List,
 		TokensMapper:         tokensWrapper,
 		Erc20ContractsHolder: erc20ContractsHolder,
-		SafeContractAddress:  common.Address{},
-		SafeContractWrapper:  nil,
+		SafeContractAddress:  safeEthAddress,
+		SafeContractWrapper:  safeInstance,
 	}
 
 	creator, err := ethereum.NewMigrationBatchCreator(argsCreator)
@@ -149,12 +157,17 @@ func generate(cfg config.MigrationToolConfig) error {
 		return err
 	}
 
-	batchInfo, err := creator.CreateBatchInfo(context.Background())
+	newSafeAddressString := ctx.GlobalString(newSafeAddress.Name)
+	if len(newSafeAddressString) == 0 {
+		return fmt.Errorf("invalid new safe address for Ethereum")
+	}
+	newSafeAddressValue := common.HexToAddress(ctx.GlobalString(newSafeAddress.Name))
+
+	batchInfo, err := creator.CreateBatchInfo(context.Background(), newSafeAddressValue)
 	if err != nil {
 		return err
 	}
 
-	//TODO: save in a file
 	val, err := json.MarshalIndent(batchInfo, "", "  ")
 	if err != nil {
 		return err
@@ -162,7 +175,8 @@ func generate(cfg config.MigrationToolConfig) error {
 
 	log.Info(string(val))
 
-	return nil
+	jsonFilename := ctx.GlobalString(migrationJsonFile.Name)
+	return os.WriteFile(jsonFilename, val, os.ModePerm)
 }
 
 func loadConfig(filepath string) (config.MigrationToolConfig, error) {

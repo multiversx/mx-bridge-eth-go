@@ -40,17 +40,21 @@ func NewMigrationBatchCreator(args ArgsMigrationBatchCreator) (*migrationBatchCr
 	if check.IfNil(args.Erc20ContractsHolder) {
 		return nil, errNilErc20ContractsHolder
 	}
+	if check.IfNilReflect(args.SafeContractWrapper) {
+		return nil, errNilSafeContractWrapper
+	}
 
 	return &migrationBatchCreator{
 		tokensList:           args.TokensList,
 		tokensMapper:         args.TokensMapper,
 		erc20ContractsHolder: args.Erc20ContractsHolder,
 		safeContractAddress:  args.SafeContractAddress,
+		safeContractWrapper:  args.SafeContractWrapper,
 	}, nil
 }
 
 // CreateBatchInfo creates an instance of type BatchInfo
-func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context) (*BatchInfo, error) {
+func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSafeAddress common.Address) (*BatchInfo, error) {
 	batchesCount, err := creator.safeContractWrapper.BatchesCount(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		return nil, err
@@ -71,7 +75,7 @@ func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context) (*Bat
 		return nil, err
 	}
 
-	return creator.assembleBatchInfo(batchesCount, deposits)
+	return creator.assembleBatchInfo(batchesCount, deposits, newSafeAddress)
 }
 
 func (creator *migrationBatchCreator) fetchERC20ContractsAddresses(ctx context.Context, lastDepositNonce uint64) ([]*DepositInfo, error) {
@@ -110,10 +114,10 @@ func (creator *migrationBatchCreator) fetchBalances(ctx context.Context, deposit
 	return nil
 }
 
-func (creator *migrationBatchCreator) assembleBatchInfo(batchesCount uint64, deposits []*DepositInfo) (*BatchInfo, error) {
+func (creator *migrationBatchCreator) assembleBatchInfo(batchesCount uint64, deposits []*DepositInfo, newSafeAddress common.Address) (*BatchInfo, error) {
 	batchInfo := &BatchInfo{
 		OldSafeContractAddress: creator.safeContractAddress.String(),
-		NewSafeContractAddress: "",
+		NewSafeContractAddress: newSafeAddress.String(),
 		BatchID:                batchesCount + 1,
 		DepositsInfo:           make([]*DepositInfo, 0, len(deposits)),
 	}

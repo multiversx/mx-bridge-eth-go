@@ -15,7 +15,6 @@ var (
 			" log level.",
 		Value: "*:" + logger.LogDebug.String(),
 	}
-	// configurationFile defines a flag for the path to the main toml configuration file
 	configurationFile = cli.StringFlag{
 		Name: "config",
 		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contain the main " +
@@ -27,6 +26,16 @@ var (
 		Usage: "This flag specifies the operation mode. Usage: generate, sign or execute",
 		Value: generateMode,
 	}
+	migrationJsonFile = cli.StringFlag{
+		Name:  "migration-file",
+		Usage: "The input or output .json file containing the migration data",
+		Value: "config/migration.json",
+	}
+	newSafeAddress = cli.StringFlag{
+		Name:  "new-safe-address",
+		Usage: "The new safe address on Ethereum",
+		Value: "",
+	}
 )
 
 func getFlags() []cli.Flag {
@@ -34,6 +43,8 @@ func getFlags() []cli.Flag {
 		logLevel,
 		configurationFile,
 		mode,
+		migrationJsonFile,
+		newSafeAddress,
 	}
 }
 func getFlagsConfig(ctx *cli.Context) config.ContextFlagsConfig {
