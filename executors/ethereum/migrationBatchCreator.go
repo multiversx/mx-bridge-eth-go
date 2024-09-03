@@ -16,16 +16,14 @@ var zero = big.NewInt(0)
 
 // ArgsMigrationBatchCreator is the argument for the NewMigrationBatchCreator constructor
 type ArgsMigrationBatchCreator struct {
-	TokensList           []string
-	TokensMapper         TokensMapper
+	MvxDataGetter        MvxDataGetter
 	Erc20ContractsHolder Erc20ContractsHolder
 	SafeContractAddress  common.Address
 	SafeContractWrapper  SafeContractWrapper
 }
 
 type migrationBatchCreator struct {
-	tokensList           []string
-	tokensMapper         TokensMapper
+	mvxDataGetter        MvxDataGetter
 	erc20ContractsHolder Erc20ContractsHolder
 	safeContractAddress  common.Address
 	safeContractWrapper  SafeContractWrapper
@@ -33,11 +31,8 @@ type migrationBatchCreator struct {
 
 // NewMigrationBatchCreator creates a new instance of type migrationBatchCreator that is able to generate the migration batch output file
 func NewMigrationBatchCreator(args ArgsMigrationBatchCreator) (*migrationBatchCreator, error) {
-	if len(args.TokensList) == 0 {
-		return nil, errEmptyTokensList
-	}
-	if check.IfNil(args.TokensMapper) {
-		return nil, errNilTokensMapper
+	if check.IfNil(args.MvxDataGetter) {
+		return nil, errNilMvxDataGetter
 	}
 	if check.IfNil(args.Erc20ContractsHolder) {
 		return nil, errNilErc20ContractsHolder
@@ -47,8 +42,7 @@ func NewMigrationBatchCreator(args ArgsMigrationBatchCreator) (*migrationBatchCr
 	}
 
 	return &migrationBatchCreator{
-		tokensList:           args.TokensList,
-		tokensMapper:         args.TokensMapper,
+		mvxDataGetter:        args.MvxDataGetter,
 		erc20ContractsHolder: args.Erc20ContractsHolder,
 		safeContractAddress:  args.SafeContractAddress,
 		safeContractWrapper:  args.SafeContractWrapper,
@@ -67,7 +61,12 @@ func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSa
 		return nil, err
 	}
 
-	deposits, err := creator.fetchERC20ContractsAddresses(ctx, depositsCount)
+	tokensList, err := creator.getTokensList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	deposits, err := creator.fetchERC20ContractsAddresses(ctx, tokensList, depositsCount)
 	if err != nil {
 		return nil, err
 	}
@@ -80,19 +79,40 @@ func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSa
 	return creator.assembleBatchInfo(batchesCount, deposits, newSafeAddress)
 }
 
-func (creator *migrationBatchCreator) fetchERC20ContractsAddresses(ctx context.Context, lastDepositNonce uint64) ([]*DepositInfo, error) {
-	deposits := make([]*DepositInfo, 0, len(creator.tokensList))
-	for idx, token := range creator.tokensList {
-		addressBytes, err := creator.tokensMapper.ConvertToken(ctx, []byte(token))
+func (creator *migrationBatchCreator) getTokensList(ctx context.Context) ([]string, error) {
+	tokens, err := creator.mvxDataGetter.GetAllKnownTokens(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("%w when calling the getAllKnownTokens function on the safe contract", errEmptyTokensList)
+	}
+
+	stringTokens := make([]string, 0, len(tokens))
+	for _, token := range tokens {
+		stringTokens = append(stringTokens, string(token))
+	}
+
+	return stringTokens, nil
+}
+
+func (creator *migrationBatchCreator) fetchERC20ContractsAddresses(ctx context.Context, tokensList []string, lastDepositNonce uint64) ([]*DepositInfo, error) {
+	deposits := make([]*DepositInfo, 0, len(tokensList))
+	for idx, token := range tokensList {
+		response, err := creator.mvxDataGetter.GetERC20AddressForTokenId(ctx, []byte(token))
 		if err != nil {
 			return nil, err
+		}
+		if len(response) != 1 {
+			return nil, fmt.Errorf("%w when querying the safe contract for token %s",
+				errWrongERC20AddressResponse, token)
 		}
 
 		deposit := &DepositInfo{
 			DepositNonce:    lastDepositNonce + uint64(1+idx),
 			Token:           token,
-			ContractAddress: common.BytesToAddress(addressBytes).String(),
-			contractAddress: common.BytesToAddress(addressBytes),
+			ContractAddress: common.BytesToAddress(response[0]).String(),
+			contractAddress: common.BytesToAddress(response[0]),
 			Amount:          "",
 		}
 

@@ -494,22 +494,6 @@ func TestMigrationToolConfig(t *testing.T) {
 			LogFileLifeSpanInSec: 86400,
 			LogFileLifeSpanInMB:  1024,
 		},
-		WhitelistedTokens: WhitelistedTokensConfig{
-			List: []string{
-				"ETHUSDC-220753",
-				"ETHUTK-8cdf7a",
-				"ETHUSDT-9c73c6",
-				"ETHBUSD-450923",
-				"ETHHMT-18538a",
-				"ETHCGG-ee4e0c",
-				"ETHINFRA-60a3bf",
-				"ETHWBTC-74e282",
-				"ETHWETH-e1c126",
-				"ETHWSDAI-572803",
-				"ETHWDAI-bd65f9",
-				"ETHUMB-291202",
-			},
-		},
 	}
 
 	testString := `

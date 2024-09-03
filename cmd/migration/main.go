@@ -16,7 +16,6 @@ import (
 	ethereumClient "github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
-	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx/mappers"
 	"github.com/multiversx/mx-bridge-eth-go/cmd/migration/disabled"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/executors/ethereum"
@@ -119,11 +118,6 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 		return err
 	}
 
-	tokensWrapper, err := mappers.NewMultiversXToErc20Mapper(mxDataGetter)
-	if err != nil {
-		return err
-	}
-
 	ethClient, err := ethclient.Dial(cfg.Eth.NetworkAddress)
 	if err != nil {
 		return err
@@ -145,8 +139,7 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 	}
 
 	argsCreator := ethereum.ArgsMigrationBatchCreator{
-		TokensList:           cfg.WhitelistedTokens.List,
-		TokensMapper:         tokensWrapper,
+		MvxDataGetter:        mxDataGetter,
 		Erc20ContractsHolder: erc20ContractsHolder,
 		SafeContractAddress:  safeEthAddress,
 		SafeContractWrapper:  safeInstance,

@@ -25,3 +25,10 @@ type SafeContractWrapper interface {
 	DepositsCount(opts *bind.CallOpts) (uint64, error)
 	BatchesCount(opts *bind.CallOpts) (uint64, error)
 }
+
+// MvxDataGetter defines the operations for the data getter operating on MultiversX chain
+type MvxDataGetter interface {
+	GetAllKnownTokens(ctx context.Context) ([][]byte, error)
+	GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error)
+	IsInterfaceNil() bool
+}
