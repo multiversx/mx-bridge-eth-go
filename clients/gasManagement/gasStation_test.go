@@ -415,6 +415,35 @@ func TestGasStation_GetCurrentGasPriceExceededMaximum(t *testing.T) {
 	_ = gs.Close()
 }
 
+func TestGasStation_GetCurrentGasPriceBelowMin(t *testing.T) {
+	t.Parallel()
+
+	gsResponse := createMockGasStationResponse()
+	gsResponse.Result.SafeGasPrice = "0.944851822"
+	args := createMockArgsGasStation()
+	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+
+		resp, _ := json.Marshal(&gsResponse)
+		_, _ = rw.Write(resp)
+	}))
+	defer httpServer.Close()
+
+	args.RequestURL = httpServer.URL
+
+	gs, err := NewGasStation(args)
+	require.Nil(t, err)
+	expectedPrice := big.NewInt(0).Mul(gs.minGasPriceValue, gs.gasPriceMultiplier)
+
+	time.Sleep(time.Second * 2)
+	assert.True(t, gs.loopStatus.IsSet())
+
+	price, err := gs.GetCurrentGasPrice()
+	require.Nil(t, err)
+	assert.Equal(t, expectedPrice, price)
+	_ = gs.Close()
+}
+
 func createMockGasStationResponse() gasStationResponse {
 	return gasStationResponse{
 		Status:  "1",
