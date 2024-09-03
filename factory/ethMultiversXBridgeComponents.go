@@ -2,15 +2,12 @@ package factory
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/disabled"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps/ethToMultiversX"
@@ -366,22 +363,12 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 		return err
 	}
 
-	privateKeyBytes, err := os.ReadFile(ethereumConfigs.PrivateKeyFile)
-	if err != nil {
-		return err
-	}
-	privateKeyString := converters.TrimWhiteSpaceCharacters(string(privateKeyBytes))
-	privateKey, err := ethCrypto.HexToECDSA(privateKeyString)
+	cryptoHandler, err := ethereum.NewCryptoHandler(ethereumConfigs.PrivateKeyFile)
 	if err != nil {
 		return err
 	}
 
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return errPublicKeyCast
-	}
-	components.ethereumRelayerAddress = ethCrypto.PubkeyToAddress(*publicKeyECDSA)
+	components.ethereumRelayerAddress = cryptoHandler.GetAddress()
 
 	tokensMapper, err := mappers.NewErc20ToMultiversXMapper(components.mxDataGetter)
 	if err != nil {
@@ -404,7 +391,7 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
 		AddressConverter:             components.addressConverter,
 		Broadcaster:                  components.broadcaster,
-		PrivateKey:                   privateKey,
+		CryptoHandler:                cryptoHandler,
 		TokensMapper:                 tokensMapper,
 		SignatureHolder:              signaturesHolder,
 		SafeContractAddress:          safeContractAddress,

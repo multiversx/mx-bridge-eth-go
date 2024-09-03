@@ -35,4 +35,7 @@ var (
 
 	// ErrNoPendingBatchAvailable signals that no pending batch is available
 	ErrNoPendingBatchAvailable = errors.New("no pending batch available")
+
+	// ErrNilCryptoHandler signals that a nil crypto handler key was provided
+	ErrNilCryptoHandler = errors.New("nil crypto handler")
 )
