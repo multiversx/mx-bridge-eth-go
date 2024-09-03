@@ -8,4 +8,5 @@ var (
 	errNilErc20ContractsHolder   = errors.New("nil ERC20 contracts holder")
 	errNilSafeContractWrapper    = errors.New("nil safe contract wrapper")
 	errWrongERC20AddressResponse = errors.New("wrong ERC20 address response")
+	errNilLogger                 = errors.New("nil logger")
 )

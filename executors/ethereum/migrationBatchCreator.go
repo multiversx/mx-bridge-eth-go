@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-chain-core-go/core/check"
+	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
 var zero = big.NewInt(0)
@@ -20,6 +22,7 @@ type ArgsMigrationBatchCreator struct {
 	Erc20ContractsHolder Erc20ContractsHolder
 	SafeContractAddress  common.Address
 	SafeContractWrapper  SafeContractWrapper
+	Logger               logger.Logger
 }
 
 type migrationBatchCreator struct {
@@ -27,6 +30,7 @@ type migrationBatchCreator struct {
 	erc20ContractsHolder Erc20ContractsHolder
 	safeContractAddress  common.Address
 	safeContractWrapper  SafeContractWrapper
+	logger               logger.Logger
 }
 
 // NewMigrationBatchCreator creates a new instance of type migrationBatchCreator that is able to generate the migration batch output file
@@ -40,17 +44,23 @@ func NewMigrationBatchCreator(args ArgsMigrationBatchCreator) (*migrationBatchCr
 	if check.IfNilReflect(args.SafeContractWrapper) {
 		return nil, errNilSafeContractWrapper
 	}
+	if check.IfNil(args.Logger) {
+		return nil, errNilLogger
+	}
 
 	return &migrationBatchCreator{
 		mvxDataGetter:        args.MvxDataGetter,
 		erc20ContractsHolder: args.Erc20ContractsHolder,
 		safeContractAddress:  args.SafeContractAddress,
 		safeContractWrapper:  args.SafeContractWrapper,
+		logger:               args.Logger,
 	}, nil
 }
 
 // CreateBatchInfo creates an instance of type BatchInfo
 func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSafeAddress common.Address) (*BatchInfo, error) {
+	creator.logger.Info("started the batch creation process...")
+
 	batchesCount, err := creator.safeContractWrapper.BatchesCount(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		return nil, err
@@ -61,20 +71,28 @@ func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSa
 		return nil, err
 	}
 
+	creator.logger.Info("fetched Ethereum contracts state", "batches count", batchesCount, "deposits count", depositsCount)
+
 	tokensList, err := creator.getTokensList(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	creator.logger.Info("fetched known tokens", "tokens", strings.Join(tokensList, ", "))
 
 	deposits, err := creator.fetchERC20ContractsAddresses(ctx, tokensList, depositsCount)
 	if err != nil {
 		return nil, err
 	}
 
+	creator.logger.Info("fetched ERC20 contract addresses")
+
 	err = creator.fetchBalances(ctx, deposits)
 	if err != nil {
 		return nil, err
 	}
+
+	creator.logger.Info("fetched balances contract addresses")
 
 	return creator.assembleBatchInfo(batchesCount, deposits, newSafeAddress)
 }

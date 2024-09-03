@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
+	"github.com/multiversx/mx-chain-go/testscommon"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,6 +38,7 @@ func createMockArgsForMigrationBatchCreator() ArgsMigrationBatchCreator {
 		Erc20ContractsHolder: &bridge.ERC20ContractsHolderStub{},
 		SafeContractAddress:  safeContractAddress,
 		SafeContractWrapper:  &bridge.SafeContractWrapperStub{},
+		Logger:               &testscommon.LoggerStub{},
 	}
 }
 
@@ -72,6 +74,16 @@ func TestNewMigrationBatchCreator(t *testing.T) {
 		creator, err := NewMigrationBatchCreator(args)
 		assert.Nil(t, creator)
 		assert.Equal(t, errNilSafeContractWrapper, err)
+	})
+	t.Run("nil logger should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsForMigrationBatchCreator()
+		args.Logger = nil
+
+		creator, err := NewMigrationBatchCreator(args)
+		assert.Nil(t, creator)
+		assert.Equal(t, errNilLogger, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
