@@ -89,11 +89,11 @@ func (creator *migrationBatchCreator) fetchERC20ContractsAddresses(ctx context.C
 		}
 
 		deposit := &DepositInfo{
-			DepositNonce:    lastDepositNonce + uint64(1+idx),
-			Token:           token,
-			ContractAddress: common.BytesToAddress(addressBytes).String(),
-			contractAddress: common.BytesToAddress(addressBytes),
-			Amount:          "",
+			DepositNonce:          lastDepositNonce + uint64(1+idx),
+			Token:                 token,
+			ContractAddressString: common.BytesToAddress(addressBytes).String(),
+			ContractAddress:       common.BytesToAddress(addressBytes),
+			AmountString:          "",
 		}
 
 		deposits = append(deposits, deposit)
@@ -104,13 +104,13 @@ func (creator *migrationBatchCreator) fetchERC20ContractsAddresses(ctx context.C
 
 func (creator *migrationBatchCreator) fetchBalances(ctx context.Context, deposits []*DepositInfo) error {
 	for _, deposit := range deposits {
-		balance, err := creator.erc20ContractsHolder.BalanceOf(ctx, deposit.contractAddress, creator.safeContractAddress)
+		balance, err := creator.erc20ContractsHolder.BalanceOf(ctx, deposit.ContractAddress, creator.safeContractAddress)
 		if err != nil {
-			return fmt.Errorf("%w for address %s in ERC20 contract %s", err, creator.safeContractAddress.String(), deposit.contractAddress.String())
+			return fmt.Errorf("%w for address %s in ERC20 contract %s", err, creator.safeContractAddress.String(), deposit.ContractAddress.String())
 		}
 
-		deposit.amount = balance
-		deposit.Amount = balance.String()
+		deposit.Amount = balance
+		deposit.AmountString = balance.String()
 	}
 
 	return nil
@@ -125,7 +125,7 @@ func (creator *migrationBatchCreator) assembleBatchInfo(batchesCount uint64, dep
 	}
 
 	for _, deposit := range deposits {
-		if deposit.amount.Cmp(zero) <= 0 {
+		if deposit.Amount.Cmp(zero) <= 0 {
 			continue
 		}
 
