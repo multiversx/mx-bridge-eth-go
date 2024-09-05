@@ -147,9 +147,9 @@ func (creator *migrationBatchCreator) computeMessageHash(batch *BatchInfo) (comm
 	amounts := make([]*big.Int, 0, len(batch.DepositsInfo))
 	nonces := make([]*big.Int, 0, len(batch.DepositsInfo))
 	for _, deposit := range batch.DepositsInfo {
-		tokens = append(tokens, common.HexToAddress(deposit.ContractAddress))
+		tokens = append(tokens, deposit.ContractAddress)
 		recipients = append(recipients, common.HexToAddress(batch.NewSafeContractAddress))
-		amounts = append(amounts, deposit.amount)
+		amounts = append(amounts, deposit.Amount)
 		nonces = append(nonces, big.NewInt(0).SetUint64(deposit.DepositNonce))
 	}
 
