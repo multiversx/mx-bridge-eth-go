@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -33,8 +32,6 @@ var expectedRecipients = []common.Address{common.BytesToAddress([]byte("to1")), 
 var expectedNonces = []*big.Int{big.NewInt(10), big.NewInt(30)}
 
 func createMockEthereumClientArgs() ArgsEthereumClient {
-	sk, _ := crypto.HexToECDSA("9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1")
-
 	addressConverter, err := converters.NewAddressConverter()
 	if err != nil {
 		panic(err)
@@ -46,7 +43,7 @@ func createMockEthereumClientArgs() ArgsEthereumClient {
 		Log:                   logger.GetOrCreate("test"),
 		AddressConverter:      addressConverter,
 		Broadcaster:           &testsCommon.BroadcasterStub{},
-		PrivateKey:            sk,
+		CryptoHandler:         &bridgeTests.CryptoHandlerStub{},
 		TokensMapper: &bridgeTests.TokensMapperStub{
 			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
 				return append([]byte("ERC20"), sourceBytes...), nil
@@ -137,12 +134,12 @@ func TestNewEthereumClient(t *testing.T) {
 		assert.Equal(t, errNilBroadcaster, err)
 		assert.True(t, check.IfNil(c))
 	})
-	t.Run("nil private key", func(t *testing.T) {
+	t.Run("nil crypto handler", func(t *testing.T) {
 		args := createMockEthereumClientArgs()
-		args.PrivateKey = nil
+		args.CryptoHandler = nil
 		c, err := NewEthereumClient(args)
 
-		assert.Equal(t, clients.ErrNilPrivateKey, err)
+		assert.Equal(t, clients.ErrNilCryptoHandler, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("nil tokens mapper", func(t *testing.T) {
@@ -475,23 +472,54 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 func TestClient_BroadcastSignatureForMessageHash(t *testing.T) {
 	t.Parallel()
 
-	expectedSig := "b556014dd984183e4662dc3204e522a5a92093fd6f64bb2da9c1b66b8d5ad12d774e05728b83c76bf09bb91af93ede4118f59aa949c7d02c86051dd0fa140c9900"
-	broadcastCalled := false
+	t.Run("sign failed should not broadcast", func(t *testing.T) {
+		t.Parallel()
 
-	hash := common.HexToHash("c99286352d865e33f1747761cbd440a7906b9bd8a5261cb6909e5ba18dd19b08")
-	args := createMockEthereumClientArgs()
-	args.Broadcaster = &testsCommon.BroadcasterStub{
-		BroadcastSignatureCalled: func(signature []byte, messageHash []byte) {
-			assert.Equal(t, hash.Bytes(), messageHash)
-			assert.Equal(t, expectedSig, hex.EncodeToString(signature))
-			broadcastCalled = true
-		},
-	}
+		expectedError := errors.New("expected error")
+		hash := common.HexToHash("hash")
+		args := createMockEthereumClientArgs()
+		args.Broadcaster = &testsCommon.BroadcasterStub{
+			BroadcastSignatureCalled: func(signature []byte, messageHash []byte) {
+				assert.Fail(t, "should have not called bradcast")
+			},
+		}
+		args.CryptoHandler = &bridgeTests.CryptoHandlerStub{
+			SignCalled: func(msgHash common.Hash) ([]byte, error) {
+				assert.Equal(t, hash.Bytes(), msgHash.Bytes())
+				return nil, expectedError
+			},
+		}
 
-	c, _ := NewEthereumClient(args)
-	c.BroadcastSignatureForMessageHash(hash)
+		c, _ := NewEthereumClient(args)
+		c.BroadcastSignatureForMessageHash(hash)
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
 
-	assert.True(t, broadcastCalled)
+		expectedSig := "expected sig"
+		broadcastCalled := false
+
+		hash := common.HexToHash("hash")
+		args := createMockEthereumClientArgs()
+		args.Broadcaster = &testsCommon.BroadcasterStub{
+			BroadcastSignatureCalled: func(signature []byte, messageHash []byte) {
+				assert.Equal(t, hash.Bytes(), messageHash)
+				assert.Equal(t, expectedSig, string(signature))
+				broadcastCalled = true
+			},
+		}
+		args.CryptoHandler = &bridgeTests.CryptoHandlerStub{
+			SignCalled: func(msgHash common.Hash) ([]byte, error) {
+				assert.Equal(t, hash.Bytes(), msgHash.Bytes())
+				return []byte(expectedSig), nil
+			},
+		}
+
+		c, _ := NewEthereumClient(args)
+		c.BroadcastSignatureForMessageHash(hash)
+
+		assert.True(t, broadcastCalled)
+	})
 }
 
 func TestClient_WasExecuted(t *testing.T) {
@@ -517,6 +545,11 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 	t.Parallel()
 
 	args := createMockEthereumClientArgs()
+	args.CryptoHandler = &bridgeTests.CryptoHandlerStub{
+		CreateKeyedTransactorCalled: func(chainId *big.Int) (*bind.TransactOpts, error) {
+			return &bind.TransactOpts{}, nil
+		},
+	}
 	batch := createMockTransferBatch()
 	argLists := batchProcessor.ExtractListMvxToEth(batch)
 	signatures := make([][]byte, 10)
@@ -589,6 +622,18 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
+	t.Run("create keyed transactor fails", func(t *testing.T) {
+		expectedErr := errors.New("expected error create keyed transactor")
+		c, _ := NewEthereumClient(args)
+		c.cryptoHandler = &bridgeTests.CryptoHandlerStub{
+			CreateKeyedTransactorCalled: func(chainId *big.Int) (*bind.TransactOpts, error) {
+				return nil, expectedErr
+			},
+		}
+		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 10)
+		assert.Equal(t, "", hash)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
 	t.Run("get current gas price fails", func(t *testing.T) {
 		expectedErr := errors.New("expected error get current gas price")
 		c, _ := NewEthereumClient(args)
@@ -599,7 +644,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		}
 		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 10)
 		assert.Equal(t, "", hash)
-		assert.True(t, errors.Is(err, expectedErr))
+		assert.ErrorIs(t, err, expectedErr)
 	})
 	t.Run("not enough quorum", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)

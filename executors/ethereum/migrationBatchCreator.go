@@ -7,6 +7,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
@@ -130,5 +132,33 @@ func (creator *migrationBatchCreator) assembleBatchInfo(batchesCount uint64, dep
 		batchInfo.DepositsInfo = append(batchInfo.DepositsInfo, deposit)
 	}
 
+	var err error
+	batchInfo.MessageHash, err = creator.computeMessageHash(batchInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	return batchInfo, nil
+}
+
+func (creator *migrationBatchCreator) computeMessageHash(batch *BatchInfo) (common.Hash, error) {
+	tokens := make([]common.Address, 0, len(batch.DepositsInfo))
+	recipients := make([]common.Address, 0, len(batch.DepositsInfo))
+	amounts := make([]*big.Int, 0, len(batch.DepositsInfo))
+	nonces := make([]*big.Int, 0, len(batch.DepositsInfo))
+	for _, deposit := range batch.DepositsInfo {
+		tokens = append(tokens, deposit.ContractAddress)
+		recipients = append(recipients, common.HexToAddress(batch.NewSafeContractAddress))
+		amounts = append(amounts, deposit.Amount)
+		nonces = append(nonces, big.NewInt(0).SetUint64(deposit.DepositNonce))
+	}
+
+	args := &batchProcessor.ArgListsBatch{
+		EthTokens:  tokens,
+		Recipients: recipients,
+		Amounts:    amounts,
+		Nonces:     nonces,
+	}
+
+	return ethereum.GenerateMessageHash(args, batch.BatchID)
 }

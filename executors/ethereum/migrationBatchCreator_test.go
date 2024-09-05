@@ -208,6 +208,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 			OldSafeContractAddress: safeContractAddress.String(),
 			NewSafeContractAddress: newSafeContractAddress.String(),
 			BatchID:                2245,
+			MessageHash:            common.HexToHash("0x93915c0bea665553dfc85ec3cdf4b883100929f22d6cbbfc44db2f0ee71b3b56"),
 			DepositsInfo: []*DepositInfo{
 				{
 					DepositNonce:          40,

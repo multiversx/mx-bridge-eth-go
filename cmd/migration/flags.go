@@ -1,6 +1,8 @@
 package main
 
 import (
+	"path"
+
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/urfave/cli"
@@ -23,13 +25,18 @@ var (
 	}
 	mode = cli.StringFlag{
 		Name:  "mode",
-		Usage: "This flag specifies the operation mode. Usage: generate, sign or execute",
-		Value: generateMode,
+		Usage: "This flag specifies the operation mode. Usage: sign or execute",
+		Value: signMode,
 	}
 	migrationJsonFile = cli.StringFlag{
 		Name:  "migration-file",
-		Usage: "The input or output .json file containing the migration data",
-		Value: "config/migration.json",
+		Usage: "The output .json file containing the migration data",
+		Value: path.Join(configPath, "migration-"+timestampPlaceholder+".json"),
+	}
+	signatureJsonFile = cli.StringFlag{
+		Name:  "signature-file",
+		Usage: "The output .json file containing the signature data",
+		Value: path.Join(configPath, publicKeyPlaceholder+"-"+timestampPlaceholder+".json"),
 	}
 	newSafeAddress = cli.StringFlag{
 		Name:  "new-safe-address",
@@ -44,6 +51,7 @@ func getFlags() []cli.Flag {
 		configurationFile,
 		mode,
 		migrationJsonFile,
+		signatureJsonFile,
 		newSafeAddress,
 	}
 }

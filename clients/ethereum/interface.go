@@ -73,3 +73,11 @@ type erc20ContractWrapper interface {
 	BalanceOf(ctx context.Context, account common.Address) (*big.Int, error)
 	IsInterfaceNil() bool
 }
+
+// CryptoHandler defines the operations for a component that expose some crypto primitives
+type CryptoHandler interface {
+	Sign(msgHash common.Hash) ([]byte, error)
+	GetAddress() common.Address
+	CreateKeyedTransactor(chainId *big.Int) (*bind.TransactOpts, error)
+	IsInterfaceNil() bool
+}

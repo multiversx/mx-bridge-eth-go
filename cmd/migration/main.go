@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -27,10 +28,12 @@ import (
 )
 
 const (
-	filePathPlaceholder = "[path]"
-	generateMode        = "generate"
-	signMode            = "sign"
-	executeMode         = "execute"
+	filePathPlaceholder  = "[path]"
+	signMode             = "sign"
+	executeMode          = "execute"
+	configPath           = "config"
+	timestampPlaceholder = "[timestamp]"
+	publicKeyPlaceholder = "[public-key]"
 )
 
 var log = logger.GetOrCreate("main")
@@ -75,10 +78,8 @@ func execute(ctx *cli.Context) error {
 
 	operationMode := strings.ToLower(ctx.GlobalString(mode.Name))
 	switch operationMode {
-	case generateMode:
-		return generate(ctx, cfg)
 	case signMode:
-		//TODO: implement
+		return generateAndSign(ctx, cfg)
 	case executeMode:
 		//TODO: implement
 	}
@@ -86,7 +87,7 @@ func execute(ctx *cli.Context) error {
 	return fmt.Errorf("unknown execution mode: %s", operationMode)
 }
 
-func generate(ctx *cli.Context, cfg config.MigrationToolConfig) error {
+func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 	argsProxy := blockchain.ArgsProxy{
 		ProxyURL:            cfg.MultiversX.NetworkAddress,
 		SameScState:         false,
@@ -173,10 +174,44 @@ func generate(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 		return err
 	}
 
+	cryptoHandler, err := ethereumClient.NewCryptoHandler(cfg.Eth.PrivateKeyFile)
+	if err != nil {
+		return err
+	}
+
+	signature, err := cryptoHandler.Sign(batchInfo.MessageHash)
+	if err != nil {
+		return err
+	}
+
 	log.Info(string(val))
+	log.Info("Batch signed",
+		"public key", cryptoHandler.GetAddress().String(),
+		"message hash", batchInfo.MessageHash.String(),
+		"signature", signature)
 
 	jsonFilename := ctx.GlobalString(migrationJsonFile.Name)
-	return os.WriteFile(jsonFilename, val, os.ModePerm)
+	jsonFilename = applyTimestamp(jsonFilename)
+	err = os.WriteFile(jsonFilename, val, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	sigInfo := &ethereum.SignatureInfo{
+		PublicKey:   cryptoHandler.GetAddress().String(),
+		MessageHash: batchInfo.MessageHash.String(),
+		Signature:   hex.EncodeToString(signature),
+	}
+
+	sigFilename := ctx.GlobalString(signatureJsonFile.Name)
+	sigFilename = applyTimestamp(sigFilename)
+	sigFilename = applyPublicKey(sigFilename, sigInfo.PublicKey)
+	val, err = json.MarshalIndent(sigInfo, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(sigFilename, val, os.ModePerm)
 }
 
 func loadConfig(filepath string) (config.MigrationToolConfig, error) {
@@ -187,4 +222,15 @@ func loadConfig(filepath string) (config.MigrationToolConfig, error) {
 	}
 
 	return cfg, nil
+}
+
+func applyTimestamp(input string) string {
+	actualTimestamp := time.Now().Format("2006-01-02T15-04-05")
+	actualTimestamp = strings.Replace(actualTimestamp, "T", "-", 1)
+
+	return strings.Replace(input, timestampPlaceholder, actualTimestamp, 1)
+}
+
+func applyPublicKey(input string, publickey string) string {
+	return strings.Replace(input, publicKeyPlaceholder, publickey, 1)
 }
