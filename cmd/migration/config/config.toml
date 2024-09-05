@@ -1,0 +1,50 @@
+[Eth]
+    Chain = "Ethereum"
+    NetworkAddress = "http://127.0.0.1:8545" # a network address
+    PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
+    SafeContractAddress = "A6504Cc508889bbDBd4B748aFf6EA6b5D0d2684c"
+    GasLimitBase = 350000
+    GasLimitForEach = 30000
+    [Eth.GasStation]
+        Enabled = true
+        URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
+        GasPriceMultiplier = 1000000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 1000000000
+        PollingIntervalInSeconds = 60 # number of seconds between gas price polling
+        RequestRetryDelayInSeconds = 5 # number of seconds of delay after one failed request
+        MaxFetchRetries = 3 # number of fetch retries before printing an error
+        RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the gas price request
+        MaximumAllowedGasPrice = 300 # maximum value allowed for the fetched gas price value
+        # GasPriceSelector available options: "SafeGasPrice", "ProposeGasPrice", "FastGasPrice"
+        GasPriceSelector = "SafeGasPrice" # selector used to provide the gas price
+
+[MultiversX]
+    NetworkAddress = "https://devnet-gateway.multiversx.com" # the network address
+    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus"
+    [MultiversX.Proxy]
+        CacherExpirationSeconds = 600 # the caching time in seconds
+
+        # valid options for ProxyRestAPIEntityType are "observer" and "proxy". Any other value will trigger an error.
+        # "observer" is useful when querying an observer, directly and "proxy" is useful when querying a squad's proxy (gateway)
+        RestAPIEntityType = "observer"
+        FinalityCheck = true
+        MaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
+
+[Logs]
+    LogFileLifeSpanInSec = 86400 # 24h
+    LogFileLifeSpanInMB = 1024 # 1GB
+
+[WhitelistedTokens]
+    List = [
+        "ETHUSDC-220753",
+        "ETHUTK-8cdf7a",
+        "ETHUSDT-9c73c6",
+        "ETHBUSD-450923",
+        "ETHHMT-18538a",
+        "ETHCGG-ee4e0c",
+        "ETHINFRA-60a3bf",
+        "ETHWBTC-74e282",
+        "ETHWETH-e1c126",
+        "ETHWSDAI-572803",
+        "ETHWDAI-bd65f9",
+        "ETHUMB-291202",
+    ]

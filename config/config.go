@@ -205,3 +205,16 @@ type ScCallsModuleConfig struct {
 	FilterConfig                 PendingOperationsFilterConfig
 	Logs                         LogsConfig
 }
+
+// WhitelistedTokensConfig will hold the whitelisted tokens config
+type WhitelistedTokensConfig struct {
+	List []string
+}
+
+// MigrationToolConfig is the migration tool config struct
+type MigrationToolConfig struct {
+	Eth               EthereumConfig
+	MultiversX        MultiversXConfig
+	Logs              LogsConfig
+	WhitelistedTokens WhitelistedTokensConfig
+}
