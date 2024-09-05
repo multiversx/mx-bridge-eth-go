@@ -485,7 +485,7 @@ func TestClient_BroadcastSignatureForMessageHash(t *testing.T) {
 		}
 		args.CryptoHandler = &bridgeTests.CryptoHandlerStub{
 			SignCalled: func(msgHash common.Hash) ([]byte, error) {
-				assert.Equal(t, msgHash.Bytes(), hash.Bytes())
+				assert.Equal(t, hash.Bytes(), msgHash.Bytes())
 				return nil, expectedError
 			},
 		}
@@ -510,7 +510,7 @@ func TestClient_BroadcastSignatureForMessageHash(t *testing.T) {
 		}
 		args.CryptoHandler = &bridgeTests.CryptoHandlerStub{
 			SignCalled: func(msgHash common.Hash) ([]byte, error) {
-				assert.Equal(t, msgHash.Bytes(), hash.Bytes())
+				assert.Equal(t, hash.Bytes(), msgHash.Bytes())
 				return []byte(expectedSig), nil
 			},
 		}
