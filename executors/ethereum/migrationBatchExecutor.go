@@ -172,8 +172,9 @@ func (executor *migrationBatchExecutor) checkRelayersSigsAndQuorum(relayers []co
 
 func (executor *migrationBatchExecutor) getSameMessageHashSignatures() []SignatureInfo {
 	filtered := make([]SignatureInfo, 0, len(executor.signatures))
+	expectedMessageHash := executor.batch.MessageHash.String()
 	for _, sigInfo := range executor.signatures {
-		if sigInfo.MessageHash != executor.batch.MessageHash.String() {
+		if sigInfo.MessageHash != expectedMessageHash {
 			executor.logger.Warn("found a signature info that was not carried on the same message hash",
 				"local message hash", executor.batch.MessageHash.String(),
 				"address", sigInfo.Address, "message hash", sigInfo.MessageHash)
@@ -263,22 +264,22 @@ func (executor *migrationBatchExecutor) checkQuorum(relayers []common.Address, q
 		whitelistedRelayers[relayerAddress] = sigInfo
 	}
 
-	result := make([][]byte, 0, len(whitelistedRelayers))
+	validSignatures := make([][]byte, 0, len(whitelistedRelayers))
 	for _, sigInfo := range whitelistedRelayers {
 		sig, err := hex.DecodeString(sigInfo.Signature)
 		if err != nil {
 			return nil, fmt.Errorf("internal error: %w while decoding this string %s that should have been hexed encoded", err, sigInfo.Signature)
 		}
 
-		result = append(result, sig)
+		validSignatures = append(validSignatures, sig)
 		executor.logger.Info("valid signature recorded for whitelisted relayer", "relayer", sigInfo.Address)
 	}
 
-	if uint64(len(result)) < quorum.Uint64() {
-		return nil, fmt.Errorf("%w: minimum %d, got %d", errQuorumNotReached, quorum.Uint64(), len(result))
+	if uint64(len(validSignatures)) < quorum.Uint64() {
+		return nil, fmt.Errorf("%w: minimum %d, got %d", errQuorumNotReached, quorum.Uint64(), len(validSignatures))
 	}
 
-	return result, nil
+	return validSignatures, nil
 }
 
 func isWhitelistedRelayer(sigInfo SignatureInfo, relayers []common.Address) bool {
