@@ -30,8 +30,13 @@ var (
 	}
 	migrationJsonFile = cli.StringFlag{
 		Name:  "migration-file",
-		Usage: "The input or output .json file containing the migration data",
-		Value: path.Join(configPath, "migration.json"),
+		Usage: "The output .json file containing the migration data",
+		Value: path.Join(configPath, "migration-"+timestampPlaceholder+".json"),
+	}
+	signatureJsonFile = cli.StringFlag{
+		Name:  "signature-file",
+		Usage: "The output .json file containing the signature data",
+		Value: path.Join(configPath, publicKeyPlaceholder+"-"+timestampPlaceholder+".json"),
 	}
 	newSafeAddress = cli.StringFlag{
 		Name:  "new-safe-address",
@@ -46,6 +51,7 @@ func getFlags() []cli.Flag {
 		configurationFile,
 		mode,
 		migrationJsonFile,
+		signatureJsonFile,
 		newSafeAddress,
 	}
 }

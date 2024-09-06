@@ -8,12 +8,12 @@ import (
 
 // DepositInfo is the deposit info list
 type DepositInfo struct {
-	DepositNonce    uint64 `json:"DepositNonce"`
-	Token           string `json:"Token"`
-	ContractAddress string `json:"ContractAddress"`
-	contractAddress common.Address
-	amount          *big.Int
-	Amount          string `json:"Amount"`
+	DepositNonce          uint64         `json:"DepositNonce"`
+	Token                 string         `json:"Token"`
+	ContractAddressString string         `json:"ContractAddress"`
+	ContractAddress       common.Address `json:"-"`
+	Amount                *big.Int       `json:"-"`
+	AmountString          string         `json:"Amount"`
 }
 
 // BatchInfo is the batch info list

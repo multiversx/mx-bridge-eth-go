@@ -127,11 +127,11 @@ func (creator *migrationBatchCreator) fetchERC20ContractsAddresses(ctx context.C
 		}
 
 		deposit := &DepositInfo{
-			DepositNonce:    lastDepositNonce + uint64(1+idx),
-			Token:           token,
-			ContractAddress: common.BytesToAddress(response[0]).String(),
-			contractAddress: common.BytesToAddress(response[0]),
-			Amount:          "",
+			DepositNonce:          lastDepositNonce + uint64(1+idx),
+			Token:                 token,
+			ContractAddressString: common.BytesToAddress(response[0]).String(),
+			ContractAddress:       common.BytesToAddress(response[0]),
+			AmountString:          "",
 		}
 
 		deposits = append(deposits, deposit)
@@ -142,13 +142,13 @@ func (creator *migrationBatchCreator) fetchERC20ContractsAddresses(ctx context.C
 
 func (creator *migrationBatchCreator) fetchBalances(ctx context.Context, deposits []*DepositInfo) error {
 	for _, deposit := range deposits {
-		balance, err := creator.erc20ContractsHolder.BalanceOf(ctx, deposit.contractAddress, creator.safeContractAddress)
+		balance, err := creator.erc20ContractsHolder.BalanceOf(ctx, deposit.ContractAddress, creator.safeContractAddress)
 		if err != nil {
-			return fmt.Errorf("%w for address %s in ERC20 contract %s", err, creator.safeContractAddress.String(), deposit.contractAddress.String())
+			return fmt.Errorf("%w for address %s in ERC20 contract %s", err, creator.safeContractAddress.String(), deposit.ContractAddress.String())
 		}
 
-		deposit.amount = balance
-		deposit.Amount = balance.String()
+		deposit.Amount = balance
+		deposit.AmountString = balance.String()
 	}
 
 	return nil
@@ -163,7 +163,7 @@ func (creator *migrationBatchCreator) assembleBatchInfo(batchesCount uint64, dep
 	}
 
 	for _, deposit := range deposits {
-		if deposit.amount.Cmp(zero) <= 0 {
+		if deposit.Amount.Cmp(zero) <= 0 {
 			continue
 		}
 
@@ -185,9 +185,9 @@ func (creator *migrationBatchCreator) computeMessageHash(batch *BatchInfo) (comm
 	amounts := make([]*big.Int, 0, len(batch.DepositsInfo))
 	nonces := make([]*big.Int, 0, len(batch.DepositsInfo))
 	for _, deposit := range batch.DepositsInfo {
-		tokens = append(tokens, common.HexToAddress(deposit.ContractAddress))
+		tokens = append(tokens, deposit.ContractAddress)
 		recipients = append(recipients, common.HexToAddress(batch.NewSafeContractAddress))
-		amounts = append(amounts, deposit.amount)
+		amounts = append(amounts, deposit.Amount)
 		nonces = append(nonces, big.NewInt(0).SetUint64(deposit.DepositNonce))
 	}
 

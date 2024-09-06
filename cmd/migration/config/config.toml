@@ -26,7 +26,7 @@
 
         # valid options for ProxyRestAPIEntityType are "observer" and "proxy". Any other value will trigger an error.
         # "observer" is useful when querying an observer, directly and "proxy" is useful when querying a squad's proxy (gateway)
-        RestAPIEntityType = "proxy"
+        RestAPIEntityType = "observer"
         FinalityCheck = true
         MaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
 

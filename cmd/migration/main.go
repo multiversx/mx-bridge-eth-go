@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 	"strings"
 	"time"
 
@@ -32,10 +31,12 @@ import (
 )
 
 const (
-	filePathPlaceholder = "[path]"
-	signMode            = "sign"
-	executeMode         = "execute"
-	configPath          = "config"
+	filePathPlaceholder  = "[path]"
+	signMode             = "sign"
+	executeMode          = "execute"
+	configPath           = "config"
+	timestampPlaceholder = "[timestamp]"
+	publicKeyPlaceholder = "[public-key]"
 )
 
 var log = logger.GetOrCreate("main")
@@ -202,6 +203,7 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*interna
 	log.Info("Migration .json file contents: \n" + string(val))
 
 	jsonFilename := ctx.GlobalString(migrationJsonFile.Name)
+	jsonFilename = applyTimestamp(jsonFilename)
 	err = os.WriteFile(jsonFilename, val, os.ModePerm)
 	if err != nil {
 		return nil, err
@@ -213,7 +215,9 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*interna
 		Signature:   hex.EncodeToString(signature),
 	}
 
-	sigFilename := path.Join(configPath, fmt.Sprintf("%s.json", sigInfo.Address))
+	sigFilename := ctx.GlobalString(signatureJsonFile.Name)
+	sigFilename = applyTimestamp(sigFilename)
+	sigFilename = applyPublicKey(sigFilename, sigInfo.Address)
 	val, err = json.MarshalIndent(sigInfo, "", "  ")
 	if err != nil {
 		return nil, err
@@ -305,4 +309,15 @@ func loadConfig(filepath string) (config.MigrationToolConfig, error) {
 	}
 
 	return cfg, nil
+}
+
+func applyTimestamp(input string) string {
+	actualTimestamp := time.Now().Format("2006-01-02T15-04-05")
+	actualTimestamp = strings.Replace(actualTimestamp, "T", "-", 1)
+
+	return strings.Replace(input, timestampPlaceholder, actualTimestamp, 1)
+}
+
+func applyPublicKey(input string, publickey string) string {
+	return strings.Replace(input, publicKeyPlaceholder, publickey, 1)
 }
