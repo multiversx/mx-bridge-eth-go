@@ -266,6 +266,24 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
+
+	if len(params.InitialSupplyValue) > 0 {
+		if params.IsMintBurnOnEth {
+			mintAmount, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
+			require.True(handler, ok)
+
+			tx, err = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, big.NewInt(0), mintAmount)
+			require.NoError(handler, err)
+			handler.SimulatedChain.Commit()
+			handler.checkEthTxResult(ctx, tx.Hash())
+		} else {
+			// reset the tokens value for the safe contract, so it will "know" about the balance that it has in the ERC20 contract
+			tx, err = handler.SafeContract.ResetTotalBalance(auth, erc20Address)
+			require.NoError(handler, err)
+			handler.SimulatedChain.Commit()
+			handler.checkEthTxResult(ctx, tx.Hash())
+		}
+	}
 }
 
 func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, params IssueTokenParams) (common.Address, ERC20Contract) {
@@ -328,20 +346,33 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 	require.NoError(handler, err)
 
 	// mint the address that will create the transfers
+	handler.mintTokens(ctx, ethGenericTokenContract, params.ValueToMintOnEth, handler.TestKeys.EthAddress)
+	if len(params.InitialSupplyValue) > 0 {
+		handler.mintTokens(ctx, ethGenericTokenContract, params.InitialSupplyValue, handler.SafeAddress)
+	}
+
+	return ethGenericTokenAddress, ethGenericTokenContract
+}
+
+func (handler *EthereumHandler) mintTokens(
+	ctx context.Context,
+	ethGenericTokenContract *contract.GenericERC20,
+	value string,
+	recipientAddress common.Address,
+) {
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.DepositorKeys.EthSK, handler.ChainID)
 
-	mintAmount, ok := big.NewInt(0).SetString(params.ValueToMintOnEth, 10)
+	mintAmount, ok := big.NewInt(0).SetString(value, 10)
 	require.True(handler, ok)
-	tx, err := ethGenericTokenContract.Mint(auth, handler.TestKeys.EthAddress, mintAmount)
+
+	tx, err := ethGenericTokenContract.Mint(auth, recipientAddress, mintAmount)
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
 
-	balance, err := ethGenericTokenContract.BalanceOf(nil, handler.TestKeys.EthAddress)
+	balance, err := ethGenericTokenContract.BalanceOf(nil, recipientAddress)
 	require.NoError(handler, err)
 	require.Equal(handler, mintAmount.String(), balance.String())
-
-	return ethGenericTokenAddress, ethGenericTokenContract
 }
 
 // CreateBatchOnEthereum will create a batch on Ethereum using the provided tokens parameters list
