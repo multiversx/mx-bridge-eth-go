@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
+	"github.com/multiversx/mx-chain-go/testscommon"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,43 +24,36 @@ var balanceOfTkn2 = big.NewInt(38)
 
 func createMockArgsForMigrationBatchCreator() ArgsMigrationBatchCreator {
 	return ArgsMigrationBatchCreator{
-		TokensList:           []string{"tkn1", "tkn2"},
-		TokensMapper:         &bridge.TokensMapperStub{},
+		MvxDataGetter: &bridge.DataGetterStub{
+			GetAllKnownTokensCalled: func(ctx context.Context) ([][]byte, error) {
+				return [][]byte{
+					[]byte("tkn1"),
+					[]byte("tkn2"),
+				}, nil
+			},
+			GetERC20AddressForTokenIdCalled: func(ctx context.Context, tokenId []byte) ([][]byte, error) {
+				return [][]byte{[]byte("erc 20 address")}, nil
+			},
+		},
 		Erc20ContractsHolder: &bridge.ERC20ContractsHolderStub{},
 		SafeContractAddress:  safeContractAddress,
 		SafeContractWrapper:  &bridge.SafeContractWrapperStub{},
+		Logger:               &testscommon.LoggerStub{},
 	}
 }
 
 func TestNewMigrationBatchCreator(t *testing.T) {
 	t.Parallel()
 
-	t.Run("nil or empty tokens list should error", func(t *testing.T) {
+	t.Run("nil mvx data getter should error", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsForMigrationBatchCreator()
-		args.TokensList = nil
+		args.MvxDataGetter = nil
 
 		creator, err := NewMigrationBatchCreator(args)
 		assert.Nil(t, creator)
-		assert.Equal(t, errEmptyTokensList, err)
-
-		args = createMockArgsForMigrationBatchCreator()
-		args.TokensList = make([]string, 0)
-
-		creator, err = NewMigrationBatchCreator(args)
-		assert.Nil(t, creator)
-		assert.Equal(t, errEmptyTokensList, err)
-	})
-	t.Run("nil tokens mapper should error", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockArgsForMigrationBatchCreator()
-		args.TokensMapper = nil
-
-		creator, err := NewMigrationBatchCreator(args)
-		assert.Nil(t, creator)
-		assert.Equal(t, errNilTokensMapper, err)
+		assert.Equal(t, errNilMvxDataGetter, err)
 	})
 	t.Run("nil erc20 contracts holder should error", func(t *testing.T) {
 		t.Parallel()
@@ -80,6 +74,16 @@ func TestNewMigrationBatchCreator(t *testing.T) {
 		creator, err := NewMigrationBatchCreator(args)
 		assert.Nil(t, creator)
 		assert.Equal(t, errNilSafeContractWrapper, err)
+	})
+	t.Run("nil logger should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsForMigrationBatchCreator()
+		args.Logger = nil
+
+		creator, err := NewMigrationBatchCreator(args)
+		assert.Nil(t, creator)
+		assert.Equal(t, errNilLogger, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -127,12 +131,12 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		assert.Equal(t, expectedErr, err)
 		assert.Nil(t, batch)
 	})
-	t.Run("ConvertToken errors should error", func(t *testing.T) {
+	t.Run("get all known tokens errors should error", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsForMigrationBatchCreator()
-		args.TokensMapper = &bridge.TokensMapperStub{
-			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
+		args.MvxDataGetter = &bridge.DataGetterStub{
+			GetAllKnownTokensCalled: func(ctx context.Context) ([][]byte, error) {
 				return nil, expectedErr
 			},
 		}
@@ -140,6 +144,47 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		creator, _ := NewMigrationBatchCreator(args)
 		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
 		assert.Equal(t, expectedErr, err)
+		assert.Nil(t, batch)
+	})
+	t.Run("get all known tokens returns 0 tokens should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsForMigrationBatchCreator()
+		args.MvxDataGetter = &bridge.DataGetterStub{
+			GetAllKnownTokensCalled: func(ctx context.Context) ([][]byte, error) {
+				return make([][]byte, 0), nil
+			},
+		}
+
+		creator, _ := NewMigrationBatchCreator(args)
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
+		assert.ErrorIs(t, err, errEmptyTokensList)
+		assert.Nil(t, batch)
+	})
+	t.Run("GetERC20AddressForTokenId errors should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsForMigrationBatchCreator()
+		args.MvxDataGetter.(*bridge.DataGetterStub).GetERC20AddressForTokenIdCalled = func(ctx context.Context, sourceBytes []byte) ([][]byte, error) {
+			return nil, expectedErr
+		}
+
+		creator, _ := NewMigrationBatchCreator(args)
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
+		assert.Equal(t, expectedErr, err)
+		assert.Nil(t, batch)
+	})
+	t.Run("GetERC20AddressForTokenId returns empty list should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsForMigrationBatchCreator()
+		args.MvxDataGetter.(*bridge.DataGetterStub).GetERC20AddressForTokenIdCalled = func(ctx context.Context, sourceBytes []byte) ([][]byte, error) {
+			return make([][]byte, 0), nil
+		}
+
+		creator, _ := NewMigrationBatchCreator(args)
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
+		assert.ErrorIs(t, err, errWrongERC20AddressResponse)
 		assert.Nil(t, batch)
 	})
 	t.Run("BalanceOf errors should error", func(t *testing.T) {
@@ -164,17 +209,15 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		depositCount := depositCountStart
 		batchesCount := uint64(2244)
 		args := createMockArgsForMigrationBatchCreator()
-		args.TokensMapper = &bridge.TokensMapperStub{
-			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
-				if string(sourceBytes) == "tkn1" {
-					return tkn1Erc20Address, nil
-				}
-				if string(sourceBytes) == "tkn2" {
-					return tkn2Erc20Address, nil
-				}
+		args.MvxDataGetter.(*bridge.DataGetterStub).GetERC20AddressForTokenIdCalled = func(ctx context.Context, sourceBytes []byte) ([][]byte, error) {
+			if string(sourceBytes) == "tkn1" {
+				return [][]byte{tkn1Erc20Address}, nil
+			}
+			if string(sourceBytes) == "tkn2" {
+				return [][]byte{tkn2Erc20Address}, nil
+			}
 
-				return nil, fmt.Errorf("unexpected source bytes")
-			},
+			return nil, fmt.Errorf("unexpected source bytes")
 		}
 		args.Erc20ContractsHolder = &bridge.ERC20ContractsHolderStub{
 			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {

@@ -20,6 +20,7 @@
 [MultiversX]
     NetworkAddress = "https://devnet-gateway.multiversx.com" # the network address
     MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus"
+    SafeContractAddress = "erd1qqqqqqqqqqqqqpgqhxkc48lt5uv2hejj4wtjqvugfm4wgv6gyfkqw0uuxl"
     [MultiversX.Proxy]
         CacherExpirationSeconds = 600 # the caching time in seconds
 
@@ -32,19 +33,3 @@
 [Logs]
     LogFileLifeSpanInSec = 86400 # 24h
     LogFileLifeSpanInMB = 1024 # 1GB
-
-[WhitelistedTokens]
-    List = [
-        "ETHUSDC-220753",
-        "ETHUTK-8cdf7a",
-        "ETHUSDT-9c73c6",
-        "ETHBUSD-450923",
-        "ETHHMT-18538a",
-        "ETHCGG-ee4e0c",
-        "ETHINFRA-60a3bf",
-        "ETHWBTC-74e282",
-        "ETHWETH-e1c126",
-        "ETHWSDAI-572803",
-        "ETHWDAI-bd65f9",
-        "ETHUMB-291202",
-    ]

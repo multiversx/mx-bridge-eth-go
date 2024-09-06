@@ -483,6 +483,7 @@ func TestMigrationToolConfig(t *testing.T) {
 		MultiversX: MultiversXConfig{
 			NetworkAddress:          "https://devnet-gateway.multiversx.com",
 			MultisigContractAddress: "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+			SafeContractAddress:     "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus",
 			Proxy: ProxyConfig{
 				CacherExpirationSeconds: 600,
 				RestAPIEntityType:       "observer",
@@ -493,22 +494,6 @@ func TestMigrationToolConfig(t *testing.T) {
 		Logs: LogsConfig{
 			LogFileLifeSpanInSec: 86400,
 			LogFileLifeSpanInMB:  1024,
-		},
-		WhitelistedTokens: WhitelistedTokensConfig{
-			List: []string{
-				"ETHUSDC-220753",
-				"ETHUTK-8cdf7a",
-				"ETHUSDT-9c73c6",
-				"ETHBUSD-450923",
-				"ETHHMT-18538a",
-				"ETHCGG-ee4e0c",
-				"ETHINFRA-60a3bf",
-				"ETHWBTC-74e282",
-				"ETHWETH-e1c126",
-				"ETHWSDAI-572803",
-				"ETHWDAI-bd65f9",
-				"ETHUMB-291202",
-			},
 		},
 	}
 
@@ -534,7 +519,8 @@ func TestMigrationToolConfig(t *testing.T) {
 
 [MultiversX]
     NetworkAddress = "https://devnet-gateway.multiversx.com" # the network address
-    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf"
+    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the multiversx address for the bridge contract
+    SafeContractAddress = "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus" # the multiversx address for the safe contract
     [MultiversX.Proxy]
         CacherExpirationSeconds = 600 # the caching time in seconds
 

@@ -1,76 +1,77 @@
 {
   "OldSafeContractAddress": "0x92A26975433A61CF1134802586aa669bAB8B69f3",
-  "NewSafeContractAddress": "0x37aaaf95887624a363effB7762D489E3C05c2a02",
-  "BatchID": 3547,
+  "NewSafeContractAddress": "0xA6504Cc508889bbDBd4B748aFf6EA6b5D0d2684c",
+  "BatchID": 3548,
+  "MessageHash": "0x9fad9673d99127cf3bfbcb25fdb271c90009e1199e5ae3bd98f516a6d2b46357",
   "DepositsInfo": [
     {
-      "DepositNonce": 4651,
+      "DepositNonce": 4652,
       "Token": "ETHUSDC-220753",
       "ContractAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      "Amount": "7245293620507"
+      "Amount": "7091634513581"
     },
     {
-      "DepositNonce": 4652,
+      "DepositNonce": 4653,
       "Token": "ETHUTK-8cdf7a",
       "ContractAddress": "0xdc9Ac3C20D1ed0B540dF9b1feDC10039Df13F99c",
       "Amount": "224564169411881824066539333"
     },
     {
-      "DepositNonce": 4653,
+      "DepositNonce": 4654,
       "Token": "ETHUSDT-9c73c6",
       "ContractAddress": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-      "Amount": "305146464594"
+      "Amount": "318715112062"
     },
     {
-      "DepositNonce": 4654,
+      "DepositNonce": 4655,
       "Token": "ETHBUSD-450923",
       "ContractAddress": "0x4Fabb145d64652a948d72533023f6E7A623C7C53",
       "Amount": "22294352736330153151984"
     },
     {
-      "DepositNonce": 4655,
+      "DepositNonce": 4656,
       "Token": "ETHHMT-18538a",
       "ContractAddress": "0xd1ba9BAC957322D6e8c07a160a3A8dA11A0d2867",
       "Amount": "435000000000000000000"
     },
     {
-      "DepositNonce": 4656,
+      "DepositNonce": 4657,
       "Token": "ETHCGG-ee4e0c",
       "ContractAddress": "0x1fE24F25b1Cf609B9c4e7E12D802e3640dFA5e43",
       "Amount": "1500138370967581082219795"
     },
     {
-      "DepositNonce": 4657,
+      "DepositNonce": 4658,
       "Token": "ETHINFRA-60a3bf",
       "ContractAddress": "0x013062189dc3dcc99e9Cee714c513033b8d99e3c",
       "Amount": "141172595980399500424091"
     },
     {
-      "DepositNonce": 4658,
+      "DepositNonce": 4659,
       "Token": "ETHWBTC-74e282",
       "ContractAddress": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
       "Amount": "3898848955"
     },
     {
-      "DepositNonce": 4659,
+      "DepositNonce": 4660,
       "Token": "ETHWETH-e1c126",
       "ContractAddress": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
       "Amount": "725921417141355037005"
     },
     {
-      "DepositNonce": 4660,
+      "DepositNonce": 4661,
       "Token": "ETHWSDAI-572803",
       "ContractAddress": "0x83F20F44975D03b1b09e64809B757c47f942BEeA",
       "Amount": "5431516086574385345409"
     },
     {
-      "DepositNonce": 4661,
+      "DepositNonce": 4662,
       "Token": "ETHWDAI-bd65f9",
       "ContractAddress": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
       "Amount": "127608014625114134146189"
     },
     {
-      "DepositNonce": 4662,
+      "DepositNonce": 4663,
       "Token": "ETHUMB-291202",
       "ContractAddress": "0x6fC13EACE26590B80cCCAB1ba5d51890577D83B2",
       "Amount": "4669367702477323508554075"

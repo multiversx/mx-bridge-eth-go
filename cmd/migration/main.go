@@ -15,7 +15,6 @@ import (
 	ethereumClient "github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
-	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx/mappers"
 	"github.com/multiversx/mx-bridge-eth-go/cmd/migration/disabled"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/executors/ethereum"
@@ -59,6 +58,8 @@ func main() {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
+
+	log.Info("process finished successfully")
 }
 
 func execute(ctx *cli.Context) error {
@@ -108,19 +109,19 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 		return err
 	}
 
+	safeAddress, err := data.NewAddressFromBech32String(cfg.MultiversX.SafeContractAddress)
+	if err != nil {
+		return err
+	}
+
 	argsMXClientDataGetter := multiversx.ArgsMXClientDataGetter{
 		MultisigContractAddress: multisigAddress,
-		SafeContractAddress:     dummyAddress,
+		SafeContractAddress:     safeAddress,
 		RelayerAddress:          dummyAddress,
 		Proxy:                   proxy,
 		Log:                     log,
 	}
 	mxDataGetter, err := multiversx.NewMXClientDataGetter(argsMXClientDataGetter)
-	if err != nil {
-		return err
-	}
-
-	tokensWrapper, err := mappers.NewMultiversXToErc20Mapper(mxDataGetter)
 	if err != nil {
 		return err
 	}
@@ -146,11 +147,11 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 	}
 
 	argsCreator := ethereum.ArgsMigrationBatchCreator{
-		TokensList:           cfg.WhitelistedTokens.List,
-		TokensMapper:         tokensWrapper,
+		MvxDataGetter:        mxDataGetter,
 		Erc20ContractsHolder: erc20ContractsHolder,
 		SafeContractAddress:  safeEthAddress,
 		SafeContractWrapper:  safeInstance,
+		Logger:               log,
 	}
 
 	creator, err := ethereum.NewMigrationBatchCreator(argsCreator)
@@ -179,16 +180,15 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 		return err
 	}
 
+	log.Info("signing batch", "message hash", batchInfo.MessageHash.String(),
+		"public key", cryptoHandler.GetAddress().String())
+
 	signature, err := cryptoHandler.Sign(batchInfo.MessageHash)
 	if err != nil {
 		return err
 	}
 
-	log.Info(string(val))
-	log.Info("Batch signed",
-		"public key", cryptoHandler.GetAddress().String(),
-		"message hash", batchInfo.MessageHash.String(),
-		"signature", signature)
+	log.Info("Migration .json file contents: \n" + string(val))
 
 	jsonFilename := ctx.GlobalString(migrationJsonFile.Name)
 	jsonFilename = applyTimestamp(jsonFilename)
@@ -210,6 +210,8 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 	if err != nil {
 		return err
 	}
+
+	log.Info("Signature .json file contents: \n" + string(val))
 
 	return os.WriteFile(sigFilename, val, os.ModePerm)
 }

@@ -3,8 +3,10 @@ package ethereum
 import "errors"
 
 var (
-	errEmptyTokensList         = errors.New("empty tokens list")
-	errNilTokensMapper         = errors.New("nil MultiversX to Ethereum tokens mapper")
-	errNilErc20ContractsHolder = errors.New("nil ERC20 contracts holder")
-	errNilSafeContractWrapper  = errors.New("nil safe contract wrapper")
+	errEmptyTokensList           = errors.New("empty tokens list")
+	errNilMvxDataGetter          = errors.New("nil MultiversX data getter")
+	errNilErc20ContractsHolder   = errors.New("nil ERC20 contracts holder")
+	errNilSafeContractWrapper    = errors.New("nil safe contract wrapper")
+	errWrongERC20AddressResponse = errors.New("wrong ERC20 address response")
+	errNilLogger                 = errors.New("nil logger")
 )
