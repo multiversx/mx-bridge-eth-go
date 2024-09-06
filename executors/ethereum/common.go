@@ -27,7 +27,7 @@ type BatchInfo struct {
 
 // SignatureInfo is the struct holding signature info
 type SignatureInfo struct {
-	PublicKey   string `json:"PublicKey"`
+	Address     string `json:"Address"`
 	MessageHash string `json:"MessageHash"`
 	Signature   string `json:"Signature"`
 }
