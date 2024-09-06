@@ -155,9 +155,9 @@ func (executor *migrationBatchExecutor) extractArgumentsFromBatch() (
 
 	newSafeContractAddress := common.HexToAddress(executor.batch.NewSafeContractAddress)
 	for _, deposit := range executor.batch.DepositsInfo {
-		tokens = append(tokens, deposit.contractAddress)
+		tokens = append(tokens, deposit.ContractAddress)
 		recipients = append(recipients, newSafeContractAddress)
-		amounts = append(amounts, deposit.amount)
+		amounts = append(amounts, deposit.Amount)
 		nonces = append(nonces, big.NewInt(0).SetUint64(deposit.DepositNonce))
 	}
 
