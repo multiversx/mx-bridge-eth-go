@@ -262,7 +262,17 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 
 	// whitelist eth token
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
-	tx, err := handler.SafeContract.WhitelistToken(auth, erc20Address, big.NewInt(ethMinAmountAllowedToTransfer), big.NewInt(ethMaxAmountAllowedToTransfer), params.IsMintBurnOnEth, params.IsNativeOnEth)
+	tx, err := handler.SafeContract.WhitelistToken(
+		auth,
+		erc20Address,
+		big.NewInt(ethMinAmountAllowedToTransfer),
+		big.NewInt(ethMaxAmountAllowedToTransfer),
+		params.IsMintBurnOnEth,
+		params.IsNativeOnEth,
+		zeroValueBigInt,
+		zeroValueBigInt,
+		zeroValueBigInt,
+	)
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
@@ -272,7 +282,7 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 			mintAmount, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
 			require.True(handler, ok)
 
-			tx, err = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, big.NewInt(0), mintAmount)
+			tx, err = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, mintAmount, zeroValueBigInt)
 			require.NoError(handler, err)
 			handler.SimulatedChain.Commit()
 			handler.checkEthTxResult(ctx, tx.Hash())

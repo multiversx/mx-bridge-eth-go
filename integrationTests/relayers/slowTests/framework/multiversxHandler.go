@@ -618,7 +618,11 @@ func (handler *MultiversxHandler) IssueAndWhitelistToken(ctx context.Context, pa
 			hex.EncodeToString([]byte(mvxChainSpecificToken)),
 			hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
 			getHexBool(params.IsMintBurnOnMvX),
-			getHexBool(params.IsNativeOnMvX)})
+			getHexBool(params.IsNativeOnMvX),
+			hex.EncodeToString(zeroValueBigInt.Bytes()), // total_balance
+			hex.EncodeToString(zeroValueBigInt.Bytes()), // mint_balance
+			hex.EncodeToString(zeroValueBigInt.Bytes()), // burn_balance
+		})
 	log.Info("whitelist token tx executed", "hash", hash, "status", txResult.Status)
 
 	// set initial supply

@@ -147,54 +147,15 @@
             ]
         },
         {
-            "name": "initSupply",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "payableInTokens": [
-                "*"
-            ],
-            "inputs": [
-                {
-                    "name": "token_id",
-                    "type": "TokenIdentifier"
-                },
-                {
-                    "name": "amount",
-                    "type": "BigUint"
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "initSupplyMintBurn",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "token_id",
-                    "type": "TokenIdentifier"
-                },
-                {
-                    "name": "mint_amount",
-                    "type": "BigUint"
-                },
-                {
-                    "name": "burn_amount",
-                    "type": "BigUint"
-                }
-            ],
-            "outputs": []
-        },
-        {
             "name": "computeTotalAmmountsFromIndex",
             "mutability": "readonly",
             "inputs": [
                 {
-                    "name": "startIndex",
+                    "name": "start_index",
                     "type": "u64"
                 },
                 {
-                    "name": "endIndex",
+                    "name": "end_index",
                     "type": "u64"
                 }
             ],
@@ -372,6 +333,9 @@
             "name": "addTokenToWhitelist",
             "onlyOwner": true,
             "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
             "inputs": [
                 {
                     "name": "token_id",
@@ -388,6 +352,18 @@
                 {
                     "name": "native_token",
                     "type": "bool"
+                },
+                {
+                    "name": "total_balance",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "mint_balance",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "burn_balance",
+                    "type": "BigUint"
                 },
                 {
                     "name": "opt_default_price_per_gas_unit",
@@ -429,20 +405,26 @@
             ]
         },
         {
-            "name": "setMultiTransferContractAddress",
+            "name": "initSupply",
             "onlyOwner": true,
             "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
             "inputs": [
                 {
-                    "name": "opt_new_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
                 }
             ],
             "outputs": []
         },
         {
-            "name": "setTotalBalances",
+            "name": "initSupplyMintBurn",
             "onlyOwner": true,
             "mutability": "mutable",
             "inputs": [
@@ -451,8 +433,25 @@
                     "type": "TokenIdentifier"
                 },
                 {
-                    "name": "value",
+                    "name": "mint_amount",
                     "type": "BigUint"
+                },
+                {
+                    "name": "burn_amount",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setMultiTransferContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
                 }
             ],
             "outputs": []

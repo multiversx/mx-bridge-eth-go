@@ -566,12 +566,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "burnAmount",
+        "name": "mintAmount",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "mintAmount",
+        "name": "burnAmount",
         "type": "uint256"
       }
     ],
@@ -962,6 +962,21 @@
         "internalType": "bool",
         "name": "native",
         "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalBalance",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "mintBalance",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "burnBalance",
+        "type": "uint256"
       }
     ],
     "name": "whitelistToken",

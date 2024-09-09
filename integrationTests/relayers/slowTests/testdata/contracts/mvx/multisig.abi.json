@@ -509,6 +509,18 @@
                     "type": "bool"
                 },
                 {
+                    "name": "total_balance",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "mint_balance",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "burn_balance",
+                    "type": "BigUint"
+                },
+                {
                     "name": "opt_default_price_per_gas_unit",
                     "type": "optional<BigUint>",
                     "multi_arg": true
