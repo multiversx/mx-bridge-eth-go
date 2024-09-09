@@ -12,8 +12,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/multiversx/mx-chain-crypto-go/signing"
-	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,6 +62,9 @@ func NewKeysStore(
 	keysStore.generateRelayersKeys(numRelayers)
 	keysStore.SCExecutorKeys = keysStore.generateKey("")
 	keysStore.OwnerKeys = keysStore.generateKey(ethOwnerSK)
+	log.Info("generated owner",
+		"MvX address", keysStore.OwnerKeys.MvxAddress.Bech32(),
+		"Eth address", keysStore.OwnerKeys.EthAddress.String())
 	keysStore.DepositorKeys = keysStore.generateKey(ethDepositorSK)
 	keysStore.TestKeys = keysStore.generateKey(ethTestSk)
 
@@ -79,7 +80,9 @@ func (keyStore *KeysStore) generateRelayersKeys(numKeys int) {
 		require.Nil(keyStore, err)
 
 		relayerKeys := keyStore.generateKey(string(relayerETHSKBytes))
-		log.Info("generated relayer", "index", i, "address", relayerKeys.MvxAddress.Bytes())
+		log.Info("generated relayer", "index", i,
+			"MvX address", relayerKeys.MvxAddress.Bech32(),
+			"Eth address", relayerKeys.EthAddress.String())
 
 		keyStore.RelayersKeys = append(keyStore.RelayersKeys, relayerKeys)
 
@@ -144,7 +147,6 @@ func (keyStore *KeysStore) WalletsToFundOnMultiversX() []string {
 
 // GenerateMvxPrivatePublicKey will generate a new keys holder instance that will hold only the MultiversX generated keys
 func GenerateMvxPrivatePublicKey(tb testing.TB) KeysHolder {
-	keyGenerator := signing.NewKeyGenerator(ed25519.NewEd25519())
 	sk, pk := keyGenerator.GeneratePair()
 
 	skBytes, err := sk.ToByteArray()
