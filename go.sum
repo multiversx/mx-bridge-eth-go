@@ -562,8 +562,8 @@ github.com/multiversx/mx-chain-vm-v1_4-go v1.4.97 h1:fbYYqollxbIArcrC161Z9Qh5yJG
 github.com/multiversx/mx-chain-vm-v1_4-go v1.4.97/go.mod h1:56WJQio8SzOt3vWibaNkuGpqLlmTOGUSJqs3wMK69zw=
 github.com/multiversx/mx-components-big-int v1.0.0 h1:Wkr8lSzK2nDqixOrrBa47VNuqdhV1m/aJhaP1EMaiS8=
 github.com/multiversx/mx-components-big-int v1.0.0/go.mod h1:maIEMgHlNE2u78JaDD0oLzri+ShgU4okHfzP3LWGdQM=
-github.com/multiversx/mx-sdk-go v1.4.1 h1:/zk7LDmnl1ovkmjkDejLRUtbjO7kmVQw8AlAyGNITBU=
-github.com/multiversx/mx-sdk-go v1.4.1/go.mod h1:2kTQLFck47wtHpzdWrM3mrLlTypE5zn39JCbzN16cxs=
+github.com/multiversx/mx-sdk-go v1.4.3-0.20240913115552-ee1d7a266964 h1:sqX6P6xOHbRWh2ncWPleIHv0ULtBmAiorNK3gWknN5A=
+github.com/multiversx/mx-sdk-go v1.4.3-0.20240913115552-ee1d7a266964/go.mod h1:2kTQLFck47wtHpzdWrM3mrLlTypE5zn39JCbzN16cxs=
 github.com/nats-io/nats.go v1.8.1/go.mod h1:BrFz9vVn0fU3AcH9Vn4Kd7W0NpJ651tD5omQ3M8LwxM=
 github.com/nats-io/nkeys v0.0.2/go.mod h1:dab7URMsZm6Z/jp9Z5UGa87Uutgc2mVpXLC4B7TDb/4=
 github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OSON2c=

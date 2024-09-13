@@ -45,6 +45,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(7000),
 				ValueToSendFromMvX:   big.NewInt(300),
+				EthSCCallData:        []byte("test Ethereum call data"),
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(1000),

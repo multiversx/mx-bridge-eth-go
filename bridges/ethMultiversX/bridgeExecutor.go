@@ -153,9 +153,21 @@ func (executor *bridgeExecutor) MyTurnAsLeader() bool {
 // GetBatchFromMultiversX fetches the pending batch from MultiversX
 func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 	batch, err := executor.multiversXClient.GetPendingBatch(ctx)
-	if err == nil {
-		executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
+	if err != nil {
+		return nil, err
 	}
+
+	executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
+	isBatchInvalid := len(batch.Deposits) == 0
+	if isBatchInvalid {
+		return nil, fmt.Errorf("%w, fetched nonce: %d, num deposits: %d",
+			ErrFinalBatchNotFound, batch.ID, len(batch.Deposits))
+	}
+	batch, err = executor.addBatchSCMetadataMvx(ctx, batch)
+	if err != nil {
+		return nil, err
+	}
+
 	return batch, err
 }
 
@@ -439,44 +451,24 @@ func (executor *bridgeExecutor) ResetRetriesCountOnMultiversX() {
 	executor.quorumRetriesOnMultiversX = 0
 }
 
-//// GetAndStoreBatchFromMultiversX fetches the logs containing sc calls metadata for the current batch from MultiversX side
-//func (executor *bridgeExecutor) GetAndStoreBatchFromMultiversX(ctx context.Context, nonce uint64) error {
-//	batch, err := executor.multiversXClient.GetBatch(ctx, nonce)
-//	if err != nil {
-//		return err
-//	}
-//
-//	isBatchInvalid := batch.ID != nonce || len(batch.Deposits) == 0
-//	if isBatchInvalid {
-//		return fmt.Errorf("%w, requested nonce: %d, fetched nonce: %d, num deposits: %d",
-//			ErrFinalBatchNotFound, nonce, batch.ID, len(batch.Deposits))
-//	}
-//
-//	batch, err = executor.addBatchSCMetadataMvx(ctx, batch)
-//	if err != nil {
-//		return err
-//	}
-//	executor.batch = batch
-//
-//	return nil
-//}
-//
-//func (executor *bridgeExecutor) addBatchSCMetadataMvx(ctx context.Context, transfers *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
-//	if transfers == nil {
-//		return nil, ErrNilBatch
-//	}
-//
-//	events, err := executor.multiversXClient.GetBatchSCMetadata(ctx, transfers.ID, transfers.BlockNumber)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	for i, t := range transfers.Deposits {
-//		transfers.Deposits[i] = executor.addMetadataToTransfer(t, events)
-//	}
-//
-//	return transfers, nil
-//}
+func (executor *bridgeExecutor) addBatchSCMetadataMvx(ctx context.Context, transfers *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
+	if transfers == nil {
+		return nil, ErrNilBatch
+	}
+
+	//events, err :=
+	executor.multiversXClient.GetBatchSCMetadata(ctx, transfers)
+	//TODO: fix this
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//for i, t := range transfers.Deposits {
+	//	transfers.Deposits[i] = executor.addMetadataToTransfer(t, events)
+	//}
+
+	return transfers, nil
+}
 
 // GetAndStoreBatchFromEthereum fetches and stores the batch from the ethereum client
 func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error {

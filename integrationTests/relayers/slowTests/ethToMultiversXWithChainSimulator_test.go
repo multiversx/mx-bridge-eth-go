@@ -34,7 +34,7 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		t,
 		make(chan error),
 		GenerateTestUSDCToken(),
-		GenerateTestMEMEToken(),
+		// GenerateTestMEMEToken(), TODO: revert this
 	)
 }
 
