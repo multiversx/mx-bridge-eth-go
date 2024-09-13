@@ -13,6 +13,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
+	core2 "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/api"
 	crypto "github.com/multiversx/mx-chain-crypto-go"
@@ -63,6 +64,8 @@ type client struct {
 	addressPublicKeyConverter    bridgeCore.AddressConverter
 	statusHandler                bridgeCore.StatusHandler
 	clientAvailabilityAllowDelta uint64
+	eventsBlockRangeFrom         uint64
+	eventsBlockRangeTo           uint64
 
 	lastNonce                uint64
 	retriesAvailabilityCheck uint64
@@ -234,6 +237,31 @@ func (c *client) GetBatch(ctx context.Context, batchID uint64) (*bridgeCore.Tran
 
 func emptyResponse(response [][]byte) bool {
 	return len(response) == 0 || (len(response) == 1 && len(response[0]) == 0)
+}
+
+// GetBatchSCMetadata returns the emitted logs in a batch that hold metadata for SC execution on ETH
+func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64, blockNumber uint64) {
+	proxy := c.proxy
+
+	safeContractAddress, err := c.safeContractAddress.AddressAsBech32String()
+	if err != nil {
+		c.log.Error("error getting safe contract address", "error", err)
+		return
+	}
+
+	query := core.FilterQuery{
+		Addresses: []string{safeContractAddress},
+		Topics:    [][]byte{},
+		FromBlock: core2.OptionalUint64{Value: blockNumber + c.eventsBlockRangeFrom, HasValue: true},
+		ToBlock:   core2.OptionalUint64{Value: blockNumber + c.eventsBlockRangeTo, HasValue: true},
+	}
+
+	logs, err := proxy.FilterLogs(ctx, &query)
+	if err != nil {
+		c.log.Error("error filtering logs", "error", err)
+		return
+	}
+
 }
 
 func (c *client) createPendingBatchFromResponse(ctx context.Context, responseData [][]byte) (*bridgeCore.TransferBatch, error) {

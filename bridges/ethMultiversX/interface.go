@@ -25,6 +25,7 @@ type MultiversXClient interface {
 	GetLastExecutedEthBatchID(ctx context.Context) (uint64, error)
 	GetLastExecutedEthTxID(ctx context.Context) (uint64, error)
 	GetCurrentNonce(ctx context.Context) (uint64, error)
+	GetBatchSCMetadata(ctx context.Context, nonce uint64, blockNumber uint64)
 
 	ProposeSetStatus(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error)
 	ProposeTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error)
