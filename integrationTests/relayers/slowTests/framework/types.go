@@ -8,6 +8,7 @@ import (
 
 // IssueTokenParams the parameters when issuing a new token
 type IssueTokenParams struct {
+	InitialSupplyParams
 	AbstractTokenIdentifier string
 
 	// MultiversX
@@ -27,6 +28,11 @@ type IssueTokenParams struct {
 	ValueToMintOnEth string
 	IsMintBurnOnEth  bool
 	IsNativeOnEth    bool
+}
+
+// InitialSupplyParams represents the initial supply parameters
+type InitialSupplyParams struct {
+	InitialSupplyValue string
 }
 
 // TokenOperations defines a token operation in a test. Usually this can define one or to deposits in a batch
