@@ -13,8 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ethereumClient "github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
 	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement"
 	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement/factory"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
@@ -22,6 +20,8 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/executors/ethereum"
+	"github.com/multiversx/mx-bridge-eth-go/executors/ethereum/bridgeV2Wrappers"
+	"github.com/multiversx/mx-bridge-eth-go/executors/ethereum/bridgeV2Wrappers/contract"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/blockchain"
@@ -249,19 +249,12 @@ func executeTransfer(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 		return err
 	}
 
-	safeEthAddress := common.HexToAddress(cfg.Eth.SafeContractAddress)
-	safeInstance, err := contract.NewERC20Safe(safeEthAddress, components.ethClient)
-	if err != nil {
-		return err
-	}
-
-	argsClientWrapper := wrappers.ArgsEthereumChainWrapper{
+	argsClientWrapper := bridgeV2Wrappers.ArgsEthereumChainWrapper{
 		StatusHandler:    &disabled.StatusHandler{},
 		MultiSigContract: multiSigInstance,
-		SafeContract:     safeInstance,
 		BlockchainClient: components.ethClient,
 	}
-	ethereumChainWrapper, err := wrappers.NewEthereumChainWrapper(argsClientWrapper)
+	ethereumChainWrapper, err := bridgeV2Wrappers.NewEthereumChainWrapper(argsClientWrapper)
 	if err != nil {
 		return err
 	}
