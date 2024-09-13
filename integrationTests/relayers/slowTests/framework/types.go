@@ -42,6 +42,7 @@ type TokenOperations struct {
 	MvxSCCallData        []byte
 	MvxFaultySCCall      bool
 	MvxForceSCCall       bool
+	EthSCCallData        []byte
 }
 
 // TestTokenParams defines a token collection of operations in one or 2 batches

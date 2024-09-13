@@ -65,6 +65,7 @@ const (
 	multiTransferEsdtSetMaxBridgedAmountForTokenFunction = "multiTransferEsdtSetMaxBridgedAmountForToken"
 	submitBatchFunction                                  = "submitBatch"
 	createTransactionFunction                            = "createTransaction"
+	createTransactionSCCallFunction                      = "createTransactionSCCall"
 	unwrapTokenFunction                                  = "unwrapToken"
 	setupBridgedTokenWrapperFunction                     = "setBridgedTokensWrapper"
 	initSupplyMintBurnEsdtSafe                           = "initSupplyMintBurnEsdtSafe"
@@ -774,35 +775,18 @@ func (handler *MultiversxHandler) CreateDepositsOnMultiversxForToken(
 				hex.EncodeToString(operation.ValueToSendFromMvX.Bytes())})
 		log.Info("transfer to sender tx executed", "hash", hash, "status", txResult.Status)
 
-		// send tx to safe contract
-		scCallParams := []string{
-			hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
-			hex.EncodeToString(operation.ValueToSendFromMvX.Bytes()),
-			hex.EncodeToString([]byte(createTransactionFunction)),
-			hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
-		}
-		dataField := strings.Join(scCallParams, "@")
-
-		hash, txResult = handler.ChainSimulator.ScCall(
-			ctx,
-			handler.TestKeys.MvxSk,
-			handler.SafeAddress,
-			zeroStringValue,
-			createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)),
-			esdtTransferFunction,
-			scCallParams)
-		log.Info("MultiversX->Ethereum transaction sent", "hash", hash, "status", txResult.Status)
+		handler.createDepositTransaction(ctx, token, operation)
 	}
 
 	return valueToMintOnEthereum
 }
 
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
-func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, token *TokenData, tokenOperations TokenOperations) {
 	// unwrap token
 	paramsUnwrap := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
-		hex.EncodeToString(value.Bytes()),
+		hex.EncodeToString(tokenOperations.ValueToSendFromMvX.Bytes()),
 		hex.EncodeToString([]byte(unwrapTokenFunction)),
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
 	}
@@ -818,16 +802,29 @@ func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx conte
 	)
 	log.Info("unwrap transaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
 
+	handler.createDepositTransaction(ctx, token, tokenOperations)
+}
+
+func (handler *MultiversxHandler) createDepositTransaction(ctx context.Context, token *TokenData, tokenOperations TokenOperations) {
+	functionToCall := createTransactionFunction
+	if len(tokenOperations.EthSCCallData) > 0 {
+		functionToCall = createTransactionSCCallFunction
+	}
+
 	// send tx to safe contract
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
-		hex.EncodeToString(value.Bytes()),
-		hex.EncodeToString([]byte(createTransactionFunction)),
+		hex.EncodeToString(tokenOperations.ValueToSendFromMvX.Bytes()),
+		hex.EncodeToString([]byte(functionToCall)),
 		hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
 	}
+	if len(tokenOperations.EthSCCallData) > 0 {
+		params = append(params, hex.EncodeToString(tokenOperations.EthSCCallData))
+	}
+
 	dataField := strings.Join(params, "@")
 
-	hash, txResult = handler.ChainSimulator.ScCall(
+	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
 		handler.TestKeys.MvxSk,
 		handler.SafeAddress,

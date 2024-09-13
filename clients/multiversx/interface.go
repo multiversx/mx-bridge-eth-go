@@ -22,7 +22,7 @@ type Proxy interface {
 	GetESDTTokenData(ctx context.Context, address core.AddressHandler, tokenIdentifier string, queryOptions api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error)
 	GetTransactionInfoWithResults(ctx context.Context, hash string) (*data.TransactionInfo, error)
 	ProcessTransactionStatus(ctx context.Context, hexTxHash string) (transaction.TxStatus, error)
-	//FilterLogs(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error)
+	FilterLogs(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error)
 	IsInterfaceNil() bool
 }
 

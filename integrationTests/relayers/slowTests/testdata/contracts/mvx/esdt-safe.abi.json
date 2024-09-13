@@ -127,6 +127,24 @@
             "outputs": []
         },
         {
+            "name": "createTransactionSCCall",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "to",
+                    "type": "EthAddress"
+                },
+                {
+                    "name": "data",
+                    "type": "bytes"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "docs": [
                 "Claim funds for failed MultiversX -> Ethereum transactions.",
                 "These are not sent automatically to prevent the contract getting stuck.",
@@ -756,6 +774,51 @@
                 },
                 {
                     "name": "recipient",
+                    "type": "bytes",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "createTransactionScCallEvent",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_nonce",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "payment_token",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "fee",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "data",
                     "type": "bytes",
                     "indexed": true
                 }
