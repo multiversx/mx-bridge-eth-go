@@ -67,6 +67,8 @@ const (
 	createTransactionFunction                            = "createTransaction"
 	unwrapTokenFunction                                  = "unwrapToken"
 	setupBridgedTokenWrapperFunction                     = "setBridgedTokensWrapper"
+	initSupplyMintBurnEsdtSafe                           = "initSupplyMintBurnEsdtSafe"
+	initSupplyEsdtSafe                                   = "initSupplyEsdtSafe"
 )
 
 var (
@@ -616,8 +618,54 @@ func (handler *MultiversxHandler) IssueAndWhitelistToken(ctx context.Context, pa
 			hex.EncodeToString([]byte(mvxChainSpecificToken)),
 			hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
 			getHexBool(params.IsMintBurnOnMvX),
-			getHexBool(params.IsNativeOnMvX)})
+			getHexBool(params.IsNativeOnMvX),
+			hex.EncodeToString(zeroValueBigInt.Bytes()), // total_balance
+			hex.EncodeToString(zeroValueBigInt.Bytes()), // mint_balance
+			hex.EncodeToString(zeroValueBigInt.Bytes()), // burn_balance
+		})
 	log.Info("whitelist token tx executed", "hash", hash, "status", txResult.Status)
+
+	// set initial supply
+	if len(params.InitialSupplyValue) > 0 {
+		initialSupply, okConvert := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
+		require.True(handler, okConvert)
+
+		if params.IsMintBurnOnMvX {
+			hash, txResult = handler.ChainSimulator.ScCall(
+				ctx,
+				handler.OwnerKeys.MvxSk,
+				handler.MultisigAddress,
+				zeroStringValue,
+				setCallsGasLimit,
+				initSupplyMintBurnEsdtSafe,
+				[]string{
+					hex.EncodeToString([]byte(mvxChainSpecificToken)),
+					hex.EncodeToString(initialSupply.Bytes()),
+					hex.EncodeToString([]byte{0}),
+				},
+			)
+			log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
+				"initial mint", params.InitialSupplyValue, "initial burned", "0")
+		} else {
+			hash, txResult = handler.ChainSimulator.ScCall(
+				ctx,
+				handler.OwnerKeys.MvxSk,
+				handler.MultisigAddress,
+				zeroStringValue,
+				setCallsGasLimit,
+				esdtTransferFunction,
+				[]string{
+					hex.EncodeToString([]byte(mvxChainSpecificToken)),
+					hex.EncodeToString(initialSupply.Bytes()),
+					hex.EncodeToString([]byte(initSupplyEsdtSafe)),
+					hex.EncodeToString([]byte(mvxChainSpecificToken)),
+					hex.EncodeToString(initialSupply.Bytes()),
+				})
+
+			log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
+				"initial value", params.InitialSupplyValue)
+		}
+	}
 
 	// setPairDecimals on aggregator
 	hash, txResult = handler.ChainSimulator.ScCall(

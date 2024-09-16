@@ -92,6 +92,21 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrors(t *testing.T) {
 	)
 }
 
+func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
+	usdcToken := GenerateTestUSDCToken()
+	usdcToken.InitialSupplyValue = "100000"
+
+	memeToken := GenerateTestMEMEToken()
+	memeToken.InitialSupplyValue = "200000"
+
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		usdcToken,
+		memeToken,
+	)
+}
+
 func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
 	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
 
