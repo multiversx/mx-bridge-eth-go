@@ -2,13 +2,14 @@
     Chain = "Ethereum"
     NetworkAddress = "http://127.0.0.1:8545" # a network address
     PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
-    SafeContractAddress = "A6504Cc508889bbDBd4B748aFf6EA6b5D0d2684c"
+    MultisigContractAddress = "92266a070ae1eBA4F778781c2177AaF4747Ea1b8"
+    SafeContractAddress = "29C63343d302564e3695ca14AB31F5eec427Af3E"
     GasLimitBase = 350000
     GasLimitForEach = 30000
     [Eth.GasStation]
         Enabled = true
-        URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
-        GasPriceMultiplier = 1000000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 1000000000
+        URL = "https://api.bscscan.com/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
+        GasPriceMultiplier = 5000000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 1000000000
         PollingIntervalInSeconds = 60 # number of seconds between gas price polling
         RequestRetryDelayInSeconds = 5 # number of seconds of delay after one failed request
         MaxFetchRetries = 3 # number of fetch retries before printing an error
@@ -18,15 +19,15 @@
         GasPriceSelector = "SafeGasPrice" # selector used to provide the gas price
 
 [MultiversX]
-    NetworkAddress = "https://devnet-gateway.multiversx.com" # the network address
-    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus"
-    SafeContractAddress = "erd1qqqqqqqqqqqqqpgqhxkc48lt5uv2hejj4wtjqvugfm4wgv6gyfkqw0uuxl"
+    NetworkAddress = "https://testnet-gateway.multiversx.com" # the network address
+    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqe34pfpl27yq9hq79kms9glwc6c8efm5u3kuq02d609"
+    SafeContractAddress = "erd1qqqqqqqqqqqqqpgq3quw8f6mplxn6up7l5wsre0dm8r9wrds3kuq7axccv"
     [MultiversX.Proxy]
         CacherExpirationSeconds = 600 # the caching time in seconds
 
         # valid options for ProxyRestAPIEntityType are "observer" and "proxy". Any other value will trigger an error.
         # "observer" is useful when querying an observer, directly and "proxy" is useful when querying a squad's proxy (gateway)
-        RestAPIEntityType = "observer"
+        RestAPIEntityType = "proxy"
         FinalityCheck = true
         MaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
 
