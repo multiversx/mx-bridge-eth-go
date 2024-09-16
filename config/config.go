@@ -205,3 +205,10 @@ type ScCallsModuleConfig struct {
 	FilterConfig                 PendingOperationsFilterConfig
 	Logs                         LogsConfig
 }
+
+// MigrationToolConfig is the migration tool config struct
+type MigrationToolConfig struct {
+	Eth        EthereumConfig
+	MultiversX MultiversXConfig
+	Logs       LogsConfig
+}

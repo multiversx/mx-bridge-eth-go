@@ -2,14 +2,12 @@ package ethereum
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
@@ -34,7 +32,7 @@ type ArgsEthereumClient struct {
 	Log                          chainCore.Logger
 	AddressConverter             core.AddressConverter
 	Broadcaster                  Broadcaster
-	PrivateKey                   *ecdsa.PrivateKey
+	CryptoHandler                CryptoHandler
 	TokensMapper                 TokensMapper
 	SignatureHolder              SignaturesHolder
 	SafeContractAddress          common.Address
@@ -52,8 +50,7 @@ type client struct {
 	log                          chainCore.Logger
 	addressConverter             core.AddressConverter
 	broadcaster                  Broadcaster
-	privateKey                   *ecdsa.PrivateKey
-	publicKey                    *ecdsa.PublicKey
+	cryptoHandler                CryptoHandler
 	tokensMapper                 TokensMapper
 	signatureHolder              SignaturesHolder
 	safeContractAddress          common.Address
@@ -76,20 +73,13 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 		return nil, err
 	}
 
-	publicKey := args.PrivateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, errPublicKeyCast
-	}
-
 	c := &client{
 		clientWrapper:                args.ClientWrapper,
 		erc20ContractsHandler:        args.Erc20ContractsHandler,
 		log:                          args.Log,
 		addressConverter:             args.AddressConverter,
 		broadcaster:                  args.Broadcaster,
-		privateKey:                   args.PrivateKey,
-		publicKey:                    publicKeyECDSA,
+		cryptoHandler:                args.CryptoHandler,
 		tokensMapper:                 args.TokensMapper,
 		signatureHolder:              args.SignatureHolder,
 		safeContractAddress:          args.SafeContractAddress,
@@ -102,7 +92,7 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 	}
 
 	c.log.Info("NewEthereumClient",
-		"relayer address", crypto.PubkeyToAddress(*publicKeyECDSA),
+		"relayer address", c.cryptoHandler.GetAddress(),
 		"safe contract address", c.safeContractAddress.String())
 
 	return c, err
@@ -124,8 +114,8 @@ func checkArgs(args ArgsEthereumClient) error {
 	if check.IfNil(args.Broadcaster) {
 		return errNilBroadcaster
 	}
-	if args.PrivateKey == nil {
-		return clients.ErrNilPrivateKey
+	if check.IfNil(args.CryptoHandler) {
+		return clients.ErrNilCryptoHandler
 	}
 	if check.IfNil(args.TokensMapper) {
 		return clients.ErrNilTokensMapper
@@ -256,7 +246,7 @@ func (c *client) WasExecuted(ctx context.Context, batchID uint64) (bool, error) 
 
 // BroadcastSignatureForMessageHash will send the signature for the provided message hash
 func (c *client) BroadcastSignatureForMessageHash(msgHash common.Hash) {
-	signature, err := crypto.Sign(msgHash.Bytes(), c.privateKey)
+	signature, err := c.cryptoHandler.Sign(msgHash)
 	if err != nil {
 		c.log.Error("error generating signature", "msh hash", msgHash, "error", err)
 		return
@@ -267,6 +257,11 @@ func (c *client) BroadcastSignatureForMessageHash(msgHash common.Hash) {
 
 // GenerateMessageHash will generate the message hash based on the provided batch
 func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error) {
+	return GenerateMessageHash(batch, batchId)
+}
+
+// GenerateMessageHash will generate the message hash based on the provided batch
+func GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error) {
 	if batch == nil {
 		return common.Hash{}, clients.ErrNilBatch
 	}
@@ -336,9 +331,7 @@ func (c *client) ExecuteTransfer(
 		return "", fmt.Errorf("%w in client.ExecuteTransfer", clients.ErrMultisigContractPaused)
 	}
 
-	fromAddress := crypto.PubkeyToAddress(*c.publicKey)
-
-	nonce, err := c.getNonce(ctx, fromAddress)
+	nonce, err := c.getNonce(ctx, c.cryptoHandler.GetAddress())
 	if err != nil {
 		return "", err
 	}
@@ -348,7 +341,7 @@ func (c *client) ExecuteTransfer(
 		return "", err
 	}
 
-	auth, err := bind.NewKeyedTransactorWithChainID(c.privateKey, chainId)
+	auth, err := c.cryptoHandler.CreateKeyedTransactor(chainId)
 	if err != nil {
 		return "", err
 	}
@@ -496,10 +489,7 @@ func (c *client) WhitelistedTokens(ctx context.Context, token common.Address) (b
 }
 
 func (c *client) checkRelayerFundsForFee(ctx context.Context, transferFee *big.Int) error {
-
-	ethereumRelayerAddress := crypto.PubkeyToAddress(*c.publicKey)
-
-	existingBalance, err := c.clientWrapper.BalanceAt(ctx, ethereumRelayerAddress, nil)
+	existingBalance, err := c.clientWrapper.BalanceAt(ctx, c.cryptoHandler.GetAddress(), nil)
 	if err != nil {
 		return err
 	}

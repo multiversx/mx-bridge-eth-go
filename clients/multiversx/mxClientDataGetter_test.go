@@ -1258,6 +1258,35 @@ func TestMXClientDataGetter_GetAllStakedRelayers(t *testing.T) {
 	assert.Equal(t, providedRelayers, result)
 }
 
+func TestMXClientDataGetter_GetAllKnownTokens(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsMXClientDataGetter()
+	providedTokens := [][]byte{[]byte("tkn1"), []byte("tkn2")}
+	args.Proxy = &interactors.ProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			assert.Equal(t, getBech32Address(args.SafeContractAddress), vmRequest.Address)
+			assert.Equal(t, "", vmRequest.CallValue)
+			assert.Equal(t, getAllKnownTokens, vmRequest.FuncName)
+
+			assert.Nil(t, vmRequest.Args)
+
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: okCodeAfterExecution,
+					ReturnData: providedTokens,
+				},
+			}, nil
+		},
+	}
+
+	dg, _ := NewMXClientDataGetter(args)
+
+	result, err := dg.GetAllKnownTokens(context.Background())
+	assert.Nil(t, err)
+	assert.Equal(t, providedTokens, result)
+}
+
 func TestMultiversXClientDataGetter_GetShardCurrentNonce(t *testing.T) {
 	t.Parallel()
 

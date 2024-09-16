@@ -1,0 +1,14 @@
+{
+  "OldSafeContractAddress": "0x92A26975433A61CF1134802586aa669bAB8B69f3",
+  "NewSafeContractAddress": "0x1Ff78EB04d44a803E73c44FEf8790c5cAbD14596",
+  "BatchID": 3548,
+  "MessageHash": "0xc5b805c73d01e35e10a27a4cab86f096c976f0910ae23f5c6b307a823f0c49fb",
+  "DepositsInfo": [
+    {
+      "DepositNonce": 4652,
+      "Token": "ETHUSDC-220753",
+      "ContractAddress": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "Amount": "7086984513581"
+    }
+  ]
+}
