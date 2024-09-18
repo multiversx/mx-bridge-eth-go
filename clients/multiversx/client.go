@@ -316,6 +316,8 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			return nil, fmt.Errorf("%w while parsing the deposit nonce, transfer index %d", errParse, transferIndex)
 		}
 
+		// TODO: add length checks for FromBytes == 32, ToBytes == 20
+
 		amount := big.NewInt(0).SetBytes(responseData[i+5])
 		deposit := &bridgeCore.DepositTransfer{
 			DepositBlockNumber: blockNonce,

@@ -1,6 +1,7 @@
 package ethereum
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -27,10 +28,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var expectedAmounts = []*big.Int{big.NewInt(20), big.NewInt(40)}
-var expectedTokens = []common.Address{common.BytesToAddress([]byte("ERC20token1")), common.BytesToAddress([]byte("ERC20token2"))}
-var expectedRecipients = []common.Address{common.BytesToAddress([]byte("to1")), common.BytesToAddress([]byte("to2"))}
-var expectedNonces = []*big.Int{big.NewInt(10), big.NewInt(30)}
+var expectedMvxTransactions = []contract.MvxTransaction{
+	{
+		Token:        common.BytesToAddress([]byte("ERC20token1")),
+		Sender:       [32]byte(bytes.Repeat([]byte("1"), 32)),
+		Recipient:    common.BytesToAddress([]byte("to1")),
+		Amount:       big.NewInt(20),
+		DepositNonce: big.NewInt(10),
+		CallData:     []byte("data1"),
+	},
+	{
+		Token:        common.BytesToAddress([]byte("ERC20token2")),
+		Sender:       [32]byte(bytes.Repeat([]byte("2"), 32)),
+		Recipient:    common.BytesToAddress([]byte("to2")),
+		Amount:       big.NewInt(40),
+		DepositNonce: big.NewInt(30),
+		CallData:     []byte("data2"),
+	},
+}
 
 func createMockEthereumClientArgs() ArgsEthereumClient {
 	sk, _ := crypto.HexToECDSA("9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1")
@@ -71,23 +86,25 @@ func createMockTransferBatch() *bridgeCore.TransferBatch {
 				Nonce:                 10,
 				ToBytes:               []byte("to1"),
 				DisplayableTo:         "to1",
-				FromBytes:             []byte("from1"),
-				DisplayableFrom:       "from1",
+				FromBytes:             bytes.Repeat([]byte("1"), 32),
+				DisplayableFrom:       strings.Repeat("1", 32),
 				SourceTokenBytes:      []byte("source token1"),
 				DisplayableToken:      "token1",
 				Amount:                big.NewInt(20),
 				DestinationTokenBytes: []byte("ERC20token1"),
+				Data:                  []byte("data1"),
 			},
 			{
 				Nonce:                 30,
 				ToBytes:               []byte("to2"),
 				DisplayableTo:         "to2",
-				FromBytes:             []byte("from2"),
-				DisplayableFrom:       "from2",
+				FromBytes:             bytes.Repeat([]byte("2"), 32),
+				DisplayableFrom:       strings.Repeat("2", 32),
 				SourceTokenBytes:      []byte("source token2"),
 				DisplayableToken:      "token2",
 				Amount:                big.NewInt(40),
 				DestinationTokenBytes: []byte("ERC20token2"),
+				Data:                  []byte("data2"),
 			},
 		},
 		Statuses: make([]byte, 2),
@@ -460,11 +477,8 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 	})
 	t.Run("should work", func(t *testing.T) {
 		c, _ := NewEthereumClient(args)
-		argLists := batchProcessor.ExtractListMvxToEth(batch)
-		assert.Equal(t, expectedAmounts, argLists.Amounts)
-		assert.Equal(t, expectedTokens, argLists.EthTokens)
-		assert.Equal(t, expectedRecipients, argLists.Recipients)
-		assert.Equal(t, expectedNonces, argLists.Nonces)
+		argLists, err := batchProcessor.ExtractListMvxToEth(batch)
+		require.Nil(t, err)
 
 		h, err := c.GenerateMessageHash(argLists, batch.ID)
 		assert.Nil(t, err)
@@ -518,7 +532,9 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 
 	args := createMockEthereumClientArgs()
 	batch := createMockTransferBatch()
-	argLists := batchProcessor.ExtractListMvxToEth(batch)
+	argLists, errExtract := batchProcessor.ExtractListMvxToEth(batch)
+	require.Nil(t, errExtract)
+
 	signatures := make([][]byte, 10)
 	for i := range signatures {
 		signatures[i] = []byte(fmt.Sprintf("sig %d", i))
@@ -640,14 +656,16 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 			Nonce:                 40,
 			ToBytes:               []byte("to3"),
 			DisplayableTo:         "to3",
-			FromBytes:             []byte("from3"),
-			DisplayableFrom:       "from3",
+			FromBytes:             bytes.Repeat([]byte("3"), 32),
+			DisplayableFrom:       strings.Repeat("3", 32),
 			SourceTokenBytes:      []byte("source token1"),
 			DisplayableToken:      "token1",
 			Amount:                big.NewInt(80),
 			DestinationTokenBytes: []byte("ERC20token1"),
 		})
-		newArgLists := batchProcessor.ExtractListMvxToEth(newBatch)
+		newArgLists, err := batchProcessor.ExtractListMvxToEth(newBatch)
+		require.Nil(t, err)
+
 		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, newArgLists, newBatch.ID, 9)
 		assert.Equal(t, "", hash)
 		assert.True(t, errors.Is(err, errInsufficientBalance))
@@ -666,7 +684,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 			},
 		}
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, sigs [][]byte) (*types.Transaction, error) {
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, mvxTransactions []contract.MvxTransaction, batchNonce *big.Int, sigs [][]byte) (*types.Transaction, error) {
 				return nil, expectedErr
 			},
 		}
@@ -689,11 +707,8 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		}
 		wasCalled := false
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, sigs [][]byte) (*types.Transaction, error) {
-				assert.Equal(t, expectedTokens, tokens)
-				assert.Equal(t, expectedRecipients, recipients)
-				assert.Equal(t, expectedAmounts, amounts)
-				assert.Equal(t, expectedNonces, nonces)
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, mvxTransactions []contract.MvxTransaction, batchNonce *big.Int, sigs [][]byte) (*types.Transaction, error) {
+				assert.Equal(t, expectedMvxTransactions, mvxTransactions)
 				assert.Equal(t, big.NewInt(332), batchNonce)
 				assert.Equal(t, signatures[:9], sigs)
 				wasCalled = true
@@ -724,11 +739,8 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		}
 		wasCalled := false
 		c.clientWrapper = &bridgeTests.EthereumClientWrapperStub{
-			ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, sigs [][]byte) (*types.Transaction, error) {
-				assert.Equal(t, expectedTokens, tokens)
-				assert.Equal(t, expectedRecipients, recipients)
-				assert.Equal(t, expectedAmounts, amounts)
-				assert.Equal(t, expectedNonces, nonces)
+			ExecuteTransferCalled: func(opts *bind.TransactOpts, mvxTransactions []contract.MvxTransaction, batchNonce *big.Int, sigs [][]byte) (*types.Transaction, error) {
+				assert.Equal(t, expectedMvxTransactions, mvxTransactions)
 				assert.Equal(t, big.NewInt(332), batchNonce)
 				assert.Equal(t, signatures[:5], sigs)
 				wasCalled = true

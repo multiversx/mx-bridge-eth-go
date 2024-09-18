@@ -11,12 +11,11 @@ import (
 
 // MultiSigContractStub -
 type MultiSigContractStub struct {
-	GetBatchCalled         func(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, bool, error)
-	GetBatchDepositsCalled func(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, bool, error)
-	GetRelayersCalled      func(opts *bind.CallOpts) ([]common.Address, error)
-	WasBatchExecutedCalled func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
-	ExecuteTransferCalled  func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
-		amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
+	GetBatchCalled                  func(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, bool, error)
+	GetBatchDepositsCalled          func(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, bool, error)
+	GetRelayersCalled               func(opts *bind.CallOpts) ([]common.Address, error)
+	WasBatchExecutedCalled          func(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
+	ExecuteTransferCalled           func(opts *bind.TransactOpts, mvxTransactions []contract.MvxTransaction, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	QuorumCalled                    func(opts *bind.CallOpts) (*big.Int, error)
 	GetStatusesAfterExecutionCalled func(opts *bind.CallOpts, batchID *big.Int) ([]byte, bool, error)
 	PausedCalled                    func(opts *bind.CallOpts) (bool, error)
@@ -61,15 +60,12 @@ func (stub *MultiSigContractStub) WasBatchExecuted(opts *bind.CallOpts, batchNon
 // ExecuteTransfer -
 func (stub *MultiSigContractStub) ExecuteTransfer(
 	opts *bind.TransactOpts,
-	tokens []common.Address,
-	recipients []common.Address,
-	amounts []*big.Int,
-	nonces []*big.Int,
+	mvxTransactions []contract.MvxTransaction,
 	batchNonce *big.Int,
 	signatures [][]byte,
 ) (*types.Transaction, error) {
 	if stub.ExecuteTransferCalled != nil {
-		return stub.ExecuteTransferCalled(opts, tokens, recipients, amounts, nonces, batchNonce, signatures)
+		return stub.ExecuteTransferCalled(opts, mvxTransactions, batchNonce, signatures)
 	}
 
 	return nil, errNotImplemented

@@ -193,19 +193,19 @@ func (mock *EthereumChainMock) AddDepositToBatch(nonce uint64, deposit contract.
 }
 
 // ExecuteTransfer -
-func (mock *EthereumChainMock) ExecuteTransfer(_ *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
-	tokensLength := len(tokens)
-	recipientsLength := len(recipients)
-	amountsLength := len(amounts)
-	noncesLength := len(nonces)
-	if tokensLength != recipientsLength {
-		panic("tokens length & recipients length mismatch")
-	}
-	if recipientsLength != amountsLength {
-		panic("recipients length & amounts length mismatch")
-	}
-	if tokensLength != noncesLength {
-		panic("tokens length & nonces length mismatch")
+func (mock *EthereumChainMock) ExecuteTransfer(_ *bind.TransactOpts, mvxTransactions []contract.MvxTransaction, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+	transferLength := len(mvxTransactions)
+
+	tokens := make([]common.Address, transferLength)
+	recipients := make([]common.Address, transferLength)
+	amounts := make([]*big.Int, transferLength)
+	nonces := make([]*big.Int, transferLength)
+
+	for i, mvxTransaction := range mvxTransactions {
+		tokens[i] = mvxTransaction.Token
+		recipients[i] = mvxTransaction.Recipient
+		amounts[i] = mvxTransaction.Amount
+		nonces[i] = mvxTransaction.DepositNonce
 	}
 
 	proposedTransfer := &EthereumProposedTransfer{
