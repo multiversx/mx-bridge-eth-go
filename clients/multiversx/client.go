@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"sync"
@@ -13,8 +14,10 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
+	mxCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/api"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	crypto "github.com/multiversx/mx-chain-crypto-go"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519/singlesig"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -47,6 +50,8 @@ type ClientArgs struct {
 	RoleProvider                 roleProvider
 	StatusHandler                bridgeCore.StatusHandler
 	ClientAvailabilityAllowDelta uint64
+	eventsBlockRangeFrom         int64
+	eventsBlockRangeTo           int64
 }
 
 // client represents the MultiversX Client implementation
@@ -63,8 +68,8 @@ type client struct {
 	addressPublicKeyConverter    bridgeCore.AddressConverter
 	statusHandler                bridgeCore.StatusHandler
 	clientAvailabilityAllowDelta uint64
-	eventsBlockRangeFrom         uint64
-	eventsBlockRangeTo           uint64
+	eventsBlockRangeFrom         int64
+	eventsBlockRangeTo           int64
 
 	lastNonce                uint64
 	retriesAvailabilityCheck uint64
@@ -143,6 +148,8 @@ func NewClient(args ClientArgs) (*client, error) {
 		tokensMapper:                 args.TokensMapper,
 		statusHandler:                args.StatusHandler,
 		clientAvailabilityAllowDelta: args.ClientAvailabilityAllowDelta,
+		eventsBlockRangeFrom:         args.eventsBlockRangeFrom,
+		eventsBlockRangeTo:           args.eventsBlockRangeTo,
 	}
 
 	bech32RelayerAddress, _ := relayerAddress.AddressAsBech32String()
@@ -239,29 +246,44 @@ func emptyResponse(response [][]byte) bool {
 }
 
 // GetBatchSCMetadata returns the emitted logs in a batch that hold metadata for SC execution on ETH
-//func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64, blockNumber uint64) {
-//	proxy := c.proxy
-//
-//	safeContractAddress, err := c.safeContractAddress.AddressAsBech32String()
-//	if err != nil {
-//		c.log.Error("error getting safe contract address", "error", err)
-//		return
-//	}
-//
-//	query := core.FilterQuery{
-//		Addresses: []string{safeContractAddress},
-//		Topics:    [][]byte{},
-//		FromBlock: core2.OptionalUint64{Value: blockNumber + c.eventsBlockRangeFrom, HasValue: true},
-//		ToBlock:   core2.OptionalUint64{Value: blockNumber + c.eventsBlockRangeTo, HasValue: true},
-//	}
-//
-//	logs, err := proxy.FilterLogs(ctx, &query)
-//	if err != nil {
-//		c.log.Error("error filtering logs", "error", err)
-//		return
-//	}
-//
-//}
+func (c *client) GetBatchSCMetadata(ctx context.Context, batch *bridgeCore.TransferBatch) ([]*transaction.Events, error) {
+	safeContractAddress, err := c.safeContractAddress.AddressAsBech32String()
+	if err != nil {
+		c.log.Error("error getting safe contract address", "error", err)
+		return nil, err
+	}
+
+	minBlockNumber := int64(math.MaxInt16)
+	maxBlockNumber := int64(math.MinInt64)
+	for _, dt := range batch.Deposits {
+		depositNonce := int64(dt.DepositBlockNumber)
+
+		if depositNonce < minBlockNumber {
+			minBlockNumber = depositNonce
+		}
+		if depositNonce > maxBlockNumber {
+			maxBlockNumber = depositNonce
+		}
+	}
+
+	eventInBytes := []byte("createTransactionScCallEvent")
+
+	query := core.FilterQuery{
+		Addresses: []string{safeContractAddress},
+		Topics:    [][]byte{eventInBytes},
+		FromBlock: mxCore.OptionalUint64{Value: uint64(minBlockNumber + c.eventsBlockRangeFrom), HasValue: true},
+		ToBlock:   mxCore.OptionalUint64{Value: uint64(maxBlockNumber + c.eventsBlockRangeTo), HasValue: true},
+	}
+
+	events, err := c.proxy.FilterLogs(ctx, &query)
+	if err != nil {
+		c.log.Error("error filtering logs", "error", err)
+		return nil, err
+	}
+
+	c.log.Info(fmt.Sprintf("%+v", events))
+	return events, nil
+}
 
 func (c *client) createPendingBatchFromResponse(ctx context.Context, responseData [][]byte) (*bridgeCore.TransferBatch, error) {
 	numFieldsForTransaction := 6
@@ -271,7 +293,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		return nil, fmt.Errorf("%w, got %d argument(s)", errInvalidNumberOfArguments, dataLen)
 	}
 
-	batchID, err := parseUInt64FromByteSlice(responseData[0])
+	batchID, err := ParseUInt64FromByteSlice(responseData[0])
 	if err != nil {
 		return nil, fmt.Errorf("%w while parsing batch ID", err)
 	}
@@ -284,21 +306,27 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 	transferIndex := 0
 	for i := 1; i < dataLen; i += numFieldsForTransaction {
 		// blockNonce is the i-th element, let's ignore it for now
-		depositNonce, errParse := parseUInt64FromByteSlice(responseData[i+1])
+		blockNonce, errParse := ParseUInt64FromByteSlice(responseData[i])
+		if errParse != nil {
+			return nil, fmt.Errorf("%w while parsing the block nonce, transfer index %d", errParse, transferIndex)
+		}
+
+		depositNonce, errParse := ParseUInt64FromByteSlice(responseData[i+1])
 		if errParse != nil {
 			return nil, fmt.Errorf("%w while parsing the deposit nonce, transfer index %d", errParse, transferIndex)
 		}
 
 		amount := big.NewInt(0).SetBytes(responseData[i+5])
 		deposit := &bridgeCore.DepositTransfer{
-			Nonce:            depositNonce,
-			FromBytes:        responseData[i+2],
-			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
-			ToBytes:          responseData[i+3],
-			DisplayableTo:    c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
-			SourceTokenBytes: responseData[i+4],
-			DisplayableToken: string(responseData[i+4]),
-			Amount:           amount,
+			DepositBlockNumber: blockNonce,
+			Nonce:              depositNonce,
+			FromBytes:          responseData[i+2],
+			DisplayableFrom:    c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
+			ToBytes:            responseData[i+3],
+			DisplayableTo:      c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
+			SourceTokenBytes:   responseData[i+4],
+			DisplayableToken:   string(responseData[i+4]),
+			Amount:             amount,
 		}
 
 		storedConvertedTokenBytes, exists := cachedTokens[deposit.DisplayableToken]

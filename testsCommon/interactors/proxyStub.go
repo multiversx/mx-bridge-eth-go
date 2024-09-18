@@ -22,6 +22,7 @@ type ProxyStub struct {
 	GetESDTTokenDataCalled              func(ctx context.Context, address core.AddressHandler, tokenIdentifier string, queryOptions api.AccountQueryOptions) (*data.ESDTFungibleTokenData, error)
 	GetTransactionInfoWithResultsCalled func(_ context.Context, _ string) (*data.TransactionInfo, error)
 	ProcessTransactionStatusCalled      func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error)
+	FilterLogsCalled                    func(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error)
 }
 
 // GetNetworkConfig -
@@ -112,6 +113,15 @@ func (eps *ProxyStub) ProcessTransactionStatus(ctx context.Context, hexTxHash st
 	}
 
 	return "", nil
+}
+
+// FilterLogs -
+func (eps *ProxyStub) FilterLogs(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error) {
+	if eps.FilterLogsCalled != nil {
+		return eps.FilterLogsCalled(ctx, filter)
+	}
+
+	return nil, fmt.Errorf("not implemented")
 }
 
 // IsInterfaceNil -

@@ -18,11 +18,13 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/roleProviders"
 	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-chain-core-go/data/vm"
 	"github.com/multiversx/mx-chain-crypto-go/signing"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/builders"
+	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -348,6 +350,7 @@ func TestClient_GetPendingBatch(t *testing.T) {
 			ID: 44562,
 			Deposits: []*bridgeCore.DepositTransfer{
 				{
+					DepositBlockNumber:    0,
 					Nonce:                 5000,
 					ToBytes:               bytes.Repeat([]byte{2}, 20),
 					DisplayableTo:         "0x0202020202020202020202020202020202020202",
@@ -359,6 +362,7 @@ func TestClient_GetPendingBatch(t *testing.T) {
 					Amount:                big.NewInt(10000),
 				},
 				{
+					DepositBlockNumber:    1,
 					Nonce:                 5001,
 					ToBytes:               bytes.Repeat([]byte{5}, 20),
 					DisplayableTo:         "0x0505050505050505050505050505050505050505",
@@ -505,6 +509,7 @@ func TestClient_GetBatch(t *testing.T) {
 			ID: 44562,
 			Deposits: []*bridgeCore.DepositTransfer{
 				{
+					DepositBlockNumber:    0,
 					Nonce:                 5000,
 					ToBytes:               bytes.Repeat([]byte{2}, 20),
 					DisplayableTo:         "0x0202020202020202020202020202020202020202",
@@ -516,6 +521,7 @@ func TestClient_GetBatch(t *testing.T) {
 					Amount:                big.NewInt(10000),
 				},
 				{
+					DepositBlockNumber:    1,
 					Nonce:                 5001,
 					ToBytes:               bytes.Repeat([]byte{5}, 20),
 					DisplayableTo:         "0x0505050505050505050505050505050505050505",
@@ -1100,6 +1106,42 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		err := c.CheckClientAvailability(context.Background())
 		checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, expectedErr.Error())
 		assert.Equal(t, expectedErr, err)
+	})
+}
+
+func TestClient_GetBatchSCMetadata(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = &interactors.ProxyStub{
+			FilterLogsCalled: func(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error) {
+				return []*transaction.Events{{Identifier: "event0"}, {Identifier: "event1"}}, nil
+			},
+		}
+		c, _ := NewClient(args)
+
+		expectedBatch := &bridgeCore.TransferBatch{
+			ID: 2,
+			Deposits: []*bridgeCore.DepositTransfer{
+				{
+					DepositBlockNumber: 0,
+					Nonce:              5000,
+				},
+				{
+					DepositBlockNumber: 5,
+					Nonce:              5001,
+				},
+			},
+		}
+
+		events, err := c.GetBatchSCMetadata(context.Background(), expectedBatch)
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(events))
+		assert.Equal(t, "event0", events[0].Identifier)
+		assert.Equal(t, "event1", events[1].Identifier)
 	})
 }
 

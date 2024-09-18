@@ -206,7 +206,7 @@ func (dataGetter *mxClientDataGetter) ExecuteQueryReturningUint64(ctx context.Co
 		return 0, nil
 	}
 
-	num, err := parseUInt64FromByteSlice(response[0])
+	num, err := ParseUInt64FromByteSlice(response[0])
 	if err != nil {
 		return 0, errors.NewQueryResponseError(
 			internalError,
@@ -238,7 +238,7 @@ func (dataGetter *mxClientDataGetter) ExecuteQueryReturningBigInt(ctx context.Co
 	return num, nil
 }
 
-func parseUInt64FromByteSlice(bytes []byte) (uint64, error) {
+func ParseUInt64FromByteSlice(bytes []byte) (uint64, error) {
 	num := big.NewInt(0).SetBytes(bytes)
 	if !num.IsUint64() {
 		return 0, errNotUint64Bytes
