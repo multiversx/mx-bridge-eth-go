@@ -233,6 +233,14 @@ func (mock *MultiversXChainMock) GetESDTTokenData(_ context.Context, _ sdkCore.A
 	}, nil
 }
 
+// FilterLogs -
+func (mock *MultiversXChainMock) FilterLogs(ctx context.Context, filter *sdkCore.FilterQuery) ([]*transaction.Events, error) {
+	mock.mutState.RLock()
+	defer mock.mutState.RUnlock()
+
+	return []*transaction.Events{}, nil
+}
+
 // IsInterfaceNil -
 func (mock *MultiversXChainMock) IsInterfaceNil() bool {
 	return mock == nil
