@@ -11,10 +11,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -159,12 +159,16 @@ func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*br
 		return nil, err
 	}
 
+	//if transfers == nil {
+	//	return nil, ErrNilBatch
+	//}
+
 	executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
 
 	isBatchInvalid := len(batch.Deposits) == 0
 	if isBatchInvalid {
-		return nil, fmt.Errorf("%w, fetched nonce: %d, num deposits: %d",
-			ErrFinalBatchNotFound, batch.ID, len(batch.Deposits))
+		return nil, fmt.Errorf("%w, fetched nonce: %d",
+			ErrBatchWithoutDeposits, batch.ID)
 	}
 
 	batch, err = executor.addBatchSCMetadataMvx(ctx, batch)
@@ -186,44 +190,50 @@ func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *bridgeCore.Trans
 }
 
 // addBatchSCMetadataMvx fetches the logs containing sc calls metadata for the current batch
-func (executor *bridgeExecutor) addBatchSCMetadataMvx(ctx context.Context, transfers *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
-	if transfers == nil {
-		return nil, ErrNilBatch
-	}
+func (executor *bridgeExecutor) addBatchSCMetadataMvx(ctx context.Context, batch *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
+	events, err := executor.multiversXClient.GetBatchSCMetadata(ctx, batch)
+	// TODO: I was thinking that if we want to have a mapping of events based on the deposit nonce,
+	// it would be better to modify the FilterLogs function in the SDK directly to create and return such a mapping on the spot,
+	//rather than doing the mapping here. Otherwise, I still need to loop through the array to create the mapping.
 
-	events, err := executor.multiversXClient.GetBatchSCMetadata(ctx, transfers)
 	if err != nil {
 		return nil, err
 	}
 
-	for i, t := range transfers.Deposits {
-		transfers.Deposits[i], err = executor.addMetadataToTransferMvx(t, events)
+	for _, t := range batch.Deposits {
+		err = executor.addMetadataToTransferMvx(t, events)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return transfers, nil
+	return batch, nil
 }
 
 // addMetadataToTransferMvx fetches the logs containing sc calls metadata for the current batch
-func (executor *bridgeExecutor) addMetadataToTransferMvx(transfer *bridgeCore.DepositTransfer, events []*transaction.Events) (*bridgeCore.DepositTransfer, error) {
+func (executor *bridgeExecutor) addMetadataToTransferMvx(transfer *bridgeCore.DepositTransfer, events []*transaction.Events) error {
 	for _, event := range events {
-		depositNonce, err := multiversx.ParseUInt64FromByteSlice(event.Topics[1])
+		if len(event.Topics) != 9 {
+			return ErrInvalidTopicsNumber
+		}
+
+		depositNonceBytes := event.Topics[1]
+		depositNonce, err := converters.ParseUInt64FromByteSlice(depositNonceBytes)
 		if err != nil {
-			return nil, fmt.Errorf("%w while parsing batch ID", err)
+			return fmt.Errorf("%w while parsing deposit nonce", err)
 		}
 
 		if depositNonce == transfer.Nonce {
-			processData(transfer, event.Topics[7])
-			return transfer, nil
+			calldataBytes := event.Topics[8]
+			processData(transfer, calldataBytes) //TODO: Further discussions are needed on this part
+			return nil
 		}
 	}
 
 	transfer.Data = []byte{bridgeCore.MissingDataProtocolMarker}
 	transfer.DisplayableData = ""
 
-	return transfer, nil
+	return nil
 }
 
 // GetStoredBatch returns the stored batch

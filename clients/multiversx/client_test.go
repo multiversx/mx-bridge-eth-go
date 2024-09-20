@@ -13,6 +13,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
@@ -295,7 +296,7 @@ func TestClient_GetPendingBatch(t *testing.T) {
 		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
-		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, errors.Is(err, converters.ErrNotUint64Bytes))
 		assert.True(t, strings.Contains(err.Error(), "while parsing batch ID"))
 	})
 	t.Run("invalid deposit nonce", func(t *testing.T) {
@@ -310,7 +311,7 @@ func TestClient_GetPendingBatch(t *testing.T) {
 		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
-		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, errors.Is(err, converters.ErrNotUint64Bytes))
 		assert.True(t, strings.Contains(err.Error(), "while parsing the deposit nonce, transfer index 1"))
 	})
 	t.Run("tokens mapper errors", func(t *testing.T) {
@@ -454,7 +455,7 @@ func TestClient_GetBatch(t *testing.T) {
 		batch, err := c.GetBatch(context.Background(), 37)
 
 		assert.Nil(t, batch)
-		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, errors.Is(err, converters.ErrNotUint64Bytes))
 		assert.True(t, strings.Contains(err.Error(), "while parsing batch ID"))
 	})
 	t.Run("invalid deposit nonce", func(t *testing.T) {
@@ -469,7 +470,7 @@ func TestClient_GetBatch(t *testing.T) {
 		batch, err := c.GetBatch(context.Background(), 37)
 
 		assert.Nil(t, batch)
-		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, errors.Is(err, converters.ErrNotUint64Bytes))
 		assert.True(t, strings.Contains(err.Error(), "while parsing the deposit nonce, transfer index 1"))
 	})
 	t.Run("tokens mapper errors", func(t *testing.T) {
@@ -1111,6 +1112,25 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 
 func TestClient_GetBatchSCMetadata(t *testing.T) {
 	t.Parallel()
+
+	// TODO: test if addressHandler throws error?
+
+	t.Run("should error if fetching filter logs fails", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		expectedError := errors.New("expected error")
+		args.Proxy = &interactors.ProxyStub{
+			FilterLogsCalled: func(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error) {
+				return nil, expectedError
+			},
+		}
+		c, _ := NewClient(args)
+
+		events, err := c.GetBatchSCMetadata(context.Background(), &bridgeCore.TransferBatch{})
+		assert.Nil(t, events)
+		assert.Equal(t, expectedError, err)
+	})
 
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()

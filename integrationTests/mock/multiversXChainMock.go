@@ -235,9 +235,6 @@ func (mock *MultiversXChainMock) GetESDTTokenData(_ context.Context, _ sdkCore.A
 
 // FilterLogs -
 func (mock *MultiversXChainMock) FilterLogs(_ context.Context, _ *sdkCore.FilterQuery) ([]*transaction.Events, error) {
-	mock.mutState.RLock()
-	defer mock.mutState.RUnlock()
-
 	return []*transaction.Events{}, nil
 }
 

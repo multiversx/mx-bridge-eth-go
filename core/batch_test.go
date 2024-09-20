@@ -95,7 +95,7 @@ func TestTransferBatch_String(t *testing.T) {
 		ID: 2243,
 		Deposits: []*DepositTransfer{
 			{
-				DepositBlockNumber: 0,
+				DepositBlockNumber: 8432,
 				Nonce:              1,
 				ToBytes:            []byte("to1"),
 				DisplayableTo:      "to1",
@@ -106,7 +106,7 @@ func TestTransferBatch_String(t *testing.T) {
 				Amount:             big.NewInt(3344),
 			},
 			{
-				DepositBlockNumber: 0,
+				DepositBlockNumber: 8433,
 				Nonce:              2,
 				ToBytes:            []byte("to2"),
 				DisplayableTo:      "to2",
@@ -121,8 +121,8 @@ func TestTransferBatch_String(t *testing.T) {
 	}
 
 	expectedString := `Batch id 2243:
-  to: to1, from: from1, token address: token1, amount: 3344, deposit nonce: 1, data: , deposit block number: 0
-  to: to2, from: from2, token address: token2, amount: 5566, deposit nonce: 2, data: , deposit block number: 0
+  to: to1, from: from1, token address: token1, amount: 3344, deposit nonce: 1, data: , deposit block number: 8432
+  to: to2, from: from2, token address: token2, amount: 5566, deposit nonce: 2, data: , deposit block number: 8433
 Statuses: 0304`
 	assert.Equal(t, expectedString, tb.String())
 }
