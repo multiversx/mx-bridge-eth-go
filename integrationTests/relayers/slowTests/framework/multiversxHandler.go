@@ -66,7 +66,8 @@ const (
 	submitBatchFunction                                  = "submitBatch"
 	createTransactionFunction                            = "createTransaction"
 	unwrapTokenFunction                                  = "unwrapToken"
-	setupBridgedTokenWrapperFunction                     = "setBridgedTokensWrapper"
+	setBridgedTokensWrapperAddressFunction               = "setBridgedTokensWrapperAddress"
+	setMultiTransferAddressFunction                      = "setMultiTransferAddress"
 	initSupplyMintBurnEsdtSafe                           = "initSupplyMintBurnEsdtSafe"
 	initSupplyEsdtSafe                                   = "initSupplyEsdtSafe"
 )
@@ -259,12 +260,26 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 		handler.ScProxyAddress,
 		zeroStringValue,
 		setCallsGasLimit,
-		setupBridgedTokenWrapperFunction,
+		setBridgedTokensWrapperAddressFunction,
 		[]string{
 			handler.WrapperAddress.Hex(),
 		},
 	)
 	log.Info("setupEsdtSafe in SC bridge proxy tx executed", "hash", hash, "status", txResult.Status)
+
+	// setMultiTransferAddress in SC bridge proxy
+	hash, txResult = handler.ChainSimulator.ScCall(
+		ctx,
+		handler.OwnerKeys.MvxSk,
+		handler.ScProxyAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		setMultiTransferAddressFunction,
+		[]string{
+			multiTransferAddress.Hex(),
+		},
+	)
+	log.Info("setMultiTransferAddress in SC bridge proxy tx executed", "hash", hash, "status", txResult.Status)
 
 	// setEsdtSafeOnWrapper
 	hash, txResult = handler.ChainSimulator.ScCall(

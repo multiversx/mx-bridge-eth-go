@@ -1,11 +1,11 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.78.0",
-            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
-            "commitDate": "2024-04-29",
+            "version": "1.80.0",
+            "commitHash": "051478957371ee0084a7c0913941d2a8c4757bb9",
+            "commitDate": "2024-07-21",
             "channel": "Stable",
-            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
+            "short": "rustc 1.80.0 (051478957 2024-07-21)"
         },
         "contractCrate": {
             "name": "multi-transfer-esdt",
@@ -72,6 +72,18 @@
                     "name": "opt_new_address",
                     "type": "optional<Address>",
                     "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "addUnprocessedRefundTxToBatch",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u64"
                 }
             ],
             "outputs": []
@@ -337,6 +349,16 @@
                     "type": "u64",
                     "indexed": true
                 },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "unprocessedRefundTxs",
+            "inputs": [
                 {
                     "name": "tx_id",
                     "type": "u64",
