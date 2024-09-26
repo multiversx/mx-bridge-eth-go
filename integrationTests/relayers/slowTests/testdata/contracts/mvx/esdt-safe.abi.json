@@ -124,8 +124,9 @@
                     "type": "EthAddress"
                 },
                 {
-                    "name": "refunding_address",
-                    "type": "Address"
+                    "name": "opt_refund_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
                 }
             ],
             "outputs": []

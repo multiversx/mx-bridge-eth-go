@@ -187,7 +187,7 @@ func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOp
 
 	for id, callData := range pendingOperations {
 		log.Debug("scCallExecutor.executeOperations", "executing ID", id, "call data", callData)
-		err = executor.executeOperation(id, callData, networkConfig)
+		err = executor.executeOperation(ctx, id, callData, networkConfig)
 		if err != nil {
 			return fmt.Errorf("%w for call data: %s", err, callData)
 		}
@@ -197,6 +197,7 @@ func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOp
 }
 
 func (executor *scCallExecutor) executeOperation(
+	ctx context.Context,
 	id uint64,
 	callData parsers.ProxySCCompleteCallData,
 	networkConfig *data.NetworkConfig,
@@ -231,7 +232,7 @@ func (executor *scCallExecutor) executeOperation(
 		Value:    "0",
 	}
 
-	err = executor.nonceTxHandler.ApplyNonceAndGasPrice(context.Background(), executor.senderAddress, tx)
+	err = executor.nonceTxHandler.ApplyNonceAndGasPrice(ctx, executor.senderAddress, tx)
 	if err != nil {
 		return err
 	}
@@ -241,7 +242,7 @@ func (executor *scCallExecutor) executeOperation(
 		return err
 	}
 
-	hash, err := executor.nonceTxHandler.SendTransaction(context.Background(), tx)
+	hash, err := executor.nonceTxHandler.SendTransaction(ctx, tx)
 	if err != nil {
 		return err
 	}
