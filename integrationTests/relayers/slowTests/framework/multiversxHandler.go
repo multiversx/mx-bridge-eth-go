@@ -46,6 +46,7 @@ const (
 	changeOwnerAddressFunction                           = "ChangeOwnerAddress"
 	setEsdtSafeOnMultiTransferFunction                   = "setEsdtSafeOnMultiTransfer"
 	setEsdtSafeOnWrapperFunction                         = "setEsdtSafeContractAddress"
+	setEsdtSafeAddressFunction                           = "setEsdtSafeAddress"
 	stakeFunction                                        = "stake"
 	unpauseFunction                                      = "unpause"
 	unpauseEsdtSafeFunction                              = "unpauseEsdtSafe"
@@ -294,6 +295,20 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 		},
 	)
 	log.Info("setEsdtSafeOnWrapper tx executed", "hash", hash, "status", txResult.Status)
+
+	// setEsdtSafeAddress on bridge proxy
+	hash, txResult = handler.ChainSimulator.ScCall(
+		ctx,
+		handler.OwnerKeys.MvxSk,
+		handler.ScProxyAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		setEsdtSafeAddressFunction,
+		[]string{
+			handler.SafeAddress.Hex(),
+		},
+	)
+	log.Info("setEsdtSafeAddress on SC bridge proxy tx executed", "hash", hash, "status", txResult.Status)
 
 	// ChangeOwnerAddress for safe
 	hash, txResult = handler.ChainSimulator.ScCall(
