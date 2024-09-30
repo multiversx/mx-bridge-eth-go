@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/errors"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
@@ -232,7 +231,7 @@ func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOp
 	for id, callData := range pendingOperations {
 		workingCtx, cancel := context.WithTimeout(ctx, executor.executionTimeout)
 
-		log.Debug("scCallExecutor.executeOperations", "executing ID", id, "call data", callData,
+		executor.log.Debug("scCallExecutor.executeOperations", "executing ID", id, "call data", callData,
 			"maximum timeout", executor.executionTimeout)
 		err = executor.executeOperation(workingCtx, id, callData, networkConfig)
 		cancel()
@@ -266,7 +265,7 @@ func (executor *scCallExecutor) executeOperation(
 
 	gasLimit, err := executor.codec.ExtractGasLimitFromRawCallData(callData.RawCallData)
 	if err != nil {
-		log.Warn("scCallExecutor.executeOperation found a non-parsable raw call data",
+		executor.log.Warn("scCallExecutor.executeOperation found a non-parsable raw call data",
 			"raw call data", callData.RawCallData, "error", err)
 		gasLimit = 0
 	}
@@ -378,7 +377,7 @@ func (executor *scCallExecutor) checkResults(ctx context.Context, hash string) (
 }
 
 func (executor *scCallExecutor) handleError(ctx context.Context, err error) {
-	if err != nil {
+	if err == nil {
 		return
 	}
 	if !executor.closeAppOnError {
@@ -398,17 +397,17 @@ func (executor *scCallExecutor) handleError(ctx context.Context, err error) {
 func (executor *scCallExecutor) logFullTransaction(ctx context.Context, hash string) {
 	txData, err := executor.proxy.GetTransactionInfoWithResults(ctx, hash)
 	if err != nil {
-		log.Error("error getting the transaction for display", "error", err)
+		executor.log.Error("error getting the transaction for display", "error", err)
 		return
 	}
 
 	txDataString, err := json.MarshalIndent(txData.Data.Transaction, "", "  ")
 	if err != nil {
-		log.Error("error preparing transaction for display", "error", err)
+		executor.log.Error("error preparing transaction for display", "error", err)
 		return
 	}
 
-	log.Error("transaction failed", "hash", hash, "full transaction details", string(txDataString))
+	executor.log.Error("transaction failed", "hash", hash, "full transaction details", string(txDataString))
 }
 
 func (executor *scCallExecutor) waitForExtraDelay(ctx context.Context, err error) {

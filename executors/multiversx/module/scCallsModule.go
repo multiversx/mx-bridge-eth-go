@@ -29,7 +29,7 @@ type scCallsModule struct {
 }
 
 // NewScCallsModule creates a starts a new scCallsModule instance
-func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger) (*scCallsModule, error) {
+func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chCloseApp chan struct{}) (*scCallsModule, error) {
 	filter, err := filters.NewPendingOperationFilter(cfg.Filter, log)
 	if err != nil {
 		return nil, err
@@ -82,6 +82,8 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger) (*scCal
 		NonceTxHandler:       module.nonceTxsHandler,
 		PrivateKey:           privateKey,
 		SingleSigner:         singleSigner,
+		CloseAppChan:         chCloseApp,
+		TransactionChecks:    cfg.TransactionChecks,
 	}
 	module.executorInstance, err = multiversx.NewScCallExecutor(argsExecutor)
 	if err != nil {
