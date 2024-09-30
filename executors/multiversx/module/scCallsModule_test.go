@@ -21,7 +21,7 @@ func createTestConfigs() config.ScCallsModuleConfig {
 		IntervalToResendTxsInSeconds: 1,
 		PrivateKeyFile:               "testdata/grace.pem",
 		PollingIntervalInMillis:      10000,
-		FilterConfig: config.PendingOperationsFilterConfig{
+		Filter: config.PendingOperationsFilterConfig{
 			DeniedEthAddresses:  nil,
 			AllowedEthAddresses: []string{"*"},
 			DeniedMvxAddresses:  nil,
@@ -39,7 +39,7 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		cfg.FilterConfig.DeniedTokens = []string{"*"}
+		cfg.Filter.DeniedTokens = []string{"*"}
 
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
 		assert.NotNil(t, err)

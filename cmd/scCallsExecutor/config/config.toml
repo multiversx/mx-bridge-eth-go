@@ -9,7 +9,7 @@ IntervalToResendTxsInSeconds = 60
 PrivateKeyFile = "keys/multiversx.pem"
 PollingIntervalInMillis = 6000
 
-[FilterConfig]
+[Filter]
     AllowedEthAddresses = ["*"]   # execute SC calls from all ETH addresses
     AllowedMvxAddresses = ["*"]   # execute SC calls to all MvX contracts
     AllowedTokens = ["*"]         # execute SC calls for all tokens
@@ -17,3 +17,11 @@ PollingIntervalInMillis = 6000
 [Logs]
     LogFileLifeSpanInSec = 86400 # 24h
     LogFileLifeSpanInMB = 1024 # 1GB
+
+[TransactionChecks]
+    CheckTransactionResults = true     # enable or disable the transaction execution checking
+    TimeInSecondsBetweenChecks = 6     # the number of seconds to recheck the status of the transaction
+    ExecutionTimeoutInSeconds  = 120   # the number of seconds reserved for each execution to complete
+    CloseAppOnError            = false # enable or disable if the executor should automatically close on a transaction execution error
+    ExtraDelayInSecondsOnError = 120   # extra delay in seconds if the transaction execution errored
+

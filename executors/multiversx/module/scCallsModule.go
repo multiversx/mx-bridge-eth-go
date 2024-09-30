@@ -30,7 +30,7 @@ type scCallsModule struct {
 
 // NewScCallsModule creates a starts a new scCallsModule instance
 func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger) (*scCallsModule, error) {
-	filter, err := filters.NewPendingOperationFilter(cfg.FilterConfig, log)
+	filter, err := filters.NewPendingOperationFilter(cfg.Filter, log)
 	if err != nil {
 		return nil, err
 	}
