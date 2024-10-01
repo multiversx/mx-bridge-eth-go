@@ -194,6 +194,19 @@
             "outputs": []
         },
         {
+            "name": "setBridgeProxyContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "getUniversalBridgedTokenIds",
             "mutability": "readonly",
             "inputs": [],
@@ -252,6 +265,16 @@
         },
         {
             "name": "getEsdtSafeContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getBridgeProxyContractAddress",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [

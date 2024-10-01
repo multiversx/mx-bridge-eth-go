@@ -67,7 +67,7 @@ func NewTestSetup(tb testing.TB) *TestSetup {
 
 	setup.createChainSimulatorWrapper()
 	setup.MultiversxHandler = NewMultiversxHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, setup.ChainSimulator, quorum)
-	setup.MultiversxHandler.DeployContracts(setup.Ctx)
+	setup.MultiversxHandler.DeployAndSetContracts(setup.Ctx)
 
 	return setup
 }
