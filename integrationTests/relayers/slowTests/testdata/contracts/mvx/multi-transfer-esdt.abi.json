@@ -77,6 +77,18 @@
             "outputs": []
         },
         {
+            "name": "addUnprocessedRefundTxToBatch",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "setEsdtSafeContractAddress",
             "onlyOwner": true,
             "mutability": "mutable",
@@ -337,6 +349,16 @@
                     "type": "u64",
                     "indexed": true
                 },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "unprocessedRefundTxs",
+            "inputs": [
                 {
                     "name": "tx_id",
                     "type": "u64",

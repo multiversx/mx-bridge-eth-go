@@ -122,6 +122,11 @@
                 {
                     "name": "to",
                     "type": "EthAddress"
+                },
+                {
+                    "name": "opt_refund_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
                 }
             ],
             "outputs": []
@@ -145,6 +150,19 @@
                     "type": "EsdtTokenPayment"
                 }
             ]
+        },
+        {
+            "name": "setBridgedTokensWrapperAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
         },
         {
             "name": "computeTotalAmmountsFromIndex",
@@ -193,6 +211,16 @@
                 {
                     "type": "variadic<multi<TokenIdentifier,BigUint>>",
                     "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getBridgedTokensWrapperAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
                 }
             ]
         },
