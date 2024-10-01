@@ -697,7 +697,6 @@ func TestScCallExecutor_Execute(t *testing.T) {
 func TestScCallExecutor_handleResults(t *testing.T) {
 	t.Parallel()
 
-	// expectedErr := errors.New("expected error")
 	testHash := "test hash"
 	t.Run("checkTransactionResults false should not check and return nil", func(t *testing.T) {
 		t.Parallel()
