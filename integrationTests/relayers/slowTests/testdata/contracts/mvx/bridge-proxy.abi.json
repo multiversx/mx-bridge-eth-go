@@ -58,6 +58,17 @@
             "outputs": []
         },
         {
+            "name": "cancel",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "getPendingTransactionById",
             "mutability": "readonly",
             "inputs": [
@@ -84,7 +95,7 @@
             ]
         },
         {
-            "name": "setupMultiTransfer",
+            "name": "setMultiTransferAddress",
             "onlyOwner": true,
             "mutability": "mutable",
             "inputs": [
@@ -97,7 +108,20 @@
             "outputs": []
         },
         {
-            "name": "setBridgedTokensWrapper",
+            "name": "setBridgedTokensWrapperAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setEsdtSafeAddress",
             "onlyOwner": true,
             "mutability": "mutable",
             "inputs": [
@@ -121,6 +145,16 @@
         },
         {
             "name": "getBridgedTokensWrapperAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getEsdtSafeContractAddress",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [

@@ -46,6 +46,7 @@ const (
 	changeOwnerAddressFunction                           = "ChangeOwnerAddress"
 	setEsdtSafeOnMultiTransferFunction                   = "setEsdtSafeOnMultiTransfer"
 	setEsdtSafeOnWrapperFunction                         = "setEsdtSafeContractAddress"
+	setEsdtSafeAddressFunction                           = "setEsdtSafeAddress"
 	stakeFunction                                        = "stake"
 	unpauseFunction                                      = "unpause"
 	unpauseEsdtSafeFunction                              = "unpauseEsdtSafe"
@@ -66,7 +67,8 @@ const (
 	submitBatchFunction                                  = "submitBatch"
 	createTransactionFunction                            = "createTransaction"
 	unwrapTokenFunction                                  = "unwrapToken"
-	setupBridgedTokenWrapperFunction                     = "setBridgedTokensWrapper"
+	setBridgedTokensWrapperAddressFunction               = "setBridgedTokensWrapperAddress"
+	setMultiTransferAddressFunction                      = "setMultiTransferAddress"
 	initSupplyMintBurnEsdtSafe                           = "initSupplyMintBurnEsdtSafe"
 	initSupplyEsdtSafe                                   = "initSupplyEsdtSafe"
 )
@@ -83,12 +85,13 @@ type MultiversxHandler struct {
 	TokensRegistry TokensRegistry
 	ChainSimulator ChainSimulatorWrapper
 
-	AggregatorAddress *MvxAddress
-	WrapperAddress    *MvxAddress
-	SafeAddress       *MvxAddress
-	MultisigAddress   *MvxAddress
-	ScProxyAddress    *MvxAddress
-	TestCallerAddress *MvxAddress
+	AggregatorAddress    *MvxAddress
+	WrapperAddress       *MvxAddress
+	SafeAddress          *MvxAddress
+	MultisigAddress      *MvxAddress
+	MultiTransferAddress *MvxAddress
+	ScProxyAddress       *MvxAddress
+	TestCallerAddress    *MvxAddress
 }
 
 // NewMultiversxHandler will create the handler that will adapt all test operations on MultiversX
@@ -116,8 +119,20 @@ func NewMultiversxHandler(
 	return handler
 }
 
-// DeployContracts will deploy all required contracts on MultiversX side
-func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
+// DeployAndSetContracts will deploy all required contracts on MultiversX side and do the proper wiring
+func (handler *MultiversxHandler) DeployAndSetContracts(ctx context.Context) {
+	handler.deployContracts(ctx)
+
+	handler.wireMultiTransfer(ctx)
+	handler.wireSCProxy(ctx)
+	handler.wireWrapper(ctx)
+	handler.wireSafe(ctx)
+
+	handler.changeOwners(ctx)
+	handler.finishSettings(ctx)
+}
+
+func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy aggregator
 	stakeValue, _ := big.NewInt(0).SetString(minRelayerStake, 10)
 	aggregatorDeployParams := []string{
@@ -138,7 +153,7 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 		aggregatorDeployParams,
 	)
 	require.NotEqual(handler, emptyAddress, handler.AggregatorAddress)
-	log.Info("aggregator contract deployed", "address", handler.AggregatorAddress, "transaction hash", hash)
+	log.Info("Deploy: aggregator contract", "address", handler.AggregatorAddress, "transaction hash", hash)
 
 	// deploy wrapper
 	handler.WrapperAddress, hash, _ = handler.ChainSimulator.DeploySC(
@@ -149,18 +164,18 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 		[]string{},
 	)
 	require.NotEqual(handler, emptyAddress, handler.WrapperAddress)
-	log.Info("wrapper contract deployed", "address", handler.WrapperAddress, "transaction hash", hash)
+	log.Info("Deploy: wrapper contract", "address", handler.WrapperAddress, "transaction hash", hash)
 
 	// deploy multi-transfer
-	multiTransferAddress, hash, _ := handler.ChainSimulator.DeploySC(
+	handler.MultiTransferAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
 		multiTransferContractPath,
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
 	)
-	require.NotEqual(handler, emptyAddress, multiTransferAddress)
-	log.Info("multi-transfer contract deployed", "address", multiTransferAddress, "transaction hash", hash)
+	require.NotEqual(handler, emptyAddress, handler.MultiTransferAddress)
+	log.Info("Deploy: multi-transfer contract", "address", handler.MultiTransferAddress, "transaction hash", hash)
 
 	// deploy safe
 	handler.SafeAddress, hash, _ = handler.ChainSimulator.DeploySC(
@@ -170,12 +185,12 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 		deployGasLimit,
 		[]string{
 			handler.AggregatorAddress.Hex(),
-			multiTransferAddress.Hex(),
+			handler.MultiTransferAddress.Hex(),
 			"01",
 		},
 	)
 	require.NotEqual(handler, emptyAddress, handler.SafeAddress)
-	log.Info("safe contract deployed", "address", handler.SafeAddress, "transaction hash", hash)
+	log.Info("Deploy: safe contract", "address", handler.SafeAddress, "transaction hash", hash)
 
 	// deploy bridge proxy
 	handler.ScProxyAddress, hash, _ = handler.ChainSimulator.DeploySC(
@@ -184,18 +199,18 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{
-			multiTransferAddress.Hex(),
+			handler.MultiTransferAddress.Hex(),
 		},
 	)
 	require.NotEqual(handler, emptyAddress, handler.ScProxyAddress)
-	log.Info("bridge proxy contract deployed", "address", handler.ScProxyAddress, "transaction hash", hash)
+	log.Info("Deploy: SC proxy contract", "address", handler.ScProxyAddress, "transaction hash", hash)
 
 	// deploy multisig
 	minRelayerStakeInt, _ := big.NewInt(0).SetString(minRelayerStake, 10)
 	minRelayerStakeHex := hex.EncodeToString(minRelayerStakeInt.Bytes())
 	params := []string{
 		handler.SafeAddress.Hex(),
-		multiTransferAddress.Hex(),
+		handler.MultiTransferAddress.Hex(),
 		handler.ScProxyAddress.Hex(),
 		minRelayerStakeHex,
 		slashAmount,
@@ -211,7 +226,7 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 		params,
 	)
 	require.NotEqual(handler, emptyAddress, handler.MultisigAddress)
-	log.Info("multisig contract deployed", "address", handler.MultisigAddress, "transaction hash", hash)
+	log.Info("Deploy: multisig contract", "address", handler.MultisigAddress, "transaction hash", hash)
 
 	// deploy test-caller
 	handler.TestCallerAddress, hash, _ = handler.ChainSimulator.DeploySC(
@@ -222,13 +237,15 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 		[]string{},
 	)
 	require.NotEqual(handler, emptyAddress, handler.TestCallerAddress)
-	log.Info("test-caller contract deployed", "address", handler.TestCallerAddress, "transaction hash", hash)
+	log.Info("Deploy: test-caller contract", "address", handler.TestCallerAddress, "transaction hash", hash)
+}
 
+func (handler *MultiversxHandler) wireMultiTransfer(ctx context.Context) {
 	// setBridgeProxyContractAddress
 	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
 		handler.OwnerKeys.MvxSk,
-		multiTransferAddress,
+		handler.MultiTransferAddress,
 		zeroStringValue,
 		setCallsGasLimit,
 		setBridgeProxyContractAddressFunction,
@@ -236,13 +253,13 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 			handler.ScProxyAddress.Hex(),
 		},
 	)
-	log.Info("setBridgeProxyContractAddress tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("Set in multi-transfer contract the SC proxy contract", "transaction hash", hash, "status", txResult.Status)
 
 	// setWrappingContractAddress
 	hash, txResult = handler.ChainSimulator.ScCall(
 		ctx,
 		handler.OwnerKeys.MvxSk,
-		multiTransferAddress,
+		handler.MultiTransferAddress,
 		zeroStringValue,
 		setCallsGasLimit,
 		setWrappingContractAddressFunction,
@@ -250,24 +267,56 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 			handler.WrapperAddress.Hex(),
 		},
 	)
-	log.Info("setWrappingContractAddress tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("Set in multi-transfer contract the wrapper contract", "transaction hash", hash, "status", txResult.Status)
+}
 
+func (handler *MultiversxHandler) wireSCProxy(ctx context.Context) {
 	// setBridgedTokensWrapper in SC bridge proxy
+	hash, txResult := handler.ChainSimulator.ScCall(
+		ctx,
+		handler.OwnerKeys.MvxSk,
+		handler.ScProxyAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		setBridgedTokensWrapperAddressFunction,
+		[]string{
+			handler.WrapperAddress.Hex(),
+		},
+	)
+	log.Info("Set in SC proxy contract the wrapper contract", "transaction hash", hash, "status", txResult.Status)
+
+	// setMultiTransferAddress in SC bridge proxy
 	hash, txResult = handler.ChainSimulator.ScCall(
 		ctx,
 		handler.OwnerKeys.MvxSk,
 		handler.ScProxyAddress,
 		zeroStringValue,
 		setCallsGasLimit,
-		setupBridgedTokenWrapperFunction,
+		setMultiTransferAddressFunction,
 		[]string{
-			handler.WrapperAddress.Hex(),
+			handler.MultiTransferAddress.Hex(),
 		},
 	)
-	log.Info("setupEsdtSafe in SC bridge proxy tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("Set in SC proxy contract the multi-transfer contract", "transaction hash", hash, "status", txResult.Status)
 
-	// setEsdtSafeOnWrapper
+	// setEsdtSafeAddress on bridge proxy
 	hash, txResult = handler.ChainSimulator.ScCall(
+		ctx,
+		handler.OwnerKeys.MvxSk,
+		handler.ScProxyAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		setEsdtSafeAddressFunction,
+		[]string{
+			handler.SafeAddress.Hex(),
+		},
+	)
+	log.Info("Set in SC proxy contract the safe contract", "transaction hash", hash, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) wireWrapper(ctx context.Context) {
+	// setEsdtSafeOnWrapper
+	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
 		handler.OwnerKeys.MvxSk,
 		handler.WrapperAddress,
@@ -278,10 +327,42 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 			handler.SafeAddress.Hex(),
 		},
 	)
-	log.Info("setEsdtSafeOnWrapper tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("Set in wrapper contract the safe contract", "transaction hash", hash, "status", txResult.Status)
 
-	// ChangeOwnerAddress for safe
+	// setBridgeProxyContractAddress
 	hash, txResult = handler.ChainSimulator.ScCall(
+		ctx,
+		handler.OwnerKeys.MvxSk,
+		handler.WrapperAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		setBridgeProxyContractAddressFunction,
+		[]string{
+			handler.ScProxyAddress.Hex(),
+		},
+	)
+	log.Info("Set in wrapper contract the SC proxy contract", "transaction hash", hash, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) wireSafe(ctx context.Context) {
+	// setBridgedTokensWrapperAddress
+	hash, txResult := handler.ChainSimulator.ScCall(
+		ctx,
+		handler.OwnerKeys.MvxSk,
+		handler.SafeAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		setBridgedTokensWrapperAddressFunction,
+		[]string{
+			handler.WrapperAddress.Hex(),
+		},
+	)
+	log.Info("Set in safe contract the wrapper contract", "transaction hash", hash, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) changeOwners(ctx context.Context) {
+	// ChangeOwnerAddress for safe
+	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
 		handler.OwnerKeys.MvxSk,
 		handler.SafeAddress,
@@ -292,13 +373,13 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 			handler.MultisigAddress.Hex(),
 		},
 	)
-	log.Info("ChangeOwnerAddress for safe tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("ChangeOwnerAddress for safe contract", "transaction hash", hash, "status", txResult.Status)
 
 	// ChangeOwnerAddress for multi-transfer
 	hash, txResult = handler.ChainSimulator.ScCall(
 		ctx,
 		handler.OwnerKeys.MvxSk,
-		multiTransferAddress,
+		handler.MultiTransferAddress,
 		zeroStringValue,
 		setCallsGasLimit,
 		changeOwnerAddressFunction,
@@ -306,7 +387,7 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 			handler.MultisigAddress.Hex(),
 		},
 	)
-	log.Info("ChangeOwnerAddress for multi-transfer tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("ChangeOwnerAddress for multi-transfer contract", "transaction hash", hash, "status", txResult.Status)
 
 	// ChangeOwnerAddress for bridge proxy
 	hash, txResult = handler.ChainSimulator.ScCall(
@@ -320,11 +401,13 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 			handler.MultisigAddress.Hex(),
 		},
 	)
-	log.Info("ChangeOwnerAddress for bridge proxy tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("ChangeOwnerAddress for SC proxy contract", "transaction hash", hash, "status", txResult.Status)
+}
 
+func (handler *MultiversxHandler) finishSettings(ctx context.Context) {
 	// unpause sc proxy
-	hash, txResult = handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseProxyFunction)
-	log.Info("unpaused sc proxy executed", "hash", hash, "status", txResult.Status)
+	hash, txResult := handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseProxyFunction)
+	log.Info("Un-paused SC proxy contract", "transaction hash", hash, "status", txResult.Status)
 
 	// setEsdtSafeOnMultiTransfer
 	hash, txResult = handler.ChainSimulator.ScCall(
@@ -336,7 +419,7 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 		setEsdtSafeOnMultiTransferFunction,
 		[]string{},
 	)
-	log.Info("setEsdtSafeOnMultiTransfer tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("Set in multisig contract the safe contract (automatically)", "transaction hash", hash, "status", txResult.Status)
 
 	// stake relayers on multisig
 	handler.stakeAddressesOnContract(ctx, handler.MultisigAddress, handler.RelayersKeys)
@@ -346,7 +429,7 @@ func (handler *MultiversxHandler) DeployContracts(ctx context.Context) {
 
 	// unpause multisig
 	hash, txResult = handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseFunction)
-	log.Info("unpaused multisig executed", "hash", hash, "status", txResult.Status)
+	log.Info("Un-paused multisig contract", "transaction hash", hash, "status", txResult.Status)
 
 	handler.UnPauseContractsAfterTokenChanges(ctx)
 }
@@ -453,7 +536,7 @@ func (handler *MultiversxHandler) stakeAddressesOnContract(ctx context.Context, 
 			setCallsGasLimit,
 			[]byte(stakeFunction),
 		)
-		log.Info(fmt.Sprintf("address %s staked on contract %s with hash %s, status %s", keys.MvxAddress, contract, hash, txResult.Status))
+		log.Info(fmt.Sprintf("Address %s staked on contract %s with transaction hash %s, status %s", keys.MvxAddress, contract, hash, txResult.Status))
 	}
 }
 

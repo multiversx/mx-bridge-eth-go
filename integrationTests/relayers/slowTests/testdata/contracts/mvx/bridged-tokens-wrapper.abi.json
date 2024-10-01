@@ -171,12 +171,30 @@
                 {
                     "name": "to",
                     "type": "EthAddress"
+                },
+                {
+                    "name": "opt_refunding_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
                 }
             ],
             "outputs": []
         },
         {
             "name": "setEsdtSafeContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setBridgeProxyContractAddress",
             "onlyOwner": true,
             "mutability": "mutable",
             "inputs": [
@@ -247,6 +265,16 @@
         },
         {
             "name": "getEsdtSafeContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getBridgeProxyContractAddress",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [

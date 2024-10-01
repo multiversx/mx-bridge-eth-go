@@ -155,8 +155,15 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 func (instance *chainSimulatorWrapper) getTransactionResult(ctx context.Context, hash string) *data.TransactionOnNetwork {
 	instance.GenerateBlocksUntilTxProcessed(ctx, hash)
 
-	txResult, errGet := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
-	require.Nil(instance, errGet)
+	txResult, err := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
+	require.Nil(instance, err)
+
+	txStatus, err := instance.proxyInstance.ProcessTransactionStatus(ctx, hash)
+	require.Nil(instance, err)
+
+	jsonData, err := json.MarshalIndent(txResult.Data.Transaction, "", "  ")
+	require.Nil(instance, err)
+	require.Equal(instance, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
 
 	return &txResult.Data.Transaction
 }
