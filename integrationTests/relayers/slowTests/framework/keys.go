@@ -3,6 +3,7 @@ package framework
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -33,6 +34,7 @@ type KeysHolder struct {
 type KeysStore struct {
 	testing.TB
 	RelayersKeys   []KeysHolder
+	OraclesKeys    []KeysHolder
 	SCExecutorKeys KeysHolder
 	OwnerKeys      KeysHolder
 	DepositorKeys  KeysHolder
@@ -51,6 +53,7 @@ func NewKeysStore(
 	tb testing.TB,
 	workingDir string,
 	numRelayers int,
+	numOracles int,
 ) *KeysStore {
 	keysStore := &KeysStore{
 		TB:             tb,
@@ -60,6 +63,7 @@ func NewKeysStore(
 	}
 
 	keysStore.generateRelayersKeys(numRelayers)
+	keysStore.OraclesKeys = keysStore.generateKeys(numOracles, "generated oracle")
 	keysStore.SCExecutorKeys = keysStore.generateKey("")
 	keysStore.OwnerKeys = keysStore.generateKey(ethOwnerSK)
 	log.Info("generated owner",
@@ -92,6 +96,24 @@ func (keyStore *KeysStore) generateRelayersKeys(numKeys int) {
 	}
 }
 
+func (keyStore *KeysStore) generateKeys(numKeys int, message string) []KeysHolder {
+	keys := make([]KeysHolder, 0, numKeys)
+
+	for i := 0; i < numKeys; i++ {
+		ethPrivateKeyBytes := make([]byte, 32)
+		_, _ = rand.Read(ethPrivateKeyBytes)
+
+		key := keyStore.generateKey(hex.EncodeToString(ethPrivateKeyBytes))
+		log.Info(message, "index", i,
+			"MvX address", key.MvxAddress.Bech32(),
+			"Eth address", key.EthAddress.String())
+
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
 func (keyStore *KeysStore) generateKey(ethSkHex string) KeysHolder {
 	var err error
 
@@ -112,6 +134,7 @@ func (keyStore *KeysStore) generateKey(ethSkHex string) KeysHolder {
 func (keyStore *KeysStore) getAllKeys() []KeysHolder {
 	allKeys := make([]KeysHolder, 0, len(keyStore.RelayersKeys)+10)
 	allKeys = append(allKeys, keyStore.RelayersKeys...)
+	allKeys = append(allKeys, keyStore.OraclesKeys...)
 	allKeys = append(allKeys, keyStore.SCExecutorKeys, keyStore.OwnerKeys, keyStore.DepositorKeys, keyStore.TestKeys)
 
 	return allKeys

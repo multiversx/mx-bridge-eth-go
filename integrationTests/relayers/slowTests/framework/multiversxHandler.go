@@ -33,7 +33,7 @@ const (
 	createDepositGasLimit    = 20000000  // 20 million
 	gasLimitPerDataByte      = 1500
 
-	aggregatorContractPath    = "testdata/contracts/mvx/aggregator.wasm"
+	aggregatorContractPath    = "testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
 	wrapperContractPath       = "testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
 	multiTransferContractPath = "testdata/contracts/mvx/multi-transfer-esdt.wasm"
 	safeContractPath          = "testdata/contracts/mvx/esdt-safe.wasm"
@@ -139,9 +139,12 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 		hex.EncodeToString([]byte("EGLD")),
 		hex.EncodeToString(stakeValue.Bytes()),
 		"01",
-		"01",
-		"01",
-		handler.OwnerKeys.MvxAddress.Hex(),
+		"03",
+		"03",
+	}
+
+	for _, oracleKey := range handler.OraclesKeys {
+		aggregatorDeployParams = append(aggregatorDeployParams, oracleKey.MvxAddress.Hex())
 	}
 
 	hash := ""
@@ -153,7 +156,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 		aggregatorDeployParams,
 	)
 	require.NotEqual(handler, emptyAddress, handler.AggregatorAddress)
-	log.Info("Deploy: aggregator contract", "address", handler.AggregatorAddress, "transaction hash", hash)
+	log.Info("Deploy: aggregator contract", "address", handler.AggregatorAddress, "transaction hash", hash, "num oracles", len(handler.OraclesKeys))
 
 	// deploy wrapper
 	handler.WrapperAddress, hash, _ = handler.ChainSimulator.DeploySC(
@@ -425,7 +428,7 @@ func (handler *MultiversxHandler) finishSettings(ctx context.Context) {
 	handler.stakeAddressesOnContract(ctx, handler.MultisigAddress, handler.RelayersKeys)
 
 	// stake relayers on price aggregator
-	handler.stakeAddressesOnContract(ctx, handler.AggregatorAddress, []KeysHolder{handler.OwnerKeys})
+	handler.stakeAddressesOnContract(ctx, handler.AggregatorAddress, handler.OraclesKeys)
 
 	// unpause multisig
 	hash, txResult = handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseFunction)
@@ -807,6 +810,12 @@ func (handler *MultiversxHandler) getTokenNameFromResult(txResult data.Transacti
 
 // SubmitAggregatorBatch will submit the aggregator batch
 func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, params IssueTokenParams) {
+	for _, key := range handler.OraclesKeys {
+		handler.submitAggregatorBatchForKey(ctx, key, params)
+	}
+}
+
+func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Context, key KeysHolder, params IssueTokenParams) {
 	timestamp := handler.ChainSimulator.GetBlockchainTimeStamp(ctx)
 	require.Greater(handler, timestamp, uint64(0), "something went wrong and the chain simulator returned 0 for the current timestamp")
 
@@ -814,7 +823,7 @@ func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, par
 
 	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
-		handler.OwnerKeys.MvxSk,
+		key.MvxSk,
 		handler.AggregatorAddress,
 		zeroStringValue,
 		setCallsGasLimit,
@@ -825,7 +834,8 @@ func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, par
 			hex.EncodeToString(timestampAsBigInt.Bytes()),
 			hex.EncodeToString(feeInt.Bytes()),
 			fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific)})
-	log.Info("submit aggregator batch tx executed", "hash", hash, "submitter", handler.OwnerKeys.MvxAddress, "status", txResult.Status)
+
+	log.Info("submit aggregator batch tx executed", "transaction hash", hash, "submitter", key.MvxAddress.Bech32(), "status", txResult.Status)
 }
 
 // CreateDepositsOnMultiversxForToken will send the deposit transactions on MultiversX returning how many tokens should be minted on Ethereum
