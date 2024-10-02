@@ -202,8 +202,18 @@ type ScCallsModuleConfig struct {
 	IntervalToResendTxsInSeconds uint64
 	PrivateKeyFile               string
 	PollingIntervalInMillis      uint64
-	FilterConfig                 PendingOperationsFilterConfig
+	Filter                       PendingOperationsFilterConfig
 	Logs                         LogsConfig
+	TransactionChecks            TransactionChecksConfig
+}
+
+// TransactionChecksConfig will hold the setting for how to handle the transaction execution
+type TransactionChecksConfig struct {
+	CheckTransactionResults    bool
+	TimeInSecondsBetweenChecks uint64
+	ExecutionTimeoutInSeconds  uint64
+	CloseAppOnError            bool
+	ExtraDelayInSecondsOnError uint64
 }
 
 // MigrationToolConfig is the migration tool config struct

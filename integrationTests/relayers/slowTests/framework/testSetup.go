@@ -122,15 +122,21 @@ func (setup *TestSetup) startScCallerModule() {
 		IntervalToResendTxsInSeconds: 1,
 		PrivateKeyFile:               path.Join(setup.WorkingDir, SCCallerFilename),
 		PollingIntervalInMillis:      1000, // 1 second
-		FilterConfig: config.PendingOperationsFilterConfig{
+		Filter: config.PendingOperationsFilterConfig{
 			AllowedEthAddresses: []string{"*"},
 			AllowedMvxAddresses: []string{"*"},
 			AllowedTokens:       []string{"*"},
 		},
+		TransactionChecks: config.TransactionChecksConfig{
+			CheckTransactionResults:    true,
+			CloseAppOnError:            false,
+			ExecutionTimeoutInSeconds:  2,
+			TimeInSecondsBetweenChecks: 1,
+		},
 	}
 
 	var err error
-	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, log)
+	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, log, nil)
 	require.Nil(setup, err)
 	log.Info("started SC calls module", "monitoring SC proxy address", setup.MultiversxHandler.ScProxyAddress)
 }

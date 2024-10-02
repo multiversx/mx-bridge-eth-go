@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/big"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	testCrypto "github.com/multiversx/mx-bridge-eth-go/testsCommon/crypto"
@@ -33,6 +37,17 @@ func createMockArgsScCallExecutor() ArgsScCallExecutor {
 		NonceTxHandler:       &testsCommon.TxNonceHandlerV2Stub{},
 		PrivateKey:           testCrypto.NewPrivateKeyMock(),
 		SingleSigner:         &testCrypto.SingleSignerStub{},
+		CloseAppChan:         make(chan struct{}),
+	}
+}
+
+func createMockCheckConfigs() config.TransactionChecksConfig {
+	return config.TransactionChecksConfig{
+		CheckTransactionResults:    true,
+		TimeInSecondsBetweenChecks: 6,
+		ExecutionTimeoutInSeconds:  120,
+		CloseAppOnError:            true,
+		ExtraDelayInSecondsOnError: 120,
 	}
 }
 
@@ -138,10 +153,56 @@ func TestNewScCallExecutor(t *testing.T) {
 		assert.Nil(t, executor)
 		assert.NotNil(t, err)
 	})
-	t.Run("should work", func(t *testing.T) {
+	t.Run("invalid value for TimeInSecondsBetweenChecks should error", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsScCallExecutor()
+		args.TransactionChecks = createMockCheckConfigs()
+		args.TransactionChecks.TimeInSecondsBetweenChecks = 0
+
+		executor, err := NewScCallExecutor(args)
+		assert.Nil(t, executor)
+		assert.ErrorIs(t, err, errInvalidValue)
+		assert.Contains(t, err.Error(), "for TransactionChecks.TimeInSecondsBetweenChecks, minimum: 1, got: 0")
+	})
+	t.Run("invalid value for ExecutionTimeoutInSeconds should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.TransactionChecks = createMockCheckConfigs()
+		args.TransactionChecks.ExecutionTimeoutInSeconds = 0
+
+		executor, err := NewScCallExecutor(args)
+		assert.Nil(t, executor)
+		assert.ErrorIs(t, err, errInvalidValue)
+		assert.Contains(t, err.Error(), "for TransactionChecks.ExecutionTimeoutInSeconds, minimum: 1, got: 0")
+	})
+	t.Run("nil close app chan should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.TransactionChecks = createMockCheckConfigs()
+		args.CloseAppChan = nil
+
+		executor, err := NewScCallExecutor(args)
+		assert.Nil(t, executor)
+		assert.ErrorIs(t, err, errNilCloseAppChannel)
+		assert.Contains(t, err.Error(), "while the TransactionChecks.CloseAppOnError is set to true")
+	})
+	t.Run("should work without transaction checks", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+
+		executor, err := NewScCallExecutor(args)
+		assert.NotNil(t, executor)
+		assert.Nil(t, err)
+	})
+	t.Run("should work with transaction checks", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.TransactionChecks = createMockCheckConfigs()
 
 		executor, err := NewScCallExecutor(args)
 		assert.NotNil(t, executor)
@@ -438,6 +499,10 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsScCallExecutor()
+		args.TransactionChecks = createMockCheckConfigs()
+		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
+		txHash := "tx hash"
+		processTransactionStatusCalled := false
 
 		nonceCounter := uint64(100)
 		sendWasCalled := false
@@ -464,6 +529,12 @@ func TestScCallExecutor_Execute(t *testing.T) {
 					ChainID:               "TEST",
 					MinTransactionVersion: 111,
 				}, nil
+			},
+			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+				assert.Equal(t, txHash, hexTxHash)
+				processTransactionStatusCalled = true
+
+				return transaction.TxStatusSuccess, nil
 			},
 		}
 		args.Codec = &testsCommon.MultiversxCodecStub{
@@ -511,7 +582,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 				sendWasCalled = true
 
-				return "", nil
+				return txHash, nil
 			},
 		}
 		args.SingleSigner = &testCrypto.SingleSignerStub{
@@ -526,6 +597,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, sendWasCalled)
 		assert.Equal(t, uint32(1), executor.GetNumSentTransaction())
+		assert.True(t, processTransactionStatusCalled)
 	})
 	t.Run("should work even if the gas limit decode errors", func(t *testing.T) {
 		t.Parallel()
@@ -619,5 +691,234 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, sendWasCalled)
 		assert.Equal(t, uint32(1), executor.GetNumSentTransaction())
+	})
+}
+
+func TestScCallExecutor_handleResults(t *testing.T) {
+	t.Parallel()
+
+	testHash := "test hash"
+	t.Run("checkTransactionResults false should not check and return nil", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.Proxy = &interactors.ProxyStub{
+			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+				assert.Fail(t, "should have not called ProcessTransactionStatusCalled")
+
+				return transaction.TxStatusFail, nil
+			},
+		}
+
+		executor, _ := NewScCallExecutor(args)
+
+		err := executor.handleResults(context.Background(), testHash)
+		assert.Nil(t, err)
+	})
+	t.Run("timeout before process transaction called", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.Proxy = &interactors.ProxyStub{
+			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+				assert.Fail(t, "should have not called ProcessTransactionStatusCalled")
+
+				return transaction.TxStatusFail, nil
+			},
+		}
+		args.TransactionChecks = createMockCheckConfigs()
+
+		executor, _ := NewScCallExecutor(args)
+
+		workingCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		err := executor.handleResults(workingCtx, testHash)
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
+	})
+	t.Run("transaction not found should continuously request the status", func(t *testing.T) {
+		t.Parallel()
+
+		numRequests := uint64(0)
+		args := createMockArgsScCallExecutor()
+		chDone := make(chan struct{}, 1)
+		args.Proxy = &interactors.ProxyStub{
+			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+				atomic.AddUint64(&numRequests, 1)
+				if atomic.LoadUint64(&numRequests) > 3 {
+					chDone <- struct{}{}
+				}
+
+				return transaction.TxStatusInvalid, errors.New("transaction not found")
+			},
+		}
+		args.TransactionChecks = createMockCheckConfigs()
+		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
+
+		executor, _ := NewScCallExecutor(args)
+
+		go func() {
+			err := executor.handleResults(context.Background(), testHash)
+			assert.ErrorIs(t, err, context.DeadlineExceeded) // this will be the actual error when the function finishes
+		}()
+
+		select {
+		case <-chDone:
+			return
+		case <-time.After(time.Second * 30):
+			assert.Fail(t, "timeout")
+		}
+	})
+	t.Run("transaction is still pending should continuously request the status", func(t *testing.T) {
+		t.Parallel()
+
+		numRequests := uint64(0)
+		args := createMockArgsScCallExecutor()
+		chDone := make(chan struct{}, 1)
+		args.Proxy = &interactors.ProxyStub{
+			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+				atomic.AddUint64(&numRequests, 1)
+				if atomic.LoadUint64(&numRequests) > 3 {
+					chDone <- struct{}{}
+				}
+
+				return transaction.TxStatusPending, nil
+			},
+		}
+		args.TransactionChecks = createMockCheckConfigs()
+		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
+
+		executor, _ := NewScCallExecutor(args)
+
+		go func() {
+			err := executor.handleResults(context.Background(), testHash)
+			assert.ErrorIs(t, err, context.DeadlineExceeded) // this will be the actual error when the function finishes
+		}()
+
+		select {
+		case <-chDone:
+			return
+		case <-time.After(time.Second * 30):
+			assert.Fail(t, "timeout")
+		}
+	})
+	t.Run("error while requesting the status should return the error and wait", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("expected error")
+		args := createMockArgsScCallExecutor()
+		args.CloseAppChan = make(chan struct{}, 1)
+		args.Proxy = &interactors.ProxyStub{
+			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+				return transaction.TxStatusInvalid, expectedErr
+			},
+		}
+		args.TransactionChecks = createMockCheckConfigs()
+		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
+		args.TransactionChecks.ExtraDelayInSecondsOnError = 6
+
+		executor, _ := NewScCallExecutor(args)
+
+		start := time.Now()
+		err := executor.handleResults(context.Background(), testHash)
+		assert.Equal(t, expectedErr, err)
+		end := time.Now()
+
+		assert.GreaterOrEqual(t, end.Sub(start), time.Second*6)
+		select {
+		case <-args.CloseAppChan:
+		default:
+			assert.Fail(t, "failed to write on the close app chan")
+		}
+	})
+	t.Run("error while requesting the status should not write on the close app chan, if not enabled", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("expected error")
+		args := createMockArgsScCallExecutor()
+		args.CloseAppChan = make(chan struct{}, 1)
+		args.Proxy = &interactors.ProxyStub{
+			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+				return transaction.TxStatusInvalid, expectedErr
+			},
+		}
+		args.TransactionChecks = createMockCheckConfigs()
+		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
+		args.TransactionChecks.ExtraDelayInSecondsOnError = 1
+		args.TransactionChecks.CloseAppOnError = false
+
+		executor, _ := NewScCallExecutor(args)
+
+		err := executor.handleResults(context.Background(), testHash)
+		assert.Equal(t, expectedErr, err)
+
+		select {
+		case <-args.CloseAppChan:
+			assert.Fail(t, "should have not written on the close chan")
+		default:
+		}
+	})
+	t.Run("transaction failed, should get more info and signal error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.CloseAppChan = make(chan struct{}, 1)
+		args.Proxy = &interactors.ProxyStub{
+			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+				return transaction.TxStatusFail, nil
+			},
+			GetTransactionInfoWithResultsCalled: func(ctx context.Context, txHash string) (*data.TransactionInfo, error) {
+				return &data.TransactionInfo{}, nil
+			},
+		}
+		args.TransactionChecks = createMockCheckConfigs()
+		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
+		args.TransactionChecks.ExtraDelayInSecondsOnError = 1
+
+		executor, _ := NewScCallExecutor(args)
+
+		err := executor.handleResults(context.Background(), testHash)
+		assert.ErrorIs(t, err, errTransactionFailed)
+
+		select {
+		case <-args.CloseAppChan:
+		default:
+			assert.Fail(t, "failed to write on the close app chan")
+		}
+	})
+	t.Run("transaction failed, get more info fails, should signal error and not panic", func(t *testing.T) {
+		t.Parallel()
+
+		defer func() {
+			r := recover()
+			if r != nil {
+				assert.Fail(t, fmt.Sprintf("should have not panicked %v", r))
+			}
+		}()
+
+		args := createMockArgsScCallExecutor()
+		args.CloseAppChan = make(chan struct{}, 1)
+		args.Proxy = &interactors.ProxyStub{
+			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+				return transaction.TxStatusFail, nil
+			},
+			GetTransactionInfoWithResultsCalled: func(ctx context.Context, txHash string) (*data.TransactionInfo, error) {
+				return nil, fmt.Errorf("random error")
+			},
+		}
+		args.TransactionChecks = createMockCheckConfigs()
+		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
+		args.TransactionChecks.ExtraDelayInSecondsOnError = 1
+
+		executor, _ := NewScCallExecutor(args)
+
+		err := executor.handleResults(context.Background(), testHash)
+		assert.ErrorIs(t, err, errTransactionFailed)
+
+		select {
+		case <-args.CloseAppChan:
+		default:
+			assert.Fail(t, "failed to write on the close app chan")
+		}
 	})
 }

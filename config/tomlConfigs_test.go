@@ -415,7 +415,7 @@ func TestScCallsExecutorConfigs(t *testing.T) {
 		IntervalToResendTxsInSeconds: 60,
 		PrivateKeyFile:               "keys/multiversx.pem",
 		PollingIntervalInMillis:      6000,
-		FilterConfig: PendingOperationsFilterConfig{
+		Filter: PendingOperationsFilterConfig{
 			AllowedEthAddresses: []string{"*"},
 			AllowedMvxAddresses: []string{"*"},
 			AllowedTokens:       []string{"MEME-a43fa1"},
@@ -423,6 +423,13 @@ func TestScCallsExecutorConfigs(t *testing.T) {
 		Logs: LogsConfig{
 			LogFileLifeSpanInSec: 86400,
 			LogFileLifeSpanInMB:  1024,
+		},
+		TransactionChecks: TransactionChecksConfig{
+			CheckTransactionResults:    true,
+			TimeInSecondsBetweenChecks: 6,
+			ExecutionTimeoutInSeconds:  120,
+			CloseAppOnError:            false,
+			ExtraDelayInSecondsOnError: 120,
 		},
 	}
 
@@ -438,7 +445,7 @@ IntervalToResendTxsInSeconds = 60
 PrivateKeyFile = "keys/multiversx.pem"
 PollingIntervalInMillis = 6000
 
-[FilterConfig]
+[Filter]
 	AllowedEthAddresses = ["*"]		# execute SC calls from all ETH addresses
 	AllowedMvxAddresses = ["*"]     # execute SC calls to all MvX contracts
 	AllowedTokens = ["MEME-a43fa1"] # execute SC calls for this token only
@@ -446,6 +453,13 @@ PollingIntervalInMillis = 6000
 [Logs]
 	LogFileLifeSpanInSec = 86400 # 24h
     LogFileLifeSpanInMB = 1024 # 1GB
+
+[TransactionChecks]
+	CheckTransactionResults = true     # enable or disable the transaction execution checking
+	TimeInSecondsBetweenChecks = 6     # the number of seconds to recheck the status of the transaction
+	ExecutionTimeoutInSeconds  = 120   # the number of seconds after the transaction is considered failed if it was not seen by the blockchain 
+	CloseAppOnError            = false # enable or disable if the executor should automatically close on a transaction execution error  
+	ExtraDelayInSecondsOnError = 120   # extra delay in seconds if the transaction execution errored 
 `
 
 	cfg := ScCallsModuleConfig{}

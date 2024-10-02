@@ -121,11 +121,13 @@ func startRelay(ctx *cli.Context, version string) error {
 		IntervalToResendTxsInSeconds: cfg.IntervalToResendTxsInSeconds,
 		PrivateKeyFile:               cfg.PrivateKeyFile,
 		PollingIntervalInMillis:      cfg.PollingIntervalInMillis,
-		FilterConfig:                 cfg.FilterConfig,
+		Filter:                       cfg.Filter,
 		Logs:                         cfg.Logs,
+		TransactionChecks:            cfg.TransactionChecks,
 	}
 
-	scCallsExecutor, err := module.NewScCallsModule(args, log)
+	chCloseApp := make(chan struct{}, 1)
+	scCallsExecutor, err := module.NewScCallsModule(args, log, chCloseApp)
 	if err != nil {
 		return err
 	}
@@ -133,9 +135,12 @@ func startRelay(ctx *cli.Context, version string) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	<-sigs
-
-	log.Info("application closing, calling Close on all subcomponents...")
+	select {
+	case <-sigs:
+		log.Info("application closing by user error input, calling Close on all subcomponents...")
+	case <-chCloseApp:
+		log.Info("application closing, requested internally, calling Close on all subcomponents...")
+	}
 
 	return scCallsExecutor.Close()
 }
