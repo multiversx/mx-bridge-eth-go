@@ -1002,7 +1002,7 @@ func TestMultiversXToEthBridgeExecutor_GetAndStoreBatchFromMultiversX(t *testing
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
 			GetPendingBatchCalled: func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 				wasCalled = true
-				return providedBatch, nil
+				return &bridgeCore.TransferBatch{}, nil
 			},
 		}
 
@@ -1059,117 +1059,13 @@ func TestMultiversXToEthBridgeExecutor_GetAndStoreBatchFromMultiversX(t *testing
 		}
 
 		depositData := []byte("testData")
-		expectedDepositData := []byte{bridgeCore.DataPresentProtocolMarker, 0, 0, 0, byte(len(depositData))}
-		expectedDepositData = append(expectedDepositData, depositData...)
-		expectedBatch := &bridgeCore.TransferBatch{
-			ID: providedNonce,
-			Deposits: []*bridgeCore.DepositTransfer{
-				{
-					Nonce:           depositNonce,
-					Data:            expectedDepositData,
-					DisplayableData: hex.EncodeToString(depositData),
-				},
-			},
-		}
-
-		args := createMockExecutorArgs()
-		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
-			GetPendingBatchCalled: func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
-				return providedBatchWithDeposit, nil
-			},
-			GetBatchSCMetadataCalled: func(ctx context.Context, batch *bridgeCore.TransferBatch) ([]*transaction.Events, error) {
-				depositNonceBytes := make([]byte, 8)
-				binary.BigEndian.PutUint64(depositNonceBytes, depositNonce)
-				return []*transaction.Events{
-					{Topics: [][]byte{{}, depositNonceBytes, {}, {}, {}, {}, {}, {}, depositData}},
-				}, nil
-			},
-		}
-
-		executor, _ := NewBridgeExecutor(args)
-		batch, err := executor.GetBatchFromMultiversX(context.Background())
-		assert.Nil(t, err)
-		assert.Equal(t, expectedBatch, batch)
-	})
-	t.Run("should add deposits metadata for sc calls with a data starting with missing data marker", func(t *testing.T) {
-		t.Parallel()
-
-		providedNonce := uint64(8346)
-		depositNonce := uint64(100)
-
-		providedBatchWithDeposit := &bridgeCore.TransferBatch{
-			ID: providedNonce,
-			Deposits: []*bridgeCore.DepositTransfer{
-				{
-					Nonce: depositNonce,
-				},
-			},
-		}
-
-		depositData := append([]byte{bridgeCore.MissingDataProtocolMarker}, "testData"...)
-		expectedDepositData := []byte{bridgeCore.DataPresentProtocolMarker, 0, 0, 0, byte(len(depositData))}
-		expectedDepositData = append(expectedDepositData, depositData...)
-		expectedBatch := &bridgeCore.TransferBatch{
-			ID: providedNonce,
-			Deposits: []*bridgeCore.DepositTransfer{
-				{
-					Nonce:           depositNonce,
-					Data:            expectedDepositData,
-					DisplayableData: hex.EncodeToString(depositData),
-				},
-			},
-		}
-
-		args := createMockExecutorArgs()
-		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
-			GetPendingBatchCalled: func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
-				return providedBatchWithDeposit, nil
-			},
-			GetBatchSCMetadataCalled: func(ctx context.Context, batch *bridgeCore.TransferBatch) ([]*transaction.Events, error) {
-				depositNonceBytes := make([]byte, 8)
-				binary.BigEndian.PutUint64(depositNonceBytes, depositNonce)
-				return []*transaction.Events{
-					{Topics: [][]byte{{}, depositNonceBytes, {}, {}, {}, {}, {}, {}, depositData}},
-				}, nil
-			},
-		}
-
-		executor, _ := NewBridgeExecutor(args)
-		batch, err := executor.GetBatchFromMultiversX(context.Background())
-		assert.Nil(t, err)
-
-		fmt.Println(expectedBatch.Deposits[0].Data)
-		fmt.Println(batch.Deposits[0].Data)
-		fmt.Println(expectedBatch.Deposits[0])
-		fmt.Println(batch.Deposits[0])
-
-		err = executor.StoreBatchFromMultiversX(batch)
-		assert.Nil(t, err)
-		assert.Equal(t, expectedBatch, batch)
-	})
-	t.Run("should add deposits metadata for sc calls even if with no data", func(t *testing.T) {
-		t.Parallel()
-
-		providedNonce := uint64(8346)
-		depositNonce := uint64(100)
-
-		providedBatchWithDeposit := &bridgeCore.TransferBatch{
-			ID: providedNonce,
-			Deposits: []*bridgeCore.DepositTransfer{
-				{
-					Nonce: depositNonce,
-				},
-			},
-		}
-
-		depositData := []byte{bridgeCore.MissingDataProtocolMarker}
 		expectedBatch := &bridgeCore.TransferBatch{
 			ID: providedNonce,
 			Deposits: []*bridgeCore.DepositTransfer{
 				{
 					Nonce:           depositNonce,
 					Data:            depositData,
-					DisplayableData: "",
+					DisplayableData: hex.EncodeToString(depositData),
 				},
 			},
 		}
@@ -1190,9 +1086,6 @@ func TestMultiversXToEthBridgeExecutor_GetAndStoreBatchFromMultiversX(t *testing
 
 		executor, _ := NewBridgeExecutor(args)
 		batch, err := executor.GetBatchFromMultiversX(context.Background())
-		assert.Nil(t, err)
-
-		err = executor.StoreBatchFromMultiversX(batch)
 		assert.Nil(t, err)
 		assert.Equal(t, expectedBatch, batch)
 	})

@@ -1113,7 +1113,23 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 func TestClient_GetBatchSCMetadata(t *testing.T) {
 	t.Parallel()
 
-	// TODO: test if addressHandler throws error?
+	t.Run("should error if fetching SafeContract address fails", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		c, _ := NewClient(args)
+
+		expectedError := errors.New("expected error")
+		c.safeContractAddress = &testsCommon.AddressHandlerStub{
+			AddressAsBech32StringCalled: func() (string, error) {
+				return "", expectedError
+			},
+		}
+
+		events, err := c.GetBatchSCMetadata(context.Background(), &bridgeCore.TransferBatch{})
+		assert.Nil(t, events)
+		assert.Equal(t, expectedError, err)
+	})
 
 	t.Run("should error if fetching filter logs fails", func(t *testing.T) {
 		t.Parallel()
@@ -1136,8 +1152,14 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 		t.Parallel()
 
 		args := createMockClientArgs()
+		args.EventsBlockRangeFrom = -5
+		args.EventsBlockRangeTo = 10
 		args.Proxy = &interactors.ProxyStub{
 			FilterLogsCalled: func(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error) {
+				assert.Equal(t, filter.FromBlock.HasValue, true)
+				assert.Equal(t, filter.FromBlock.Value, uint64(5))
+				assert.Equal(t, filter.ToBlock.HasValue, true)
+				assert.Equal(t, filter.ToBlock.Value, uint64(30))
 				return []*transaction.Events{{Identifier: "event0"}, {Identifier: "event1"}}, nil
 			},
 		}
@@ -1147,11 +1169,49 @@ func TestClient_GetBatchSCMetadata(t *testing.T) {
 			ID: 2,
 			Deposits: []*bridgeCore.DepositTransfer{
 				{
-					DepositBlockNumber: 0,
+					DepositBlockNumber: 10,
 					Nonce:              5000,
 				},
 				{
-					DepositBlockNumber: 5,
+					DepositBlockNumber: 20,
+					Nonce:              5001,
+				},
+			},
+		}
+
+		events, err := c.GetBatchSCMetadata(context.Background(), expectedBatch)
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(events))
+		assert.Equal(t, "event0", events[0].Identifier)
+		assert.Equal(t, "event1", events[1].Identifier)
+	})
+
+	t.Run("should set range boundaries to 0 in case of underflow", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.EventsBlockRangeFrom = -50
+		args.EventsBlockRangeTo = 50
+		args.Proxy = &interactors.ProxyStub{
+			FilterLogsCalled: func(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error) {
+				assert.Equal(t, filter.FromBlock.HasValue, true)
+				assert.Equal(t, filter.FromBlock.Value, uint64(0))
+				assert.Equal(t, filter.ToBlock.HasValue, true)
+				assert.Equal(t, filter.ToBlock.Value, uint64(149))
+				return []*transaction.Events{{Identifier: "event0"}, {Identifier: "event1"}}, nil
+			},
+		}
+		c, _ := NewClient(args)
+
+		expectedBatch := &bridgeCore.TransferBatch{
+			ID: 2,
+			Deposits: []*bridgeCore.DepositTransfer{
+				{
+					DepositBlockNumber: 49,
+					Nonce:              5000,
+				},
+				{
+					DepositBlockNumber: 99,
 					Nonce:              5001,
 				},
 			},

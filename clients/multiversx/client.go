@@ -253,6 +253,8 @@ func (c *client) GetBatchSCMetadata(ctx context.Context, batch *bridgeCore.Trans
 		return nil, err
 	}
 
+	eventInBytes := []byte("createTransactionScCallEvent")
+
 	minBlockNumber := int64(math.MaxInt64)
 	maxBlockNumber := int64(math.MinInt64)
 	for _, dt := range batch.Deposits {
@@ -266,13 +268,22 @@ func (c *client) GetBatchSCMetadata(ctx context.Context, batch *bridgeCore.Trans
 		}
 	}
 
-	eventInBytes := []byte("createTransactionScCallEvent")
+	// checks for underflow
+	fromBlock := minBlockNumber + c.eventsBlockRangeFrom
+	if fromBlock < 0 {
+		fromBlock = 0
+	}
+
+	toBlock := maxBlockNumber + c.eventsBlockRangeTo
+	if toBlock < 0 {
+		toBlock = 0
+	}
 
 	query := core.FilterQuery{
 		Addresses: []string{safeContractAddress},
 		Topics:    [][]byte{eventInBytes},
-		FromBlock: mxCore.OptionalUint64{Value: uint64(minBlockNumber + c.eventsBlockRangeFrom), HasValue: true},
-		ToBlock:   mxCore.OptionalUint64{Value: uint64(maxBlockNumber + c.eventsBlockRangeTo), HasValue: true},
+		FromBlock: mxCore.OptionalUint64{Value: uint64(fromBlock), HasValue: true},
+		ToBlock:   mxCore.OptionalUint64{Value: uint64(toBlock), HasValue: true},
 	}
 
 	events, err := c.proxy.FilterLogs(ctx, &query)
