@@ -22,7 +22,7 @@ const (
 	proxyCacherExpirationSeconds = 600
 	proxyMaxNoncesDelta          = 7
 	NumRelayers                  = 3
-	NumOracles                   = 4
+	NumOracles                   = 3
 	quorum                       = "03"
 )
 

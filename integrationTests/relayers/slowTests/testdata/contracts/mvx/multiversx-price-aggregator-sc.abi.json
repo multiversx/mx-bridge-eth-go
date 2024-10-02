@@ -1,20 +1,20 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.80.0-nightly",
-            "commitHash": "791adf759cc065316f054961875052d5bc03e16c",
-            "commitDate": "2024-05-21",
-            "channel": "Nightly",
-            "short": "rustc 1.80.0-nightly (791adf759 2024-05-21)"
+            "version": "1.78.0",
+            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
+            "commitDate": "2024-04-29",
+            "channel": "Stable",
+            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
         },
         "contractCrate": {
             "name": "multiversx-price-aggregator-sc",
             "version": "0.47.1",
-            "gitVersion": "v0.45.2.1-reproducible-337-g5478c6e"
+            "gitVersion": "v0.45.2.1-reproducible-361-g5e42362"
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.51.1"
+            "version": "0.53.2"
         }
     },
     "name": "PriceAggregator",
@@ -354,6 +354,14 @@
         }
     ],
     "events": [
+        {
+            "identifier": "pauseContract",
+            "inputs": []
+        },
+        {
+            "identifier": "unpauseContract",
+            "inputs": []
+        },
         {
             "identifier": "new_round",
             "inputs": [
