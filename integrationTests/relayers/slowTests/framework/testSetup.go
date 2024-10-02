@@ -22,6 +22,7 @@ const (
 	proxyCacherExpirationSeconds = 600
 	proxyMaxNoncesDelta          = 7
 	NumRelayers                  = 3
+	NumOracles                   = 4
 	quorum                       = "03"
 )
 
@@ -57,7 +58,7 @@ func NewTestSetup(tb testing.TB) *TestSetup {
 		esdtBalanceForSafe:    make(map[string]*big.Int),
 		ethBalanceTestAddress: make(map[string]*big.Int),
 	}
-	setup.KeysStore = NewKeysStore(tb, setup.WorkingDir, NumRelayers)
+	setup.KeysStore = NewKeysStore(tb, setup.WorkingDir, NumRelayers, NumOracles)
 
 	// create a test context
 	setup.Ctx, setup.ctxCancel = context.WithCancel(context.Background())
