@@ -139,7 +139,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 		hex.EncodeToString([]byte("EGLD")),
 		hex.EncodeToString(stakeValue.Bytes()),
 		"01",
-		"03",
+		"02",
 		"03",
 	}
 
