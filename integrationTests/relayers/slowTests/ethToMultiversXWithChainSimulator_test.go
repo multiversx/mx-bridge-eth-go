@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	timeout = time.Minute * 15
+	timeout                   = time.Minute * 15
+	projectedShardForTestKeys = byte(2)
 )
 
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
@@ -369,7 +370,7 @@ func testEthContractsShouldError(tb testing.TB, testToken framework.TestTokenPar
 		valueToMintOnEth, ok := big.NewInt(0).SetString(testToken.ValueToMintOnEth, 10)
 		require.True(tb, ok)
 
-		receiverKeys := framework.GenerateMvxPrivatePublicKey(tb)
+		receiverKeys := framework.GenerateMvxPrivatePublicKey(tb, projectedShardForTestKeys)
 		auth, _ := bind.NewKeyedTransactorWithChainID(setup.DepositorKeys.EthSK, setup.EthereumHandler.ChainID)
 		_, err := setup.EthereumHandler.SafeContract.Deposit(auth, token.EthErc20Address, valueToMintOnEth, receiverKeys.MvxAddress.AddressSlice())
 		require.Error(tb, err)
