@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
+	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -58,7 +59,7 @@ func NewMigrationBatchCreator(args ArgsMigrationBatchCreator) (*migrationBatchCr
 }
 
 // CreateBatchInfo creates an instance of type BatchInfo
-func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSafeAddress common.Address) (*BatchInfo, error) {
+func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSafeAddress common.Address, trimAmount core.OptionalUint64) (*BatchInfo, error) {
 	creator.logger.Info("started the batch creation process...")
 
 	batchesCount, err := creator.safeContractWrapper.BatchesCount(&bind.CallOpts{Context: ctx})
@@ -87,7 +88,7 @@ func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSa
 
 	creator.logger.Info("fetched ERC20 contract addresses")
 
-	err = creator.fetchBalances(ctx, deposits)
+	err = creator.fetchBalances(ctx, deposits, trimAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -140,11 +141,21 @@ func (creator *migrationBatchCreator) fetchERC20ContractsAddresses(ctx context.C
 	return deposits, nil
 }
 
-func (creator *migrationBatchCreator) fetchBalances(ctx context.Context, deposits []*DepositInfo) error {
+func (creator *migrationBatchCreator) fetchBalances(ctx context.Context, deposits []*DepositInfo, trimAmount core.OptionalUint64) error {
 	for _, deposit := range deposits {
 		balance, err := creator.erc20ContractsHolder.BalanceOf(ctx, deposit.ContractAddress, creator.safeContractAddress)
 		if err != nil {
 			return fmt.Errorf("%w for address %s in ERC20 contract %s", err, creator.safeContractAddress.String(), deposit.ContractAddress.String())
+		}
+
+		if trimAmount.HasValue {
+			newBalance := big.NewInt(0).SetUint64(trimAmount.Value)
+			if balance.Cmp(newBalance) > 0 {
+				creator.logger.Warn("applied denominated value", "balance", balance.String(), "new value to consider", newBalance.String())
+				balance = newBalance
+			} else {
+				creator.logger.Warn("can not apply denominated value as the balance is under the provided value, will use the whole balance", "balance", balance.String())
+			}
 		}
 
 		deposit.Amount = balance
