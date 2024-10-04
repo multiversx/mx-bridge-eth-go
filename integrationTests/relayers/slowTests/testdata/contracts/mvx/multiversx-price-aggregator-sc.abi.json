@@ -10,7 +10,7 @@
         "contractCrate": {
             "name": "multiversx-price-aggregator-sc",
             "version": "0.47.1",
-            "gitVersion": "v0.45.2.1-reproducible-361-g5e42362"
+            "gitVersion": "v0.45.2.1-reproducible-375-gda17d9d"
         },
         "framework": {
             "name": "multiversx-sc",
@@ -46,6 +46,10 @@
                 "multi_arg": true
             }
         ],
+        "outputs": []
+    },
+    "upgradeConstructor": {
+        "inputs": [],
         "outputs": []
     },
     "endpoints": [
@@ -376,8 +380,8 @@
                     "indexed": true
                 },
                 {
-                    "name": "epoch",
-                    "type": "u64",
+                    "name": "round",
+                    "type": "u32",
                     "indexed": true
                 },
                 {
@@ -385,11 +389,96 @@
                     "type": "NewRoundEvent"
                 }
             ]
+        },
+        {
+            "identifier": "discard_submission",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "round",
+                    "type": "u32",
+                    "indexed": true
+                },
+                {
+                    "name": "discard_submission_event",
+                    "type": "DiscardSubmissionEvent"
+                }
+            ]
+        },
+        {
+            "identifier": "discard_round",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "round",
+                    "type": "u32",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "add_submission",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "round",
+                    "type": "u32",
+                    "indexed": true
+                },
+                {
+                    "name": "price",
+                    "type": "BigUint"
+                }
+            ]
         }
     ],
     "esdtAttributes": [],
     "hasCallback": false,
     "types": {
+        "DiscardSubmissionEvent": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "submission_timestamp",
+                    "type": "u64"
+                },
+                {
+                    "name": "first_submission_timestamp",
+                    "type": "u64"
+                },
+                {
+                    "name": "has_caller_already_submitted",
+                    "type": "bool"
+                }
+            ]
+        },
         "NewRoundEvent": {
             "type": "struct",
             "fields": [
