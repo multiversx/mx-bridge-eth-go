@@ -615,7 +615,11 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		return ErrNilBatch
 	}
 
-	argLists := batchProcessor.ExtractListMvxToEth(executor.batch)
+	argLists, err := batchProcessor.ExtractListMvxToEth(executor.batch)
+	if err != nil {
+		return err
+	}
+
 	hash, err := executor.ethereumClient.GenerateMessageHash(argLists, executor.batch.ID)
 	if err != nil {
 		return err
@@ -642,7 +646,10 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 
 	executor.log.Debug("fetched quorum size", "quorum", quorumSize.Int64())
 
-	argLists := batchProcessor.ExtractListMvxToEth(executor.batch)
+	argLists, err := batchProcessor.ExtractListMvxToEth(executor.batch)
+	if err != nil {
+		return err
+	}
 
 	executor.log.Info("executing transfer " + executor.batch.String())
 

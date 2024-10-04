@@ -1,4 +1,4 @@
-package stateMachine_test
+package stateMachine
 
 import (
 	"context"
@@ -6,14 +6,13 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/core"
-	"github.com/multiversx/mx-bridge-eth-go/stateMachine"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
 )
 
-func createMockArgs() stateMachine.ArgsStateMachine {
-	return stateMachine.ArgsStateMachine{
+func createMockArgs() ArgsStateMachine {
+	return ArgsStateMachine{
 		Steps: core.MachineStates{
 			"mock": &testsCommon.StepMock{
 				ExecuteCalled: func(ctx context.Context) core.StepIdentifier {
@@ -35,60 +34,70 @@ func TestNewStateMachine(t *testing.T) {
 
 		args := createMockArgs()
 		args.Steps = nil
-		sm, err := stateMachine.NewStateMachine(args)
+		sm, err := NewStateMachine(args)
 
 		assert.Nil(t, sm)
-		assert.Equal(t, stateMachine.ErrNilStepsMap, err)
+		assert.Equal(t, ErrNilStepsMap, err)
 	})
 	t.Run("nil step", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgs()
 		args.Steps["mock"] = nil
-		sm, err := stateMachine.NewStateMachine(args)
+		sm, err := NewStateMachine(args)
 
 		assert.Nil(t, sm)
-		assert.True(t, errors.Is(err, stateMachine.ErrNilStep))
+		assert.True(t, errors.Is(err, ErrNilStep))
 	})
 	t.Run("nil logger", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgs()
 		args.Log = nil
-		sm, err := stateMachine.NewStateMachine(args)
+		sm, err := NewStateMachine(args)
 
 		assert.Nil(t, sm)
-		assert.Equal(t, stateMachine.ErrNilLogger, err)
+		assert.Equal(t, ErrNilLogger, err)
 	})
 	t.Run("invalid first step", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgs()
 		args.StartStateIdentifier = "not found"
-		sm, err := stateMachine.NewStateMachine(args)
+		sm, err := NewStateMachine(args)
 
 		assert.Nil(t, sm)
-		assert.True(t, errors.Is(err, stateMachine.ErrStepNotFound))
+		assert.True(t, errors.Is(err, ErrStepNotFound))
 	})
 	t.Run("nil status handler", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgs()
 		args.StatusHandler = nil
-		sm, err := stateMachine.NewStateMachine(args)
+		sm, err := NewStateMachine(args)
 
 		assert.Nil(t, sm)
-		assert.True(t, errors.Is(err, stateMachine.ErrNilStatusHandler))
+		assert.True(t, errors.Is(err, ErrNilStatusHandler))
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgs()
-		sm, err := stateMachine.NewStateMachine(args)
+		sm, err := NewStateMachine(args)
 
 		assert.NotNil(t, sm)
 		assert.Nil(t, err)
 	})
+}
+
+func TestStateMachine_IsInterfaceNil(t *testing.T) {
+	t.Parallel()
+
+	var instance *stateMachine
+	assert.True(t, instance.IsInterfaceNil())
+
+	instance = &stateMachine{}
+	assert.False(t, instance.IsInterfaceNil())
 }
 
 func TestExecute(t *testing.T) {
@@ -128,7 +137,7 @@ func TestExecute(t *testing.T) {
 			},
 		}
 		args.StartStateIdentifier = providedIdentifier0
-		sm, err := stateMachine.NewStateMachine(args)
+		sm, err := NewStateMachine(args)
 		assert.NotNil(t, sm)
 		assert.Nil(t, err)
 

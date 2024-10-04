@@ -22,8 +22,7 @@ type ClientWrapper interface {
 	ChainID(ctx context.Context) (*big.Int, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
-	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address,
-		recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int,
+	ExecuteTransfer(opts *bind.TransactOpts, mvxTransactions []contract.MvxTransaction, batchNonce *big.Int,
 		signatures [][]byte) (*types.Transaction, error)
 	Quorum(ctx context.Context) (*big.Int, error)
 	GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, bool, error)

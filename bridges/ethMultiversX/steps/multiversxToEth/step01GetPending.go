@@ -54,7 +54,12 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 		return ResolvingSetStatusOnMultiversX
 	}
 
-	argLists := batchProcessor.ExtractListMvxToEth(batch)
+	argLists, err := batchProcessor.ExtractListMvxToEth(batch)
+	if err != nil {
+		step.bridge.PrintInfo(logger.LogError, "error extracting list", "error", err)
+		return step.Identifier()
+	}
+
 	err = step.bridge.CheckAvailableTokens(ctx, argLists.EthTokens, argLists.MvxTokenBytes, argLists.Amounts, argLists.Direction)
 	if err != nil {
 		step.bridge.PrintInfo(logger.LogError, "error checking available tokens", "error", err, "batch", batch.String())

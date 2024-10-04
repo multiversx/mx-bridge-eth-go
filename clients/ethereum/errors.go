@@ -16,4 +16,5 @@ var (
 	errNilEthClient                        = errors.New("nil eth client")
 	errDepositsAndBatchDepositsCountDiffer = errors.New("deposits and batch.DepositsCount differs")
 	errStatusIsNotFinal                    = errors.New("status is not final")
+	errInternalErrorValidatingLists        = errors.New("internal error validating args batch lists")
 )

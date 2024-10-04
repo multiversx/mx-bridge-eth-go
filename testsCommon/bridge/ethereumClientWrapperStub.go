@@ -23,8 +23,8 @@ type EthereumClientWrapperStub struct {
 	ChainIDCalled          func(ctx context.Context) (*big.Int, error)
 	BlockNumberCalled      func(ctx context.Context) (uint64, error)
 	NonceAtCalled          func(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
-	ExecuteTransferCalled  func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
-		amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
+	ExecuteTransferCalled  func(opts *bind.TransactOpts, mvxTransactions []contract.MvxTransaction, batchNonce *big.Int,
+		signatures [][]byte) (*types.Transaction, error)
 	QuorumCalled                    func(ctx context.Context) (*big.Int, error)
 	GetStatusesAfterExecutionCalled func(ctx context.Context, batchID *big.Int) ([]byte, bool, error)
 	BalanceAtCalled                 func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
@@ -162,9 +162,9 @@ func (stub *EthereumClientWrapperStub) NonceAt(ctx context.Context, account comm
 }
 
 // ExecuteTransfer -
-func (stub *EthereumClientWrapperStub) ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+func (stub *EthereumClientWrapperStub) ExecuteTransfer(opts *bind.TransactOpts, mvxTransactions []contract.MvxTransaction, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
 	if stub.ExecuteTransferCalled != nil {
-		return stub.ExecuteTransferCalled(opts, tokens, recipients, amounts, nonces, batchNonce, signatures)
+		return stub.ExecuteTransferCalled(opts, mvxTransactions, batchNonce, signatures)
 	}
 
 	return nil, errors.New("not implemented")

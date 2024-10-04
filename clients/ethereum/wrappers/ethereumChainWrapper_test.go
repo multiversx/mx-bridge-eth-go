@@ -237,15 +237,14 @@ func TestEthClientWrapper_ExecuteTransfer(t *testing.T) {
 	args, statusHandler := createMockArgsEthereumChainWrapper()
 	handlerCalled := false
 	args.MultiSigContract = &bridgeTests.MultiSigContractStub{
-		ExecuteTransferCalled: func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
-			amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
+		ExecuteTransferCalled: func(opts *bind.TransactOpts, mvxTransactions []contract.MvxTransaction, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error) {
 
 			handlerCalled = true
 			return nil, nil
 		},
 	}
 	wrapper, _ := NewEthereumChainWrapper(args)
-	tx, err := wrapper.ExecuteTransfer(nil, nil, nil, nil, nil, nil, nil)
+	tx, err := wrapper.ExecuteTransfer(nil, nil, nil, nil)
 	assert.Nil(t, err)
 	assert.Nil(t, tx)
 	assert.True(t, handlerCalled)
