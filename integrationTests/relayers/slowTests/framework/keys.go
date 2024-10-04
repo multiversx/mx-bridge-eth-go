@@ -22,8 +22,8 @@ const (
 	relayerPemPathFormat         = "multiversx%d.pem"
 	SCCallerFilename             = "scCaller.pem"
 	projectedShardForBridgeSetup = byte(0)
-	depositorProjectedShard      = byte(1)
-	testKeysProjectedShard       = byte(2)
+	projectedShardForDepositor   = byte(1)
+	projectedShardForTestKeys    = byte(2)
 )
 
 // KeysHolder holds a 2 pk-sk pairs for both chains
@@ -73,8 +73,8 @@ func NewKeysStore(
 	log.Info("generated owner",
 		"MvX address", keysStore.OwnerKeys.MvxAddress.Bech32(),
 		"Eth address", keysStore.OwnerKeys.EthAddress.String())
-	keysStore.DepositorKeys = keysStore.generateKey(ethDepositorSK, depositorProjectedShard)
-	keysStore.TestKeys = keysStore.generateKey(ethTestSk, testKeysProjectedShard)
+	keysStore.DepositorKeys = keysStore.generateKey(ethDepositorSK, projectedShardForDepositor)
+	keysStore.TestKeys = keysStore.generateKey(ethTestSk, projectedShardForTestKeys)
 
 	filename := path.Join(keysStore.workingDir, SCCallerFilename)
 	SaveMvxKey(keysStore, filename, keysStore.SCExecutorKeys)
