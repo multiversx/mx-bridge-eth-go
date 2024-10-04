@@ -165,6 +165,18 @@
             "outputs": []
         },
         {
+            "name": "withdrawTotalFeesOnEthereum",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "computeTotalAmmountsFromIndex",
             "mutability": "readonly",
             "inputs": [
