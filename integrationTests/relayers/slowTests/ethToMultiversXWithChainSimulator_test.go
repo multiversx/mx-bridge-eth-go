@@ -36,6 +36,8 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		GenerateTestUSDCToken(),
 		GenerateTestMEMEToken(),
 	)
+
+	// TODO: add a test for the withdrawTotalFeesOnEthereum functionality
 }
 
 func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
