@@ -43,6 +43,10 @@ var (
 		Usage: "The new safe address on Ethereum",
 		Value: "",
 	}
+	denominatedAmount = cli.Uint64Flag{
+		Name:  "denominated-amount",
+		Usage: "The dominated amount that will be used on all deposits. Very useful in an initial test",
+	}
 )
 
 func getFlags() []cli.Flag {
@@ -53,6 +57,7 @@ func getFlags() []cli.Flag {
 		migrationJsonFile,
 		signatureJsonFile,
 		newSafeAddress,
+		denominatedAmount,
 	}
 }
 func getFlagsConfig(ctx *cli.Context) config.ContextFlagsConfig {

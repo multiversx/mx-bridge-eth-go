@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
+	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-go/testscommon"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +21,7 @@ import (
 var safeContractAddress = common.HexToAddress(strings.Repeat("9", 40))
 var tkn1Erc20Address = bytes.Repeat([]byte("2"), 20)
 var tkn2Erc20Address = bytes.Repeat([]byte("3"), 20)
-var balanceOfTkn1 = big.NewInt(37)
+var balanceOfTkn1 = big.NewInt(19)
 var balanceOfTkn2 = big.NewInt(38)
 
 func createMockArgsForMigrationBatchCreator() ArgsMigrationBatchCreator {
@@ -112,7 +114,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
 		assert.Equal(t, expectedErr, err)
 		assert.Nil(t, batch)
 	})
@@ -127,7 +129,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
 		assert.Equal(t, expectedErr, err)
 		assert.Nil(t, batch)
 	})
@@ -142,7 +144,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
 		assert.Equal(t, expectedErr, err)
 		assert.Nil(t, batch)
 	})
@@ -157,7 +159,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
 		assert.ErrorIs(t, err, errEmptyTokensList)
 		assert.Nil(t, batch)
 	})
@@ -170,7 +172,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
 		assert.Equal(t, expectedErr, err)
 		assert.Nil(t, batch)
 	})
@@ -183,7 +185,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
 		assert.ErrorIs(t, err, errWrongERC20AddressResponse)
 		assert.Nil(t, batch)
 	})
@@ -198,7 +200,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
 		assert.ErrorIs(t, err, expectedErr)
 		assert.Nil(t, batch)
 	})
@@ -235,8 +237,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 		args.SafeContractWrapper = &bridge.SafeContractWrapperStub{
 			DepositsCountCalled: func(opts *bind.CallOpts) (uint64, error) {
-				depositCountValue := depositCount
-				depositCount++
+				depositCountValue := atomic.AddUint64(&depositCount, 1)
 
 				return depositCountValue, nil
 
@@ -247,34 +248,72 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 		creator, _ := NewMigrationBatchCreator(args)
 
-		expectedBatch := &BatchInfo{
-			OldSafeContractAddress: safeContractAddress.String(),
-			NewSafeContractAddress: newSafeContractAddress.String(),
-			BatchID:                2245,
-			MessageHash:            common.HexToHash("0x93915c0bea665553dfc85ec3cdf4b883100929f22d6cbbfc44db2f0ee71b3b56"),
-			DepositsInfo: []*DepositInfo{
-				{
-					DepositNonce:          40,
-					Token:                 "tkn1",
-					ContractAddressString: common.BytesToAddress(tkn1Erc20Address).String(),
-					ContractAddress:       common.BytesToAddress(tkn1Erc20Address),
-					Amount:                big.NewInt(37),
-					AmountString:          "37",
+		t.Run("without trim", func(t *testing.T) {
+			atomic.StoreUint64(&depositCount, depositCountStart)
+			expectedBatch := &BatchInfo{
+				OldSafeContractAddress: safeContractAddress.String(),
+				NewSafeContractAddress: newSafeContractAddress.String(),
+				BatchID:                2245,
+				MessageHash:            common.HexToHash("0xe87c7ee013d37956c0023c6a07dce7941a3932293d1b98ab3f00cbde5eae93be"),
+				DepositsInfo: []*DepositInfo{
+					{
+						DepositNonce:          41,
+						Token:                 "tkn1",
+						ContractAddressString: common.BytesToAddress(tkn1Erc20Address).String(),
+						ContractAddress:       common.BytesToAddress(tkn1Erc20Address),
+						Amount:                big.NewInt(19),
+						AmountString:          "19",
+					},
+					{
+						DepositNonce:          42,
+						Token:                 "tkn2",
+						ContractAddressString: common.BytesToAddress(tkn2Erc20Address).String(),
+						ContractAddress:       common.BytesToAddress(tkn2Erc20Address),
+						Amount:                big.NewInt(38),
+						AmountString:          "38",
+					},
 				},
-				{
-					DepositNonce:          41,
-					Token:                 "tkn2",
-					ContractAddressString: common.BytesToAddress(tkn2Erc20Address).String(),
-					ContractAddress:       common.BytesToAddress(tkn2Erc20Address),
-					Amount:                big.NewInt(38),
-					AmountString:          "38",
-				},
-			},
-		}
+			}
 
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress)
-		assert.Nil(t, err)
-		assert.Equal(t, expectedBatch, batch)
+			batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
+			assert.Nil(t, err)
+			assert.Equal(t, expectedBatch, batch)
+		})
+		t.Run("with trim", func(t *testing.T) {
+			atomic.StoreUint64(&depositCount, depositCountStart)
+			expectedBatch := &BatchInfo{
+				OldSafeContractAddress: safeContractAddress.String(),
+				NewSafeContractAddress: newSafeContractAddress.String(),
+				BatchID:                2245,
+				MessageHash:            common.HexToHash("0xfa4c46fc0d0b75460d376a03723b2543aac07d64c47f5322b1a506663bcd266d"),
+				DepositsInfo: []*DepositInfo{
+					{
+						DepositNonce:          41,
+						Token:                 "tkn1",
+						ContractAddressString: common.BytesToAddress(tkn1Erc20Address).String(),
+						ContractAddress:       common.BytesToAddress(tkn1Erc20Address),
+						Amount:                big.NewInt(19),
+						AmountString:          "19",
+					},
+					{
+						DepositNonce:          42,
+						Token:                 "tkn2",
+						ContractAddressString: common.BytesToAddress(tkn2Erc20Address).String(),
+						ContractAddress:       common.BytesToAddress(tkn2Erc20Address),
+						Amount:                big.NewInt(20),
+						AmountString:          "20",
+					},
+				},
+			}
+
+			trimValue := core.OptionalUint64{
+				Value:    20,
+				HasValue: true,
+			}
+			batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, trimValue)
+			assert.Nil(t, err)
+			assert.Equal(t, expectedBatch, batch)
+		})
 	})
 
 }

@@ -177,7 +177,11 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*interna
 	}
 	newSafeAddressValue := common.HexToAddress(ctx.GlobalString(newSafeAddress.Name))
 
-	batchInfo, err := creator.CreateBatchInfo(context.Background(), newSafeAddressValue)
+	trimValue := chainCore.OptionalUint64{
+		Value:    ctx.GlobalUint64(denominatedAmount.Name),
+		HasValue: ctx.IsSet(denominatedAmount.Name),
+	}
+	batchInfo, err := creator.CreateBatchInfo(context.Background(), newSafeAddressValue, trimValue)
 	if err != nil {
 		return nil, err
 	}
