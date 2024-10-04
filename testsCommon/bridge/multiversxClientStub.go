@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 )
 
 var errNotImplemented = errors.New("not implemented")
@@ -38,6 +39,7 @@ type MultiversXClientStub struct {
 	MintBalancesCalled                             func(ctx context.Context, token []byte) (*big.Int, error)
 	BurnBalancesCalled                             func(ctx context.Context, token []byte) (*big.Int, error)
 	CheckRequiredBalanceCalled                     func(ctx context.Context, token []byte, value *big.Int) error
+	GetBatchSCMetadataCalled                       func(ctx context.Context, batch *bridgeCore.TransferBatch) ([]*transaction.Events, error)
 	CloseCalled                                    func() error
 }
 
@@ -258,6 +260,15 @@ func (stub *MultiversXClientStub) CheckRequiredBalance(ctx context.Context, toke
 		return stub.CheckRequiredBalanceCalled(ctx, token, value)
 	}
 	return nil
+}
+
+// GetBatchSCMetadata -
+func (stub *MultiversXClientStub) GetBatchSCMetadata(ctx context.Context, batch *bridgeCore.TransferBatch) ([]*transaction.Events, error) {
+	if stub.GetBatchSCMetadataCalled != nil {
+		return stub.GetBatchSCMetadataCalled(ctx, batch)
+	}
+
+	return nil, errNotImplemented
 }
 
 // Close -

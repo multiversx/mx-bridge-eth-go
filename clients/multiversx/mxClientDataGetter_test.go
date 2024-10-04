@@ -12,6 +12,7 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	bridgeErrors "github.com/multiversx/mx-bridge-eth-go/errors"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
@@ -377,7 +378,7 @@ func TestMXClientDataGetter_ExecuteQueryReturningUint64(t *testing.T) {
 
 		expectedError := bridgeErrors.NewQueryResponseError(
 			internalError,
-			errNotUint64Bytes.Error(),
+			converters.ErrNotUint64Bytes.Error(),
 			"",
 			"",
 		)

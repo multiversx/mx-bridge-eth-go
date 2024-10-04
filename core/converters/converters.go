@@ -2,6 +2,7 @@ package converters
 
 import (
 	"encoding/hex"
+	"math/big"
 	"strings"
 
 	"github.com/multiversx/mx-chain-core-go/core"
@@ -60,4 +61,14 @@ func TrimWhiteSpaceCharacters(input string) string {
 	cutset := "\n\t "
 
 	return strings.Trim(input, cutset)
+}
+
+// ParseUInt64FromByteSlice will parse the uint64 from the byte slice
+func ParseUInt64FromByteSlice(bytes []byte) (uint64, error) {
+	num := big.NewInt(0).SetBytes(bytes)
+	if !num.IsUint64() {
+		return 0, ErrNotUint64Bytes
+	}
+
+	return num.Uint64(), nil
 }

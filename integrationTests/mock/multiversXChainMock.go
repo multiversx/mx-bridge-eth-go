@@ -233,6 +233,11 @@ func (mock *MultiversXChainMock) GetESDTTokenData(_ context.Context, _ sdkCore.A
 	}, nil
 }
 
+// FilterLogs -
+func (mock *MultiversXChainMock) FilterLogs(_ context.Context, _ *sdkCore.FilterQuery) ([]*transaction.Events, error) {
+	return []*transaction.Events{}, nil
+}
+
 // IsInterfaceNil -
 func (mock *MultiversXChainMock) IsInterfaceNil() bool {
 	return mock == nil
