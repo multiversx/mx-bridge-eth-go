@@ -11,10 +11,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -22,8 +22,22 @@ import (
 
 // splits - represent the number of times we split the maximum interval
 // we wait for the transfer confirmation on Ethereum
-const splits = 10
-const minRetries = 1
+
+const (
+	// splits - represent the number of times we split the maximum interval
+	// we wait for the transfer confirmation on Ethereum
+	splits = 10
+
+	// Minimum number of retries
+	minRetries = 1
+
+	// Number of topics required for createTransactionScCallEvent
+	scCallEventTopicsCount = 9
+
+	// Indices for specific topics in createTransactionScCallEvent
+	depositNonceIndex = 1
+	calldataIndex     = 8
+)
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
@@ -159,12 +173,16 @@ func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*br
 		return nil, err
 	}
 
+	if batch == nil {
+		return nil, ErrNilBatch
+	}
+
 	executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
 
 	isBatchInvalid := len(batch.Deposits) == 0
 	if isBatchInvalid {
-		return nil, fmt.Errorf("%w, fetched nonce: %d, num deposits: %d",
-			ErrFinalBatchNotFound, batch.ID, len(batch.Deposits))
+		return nil, fmt.Errorf("%w, fetched nonce: %d",
+			ErrBatchWithoutDeposits, batch.ID)
 	}
 
 	batch, err = executor.addBatchSCMetadataMvx(ctx, batch)
@@ -186,44 +204,50 @@ func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *bridgeCore.Trans
 }
 
 // addBatchSCMetadataMvx fetches the logs containing sc calls metadata for the current batch
-func (executor *bridgeExecutor) addBatchSCMetadataMvx(ctx context.Context, transfers *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
-	if transfers == nil {
-		return nil, ErrNilBatch
-	}
-
-	events, err := executor.multiversXClient.GetBatchSCMetadata(ctx, transfers)
+func (executor *bridgeExecutor) addBatchSCMetadataMvx(ctx context.Context, batch *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
+	events, err := executor.multiversXClient.GetBatchSCMetadata(ctx, batch)
 	if err != nil {
 		return nil, err
 	}
 
-	for i, t := range transfers.Deposits {
-		transfers.Deposits[i], err = executor.addMetadataToTransferMvx(t, events)
-		if err != nil {
-			return nil, err
+	eventsByDepositNonce := make(map[uint64]*transaction.Events)
+
+	for _, event := range events {
+		if len(event.Topics) < scCallEventTopicsCount {
+			return nil, ErrInvalidTopicsNumber
 		}
+
+		depositNonceBytes := event.Topics[depositNonceIndex]
+		depositNonce, err := converters.ParseUInt64FromByteSlice(depositNonceBytes)
+		if err != nil {
+			return nil, fmt.Errorf("%w while parsing deposit nonce", err)
+		}
+
+		eventsByDepositNonce[depositNonce] = event
 	}
 
-	return transfers, nil
+	for _, t := range batch.Deposits {
+		executor.addMetadataToTransferMvx(t, eventsByDepositNonce)
+	}
+
+	return batch, nil
 }
 
 // addMetadataToTransferMvx fetches the logs containing sc calls metadata for the current batch
-func (executor *bridgeExecutor) addMetadataToTransferMvx(transfer *bridgeCore.DepositTransfer, events []*transaction.Events) (*bridgeCore.DepositTransfer, error) {
-	for _, event := range events {
-		depositNonce, err := multiversx.ParseUInt64FromByteSlice(event.Topics[1])
-		if err != nil {
-			return nil, fmt.Errorf("%w while parsing batch ID", err)
-		}
-
-		if depositNonce == transfer.Nonce {
-			processData(transfer, event.Topics[7])
-			return transfer, nil
-		}
+func (executor *bridgeExecutor) addMetadataToTransferMvx(transfer *bridgeCore.DepositTransfer, eventsByDepositNonce map[uint64]*transaction.Events) {
+	event, exists := eventsByDepositNonce[transfer.Nonce]
+	if !exists {
+		transfer.DisplayableData = ""
+		return
 	}
 
-	transfer.Data = []byte{bridgeCore.MissingDataProtocolMarker}
-	transfer.DisplayableData = ""
+	calldataBytes := event.Topics[calldataIndex]
+	processDataForMvx(transfer, calldataBytes)
+}
 
-	return transfer, nil
+func processDataForMvx(transfer *bridgeCore.DepositTransfer, buff []byte) {
+	transfer.Data = buff
+	transfer.DisplayableData = hex.EncodeToString(transfer.Data)
 }
 
 // GetStoredBatch returns the stored batch
@@ -519,38 +543,41 @@ func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context
 }
 
 // addBatchSCMetadata fetches the logs containing sc calls metadata for the current batch
-func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfers *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
-	if transfers == nil {
+func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, batch *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
+	if batch == nil {
 		return nil, ErrNilBatch
 	}
 
-	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, transfers.ID, int64(transfers.BlockNumber))
+	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, batch.ID, int64(batch.BlockNumber))
 	if err != nil {
 		return nil, err
 	}
 
-	for i, t := range transfers.Deposits {
-		transfers.Deposits[i] = executor.addMetadataToTransfer(t, events)
-	}
+	eventsByDepositNonce := make(map[uint64]*contract.ERC20SafeERC20SCDeposit)
 
-	return transfers, nil
-}
-
-func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCore.DepositTransfer, events []*contract.ERC20SafeERC20SCDeposit) *bridgeCore.DepositTransfer {
 	for _, event := range events {
-		if event.DepositNonce.Uint64() == transfer.Nonce {
-			processData(transfer, event.CallData)
-			return transfer
-		}
+		eventsByDepositNonce[event.DepositNonce.Uint64()] = event
 	}
 
-	transfer.Data = []byte{bridgeCore.MissingDataProtocolMarker}
-	transfer.DisplayableData = ""
+	for _, t := range batch.Deposits {
+		executor.addMetadataToTransfer(t, eventsByDepositNonce)
+	}
 
-	return transfer
+	return batch, nil
 }
 
-func processData(transfer *bridgeCore.DepositTransfer, buff []byte) {
+func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCore.DepositTransfer, eventsByDepositNonce map[uint64]*contract.ERC20SafeERC20SCDeposit) {
+	event, exist := eventsByDepositNonce[transfer.Nonce]
+	if !exist {
+		transfer.Data = []byte{bridgeCore.MissingDataProtocolMarker}
+		transfer.DisplayableData = ""
+		return
+	}
+
+	processDataForEth(transfer, event.CallData)
+}
+
+func processDataForEth(transfer *bridgeCore.DepositTransfer, buff []byte) {
 	transfer.Data = buff
 	dataLen := len(transfer.Data)
 	if dataLen == 0 {

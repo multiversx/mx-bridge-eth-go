@@ -50,8 +50,8 @@ type ClientArgs struct {
 	RoleProvider                 roleProvider
 	StatusHandler                bridgeCore.StatusHandler
 	ClientAvailabilityAllowDelta uint64
-	eventsBlockRangeFrom         int64
-	eventsBlockRangeTo           int64
+	EventsBlockRangeFrom         int64
+	EventsBlockRangeTo           int64
 }
 
 // client represents the MultiversX Client implementation
@@ -148,8 +148,8 @@ func NewClient(args ClientArgs) (*client, error) {
 		tokensMapper:                 args.TokensMapper,
 		statusHandler:                args.StatusHandler,
 		clientAvailabilityAllowDelta: args.ClientAvailabilityAllowDelta,
-		eventsBlockRangeFrom:         args.eventsBlockRangeFrom,
-		eventsBlockRangeTo:           args.eventsBlockRangeTo,
+		eventsBlockRangeFrom:         args.EventsBlockRangeFrom,
+		eventsBlockRangeTo:           args.EventsBlockRangeTo,
 	}
 
 	bech32RelayerAddress, _ := relayerAddress.AddressAsBech32String()
@@ -253,7 +253,9 @@ func (c *client) GetBatchSCMetadata(ctx context.Context, batch *bridgeCore.Trans
 		return nil, err
 	}
 
-	minBlockNumber := int64(math.MaxInt16)
+	eventInBytes := []byte("createTransactionScCallEvent")
+
+	minBlockNumber := int64(math.MaxInt64)
 	maxBlockNumber := int64(math.MinInt64)
 	for _, dt := range batch.Deposits {
 		depositNonce := int64(dt.DepositBlockNumber)
@@ -266,13 +268,22 @@ func (c *client) GetBatchSCMetadata(ctx context.Context, batch *bridgeCore.Trans
 		}
 	}
 
-	eventInBytes := []byte("createTransactionScCallEvent")
+	// checks for underflow
+	fromBlock := minBlockNumber + c.eventsBlockRangeFrom
+	if fromBlock < 0 {
+		fromBlock = 0
+	}
+
+	toBlock := maxBlockNumber + c.eventsBlockRangeTo
+	if toBlock < 0 {
+		toBlock = 0
+	}
 
 	query := core.FilterQuery{
 		Addresses: []string{safeContractAddress},
 		Topics:    [][]byte{eventInBytes},
-		FromBlock: mxCore.OptionalUint64{Value: uint64(minBlockNumber + c.eventsBlockRangeFrom), HasValue: true},
-		ToBlock:   mxCore.OptionalUint64{Value: uint64(maxBlockNumber + c.eventsBlockRangeTo), HasValue: true},
+		FromBlock: mxCore.OptionalUint64{Value: uint64(fromBlock), HasValue: true},
+		ToBlock:   mxCore.OptionalUint64{Value: uint64(toBlock), HasValue: true},
 	}
 
 	events, err := c.proxy.FilterLogs(ctx, &query)
@@ -293,7 +304,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		return nil, fmt.Errorf("%w, got %d argument(s)", errInvalidNumberOfArguments, dataLen)
 	}
 
-	batchID, err := ParseUInt64FromByteSlice(responseData[0])
+	batchID, err := converters.ParseUInt64FromByteSlice(responseData[0])
 	if err != nil {
 		return nil, fmt.Errorf("%w while parsing batch ID", err)
 	}
@@ -306,12 +317,12 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 	transferIndex := 0
 	for i := 1; i < dataLen; i += numFieldsForTransaction {
 		// blockNonce is the i-th element, let's ignore it for now
-		blockNonce, errParse := ParseUInt64FromByteSlice(responseData[i])
+		blockNonce, errParse := converters.ParseUInt64FromByteSlice(responseData[i])
 		if errParse != nil {
 			return nil, fmt.Errorf("%w while parsing the block nonce, transfer index %d", errParse, transferIndex)
 		}
 
-		depositNonce, errParse := ParseUInt64FromByteSlice(responseData[i+1])
+		depositNonce, errParse := converters.ParseUInt64FromByteSlice(responseData[i+1])
 		if errParse != nil {
 			return nil, fmt.Errorf("%w while parsing the deposit nonce, transfer index %d", errParse, transferIndex)
 		}
