@@ -83,3 +83,22 @@ func TestAddressConverter_ToHexStringWithPrefix(t *testing.T) {
 	bytes := []byte("bytes to encode")
 	assert.Equal(t, expected, addrConv.ToHexStringWithPrefix(bytes))
 }
+
+func TestParseUInt64FromByteSlice(t *testing.T) {
+	t.Parallel()
+
+	t.Run("large number that exceeds uint64 should return error", func(t *testing.T) {
+		bytes := []byte{255, 255, 255, 255, 255, 255, 255, 255, 1} // exceeds uint64
+		result, err := ParseUInt64FromByteSlice(bytes)
+		assert.Equal(t, uint64(0), result)
+		assert.EqualError(t, err, ErrNotUint64Bytes.Error())
+	})
+
+	t.Run("valid uint64 bytes should return the correct number", func(t *testing.T) {
+		bytes := []byte{0, 0, 0, 0, 0, 0, 1, 244} // 500 in uint64
+		expected := uint64(500)
+		result, err := ParseUInt64FromByteSlice(bytes)
+		assert.Nil(t, err)
+		assert.Equal(t, expected, result)
+	})
+}

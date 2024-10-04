@@ -306,6 +306,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXClient(args Arg
 	}
 
 	components.multiversXClient, err = multiversx.NewClient(clientArgs)
+
 	components.addClosableComponent(components.multiversXClient)
 
 	return err

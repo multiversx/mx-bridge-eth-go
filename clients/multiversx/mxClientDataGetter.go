@@ -9,6 +9,7 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/errors"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -206,7 +207,7 @@ func (dataGetter *mxClientDataGetter) ExecuteQueryReturningUint64(ctx context.Co
 		return 0, nil
 	}
 
-	num, err := parseUInt64FromByteSlice(response[0])
+	num, err := converters.ParseUInt64FromByteSlice(response[0])
 	if err != nil {
 		return 0, errors.NewQueryResponseError(
 			internalError,
@@ -236,15 +237,6 @@ func (dataGetter *mxClientDataGetter) ExecuteQueryReturningBigInt(ctx context.Co
 
 	num := big.NewInt(0).SetBytes(response[0])
 	return num, nil
-}
-
-func parseUInt64FromByteSlice(bytes []byte) (uint64, error) {
-	num := big.NewInt(0).SetBytes(bytes)
-	if !num.IsUint64() {
-		return 0, errNotUint64Bytes
-	}
-
-	return num.Uint64(), nil
 }
 
 func (dataGetter *mxClientDataGetter) executeQueryFromBuilder(ctx context.Context, builder builders.VMQueryBuilder) ([][]byte, error) {
