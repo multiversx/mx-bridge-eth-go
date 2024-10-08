@@ -810,18 +810,25 @@ func (handler *MultiversxHandler) getTokenNameFromResult(txResult data.Transacti
 
 // SubmitAggregatorBatch will submit the aggregator batch
 func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, params IssueTokenParams) {
+	txHashes := make([]string, 0, len(handler.OraclesKeys))
 	for _, key := range handler.OraclesKeys {
-		handler.submitAggregatorBatchForKey(ctx, key, params)
+		hash := handler.submitAggregatorBatchForKey(ctx, key, params)
+		txHashes = append(txHashes, hash)
+	}
+
+	for _, hash := range txHashes {
+		txResult := handler.ChainSimulator.GetTransactionResult(ctx, hash)
+		log.Info("submit aggregator batch tx", "hash", hash, "status", txResult.Status)
 	}
 }
 
-func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Context, key KeysHolder, params IssueTokenParams) {
+func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Context, key KeysHolder, params IssueTokenParams) string {
 	timestamp := handler.ChainSimulator.GetBlockchainTimeStamp(ctx)
 	require.Greater(handler, timestamp, uint64(0), "something went wrong and the chain simulator returned 0 for the current timestamp")
 
 	timestampAsBigInt := big.NewInt(0).SetUint64(timestamp)
 
-	hash, txResult := handler.ChainSimulator.ScCall(
+	hash := handler.ChainSimulator.ScCallWithoutGenerateBlocks(
 		ctx,
 		key.MvxSk,
 		handler.AggregatorAddress,
@@ -835,7 +842,9 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 			hex.EncodeToString(feeInt.Bytes()),
 			fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific)})
 
-	log.Info("submit aggregator batch tx executed", "transaction hash", hash, "submitter", key.MvxAddress.Bech32(), "status", txResult.Status)
+	log.Info("submit aggregator batch tx sent", "transaction hash", hash, "submitter", key.MvxAddress.Bech32())
+
+	return hash
 }
 
 // CreateDepositsOnMultiversxForToken will send the deposit transactions on MultiversX returning how many tokens should be minted on Ethereum
