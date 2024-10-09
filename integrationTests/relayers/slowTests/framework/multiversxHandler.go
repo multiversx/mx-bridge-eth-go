@@ -962,10 +962,6 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 	getFunction string,
 	withdrawFunction string,
 ) {
-	if expectedDelta == nil {
-		expectedDelta = big.NewInt(0)
-	}
-
 	queryParams := []string{
 		hex.EncodeToString([]byte(token)),
 	}
