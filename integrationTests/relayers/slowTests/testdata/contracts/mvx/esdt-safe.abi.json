@@ -165,13 +165,33 @@
             "outputs": []
         },
         {
-            "name": "withdrawTotalFeesOnEthereum",
+            "name": "withdrawRefundFeesForEthereum",
             "onlyOwner": true,
             "mutability": "mutable",
             "inputs": [
                 {
                     "name": "token_id",
                     "type": "TokenIdentifier"
+                },
+                {
+                    "name": "multisig_owner",
+                    "type": "Address"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "withdrawTransactionFees",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "multisig_owner",
+                    "type": "Address"
                 }
             ],
             "outputs": []
@@ -223,6 +243,36 @@
                 {
                     "type": "variadic<multi<TokenIdentifier,BigUint>>",
                     "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getRefundFeesForEthereum",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "getTransactionFees",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
                 }
             ]
         },
