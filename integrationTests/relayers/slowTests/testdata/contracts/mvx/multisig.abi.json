@@ -218,7 +218,19 @@
             "outputs": []
         },
         {
-            "name": "withdrawTotalFeesOnEthereum",
+            "name": "withdrawRefundFeesForEthereum",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "withdrawTransactionFees",
             "onlyOwner": true,
             "mutability": "mutable",
             "inputs": [

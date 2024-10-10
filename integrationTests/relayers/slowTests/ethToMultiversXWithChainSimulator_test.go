@@ -37,8 +37,6 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		GenerateTestUSDCToken(),
 		GenerateTestMEMEToken(),
 	)
-
-	// TODO: add a test for the withdrawTotalFeesOnEthereum functionality
 }
 
 func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
@@ -129,6 +127,9 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
 		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
+			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromMvXFlow.tokens...)
+			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromEthFlow.tokens...)
+
 			return true
 		}
 

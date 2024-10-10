@@ -362,3 +362,21 @@ func computeTransactionSignature(senderSk []byte, tx *transaction.FrontendTransa
 
 	return signer.Sign(privateKey, dataToSign)
 }
+
+// ExecuteVMQuery will try to execute a VM query and return the results
+func (instance *chainSimulatorWrapper) ExecuteVMQuery(
+	ctx context.Context,
+	scAddress *MvxAddress,
+	function string,
+	hexParams []string,
+) [][]byte {
+	vmRequest := &data.VmValueRequest{
+		Address:  scAddress.Bech32(),
+		FuncName: function,
+		Args:     hexParams,
+	}
+	response, err := instance.Proxy().ExecuteVMQuery(ctx, vmRequest)
+	require.Nil(instance, err)
+
+	return response.Data.ReturnData
+}
