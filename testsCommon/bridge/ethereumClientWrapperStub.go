@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -15,8 +16,8 @@ import (
 // EthereumClientWrapperStub -
 type EthereumClientWrapperStub struct {
 	core.StatusHandler
-	GetBatchCalled         func(ctx context.Context, batchNonce *big.Int) (contract.Batch, error)
-	GetBatchDepositsCalled func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error)
+	GetBatchCalled         func(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error)
+	GetBatchDepositsCalled func(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error)
 	GetRelayersCalled      func(ctx context.Context) ([]common.Address, error)
 	WasBatchExecutedCalled func(ctx context.Context, batchNonce *big.Int) (bool, error)
 	ChainIDCalled          func(ctx context.Context) (*big.Int, error)
@@ -25,8 +26,14 @@ type EthereumClientWrapperStub struct {
 	ExecuteTransferCalled  func(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address,
 		amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	QuorumCalled                    func(ctx context.Context) (*big.Int, error)
-	GetStatusesAfterExecutionCalled func(ctx context.Context, batchID *big.Int) ([]byte, error)
+	GetStatusesAfterExecutionCalled func(ctx context.Context, batchID *big.Int) ([]byte, bool, error)
 	BalanceAtCalled                 func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	TotalBalancesCalled             func(ctx context.Context, account common.Address) (*big.Int, error)
+	MintBalancesCalled              func(ctx context.Context, account common.Address) (*big.Int, error)
+	BurnBalancesCalled              func(ctx context.Context, account common.Address) (*big.Int, error)
+	MintBurnTokensCalled            func(ctx context.Context, account common.Address) (bool, error)
+	NativeTokensCalled              func(ctx context.Context, account common.Address) (bool, error)
+	WhitelistedTokensCalled         func(ctx context.Context, account common.Address) (bool, error)
 
 	SetIntMetricCalled    func(metric string, value int)
 	AddIntMetricCalled    func(metric string, delta int)
@@ -34,6 +41,7 @@ type EthereumClientWrapperStub struct {
 	GetAllMetricsCalled   func() core.GeneralMetrics
 	NameCalled            func() string
 	IsPausedCalled        func(ctx context.Context) (bool, error)
+	FilterLogsCalled      func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 }
 
 // SetIntMetric -
@@ -91,21 +99,21 @@ func (stub *EthereumClientWrapperStub) Name() string {
 }
 
 // GetBatch -
-func (stub *EthereumClientWrapperStub) GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+func (stub *EthereumClientWrapperStub) GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchCalled(ctx, batchNonce)
 	}
 
-	return contract.Batch{}, nil
+	return contract.Batch{}, false, nil
 }
 
 // GetBatchDeposits -
-func (stub *EthereumClientWrapperStub) GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+func (stub *EthereumClientWrapperStub) GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchDepositsCalled(ctx, batchNonce)
 	}
 
-	return make([]contract.Deposit, 0), nil
+	return make([]contract.Deposit, 0), false, nil
 }
 
 // GetRelayers -
@@ -172,12 +180,12 @@ func (stub *EthereumClientWrapperStub) Quorum(ctx context.Context) (*big.Int, er
 }
 
 // GetStatusesAfterExecution -
-func (stub *EthereumClientWrapperStub) GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, error) {
+func (stub *EthereumClientWrapperStub) GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, bool, error) {
 	if stub.GetStatusesAfterExecutionCalled != nil {
 		return stub.GetStatusesAfterExecutionCalled(ctx, batchID)
 	}
 
-	return make([]byte, 0), nil
+	return make([]byte, 0), false, nil
 }
 
 // BalanceAt -
@@ -189,10 +197,73 @@ func (stub *EthereumClientWrapperStub) BalanceAt(ctx context.Context, account co
 	return big.NewInt(0), nil
 }
 
+// FilterLogs -
+func (stub *EthereumClientWrapperStub) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+	if stub.FilterLogsCalled != nil {
+		return stub.FilterLogsCalled(ctx, q)
+	}
+
+	return []types.Log{}, nil
+}
+
 // IsPaused -
 func (stub *EthereumClientWrapperStub) IsPaused(ctx context.Context) (bool, error) {
 	if stub.IsPausedCalled != nil {
 		return stub.IsPausedCalled(ctx)
+	}
+
+	return false, nil
+}
+
+// TotalBalances -
+func (stub *EthereumClientWrapperStub) TotalBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+	if stub.TotalBalancesCalled != nil {
+		return stub.TotalBalancesCalled(ctx, account)
+	}
+
+	return big.NewInt(0), nil
+}
+
+// MintBalances -
+func (stub *EthereumClientWrapperStub) MintBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+	if stub.MintBalancesCalled != nil {
+		return stub.MintBalancesCalled(ctx, account)
+	}
+
+	return big.NewInt(0), nil
+}
+
+// BurnBalances -
+func (stub *EthereumClientWrapperStub) BurnBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+	if stub.BurnBalancesCalled != nil {
+		return stub.BurnBalancesCalled(ctx, account)
+	}
+
+	return big.NewInt(0), nil
+}
+
+// MintBurnTokens -
+func (stub *EthereumClientWrapperStub) MintBurnTokens(ctx context.Context, account common.Address) (bool, error) {
+	if stub.MintBurnTokensCalled != nil {
+		return stub.MintBurnTokensCalled(ctx, account)
+	}
+
+	return false, nil
+}
+
+// NativeTokens -
+func (stub *EthereumClientWrapperStub) NativeTokens(ctx context.Context, account common.Address) (bool, error) {
+	if stub.NativeTokensCalled != nil {
+		return stub.NativeTokensCalled(ctx, account)
+	}
+
+	return false, nil
+}
+
+// WhitelistedTokens -
+func (stub *EthereumClientWrapperStub) WhitelistedTokens(ctx context.Context, account common.Address) (bool, error) {
+	if stub.WhitelistedTokensCalled != nil {
+		return stub.WhitelistedTokensCalled(ctx, account)
 	}
 
 	return false, nil

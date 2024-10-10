@@ -7,8 +7,7 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps"
-	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/core"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/stateMachine"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +18,6 @@ const (
 	getAndStoreBatchFromEthereum                      = "GetAndStoreBatchFromEthereum"
 	getLastExecutedEthBatchIDFromMultiversX           = "GetLastExecutedEthBatchIDFromMultiversX"
 	verifyLastDepositNonceExecutedOnEthereumBatch     = "VerifyLastDepositNonceExecutedOnEthereumBatch"
-	validateBatch                                     = "ValidateBatch"
 	wasTransferProposedOnMultiversX                   = "WasTransferProposedOnMultiversX"
 	wasActionSignedOnMultiversX                       = "WasActionSignedOnMultiversX"
 	signActionOnMultiversX                            = "SignActionOnMultiversX"
@@ -80,8 +78,8 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 
 		return errHandler.storeAndReturnError(nil)
 	}
-	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
-		return &clients.TransferBatch{}
+	stub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		return &bridgeCore.TransferBatch{}
 	}
 	stub.GetLastExecutedEthBatchIDFromMultiversXCalled = func(ctx context.Context) (uint64, error) {
 		if args.failingStep == getLastExecutedEthBatchIDFromMultiversX {
@@ -149,17 +147,11 @@ func createMockBridge(args argsBridgeStub) (*bridgeTests.BridgeExecutorStub, *er
 	stub.ProcessMaxQuorumRetriesOnMultiversXCalled = func() bool {
 		return args.maxRetriesReachedHandler()
 	}
-	stub.ValidateBatchCalled = func(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
-		if args.failingStep == validateBatch {
-			return false, errHandler.storeAndReturnError(expectedErr)
-		}
-		return args.validateBatchHandler(), errHandler.storeAndReturnError(nil)
-	}
 
 	return stub, errHandler
 }
 
-func createStateMachine(t *testing.T, executor steps.Executor, initialStep core.StepIdentifier) *stateMachine.StateMachineMock {
+func createStateMachine(t *testing.T, executor steps.Executor, initialStep bridgeCore.StepIdentifier) *stateMachine.StateMachineMock {
 	stepsSlice, err := CreateSteps(executor)
 	require.Nil(t, err)
 
@@ -259,12 +251,11 @@ func TestHappyCaseWhenLeaderAndActionIdNotPerformed(t *testing.T) {
 }
 
 func TestOneStepErrors_ShouldReturnToPendingBatch(t *testing.T) {
-	stepsThatCanError := []core.StepIdentifier{
+	stepsThatCanError := []bridgeCore.StepIdentifier{
 		getAndStoreActionIDForProposeTransferOnMultiversX,
 		getAndStoreBatchFromEthereum,
 		getLastExecutedEthBatchIDFromMultiversX,
 		verifyLastDepositNonceExecutedOnEthereumBatch,
-		validateBatch,
 		wasTransferProposedOnMultiversX,
 		proposeTransferOnMultiversX,
 		wasTransferProposedOnMultiversX,
@@ -279,7 +270,7 @@ func TestOneStepErrors_ShouldReturnToPendingBatch(t *testing.T) {
 	}
 }
 
-func testErrorFlow(t *testing.T, stepThatErrors core.StepIdentifier) {
+func testErrorFlow(t *testing.T, stepThatErrors bridgeCore.StepIdentifier) {
 	numCalled := 0
 	args := argsBridgeStub{
 		failingStep:            string(stepThatErrors),

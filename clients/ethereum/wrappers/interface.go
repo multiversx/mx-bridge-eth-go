@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -15,14 +16,23 @@ type genericErc20Contract interface {
 }
 
 type multiSigContract interface {
-	GetBatch(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, error)
-	GetBatchDeposits(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, error)
+	GetBatch(opts *bind.CallOpts, batchNonce *big.Int) (contract.Batch, bool, error)
+	GetBatchDeposits(opts *bind.CallOpts, batchNonce *big.Int) ([]contract.Deposit, bool, error)
 	GetRelayers(opts *bind.CallOpts) ([]common.Address, error)
 	WasBatchExecuted(opts *bind.CallOpts, batchNonce *big.Int) (bool, error)
 	ExecuteTransfer(opts *bind.TransactOpts, tokens []common.Address, recipients []common.Address, amounts []*big.Int, depositNonces []*big.Int, batchNonce *big.Int, signatures [][]byte) (*types.Transaction, error)
 	Quorum(opts *bind.CallOpts) (*big.Int, error)
-	GetStatusesAfterExecution(opts *bind.CallOpts, batchID *big.Int) ([]byte, error)
+	GetStatusesAfterExecution(opts *bind.CallOpts, batchID *big.Int) ([]byte, bool, error)
 	Paused(opts *bind.CallOpts) (bool, error)
+}
+
+type safeContract interface {
+	TotalBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	MintBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	BurnBalances(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error)
+	MintBurnTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+	NativeTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error)
+	WhitelistedTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error)
 }
 
 type blockchainClient interface {
@@ -30,4 +40,5 @@ type blockchainClient interface {
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	ChainID(ctx context.Context) (*big.Int, error)
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 }

@@ -2,8 +2,11 @@ package steps
 
 import (
 	"context"
+	"math/big"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/ethereum/go-ethereum/common"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
@@ -12,9 +15,10 @@ type Executor interface {
 	PrintInfo(logLevel logger.LogLevel, message string, extras ...interface{})
 	MyTurnAsLeader() bool
 
-	GetBatchFromMultiversX(ctx context.Context) (*clients.TransferBatch, error)
-	StoreBatchFromMultiversX(batch *clients.TransferBatch) error
-	GetStoredBatch() *clients.TransferBatch
+	GetBatchFromMultiversX(ctx context.Context) (*bridgeCore.TransferBatch, error)
+	StoreBatchFromMultiversX(batch *bridgeCore.TransferBatch) error
+	GetStoredBatch() *bridgeCore.TransferBatch
+
 	GetLastExecutedEthBatchIDFromMultiversX(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error
 
@@ -54,9 +58,9 @@ type Executor interface {
 	ResetRetriesCountOnEthereum()
 	ClearStoredP2PSignaturesForEthereum()
 
-	ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 	CheckMultiversXClientAvailability(ctx context.Context) error
 	CheckEthereumClientAvailability(ctx context.Context) error
+	CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error
 
 	IsInterfaceNil() bool
 }

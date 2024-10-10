@@ -1,6 +1,25 @@
 package core
 
 const (
+	// Executed is the Executed with success status value
+	Executed = byte(3)
+	// Rejected is the Rejected status value
+	Rejected = byte(4)
+
+	// Uint32ArgBytes is the constant used for the number of bytes to encode an Uint32 value
+	Uint32ArgBytes = 4
+
+	// Uint64ArgBytes is the constant used for the number of bytes to encode an Uint64 value
+	Uint64ArgBytes = 8
+
+	// MissingDataProtocolMarker defines the marker for missing data (simple transfers)
+	MissingDataProtocolMarker byte = 0x00
+
+	// DataPresentProtocolMarker defines the marker for existing data (transfers with SC calls)
+	DataPresentProtocolMarker byte = 0x01
+)
+
+const (
 	// EthFastGasPrice represents the fast gas price value
 	EthFastGasPrice EthGasPriceSelector = "FastGasPrice"
 

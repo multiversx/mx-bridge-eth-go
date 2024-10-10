@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 )
 
 // StepIdentifier defines a step name
@@ -32,7 +33,8 @@ type Timer interface {
 type AddressConverter interface {
 	ToHexString(addressBytes []byte) string
 	ToHexStringWithPrefix(addressBytes []byte) string
-	ToBech32String(addressBytes []byte) string
+	ToBech32String(addressBytes []byte) (string, error)
+	ToBech32StringSilent(addressBytes []byte) string
 	IsInterfaceNil() bool
 }
 
@@ -79,3 +81,23 @@ type StringMetrics map[string]string
 
 // IntMetrics represents string metrics map
 type IntMetrics map[string]int
+
+// ClientStatus represents the possible statuses of a client
+type ClientStatus int
+
+const (
+	Available   ClientStatus = 0
+	Unavailable ClientStatus = 1
+)
+
+// String will return status as string based on the int value
+func (cs ClientStatus) String() string {
+	switch cs {
+	case Available:
+		return "Available"
+	case Unavailable:
+		return "Unavailable"
+	default:
+		return fmt.Sprintf("Invalid status %d", cs)
+	}
+}

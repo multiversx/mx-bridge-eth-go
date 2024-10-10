@@ -9,18 +9,18 @@ import (
 
 // NonceTransactionsHandlerStub -
 type NonceTransactionsHandlerStub struct {
-	GetNonceCalled        func(ctx context.Context, address core.AddressHandler) (uint64, error)
-	SendTransactionCalled func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
-	CloseCalled           func() error
+	ApplyNonceAndGasPriceCalled func(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error
+	SendTransactionCalled       func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error)
+	CloseCalled                 func() error
 }
 
-// GetNonce -
-func (stub *NonceTransactionsHandlerStub) GetNonce(ctx context.Context, address core.AddressHandler) (uint64, error) {
-	if stub.GetNonceCalled != nil {
-		return stub.GetNonceCalled(ctx, address)
+// ApplyNonceAndGasPrice -
+func (stub *NonceTransactionsHandlerStub) ApplyNonceAndGasPrice(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error {
+	if stub.ApplyNonceAndGasPriceCalled != nil {
+		return stub.ApplyNonceAndGasPriceCalled(ctx, address, tx)
 	}
 
-	return 0, nil
+	return nil
 }
 
 // SendTransaction -
