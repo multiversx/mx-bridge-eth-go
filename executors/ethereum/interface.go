@@ -44,6 +44,7 @@ type EthereumChainWrapper interface {
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
 	Quorum(ctx context.Context) (*big.Int, error)
 	GetRelayers(ctx context.Context) ([]common.Address, error)
+	WasBatchExecuted(ctx context.Context, batchNonce *big.Int) (bool, error)
 	IsPaused(ctx context.Context) (bool, error)
 }
 
