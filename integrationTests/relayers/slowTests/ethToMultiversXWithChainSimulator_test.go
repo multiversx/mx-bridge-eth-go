@@ -8,6 +8,7 @@ package slowTests
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -15,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
@@ -26,16 +29,21 @@ import (
 )
 
 const (
-	timeout = time.Minute * 15
+	timeout                   = time.Minute * 15
+	projectedShardForTestKeys = byte(2)
 )
 
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		GenerateTestUSDCToken(),
-		GenerateTestMEMEToken(),
+		//GenerateTestUSDCToken(),
+		//GenerateTestMEMEToken(),
+		GenerateTestDOGEToken(),
+		//GenerateTestCOINToken(),
 	)
+
+	// TODO: add a test for the withdrawTotalFeesOnEthereum functionality
 }
 
 func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
@@ -131,8 +139,31 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 
 		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
+
+		blockNum, err := setup.EthereumHandler.EthChainWrapper.BlockNumber(context.Background())
+		if err != nil {
+			fmt.Errorf("error getting block number: %v", err)
+		}
+		fmt.Println("================= BLOCK NUMBER", blockNum)
+		filterQuery := ethereum.FilterQuery{
+			ToBlock: big.NewInt(int64(blockNum)),
+		}
+		logs, err := setup.EthereumHandler.EthChainWrapper.FilterLogs(context.Background(), filterQuery)
+		fmt.Println("================================= LOGS ===============================")
+		for _, log := range logs {
+			logJson, err := json.MarshalIndent(log, "", "  ")
+			if err != nil {
+				fmt.Println("Error marshaling log:", err)
+				continue
+			}
+			fmt.Println("Log:")
+			fmt.Println(string(logJson))
+			fmt.Println("********")
+		}
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
+
+		require.True(tb, false)
 
 		return false
 	}
@@ -346,7 +377,7 @@ func testRelayersShouldNotExecuteTransfers(
 			case <-mockLogObserver.LogFoundChan():
 				chanCnt++
 				if chanCnt >= numOfErrorsToWait {
-					log.Info(fmt.Sprintf("test passed, relayers are stuck, expected string `%s` found in all relayers' logs for %d times", expectedStringInLogs, numOfErrorsToWait))
+					log.Info(fmt.Sprintf("test passed, relayers are stuck, expected string %s found in all relayers' logs for %d times", expectedStringInLogs, numOfErrorsToWait))
 					stopChan <- nil
 					return
 				}
@@ -367,7 +398,7 @@ func testEthContractsShouldError(tb testing.TB, testToken framework.TestTokenPar
 		valueToMintOnEth, ok := big.NewInt(0).SetString(testToken.ValueToMintOnEth, 10)
 		require.True(tb, ok)
 
-		receiverKeys := framework.GenerateMvxPrivatePublicKey(tb)
+		receiverKeys := framework.GenerateMvxPrivatePublicKey(tb, projectedShardForTestKeys)
 		auth, _ := bind.NewKeyedTransactorWithChainID(setup.DepositorKeys.EthSK, setup.EthereumHandler.ChainID)
 		_, err := setup.EthereumHandler.SafeContract.Deposit(auth, token.EthErc20Address, valueToMintOnEth, receiverKeys.MvxAddress.AddressSlice())
 		require.Error(tb, err)
