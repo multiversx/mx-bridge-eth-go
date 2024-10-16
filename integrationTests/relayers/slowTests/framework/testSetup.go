@@ -22,6 +22,7 @@ const (
 	proxyCacherExpirationSeconds = 600
 	proxyMaxNoncesDelta          = 7
 	NumRelayers                  = 3
+	NumOracles                   = 3
 	quorum                       = "03"
 )
 
@@ -57,7 +58,7 @@ func NewTestSetup(tb testing.TB) *TestSetup {
 		esdtBalanceForSafe:    make(map[string]*big.Int),
 		ethBalanceTestAddress: make(map[string]*big.Int),
 	}
-	setup.KeysStore = NewKeysStore(tb, setup.WorkingDir, NumRelayers)
+	setup.KeysStore = NewKeysStore(tb, setup.WorkingDir, NumRelayers, NumOracles)
 
 	// create a test context
 	setup.Ctx, setup.ctxCancel = context.WithCancel(context.Background())
@@ -67,7 +68,7 @@ func NewTestSetup(tb testing.TB) *TestSetup {
 
 	setup.createChainSimulatorWrapper()
 	setup.MultiversxHandler = NewMultiversxHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, setup.ChainSimulator, quorum)
-	setup.MultiversxHandler.DeployContracts(setup.Ctx)
+	setup.MultiversxHandler.DeployAndSetContracts(setup.Ctx)
 
 	return setup
 }
@@ -121,15 +122,21 @@ func (setup *TestSetup) startScCallerModule() {
 		IntervalToResendTxsInSeconds: 1,
 		PrivateKeyFile:               path.Join(setup.WorkingDir, SCCallerFilename),
 		PollingIntervalInMillis:      1000, // 1 second
-		FilterConfig: config.PendingOperationsFilterConfig{
+		Filter: config.PendingOperationsFilterConfig{
 			AllowedEthAddresses: []string{"*"},
 			AllowedMvxAddresses: []string{"*"},
 			AllowedTokens:       []string{"*"},
 		},
+		TransactionChecks: config.TransactionChecksConfig{
+			CheckTransactionResults:    true,
+			CloseAppOnError:            false,
+			ExecutionTimeoutInSeconds:  2,
+			TimeInSecondsBetweenChecks: 1,
+		},
 	}
 
 	var err error
-	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, log)
+	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, log, nil)
 	require.Nil(setup, err)
 	log.Info("started SC calls module", "monitoring SC proxy address", setup.MultiversxHandler.ScProxyAddress)
 }
@@ -317,6 +324,27 @@ func (setup *TestSetup) sendFromMultiversxToEthereumForToken(params TestTokenPar
 		}
 
 		setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, token, operation.ValueToSendFromMvX)
+	}
+}
+
+// TestWithdrawTotalFeesOnEthereumForTokens will test the withdrawal functionality for the provided test tokens
+func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ...TestTokenParams) {
+	for _, param := range tokensParams {
+		token := setup.TokensRegistry.GetTokenData(param.AbstractTokenIdentifier)
+
+		expectedAccumulated := big.NewInt(0)
+		for _, operation := range param.TestOperations {
+			if operation.ValueToSendFromMvX == nil {
+				continue
+			}
+			if operation.ValueToSendFromMvX.Cmp(zeroValueBigInt) == 0 {
+				continue
+			}
+
+			expectedAccumulated.Add(expectedAccumulated, feeInt)
+		}
+
+		setup.MultiversxHandler.TestWithdrawFees(setup.Ctx, token.MvxChainSpecificToken, zeroValueBigInt, expectedAccumulated)
 	}
 }
 

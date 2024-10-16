@@ -42,6 +42,7 @@ const (
 	getTotalBalances                                          = "getTotalBalances"
 	getMintBalances                                           = "getMintBalances"
 	getBurnBalances                                           = "getBurnBalances"
+	getAllKnownTokens                                         = "getAllKnownTokens"
 )
 
 // ArgsMXClientDataGetter is the arguments DTO used in the NewMXClientDataGetter constructor
@@ -516,6 +517,14 @@ func getStatusFromBuff(buff []byte) (byte, error) {
 	}
 
 	return buff[len(buff)-1], nil
+}
+
+// GetAllKnownTokens returns all registered tokens
+func (dataGetter *mxClientDataGetter) GetAllKnownTokens(ctx context.Context) ([][]byte, error) {
+	builder := dataGetter.createSafeDefaultVmQueryBuilder()
+	builder.Function(getAllKnownTokens)
+
+	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

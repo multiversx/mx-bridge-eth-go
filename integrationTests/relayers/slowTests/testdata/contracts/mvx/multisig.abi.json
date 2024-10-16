@@ -206,6 +206,49 @@
             "outputs": []
         },
         {
+            "name": "addUnprocessedRefundTxToBatch",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "withdrawRefundFeesForEthereum",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "withdrawTransactionFees",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "withdrawSlashedAmount",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
             "docs": [
                 "Proposers and board members use this to launch signed actions."
             ],
@@ -1214,7 +1257,7 @@
     ],
     "events": [
         {
-            "identifier": "add_mapping",
+            "identifier": "addMapping",
             "inputs": [
                 {
                     "name": "erc20_address",
@@ -1229,7 +1272,7 @@
             ]
         },
         {
-            "identifier": "clear_mapping",
+            "identifier": "clearMapping",
             "inputs": [
                 {
                     "name": "erc20_address",
@@ -1244,15 +1287,25 @@
             ]
         },
         {
-            "identifier": "move_refund_batch_to_safe",
+            "identifier": "moveRefundBatchToSafeEvent",
             "inputs": []
         },
         {
-            "identifier": "pause_esdt_safe",
+            "identifier": "addUnprocessedRefundTxToBatchEvent",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "pauseBridgeProxyEvent",
             "inputs": []
         },
         {
-            "identifier": "unpause_esdt_safe",
+            "identifier": "unpauseBridgeProxyEvent",
             "inputs": []
         },
         {
