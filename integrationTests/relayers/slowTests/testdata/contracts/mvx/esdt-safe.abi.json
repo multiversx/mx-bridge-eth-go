@@ -124,7 +124,7 @@
                     "type": "EthAddress"
                 },
                 {
-                    "name": "opt_refund_address",
+                    "name": "opt_refunding_address",
                     "type": "optional<Address>",
                     "multi_arg": true
                 }
@@ -158,6 +158,19 @@
             "inputs": [
                 {
                     "name": "opt_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setBridgeProxyContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
                     "type": "optional<Address>",
                     "multi_arg": true
                 }
@@ -278,6 +291,16 @@
         },
         {
             "name": "getBridgedTokensWrapperAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getBridgeProxyContractAddress",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [
@@ -892,6 +915,26 @@
                 {
                     "name": "batch_id",
                     "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint",
                     "indexed": true
                 },
                 {
