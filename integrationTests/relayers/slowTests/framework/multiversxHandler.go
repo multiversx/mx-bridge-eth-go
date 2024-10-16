@@ -336,20 +336,6 @@ func (handler *MultiversxHandler) wireWrapper(ctx context.Context) {
 		},
 	)
 	log.Info("Set in wrapper contract the safe contract", "transaction hash", hash, "status", txResult.Status)
-
-	// setBridgeProxyContractAddress
-	hash, txResult = handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.WrapperAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setBridgeProxyContractAddressFunction,
-		[]string{
-			handler.ScProxyAddress.Hex(),
-		},
-	)
-	log.Info("Set in wrapper contract the SC proxy contract", "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) wireSafe(ctx context.Context) {
@@ -366,6 +352,20 @@ func (handler *MultiversxHandler) wireSafe(ctx context.Context) {
 		},
 	)
 	log.Info("Set in safe contract the wrapper contract", "transaction hash", hash, "status", txResult.Status)
+
+	//setBridgeProxyContractAddress
+	hash, txResult = handler.ChainSimulator.ScCall(
+		ctx,
+		handler.OwnerKeys.MvxSk,
+		handler.SafeAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		setBridgeProxyContractAddressFunction,
+		[]string{
+			handler.ScProxyAddress.Hex(),
+		},
+	)
+	log.Info("Set in safe contract the SC proxy contract", "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) changeOwners(ctx context.Context) {
