@@ -3,6 +3,7 @@ package framework
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -12,13 +13,17 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	mxCrypto "github.com/multiversx/mx-chain-crypto-go"
 	"github.com/stretchr/testify/require"
 )
 
 // constants for the keys store
 const (
-	relayerPemPathFormat = "multiversx%d.pem"
-	SCCallerFilename     = "scCaller.pem"
+	relayerPemPathFormat         = "multiversx%d.pem"
+	SCCallerFilename             = "scCaller.pem"
+	projectedShardForBridgeSetup = byte(0)
+	projectedShardForDepositor   = byte(1)
+	projectedShardForTestKeys    = byte(2)
 )
 
 // KeysHolder holds a 2 pk-sk pairs for both chains
@@ -33,6 +38,7 @@ type KeysHolder struct {
 type KeysStore struct {
 	testing.TB
 	RelayersKeys   []KeysHolder
+	OraclesKeys    []KeysHolder
 	SCExecutorKeys KeysHolder
 	OwnerKeys      KeysHolder
 	DepositorKeys  KeysHolder
@@ -51,6 +57,7 @@ func NewKeysStore(
 	tb testing.TB,
 	workingDir string,
 	numRelayers int,
+	numOracles int,
 ) *KeysStore {
 	keysStore := &KeysStore{
 		TB:             tb,
@@ -60,13 +67,14 @@ func NewKeysStore(
 	}
 
 	keysStore.generateRelayersKeys(numRelayers)
-	keysStore.SCExecutorKeys = keysStore.generateKey("")
-	keysStore.OwnerKeys = keysStore.generateKey(ethOwnerSK)
+	keysStore.OraclesKeys = keysStore.generateKeys(numOracles, "generated oracle", projectedShardForBridgeSetup)
+	keysStore.SCExecutorKeys = keysStore.generateKey("", projectedShardForBridgeSetup)
+	keysStore.OwnerKeys = keysStore.generateKey(ethOwnerSK, projectedShardForBridgeSetup)
 	log.Info("generated owner",
 		"MvX address", keysStore.OwnerKeys.MvxAddress.Bech32(),
 		"Eth address", keysStore.OwnerKeys.EthAddress.String())
-	keysStore.DepositorKeys = keysStore.generateKey(ethDepositorSK)
-	keysStore.TestKeys = keysStore.generateKey(ethTestSk)
+	keysStore.DepositorKeys = keysStore.generateKey(ethDepositorSK, projectedShardForDepositor)
+	keysStore.TestKeys = keysStore.generateKey(ethTestSk, projectedShardForTestKeys)
 
 	filename := path.Join(keysStore.workingDir, SCCallerFilename)
 	SaveMvxKey(keysStore, filename, keysStore.SCExecutorKeys)
@@ -79,7 +87,7 @@ func (keyStore *KeysStore) generateRelayersKeys(numKeys int) {
 		relayerETHSKBytes, err := os.ReadFile(fmt.Sprintf(relayerETHKeyPathFormat, i))
 		require.Nil(keyStore, err)
 
-		relayerKeys := keyStore.generateKey(string(relayerETHSKBytes))
+		relayerKeys := keyStore.generateKey(string(relayerETHSKBytes), projectedShardForBridgeSetup)
 		log.Info("generated relayer", "index", i,
 			"MvX address", relayerKeys.MvxAddress.Bech32(),
 			"Eth address", relayerKeys.EthAddress.String())
@@ -92,10 +100,28 @@ func (keyStore *KeysStore) generateRelayersKeys(numKeys int) {
 	}
 }
 
-func (keyStore *KeysStore) generateKey(ethSkHex string) KeysHolder {
+func (keyStore *KeysStore) generateKeys(numKeys int, message string, projectedShard byte) []KeysHolder {
+	keys := make([]KeysHolder, 0, numKeys)
+
+	for i := 0; i < numKeys; i++ {
+		ethPrivateKeyBytes := make([]byte, 32)
+		_, _ = rand.Read(ethPrivateKeyBytes)
+
+		key := keyStore.generateKey(hex.EncodeToString(ethPrivateKeyBytes), projectedShard)
+		log.Info(message, "index", i,
+			"MvX address", key.MvxAddress.Bech32(),
+			"Eth address", key.EthAddress.String())
+
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
+func (keyStore *KeysStore) generateKey(ethSkHex string, projectedShard byte) KeysHolder {
 	var err error
 
-	keys := GenerateMvxPrivatePublicKey(keyStore)
+	keys := GenerateMvxPrivatePublicKey(keyStore, projectedShard)
 	if len(ethSkHex) == 0 {
 		// eth keys not required
 		return keys
@@ -112,6 +138,7 @@ func (keyStore *KeysStore) generateKey(ethSkHex string) KeysHolder {
 func (keyStore *KeysStore) getAllKeys() []KeysHolder {
 	allKeys := make([]KeysHolder, 0, len(keyStore.RelayersKeys)+10)
 	allKeys = append(allKeys, keyStore.RelayersKeys...)
+	allKeys = append(allKeys, keyStore.OraclesKeys...)
 	allKeys = append(allKeys, keyStore.SCExecutorKeys, keyStore.OwnerKeys, keyStore.DepositorKeys, keyStore.TestKeys)
 
 	return allKeys
@@ -146,18 +173,31 @@ func (keyStore *KeysStore) WalletsToFundOnMultiversX() []string {
 }
 
 // GenerateMvxPrivatePublicKey will generate a new keys holder instance that will hold only the MultiversX generated keys
-func GenerateMvxPrivatePublicKey(tb testing.TB) KeysHolder {
-	sk, pk := keyGenerator.GeneratePair()
+func GenerateMvxPrivatePublicKey(tb testing.TB, projectedShard byte) KeysHolder {
+	sk, pkBytes := generateSkPkInShard(tb, projectedShard)
 
 	skBytes, err := sk.ToByteArray()
-	require.Nil(tb, err)
-
-	pkBytes, err := pk.ToByteArray()
 	require.Nil(tb, err)
 
 	return KeysHolder{
 		MvxSk:      skBytes,
 		MvxAddress: NewMvxAddressFromBytes(tb, pkBytes),
+	}
+}
+
+func generateSkPkInShard(tb testing.TB, projectedShard byte) (mxCrypto.PrivateKey, []byte) {
+	var sk mxCrypto.PrivateKey
+	var pk mxCrypto.PublicKey
+
+	for {
+		sk, pk = keyGenerator.GeneratePair()
+
+		pkBytes, err := pk.ToByteArray()
+		require.Nil(tb, err)
+
+		if pkBytes[len(pkBytes)-1] == projectedShard {
+			return sk, pkBytes
+		}
 	}
 }
 

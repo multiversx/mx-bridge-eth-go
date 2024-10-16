@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"math/big"
 	"sync/atomic"
+	"time"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/errors"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -24,6 +25,8 @@ const (
 	getPendingTransactionsFunction = "getPendingTransactions"
 	okCodeAfterExecution           = "ok"
 	scProxyCallFunction            = "execute"
+	minCheckValues                 = 1
+	transactionNotFoundErrString   = "transaction not found"
 )
 
 // ArgsScCallExecutor represents the DTO struct for creating a new instance of type scCallExecutor
@@ -37,20 +40,28 @@ type ArgsScCallExecutor struct {
 	NonceTxHandler       NonceTransactionsHandler
 	PrivateKey           crypto.PrivateKey
 	SingleSigner         crypto.SingleSigner
+	TransactionChecks    config.TransactionChecksConfig
+	CloseAppChan         chan struct{}
 }
 
 type scCallExecutor struct {
-	scProxyBech32Address string
-	proxy                Proxy
-	codec                Codec
-	filter               ScCallsExecuteFilter
-	log                  logger.Logger
-	extraGasToExecute    uint64
-	nonceTxHandler       NonceTransactionsHandler
-	privateKey           crypto.PrivateKey
-	singleSigner         crypto.SingleSigner
-	senderAddress        core.AddressHandler
-	numSentTransactions  uint32
+	scProxyBech32Address    string
+	proxy                   Proxy
+	codec                   Codec
+	filter                  ScCallsExecuteFilter
+	log                     logger.Logger
+	extraGasToExecute       uint64
+	nonceTxHandler          NonceTransactionsHandler
+	privateKey              crypto.PrivateKey
+	singleSigner            crypto.SingleSigner
+	senderAddress           core.AddressHandler
+	numSentTransactions     uint32
+	checkTransactionResults bool
+	timeBetweenChecks       time.Duration
+	executionTimeout        time.Duration
+	closeAppOnError         bool
+	extraDelayOnError       time.Duration
+	closeAppChan            chan struct{}
 }
 
 // NewScCallExecutor creates a new instance of type scCallExecutor
@@ -68,16 +79,22 @@ func NewScCallExecutor(args ArgsScCallExecutor) (*scCallExecutor, error) {
 	senderAddress := data.NewAddressFromBytes(publicKeyBytes)
 
 	return &scCallExecutor{
-		scProxyBech32Address: args.ScProxyBech32Address,
-		proxy:                args.Proxy,
-		codec:                args.Codec,
-		filter:               args.Filter,
-		log:                  args.Log,
-		extraGasToExecute:    args.ExtraGasToExecute,
-		nonceTxHandler:       args.NonceTxHandler,
-		privateKey:           args.PrivateKey,
-		singleSigner:         args.SingleSigner,
-		senderAddress:        senderAddress,
+		scProxyBech32Address:    args.ScProxyBech32Address,
+		proxy:                   args.Proxy,
+		codec:                   args.Codec,
+		filter:                  args.Filter,
+		log:                     args.Log,
+		extraGasToExecute:       args.ExtraGasToExecute,
+		nonceTxHandler:          args.NonceTxHandler,
+		privateKey:              args.PrivateKey,
+		singleSigner:            args.SingleSigner,
+		senderAddress:           senderAddress,
+		checkTransactionResults: args.TransactionChecks.CheckTransactionResults,
+		timeBetweenChecks:       time.Second * time.Duration(args.TransactionChecks.TimeInSecondsBetweenChecks),
+		executionTimeout:        time.Second * time.Duration(args.TransactionChecks.ExecutionTimeoutInSeconds),
+		closeAppOnError:         args.TransactionChecks.CloseAppOnError,
+		extraDelayOnError:       time.Second * time.Duration(args.TransactionChecks.ExtraDelayInSecondsOnError),
+		closeAppChan:            args.CloseAppChan,
 	}, nil
 }
 
@@ -103,9 +120,35 @@ func checkArgs(args ArgsScCallExecutor) error {
 	if check.IfNil(args.SingleSigner) {
 		return errNilSingleSigner
 	}
-	_, err := data.NewAddressFromBech32String(args.ScProxyBech32Address)
+	err := checkTransactionChecksConfig(args)
+	if err != nil {
+		return err
+	}
+
+	_, err = data.NewAddressFromBech32String(args.ScProxyBech32Address)
 
 	return err
+}
+
+func checkTransactionChecksConfig(args ArgsScCallExecutor) error {
+	if !args.TransactionChecks.CheckTransactionResults {
+		args.Log.Warn("transaction checks are disabled! This can lead to funds being drained in case of a repetitive error")
+		return nil
+	}
+
+	if args.TransactionChecks.TimeInSecondsBetweenChecks < minCheckValues {
+		return fmt.Errorf("%w for TransactionChecks.TimeInSecondsBetweenChecks, minimum: %d, got: %d",
+			errInvalidValue, minCheckValues, args.TransactionChecks.TimeInSecondsBetweenChecks)
+	}
+	if args.TransactionChecks.ExecutionTimeoutInSeconds < minCheckValues {
+		return fmt.Errorf("%w for TransactionChecks.ExecutionTimeoutInSeconds, minimum: %d, got: %d",
+			errInvalidValue, minCheckValues, args.TransactionChecks.ExecutionTimeoutInSeconds)
+	}
+	if args.CloseAppChan == nil && args.TransactionChecks.CloseAppOnError {
+		return fmt.Errorf("%w while the TransactionChecks.CloseAppOnError is set to true", errNilCloseAppChannel)
+	}
+
+	return nil
 }
 
 // Execute will execute one step: get all pending operations, call the filter and send execution transactions
@@ -186,8 +229,13 @@ func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOp
 	}
 
 	for id, callData := range pendingOperations {
-		log.Debug("scCallExecutor.executeOperations", "executing ID", id, "call data", callData)
-		err = executor.executeOperation(id, callData, networkConfig)
+		workingCtx, cancel := context.WithTimeout(ctx, executor.executionTimeout)
+
+		executor.log.Debug("scCallExecutor.executeOperations", "executing ID", id, "call data", callData,
+			"maximum timeout", executor.executionTimeout)
+		err = executor.executeOperation(workingCtx, id, callData, networkConfig)
+		cancel()
+
 		if err != nil {
 			return fmt.Errorf("%w for call data: %s", err, callData)
 		}
@@ -197,6 +245,7 @@ func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOp
 }
 
 func (executor *scCallExecutor) executeOperation(
+	ctx context.Context,
 	id uint64,
 	callData parsers.ProxySCCompleteCallData,
 	networkConfig *data.NetworkConfig,
@@ -216,7 +265,7 @@ func (executor *scCallExecutor) executeOperation(
 
 	gasLimit, err := executor.codec.ExtractGasLimitFromRawCallData(callData.RawCallData)
 	if err != nil {
-		log.Warn("scCallExecutor.executeOperation found a non-parsable raw call data",
+		executor.log.Warn("scCallExecutor.executeOperation found a non-parsable raw call data",
 			"raw call data", callData.RawCallData, "error", err)
 		gasLimit = 0
 	}
@@ -231,7 +280,7 @@ func (executor *scCallExecutor) executeOperation(
 		Value:    "0",
 	}
 
-	err = executor.nonceTxHandler.ApplyNonceAndGasPrice(context.Background(), executor.senderAddress, tx)
+	err = executor.nonceTxHandler.ApplyNonceAndGasPrice(ctx, executor.senderAddress, tx)
 	if err != nil {
 		return err
 	}
@@ -241,7 +290,7 @@ func (executor *scCallExecutor) executeOperation(
 		return err
 	}
 
-	hash, err := executor.nonceTxHandler.SendTransaction(context.Background(), tx)
+	hash, err := executor.nonceTxHandler.SendTransaction(ctx, tx)
 	if err != nil {
 		return err
 	}
@@ -255,7 +304,17 @@ func (executor *scCallExecutor) executeOperation(
 
 	atomic.AddUint32(&executor.numSentTransactions, 1)
 
-	return nil
+	return executor.handleResults(ctx, hash)
+}
+
+func (executor *scCallExecutor) handleResults(ctx context.Context, hash string) error {
+	if !executor.checkTransactionResults {
+		return nil
+	}
+
+	err := executor.checkResultsUntilDone(ctx, hash)
+	executor.waitForExtraDelay(ctx, err)
+	return err
 }
 
 // signTransactionWithPrivateKey signs a transaction with the client's private key
@@ -274,6 +333,93 @@ func (executor *scCallExecutor) signTransactionWithPrivateKey(tx *transaction.Fr
 	tx.Signature = hex.EncodeToString(signature)
 
 	return nil
+}
+
+func (executor *scCallExecutor) checkResultsUntilDone(ctx context.Context, hash string) error {
+	timer := time.NewTimer(executor.timeBetweenChecks)
+	defer timer.Stop()
+
+	for {
+		timer.Reset(executor.timeBetweenChecks)
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+			err, shouldStop := executor.checkResults(ctx, hash)
+			if shouldStop {
+				executor.handleError(ctx, err)
+				return err
+			}
+		}
+	}
+}
+
+func (executor *scCallExecutor) checkResults(ctx context.Context, hash string) (error, bool) {
+	txStatus, err := executor.proxy.ProcessTransactionStatus(ctx, hash)
+	if err != nil {
+		if err.Error() == transactionNotFoundErrString {
+			return nil, false
+		}
+
+		return err, true
+	}
+
+	if txStatus == transaction.TxStatusSuccess {
+		return nil, true
+	}
+	if txStatus == transaction.TxStatusPending {
+		return nil, false
+	}
+
+	executor.logFullTransaction(ctx, hash)
+	return fmt.Errorf("%w for tx hash %s", errTransactionFailed, hash), true
+}
+
+func (executor *scCallExecutor) handleError(ctx context.Context, err error) {
+	if err == nil {
+		return
+	}
+	if !executor.closeAppOnError {
+		return
+	}
+
+	go func() {
+		// wait here until we could write in the close app chan
+		// ... or the context expired (application might close)
+		select {
+		case <-ctx.Done():
+		case executor.closeAppChan <- struct{}{}:
+		}
+	}()
+}
+
+func (executor *scCallExecutor) logFullTransaction(ctx context.Context, hash string) {
+	txData, err := executor.proxy.GetTransactionInfoWithResults(ctx, hash)
+	if err != nil {
+		executor.log.Error("error getting the transaction for display", "error", err)
+		return
+	}
+
+	txDataString, err := json.MarshalIndent(txData.Data.Transaction, "", "  ")
+	if err != nil {
+		executor.log.Error("error preparing transaction for display", "error", err)
+		return
+	}
+
+	executor.log.Error("transaction failed", "hash", hash, "full transaction details", string(txDataString))
+}
+
+func (executor *scCallExecutor) waitForExtraDelay(ctx context.Context, err error) {
+	if err == nil {
+		return
+	}
+
+	timer := time.NewTimer(executor.extraDelayOnError)
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	}
 }
 
 // GetNumSentTransaction returns the total sent transactions

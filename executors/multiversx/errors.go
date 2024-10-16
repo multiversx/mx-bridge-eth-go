@@ -11,4 +11,7 @@ var (
 	errNilNonceTxHandler            = errors.New("nil nonce transaction handler")
 	errNilPrivateKey                = errors.New("nil private key")
 	errNilSingleSigner              = errors.New("nil single signer")
+	errInvalidValue                 = errors.New("invalid value")
+	errNilCloseAppChannel           = errors.New("nil close application channel")
+	errTransactionFailed            = errors.New("transaction failed")
 )

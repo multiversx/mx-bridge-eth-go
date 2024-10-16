@@ -122,6 +122,11 @@
                 {
                     "name": "to",
                     "type": "EthAddress"
+                },
+                {
+                    "name": "opt_refunding_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
                 }
             ],
             "outputs": []
@@ -145,6 +150,64 @@
                     "type": "EsdtTokenPayment"
                 }
             ]
+        },
+        {
+            "name": "setBridgedTokensWrapperAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setBridgeProxyContractAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_new_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "withdrawRefundFeesForEthereum",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "multisig_owner",
+                    "type": "Address"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "withdrawTransactionFees",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "multisig_owner",
+                    "type": "Address"
+                }
+            ],
+            "outputs": []
         },
         {
             "name": "computeTotalAmmountsFromIndex",
@@ -193,6 +256,56 @@
                 {
                     "type": "variadic<multi<TokenIdentifier,BigUint>>",
                     "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getRefundFeesForEthereum",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "getTransactionFees",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "BigUint"
+                }
+            ]
+        },
+        {
+            "name": "getBridgedTokensWrapperAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getBridgeProxyContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
                 }
             ]
         },
@@ -802,6 +915,26 @@
                 {
                     "name": "batch_id",
                     "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint",
                     "indexed": true
                 },
                 {
