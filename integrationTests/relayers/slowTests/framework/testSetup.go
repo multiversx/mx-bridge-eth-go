@@ -217,6 +217,8 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(params TestTokenParam
 	}
 
 	receiverBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.TestKeys.MvxAddress, params.AbstractTokenIdentifier)
+	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|-----", receiverBalance.String())
+	fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|-----", expectedValueOnReceiver.String())
 	if receiverBalance.String() != expectedValueOnReceiver.String() {
 		return false
 	}
@@ -282,10 +284,15 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(params TestTokenPar
 	setup.mutBalances.Unlock()
 
 	ethTestBalance := setup.EthereumHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
+	fmt.Println("@@@@@@@@@@@@ethTestBalance", ethTestBalance.String())
+	fmt.Println("@@@@@@@@@@@@expectedReceiver", expectedReceiver.String())
 	isTransferDoneFromMultiversX := ethTestBalance.String() == expectedReceiver.String()
 
 	expectedEsdtSafe := big.NewInt(0).Add(initialBalanceForSafe, params.ESDTSafeExtraBalance)
 	balanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, params.AbstractTokenIdentifier)
+
+	fmt.Println("@@@@@@@@@@@@expectedEsdtSafe", expectedEsdtSafe.String())
+	fmt.Println("@@@@@@@@@@@@balanceForSafe", balanceForSafe.String())
 	isSafeContractOnCorrectBalance := expectedEsdtSafe.String() == balanceForSafe.String()
 
 	return isTransferDoneFromMultiversX && isSafeContractOnCorrectBalance
