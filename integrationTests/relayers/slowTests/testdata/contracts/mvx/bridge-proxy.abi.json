@@ -58,14 +58,9 @@
             "outputs": []
         },
         {
-            "name": "cancel",
+            "name": "updateLowestTxId",
             "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "tx_id",
-                    "type": "u32"
-                }
-            ],
+            "inputs": [],
             "outputs": []
         },
         {
