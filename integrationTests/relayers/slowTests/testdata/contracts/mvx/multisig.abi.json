@@ -218,6 +218,37 @@
             "outputs": []
         },
         {
+            "name": "withdrawRefundFeesForEthereum",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "withdrawTransactionFees",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "withdrawSlashedAmount",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
             "docs": [
                 "Proposers and board members use this to launch signed actions."
             ],
@@ -1270,11 +1301,11 @@
             ]
         },
         {
-            "identifier": "pauseEsdtEvent",
+            "identifier": "pauseBridgeProxyEvent",
             "inputs": []
         },
         {
-            "identifier": "unpauseEsdtEvent",
+            "identifier": "unpauseBridgeProxyEvent",
             "inputs": []
         },
         {

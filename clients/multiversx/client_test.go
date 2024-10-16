@@ -13,16 +13,19 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/roleProviders"
 	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-chain-core-go/data/vm"
 	"github.com/multiversx/mx-chain-crypto-go/signing"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/builders"
+	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -293,7 +296,7 @@ func TestClient_GetPendingBatch(t *testing.T) {
 		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
-		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, errors.Is(err, converters.ErrNotUint64Bytes))
 		assert.True(t, strings.Contains(err.Error(), "while parsing batch ID"))
 	})
 	t.Run("invalid deposit nonce", func(t *testing.T) {
@@ -308,7 +311,7 @@ func TestClient_GetPendingBatch(t *testing.T) {
 		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
-		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, errors.Is(err, converters.ErrNotUint64Bytes))
 		assert.True(t, strings.Contains(err.Error(), "while parsing the deposit nonce, transfer index 1"))
 	})
 	t.Run("tokens mapper errors", func(t *testing.T) {
@@ -348,6 +351,7 @@ func TestClient_GetPendingBatch(t *testing.T) {
 			ID: 44562,
 			Deposits: []*bridgeCore.DepositTransfer{
 				{
+					DepositBlockNumber:    0,
 					Nonce:                 5000,
 					ToBytes:               bytes.Repeat([]byte{2}, 20),
 					DisplayableTo:         "0x0202020202020202020202020202020202020202",
@@ -359,6 +363,7 @@ func TestClient_GetPendingBatch(t *testing.T) {
 					Amount:                big.NewInt(10000),
 				},
 				{
+					DepositBlockNumber:    1,
 					Nonce:                 5001,
 					ToBytes:               bytes.Repeat([]byte{5}, 20),
 					DisplayableTo:         "0x0505050505050505050505050505050505050505",
@@ -450,7 +455,7 @@ func TestClient_GetBatch(t *testing.T) {
 		batch, err := c.GetBatch(context.Background(), 37)
 
 		assert.Nil(t, batch)
-		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, errors.Is(err, converters.ErrNotUint64Bytes))
 		assert.True(t, strings.Contains(err.Error(), "while parsing batch ID"))
 	})
 	t.Run("invalid deposit nonce", func(t *testing.T) {
@@ -465,7 +470,7 @@ func TestClient_GetBatch(t *testing.T) {
 		batch, err := c.GetBatch(context.Background(), 37)
 
 		assert.Nil(t, batch)
-		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, errors.Is(err, converters.ErrNotUint64Bytes))
 		assert.True(t, strings.Contains(err.Error(), "while parsing the deposit nonce, transfer index 1"))
 	})
 	t.Run("tokens mapper errors", func(t *testing.T) {
@@ -505,6 +510,7 @@ func TestClient_GetBatch(t *testing.T) {
 			ID: 44562,
 			Deposits: []*bridgeCore.DepositTransfer{
 				{
+					DepositBlockNumber:    0,
 					Nonce:                 5000,
 					ToBytes:               bytes.Repeat([]byte{2}, 20),
 					DisplayableTo:         "0x0202020202020202020202020202020202020202",
@@ -516,6 +522,7 @@ func TestClient_GetBatch(t *testing.T) {
 					Amount:                big.NewInt(10000),
 				},
 				{
+					DepositBlockNumber:    1,
 					Nonce:                 5001,
 					ToBytes:               bytes.Repeat([]byte{5}, 20),
 					DisplayableTo:         "0x0505050505050505050505050505050505050505",
@@ -1100,6 +1107,121 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		err := c.CheckClientAvailability(context.Background())
 		checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, expectedErr.Error())
 		assert.Equal(t, expectedErr, err)
+	})
+}
+
+func TestClient_GetBatchSCMetadata(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should error if fetching SafeContract address fails", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		c, _ := NewClient(args)
+
+		expectedError := errors.New("expected error")
+		c.safeContractAddress = &testsCommon.AddressHandlerStub{
+			AddressAsBech32StringCalled: func() (string, error) {
+				return "", expectedError
+			},
+		}
+
+		events, err := c.GetBatchSCMetadata(context.Background(), &bridgeCore.TransferBatch{})
+		assert.Nil(t, events)
+		assert.Equal(t, expectedError, err)
+	})
+
+	t.Run("should error if fetching filter logs fails", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		expectedError := errors.New("expected error")
+		args.Proxy = &interactors.ProxyStub{
+			FilterLogsCalled: func(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error) {
+				return nil, expectedError
+			},
+		}
+		c, _ := NewClient(args)
+
+		events, err := c.GetBatchSCMetadata(context.Background(), &bridgeCore.TransferBatch{})
+		assert.Nil(t, events)
+		assert.Equal(t, expectedError, err)
+	})
+
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.EventsBlockRangeFrom = -5
+		args.EventsBlockRangeTo = 10
+		args.Proxy = &interactors.ProxyStub{
+			FilterLogsCalled: func(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error) {
+				assert.Equal(t, filter.FromBlock.HasValue, true)
+				assert.Equal(t, filter.FromBlock.Value, uint64(5))
+				assert.Equal(t, filter.ToBlock.HasValue, true)
+				assert.Equal(t, filter.ToBlock.Value, uint64(30))
+				return []*transaction.Events{{Identifier: "event0"}, {Identifier: "event1"}}, nil
+			},
+		}
+		c, _ := NewClient(args)
+
+		expectedBatch := &bridgeCore.TransferBatch{
+			ID: 2,
+			Deposits: []*bridgeCore.DepositTransfer{
+				{
+					DepositBlockNumber: 10,
+					Nonce:              5000,
+				},
+				{
+					DepositBlockNumber: 20,
+					Nonce:              5001,
+				},
+			},
+		}
+
+		events, err := c.GetBatchSCMetadata(context.Background(), expectedBatch)
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(events))
+		assert.Equal(t, "event0", events[0].Identifier)
+		assert.Equal(t, "event1", events[1].Identifier)
+	})
+
+	t.Run("should set range boundaries to 0 in case of underflow", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.EventsBlockRangeFrom = -50
+		args.EventsBlockRangeTo = 50
+		args.Proxy = &interactors.ProxyStub{
+			FilterLogsCalled: func(ctx context.Context, filter *core.FilterQuery) ([]*transaction.Events, error) {
+				assert.Equal(t, filter.FromBlock.HasValue, true)
+				assert.Equal(t, filter.FromBlock.Value, uint64(0))
+				assert.Equal(t, filter.ToBlock.HasValue, true)
+				assert.Equal(t, filter.ToBlock.Value, uint64(149))
+				return []*transaction.Events{{Identifier: "event0"}, {Identifier: "event1"}}, nil
+			},
+		}
+		c, _ := NewClient(args)
+
+		expectedBatch := &bridgeCore.TransferBatch{
+			ID: 2,
+			Deposits: []*bridgeCore.DepositTransfer{
+				{
+					DepositBlockNumber: 49,
+					Nonce:              5000,
+				},
+				{
+					DepositBlockNumber: 99,
+					Nonce:              5001,
+				},
+			},
+		}
+
+		events, err := c.GetBatchSCMetadata(context.Background(), expectedBatch)
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(events))
+		assert.Equal(t, "event0", events[0].Identifier)
+		assert.Equal(t, "event1", events[1].Identifier)
 	})
 }
 

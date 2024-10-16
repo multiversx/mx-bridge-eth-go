@@ -2,6 +2,8 @@ package ethmultiversx
 
 import (
 	"context"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -17,6 +19,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
 )
@@ -991,27 +994,100 @@ func TestMultiversXToEthBridgeExecutor_GetAndStoreBatchFromMultiversX(t *testing
 		err := executor.StoreBatchFromMultiversX(nil)
 		assert.Equal(t, ErrNilBatch, err)
 	})
-	t.Run("should work", func(t *testing.T) {
+	t.Run("no deposits should error", func(t *testing.T) {
 		t.Parallel()
 
-		wasCalled := false
 		args := createMockExecutorArgs()
+		wasCalled := false
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
 			GetPendingBatchCalled: func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 				wasCalled = true
-				return providedBatch, nil
+				return &bridgeCore.TransferBatch{}, nil
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 		batch, err := executor.GetBatchFromMultiversX(context.Background())
 		assert.True(t, wasCalled)
-		assert.Equal(t, providedBatch, batch)
+		assert.Nil(t, batch)
+		assert.Equal(t, fmt.Errorf("%w, fetched nonce: %d", ErrBatchWithoutDeposits, 0), err)
+	})
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		wasPendingBatchCalled := false
+		wasGetBatchSCMetadataCalled := false
+		providedBatchWithDeposits := &bridgeCore.TransferBatch{
+			Deposits: []*bridgeCore.DepositTransfer{{}, {}},
+		}
+		args := createMockExecutorArgs()
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			GetPendingBatchCalled: func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
+				wasPendingBatchCalled = true
+				return providedBatchWithDeposits, nil
+			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, batch *bridgeCore.TransferBatch) ([]*transaction.Events, error) {
+				wasGetBatchSCMetadataCalled = true
+				return []*transaction.Events{}, nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+		batch, err := executor.GetBatchFromMultiversX(context.Background())
+		assert.True(t, wasPendingBatchCalled)
+		assert.True(t, wasGetBatchSCMetadataCalled)
+		assert.Equal(t, providedBatchWithDeposits, batch)
 		assert.Nil(t, err)
 
 		err = executor.StoreBatchFromMultiversX(batch)
-		assert.Equal(t, providedBatch, executor.batch)
+		assert.Equal(t, providedBatchWithDeposits, executor.batch)
 		assert.Nil(t, err)
+	})
+	t.Run("should add deposits metadata for sc calls", func(t *testing.T) {
+		t.Parallel()
+
+		providedNonce := uint64(8346)
+		depositNonce := uint64(100)
+
+		providedBatchWithDeposit := &bridgeCore.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*bridgeCore.DepositTransfer{
+				{
+					Nonce: depositNonce,
+				},
+			},
+		}
+
+		depositData := []byte("testData")
+		expectedBatch := &bridgeCore.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*bridgeCore.DepositTransfer{
+				{
+					Nonce:           depositNonce,
+					Data:            depositData,
+					DisplayableData: hex.EncodeToString(depositData),
+				},
+			},
+		}
+
+		args := createMockExecutorArgs()
+		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
+			GetPendingBatchCalled: func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
+				return providedBatchWithDeposit, nil
+			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, batch *bridgeCore.TransferBatch) ([]*transaction.Events, error) {
+				depositNonceBytes := make([]byte, 8)
+				binary.BigEndian.PutUint64(depositNonceBytes, depositNonce)
+				return []*transaction.Events{
+					{Topics: [][]byte{{}, depositNonceBytes, {}, {}, {}, {}, {}, {}, depositData}},
+				}, nil
+			},
+		}
+
+		executor, _ := NewBridgeExecutor(args)
+		batch, err := executor.GetBatchFromMultiversX(context.Background())
+		assert.Nil(t, err)
+		assert.Equal(t, expectedBatch, batch)
 	})
 }
 

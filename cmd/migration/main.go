@@ -42,9 +42,10 @@ const (
 var log = logger.GetOrCreate("main")
 
 type internalComponents struct {
-	batch         *ethereum.BatchInfo
-	cryptoHandler ethereumClient.CryptoHandler
-	ethClient     *ethclient.Client
+	batch                *ethereum.BatchInfo
+	cryptoHandler        ethereumClient.CryptoHandler
+	ethClient            *ethclient.Client
+	ethereumChainWrapper ethereum.EthereumChainWrapper
 }
 
 func main() {
@@ -90,7 +91,6 @@ func execute(ctx *cli.Context) error {
 	operationMode := strings.ToLower(ctx.GlobalString(mode.Name))
 	switch operationMode {
 	case signMode:
-
 		_, err = generateAndSign(ctx, cfg)
 		return err
 	case executeMode:
@@ -153,7 +153,19 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*interna
 	}
 
 	safeEthAddress := common.HexToAddress(cfg.Eth.SafeContractAddress)
-	safeInstance, err := contract.NewERC20Safe(safeEthAddress, ethClient)
+
+	bridgeEthAddress := common.HexToAddress(cfg.Eth.MultisigContractAddress)
+	multiSigInstance, err := contract.NewBridge(bridgeEthAddress, ethClient)
+	if err != nil {
+		return nil, err
+	}
+
+	argsClientWrapper := bridgeV2Wrappers.ArgsEthereumChainWrapper{
+		StatusHandler:    &disabled.StatusHandler{},
+		MultiSigContract: multiSigInstance,
+		BlockchainClient: ethClient,
+	}
+	ethereumChainWrapper, err := bridgeV2Wrappers.NewEthereumChainWrapper(argsClientWrapper)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +174,7 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*interna
 		MvxDataGetter:        mxDataGetter,
 		Erc20ContractsHolder: erc20ContractsHolder,
 		SafeContractAddress:  safeEthAddress,
-		SafeContractWrapper:  safeInstance,
+		EthereumChainWrapper: ethereumChainWrapper,
 		Logger:               log,
 	}
 
@@ -177,7 +189,11 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*interna
 	}
 	newSafeAddressValue := common.HexToAddress(ctx.GlobalString(newSafeAddress.Name))
 
-	batchInfo, err := creator.CreateBatchInfo(context.Background(), newSafeAddressValue)
+	trimValue := chainCore.OptionalUint64{
+		Value:    ctx.GlobalUint64(denominatedAmount.Name),
+		HasValue: ctx.IsSet(denominatedAmount.Name),
+	}
+	batchInfo, err := creator.CreateBatchInfo(context.Background(), newSafeAddressValue, trimValue)
 	if err != nil {
 		return nil, err
 	}
@@ -231,30 +247,15 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*interna
 	}
 
 	return &internalComponents{
-		batch:         batchInfo,
-		cryptoHandler: cryptoHandler,
-		ethClient:     ethClient,
+		batch:                batchInfo,
+		cryptoHandler:        cryptoHandler,
+		ethClient:            ethClient,
+		ethereumChainWrapper: ethereumChainWrapper,
 	}, nil
 }
 
 func executeTransfer(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 	components, err := generateAndSign(ctx, cfg)
-	if err != nil {
-		return err
-	}
-
-	bridgeEthAddress := common.HexToAddress(cfg.Eth.MultisigContractAddress)
-	multiSigInstance, err := contract.NewBridge(bridgeEthAddress, components.ethClient)
-	if err != nil {
-		return err
-	}
-
-	argsClientWrapper := bridgeV2Wrappers.ArgsEthereumChainWrapper{
-		StatusHandler:    &disabled.StatusHandler{},
-		MultiSigContract: multiSigInstance,
-		BlockchainClient: components.ethClient,
-	}
-	ethereumChainWrapper, err := bridgeV2Wrappers.NewEthereumChainWrapper(argsClientWrapper)
 	if err != nil {
 		return err
 	}
@@ -276,7 +277,7 @@ func executeTransfer(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 	}
 
 	args := ethereum.ArgsMigrationBatchExecutor{
-		EthereumChainWrapper:    ethereumChainWrapper,
+		EthereumChainWrapper:    components.ethereumChainWrapper,
 		CryptoHandler:           components.cryptoHandler,
 		Batch:                   *components.batch,
 		Signatures:              ethereum.LoadAllSignatures(log, configPath),

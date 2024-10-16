@@ -334,6 +334,27 @@ func (setup *TestSetup) sendFromMultiversxToEthereumForToken(params TestTokenPar
 	}
 }
 
+// TestWithdrawTotalFeesOnEthereumForTokens will test the withdrawal functionality for the provided test tokens
+func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ...TestTokenParams) {
+	for _, param := range tokensParams {
+		token := setup.TokensRegistry.GetTokenData(param.AbstractTokenIdentifier)
+
+		expectedAccumulated := big.NewInt(0)
+		for _, operation := range param.TestOperations {
+			if operation.ValueToSendFromMvX == nil {
+				continue
+			}
+			if operation.ValueToSendFromMvX.Cmp(zeroValueBigInt) == 0 {
+				continue
+			}
+
+			expectedAccumulated.Add(expectedAccumulated, feeInt)
+		}
+
+		setup.MultiversxHandler.TestWithdrawFees(setup.Ctx, token.MvxChainSpecificToken, zeroValueBigInt, expectedAccumulated)
+	}
+}
+
 // Close will close the test subcomponents
 func (setup *TestSetup) Close() {
 	log.Info(fmt.Sprintf(LogStepMarker, "closing relayers & sc execution module"))
