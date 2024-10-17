@@ -288,8 +288,19 @@ func (executor *scCallExecutor) executeOperation(
 	}
 
 	if tx.GasLimit > executor.maxGasLimitToUse {
-		executor.log.Warn("capped the gas limit", "computed gas limit", tx.GasLimit, "capped to", executor.maxGasLimitToUse)
-		tx.GasLimit = executor.maxGasLimitToUse
+		to, _ := callData.To.AddressAsBech32String()
+		executor.log.Warn("can not execute transaction do to exceeding gas limit usage, will skip",
+			"computed gas limit", tx.GasLimit,
+			"max allowed", executor.maxGasLimitToUse,
+			"data", dataBytes,
+			"from", callData.From.Hex(),
+			"to", to,
+			"token", callData.Token,
+			"amount", callData.Amount,
+			"nonce", callData.Nonce,
+		)
+
+		return nil
 	}
 
 	err = executor.nonceTxHandler.ApplyNonceAndGasPrice(ctx, executor.senderAddress, tx)
