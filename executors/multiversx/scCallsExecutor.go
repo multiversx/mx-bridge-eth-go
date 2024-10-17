@@ -27,7 +27,7 @@ const (
 	scProxyCallFunction            = "execute"
 	minCheckValues                 = 1
 	transactionNotFoundErrString   = "transaction not found"
-	maxGasLimitToExecute           = 249999999 // 250 million - 1
+	minGasToExecuteSCCalls         = 2010000 // the absolut minimum gas limit to do a SC call
 )
 
 // ArgsScCallExecutor represents the DTO struct for creating a new instance of type scCallExecutor
@@ -38,6 +38,7 @@ type ArgsScCallExecutor struct {
 	Filter               ScCallsExecuteFilter
 	Log                  logger.Logger
 	ExtraGasToExecute    uint64
+	MaxGasLimitToUse     uint64
 	NonceTxHandler       NonceTransactionsHandler
 	PrivateKey           crypto.PrivateKey
 	SingleSigner         crypto.SingleSigner
@@ -52,6 +53,7 @@ type scCallExecutor struct {
 	filter                  ScCallsExecuteFilter
 	log                     logger.Logger
 	extraGasToExecute       uint64
+	maxGasLimitToUse        uint64
 	nonceTxHandler          NonceTransactionsHandler
 	privateKey              crypto.PrivateKey
 	singleSigner            crypto.SingleSigner
@@ -86,6 +88,7 @@ func NewScCallExecutor(args ArgsScCallExecutor) (*scCallExecutor, error) {
 		filter:                  args.Filter,
 		log:                     args.Log,
 		extraGasToExecute:       args.ExtraGasToExecute,
+		maxGasLimitToUse:        args.MaxGasLimitToUse,
 		nonceTxHandler:          args.NonceTxHandler,
 		privateKey:              args.PrivateKey,
 		singleSigner:            args.SingleSigner,
@@ -120,6 +123,9 @@ func checkArgs(args ArgsScCallExecutor) error {
 	}
 	if check.IfNil(args.SingleSigner) {
 		return errNilSingleSigner
+	}
+	if args.MaxGasLimitToUse < minGasToExecuteSCCalls {
+		return fmt.Errorf("%w: provided: %d, absolute minimum required: %d", errMaxGasLimitIsLessThanRequired, args.MaxGasLimitToUse, minGasToExecuteSCCalls)
 	}
 	err := checkTransactionChecksConfig(args)
 	if err != nil {
@@ -281,9 +287,9 @@ func (executor *scCallExecutor) executeOperation(
 		Value:    "0",
 	}
 
-	if tx.GasLimit > maxGasLimitToExecute {
-		executor.log.Warn("capped the gas limit", "computed gas limit", tx.GasLimit, "capped to", maxGasLimitToExecute)
-		tx.GasLimit = maxGasLimitToExecute
+	if tx.GasLimit > executor.maxGasLimitToUse {
+		executor.log.Warn("capped the gas limit", "computed gas limit", tx.GasLimit, "capped to", executor.maxGasLimitToUse)
+		tx.GasLimit = executor.maxGasLimitToUse
 	}
 
 	err = executor.nonceTxHandler.ApplyNonceAndGasPrice(ctx, executor.senderAddress, tx)

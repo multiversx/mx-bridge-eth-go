@@ -79,6 +79,7 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chClose
 		Filter:               filter,
 		Log:                  log,
 		ExtraGasToExecute:    cfg.ExtraGasToExecute,
+		MaxGasLimitToUse:     cfg.MaxGasLimitToUse,
 		NonceTxHandler:       module.nonceTxsHandler,
 		PrivateKey:           privateKey,
 		SingleSigner:         singleSigner,

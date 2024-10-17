@@ -194,6 +194,7 @@ type PendingOperationsFilterConfig struct {
 type ScCallsModuleConfig struct {
 	ScProxyBech32Address         string
 	ExtraGasToExecute            uint64
+	MaxGasLimitToUse             uint64
 	NetworkAddress               string
 	ProxyMaxNoncesDelta          int
 	ProxyFinalityCheck           bool

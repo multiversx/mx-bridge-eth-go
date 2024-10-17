@@ -34,6 +34,7 @@ func createMockArgsScCallExecutor() ArgsScCallExecutor {
 		Filter:               &testsCommon.ScCallsExecuteFilterStub{},
 		Log:                  &testsCommon.LoggerStub{},
 		ExtraGasToExecute:    100,
+		MaxGasLimitToUse:     minGasToExecuteSCCalls,
 		NonceTxHandler:       &testsCommon.TxNonceHandlerV2Stub{},
 		PrivateKey:           testCrypto.NewPrivateKeyMock(),
 		SingleSigner:         &testCrypto.SingleSignerStub{},
@@ -188,6 +189,18 @@ func TestNewScCallExecutor(t *testing.T) {
 		assert.Nil(t, executor)
 		assert.ErrorIs(t, err, errNilCloseAppChannel)
 		assert.Contains(t, err.Error(), "while the TransactionChecks.CloseAppOnError is set to true")
+	})
+	t.Run("invalid MaxGasLimitToUse should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.TransactionChecks = createMockCheckConfigs()
+		args.MaxGasLimitToUse = minGasToExecuteSCCalls - 1
+
+		executor, err := NewScCallExecutor(args)
+		assert.Nil(t, executor)
+		assert.ErrorIs(t, err, errMaxGasLimitIsLessThanRequired)
+		assert.Contains(t, err.Error(), "provided: 2009999, absolute minimum required: 2010000")
 	})
 	t.Run("should work without transaction checks", func(t *testing.T) {
 		t.Parallel()
@@ -499,6 +512,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsScCallExecutor()
+		args.MaxGasLimitToUse = 250000000
 		args.TransactionChecks = createMockCheckConfigs()
 		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
 		txHash := "tx hash"
@@ -736,7 +750,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 				return parsers.ProxySCCompleteCallData{}, errors.New("wrong buffer")
 			},
 			ExtractGasLimitFromRawCallDataCalled: func(buff []byte) (uint64, error) {
-				return maxGasLimitToExecute - args.ExtraGasToExecute + 1, nil
+				return args.MaxGasLimitToUse - args.ExtraGasToExecute + 1, nil
 			},
 		}
 		args.Filter = &testsCommon.ScCallsExecuteFilterStub{
@@ -754,7 +768,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			SendTransactionCalled: func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {
 				assert.Equal(t, "TEST", tx.ChainID)
 				assert.Equal(t, uint32(111), tx.Version)
-				assert.Equal(t, uint64(maxGasLimitToExecute), tx.GasLimit) // the cap was done
+				assert.Equal(t, uint64(args.MaxGasLimitToUse), tx.GasLimit) // the cap was done
 				assert.Equal(t, nonceCounter-1, tx.Nonce)
 				assert.Equal(t, uint64(101010), tx.GasPrice)
 				assert.Equal(t, hex.EncodeToString([]byte("sig")), tx.Signature)

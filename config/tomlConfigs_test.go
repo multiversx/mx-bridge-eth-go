@@ -407,6 +407,7 @@ func TestScCallsExecutorConfigs(t *testing.T) {
 	expectedConfig := ScCallsModuleConfig{
 		ScProxyBech32Address:         "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s",
 		ExtraGasToExecute:            50000000,
+		MaxGasLimitToUse:             249999999,
 		NetworkAddress:               "127.0.0.1:8085",
 		ProxyMaxNoncesDelta:          7,
 		ProxyFinalityCheck:           true,
@@ -436,6 +437,7 @@ func TestScCallsExecutorConfigs(t *testing.T) {
 	testString := `
 ScProxyBech32Address = "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s"
 ExtraGasToExecute = 50000000
+MaxGasLimitToUse = 249999999 # this is a safe max gas limit to use both intra-shard & cross-shard
 NetworkAddress = "127.0.0.1:8085"
 ProxyMaxNoncesDelta = 7
 ProxyFinalityCheck = true

@@ -1,5 +1,6 @@
 ScProxyBech32Address = "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s"
 ExtraGasToExecute = 60000000 #this value allow the SC calls without provided gas limit to be refunded
+MaxGasLimitToUse = 249999999 # this is a safe max gas limit to use both intra-shard & cross-shard
 NetworkAddress = "http://127.0.0.1:8085"
 ProxyMaxNoncesDelta = 7
 ProxyFinalityCheck = true
