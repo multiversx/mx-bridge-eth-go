@@ -706,13 +706,10 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		assert.True(t, sendWasCalled)
 		assert.Equal(t, uint32(1), executor.GetNumSentTransaction())
 	})
-	t.Run("should work even if the gas limit exceeds the maximum allowed", func(t *testing.T) {
+	t.Run("should skip execution if the gas limit exceeds the maximum allowed", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsScCallExecutor()
-
-		nonceCounter := uint64(100)
-		sendWasCalled := false
 
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -760,28 +757,11 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		}
 		args.NonceTxHandler = &testsCommon.TxNonceHandlerV2Stub{
 			ApplyNonceAndGasPriceCalled: func(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error {
-				tx.Nonce = nonceCounter
-				tx.GasPrice = 101010
-				nonceCounter++
+				assert.Fail(t, "should have not apply nonce")
 				return nil
 			},
 			SendTransactionCalled: func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {
-				assert.Equal(t, "TEST", tx.ChainID)
-				assert.Equal(t, uint32(111), tx.Version)
-				assert.Equal(t, uint64(args.MaxGasLimitToUse), tx.GasLimit) // the cap was done
-				assert.Equal(t, nonceCounter-1, tx.Nonce)
-				assert.Equal(t, uint64(101010), tx.GasPrice)
-				assert.Equal(t, hex.EncodeToString([]byte("sig")), tx.Signature)
-				_, err := data.NewAddressFromBech32String(tx.Sender)
-				assert.Nil(t, err)
-				assert.Equal(t, "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e", tx.Receiver)
-				assert.Equal(t, "0", tx.Value)
-
-				// only the second pending operation gor through the filter
-				expectedData := scProxyCallFunction + "@02"
-				assert.Equal(t, expectedData, string(tx.Data))
-
-				sendWasCalled = true
+				assert.Fail(t, "should have not called send")
 
 				return "", nil
 			},
@@ -796,8 +776,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		err := executor.Execute(context.Background())
 		assert.Nil(t, err)
-		assert.True(t, sendWasCalled)
-		assert.Equal(t, uint32(1), executor.GetNumSentTransaction())
+		assert.Equal(t, uint32(0), executor.GetNumSentTransaction())
 	})
 }
 
