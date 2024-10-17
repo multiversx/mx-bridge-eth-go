@@ -8,6 +8,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 )
 
 // MultiversXClient defines the behavior of the MultiversX client able to communicate with the MultiversX chain
@@ -25,6 +26,7 @@ type MultiversXClient interface {
 	GetLastExecutedEthBatchID(ctx context.Context) (uint64, error)
 	GetLastExecutedEthTxID(ctx context.Context) (uint64, error)
 	GetCurrentNonce(ctx context.Context) (uint64, error)
+	GetBatchSCMetadata(ctx context.Context, batch *bridgeCore.TransferBatch) ([]*transaction.Events, error)
 
 	ProposeSetStatus(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error)
 	ProposeTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error)

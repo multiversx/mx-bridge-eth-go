@@ -35,6 +35,12 @@ var ErrNilStatusHandler = errors.New("nil status handler")
 // ErrFinalBatchNotFound signals that a final batch was not found
 var ErrFinalBatchNotFound = errors.New("final batch not found")
 
+// ErrBatchWithoutDeposits signals that a batch was found, but has no deposits
+var ErrBatchWithoutDeposits = errors.New("batch was found, but has no deposits")
+
+// ErrInvalidTopicsNumber signals that an invalid number of topics was provided
+var ErrInvalidTopicsNumber = errors.New("invalid number of topics")
+
 // ErrNilSignaturesHolder signals that a nil signatures holder was provided
 var ErrNilSignaturesHolder = errors.New("nil signatures holder")
 
