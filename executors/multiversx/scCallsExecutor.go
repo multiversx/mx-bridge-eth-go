@@ -28,43 +28,46 @@ const (
 	minCheckValues                 = 1
 	transactionNotFoundErrString   = "transaction not found"
 	minGasToExecuteSCCalls         = 2010000 // the absolut minimum gas limit to do a SC call
+	contractMaxGasLimit            = 249999999
 )
 
 // ArgsScCallExecutor represents the DTO struct for creating a new instance of type scCallExecutor
 type ArgsScCallExecutor struct {
-	ScProxyBech32Address string
-	Proxy                Proxy
-	Codec                Codec
-	Filter               ScCallsExecuteFilter
-	Log                  logger.Logger
-	ExtraGasToExecute    uint64
-	MaxGasLimitToUse     uint64
-	NonceTxHandler       NonceTransactionsHandler
-	PrivateKey           crypto.PrivateKey
-	SingleSigner         crypto.SingleSigner
-	TransactionChecks    config.TransactionChecksConfig
-	CloseAppChan         chan struct{}
+	ScProxyBech32Address            string
+	Proxy                           Proxy
+	Codec                           Codec
+	Filter                          ScCallsExecuteFilter
+	Log                             logger.Logger
+	ExtraGasToExecute               uint64
+	MaxGasLimitToUse                uint64
+	GasLimitForOutOfGasTransactions uint64
+	NonceTxHandler                  NonceTransactionsHandler
+	PrivateKey                      crypto.PrivateKey
+	SingleSigner                    crypto.SingleSigner
+	TransactionChecks               config.TransactionChecksConfig
+	CloseAppChan                    chan struct{}
 }
 
 type scCallExecutor struct {
-	scProxyBech32Address    string
-	proxy                   Proxy
-	codec                   Codec
-	filter                  ScCallsExecuteFilter
-	log                     logger.Logger
-	extraGasToExecute       uint64
-	maxGasLimitToUse        uint64
-	nonceTxHandler          NonceTransactionsHandler
-	privateKey              crypto.PrivateKey
-	singleSigner            crypto.SingleSigner
-	senderAddress           core.AddressHandler
-	numSentTransactions     uint32
-	checkTransactionResults bool
-	timeBetweenChecks       time.Duration
-	executionTimeout        time.Duration
-	closeAppOnError         bool
-	extraDelayOnError       time.Duration
-	closeAppChan            chan struct{}
+	scProxyBech32Address            string
+	proxy                           Proxy
+	codec                           Codec
+	filter                          ScCallsExecuteFilter
+	log                             logger.Logger
+	extraGasToExecute               uint64
+	maxGasLimitToUse                uint64
+	gasLimitForOutOfGasTransactions uint64
+	nonceTxHandler                  NonceTransactionsHandler
+	privateKey                      crypto.PrivateKey
+	singleSigner                    crypto.SingleSigner
+	senderAddress                   core.AddressHandler
+	numSentTransactions             uint32
+	checkTransactionResults         bool
+	timeBetweenChecks               time.Duration
+	executionTimeout                time.Duration
+	closeAppOnError                 bool
+	extraDelayOnError               time.Duration
+	closeAppChan                    chan struct{}
 }
 
 // NewScCallExecutor creates a new instance of type scCallExecutor
@@ -82,23 +85,24 @@ func NewScCallExecutor(args ArgsScCallExecutor) (*scCallExecutor, error) {
 	senderAddress := data.NewAddressFromBytes(publicKeyBytes)
 
 	return &scCallExecutor{
-		scProxyBech32Address:    args.ScProxyBech32Address,
-		proxy:                   args.Proxy,
-		codec:                   args.Codec,
-		filter:                  args.Filter,
-		log:                     args.Log,
-		extraGasToExecute:       args.ExtraGasToExecute,
-		maxGasLimitToUse:        args.MaxGasLimitToUse,
-		nonceTxHandler:          args.NonceTxHandler,
-		privateKey:              args.PrivateKey,
-		singleSigner:            args.SingleSigner,
-		senderAddress:           senderAddress,
-		checkTransactionResults: args.TransactionChecks.CheckTransactionResults,
-		timeBetweenChecks:       time.Second * time.Duration(args.TransactionChecks.TimeInSecondsBetweenChecks),
-		executionTimeout:        time.Second * time.Duration(args.TransactionChecks.ExecutionTimeoutInSeconds),
-		closeAppOnError:         args.TransactionChecks.CloseAppOnError,
-		extraDelayOnError:       time.Second * time.Duration(args.TransactionChecks.ExtraDelayInSecondsOnError),
-		closeAppChan:            args.CloseAppChan,
+		scProxyBech32Address:            args.ScProxyBech32Address,
+		proxy:                           args.Proxy,
+		codec:                           args.Codec,
+		filter:                          args.Filter,
+		log:                             args.Log,
+		extraGasToExecute:               args.ExtraGasToExecute,
+		maxGasLimitToUse:                args.MaxGasLimitToUse,
+		gasLimitForOutOfGasTransactions: args.GasLimitForOutOfGasTransactions,
+		nonceTxHandler:                  args.NonceTxHandler,
+		privateKey:                      args.PrivateKey,
+		singleSigner:                    args.SingleSigner,
+		senderAddress:                   senderAddress,
+		checkTransactionResults:         args.TransactionChecks.CheckTransactionResults,
+		timeBetweenChecks:               time.Second * time.Duration(args.TransactionChecks.TimeInSecondsBetweenChecks),
+		executionTimeout:                time.Second * time.Duration(args.TransactionChecks.ExecutionTimeoutInSeconds),
+		closeAppOnError:                 args.TransactionChecks.CloseAppOnError,
+		extraDelayOnError:               time.Second * time.Duration(args.TransactionChecks.ExtraDelayInSecondsOnError),
+		closeAppChan:                    args.CloseAppChan,
 	}, nil
 }
 
@@ -125,7 +129,10 @@ func checkArgs(args ArgsScCallExecutor) error {
 		return errNilSingleSigner
 	}
 	if args.MaxGasLimitToUse < minGasToExecuteSCCalls {
-		return fmt.Errorf("%w: provided: %d, absolute minimum required: %d", errMaxGasLimitIsLessThanRequired, args.MaxGasLimitToUse, minGasToExecuteSCCalls)
+		return fmt.Errorf("%w for MaxGasLimitToUse: provided: %d, absolute minimum required: %d", errGasLimitIsLessThanAbsoluteMinimum, args.MaxGasLimitToUse, minGasToExecuteSCCalls)
+	}
+	if args.GasLimitForOutOfGasTransactions < minGasToExecuteSCCalls {
+		return fmt.Errorf("%w for GasLimitForOutOfGasTransactions: provided: %d, absolute minimum required: %d", errGasLimitIsLessThanAbsoluteMinimum, args.GasLimitForOutOfGasTransactions, minGasToExecuteSCCalls)
 	}
 	err := checkTransactionChecksConfig(args)
 	if err != nil {
@@ -287,8 +294,23 @@ func (executor *scCallExecutor) executeOperation(
 		Value:    "0",
 	}
 
+	to, _ := callData.To.AddressAsBech32String()
+	if tx.GasLimit > contractMaxGasLimit {
+		// the contract will refund this transaction, so we will use less gas to preserve funds
+		executor.log.Warn("setting a lower gas limit for this transaction because it will be refunded",
+			"computed gas limit", tx.GasLimit,
+			"max allowed", executor.maxGasLimitToUse,
+			"data", dataBytes,
+			"from", callData.From.Hex(),
+			"to", to,
+			"token", callData.Token,
+			"amount", callData.Amount,
+			"nonce", callData.Nonce,
+		)
+		tx.GasLimit = executor.gasLimitForOutOfGasTransactions
+	}
+
 	if tx.GasLimit > executor.maxGasLimitToUse {
-		to, _ := callData.To.AddressAsBech32String()
 		executor.log.Warn("can not execute transaction because the provided gas limit on the SC call exceeds "+
 			"the maximum gas limit allowance for this executor, WILL SKIP the execution",
 			"computed gas limit", tx.GasLimit,
@@ -324,7 +346,8 @@ func (executor *scCallExecutor) executeOperation(
 		"tx ID", id,
 		"call data", callData.String(),
 		"extra gas", executor.extraGasToExecute,
-		"sender", bech32Address)
+		"sender", bech32Address,
+		"to", to)
 
 	atomic.AddUint32(&executor.numSentTransactions, 1)
 

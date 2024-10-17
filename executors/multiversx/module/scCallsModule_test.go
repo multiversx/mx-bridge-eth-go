@@ -11,17 +11,18 @@ import (
 
 func createTestConfigs() config.ScCallsModuleConfig {
 	return config.ScCallsModuleConfig{
-		ScProxyBech32Address:         "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
-		ExtraGasToExecute:            6000000,
-		MaxGasLimitToUse:             249999999,
-		NetworkAddress:               "http://127.0.0.1:8079",
-		ProxyMaxNoncesDelta:          5,
-		ProxyFinalityCheck:           false,
-		ProxyCacherExpirationSeconds: 60,
-		ProxyRestAPIEntityType:       string(sdkCore.ObserverNode),
-		IntervalToResendTxsInSeconds: 1,
-		PrivateKeyFile:               "testdata/grace.pem",
-		PollingIntervalInMillis:      10000,
+		ScProxyBech32Address:            "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+		ExtraGasToExecute:               6000000,
+		MaxGasLimitToUse:                249999999,
+		GasLimitForOutOfGasTransactions: 30000000,
+		NetworkAddress:                  "http://127.0.0.1:8079",
+		ProxyMaxNoncesDelta:             5,
+		ProxyFinalityCheck:              false,
+		ProxyCacherExpirationSeconds:    60,
+		ProxyRestAPIEntityType:          string(sdkCore.ObserverNode),
+		IntervalToResendTxsInSeconds:    1,
+		PrivateKeyFile:                  "testdata/grace.pem",
+		PollingIntervalInMillis:         10000,
 		Filter: config.PendingOperationsFilterConfig{
 			DeniedEthAddresses:  nil,
 			AllowedEthAddresses: []string{"*"},
@@ -98,6 +99,8 @@ func TestNewScCallsModule(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, module)
 
+		assert.Zero(t, module.GetNumSentTransaction())
+
 		err = module.Close()
 		assert.Nil(t, err)
 	})
@@ -112,6 +115,8 @@ func TestNewScCallsModule(t *testing.T) {
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, make(chan struct{}, 1))
 		assert.Nil(t, err)
 		assert.NotNil(t, module)
+
+		assert.Zero(t, module.GetNumSentTransaction())
 
 		err = module.Close()
 		assert.Nil(t, err)
