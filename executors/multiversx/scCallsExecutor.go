@@ -289,7 +289,8 @@ func (executor *scCallExecutor) executeOperation(
 
 	if tx.GasLimit > executor.maxGasLimitToUse {
 		to, _ := callData.To.AddressAsBech32String()
-		executor.log.Warn("can not execute transaction do to exceeding gas limit usage, will skip",
+		executor.log.Warn("can not execute transaction because the provided gas limit on the SC call exceeds "+
+			"the maximum gas limit allowance for this executor, WILL SKIP the execution",
 			"computed gas limit", tx.GasLimit,
 			"max allowed", executor.maxGasLimitToUse,
 			"data", dataBytes,
