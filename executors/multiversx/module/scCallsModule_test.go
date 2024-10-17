@@ -12,7 +12,8 @@ import (
 func createTestConfigs() config.ScCallsModuleConfig {
 	return config.ScCallsModuleConfig{
 		ScProxyBech32Address:         "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
-		ExtraGasToExecute:            1000,
+		ExtraGasToExecute:            6000000,
+		MaxGasLimitToUse:             249999999,
 		NetworkAddress:               "http://127.0.0.1:8079",
 		ProxyMaxNoncesDelta:          5,
 		ProxyFinalityCheck:           false,

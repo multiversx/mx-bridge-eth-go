@@ -34,6 +34,7 @@ func createMockArgsScCallExecutor() ArgsScCallExecutor {
 		Filter:               &testsCommon.ScCallsExecuteFilterStub{},
 		Log:                  &testsCommon.LoggerStub{},
 		ExtraGasToExecute:    100,
+		MaxGasLimitToUse:     minGasToExecuteSCCalls,
 		NonceTxHandler:       &testsCommon.TxNonceHandlerV2Stub{},
 		PrivateKey:           testCrypto.NewPrivateKeyMock(),
 		SingleSigner:         &testCrypto.SingleSignerStub{},
@@ -188,6 +189,18 @@ func TestNewScCallExecutor(t *testing.T) {
 		assert.Nil(t, executor)
 		assert.ErrorIs(t, err, errNilCloseAppChannel)
 		assert.Contains(t, err.Error(), "while the TransactionChecks.CloseAppOnError is set to true")
+	})
+	t.Run("invalid MaxGasLimitToUse should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.TransactionChecks = createMockCheckConfigs()
+		args.MaxGasLimitToUse = minGasToExecuteSCCalls - 1
+
+		executor, err := NewScCallExecutor(args)
+		assert.Nil(t, executor)
+		assert.ErrorIs(t, err, errMaxGasLimitIsLessThanRequired)
+		assert.Contains(t, err.Error(), "provided: 2009999, absolute minimum required: 2010000")
 	})
 	t.Run("should work without transaction checks", func(t *testing.T) {
 		t.Parallel()
@@ -499,6 +512,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsScCallExecutor()
+		args.MaxGasLimitToUse = 250000000
 		args.TransactionChecks = createMockCheckConfigs()
 		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
 		txHash := "tx hash"
@@ -662,6 +676,99 @@ func TestScCallExecutor_Execute(t *testing.T) {
 				assert.Equal(t, "TEST", tx.ChainID)
 				assert.Equal(t, uint32(111), tx.Version)
 				assert.Equal(t, args.ExtraGasToExecute, tx.GasLimit) // no 5000000 added gas limit because it wasn't extracted
+				assert.Equal(t, nonceCounter-1, tx.Nonce)
+				assert.Equal(t, uint64(101010), tx.GasPrice)
+				assert.Equal(t, hex.EncodeToString([]byte("sig")), tx.Signature)
+				_, err := data.NewAddressFromBech32String(tx.Sender)
+				assert.Nil(t, err)
+				assert.Equal(t, "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e", tx.Receiver)
+				assert.Equal(t, "0", tx.Value)
+
+				// only the second pending operation gor through the filter
+				expectedData := scProxyCallFunction + "@02"
+				assert.Equal(t, expectedData, string(tx.Data))
+
+				sendWasCalled = true
+
+				return "", nil
+			},
+		}
+		args.SingleSigner = &testCrypto.SingleSignerStub{
+			SignCalled: func(private crypto.PrivateKey, msg []byte) ([]byte, error) {
+				return []byte("sig"), nil
+			},
+		}
+
+		executor, _ := NewScCallExecutor(args)
+
+		err := executor.Execute(context.Background())
+		assert.Nil(t, err)
+		assert.True(t, sendWasCalled)
+		assert.Equal(t, uint32(1), executor.GetNumSentTransaction())
+	})
+	t.Run("should work even if the gas limit exceeds the maximum allowed", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+
+		nonceCounter := uint64(100)
+		sendWasCalled := false
+
+		args.Proxy = &interactors.ProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				assert.Equal(t, args.ScProxyBech32Address, vmRequest.Address)
+				assert.Equal(t, getPendingTransactionsFunction, vmRequest.FuncName)
+
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{
+							{0x01},
+							[]byte("ProxySCCompleteCallData 1"),
+							{0x02},
+							[]byte("ProxySCCompleteCallData 2"),
+						},
+					},
+				}, nil
+			},
+			GetNetworkConfigCalled: func(ctx context.Context) (*data.NetworkConfig, error) {
+				return &data.NetworkConfig{
+					ChainID:               "TEST",
+					MinTransactionVersion: 111,
+				}, nil
+			},
+		}
+		args.Codec = &testsCommon.MultiversxCodecStub{
+			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (parsers.ProxySCCompleteCallData, error) {
+				if string(buff) == "ProxySCCompleteCallData 1" {
+					return createTestProxySCCompleteCallData("tkn1"), nil
+				}
+				if string(buff) == "ProxySCCompleteCallData 2" {
+					return createTestProxySCCompleteCallData("tkn2"), nil
+				}
+
+				return parsers.ProxySCCompleteCallData{}, errors.New("wrong buffer")
+			},
+			ExtractGasLimitFromRawCallDataCalled: func(buff []byte) (uint64, error) {
+				return args.MaxGasLimitToUse - args.ExtraGasToExecute + 1, nil
+			},
+		}
+		args.Filter = &testsCommon.ScCallsExecuteFilterStub{
+			ShouldExecuteCalled: func(callData parsers.ProxySCCompleteCallData) bool {
+				return callData.Token == "tkn2"
+			},
+		}
+		args.NonceTxHandler = &testsCommon.TxNonceHandlerV2Stub{
+			ApplyNonceAndGasPriceCalled: func(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error {
+				tx.Nonce = nonceCounter
+				tx.GasPrice = 101010
+				nonceCounter++
+				return nil
+			},
+			SendTransactionCalled: func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {
+				assert.Equal(t, "TEST", tx.ChainID)
+				assert.Equal(t, uint32(111), tx.Version)
+				assert.Equal(t, uint64(args.MaxGasLimitToUse), tx.GasLimit) // the cap was done
 				assert.Equal(t, nonceCounter-1, tx.Nonce)
 				assert.Equal(t, uint64(101010), tx.GasPrice)
 				assert.Equal(t, hex.EncodeToString([]byte("sig")), tx.Signature)
