@@ -27,6 +27,7 @@ const (
 	scProxyCallFunction            = "execute"
 	minCheckValues                 = 1
 	transactionNotFoundErrString   = "transaction not found"
+	maxGasLimitToExecute           = 249999999 // 250 million - 1
 )
 
 // ArgsScCallExecutor represents the DTO struct for creating a new instance of type scCallExecutor
@@ -278,6 +279,11 @@ func (executor *scCallExecutor) executeOperation(
 		Sender:   bech32Address,
 		Receiver: executor.scProxyBech32Address,
 		Value:    "0",
+	}
+
+	if tx.GasLimit > maxGasLimitToExecute {
+		executor.log.Warn("capped the gas limit", "computed gas limit", tx.GasLimit, "capped to", maxGasLimitToExecute)
+		tx.GasLimit = maxGasLimitToExecute
 	}
 
 	err = executor.nonceTxHandler.ApplyNonceAndGasPrice(ctx, executor.senderAddress, tx)
