@@ -111,20 +111,21 @@ func startExecutor(ctx *cli.Context, version string) error {
 	}
 
 	args := config.ScCallsModuleConfig{
-		ScProxyBech32Address:         cfg.ScProxyBech32Address,
-		ExtraGasToExecute:            cfg.ExtraGasToExecute,
-		MaxGasLimitToUse:             cfg.MaxGasLimitToUse,
-		NetworkAddress:               cfg.NetworkAddress,
-		ProxyMaxNoncesDelta:          cfg.ProxyMaxNoncesDelta,
-		ProxyFinalityCheck:           cfg.ProxyFinalityCheck,
-		ProxyCacherExpirationSeconds: cfg.ProxyCacherExpirationSeconds,
-		ProxyRestAPIEntityType:       cfg.ProxyRestAPIEntityType,
-		IntervalToResendTxsInSeconds: cfg.IntervalToResendTxsInSeconds,
-		PrivateKeyFile:               cfg.PrivateKeyFile,
-		PollingIntervalInMillis:      cfg.PollingIntervalInMillis,
-		Filter:                       cfg.Filter,
-		Logs:                         cfg.Logs,
-		TransactionChecks:            cfg.TransactionChecks,
+		ScProxyBech32Address:            cfg.ScProxyBech32Address,
+		ExtraGasToExecute:               cfg.ExtraGasToExecute,
+		MaxGasLimitToUse:                cfg.MaxGasLimitToUse,
+		GasLimitForOutOfGasTransactions: cfg.GasLimitForOutOfGasTransactions,
+		NetworkAddress:                  cfg.NetworkAddress,
+		ProxyMaxNoncesDelta:             cfg.ProxyMaxNoncesDelta,
+		ProxyFinalityCheck:              cfg.ProxyFinalityCheck,
+		ProxyCacherExpirationSeconds:    cfg.ProxyCacherExpirationSeconds,
+		ProxyRestAPIEntityType:          cfg.ProxyRestAPIEntityType,
+		IntervalToResendTxsInSeconds:    cfg.IntervalToResendTxsInSeconds,
+		PrivateKeyFile:                  cfg.PrivateKeyFile,
+		PollingIntervalInMillis:         cfg.PollingIntervalInMillis,
+		Filter:                          cfg.Filter,
+		Logs:                            cfg.Logs,
+		TransactionChecks:               cfg.TransactionChecks,
 	}
 
 	chCloseApp := make(chan struct{}, 1)
