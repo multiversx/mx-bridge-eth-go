@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -35,6 +34,7 @@ var pausedBytes = []byte{1}
 func createMockClientArgs() ClientArgs {
 	privateKey, _ := testKeyGen.PrivateKeyFromByteArray(bytes.Repeat([]byte{1}, 32))
 	multisigContractAddress, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
+	safeContractAddress, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus")
 
 	return ClientArgs{
 		GasMapConfig: config.MultiversXGasMapConfig{
@@ -45,20 +45,23 @@ func createMockClientArgs() ClientArgs {
 			ProposeStatusForEach:   50,
 			PerformActionBase:      60,
 			PerformActionForEach:   70,
+			ScCallPerByte:          80,
+			ScCallPerformForEach:   90,
 		},
 		Proxy:                        &interactors.ProxyStub{},
 		Log:                          logger.GetOrCreate("test"),
 		RelayerPrivateKey:            privateKey,
 		MultisigContractAddress:      multisigContractAddress,
+		SafeContractAddress:          safeContractAddress,
 		IntervalToResendTxsInSeconds: 1,
 		TokensMapper: &bridgeTests.TokensMapperStub{
 			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
 				return append([]byte("converted "), sourceBytes...), nil
 			},
 		},
-		RoleProvider:  &roleproviders.MultiversXRoleProviderStub{},
-		StatusHandler: &testsCommon.StatusHandlerStub{},
-		AllowDelta:    5,
+		RoleProvider:                 &roleproviders.MultiversXRoleProviderStub{},
+		StatusHandler:                &testsCommon.StatusHandlerStub{},
+		ClientAvailabilityAllowDelta: 5,
 	}
 }
 
@@ -117,6 +120,17 @@ func TestNewClient(t *testing.T) {
 
 		args := createMockClientArgs()
 		args.MultisigContractAddress = nil
+
+		c, err := NewClient(args)
+
+		require.True(t, check.IfNil(c))
+		require.True(t, errors.Is(err, errNilAddressHandler))
+	})
+	t.Run("nil safe contract address should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.SafeContractAddress = nil
 
 		c, err := NewClient(args)
 
@@ -191,17 +205,17 @@ func TestNewClient(t *testing.T) {
 		require.True(t, check.IfNil(c))
 		require.Equal(t, clients.ErrNilStatusHandler, err)
 	})
-	t.Run("invalid AllowDelta should error", func(t *testing.T) {
+	t.Run("invalid ClientAvailabilityAllowDelta should error", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockClientArgs()
-		args.AllowDelta = 0
+		args.ClientAvailabilityAllowDelta = 0
 
 		c, err := NewClient(args)
 
 		require.True(t, check.IfNil(c))
 		require.True(t, errors.Is(err, clients.ErrInvalidValue))
-		require.True(t, strings.Contains(err.Error(), "for args.AllowedDelta"))
+		require.True(t, strings.Contains(err.Error(), "for args.ClientAvailabilityAllowDelta"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -214,7 +228,7 @@ func TestNewClient(t *testing.T) {
 	})
 }
 
-func TestClient_GetPending(t *testing.T) {
+func TestClient_GetPendingBatch(t *testing.T) {
 	t.Parallel()
 
 	t.Run("get pending batch failed should error", func(t *testing.T) {
@@ -229,7 +243,7 @@ func TestClient_GetPending(t *testing.T) {
 		}
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 		assert.Nil(t, batch)
 		assert.Equal(t, expectedErr, err)
 	})
@@ -240,9 +254,9 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy(make([][]byte, 0))
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 		assert.Nil(t, batch)
-		assert.Equal(t, ErrNoPendingBatchAvailable, err)
+		assert.Equal(t, clients.ErrNoPendingBatchAvailable, err)
 	})
 	t.Run("invalid length", func(t *testing.T) {
 		t.Parallel()
@@ -252,7 +266,7 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy(buff[:len(buff)-1])
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, errInvalidNumberOfArguments))
@@ -261,7 +275,7 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy([][]byte{{1}})
 		c, _ = NewClient(args)
 
-		batch, err = c.GetPending(context.Background())
+		batch, err = c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, errInvalidNumberOfArguments))
@@ -276,7 +290,7 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy(buff)
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, errNotUint64Bytes))
@@ -291,7 +305,7 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy(buff)
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, errNotUint64Bytes))
@@ -311,7 +325,7 @@ func TestClient_GetPending(t *testing.T) {
 		args.Proxy = createMockProxy(buff)
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 
 		assert.Nil(t, batch)
 		assert.True(t, errors.Is(err, expectedErr))
@@ -330,37 +344,37 @@ func TestClient_GetPending(t *testing.T) {
 
 		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
 		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
-		expectedBatch := &clients.TransferBatch{
+		expectedBatch := &bridgeCore.TransferBatch{
 			ID: 44562,
-			Deposits: []*clients.DepositTransfer{
+			Deposits: []*bridgeCore.DepositTransfer{
 				{
-					Nonce:               5000,
-					ToBytes:             bytes.Repeat([]byte{2}, 20),
-					DisplayableTo:       "0x0202020202020202020202020202020202020202",
-					FromBytes:           bytes.Repeat([]byte{1}, 32),
-					DisplayableFrom:     "erd1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsl6e0p7",
-					TokenBytes:          tokenBytes1,
-					ConvertedTokenBytes: append([]byte("converted_"), tokenBytes1...),
-					DisplayableToken:    string(tokenBytes1),
-					Amount:              big.NewInt(10000),
+					Nonce:                 5000,
+					ToBytes:               bytes.Repeat([]byte{2}, 20),
+					DisplayableTo:         "0x0202020202020202020202020202020202020202",
+					FromBytes:             bytes.Repeat([]byte{1}, 32),
+					DisplayableFrom:       "erd1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsl6e0p7",
+					SourceTokenBytes:      tokenBytes1,
+					DestinationTokenBytes: append([]byte("converted_"), tokenBytes1...),
+					DisplayableToken:      string(tokenBytes1),
+					Amount:                big.NewInt(10000),
 				},
 				{
-					Nonce:               5001,
-					ToBytes:             bytes.Repeat([]byte{5}, 20),
-					DisplayableTo:       "0x0505050505050505050505050505050505050505",
-					FromBytes:           bytes.Repeat([]byte{4}, 32),
-					DisplayableFrom:     "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn",
-					TokenBytes:          tokenBytes2,
-					ConvertedTokenBytes: append([]byte("converted_"), tokenBytes2...),
-					DisplayableToken:    string(tokenBytes2),
-					Amount:              big.NewInt(20000),
+					Nonce:                 5001,
+					ToBytes:               bytes.Repeat([]byte{5}, 20),
+					DisplayableTo:         "0x0505050505050505050505050505050505050505",
+					FromBytes:             bytes.Repeat([]byte{4}, 32),
+					DisplayableFrom:       "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn",
+					SourceTokenBytes:      tokenBytes2,
+					DestinationTokenBytes: append([]byte("converted_"), tokenBytes2...),
+					DisplayableToken:      string(tokenBytes2),
+					Amount:                big.NewInt(20000),
 				},
 			},
 			Statuses: make([]byte, 2),
 		}
 
 		c, _ := NewClient(args)
-		batch, err := c.GetPending(context.Background())
+		batch, err := c.GetPendingBatch(context.Background())
 		assert.Nil(t, err)
 
 		args.Log.Info("expected batch\n" + expectedBatch.String())
@@ -369,7 +383,163 @@ func TestClient_GetPending(t *testing.T) {
 		assert.Equal(t, expectedBatch, batch)
 		assert.Nil(t, err)
 	})
+}
 
+func TestClient_GetBatch(t *testing.T) {
+	t.Parallel()
+
+	t.Run("get batch failed should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		expectedErr := errors.New("expected error")
+		args.Proxy = &interactors.ProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return nil, expectedErr
+			},
+		}
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+		assert.Nil(t, batch)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("empty response", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+		assert.Nil(t, batch)
+		assert.Equal(t, clients.ErrNoBatchAvailable, err)
+	})
+	t.Run("invalid length", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		buff := createMockPendingBatchBytes(2)
+		args.Proxy = createMockProxy(buff[:len(buff)-1])
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, errInvalidNumberOfArguments))
+		assert.True(t, strings.Contains(err.Error(), "got 12 argument(s)"))
+
+		args.Proxy = createMockProxy([][]byte{{1}})
+		c, _ = NewClient(args)
+
+		batch, err = c.GetBatch(context.Background(), 37)
+
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, errInvalidNumberOfArguments))
+		assert.True(t, strings.Contains(err.Error(), "got 1 argument(s)"))
+	})
+	t.Run("invalid batch ID", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		buff := createMockPendingBatchBytes(2)
+		buff[0] = bytes.Repeat([]byte{1}, 32)
+		args.Proxy = createMockProxy(buff)
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, strings.Contains(err.Error(), "while parsing batch ID"))
+	})
+	t.Run("invalid deposit nonce", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		buff := createMockPendingBatchBytes(2)
+		buff[8] = bytes.Repeat([]byte{1}, 32)
+		args.Proxy = createMockProxy(buff)
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, errNotUint64Bytes))
+		assert.True(t, strings.Contains(err.Error(), "while parsing the deposit nonce, transfer index 1"))
+	})
+	t.Run("tokens mapper errors", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		expectedErr := errors.New("expected error in convert tokens")
+		args.TokensMapper = &bridgeTests.TokensMapperStub{
+			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
+				return nil, expectedErr
+			},
+		}
+		buff := createMockPendingBatchBytes(2)
+		args.Proxy = createMockProxy(buff)
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 37)
+
+		assert.Nil(t, batch)
+		assert.True(t, errors.Is(err, expectedErr))
+		assert.True(t, strings.Contains(err.Error(), "while converting token bytes, transfer index 0"))
+	})
+	t.Run("should create pending batch", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.TokensMapper = &bridgeTests.TokensMapperStub{
+			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
+				return append([]byte("converted_"), sourceBytes...), nil
+			},
+		}
+		args.Proxy = createMockProxy(createMockPendingBatchBytes(2))
+
+		tokenBytes1 := bytes.Repeat([]byte{3}, 32)
+		tokenBytes2 := bytes.Repeat([]byte{6}, 32)
+		expectedBatch := &bridgeCore.TransferBatch{
+			ID: 44562,
+			Deposits: []*bridgeCore.DepositTransfer{
+				{
+					Nonce:                 5000,
+					ToBytes:               bytes.Repeat([]byte{2}, 20),
+					DisplayableTo:         "0x0202020202020202020202020202020202020202",
+					FromBytes:             bytes.Repeat([]byte{1}, 32),
+					DisplayableFrom:       "erd1qyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsl6e0p7",
+					SourceTokenBytes:      tokenBytes1,
+					DestinationTokenBytes: append([]byte("converted_"), tokenBytes1...),
+					DisplayableToken:      string(tokenBytes1),
+					Amount:                big.NewInt(10000),
+				},
+				{
+					Nonce:                 5001,
+					ToBytes:               bytes.Repeat([]byte{5}, 20),
+					DisplayableTo:         "0x0505050505050505050505050505050505050505",
+					FromBytes:             bytes.Repeat([]byte{4}, 32),
+					DisplayableFrom:       "erd1qszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqxjfvxn",
+					SourceTokenBytes:      tokenBytes2,
+					DestinationTokenBytes: append([]byte("converted_"), tokenBytes2...),
+					DisplayableToken:      string(tokenBytes2),
+					Amount:                big.NewInt(20000),
+				},
+			},
+			Statuses: make([]byte, 2),
+		}
+
+		c, _ := NewClient(args)
+		batch, err := c.GetBatch(context.Background(), 44562)
+		assert.Nil(t, err)
+
+		args.Log.Info("expected batch\n" + expectedBatch.String())
+		args.Log.Info("batch\n" + batch.String())
+
+		assert.Equal(t, expectedBatch, batch)
+		assert.Nil(t, err)
+	})
 }
 
 func TestClient_ProposeSetStatus(t *testing.T) {
@@ -397,7 +567,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeSetStatus(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeSetStatus(context.Background(), &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -417,7 +587,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeSetStatus(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeSetStatus(context.Background(), &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -440,7 +610,7 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 					proposeSetStatusFuncName,
 					hex.EncodeToString(big.NewInt(112233).Bytes()),
 				}
-				expectedStatus := []byte{clients.Rejected, clients.Executed}
+				expectedStatus := []byte{bridgeCore.Rejected, bridgeCore.Executed}
 				for _, stat := range expectedStatus {
 					expectedArgs = append(expectedArgs, hex.EncodeToString([]byte{stat}))
 				}
@@ -486,7 +656,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeTransfer(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeTransfer(context.Background(), &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -506,7 +676,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.ProposeTransfer(context.Background(), &clients.TransferBatch{})
+		hash, err := c.ProposeTransfer(context.Background(), &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -532,7 +702,7 @@ func TestClient_ProposeTransfer(t *testing.T) {
 					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
 				}
 				for _, dt := range batch.Deposits {
-					dataStrings = append(dataStrings, depositToStrings(dt)...)
+					dataStrings = append(dataStrings, depositToString(dt))
 				}
 
 				expectedDataField := strings.Join(dataStrings, "@")
@@ -550,16 +720,63 @@ func TestClient_ProposeTransfer(t *testing.T) {
 		assert.Equal(t, expectedHash, hash)
 		assert.True(t, sendWasCalled)
 	})
+	t.Run("should propose transfer with SC call", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+		expectedHash := "expected hash"
+		c, _ := NewClient(args)
+		sendWasCalled := false
+		batch := createMockBatch()
+		batch.Deposits[0].Data = bridgeTests.CallDataMock
+		var err error
+		batch.Deposits[0].DisplayableData = hex.EncodeToString(batch.Deposits[0].Data)
+
+		c.txHandler = &bridgeTests.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+				sendWasCalled = true
+
+				dataField, errConvert := builder.ToDataString()
+				assert.Nil(t, errConvert)
+
+				dataStrings := []string{
+					proposeTransferFuncName,
+					hex.EncodeToString(big.NewInt(int64(batch.ID)).Bytes()),
+				}
+				extraGas := uint64(0)
+				for _, dt := range batch.Deposits {
+					dataStrings = append(dataStrings, depositToString(dt))
+					if bytes.Equal(dt.Data, []byte{bridgeCore.MissingDataProtocolMarker}) {
+						continue
+					}
+					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
+				}
+
+				expectedDataField := strings.Join(dataStrings, "@")
+				assert.Equal(t, expectedDataField, dataField)
+
+				expectedGasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach + extraGas
+				assert.Equal(t, expectedGasLimit, gasLimit)
+
+				return expectedHash, nil
+			},
+		}
+
+		hash, err := c.ProposeTransfer(context.Background(), batch)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedHash, hash)
+		assert.True(t, sendWasCalled)
+	})
 }
 
-func depositToStrings(dt *clients.DepositTransfer) []string {
-	result := []string{
-		hex.EncodeToString(dt.FromBytes),
-		hex.EncodeToString(dt.ToBytes),
-		hex.EncodeToString(dt.ConvertedTokenBytes),
-		hex.EncodeToString(dt.Amount.Bytes()),
-		hex.EncodeToString(big.NewInt(int64(dt.Nonce)).Bytes()),
-	}
+func depositToString(dt *bridgeCore.DepositTransfer) string {
+	result := hex.EncodeToString(dt.FromBytes)
+	result = result + "@" + hex.EncodeToString(dt.ToBytes)
+	result = result + "@" + hex.EncodeToString(dt.DestinationTokenBytes)
+	result = result + "@" + hex.EncodeToString(dt.Amount.Bytes())
+	result = result + "@" + hex.EncodeToString(big.NewInt(0).SetUint64(dt.Nonce).Bytes())
+	result = result + "@" + hex.EncodeToString(dt.Data)
 
 	return result
 }
@@ -659,7 +876,7 @@ func TestClient_PerformAction(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.PerformAction(context.Background(), actionID, &clients.TransferBatch{})
+		hash, err := c.PerformAction(context.Background(), actionID, &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
@@ -679,7 +896,7 @@ func TestClient_PerformAction(t *testing.T) {
 		}
 		c, _ := NewClient(args)
 
-		hash, err := c.PerformAction(context.Background(), actionID, &clients.TransferBatch{})
+		hash, err := c.PerformAction(context.Background(), actionID, &bridgeCore.TransferBatch{})
 		assert.Empty(t, hash)
 		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
 	})
@@ -706,8 +923,57 @@ func TestClient_PerformAction(t *testing.T) {
 				}
 				expectedDataField := strings.Join(dataStrings, "@")
 				assert.Equal(t, expectedDataField, dataField)
-				expectedGasdLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
-				assert.Equal(t, expectedGasdLimit, gasLimit)
+				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+				assert.Equal(t, expectedGasLimit, gasLimit)
+
+				return expectedHash, nil
+			},
+		}
+
+		hash, err := c.PerformAction(context.Background(), actionID, batch)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedHash, hash)
+		assert.True(t, sendWasCalled)
+	})
+	t.Run("should perform action with SC call", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+		expectedHash := "expected hash"
+		c, _ := NewClient(args)
+		sendWasCalled := false
+		batch := createMockBatch()
+		batch.Deposits[0].Data = bridgeTests.CallDataMock
+		var err error
+		batch.Deposits[0].DisplayableData = hex.EncodeToString(batch.Deposits[0].Data)
+
+		c.txHandler = &bridgeTests.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+				sendWasCalled = true
+
+				dataField, errConvert := builder.ToDataString()
+				assert.Nil(t, errConvert)
+
+				dataStrings := []string{
+					performActionFuncName,
+					hex.EncodeToString(big.NewInt(int64(actionID)).Bytes()),
+				}
+				expectedDataField := strings.Join(dataStrings, "@")
+				assert.Equal(t, expectedDataField, dataField)
+
+				extraGas := uint64(0)
+				for _, dt := range batch.Deposits {
+					if bytes.Equal(dt.Data, []byte{bridgeCore.MissingDataProtocolMarker}) {
+						continue
+					}
+					extraGas += (uint64(len(dt.Data))*2 + 1) * args.GasMapConfig.ScCallPerByte
+					extraGas += args.GasMapConfig.ScCallPerformForEach
+				}
+
+				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+				expectedGasLimit += extraGas
+				assert.Equal(t, expectedGasLimit, gasLimit)
 
 				return expectedHash, nil
 			},
@@ -766,7 +1032,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+			checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 		}
 		assert.True(t, statusHandler.GetIntMetric(bridgeCore.MetricLastBlockNonce) > 0)
 	})
@@ -777,21 +1043,21 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		incrementor = 0
 
 		// place a random message as to test it is reset
-		statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, ethmultiversx.ClientStatus(3).String())
+		statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, bridgeCore.ClientStatus(3).String())
 		statusHandler.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, "random")
 
 		// this will just increment the retry counter
-		for i := 0; i < int(args.AllowDelta); i++ {
+		for i := 0; i < int(args.ClientAvailabilityAllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+			checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
-			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
+			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.ClientAvailabilityAllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
+			checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, message)
 		}
 	})
 	t.Run("same current nonce should error after a while and then recovers", func(t *testing.T) {
@@ -801,24 +1067,24 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		incrementor = 0
 
 		// this will just increment the retry counter
-		for i := 0; i < int(args.AllowDelta); i++ {
+		for i := 0; i < int(args.ClientAvailabilityAllowDelta); i++ {
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+			checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 		}
 
 		for i := 0; i < 10; i++ {
-			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.AllowDelta+uint64(i+1))
+			message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, args.ClientAvailabilityAllowDelta+uint64(i+1))
 			err := c.CheckClientAvailability(context.Background())
 			assert.Nil(t, err)
-			checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, message)
+			checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, message)
 		}
 
 		incrementor = 1
 
 		err := c.CheckClientAvailability(context.Background())
 		assert.Nil(t, err)
-		checkStatusHandler(t, statusHandler, ethmultiversx.Available, "")
+		checkStatusHandler(t, statusHandler, bridgeCore.Available, "")
 	})
 	t.Run("get current nonce errors", func(t *testing.T) {
 		resetClient(c)
@@ -832,7 +1098,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 		}
 
 		err := c.CheckClientAvailability(context.Background())
-		checkStatusHandler(t, statusHandler, ethmultiversx.Unavailable, expectedErr.Error())
+		checkStatusHandler(t, statusHandler, bridgeCore.Unavailable, expectedErr.Error())
 		assert.Equal(t, expectedErr, err)
 	})
 }
@@ -846,7 +1112,7 @@ func resetClient(c *client) {
 	c.statusHandler.SetIntMetric(bridgeCore.MetricLastBlockNonce, 0)
 }
 
-func checkStatusHandler(t *testing.T, statusHandler *testsCommon.StatusHandlerMock, status ethmultiversx.ClientStatus, message string) {
+func checkStatusHandler(t *testing.T, statusHandler *testsCommon.StatusHandlerMock, status bridgeCore.ClientStatus, message string) {
 	assert.Equal(t, status.String(), statusHandler.GetStringMetric(bridgeCore.MetricMultiversXClientStatus))
 	assert.Equal(t, message, statusHandler.GetStringMetric(bridgeCore.MetricLastMultiversXClientError))
 }

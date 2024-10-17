@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"sync"
@@ -199,7 +199,7 @@ func (gs *gasStation) doRequestReturningBytes(ctx context.Context) ([]byte, erro
 		_ = response.Body.Close()
 	}()
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"github.com/multiversx/mx-chain-communication-go/p2p"
 	"github.com/multiversx/mx-chain-core-go/core"
 )
 
@@ -60,6 +61,11 @@ func (msg *P2PMessageMock) Timestamp() int64 {
 // Payload -
 func (msg *P2PMessageMock) Payload() []byte {
 	return msg.PayloadField
+}
+
+// BroadcastMethod -
+func (msg *P2PMessageMock) BroadcastMethod() p2p.BroadcastMethod {
+	return p2p.Broadcast
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

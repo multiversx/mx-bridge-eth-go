@@ -2,12 +2,18 @@ package ethmultiversx
 
 import (
 	"context"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -15,7 +21,6 @@ import (
 // splits - represent the number of times we split the maximum interval
 // we wait for the transfer confirmation on Ethereum
 const splits = 10
-
 const minRetries = 1
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
@@ -27,7 +32,7 @@ type ArgsBridgeExecutor struct {
 	TimeForWaitOnEthereum        time.Duration
 	StatusHandler                core.StatusHandler
 	SignaturesHolder             SignaturesHolder
-	BatchValidator               clients.BatchValidator
+	BalanceValidator             BalanceValidator
 	MaxQuorumRetriesOnEthereum   uint64
 	MaxQuorumRetriesOnMultiversX uint64
 	MaxRestriesOnWasProposed     uint64
@@ -41,12 +46,12 @@ type bridgeExecutor struct {
 	timeForWaitOnEthereum        time.Duration
 	statusHandler                core.StatusHandler
 	sigsHolder                   SignaturesHolder
-	batchValidator               clients.BatchValidator
+	balanceValidator             BalanceValidator
 	maxQuorumRetriesOnEthereum   uint64
 	maxQuorumRetriesOnMultiversX uint64
 	maxRetriesOnWasProposed      uint64
 
-	batch                     *clients.TransferBatch
+	batch                     *bridgeCore.TransferBatch
 	actionID                  uint64
 	msgHash                   common.Hash
 	quorumRetriesOnEthereum   uint64
@@ -87,8 +92,8 @@ func checkArgs(args ArgsBridgeExecutor) error {
 	if check.IfNil(args.SignaturesHolder) {
 		return ErrNilSignaturesHolder
 	}
-	if check.IfNil(args.BatchValidator) {
-		return ErrNilBatchValidator
+	if check.IfNil(args.BalanceValidator) {
+		return ErrNilBalanceValidator
 	}
 	if args.MaxQuorumRetriesOnEthereum < minRetries {
 		return fmt.Errorf("%w for args.MaxQuorumRetriesOnEthereum, got: %d, minimum: %d",
@@ -114,7 +119,7 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 		statusHandler:                args.StatusHandler,
 		timeForWaitOnEthereum:        args.TimeForWaitOnEthereum,
 		sigsHolder:                   args.SignaturesHolder,
-		batchValidator:               args.BatchValidator,
+		balanceValidator:             args.BalanceValidator,
 		maxQuorumRetriesOnEthereum:   args.MaxQuorumRetriesOnEthereum,
 		maxQuorumRetriesOnMultiversX: args.MaxQuorumRetriesOnMultiversX,
 		maxRetriesOnWasProposed:      args.MaxRestriesOnWasProposed,
@@ -146,8 +151,8 @@ func (executor *bridgeExecutor) MyTurnAsLeader() bool {
 }
 
 // GetBatchFromMultiversX fetches the pending batch from MultiversX
-func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*clients.TransferBatch, error) {
-	batch, err := executor.multiversXClient.GetPending(ctx)
+func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*bridgeCore.TransferBatch, error) {
+	batch, err := executor.multiversXClient.GetPendingBatch(ctx)
 	if err == nil {
 		executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
 	}
@@ -155,7 +160,7 @@ func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*cl
 }
 
 // StoreBatchFromMultiversX saves the pending batch from MultiversX
-func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *clients.TransferBatch) error {
+func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *bridgeCore.TransferBatch) error {
 	if batch == nil {
 		return ErrNilBatch
 	}
@@ -165,7 +170,7 @@ func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *clients.Transfer
 }
 
 // GetStoredBatch returns the stored batch
-func (executor *bridgeExecutor) GetStoredBatch() *clients.TransferBatch {
+func (executor *bridgeExecutor) GetStoredBatch() *bridgeCore.TransferBatch {
 	return executor.batch
 }
 
@@ -178,7 +183,7 @@ func (executor *bridgeExecutor) GetLastExecutedEthBatchIDFromMultiversX(ctx cont
 	return batchID, err
 }
 
-// VerifyLastDepositNonceExecutedOnEthereumBatch will check the deposit nonces from the fetched batch from Ethereum client
+// VerifyLastDepositNonceExecutedOnEthereumBatch will check the deposit Nonces from the fetched batch from Ethereum client
 func (executor *bridgeExecutor) VerifyLastDepositNonceExecutedOnEthereumBatch(ctx context.Context) error {
 	if executor.batch == nil {
 		return ErrNilBatch
@@ -436,20 +441,79 @@ func (executor *bridgeExecutor) ResetRetriesCountOnMultiversX() {
 
 // GetAndStoreBatchFromEthereum fetches and stores the batch from the ethereum client
 func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error {
-	batch, err := executor.ethereumClient.GetBatch(ctx, nonce)
+	batch, isFinal, err := executor.ethereumClient.GetBatch(ctx, nonce)
 	if err != nil {
 		return err
 	}
 
-	isBatchInvalid := batch.ID != nonce || len(batch.Deposits) == 0
+	isBatchInvalid := batch.ID != nonce || len(batch.Deposits) == 0 || !isFinal
 	if isBatchInvalid {
-		return fmt.Errorf("%w, requested nonce: %d, fetched nonce: %d, num deposits: %d",
-			ErrBatchNotFound, nonce, batch.ID, len(batch.Deposits))
+		return fmt.Errorf("%w, requested nonce: %d, fetched nonce: %d, num deposits: %d, isFinal: %v",
+			ErrFinalBatchNotFound, nonce, batch.ID, len(batch.Deposits), isFinal)
 	}
 
+	batch, err = executor.addBatchSCMetadata(ctx, batch)
+	if err != nil {
+		return err
+	}
 	executor.batch = batch
 
 	return nil
+}
+
+// addBatchSCMetadata fetches the logs containing sc calls metadata for the current batch
+func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfers *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
+	if transfers == nil {
+		return nil, ErrNilBatch
+	}
+
+	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, transfers.ID, int64(transfers.BlockNumber))
+	if err != nil {
+		return nil, err
+	}
+
+	for i, t := range transfers.Deposits {
+		transfers.Deposits[i] = executor.addMetadataToTransfer(t, events)
+	}
+
+	return transfers, nil
+}
+
+func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCore.DepositTransfer, events []*contract.ERC20SafeERC20SCDeposit) *bridgeCore.DepositTransfer {
+	for _, event := range events {
+		if event.DepositNonce.Uint64() == transfer.Nonce {
+			processData(transfer, event.CallData)
+			return transfer
+		}
+	}
+
+	transfer.Data = []byte{bridgeCore.MissingDataProtocolMarker}
+	transfer.DisplayableData = ""
+
+	return transfer
+}
+
+func processData(transfer *bridgeCore.DepositTransfer, buff []byte) {
+	transfer.Data = buff
+	dataLen := len(transfer.Data)
+	if dataLen == 0 {
+		transfer.Data = []byte{bridgeCore.MissingDataProtocolMarker}
+		transfer.DisplayableData = ""
+		return
+	}
+	// this check is optional, but brings an optimisation to reduce the gas used in case of a bad callData
+	if dataLen == 1 && buff[0] == bridgeCore.MissingDataProtocolMarker {
+		return
+	}
+
+	// we have a data field, add the marker & the correct length
+	transfer.DisplayableData = hex.EncodeToString(transfer.Data)
+	buff32 := make([]byte, bridgeCore.Uint32ArgBytes)
+	binary.BigEndian.PutUint32(buff32, uint32(dataLen))
+
+	prefix := append([]byte{bridgeCore.DataPresentProtocolMarker}, buff32...)
+
+	transfer.Data = append(prefix, transfer.Data...)
 }
 
 // WasTransferPerformedOnEthereum returns true if the batch was performed on Ethereum
@@ -467,7 +531,8 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		return ErrNilBatch
 	}
 
-	hash, err := executor.ethereumClient.GenerateMessageHash(executor.batch)
+	argLists := batchProcessor.ExtractListMvxToEth(executor.batch)
+	hash, err := executor.ethereumClient.GenerateMessageHash(argLists, executor.batch.ID)
 	if err != nil {
 		return err
 	}
@@ -493,7 +558,11 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 
 	executor.log.Debug("fetched quorum size", "quorum", quorumSize.Int64())
 
-	hash, err := executor.ethereumClient.ExecuteTransfer(ctx, executor.msgHash, executor.batch, int(quorumSize.Int64()))
+	argLists := batchProcessor.ExtractListMvxToEth(executor.batch)
+
+	executor.log.Info("executing transfer " + executor.batch.String())
+
+	hash, err := executor.ethereumClient.ExecuteTransfer(ctx, executor.msgHash, argLists, executor.batch.ID, int(quorumSize.Int64()))
 	if err != nil {
 		return err
 	}
@@ -502,6 +571,48 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 		"batch ID", executor.batch.ID)
 
 	return nil
+}
+
+func (executor *bridgeExecutor) checkCumulatedTransfers(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
+	for i, ethToken := range ethTokens {
+		err := executor.balanceValidator.CheckToken(ctx, ethToken, mvxTokens[i], amounts[i], direction)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CheckAvailableTokens checks the available balances
+func (executor *bridgeExecutor) CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
+	ethTokens, mvxTokens, amounts = executor.getCumulatedTransfers(ethTokens, mvxTokens, amounts)
+
+	return executor.checkCumulatedTransfers(ctx, ethTokens, mvxTokens, amounts, direction)
+}
+
+func (executor *bridgeExecutor) getCumulatedTransfers(ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) ([]common.Address, [][]byte, []*big.Int) {
+	cumulatedAmounts := make(map[common.Address]*big.Int)
+	uniqueTokens := make([]common.Address, 0)
+	uniqueConvertedTokens := make([][]byte, 0)
+
+	for i, token := range ethTokens {
+		existingValue, exists := cumulatedAmounts[token]
+		if exists {
+			existingValue.Add(existingValue, amounts[i])
+			continue
+		}
+
+		cumulatedAmounts[token] = big.NewInt(0).Set(amounts[i]) // work on a new pointer
+		uniqueTokens = append(uniqueTokens, token)
+		uniqueConvertedTokens = append(uniqueConvertedTokens, mvxTokens[i])
+	}
+
+	finalAmounts := make([]*big.Int, len(uniqueTokens))
+	for i, token := range uniqueTokens {
+		finalAmounts[i] = cumulatedAmounts[token]
+	}
+
+	return uniqueTokens, uniqueConvertedTokens, finalAmounts
 }
 
 // ProcessQuorumReachedOnEthereum returns true if the proposed transfer reached the set quorum
@@ -528,11 +639,6 @@ func (executor *bridgeExecutor) ResetRetriesCountOnEthereum() {
 func (executor *bridgeExecutor) ClearStoredP2PSignaturesForEthereum() {
 	executor.sigsHolder.ClearStoredSignatures()
 	executor.log.Info("cleared stored P2P signatures")
-}
-
-// ValidateBatch returns true if the given batch is validated on microservice side
-func (executor *bridgeExecutor) ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
-	return executor.batchValidator.ValidateBatch(ctx, batch)
 }
 
 // CheckMultiversXClientAvailability trigger a self availability check for the MultiversX client

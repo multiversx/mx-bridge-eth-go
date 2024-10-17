@@ -77,7 +77,12 @@ func (erp *multiversXRoleProvider) processResults(results [][]byte) error {
 			return fmt.Errorf("%w for index %d, malformed address: %s", ErrInvalidAddressBytes, i, hex.EncodeToString(result))
 		}
 
-		currentList = append(currentList, address.AddressAsBech32String())
+		bech32Address, err := address.AddressAsBech32String()
+		if err != nil {
+			return fmt.Errorf("%w for index %d, malformed address: %s", err, i, hex.EncodeToString(result))
+		}
+
+		currentList = append(currentList, bech32Address)
 		temporaryMap[string(address.AddressBytes())] = struct{}{}
 	}
 
