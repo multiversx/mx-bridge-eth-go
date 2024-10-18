@@ -42,6 +42,10 @@
                 {
                     "name": "eth_tx",
                     "type": "EthTransaction"
+                },
+                {
+                    "name": "batch_id",
+                    "type": "u64"
                 }
             ],
             "outputs": []
