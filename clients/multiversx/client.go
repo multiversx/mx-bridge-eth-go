@@ -1,6 +1,7 @@
 package multiversx
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -8,27 +9,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/data/api"
 	crypto "github.com/multiversx/mx-chain-crypto-go"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519/singlesig"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/builders"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
-	"github.com/multiversx/mx-sdk-go/interactors/nonceHandlerV1"
+	"github.com/multiversx/mx-sdk-go/interactors/nonceHandlerV2"
 )
 
 const (
-	proposeTransferFuncName  = "proposeMultiTransferEsdtBatch"
-	proposeSetStatusFuncName = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
-	signFuncName             = "sign"
-	performActionFuncName    = "performAction"
-	minAllowedDelta          = 1
+	proposeTransferFuncName         = "proposeMultiTransferEsdtBatch"
+	proposeSetStatusFuncName        = "proposeEsdtSafeSetCurrentTransactionBatchStatus"
+	signFuncName                    = "sign"
+	performActionFuncName           = "performAction"
+	minClientAvailabilityAllowDelta = 1
 
 	multiversXDataGetterLogId = "MultiversXEth-MultiversXDataGetter"
 )
@@ -40,26 +41,28 @@ type ClientArgs struct {
 	Log                          logger.Logger
 	RelayerPrivateKey            crypto.PrivateKey
 	MultisigContractAddress      core.AddressHandler
+	SafeContractAddress          core.AddressHandler
 	IntervalToResendTxsInSeconds uint64
 	TokensMapper                 TokensMapper
 	RoleProvider                 roleProvider
 	StatusHandler                bridgeCore.StatusHandler
-	AllowDelta                   uint64
+	ClientAvailabilityAllowDelta uint64
 }
 
 // client represents the MultiversX Client implementation
 type client struct {
 	*mxClientDataGetter
-	txHandler                 txHandler
-	tokensMapper              TokensMapper
-	relayerPublicKey          crypto.PublicKey
-	relayerAddress            core.AddressHandler
-	multisigContractAddress   core.AddressHandler
-	log                       logger.Logger
-	gasMapConfig              config.MultiversXGasMapConfig
-	addressPublicKeyConverter bridgeCore.AddressConverter
-	statusHandler             bridgeCore.StatusHandler
-	allowDelta                uint64
+	txHandler                    txHandler
+	tokensMapper                 TokensMapper
+	relayerPublicKey             crypto.PublicKey
+	relayerAddress               core.AddressHandler
+	multisigContractAddress      core.AddressHandler
+	safeContractAddress          core.AddressHandler
+	log                          logger.Logger
+	gasMapConfig                 config.MultiversXGasMapConfig
+	addressPublicKeyConverter    bridgeCore.AddressConverter
+	statusHandler                bridgeCore.StatusHandler
+	clientAvailabilityAllowDelta uint64
 
 	lastNonce                uint64
 	retriesAvailabilityCheck uint64
@@ -73,7 +76,11 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, err
 	}
 
-	nonceTxsHandler, err := nonceHandlerV1.NewNonceTransactionHandlerV1(args.Proxy, time.Second*time.Duration(args.IntervalToResendTxsInSeconds), true)
+	argNonceHandler := nonceHandlerV2.ArgsNonceTransactionsHandlerV2{
+		Proxy:            args.Proxy,
+		IntervalToResend: time.Second * time.Duration(args.IntervalToResendTxsInSeconds),
+	}
+	nonceTxsHandler, err := nonceHandlerV2.NewNonceTransactionHandlerV2(argNonceHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +95,7 @@ func NewClient(args ClientArgs) (*client, error) {
 
 	argsMXClientDataGetter := ArgsMXClientDataGetter{
 		MultisigContractAddress: args.MultisigContractAddress,
+		SafeContractAddress:     args.SafeContractAddress,
 		RelayerAddress:          relayerAddress,
 		Proxy:                   args.Proxy,
 		Log:                     bridgeCore.NewLoggerWithIdentifier(logger.GetOrCreate(multiversXDataGetterLogId), multiversXDataGetterLogId),
@@ -102,31 +110,44 @@ func NewClient(args ClientArgs) (*client, error) {
 		return nil, clients.ErrNilAddressConverter
 	}
 
+	bech23MultisigAddress, err := args.MultisigContractAddress.AddressAsBech32String()
+	if err != nil {
+		return nil, fmt.Errorf("%w for %x", err, args.MultisigContractAddress.AddressBytes())
+	}
+
+	bech23SafeAddress, err := args.SafeContractAddress.AddressAsBech32String()
+	if err != nil {
+		return nil, fmt.Errorf("%w for %x", err, args.SafeContractAddress.AddressBytes())
+	}
+
 	c := &client{
 		txHandler: &transactionHandler{
 			proxy:                   args.Proxy,
 			relayerAddress:          relayerAddress,
-			multisigAddressAsBech32: args.MultisigContractAddress.AddressAsBech32String(),
+			multisigAddressAsBech32: bech23MultisigAddress,
 			nonceTxHandler:          nonceTxsHandler,
 			relayerPrivateKey:       args.RelayerPrivateKey,
 			singleSigner:            &singlesig.Ed25519Signer{},
 			roleProvider:            args.RoleProvider,
 		},
-		mxClientDataGetter:        getter,
-		relayerPublicKey:          publicKey,
-		relayerAddress:            relayerAddress,
-		multisigContractAddress:   args.MultisigContractAddress,
-		log:                       args.Log,
-		gasMapConfig:              args.GasMapConfig,
-		addressPublicKeyConverter: addressConverter,
-		tokensMapper:              args.TokensMapper,
-		statusHandler:             args.StatusHandler,
-		allowDelta:                args.AllowDelta,
+		mxClientDataGetter:           getter,
+		relayerPublicKey:             publicKey,
+		relayerAddress:               relayerAddress,
+		multisigContractAddress:      args.MultisigContractAddress,
+		safeContractAddress:          args.SafeContractAddress,
+		log:                          args.Log,
+		gasMapConfig:                 args.GasMapConfig,
+		addressPublicKeyConverter:    addressConverter,
+		tokensMapper:                 args.TokensMapper,
+		statusHandler:                args.StatusHandler,
+		clientAvailabilityAllowDelta: args.ClientAvailabilityAllowDelta,
 	}
 
+	bech32RelayerAddress, _ := relayerAddress.AddressAsBech32String()
 	c.log.Info("NewMultiversXClient",
-		"relayer address", relayerAddress.AddressAsBech32String(),
-		"safe contract address", args.MultisigContractAddress.AddressAsBech32String())
+		"relayer address", bech32RelayerAddress,
+		"multisig contract address", bech23MultisigAddress,
+		"safe contract address", bech23SafeAddress)
 
 	return c, nil
 }
@@ -141,6 +162,9 @@ func checkArgs(args ClientArgs) error {
 	if check.IfNil(args.MultisigContractAddress) {
 		return fmt.Errorf("%w for the MultisigContractAddress argument", errNilAddressHandler)
 	}
+	if check.IfNil(args.SafeContractAddress) {
+		return fmt.Errorf("%w for the SafeContractAddress argument", errNilAddressHandler)
+	}
 	if check.IfNil(args.Log) {
 		return clients.ErrNilLogger
 	}
@@ -153,9 +177,9 @@ func checkArgs(args ClientArgs) error {
 	if check.IfNil(args.StatusHandler) {
 		return clients.ErrNilStatusHandler
 	}
-	if args.AllowDelta < minAllowedDelta {
-		return fmt.Errorf("%w for args.AllowedDelta, got: %d, minimum: %d",
-			clients.ErrInvalidValue, args.AllowDelta, minAllowedDelta)
+	if args.ClientAvailabilityAllowDelta < minClientAvailabilityAllowDelta {
+		return fmt.Errorf("%w for args.ClientAvailabilityAllowDelta, got: %d, minimum: %d",
+			clients.ErrInvalidValue, args.ClientAvailabilityAllowDelta, minClientAvailabilityAllowDelta)
 	}
 	err := checkGasMapValues(args.GasMapConfig)
 	if err != nil {
@@ -178,8 +202,8 @@ func checkGasMapValues(gasMap config.MultiversXGasMapConfig) error {
 	return nil
 }
 
-// GetPending returns the pending batch
-func (c *client) GetPending(ctx context.Context) (*clients.TransferBatch, error) {
+// GetPendingBatch returns the pending batch
+func (c *client) GetPendingBatch(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 	c.log.Info("getting pending batch...")
 	responseData, err := c.GetCurrentBatchAsDataBytes(ctx)
 	if err != nil {
@@ -187,7 +211,22 @@ func (c *client) GetPending(ctx context.Context) (*clients.TransferBatch, error)
 	}
 
 	if emptyResponse(responseData) {
-		return nil, ErrNoPendingBatchAvailable
+		return nil, clients.ErrNoPendingBatchAvailable
+	}
+
+	return c.createPendingBatchFromResponse(ctx, responseData)
+}
+
+// GetBatch returns the batch (if existing)
+func (c *client) GetBatch(ctx context.Context, batchID uint64) (*bridgeCore.TransferBatch, error) {
+	c.log.Debug("getting batch", "ID", batchID)
+	responseData, err := c.GetBatchAsDataBytes(ctx, batchID)
+	if err != nil {
+		return nil, err
+	}
+
+	if emptyResponse(responseData) {
+		return nil, clients.ErrNoBatchAvailable
 	}
 
 	return c.createPendingBatchFromResponse(ctx, responseData)
@@ -197,7 +236,7 @@ func emptyResponse(response [][]byte) bool {
 	return len(response) == 0 || (len(response) == 1 && len(response[0]) == 0)
 }
 
-func (c *client) createPendingBatchFromResponse(ctx context.Context, responseData [][]byte) (*clients.TransferBatch, error) {
+func (c *client) createPendingBatchFromResponse(ctx context.Context, responseData [][]byte) (*bridgeCore.TransferBatch, error) {
 	numFieldsForTransaction := 6
 	dataLen := len(responseData)
 	haveCorrectNumberOfArgs := (dataLen-1)%numFieldsForTransaction == 0 && dataLen > 1
@@ -210,7 +249,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		return nil, fmt.Errorf("%w while parsing batch ID", err)
 	}
 
-	batch := &clients.TransferBatch{
+	batch := &bridgeCore.TransferBatch{
 		ID: batchID,
 	}
 
@@ -224,26 +263,26 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		}
 
 		amount := big.NewInt(0).SetBytes(responseData[i+5])
-		deposit := &clients.DepositTransfer{
+		deposit := &bridgeCore.DepositTransfer{
 			Nonce:            depositNonce,
 			FromBytes:        responseData[i+2],
-			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32String(responseData[i+2]),
+			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
 			ToBytes:          responseData[i+3],
 			DisplayableTo:    c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
-			TokenBytes:       responseData[i+4],
+			SourceTokenBytes: responseData[i+4],
 			DisplayableToken: string(responseData[i+4]),
 			Amount:           amount,
 		}
 
 		storedConvertedTokenBytes, exists := cachedTokens[deposit.DisplayableToken]
 		if !exists {
-			deposit.ConvertedTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.TokenBytes)
+			deposit.DestinationTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.SourceTokenBytes)
 			if err != nil {
 				return nil, fmt.Errorf("%w while converting token bytes, transfer index %d", err, transferIndex)
 			}
-			cachedTokens[deposit.DisplayableToken] = deposit.ConvertedTokenBytes
+			cachedTokens[deposit.DisplayableToken] = deposit.DestinationTokenBytes
 		} else {
-			deposit.ConvertedTokenBytes = storedConvertedTokenBytes
+			deposit.DestinationTokenBytes = storedConvertedTokenBytes
 		}
 
 		batch.Deposits = append(batch.Deposits, deposit)
@@ -262,7 +301,7 @@ func (c *client) createCommonTxDataBuilder(funcName string, id int64) builders.T
 }
 
 // ProposeSetStatus will trigger the proposal of the ESDT safe set current transaction batch status operation
-func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBatch) (string, error) {
+func (c *client) ProposeSetStatus(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", clients.ErrNilBatch
 	}
@@ -280,14 +319,14 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *clients.TransferBa
 	gasLimit := c.gasMapConfig.ProposeStatusBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeStatusForEach
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
-		c.log.Info("proposed set statuses"+batch.String(), "transaction hash", hash)
+		c.log.Info("proposed set statuses "+batch.String(), "transaction hash", hash)
 	}
 
 	return hash, err
 }
 
 // ProposeTransfer will trigger the propose transfer operation
-func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBatch) (string, error) {
+func (c *client) ProposeTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", clients.ErrNilBatch
 	}
@@ -302,15 +341,18 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *clients.TransferBat
 	for _, dt := range batch.Deposits {
 		txBuilder.ArgBytes(dt.FromBytes).
 			ArgBytes(dt.ToBytes).
-			ArgBytes(dt.ConvertedTokenBytes).
+			ArgBytes(dt.DestinationTokenBytes).
 			ArgBigInt(dt.Amount).
-			ArgInt64(int64(dt.Nonce))
+			ArgInt64(int64(dt.Nonce)).
+			ArgBytes(dt.Data)
 	}
 
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
+	extraGasForScCalls := c.computeExtraGasForSCCallsBasic(batch, false)
+	gasLimit += extraGasForScCalls
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
-		c.log.Info("proposed transfer"+batch.String(), "transaction hash", hash)
+		c.log.Info("proposed transfer "+batch.String(), "transaction hash", hash)
 	}
 
 	return hash, err
@@ -334,7 +376,7 @@ func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
 }
 
 // PerformAction will trigger the execution of the provided action ID
-func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clients.TransferBatch) (string, error) {
+func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *bridgeCore.TransferBatch) (string, error) {
 	if batch == nil {
 		return "", clients.ErrNilBatch
 	}
@@ -347,6 +389,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	txBuilder := c.createCommonTxDataBuilder(performActionFuncName, int64(actionID))
 
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+	gasLimit += c.computeExtraGasForSCCallsBasic(batch, true)
 	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
 
 	if err == nil {
@@ -354,6 +397,25 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *clie
 	}
 
 	return hash, err
+}
+
+func (c *client) computeExtraGasForSCCallsBasic(batch *bridgeCore.TransferBatch, performAction bool) uint64 {
+	gasLimit := uint64(0)
+	for _, deposit := range batch.Deposits {
+		if bytes.Equal(deposit.Data, []byte{bridgeCore.MissingDataProtocolMarker}) {
+			continue
+		}
+
+		computedLen := 1                     // extra argument separator (@)
+		computedLen += len(deposit.Data) * 2 // the data is hexed, so, double the size
+
+		gasLimit += uint64(computedLen) * c.gasMapConfig.ScCallPerByte
+		if performAction {
+			gasLimit += c.gasMapConfig.ScCallPerformForEach
+		}
+	}
+
+	return gasLimit
 }
 
 func (c *client) checkIsPaused(ctx context.Context) error {
@@ -368,6 +430,69 @@ func (c *client) checkIsPaused(ctx context.Context) error {
 	return nil
 }
 
+// IsMintBurnToken returns true if the provided token is whitelisted for mint/burn operations
+func (c *client) IsMintBurnToken(ctx context.Context, token []byte) (bool, error) {
+	return c.isMintBurnToken(ctx, token)
+}
+
+// IsNativeToken returns true if the provided token is native
+func (c *client) IsNativeToken(ctx context.Context, token []byte) (bool, error) {
+	return c.isNativeToken(ctx, token)
+}
+
+// TotalBalances returns the total stored tokens
+func (c *client) TotalBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	return c.getTotalBalances(ctx, token)
+}
+
+// MintBalances returns the minted tokens
+func (c *client) MintBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	return c.getMintBalances(ctx, token)
+}
+
+// BurnBalances returns the burned tokens
+func (c *client) BurnBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	return c.getBurnBalances(ctx, token)
+}
+
+// CheckRequiredBalance will check the required balance for the provided token
+func (c *client) CheckRequiredBalance(ctx context.Context, token []byte, value *big.Int) error {
+	isMintBurn, err := c.IsMintBurnToken(ctx, token)
+	if err != nil {
+		return err
+	}
+
+	if isMintBurn {
+		return nil
+	}
+	safeAddress, err := c.safeContractAddress.AddressAsBech32String()
+	if err != nil {
+		return fmt.Errorf("%w for safe address %s", err, c.safeContractAddress.AddressBytes())
+	}
+	esdt, err := c.proxy.GetESDTTokenData(ctx, c.safeContractAddress, string(token), api.AccountQueryOptions{})
+	if err != nil {
+		return fmt.Errorf("%w for address %s for ESDT token %s", err, safeAddress, string(token))
+	}
+
+	existingBalance, ok := big.NewInt(0).SetString(esdt.Balance, 10)
+	if !ok {
+		return fmt.Errorf("%w for ESDT token %s and address %s", errInvalidBalance, string(token), safeAddress)
+	}
+
+	if value.Cmp(existingBalance) > 0 {
+		return fmt.Errorf("%w, existing: %s, required: %s for ERC20 token %s and address %s",
+			errInsufficientESDTBalance, existingBalance.String(), value.String(), string(token), safeAddress)
+	}
+
+	c.log.Debug("checked ERC20 balance",
+		"ESDT token", string(token),
+		"address", safeAddress,
+		"existing balance", existingBalance.String(),
+		"needed", value.String())
+
+	return nil
+}
+
 // CheckClientAvailability will check the client availability and will set the metric accordingly
 func (c *client) CheckClientAvailability(ctx context.Context) error {
 	c.mut.Lock()
@@ -375,7 +500,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	currentNonce, err := c.GetCurrentNonce(ctx)
 	if err != nil {
-		c.setStatusForAvailabilityCheck(ethmultiversx.Unavailable, err.Error(), currentNonce)
+		c.setStatusForAvailabilityCheck(bridgeCore.Unavailable, err.Error(), currentNonce)
 
 		return err
 	}
@@ -388,14 +513,14 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 	// if we reached this point we will need to increment the retries counter
 	defer c.incrementRetriesAvailabilityCheck()
 
-	if c.retriesAvailabilityCheck > c.allowDelta {
+	if c.retriesAvailabilityCheck > c.clientAvailabilityAllowDelta {
 		message := fmt.Sprintf("nonce %d fetched for %d times in a row", currentNonce, c.retriesAvailabilityCheck)
-		c.setStatusForAvailabilityCheck(ethmultiversx.Unavailable, message, currentNonce)
+		c.setStatusForAvailabilityCheck(bridgeCore.Unavailable, message, currentNonce)
 
 		return nil
 	}
 
-	c.setStatusForAvailabilityCheck(ethmultiversx.Available, "", currentNonce)
+	c.setStatusForAvailabilityCheck(bridgeCore.Available, "", currentNonce)
 
 	return nil
 }
@@ -404,7 +529,7 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 	c.retriesAvailabilityCheck++
 }
 
-func (c *client) setStatusForAvailabilityCheck(status ethmultiversx.ClientStatus, message string, nonce uint64) {
+func (c *client) setStatusForAvailabilityCheck(status bridgeCore.ClientStatus, message string, nonce uint64) {
 	c.statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, status.String())
 	c.statusHandler.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, message)
 	c.statusHandler.SetIntMetric(bridgeCore.MetricLastBlockNonce, int(nonce))

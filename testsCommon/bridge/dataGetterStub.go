@@ -9,6 +9,7 @@ type DataGetterStub struct {
 	GetTokenIdForErc20AddressCalled func(ctx context.Context, erc20Address []byte) ([][]byte, error)
 	GetERC20AddressForTokenIdCalled func(ctx context.Context, tokenId []byte) ([][]byte, error)
 	GetAllStakedRelayersCalled      func(ctx context.Context) ([][]byte, error)
+	GetAllKnownTokensCalled         func(ctx context.Context) ([][]byte, error)
 }
 
 // GetTokenIdForErc20Address -
@@ -31,6 +32,15 @@ func (stub *DataGetterStub) GetERC20AddressForTokenId(ctx context.Context, token
 func (stub *DataGetterStub) GetAllStakedRelayers(ctx context.Context) ([][]byte, error) {
 	if stub.GetAllStakedRelayersCalled != nil {
 		return stub.GetAllStakedRelayersCalled(ctx)
+	}
+
+	return make([][]byte, 0), nil
+}
+
+// GetAllKnownTokens -
+func (stub *DataGetterStub) GetAllKnownTokens(ctx context.Context) ([][]byte, error) {
+	if stub.GetAllKnownTokensCalled != nil {
+		return stub.GetAllKnownTokensCalled(ctx)
 	}
 
 	return make([][]byte, 0), nil
