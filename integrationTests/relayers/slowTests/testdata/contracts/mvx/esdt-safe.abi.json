@@ -128,8 +128,8 @@
                     "type": "EthAddress"
                 },
                 {
-                    "name": "opt_refunding_address",
-                    "type": "optional<Address>",
+                    "name": "opt_refund_info",
+                    "type": "optional<RefundInfo>",
                     "multi_arg": true
                 }
             ],
@@ -879,6 +879,46 @@
             ]
         },
         {
+            "identifier": "createRefundTransactionEvent",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "fee",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "initial_batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "initial_tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
             "identifier": "addRefundTransactionEvent",
             "inputs": [
                 {
@@ -1039,6 +1079,23 @@
                 {
                     "name": "raw_addr",
                     "type": "array20<u8>"
+                }
+            ]
+        },
+        "RefundInfo": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "address",
+                    "type": "Address"
+                },
+                {
+                    "name": "initial_batch_id",
+                    "type": "u64"
+                },
+                {
+                    "name": "initial_nonce",
+                    "type": "u64"
                 }
             ]
         },
