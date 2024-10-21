@@ -36,6 +36,8 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		make(chan error),
 		GenerateTestUSDCToken(),
 		GenerateTestMEMEToken(),
+		GenerateTestEUROCToken(),
+		GenerateTestMEXToken(),
 	)
 }
 
@@ -51,11 +53,19 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 	memeToken := GenerateTestMEMEToken()
 	memeToken.TestOperations[2].MvxSCCallData = callData
 
+	eurocToken := GenerateTestEUROCToken()
+	eurocToken.TestOperations[2].MvxSCCallData = callData
+
+	mexToken := GenerateTestMEXToken()
+	mexToken.TestOperations[2].MvxSCCallData = callData
+
 	testSetup := testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
 		usdcToken,
 		memeToken,
+		eurocToken,
+		mexToken,
 	)
 
 	testCallPayableWithParamsWasCalled(testSetup, 37, usdcToken.AbstractTokenIdentifier, memeToken.AbstractTokenIdentifier)

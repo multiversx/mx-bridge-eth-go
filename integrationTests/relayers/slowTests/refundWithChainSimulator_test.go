@@ -35,6 +35,18 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			memeToken,
 		)
 	})
+	t.Run("unknown marker and malformed SC call data should refund with MEX", func(t *testing.T) {
+		callData := []byte{5, 4, 55}
+		mexToken := GenerateTestMEXToken()
+		mexToken.TestOperations[2].MvxSCCallData = callData
+		mexToken.TestOperations[2].MvxFaultySCCall = true
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			mexToken,
+		)
+	})
 	t.Run("malformed SC call data should refund", func(t *testing.T) {
 		callData := []byte{bridgeCore.DataPresentProtocolMarker, 4, 55}
 		usdcToken := GenerateTestUSDCToken()
