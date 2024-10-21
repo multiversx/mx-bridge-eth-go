@@ -36,6 +36,13 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		make(chan error),
 		GenerateTestUSDCToken(),
 		GenerateTestMEMEToken(),
+	)
+}
+
+func TestRelayersShouldExecuteTransfersWithMintBurnTokens(t *testing.T) {
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
 		GenerateTestEUROCToken(),
 		GenerateTestMEXToken(),
 	)
@@ -53,6 +60,27 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 	memeToken := GenerateTestMEMEToken()
 	memeToken.TestOperations[2].MvxSCCallData = callData
 
+	testSetup := testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		usdcToken,
+		memeToken,
+	)
+
+	testCallPayableWithParamsWasCalled(
+		testSetup,
+		37,
+		usdcToken.AbstractTokenIdentifier,
+		memeToken.AbstractTokenIdentifier,
+	)
+}
+
+func TestRelayersShouldExecuteTransfersWithSCCallsWithArgumentsWithMintBurnTokens(t *testing.T) {
+	dummyAddress := strings.Repeat("2", 32)
+	dummyUint64 := string([]byte{37})
+
+	callData := createScCallData("callPayableWithParams", 50000000, dummyUint64, dummyAddress)
+
 	eurocToken := GenerateTestEUROCToken()
 	eurocToken.TestOperations[2].MvxSCCallData = callData
 
@@ -62,8 +90,6 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 	testSetup := testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		usdcToken,
-		memeToken,
 		eurocToken,
 		mexToken,
 	)
@@ -71,8 +97,6 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 	testCallPayableWithParamsWasCalled(
 		testSetup,
 		37,
-		usdcToken.AbstractTokenIdentifier,
-		memeToken.AbstractTokenIdentifier,
 		eurocToken.AbstractTokenIdentifier,
 		mexToken.AbstractTokenIdentifier,
 	)
