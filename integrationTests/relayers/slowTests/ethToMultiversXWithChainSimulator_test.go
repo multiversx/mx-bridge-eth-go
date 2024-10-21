@@ -275,6 +275,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsMintBurnOnEth = false
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = false
+		badToken.HasChainSpecificToken = true
 
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
@@ -285,6 +286,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsMintBurnOnEth = false
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = true
+		badToken.HasChainSpecificToken = false
 
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
@@ -295,6 +297,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsMintBurnOnEth = true
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = false
+		badToken.HasChainSpecificToken = true
 
 		testEthContractsShouldError(t, badToken)
 	})
@@ -304,6 +307,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsMintBurnOnEth = true
 		badToken.IsNativeOnMvX = false
 		badToken.IsMintBurnOnMvX = true
+		badToken.HasChainSpecificToken = true
 
 		testEthContractsShouldError(t, badToken)
 	})
