@@ -68,7 +68,14 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 		mexToken,
 	)
 
-	testCallPayableWithParamsWasCalled(testSetup, 37, usdcToken.AbstractTokenIdentifier, memeToken.AbstractTokenIdentifier)
+	testCallPayableWithParamsWasCalled(
+		testSetup,
+		37,
+		usdcToken.AbstractTokenIdentifier,
+		memeToken.AbstractTokenIdentifier,
+		eurocToken.AbstractTokenIdentifier,
+		mexToken.AbstractTokenIdentifier,
+	)
 }
 
 func TestRelayerShouldExecuteTransfersAndNotCatchErrors(t *testing.T) {
@@ -404,6 +411,12 @@ func testCallPayableWithParamsWasCalled(testSetup *framework.TestSetup, value ui
 		return
 	}
 
+	universalTokens := make([]string, 0, len(tokens))
+	for _, identifier := range tokens {
+		tkData := testSetup.TokensRegistry.GetTokenData(identifier)
+		universalTokens = append(universalTokens, tkData.MvxUniversalToken)
+	}
+
 	vmRequest := &data.VmValueRequest{
 		Address:  testSetup.MultiversxHandler.TestCallerAddress.Bech32(),
 		FuncName: "getCalledDataParams",
@@ -415,11 +428,20 @@ func testCallPayableWithParamsWasCalled(testSetup *framework.TestSetup, value ui
 	returnedData := vmResponse.Data.ReturnData
 	require.Equal(testSetup, len(tokens), len(returnedData))
 
-	for i, token := range tokens {
-		buff := returnedData[i]
+	mapUniversalTokens := make(map[string]int)
+	for _, tokenIdentifier := range universalTokens {
+		mapUniversalTokens[tokenIdentifier] = 0
+	}
+
+	for _, buff := range returnedData {
 		parsedValue, parsedToken := processCalledDataParams(buff)
 		assert.Equal(testSetup, value, parsedValue)
-		assert.Contains(testSetup, parsedToken, token)
+		mapUniversalTokens[parsedToken]++
+	}
+
+	assert.Equal(testSetup, len(tokens), len(mapUniversalTokens))
+	for _, numTokens := range mapUniversalTokens {
+		assert.Equal(testSetup, 1, numTokens)
 	}
 }
 
