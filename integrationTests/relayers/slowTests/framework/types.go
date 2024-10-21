@@ -21,6 +21,7 @@ type IssueTokenParams struct {
 	ValueToMintOnMvx                 string
 	IsMintBurnOnMvX                  bool
 	IsNativeOnMvX                    bool
+	HasChainSpecificToken            bool
 
 	// Ethereum
 	EthTokenName     string
