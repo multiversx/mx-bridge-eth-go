@@ -22,6 +22,7 @@ import (
 )
 
 var zero = big.NewInt(0)
+var relayerEthBalance = big.NewInt(1000000000)
 
 func asyncCancelCall(cancelHandler func(), delay time.Duration) {
 	go func() {
@@ -55,7 +56,7 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 		return expectedStatuses, true
 	}
 	ethereumChainMock.BalanceAtCalled = func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
-		return big.NewInt(260000000), nil
+		return relayerEthBalance, nil
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
@@ -152,7 +153,7 @@ func testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearIn
 		return expectedStatuses, true
 	}
 	ethereumChainMock.BalanceAtCalled = func(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
-		return big.NewInt(260000000), nil
+		return relayerEthBalance, nil
 	}
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	for i := 0; i < len(deposits); i++ {
