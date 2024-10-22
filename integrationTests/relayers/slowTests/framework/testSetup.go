@@ -112,16 +112,18 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 
 func (setup *TestSetup) startScCallerModule() {
 	cfg := config.ScCallsModuleConfig{
-		ScProxyBech32Address:         setup.MultiversxHandler.ScProxyAddress.Bech32(),
-		ExtraGasToExecute:            60_000_000, // 60 million: this ensures that a SC call with 0 gas limit is refunded
-		NetworkAddress:               setup.ChainSimulator.GetNetworkAddress(),
-		ProxyMaxNoncesDelta:          5,
-		ProxyFinalityCheck:           false,
-		ProxyCacherExpirationSeconds: 60, // 1 minute
-		ProxyRestAPIEntityType:       string(sdkCore.Proxy),
-		IntervalToResendTxsInSeconds: 1,
-		PrivateKeyFile:               path.Join(setup.WorkingDir, SCCallerFilename),
-		PollingIntervalInMillis:      1000, // 1 second
+		ScProxyBech32Address:            setup.MultiversxHandler.ScProxyAddress.Bech32(),
+		ExtraGasToExecute:               60_000_000,  // 60 million: this ensures that a SC call with 0 gas limit is refunded
+		MaxGasLimitToUse:                249_999_999, // max cross shard limit
+		GasLimitForOutOfGasTransactions: 30_000_000,  // gas to use when a higher than max allowed is encountered
+		NetworkAddress:                  setup.ChainSimulator.GetNetworkAddress(),
+		ProxyMaxNoncesDelta:             5,
+		ProxyFinalityCheck:              false,
+		ProxyCacherExpirationSeconds:    60, // 1 minute
+		ProxyRestAPIEntityType:          string(sdkCore.Proxy),
+		IntervalToResendTxsInSeconds:    1,
+		PrivateKeyFile:                  path.Join(setup.WorkingDir, SCCallerFilename),
+		PollingIntervalInMillis:         1000, // 1 second
 		Filter: config.PendingOperationsFilterConfig{
 			AllowedEthAddresses: []string{"*"},
 			AllowedMvxAddresses: []string{"*"},
@@ -302,29 +304,52 @@ func (setup *TestSetup) createBatchOnMultiversXForToken(params TestTokenParams) 
 	token := setup.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(setup, token)
 
-	valueToMintOnEthereum := setup.MultiversxHandler.CreateDepositsOnMultiversxForToken(setup.Ctx, params)
-
+	setup.transferTokensToTestKey(params)
+	valueToMintOnEthereum := setup.sendFromMultiversxToEthereumForToken(params)
 	setup.EthereumHandler.Mint(setup.Ctx, params, valueToMintOnEthereum)
 }
 
-// SendFromMultiversxToEthereum will create the deposits that will be gathered in a batch on MultiversX (without mint on Ethereum)
-func (setup *TestSetup) SendFromMultiversxToEthereum(tokensParams ...TestTokenParams) {
-	for _, params := range tokensParams {
-		setup.sendFromMultiversxToEthereumForToken(params)
-	}
-}
-
-func (setup *TestSetup) sendFromMultiversxToEthereumForToken(params TestTokenParams) {
-	token := setup.GetTokenData(params.AbstractTokenIdentifier)
-	require.NotNil(setup, token)
-
+func (setup *TestSetup) transferTokensToTestKey(params TestTokenParams) {
+	depositValue := big.NewInt(0)
 	for _, operation := range params.TestOperations {
 		if operation.ValueToSendFromMvX == nil {
 			continue
 		}
 
+		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
+	}
+
+	setup.MultiversxHandler.TransferToken(
+		setup.Ctx,
+		setup.OwnerKeys,
+		setup.TestKeys,
+		depositValue,
+		params,
+	)
+}
+
+// SendFromMultiversxToEthereum will create the deposits that will be gathered in a batch on MultiversX (without mint on Ethereum)
+func (setup *TestSetup) SendFromMultiversxToEthereum(tokensParams ...TestTokenParams) {
+	for _, params := range tokensParams {
+		_ = setup.sendFromMultiversxToEthereumForToken(params)
+	}
+}
+
+func (setup *TestSetup) sendFromMultiversxToEthereumForToken(params TestTokenParams) *big.Int {
+	token := setup.GetTokenData(params.AbstractTokenIdentifier)
+	require.NotNil(setup, token)
+
+	depositValue := big.NewInt(0)
+	for _, operation := range params.TestOperations {
+		if operation.ValueToSendFromMvX == nil {
+			continue
+		}
+
+		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
 		setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, token, operation.ValueToSendFromMvX)
 	}
+
+	return depositValue
 }
 
 // TestWithdrawTotalFeesOnEthereumForTokens will test the withdrawal functionality for the provided test tokens

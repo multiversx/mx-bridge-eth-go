@@ -339,6 +339,13 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 		require.NoError(handler, err)
 		require.Equal(handler, mintAmount.String(), balance.String())
 
+		if params.IsNativeOnEth {
+			tx, err = ethMintBurnContract.Mint(auth, handler.TestKeys.EthAddress, mintAmount)
+			require.NoError(handler, err)
+			handler.SimulatedChain.Commit()
+			handler.checkEthTxResult(ctx, tx.Hash())
+		}
+
 		return ethMintBurnAddress, ethMintBurnContract
 	}
 

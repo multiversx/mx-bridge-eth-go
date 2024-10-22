@@ -54,7 +54,7 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) error {
-		return startRelay(c, app.Version)
+		return startExecutor(c, app.Version)
 	}
 
 	err := app.Run(os.Args)
@@ -64,7 +64,7 @@ func main() {
 	}
 }
 
-func startRelay(ctx *cli.Context, version string) error {
+func startExecutor(ctx *cli.Context, version string) error {
 	flagsConfig := getFlagsConfig(ctx)
 
 	fileLogging, errLogger := attachFileLogger(log, flagsConfig)
@@ -111,19 +111,21 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	args := config.ScCallsModuleConfig{
-		ScProxyBech32Address:         cfg.ScProxyBech32Address,
-		ExtraGasToExecute:            cfg.ExtraGasToExecute,
-		NetworkAddress:               cfg.NetworkAddress,
-		ProxyMaxNoncesDelta:          cfg.ProxyMaxNoncesDelta,
-		ProxyFinalityCheck:           cfg.ProxyFinalityCheck,
-		ProxyCacherExpirationSeconds: cfg.ProxyCacherExpirationSeconds,
-		ProxyRestAPIEntityType:       cfg.ProxyRestAPIEntityType,
-		IntervalToResendTxsInSeconds: cfg.IntervalToResendTxsInSeconds,
-		PrivateKeyFile:               cfg.PrivateKeyFile,
-		PollingIntervalInMillis:      cfg.PollingIntervalInMillis,
-		Filter:                       cfg.Filter,
-		Logs:                         cfg.Logs,
-		TransactionChecks:            cfg.TransactionChecks,
+		ScProxyBech32Address:            cfg.ScProxyBech32Address,
+		ExtraGasToExecute:               cfg.ExtraGasToExecute,
+		MaxGasLimitToUse:                cfg.MaxGasLimitToUse,
+		GasLimitForOutOfGasTransactions: cfg.GasLimitForOutOfGasTransactions,
+		NetworkAddress:                  cfg.NetworkAddress,
+		ProxyMaxNoncesDelta:             cfg.ProxyMaxNoncesDelta,
+		ProxyFinalityCheck:              cfg.ProxyFinalityCheck,
+		ProxyCacherExpirationSeconds:    cfg.ProxyCacherExpirationSeconds,
+		ProxyRestAPIEntityType:          cfg.ProxyRestAPIEntityType,
+		IntervalToResendTxsInSeconds:    cfg.IntervalToResendTxsInSeconds,
+		PrivateKeyFile:                  cfg.PrivateKeyFile,
+		PollingIntervalInMillis:         cfg.PollingIntervalInMillis,
+		Filter:                          cfg.Filter,
+		Logs:                            cfg.Logs,
+		TransactionChecks:               cfg.TransactionChecks,
 	}
 
 	chCloseApp := make(chan struct{}, 1)
