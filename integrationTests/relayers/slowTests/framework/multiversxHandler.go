@@ -941,59 +941,6 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 	return hash
 }
 
-// CreateDepositsOnMultiversxForToken will send the deposit transactions on MultiversX returning how many tokens should be minted on Ethereum
-func (handler *MultiversxHandler) CreateDepositsOnMultiversxForToken(
-	ctx context.Context,
-	params TestTokenParams,
-) *big.Int {
-	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
-	require.NotNil(handler, token)
-
-	valueToMintOnEthereum := big.NewInt(0)
-	for _, operation := range params.TestOperations {
-		if operation.ValueToSendFromMvX == nil {
-			continue
-		}
-
-		valueToMintOnEthereum.Add(valueToMintOnEthereum, operation.ValueToSendFromMvX)
-
-		// transfer to sender tx
-		hash, txResult := handler.ChainSimulator.ScCall(
-			ctx,
-			handler.OwnerKeys.MvxSk,
-			handler.TestKeys.MvxAddress,
-			zeroStringValue,
-			createDepositGasLimit,
-			esdtTransferFunction,
-			[]string{
-				hex.EncodeToString([]byte(token.MvxUniversalToken)),
-				hex.EncodeToString(operation.ValueToSendFromMvX.Bytes())})
-		log.Info("transfer to sender tx executed", "hash", hash, "status", txResult.Status)
-
-		// send tx to safe contract
-		scCallParams := []string{
-			hex.EncodeToString([]byte(token.MvxUniversalToken)),
-			hex.EncodeToString(operation.ValueToSendFromMvX.Bytes()),
-			hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
-			hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
-			hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
-		}
-		dataField := strings.Join(scCallParams, "@")
-
-		hash, txResult = handler.ChainSimulator.ScCall(
-			ctx,
-			handler.TestKeys.MvxSk,
-			handler.WrapperAddress,
-			zeroStringValue,
-			createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)),
-			esdtTransferFunction,
-			scCallParams)
-		log.Info("MultiversX->Ethereum transaction sent", "hash", hash, "status", txResult.Status)
-	}
-
-	return valueToMintOnEthereum
-}
-
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
 func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, token *TokenData, value *big.Int) {
 	// create transaction params
@@ -1070,6 +1017,30 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 	require.Equal(handler, expectedDelta, finalBalance.Sub(finalBalance, initialBalance),
 		fmt.Sprintf("mismatch on balance check after the call to %s: initial balance: %s, final balance %s, expected delta: %s",
 			withdrawFunction, initialBalanceStr, finalBalanceStr, expectedDelta.String()))
+}
+
+// TransferToken is able to create an ESDT transfer
+func (handler *MultiversxHandler) TransferToken(ctx context.Context, source KeysHolder, receiver KeysHolder, amount *big.Int, params TestTokenParams) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
+	// transfer to the test key, so it will have funds to carry on with the deposits
+	hash, txResult := handler.ChainSimulator.ScCall(
+		ctx,
+		source.MvxSk,
+		receiver.MvxAddress,
+		zeroStringValue,
+		createDepositGasLimit,
+		esdtTransferFunction,
+		[]string{
+			hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
+			hex.EncodeToString(amount.Bytes())})
+
+	log.Info("transfer to tx executed",
+		"source address", source.MvxAddress.Bech32(),
+		"receiver", receiver.MvxAddress.Bech32(),
+		"token", tkData.MvxUniversalToken,
+		"amount", amount.String(),
+		"hash", hash, "status", txResult.Status)
 }
 
 func getHexBool(input bool) string {

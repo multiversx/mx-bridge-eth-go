@@ -304,29 +304,52 @@ func (setup *TestSetup) createBatchOnMultiversXForToken(params TestTokenParams) 
 	token := setup.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(setup, token)
 
-	valueToMintOnEthereum := setup.MultiversxHandler.CreateDepositsOnMultiversxForToken(setup.Ctx, params)
-
+	setup.transferTokensToTestKey(params)
+	valueToMintOnEthereum := setup.sendFromMultiversxToEthereumForToken(params)
 	setup.EthereumHandler.Mint(setup.Ctx, params, valueToMintOnEthereum)
 }
 
-// SendFromMultiversxToEthereum will create the deposits that will be gathered in a batch on MultiversX (without mint on Ethereum)
-func (setup *TestSetup) SendFromMultiversxToEthereum(tokensParams ...TestTokenParams) {
-	for _, params := range tokensParams {
-		setup.sendFromMultiversxToEthereumForToken(params)
-	}
-}
-
-func (setup *TestSetup) sendFromMultiversxToEthereumForToken(params TestTokenParams) {
-	token := setup.GetTokenData(params.AbstractTokenIdentifier)
-	require.NotNil(setup, token)
-
+func (setup *TestSetup) transferTokensToTestKey(params TestTokenParams) {
+	depositValue := big.NewInt(0)
 	for _, operation := range params.TestOperations {
 		if operation.ValueToSendFromMvX == nil {
 			continue
 		}
 
+		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
+	}
+
+	setup.MultiversxHandler.TransferToken(
+		setup.Ctx,
+		setup.OwnerKeys,
+		setup.TestKeys,
+		depositValue,
+		params,
+	)
+}
+
+// SendFromMultiversxToEthereum will create the deposits that will be gathered in a batch on MultiversX (without mint on Ethereum)
+func (setup *TestSetup) SendFromMultiversxToEthereum(tokensParams ...TestTokenParams) {
+	for _, params := range tokensParams {
+		_ = setup.sendFromMultiversxToEthereumForToken(params)
+	}
+}
+
+func (setup *TestSetup) sendFromMultiversxToEthereumForToken(params TestTokenParams) *big.Int {
+	token := setup.GetTokenData(params.AbstractTokenIdentifier)
+	require.NotNil(setup, token)
+
+	depositValue := big.NewInt(0)
+	for _, operation := range params.TestOperations {
+		if operation.ValueToSendFromMvX == nil {
+			continue
+		}
+
+		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
 		setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, token, operation.ValueToSendFromMvX)
 	}
+
+	return depositValue
 }
 
 // TestWithdrawTotalFeesOnEthereumForTokens will test the withdrawal functionality for the provided test tokens
