@@ -4,8 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/core"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +14,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 	t.Run("nil batch on GetStoredBatch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorProposeSetStatus()
-		bridgeStub.GetStoredBatchCalled = func() *clients.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
 			return nil
 		}
 
@@ -86,7 +85,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 			}
 
 			assert.False(t, step.IsInterfaceNil())
-			expectedStep := core.StepIdentifier(SigningProposedSetStatusOnMultiversX)
+			expectedStep := bridgeCore.StepIdentifier(SigningProposedSetStatusOnMultiversX)
 			stepIdentifier := step.Execute(context.Background())
 			assert.Equal(t, expectedStep, stepIdentifier)
 
@@ -115,7 +114,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 					bridge: bridgeStub,
 				}
 
-				expectedStep := core.StepIdentifier(SigningProposedSetStatusOnMultiversX)
+				expectedStep := bridgeCore.StepIdentifier(SigningProposedSetStatusOnMultiversX)
 				stepIdentifier := step.Execute(context.Background())
 				assert.Equal(t, expectedStep, stepIdentifier)
 
@@ -127,7 +126,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 
 func createStubExecutorProposeSetStatus() *bridgeTests.BridgeExecutorStub {
 	stub := bridgeTests.NewBridgeExecutorStub()
-	stub.GetStoredBatchCalled = func() *clients.TransferBatch {
+	stub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
 		return testBatch
 	}
 	stub.WasSetStatusProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {

@@ -23,3 +23,13 @@ func CreateRandomMultiversXAddress() sdkCore.AddressHandler {
 
 	return data.NewAddressFromBytes(buff)
 }
+
+// CreateRandomMultiversXSCAddress will create a random MultiversX smart contract address
+func CreateRandomMultiversXSCAddress() sdkCore.AddressHandler {
+	buff := make([]byte, 22)
+	_, _ = rand.Read(buff)
+
+	firstPart := append(make([]byte, 8), []byte{5, 0}...)
+
+	return data.NewAddressFromBytes(append(firstPart, buff...))
+}

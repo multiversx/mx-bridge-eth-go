@@ -139,7 +139,7 @@ func (b *broadcaster) RegisterOnTopics() error {
 }
 
 // ProcessReceivedMessage will be called by the network messenger whenever a new message is received
-func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnectedPeer chainCore.PeerID) error {
+func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnectedPeer chainCore.PeerID, _ p2p.MessageHandler) error {
 	msg, err := b.preProcessMessage(message, fromConnectedPeer)
 	if err != nil {
 		b.log.Debug("got message", "topic", message.Topic(), "error", err)
@@ -152,8 +152,9 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnect
 		return fmt.Errorf("%w for peer: %s", ErrPeerNotWhitelisted, hexPkBytes)
 	}
 
+	address, _ := addr.AddressAsBech32String()
 	b.log.Trace("got message", "topic", message.Topic(),
-		"msg.Payload", msg.Payload, "msg.Nonce", msg.Nonce, "msg.PublicKey", addr.AddressAsBech32String())
+		"msg.Payload", msg.Payload, "msg.Nonce", msg.Nonce, "msg.PublicKey", address)
 
 	err = b.processNonce(msg)
 	if err != nil {
@@ -165,7 +166,7 @@ func (b *broadcaster) ProcessReceivedMessage(message p2p.MessageP2P, fromConnect
 	err = b.canProcessMessage(message, fromConnectedPeer)
 	if err != nil {
 		b.log.Debug("can't process message", "peer", fromConnectedPeer, "topic", message.Topic(), "msg.Payload", msg.Payload,
-			"msg.Nonce", msg.Nonce, "msg.PublicKey", addr.AddressAsBech32String(), "error", err)
+			"msg.Nonce", msg.Nonce, "msg.PublicKey", address, "error", err)
 		return err
 	}
 

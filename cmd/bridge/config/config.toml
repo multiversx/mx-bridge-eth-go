@@ -8,7 +8,7 @@
     GasLimitForEach = 30000
     IntervalToWaitForTransferInSeconds = 600 #10 minutes
     MaxRetriesOnQuorumReached = 3
-    MaxBlocksDelta = 10
+    ClientAvailabilityAllowDelta = 10
     [Eth.GasStation]
         Enabled = true
         URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
@@ -24,17 +24,20 @@
 [MultiversX]
     NetworkAddress = "https://devnet-gateway.multiversx.com" # the network address
     MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf" # the multiversx address for the bridge contract
+    SafeContractAddress = "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus" # the multiversx address for the safe contract
     PrivateKeyFile = "keys/multiversx.pem" # the path to the pem file containing the relayer multiversx wallet
     IntervalToResendTxsInSeconds = 60 # the time in seconds between nonce reads
     MaxRetriesOnQuorumReached = 3
     MaxRetriesOnWasTransferProposed = 3
-    ProxyCacherExpirationSeconds = 600 # the caching time in seconds
+    ClientAvailabilityAllowDelta = 10
+    [MultiversX.Proxy]
+        CacherExpirationSeconds = 600 # the caching time in seconds
 
-    # valid options for ProxyRestAPIEntityType are `observer` and `proxy`. Any other value will trigger an error.
-    # `observer` is useful when querying an observer, directly and `proxy` is useful when querying a squad's proxy
-    ProxyRestAPIEntityType = "observer"
-    ProxyFinalityCheck = true
-    ProxyMaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
+        # valid options for ProxyRestAPIEntityType are "observer" and "proxy". Any other value will trigger an error.
+        # "observer" is useful when querying an observer, directly and "proxy" is useful when querying a squad's proxy (gateway)
+        RestAPIEntityType = "observer"
+        FinalityCheck = true
+        MaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
     [MultiversX.GasMap]
         Sign = 8000000
         ProposeTransferBase = 11000000
@@ -43,68 +46,81 @@
         ProposeStatusForEach = 7000000
         PerformActionBase = 40000000
         PerformActionForEach = 5500000
+        ScCallPerByte = 100000 # 1500 tx data field + the rest for the actual storage in the contract
+        ScCallPerformForEach = 10000000
 
 [P2P]
     Port = "10010"
     InitialPeerList = []
     ProtocolID = "/erd/relay/1.0.0"
-    [AntifloodConfig]
+    [P2P.Transports]
+        QUICAddress = "" # optional QUIC address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/udp/%d/quic-v1
+        WebSocketAddress = "" # optional WebSocket address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/tcp/%d/ws
+        WebTransportAddress = "" # optional WebTransport address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/udp/%d/quic-v1/webtransport
+        [P2P.Transports.TCP]
+            ListenAddress = "/ip4/0.0.0.0/tcp/%d" # TCP listen address
+            PreventPortReuse = false
+        [P2P.ResourceLimiter]
+            Type = "default autoscale" #available options "default autoscale", "infinite", "default with manual scale".
+            ManualSystemMemoryInMB = 0 # not taken into account if the type is not "default with manual scale"
+            ManualMaximumFD = 0 # not taken into account if the type is not "default with manual scale"
+    [P2P.AntifloodConfig]
         Enabled = true
         NumConcurrentResolverJobs = 50
-        [Antiflood.FastReacting]
+        [P2P.AntifloodConfig.FastReacting]
             IntervalInSeconds = 1
             ReservedPercent   = 20.0
-            [Antiflood.FastReacting.PeerMaxInput]
+            [P2P.AntifloodConfig.FastReacting.PeerMaxInput]
                 BaseMessagesPerInterval  = 10
                 TotalSizePerInterval = 1048576 #1MB/s
-                [Antiflood.FastReacting.PeerMaxInput.IncreaseFactor]
+                [P2P.AntifloodConfig.FastReacting.PeerMaxInput.IncreaseFactor]
                     Threshold = 10 #if consensus size will exceed this value, then
                     Factor = 1.0   #increase the base value with [factor*consensus size]
-            [Antiflood.FastReacting.BlackList]
+            [P2P.AntifloodConfig.FastReacting.BlackList]
                 ThresholdNumMessagesPerInterval = 70
                 ThresholdSizePerInterval = 2097154 #2MB/s
                 NumFloodingRounds = 10
                 PeerBanDurationInSeconds = 300
 
-        [Antiflood.SlowReacting]
+        [P2P.AntifloodConfig.SlowReacting]
             IntervalInSeconds = 30
             ReservedPercent   = 20.0
-            [Antiflood.SlowReacting.PeerMaxInput]
+            [P2P.AntifloodConfig.SlowReacting.PeerMaxInput]
                 BaseMessagesPerInterval = 400
                 TotalSizePerInterval = 10485760 #10MB/interval
-                [Antiflood.SlowReacting.PeerMaxInput.IncreaseFactor]
+                [P2P.AntifloodConfig.SlowReacting.PeerMaxInput.IncreaseFactor]
                     Threshold = 10 #if consensus size will exceed this value, then
                     Factor = 0.0   #increase the base value with [factor*consensus size]
-            [Antiflood.SlowReacting.BlackList]
+            [P2P.AntifloodConfig.SlowReacting.BlackList]
                 ThresholdNumMessagesPerInterval = 800
                 ThresholdSizePerInterval = 20971540 #20MB/interval
                 NumFloodingRounds = 2
                 PeerBanDurationInSeconds = 3600
 
-        [Antiflood.OutOfSpecs]
+        [P2P.AntifloodConfig.OutOfSpecs]
             IntervalInSeconds = 1
             ReservedPercent   = 0.0
-            [Antiflood.OutOfSpecs.PeerMaxInput]
+            [P2P.AntifloodConfig.OutOfSpecs.PeerMaxInput]
                 BaseMessagesPerInterval = 140
                 TotalSizePerInterval = 4194304 #4MB/s
-                [Antiflood.OutOfSpecs.PeerMaxInput.IncreaseFactor]
+                [P2P.AntifloodConfig.OutOfSpecs.PeerMaxInput.IncreaseFactor]
                     Threshold = 0 #if consensus size will exceed this value, then
                     Factor = 0.0     #increase the base value with [factor*consensus size]
-            [Antiflood.OutOfSpecs.BlackList]
+            [P2P.AntifloodConfig.OutOfSpecs.BlackList]
                 ThresholdNumMessagesPerInterval = 200
                 ThresholdSizePerInterval = 6291456 #6MB/s
                 NumFloodingRounds = 2
                 PeerBanDurationInSeconds = 3600
 
-        [Antiflood.PeerMaxOutput]
+        [P2P.AntifloodConfig.PeerMaxOutput]
             BaseMessagesPerInterval  = 5
             TotalSizePerInterval     = 524288 #512KB/s
 
-        [Antiflood.Cache]
+        [P2P.AntifloodConfig.Cache]
             Name = "Antiflood"
             Capacity = 7000
             Type = "LRU"
-        [Antiflood.Topic]
+        [P2P.AntifloodConfig.Topic]
             DefaultMaxMessagesPerSec = 300 # default number of messages per interval for a topic
             MaxMessages = [{ Topic = "EthereumToMultiversX_join", NumMessagesPerSec = 100 },
                            { Topic = "EthereumToMultiversX_sign", NumMessagesPerSec = 100 }]
@@ -114,7 +130,6 @@
         Type = "gogo protobuf"
         SizeCheckDelta = 10
     [Relayer.RoleProvider]
-        UsePolling = true
         PollingIntervalInMillis = 60000 # 1 minute
     [Relayer.StatusMetricsStorage]
         [Relayer.StatusMetricsStorage.Cache]
@@ -141,9 +156,9 @@
     LogFileLifeSpanInSec = 86400 # 24h
     LogFileLifeSpanInMB = 1024 # 1GB
 
-[Antiflood]
+[WebAntiflood]
     Enabled = true
-    [Antiflood.WebServer]
+    [WebAntiflood.WebServer]
             # SimultaneousRequests represents the number of concurrent requests accepted by the web server
             # this is a global throttler that acts on all http connections regardless of the originating source
             SimultaneousRequests = 100
@@ -152,11 +167,6 @@
             SameSourceRequests = 10000
             # SameSourceResetIntervalInSec time frame between counter reset, in seconds
             SameSourceResetIntervalInSec = 1
-
-[BatchValidator]
-    Enabled = false
-    URL = "https://devnet-bridge-api.multiversx.com/validateBatch" # batch validator URL.
-    RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the batch validation request
 
 [PeersRatingConfig]
     TopRatedCacheCapacity = 5000

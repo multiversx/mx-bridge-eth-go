@@ -25,7 +25,7 @@ func StartWebServer(configs config.Configs, metricsHolder core.MetricsHolder) (i
 	httpServerArgs := gin.ArgsNewWebServer{
 		Facade:          relayerFacade,
 		ApiConfig:       configs.ApiRoutesConfig,
-		AntiFloodConfig: configs.GeneralConfig.Antiflood,
+		AntiFloodConfig: configs.GeneralConfig.WebAntiflood,
 	}
 
 	httpServerWrapper, err := gin.NewWebServerHandler(httpServerArgs)

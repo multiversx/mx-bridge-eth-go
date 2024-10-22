@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,12 +18,14 @@ import (
 type ArgsEthereumChainWrapper struct {
 	StatusHandler    core.StatusHandler
 	MultiSigContract multiSigContract
+	SafeContract     safeContract
 	BlockchainClient blockchainClient
 }
 
 type ethereumChainWrapper struct {
 	core.StatusHandler
 	multiSigContract multiSigContract
+	safeContract     safeContract
 	blockchainClient blockchainClient
 }
 
@@ -36,6 +39,7 @@ func NewEthereumChainWrapper(args ArgsEthereumChainWrapper) (*ethereumChainWrapp
 	return &ethereumChainWrapper{
 		StatusHandler:    args.StatusHandler,
 		multiSigContract: args.MultiSigContract,
+		safeContract:     args.SafeContract,
 		blockchainClient: args.BlockchainClient,
 	}, nil
 }
@@ -47,6 +51,9 @@ func checkArgs(args ArgsEthereumChainWrapper) error {
 	if check.IfNilReflect(args.MultiSigContract) {
 		return errNilMultiSigContract
 	}
+	if check.IfNilReflect(args.SafeContract) {
+		return errNilSafeContract
+	}
 	if check.IfNilReflect(args.BlockchainClient) {
 		return errNilBlockchainClient
 	}
@@ -55,13 +62,13 @@ func checkArgs(args ArgsEthereumChainWrapper) error {
 }
 
 // GetBatch returns the batch of transactions by providing the batch nonce
-func (wrapper *ethereumChainWrapper) GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, error) {
+func (wrapper *ethereumChainWrapper) GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.multiSigContract.GetBatch(&bind.CallOpts{Context: ctx}, batchNonce)
 }
 
 // GetBatchDeposits returns the transactions of a batch by providing the batch nonce
-func (wrapper *ethereumChainWrapper) GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error) {
+func (wrapper *ethereumChainWrapper) GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.multiSigContract.GetBatchDeposits(&bind.CallOpts{Context: ctx}, batchNonce)
 }
@@ -82,6 +89,12 @@ func (wrapper *ethereumChainWrapper) WasBatchExecuted(ctx context.Context, batch
 func (wrapper *ethereumChainWrapper) ChainID(ctx context.Context) (*big.Int, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.blockchainClient.ChainID(ctx)
+}
+
+// FilterLogs executes a query and returns matching logs and events
+func (wrapper *ethereumChainWrapper) FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.blockchainClient.FilterLogs(ctx, q)
 }
 
 // BlockNumber returns the current ethereum block number
@@ -116,7 +129,7 @@ func (wrapper *ethereumChainWrapper) Quorum(ctx context.Context) (*big.Int, erro
 }
 
 // GetStatusesAfterExecution returns the statuses of the last executed transfer
-func (wrapper *ethereumChainWrapper) GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, error) {
+func (wrapper *ethereumChainWrapper) GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, bool, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.multiSigContract.GetStatusesAfterExecution(&bind.CallOpts{Context: ctx}, batchID)
 }
@@ -126,6 +139,42 @@ func (wrapper *ethereumChainWrapper) GetStatusesAfterExecution(ctx context.Conte
 func (wrapper *ethereumChainWrapper) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.blockchainClient.BalanceAt(ctx, account, blockNumber)
+}
+
+// TotalBalances returns the total balance of the given token
+func (wrapper *ethereumChainWrapper) TotalBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.TotalBalances(&bind.CallOpts{Context: ctx}, token)
+}
+
+// MintBalances returns the mint balance of the given token
+func (wrapper *ethereumChainWrapper) MintBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.MintBalances(&bind.CallOpts{Context: ctx}, token)
+}
+
+// BurnBalances returns the burn balance of the given token
+func (wrapper *ethereumChainWrapper) BurnBalances(ctx context.Context, token common.Address) (*big.Int, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.BurnBalances(&bind.CallOpts{Context: ctx}, token)
+}
+
+// MintBurnTokens returns true if the token is a mintBurn token
+func (wrapper *ethereumChainWrapper) MintBurnTokens(ctx context.Context, token common.Address) (bool, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.MintBurnTokens(&bind.CallOpts{Context: ctx}, token)
+}
+
+// NativeTokens returns true if the token is a native token
+func (wrapper *ethereumChainWrapper) NativeTokens(ctx context.Context, token common.Address) (bool, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.NativeTokens(&bind.CallOpts{Context: ctx}, token)
+}
+
+// WhitelistedTokens returns true if the token is a native token
+func (wrapper *ethereumChainWrapper) WhitelistedTokens(ctx context.Context, token common.Address) (bool, error) {
+	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.safeContract.WhitelistedTokens(&bind.CallOpts{Context: ctx}, token)
 }
 
 // IsPaused returns true if the multisig contract is paused

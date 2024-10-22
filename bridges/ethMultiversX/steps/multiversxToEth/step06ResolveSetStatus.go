@@ -2,8 +2,10 @@ package multiversxtoeth
 
 import (
 	"context"
+	"errors"
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -22,12 +24,13 @@ func (step *resolveSetStatusStep) Execute(ctx context.Context) core.StepIdentifi
 	}
 
 	batch, err := step.bridge.GetBatchFromMultiversX(ctx)
-	if err != nil {
-		step.bridge.PrintInfo(logger.LogError, "error while fetching batch", "error", err)
+	isEmptyBatch := batch == nil || (err != nil && errors.Is(err, clients.ErrNoPendingBatchAvailable))
+	if isEmptyBatch {
+		step.bridge.PrintInfo(logger.LogDebug, "nil/empty batch fetched")
 		return GettingPendingBatchFromMultiversX
 	}
-	if batch == nil {
-		step.bridge.PrintInfo(logger.LogDebug, "nil batch fetched")
+	if err != nil {
+		step.bridge.PrintInfo(logger.LogError, "error while fetching batch", "error", err)
 		return GettingPendingBatchFromMultiversX
 	}
 
