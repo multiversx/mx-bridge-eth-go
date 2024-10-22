@@ -192,19 +192,21 @@ type PendingOperationsFilterConfig struct {
 
 // ScCallsModuleConfig will hold the settings for the SC calls module
 type ScCallsModuleConfig struct {
-	ScProxyBech32Address         string
-	ExtraGasToExecute            uint64
-	NetworkAddress               string
-	ProxyMaxNoncesDelta          int
-	ProxyFinalityCheck           bool
-	ProxyCacherExpirationSeconds uint64
-	ProxyRestAPIEntityType       string
-	IntervalToResendTxsInSeconds uint64
-	PrivateKeyFile               string
-	PollingIntervalInMillis      uint64
-	Filter                       PendingOperationsFilterConfig
-	Logs                         LogsConfig
-	TransactionChecks            TransactionChecksConfig
+	ScProxyBech32Address            string
+	ExtraGasToExecute               uint64
+	MaxGasLimitToUse                uint64
+	GasLimitForOutOfGasTransactions uint64
+	NetworkAddress                  string
+	ProxyMaxNoncesDelta             int
+	ProxyFinalityCheck              bool
+	ProxyCacherExpirationSeconds    uint64
+	ProxyRestAPIEntityType          string
+	IntervalToResendTxsInSeconds    uint64
+	PrivateKeyFile                  string
+	PollingIntervalInMillis         uint64
+	Filter                          PendingOperationsFilterConfig
+	Logs                            LogsConfig
+	TransactionChecks               TransactionChecksConfig
 }
 
 // TransactionChecksConfig will hold the setting for how to handle the transaction execution

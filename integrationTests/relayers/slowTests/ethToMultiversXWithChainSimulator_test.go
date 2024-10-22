@@ -39,6 +39,15 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 	)
 }
 
+func TestRelayersShouldExecuteTransfersWithMintBurnTokens(t *testing.T) {
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		GenerateTestEUROCToken(),
+		GenerateTestMEXToken(),
+	)
+}
+
 func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 	dummyAddress := strings.Repeat("2", 32)
 	dummyUint64 := string([]byte{37})
@@ -58,7 +67,39 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 		memeToken,
 	)
 
-	testCallPayableWithParamsWasCalled(testSetup, 37, usdcToken.AbstractTokenIdentifier, memeToken.AbstractTokenIdentifier)
+	testCallPayableWithParamsWasCalled(
+		testSetup,
+		37,
+		usdcToken.AbstractTokenIdentifier,
+		memeToken.AbstractTokenIdentifier,
+	)
+}
+
+func TestRelayersShouldExecuteTransfersWithSCCallsWithArgumentsWithMintBurnTokens(t *testing.T) {
+	dummyAddress := strings.Repeat("2", 32)
+	dummyUint64 := string([]byte{37})
+
+	callData := createScCallData("callPayableWithParams", 50000000, dummyUint64, dummyAddress)
+
+	eurocToken := GenerateTestEUROCToken()
+	eurocToken.TestOperations[2].MvxSCCallData = callData
+
+	mexToken := GenerateTestMEXToken()
+	mexToken.TestOperations[2].MvxSCCallData = callData
+
+	testSetup := testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		eurocToken,
+		mexToken,
+	)
+
+	testCallPayableWithParamsWasCalled(
+		testSetup,
+		37,
+		eurocToken.AbstractTokenIdentifier,
+		mexToken.AbstractTokenIdentifier,
+	)
 }
 
 func TestRelayerShouldExecuteTransfersAndNotCatchErrors(t *testing.T) {
@@ -258,6 +299,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsMintBurnOnEth = false
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = false
+		badToken.HasChainSpecificToken = true
 
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
@@ -268,6 +310,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsMintBurnOnEth = false
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = true
+		badToken.HasChainSpecificToken = false
 
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
@@ -278,6 +321,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsMintBurnOnEth = true
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = false
+		badToken.HasChainSpecificToken = true
 
 		testEthContractsShouldError(t, badToken)
 	})
@@ -287,6 +331,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsMintBurnOnEth = true
 		badToken.IsNativeOnMvX = false
 		badToken.IsMintBurnOnMvX = true
+		badToken.HasChainSpecificToken = true
 
 		testEthContractsShouldError(t, badToken)
 	})
@@ -394,6 +439,12 @@ func testCallPayableWithParamsWasCalled(testSetup *framework.TestSetup, value ui
 		return
 	}
 
+	universalTokens := make([]string, 0, len(tokens))
+	for _, identifier := range tokens {
+		tkData := testSetup.TokensRegistry.GetTokenData(identifier)
+		universalTokens = append(universalTokens, tkData.MvxUniversalToken)
+	}
+
 	vmRequest := &data.VmValueRequest{
 		Address:  testSetup.MultiversxHandler.TestCallerAddress.Bech32(),
 		FuncName: "getCalledDataParams",
@@ -405,11 +456,20 @@ func testCallPayableWithParamsWasCalled(testSetup *framework.TestSetup, value ui
 	returnedData := vmResponse.Data.ReturnData
 	require.Equal(testSetup, len(tokens), len(returnedData))
 
-	for i, token := range tokens {
-		buff := returnedData[i]
+	mapUniversalTokens := make(map[string]int)
+	for _, tokenIdentifier := range universalTokens {
+		mapUniversalTokens[tokenIdentifier] = 0
+	}
+
+	for _, buff := range returnedData {
 		parsedValue, parsedToken := processCalledDataParams(buff)
 		assert.Equal(testSetup, value, parsedValue)
-		assert.Contains(testSetup, parsedToken, token)
+		mapUniversalTokens[parsedToken]++
+	}
+
+	assert.Equal(testSetup, len(tokens), len(mapUniversalTokens))
+	for _, numTokens := range mapUniversalTokens {
+		assert.Equal(testSetup, 1, numTokens)
 	}
 }
 

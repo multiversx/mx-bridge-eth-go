@@ -42,6 +42,10 @@
                 {
                     "name": "eth_tx",
                     "type": "EthTransaction"
+                },
+                {
+                    "name": "batch_id",
+                    "type": "u64"
                 }
             ],
             "outputs": []
@@ -58,14 +62,9 @@
             "outputs": []
         },
         {
-            "name": "cancel",
+            "name": "updateLowestTxId",
             "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "tx_id",
-                    "type": "u32"
-                }
-            ],
+            "inputs": [],
             "outputs": []
         },
         {

@@ -73,17 +73,19 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chClose
 	}
 
 	argsExecutor := multiversx.ArgsScCallExecutor{
-		ScProxyBech32Address: cfg.ScProxyBech32Address,
-		Proxy:                proxy,
-		Codec:                &parsers.MultiversxCodec{},
-		Filter:               filter,
-		Log:                  log,
-		ExtraGasToExecute:    cfg.ExtraGasToExecute,
-		NonceTxHandler:       module.nonceTxsHandler,
-		PrivateKey:           privateKey,
-		SingleSigner:         singleSigner,
-		CloseAppChan:         chCloseApp,
-		TransactionChecks:    cfg.TransactionChecks,
+		ScProxyBech32Address:            cfg.ScProxyBech32Address,
+		Proxy:                           proxy,
+		Codec:                           &parsers.MultiversxCodec{},
+		Filter:                          filter,
+		Log:                             log,
+		ExtraGasToExecute:               cfg.ExtraGasToExecute,
+		MaxGasLimitToUse:                cfg.MaxGasLimitToUse,
+		GasLimitForOutOfGasTransactions: cfg.GasLimitForOutOfGasTransactions,
+		NonceTxHandler:                  module.nonceTxsHandler,
+		PrivateKey:                      privateKey,
+		SingleSigner:                    singleSigner,
+		CloseAppChan:                    chCloseApp,
+		TransactionChecks:               cfg.TransactionChecks,
 	}
 	module.executorInstance, err = multiversx.NewScCallExecutor(argsExecutor)
 	if err != nil {

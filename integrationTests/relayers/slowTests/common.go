@@ -31,8 +31,9 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
-			EthTokenName:                     "ETHTOKEN",
-			EthTokenSymbol:                   "ETHT",
+			HasChainSpecificToken:            true,
+			EthTokenName:                     "EthUSDC",
+			EthTokenSymbol:                   "USDC",
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  false,
 			IsNativeOnEth:                    true,
@@ -72,8 +73,9 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  false,
 			IsNativeOnMvX:                    true,
-			EthTokenName:                     "ETHMEME",
-			EthTokenSymbol:                   "ETHM",
+			HasChainSpecificToken:            true,
+			EthTokenName:                     "EthMEME",
+			EthTokenSymbol:                   "MEME",
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  true,
 			IsNativeOnEth:                    false,
@@ -95,6 +97,90 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 		},
 		ESDTSafeExtraBalance:    big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
 		EthTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
+	}
+}
+
+// GenerateTestEUROCToken will generate a test EUROC token
+func GenerateTestEUROCToken() framework.TestTokenParams {
+	//EUROC is ethNative = true, ethMintBurn = true, mvxNative = false, mvxMintBurn = true
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "EUROC",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "EUROC",
+			MvxChainSpecificTokenTicker:      "EUROC",
+			MvxUniversalTokenDisplayName:     "TestEUROC",
+			MvxChainSpecificTokenDisplayName: "TestEUROC",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            false,
+			EthTokenName:                     "EthEuroC",
+			EthTokenSymbol:                   "EUROC",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  true,
+			IsNativeOnEth:                    true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(5010),
+				ValueToSendFromMvX:   big.NewInt(2510),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(7010),
+				ValueToSendFromMvX:   big.NewInt(310),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(1010),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
+			},
+		},
+		ESDTSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
+		EthTestAddrExtraBalance: big.NewInt(-5010 + 2510 - 50 - 7010 + 310 - 50 - 1010), // -(eth->mvx) + (mvx->eth) - fees
+	}
+}
+
+// GenerateTestMEXToken will generate a test EUROC token
+func GenerateTestMEXToken() framework.TestTokenParams {
+	//MEX is ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = true
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "MEX",
+			NumOfDecimalsUniversal:           2,
+			NumOfDecimalsChainSpecific:       2,
+			MvxUniversalTokenTicker:          "MEX",
+			MvxChainSpecificTokenTicker:      "MEX",
+			MvxUniversalTokenDisplayName:     "TestMEX",
+			MvxChainSpecificTokenDisplayName: "TestMEX",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    true,
+			HasChainSpecificToken:            false,
+			EthTokenName:                     "EthMex",
+			EthTokenSymbol:                   "MEX",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  true,
+			IsNativeOnEth:                    false,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(2410),
+				ValueToSendFromMvX:   big.NewInt(4010),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(210),
+				ValueToSendFromMvX:   big.NewInt(6010),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(1010),
+				ValueToSendFromMvX:   big.NewInt(2010),
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
+			},
+		},
+		ESDTSafeExtraBalance:    big.NewInt(150), // just the fees should be collected in ESDT safe
+		EthTestAddrExtraBalance: big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
 	}
 }
 
