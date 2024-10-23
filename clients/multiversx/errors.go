@@ -16,7 +16,6 @@ var (
 	errNilRoleProvider          = errors.New("nil role provider")
 	errRelayerNotWhitelisted    = errors.New("relayer not whitelisted")
 	errNilNodeStatusResponse    = errors.New("nil node status response")
-
-	// ErrNoPendingBatchAvailable signals that no pending batch is available
-	ErrNoPendingBatchAvailable = errors.New("no pending batch available")
+	errInvalidBalance           = errors.New("invalid balance")
+	errInsufficientESDTBalance  = errors.New("insufficient ESDT balance")
 )

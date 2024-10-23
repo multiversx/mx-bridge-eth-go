@@ -21,6 +21,8 @@
 /esdata
 .env
 *.log
+# prevent accidental commit of key files
+*.pem
 
 mytestnet/**
 

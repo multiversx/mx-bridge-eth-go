@@ -29,4 +29,13 @@ var (
 
 	// ErrMultisigContractPaused signals that the multisig contract is paused
 	ErrMultisigContractPaused = errors.New("multisig contract paused")
+
+	// ErrNoBatchAvailable signals that the batch is not available
+	ErrNoBatchAvailable = errors.New("no batch available")
+
+	// ErrNoPendingBatchAvailable signals that no pending batch is available
+	ErrNoPendingBatchAvailable = errors.New("no pending batch available")
+
+	// ErrNilCryptoHandler signals that a nil crypto handler was provided
+	ErrNilCryptoHandler = errors.New("nil crypto handler")
 )
