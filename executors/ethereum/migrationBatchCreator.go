@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
-	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -61,7 +60,7 @@ func NewMigrationBatchCreator(args ArgsMigrationBatchCreator) (*migrationBatchCr
 }
 
 // CreateBatchInfo creates an instance of type BatchInfo
-func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSafeAddress common.Address, trimAmount core.OptionalUint64) (*BatchInfo, error) {
+func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSafeAddress common.Address, partialMigration map[string]*big.Float) (*BatchInfo, error) {
 	creator.logger.Info("started the batch creation process...")
 
 	depositStart := uint64(0) // deposits inside a batch are not tracked, we can start from 0
@@ -78,7 +77,11 @@ func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSa
 	creator.logger.Info("fetched Ethereum contracts state",
 		"free batch ID", freeBatchID, "time took", endTime.Sub(startTime))
 
-	tokensList, err := creator.getTokensList(ctx)
+	if partialMigration == nil {
+		partialMigration = make(map[string]*big.Float)
+	}
+
+	tokensList, err := creator.getTokensList(ctx, partialMigration)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +95,7 @@ func (creator *migrationBatchCreator) CreateBatchInfo(ctx context.Context, newSa
 
 	creator.logger.Info("fetched ERC20 contract addresses")
 
-	err = creator.fetchBalances(ctx, deposits, trimAmount)
+	err = creator.fetchBalances(ctx, deposits, partialMigration)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +175,7 @@ func (creator *migrationBatchCreator) checkAvailableBatch(
 	return nil
 }
 
-func (creator *migrationBatchCreator) getTokensList(ctx context.Context) ([]string, error) {
+func (creator *migrationBatchCreator) getTokensList(ctx context.Context, partialMigration map[string]*big.Float) ([]string, error) {
 	tokens, err := creator.mvxDataGetter.GetAllKnownTokens(ctx)
 	if err != nil {
 		return nil, err
@@ -183,6 +186,12 @@ func (creator *migrationBatchCreator) getTokensList(ctx context.Context) ([]stri
 
 	stringTokens := make([]string, 0, len(tokens))
 	for _, token := range tokens {
+		if len(partialMigration) > 1 && partialMigration[string(token)] == nil {
+			// partial migration was set, but for the current token in this deposit a value was not given
+			// skip this deposit
+			continue
+		}
+
 		stringTokens = append(stringTokens, string(token))
 	}
 
@@ -215,15 +224,28 @@ func (creator *migrationBatchCreator) fetchERC20ContractsAddresses(ctx context.C
 	return deposits, nil
 }
 
-func (creator *migrationBatchCreator) fetchBalances(ctx context.Context, deposits []*DepositInfo, trimAmount core.OptionalUint64) error {
+func (creator *migrationBatchCreator) fetchBalances(ctx context.Context, deposits []*DepositInfo, partialMigration map[string]*big.Float) error {
 	for _, deposit := range deposits {
 		balance, err := creator.erc20ContractsHolder.BalanceOf(ctx, deposit.ContractAddress, creator.safeContractAddress)
 		if err != nil {
 			return fmt.Errorf("%w for address %s in ERC20 contract %s", err, creator.safeContractAddress.String(), deposit.ContractAddress.String())
 		}
 
-		if trimAmount.HasValue {
-			newBalance := big.NewInt(0).SetUint64(trimAmount.Value)
+		decimals, err := creator.erc20ContractsHolder.Decimals(ctx, deposit.ContractAddress)
+		if err != nil {
+			return fmt.Errorf("%w for in ERC20 contract %s", err, deposit.ContractAddress.String())
+		}
+		deposit.Decimals = decimals
+
+		trimAmount := partialMigration[deposit.Token]
+		if trimAmount != nil {
+			denominatedTrimAmount := big.NewFloat(0).Set(trimAmount)
+			multiplier := big.NewInt(10)
+			multiplier.Exp(multiplier, big.NewInt(int64(deposit.Decimals)), nil)
+			denominatedTrimAmount.Mul(denominatedTrimAmount, big.NewFloat(0).SetInt(multiplier))
+
+			newBalance := big.NewInt(0)
+			denominatedTrimAmount.Int(newBalance)
 			if balance.Cmp(newBalance) > 0 {
 				creator.logger.Warn("applied denominated value", "balance", balance.String(), "new value to consider", newBalance.String())
 				balance = newBalance
@@ -234,6 +256,13 @@ func (creator *migrationBatchCreator) fetchBalances(ctx context.Context, deposit
 
 		deposit.Amount = balance
 		deposit.AmountString = balance.String()
+
+		divider := big.NewInt(10)
+		divider.Exp(divider, big.NewInt(int64(decimals)), nil)
+
+		deposit.DenominatedAmount = big.NewFloat(0).SetInt(balance)
+		deposit.DenominatedAmount.Quo(deposit.DenominatedAmount, big.NewFloat(0).SetInt(divider))
+		deposit.DenominatedAmountString = deposit.DenominatedAmount.Text('f', -1)
 	}
 
 	return nil

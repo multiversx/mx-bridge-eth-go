@@ -41,6 +41,7 @@ type ClientWrapper interface {
 // Erc20ContractsHolder defines the Ethereum ERC20 contract operations
 type Erc20ContractsHolder interface {
 	BalanceOf(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error)
+	Decimals(ctx context.Context, erc20Address common.Address) (uint8, error)
 	IsInterfaceNil() bool
 }
 
@@ -71,6 +72,7 @@ type SignaturesHolder interface {
 
 type erc20ContractWrapper interface {
 	BalanceOf(ctx context.Context, account common.Address) (*big.Int, error)
+	Decimals(ctx context.Context) (uint8, error)
 	IsInterfaceNil() bool
 }
 

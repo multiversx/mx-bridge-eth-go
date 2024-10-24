@@ -13,6 +13,7 @@ import (
 
 type genericErc20Contract interface {
 	BalanceOf(opts *bind.CallOpts, account common.Address) (*big.Int, error)
+	Decimals(opts *bind.CallOpts) (uint8, error)
 }
 
 type multiSigContract interface {

@@ -43,6 +43,12 @@ func (wrapper *erc20ContractWrapper) BalanceOf(ctx context.Context, account comm
 	return wrapper.erc20Contract.BalanceOf(&bind.CallOpts{Context: ctx}, account)
 }
 
+// Decimals returns the ERC20 set decimals for the token
+func (wrapper *erc20ContractWrapper) Decimals(ctx context.Context) (uint8, error) {
+	wrapper.statusHandler.AddIntMetric(core.MetricNumEthClientRequests, 1)
+	return wrapper.erc20Contract.Decimals(&bind.CallOpts{Context: ctx})
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
 func (wrapper *erc20ContractWrapper) IsInterfaceNil() bool {
 	return wrapper == nil

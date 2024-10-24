@@ -12,16 +12,19 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
-	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-go/testscommon"
 	"github.com/stretchr/testify/assert"
 )
 
 var safeContractAddress = common.HexToAddress(strings.Repeat("9", 40))
-var tkn1Erc20Address = bytes.Repeat([]byte("2"), 20)
-var tkn2Erc20Address = bytes.Repeat([]byte("3"), 20)
+var tkn1Erc20Address = bytes.Repeat([]byte("1"), 20)
+var tkn2Erc20Address = bytes.Repeat([]byte("2"), 20)
+var tkn3Erc20Address = bytes.Repeat([]byte("3"), 20)
+var tkn4Erc20Address = bytes.Repeat([]byte("4"), 20)
 var balanceOfTkn1 = big.NewInt(19)
 var balanceOfTkn2 = big.NewInt(38)
+var balanceOfTkn3 = big.NewInt(138)
+var balanceOfTkn4 = big.NewInt(1137)
 var expectedErr = errors.New("expected error")
 
 func createMockArgsForMigrationBatchCreator() ArgsMigrationBatchCreator {
@@ -31,6 +34,8 @@ func createMockArgsForMigrationBatchCreator() ArgsMigrationBatchCreator {
 				return [][]byte{
 					[]byte("tkn1"),
 					[]byte("tkn2"),
+					[]byte("tkn3"),
+					[]byte("tkn4"),
 				}, nil
 			},
 			GetERC20AddressForTokenIdCalled: func(ctx context.Context, tokenId []byte) ([][]byte, error) {
@@ -292,7 +297,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
 		assert.Equal(t, expectedErr, err)
 		assert.Nil(t, batch)
 	})
@@ -312,7 +317,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
 		assert.Equal(t, expectedErr, err)
 		assert.Nil(t, batch)
 	})
@@ -332,7 +337,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
 		assert.ErrorIs(t, err, errEmptyTokensList)
 		assert.Nil(t, batch)
 	})
@@ -350,7 +355,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
 		assert.Equal(t, expectedErr, err)
 		assert.Nil(t, batch)
 	})
@@ -368,7 +373,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
 		assert.ErrorIs(t, err, errWrongERC20AddressResponse)
 		assert.Nil(t, batch)
 	})
@@ -388,7 +393,7 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
-		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
+		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
 		assert.ErrorIs(t, err, expectedErr)
 		assert.Nil(t, batch)
 	})
@@ -403,6 +408,12 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 			if string(sourceBytes) == "tkn2" {
 				return [][]byte{tkn2Erc20Address}, nil
 			}
+			if string(sourceBytes) == "tkn3" {
+				return [][]byte{tkn3Erc20Address}, nil
+			}
+			if string(sourceBytes) == "tkn4" {
+				return [][]byte{tkn4Erc20Address}, nil
+			}
 
 			return nil, fmt.Errorf("unexpected source bytes")
 		}
@@ -416,8 +427,30 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 				if string(erc20Address.Bytes()) == string(tkn2Erc20Address) {
 					return balanceOfTkn2, nil
 				}
+				if string(erc20Address.Bytes()) == string(tkn3Erc20Address) {
+					return balanceOfTkn3, nil
+				}
+				if string(erc20Address.Bytes()) == string(tkn4Erc20Address) {
+					return balanceOfTkn4, nil
+				}
 
 				return nil, fmt.Errorf("unexpected ERC20 contract address")
+			},
+			DecimalsCalled: func(ctx context.Context, erc20Address common.Address) (uint8, error) {
+				if string(erc20Address.Bytes()) == string(tkn1Erc20Address) {
+					return 3, nil
+				}
+				if string(erc20Address.Bytes()) == string(tkn2Erc20Address) {
+					return 18, nil
+				}
+				if string(erc20Address.Bytes()) == string(tkn2Erc20Address) {
+					return 0, nil
+				}
+				if string(erc20Address.Bytes()) == string(tkn4Erc20Address) {
+					return 1, nil
+				}
+
+				return 0, nil
 			},
 		}
 		args.EthereumChainWrapper = &bridge.EthereumClientWrapperStub{
@@ -427,33 +460,61 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 		creator, _ := NewMigrationBatchCreator(args)
 
-		t.Run("without trim", func(t *testing.T) {
+		t.Run("without migration map", func(t *testing.T) {
 			expectedBatch := &BatchInfo{
 				OldSafeContractAddress: safeContractAddress.String(),
 				NewSafeContractAddress: newSafeContractAddress.String(),
 				BatchID:                firstFreeBatchId,
-				MessageHash:            common.HexToHash("0x5650b9dcc3283c624328422a6a41dd3305f86c5456762f63110a2fc4e23f5162"),
+				MessageHash:            common.HexToHash("0xa0d36274c96845ee51e76980df39c44cdabfa41b85238457cab8834ad8410447"),
 				DepositsInfo: []*DepositInfo{
 					{
-						DepositNonce:          1,
-						Token:                 "tkn1",
-						ContractAddressString: common.BytesToAddress(tkn1Erc20Address).String(),
-						ContractAddress:       common.BytesToAddress(tkn1Erc20Address),
-						Amount:                big.NewInt(19),
-						AmountString:          "19",
+						DepositNonce:            1,
+						Token:                   "tkn1",
+						ContractAddressString:   common.BytesToAddress(tkn1Erc20Address).String(),
+						Decimals:                3,
+						ContractAddress:         common.BytesToAddress(tkn1Erc20Address),
+						Amount:                  big.NewInt(19),
+						AmountString:            "19",
+						DenominatedAmountString: "0.019",
 					},
 					{
-						DepositNonce:          2,
-						Token:                 "tkn2",
-						ContractAddressString: common.BytesToAddress(tkn2Erc20Address).String(),
-						ContractAddress:       common.BytesToAddress(tkn2Erc20Address),
-						Amount:                big.NewInt(38),
-						AmountString:          "38",
+						DepositNonce:            2,
+						Token:                   "tkn2",
+						ContractAddressString:   common.BytesToAddress(tkn2Erc20Address).String(),
+						Decimals:                18,
+						ContractAddress:         common.BytesToAddress(tkn2Erc20Address),
+						Amount:                  big.NewInt(38),
+						AmountString:            "38",
+						DenominatedAmountString: "0.000000000000000038",
+					},
+					{
+						DepositNonce:            3,
+						Token:                   "tkn3",
+						ContractAddressString:   common.BytesToAddress(tkn3Erc20Address).String(),
+						Decimals:                0,
+						ContractAddress:         common.BytesToAddress(tkn3Erc20Address),
+						Amount:                  big.NewInt(138),
+						AmountString:            "138",
+						DenominatedAmountString: "138",
+					},
+					{
+						DepositNonce:            4,
+						Token:                   "tkn4",
+						ContractAddressString:   common.BytesToAddress(tkn4Erc20Address).String(),
+						Decimals:                1,
+						ContractAddress:         common.BytesToAddress(tkn4Erc20Address),
+						Amount:                  big.NewInt(1137),
+						AmountString:            "1137",
+						DenominatedAmountString: "113.7",
 					},
 				},
 			}
+			expectedBatch.DepositsInfo[0].DenominatedAmount, _ = big.NewFloat(0).SetString("0.019")
+			expectedBatch.DepositsInfo[1].DenominatedAmount, _ = big.NewFloat(0).SetString("0.000000000000000038")
+			expectedBatch.DepositsInfo[2].DenominatedAmount, _ = big.NewFloat(0).SetString("138")
+			expectedBatch.DepositsInfo[3].DenominatedAmount, _ = big.NewFloat(0).SetString("113.7")
 
-			batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, core.OptionalUint64{})
+			batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedBatch, batch)
 		})
@@ -462,32 +523,51 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 				OldSafeContractAddress: safeContractAddress.String(),
 				NewSafeContractAddress: newSafeContractAddress.String(),
 				BatchID:                firstFreeBatchId,
-				MessageHash:            common.HexToHash("0x7dc48af8b0431d100adefaed79bacd0c33ab0fdcc11723de6eaa3f158595a097"),
+				MessageHash:            common.HexToHash("0xb726ee06a2fd99ef8e78cf97dc25522260796df572cd3967a6e750c3a1201276"),
 				DepositsInfo: []*DepositInfo{
 					{
-						DepositNonce:          1,
-						Token:                 "tkn1",
-						ContractAddressString: common.BytesToAddress(tkn1Erc20Address).String(),
-						ContractAddress:       common.BytesToAddress(tkn1Erc20Address),
-						Amount:                big.NewInt(19),
-						AmountString:          "19",
+						DepositNonce:            1,
+						Token:                   "tkn1",
+						ContractAddressString:   common.BytesToAddress(tkn1Erc20Address).String(),
+						ContractAddress:         common.BytesToAddress(tkn1Erc20Address),
+						Amount:                  big.NewInt(17),
+						AmountString:            "17",
+						DenominatedAmountString: "0.017",
+						Decimals:                3,
 					},
 					{
-						DepositNonce:          2,
-						Token:                 "tkn2",
-						ContractAddressString: common.BytesToAddress(tkn2Erc20Address).String(),
-						ContractAddress:       common.BytesToAddress(tkn2Erc20Address),
-						Amount:                big.NewInt(20),
-						AmountString:          "20",
+						DepositNonce:            2,
+						Token:                   "tkn2",
+						ContractAddressString:   common.BytesToAddress(tkn2Erc20Address).String(),
+						ContractAddress:         common.BytesToAddress(tkn2Erc20Address),
+						Amount:                  big.NewInt(20),
+						AmountString:            "20",
+						DenominatedAmountString: "0.00000000000000002",
+						Decimals:                18,
+					},
+					{
+						DepositNonce:            3,
+						Token:                   "tkn3",
+						ContractAddressString:   common.BytesToAddress(tkn3Erc20Address).String(),
+						ContractAddress:         common.BytesToAddress(tkn3Erc20Address),
+						Amount:                  big.NewInt(120),
+						AmountString:            "120",
+						DenominatedAmountString: "120",
+						Decimals:                0,
 					},
 				},
 			}
+			expectedBatch.DepositsInfo[0].DenominatedAmount, _ = big.NewFloat(0).SetString("0.017")
+			expectedBatch.DepositsInfo[1].DenominatedAmount, _ = big.NewFloat(0).SetString("0.000000000000000020")
+			expectedBatch.DepositsInfo[2].DenominatedAmount, _ = big.NewFloat(0).SetString("120")
 
-			trimValue := core.OptionalUint64{
-				Value:    20,
-				HasValue: true,
+			partialMap := map[string]*big.Float{
+				"tkn1": big.NewFloat(0.017),
+				"tkn3": big.NewFloat(120),
 			}
-			batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, trimValue)
+			partialMap["tkn2"], _ = big.NewFloat(0).SetString("0.000000000000000020")
+
+			batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, partialMap)
 			assert.Nil(t, err)
 			assert.Equal(t, expectedBatch, batch)
 		})
