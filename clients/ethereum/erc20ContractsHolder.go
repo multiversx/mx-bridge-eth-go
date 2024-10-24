@@ -45,8 +45,17 @@ func NewErc20SafeContractsHolder(args ArgsErc20SafeContractsHolder) (*erc20SafeC
 }
 
 // BalanceOf returns the ERC20 balance of the provided address
-// if the ERC20 contract does not exists in the map of contract wrappers, it will create and add it first
+// if the ERC20 contract does not exist in the map of contract wrappers, it will create and add it first
 func (h *erc20SafeContractsHolder) BalanceOf(ctx context.Context, erc20Address ethCommon.Address, address ethCommon.Address) (*big.Int, error) {
+	wrapper, err := h.getOrCreateWrapper(erc20Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return wrapper.BalanceOf(ctx, address)
+}
+
+func (h *erc20SafeContractsHolder) getOrCreateWrapper(erc20Address ethCommon.Address) (erc20ContractWrapper, error) {
 	h.mut.Lock()
 	defer h.mut.Unlock()
 
@@ -68,7 +77,18 @@ func (h *erc20SafeContractsHolder) BalanceOf(ctx context.Context, erc20Address e
 		h.contracts[erc20Address] = wrapper
 	}
 
-	return wrapper.BalanceOf(ctx, address)
+	return wrapper, nil
+}
+
+// Decimals returns the ERC20 decimals for the current ERC20 contract
+// if the ERC20 contract does not exist in the map of contract wrappers, it will create and add it first
+func (h *erc20SafeContractsHolder) Decimals(ctx context.Context, erc20Address ethCommon.Address) (uint8, error) {
+	wrapper, err := h.getOrCreateWrapper(erc20Address)
+	if err != nil {
+		return 0, err
+	}
+
+	return wrapper.Decimals(ctx)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
