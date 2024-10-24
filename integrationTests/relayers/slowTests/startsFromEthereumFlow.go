@@ -1,4 +1,4 @@
-//TODO
+//go:build slow
 
 package slowTests
 
