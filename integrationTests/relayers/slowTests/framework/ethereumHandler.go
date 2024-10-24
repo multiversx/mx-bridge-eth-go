@@ -3,7 +3,6 @@ package framework
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"math/big"
 	"os"
 	"testing"
@@ -50,7 +49,7 @@ type EthereumHandler struct {
 	*KeysStore
 	TokensRegistry        TokensRegistry
 	Quorum                string
-	MvxTestCallerAddress  core.AddressHandler
+	MvxCalleeScAddress    core.AddressHandler
 	SimulatedChain        *simulated.Backend
 	SimulatedChainWrapper EthereumBlockchainClient
 	ChainID               *big.Int
@@ -340,7 +339,7 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 		require.Equal(handler, mintAmount.String(), balance.String())
 
 		if params.IsNativeOnEth {
-			tx, err = ethMintBurnContract.Mint(auth, handler.TestKeys.EthAddress, mintAmount)
+			tx, err = ethMintBurnContract.Mint(auth, handler.AliceKeys.EthAddress, mintAmount)
 			require.NoError(handler, err)
 			handler.SimulatedChain.Commit()
 			handler.checkEthTxResult(ctx, tx.Hash())
@@ -363,7 +362,7 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 	require.NoError(handler, err)
 
 	// mint the address that will create the transfers
-	handler.mintTokens(ctx, ethGenericTokenContract, params.ValueToMintOnEth, handler.TestKeys.EthAddress)
+	handler.mintTokens(ctx, ethGenericTokenContract, params.ValueToMintOnEth, handler.AliceKeys.EthAddress)
 	if len(params.InitialSupplyValue) > 0 {
 		handler.mintTokens(ctx, ethGenericTokenContract, params.InitialSupplyValue, handler.SafeAddress)
 	}
@@ -395,11 +394,11 @@ func (handler *EthereumHandler) mintTokens(
 // CreateBatchOnEthereum will create a batch on Ethereum using the provided tokens parameters list
 func (handler *EthereumHandler) CreateBatchOnEthereum(
 	ctx context.Context,
-	mvxTestCallerAddress core.AddressHandler,
+	mvxCalleeScAddress core.AddressHandler,
 	tokensParams ...TestTokenParams,
 ) {
 	for _, params := range tokensParams {
-		handler.createDepositsOnEthereumForToken(ctx, params, handler.TestKeys.EthSK, mvxTestCallerAddress)
+		handler.createDepositsOnEthereumForToken(ctx, params, handler.AliceKeys, handler.BobKeys, mvxCalleeScAddress)
 	}
 
 	// wait until batch is settled
@@ -409,14 +408,28 @@ func (handler *EthereumHandler) CreateBatchOnEthereum(
 	}
 }
 
+// SendFromEthereumToMultiversX will create the deposit transactions on the Ethereum side
+func (handler *EthereumHandler) SendFromEthereumToMultiversX(
+	ctx context.Context,
+	from KeysHolder,
+	to KeysHolder,
+	mvxTestCallerAddress core.AddressHandler,
+	tokensParams ...TestTokenParams,
+) {
+	for _, params := range tokensParams {
+		handler.createDepositsOnEthereumForToken(ctx, params, from, to, mvxTestCallerAddress)
+	}
+}
+
 func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 	ctx context.Context,
 	params TestTokenParams,
-	from *ecdsa.PrivateKey,
-	mvxTestCallerAddress core.AddressHandler,
+	from KeysHolder,
+	to KeysHolder,
+	targetSCAddress core.AddressHandler,
 ) {
 	// add allowance for the sender
-	auth, _ := bind.NewKeyedTransactorWithChainID(from, handler.ChainID)
+	auth, _ := bind.NewKeyedTransactorWithChainID(from.EthSK, handler.ChainID)
 
 	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, token)
@@ -450,27 +463,16 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 				auth,
 				token.EthErc20Address,
 				operation.ValueToTransferToMvx,
-				mvxTestCallerAddress.AddressSlice(),
+				targetSCAddress.AddressSlice(),
 				operation.MvxSCCallData,
 			)
 		} else {
-			tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
+			tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, to.MvxAddress.AddressSlice())
 		}
 
 		require.NoError(handler, err)
 		handler.SimulatedChain.Commit()
 		handler.checkEthTxResult(ctx, tx.Hash())
-	}
-}
-
-// SendFromEthereumToMultiversX will create the deposit transactions on the Ethereum side
-func (handler *EthereumHandler) SendFromEthereumToMultiversX(
-	ctx context.Context,
-	mvxTestCallerAddress core.AddressHandler,
-	tokensParams ...TestTokenParams,
-) {
-	for _, params := range tokensParams {
-		handler.createDepositsOnEthereumForToken(ctx, params, handler.TestKeys.EthSK, mvxTestCallerAddress)
 	}
 }
 

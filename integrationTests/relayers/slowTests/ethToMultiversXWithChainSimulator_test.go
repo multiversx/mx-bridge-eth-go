@@ -159,7 +159,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
 		if len(startsFromEthFlow.tokens) > 0 {
-			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
+			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
 		}
 		if len(startsFromMvXFlow.tokens) > 0 {
 			setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
@@ -351,7 +351,7 @@ func testRelayersShouldNotExecuteTransfers(
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
 		if len(startsFromEthFlow.tokens) > 0 {
-			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
+			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
 		}
 		if len(startsFromMvXFlow.tokens) > 0 {
 			setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
@@ -446,7 +446,7 @@ func testCallPayableWithParamsWasCalled(testSetup *framework.TestSetup, value ui
 	}
 
 	vmRequest := &data.VmValueRequest{
-		Address:  testSetup.MultiversxHandler.TestCallerAddress.Bech32(),
+		Address:  testSetup.MultiversxHandler.CalleeScAddress.Bech32(),
 		FuncName: "getCalledDataParams",
 	}
 
