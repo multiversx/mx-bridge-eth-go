@@ -95,7 +95,7 @@ type MultiversxHandler struct {
 	MultisigAddress           *MvxAddress
 	MultiTransferAddress      *MvxAddress
 	ScProxyAddress            *MvxAddress
-	TestCallerAddress         *MvxAddress
+	CalleeScAddress           *MvxAddress
 	ESDTSystemContractAddress *MvxAddress
 }
 
@@ -239,15 +239,15 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	log.Info("Deploy: multisig contract", "address", handler.MultisigAddress, "transaction hash", hash)
 
 	// deploy test-caller
-	handler.TestCallerAddress, hash, _ = handler.ChainSimulator.DeploySC(
+	handler.CalleeScAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
 		testCallerContractPath,
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
 	)
-	require.NotEqual(handler, emptyAddress, handler.TestCallerAddress)
-	log.Info("Deploy: test-caller contract", "address", handler.TestCallerAddress, "transaction hash", hash)
+	require.NotEqual(handler, emptyAddress, handler.CalleeScAddress)
+	log.Info("Deploy: test-caller contract", "address", handler.CalleeScAddress, "transaction hash", hash)
 }
 
 func (handler *MultiversxHandler) wireMultiTransfer(ctx context.Context) {
@@ -456,7 +456,7 @@ func (handler *MultiversxHandler) CheckForZeroBalanceOnReceiversForToken(ctx con
 	balance := handler.GetESDTUniversalTokenBalance(ctx, handler.TestKeys.MvxAddress, token.AbstractTokenIdentifier)
 	require.Equal(handler, big.NewInt(0).String(), balance.String())
 
-	balance = handler.GetESDTUniversalTokenBalance(ctx, handler.TestCallerAddress, token.AbstractTokenIdentifier)
+	balance = handler.GetESDTUniversalTokenBalance(ctx, handler.CalleeScAddress, token.AbstractTokenIdentifier)
 	require.Equal(handler, big.NewInt(0).String(), balance.String())
 }
 
@@ -942,20 +942,20 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 }
 
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
-func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, value *big.Int) {
 	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
-		hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
+		hex.EncodeToString(to.EthAddress.Bytes()),
 	}
 	dataField := strings.Join(params, "@")
 
 	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
-		handler.TestKeys.MvxSk,
+		from.MvxSk,
 		handler.WrapperAddress,
 		zeroStringValue,
 		createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)),

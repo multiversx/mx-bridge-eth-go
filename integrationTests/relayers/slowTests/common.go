@@ -1,4 +1,4 @@
-//go:build slow
+//TODO
 
 package slowTests
 
@@ -53,8 +53,8 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
-		EthTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000), // -(eth->mvx) + (mvx->eth) - fees
+		ESDTSafeExtraBalance:    big.NewInt(100),                  // extra is just for the fees for the 2 transfers mvx->eth
+		EthTestAddrExtraBalance: big.NewInt(2500 - 50 + 300 - 50), // -(eth->mvx) + (mvx->eth) - fees
 	}
 }
 
@@ -137,8 +137,8 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
-		EthTestAddrExtraBalance: big.NewInt(-5010 + 2510 - 50 - 7010 + 310 - 50 - 1010), // -(eth->mvx) + (mvx->eth) - fees
+		ESDTSafeExtraBalance:    big.NewInt(100),                  // extra is just for the fees for the 2 transfers mvx->eth
+		EthTestAddrExtraBalance: big.NewInt(2510 - 50 + 310 - 50), // -(eth->mvx) + (mvx->eth) - fees
 	}
 }
 
