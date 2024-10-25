@@ -2,8 +2,8 @@
     Chain = "Ethereum"
     NetworkAddress = "http://127.0.0.1:8545" # a network address
     PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
-    MultisigContractAddress = "92266a070ae1eBA4F778781c2177AaF4747Ea1b8"
-    SafeContractAddress = "29C63343d302564e3695ca14AB31F5eec427Af3E"
+    MultisigContractAddress = "1Ff78EB04d44a803E73c44FEf8790c5cAbD14596"
+    SafeContractAddress = "92A26975433A61CF1134802586aa669bAB8B69f3"
     GasLimitBase = 350000
     GasLimitForEach = 30000
     [Eth.GasStation]
@@ -19,9 +19,9 @@
         GasPriceSelector = "SafeGasPrice" # selector used to provide the gas price
 
 [MultiversX]
-    NetworkAddress = "https://testnet-gateway.multiversx.com" # the network address
-    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqe34pfpl27yq9hq79kms9glwc6c8efm5u3kuq02d609"
-    SafeContractAddress = "erd1qqqqqqqqqqqqqpgq3quw8f6mplxn6up7l5wsre0dm8r9wrds3kuq7axccv"
+    NetworkAddress = "https://gateway.multiversx.com" # the network address
+    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqxexs26vrvhwh2m4he62d6y3jzmv3qkujyfkq8yh4z2"
+    SafeContractAddress = "erd1qqqqqqqqqqqqqpgqhxkc48lt5uv2hejj4wtjqvugfm4wgv6gyfkqw0uuxl"
     [MultiversX.Proxy]
         CacherExpirationSeconds = 600 # the caching time in seconds
 

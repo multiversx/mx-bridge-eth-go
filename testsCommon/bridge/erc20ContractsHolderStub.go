@@ -10,6 +10,7 @@ import (
 // ERC20ContractsHolderStub -
 type ERC20ContractsHolderStub struct {
 	BalanceOfCalled func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error)
+	DecimalsCalled  func(ctx context.Context, erc20Address common.Address) (uint8, error)
 }
 
 // BalanceOf -
@@ -19,6 +20,15 @@ func (stub *ERC20ContractsHolderStub) BalanceOf(ctx context.Context, erc20Addres
 	}
 
 	return big.NewInt(0), nil
+}
+
+// Decimals -
+func (stub *ERC20ContractsHolderStub) Decimals(ctx context.Context, erc20Address common.Address) (uint8, error) {
+	if stub.DecimalsCalled != nil {
+		return stub.DecimalsCalled(ctx, erc20Address)
+	}
+
+	return 0, nil
 }
 
 // IsInterfaceNil -

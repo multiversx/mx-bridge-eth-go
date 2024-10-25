@@ -32,6 +32,7 @@ import (
 
 const (
 	filePathPlaceholder  = "[path]"
+	queryMode            = "query"
 	signMode             = "sign"
 	executeMode          = "execute"
 	configPath           = "config"
@@ -42,6 +43,7 @@ const (
 var log = logger.GetOrCreate("main")
 
 type internalComponents struct {
+	creator              BatchCreator
 	batch                *ethereum.BatchInfo
 	cryptoHandler        ethereumClient.CryptoHandler
 	ethClient            *ethclient.Client
@@ -90,6 +92,8 @@ func execute(ctx *cli.Context) error {
 
 	operationMode := strings.ToLower(ctx.GlobalString(mode.Name))
 	switch operationMode {
+	case queryMode:
+		return executeQuery(cfg)
 	case signMode:
 		_, err = generateAndSign(ctx, cfg)
 		return err
@@ -100,7 +104,27 @@ func execute(ctx *cli.Context) error {
 	return fmt.Errorf("unknown execution mode: %s", operationMode)
 }
 
-func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*internalComponents, error) {
+func executeQuery(cfg config.MigrationToolConfig) error {
+	components, err := createInternalComponentsWithBatchCreator(cfg)
+	if err != nil {
+		return err
+	}
+
+	dummyEthAddress := common.Address{}
+	info, err := components.creator.CreateBatchInfo(context.Background(), dummyEthAddress, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Info(fmt.Sprintf("Token balances for ERC20 safe address %s\n%s",
+		cfg.Eth.SafeContractAddress,
+		ethereum.TokensBalancesDisplayString(info),
+	))
+
+	return nil
+}
+
+func createInternalComponentsWithBatchCreator(cfg config.MigrationToolConfig) (*internalComponents, error) {
 	argsProxy := blockchain.ArgsProxy{
 		ProxyURL:            cfg.MultiversX.NetworkAddress,
 		SameScState:         false,
@@ -183,35 +207,49 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*interna
 		return nil, err
 	}
 
+	return &internalComponents{
+		creator:              creator,
+		ethClient:            ethClient,
+		ethereumChainWrapper: ethereumChainWrapper,
+	}, nil
+}
+
+func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*internalComponents, error) {
+	components, err := createInternalComponentsWithBatchCreator(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	newSafeAddressString := ctx.GlobalString(newSafeAddress.Name)
 	if len(newSafeAddressString) == 0 {
 		return nil, fmt.Errorf("invalid new safe address for Ethereum")
 	}
 	newSafeAddressValue := common.HexToAddress(ctx.GlobalString(newSafeAddress.Name))
 
-	trimValue := chainCore.OptionalUint64{
-		Value:    ctx.GlobalUint64(denominatedAmount.Name),
-		HasValue: ctx.IsSet(denominatedAmount.Name),
-	}
-	batchInfo, err := creator.CreateBatchInfo(context.Background(), newSafeAddressValue, trimValue)
+	partialMigration, err := ethereum.ConvertPartialMigrationStringToMap(ctx.GlobalString(partialMigration.Name))
 	if err != nil {
 		return nil, err
 	}
 
-	val, err := json.MarshalIndent(batchInfo, "", "  ")
+	components.batch, err = components.creator.CreateBatchInfo(context.Background(), newSafeAddressValue, partialMigration)
 	if err != nil {
 		return nil, err
 	}
 
-	cryptoHandler, err := ethereumClient.NewCryptoHandler(cfg.Eth.PrivateKeyFile)
+	val, err := json.MarshalIndent(components.batch, "", "  ")
 	if err != nil {
 		return nil, err
 	}
 
-	log.Info("signing batch", "message hash", batchInfo.MessageHash.String(),
-		"public key", cryptoHandler.GetAddress().String())
+	components.cryptoHandler, err = ethereumClient.NewCryptoHandler(cfg.Eth.PrivateKeyFile)
+	if err != nil {
+		return nil, err
+	}
 
-	signature, err := cryptoHandler.Sign(batchInfo.MessageHash)
+	log.Info("signing batch", "message hash", components.batch.MessageHash.String(),
+		"public key", components.cryptoHandler.GetAddress().String())
+
+	signature, err := components.cryptoHandler.Sign(components.batch.MessageHash)
 	if err != nil {
 		return nil, err
 	}
@@ -226,8 +264,8 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*interna
 	}
 
 	sigInfo := &ethereum.SignatureInfo{
-		Address:     cryptoHandler.GetAddress().String(),
-		MessageHash: batchInfo.MessageHash.String(),
+		Address:     components.cryptoHandler.GetAddress().String(),
+		MessageHash: components.batch.MessageHash.String(),
 		Signature:   hex.EncodeToString(signature),
 	}
 
@@ -246,12 +284,7 @@ func generateAndSign(ctx *cli.Context, cfg config.MigrationToolConfig) (*interna
 		return nil, err
 	}
 
-	return &internalComponents{
-		batch:                batchInfo,
-		cryptoHandler:        cryptoHandler,
-		ethClient:            ethClient,
-		ethereumChainWrapper: ethereumChainWrapper,
-	}, nil
+	return components, nil
 }
 
 func executeTransfer(ctx *cli.Context, cfg config.MigrationToolConfig) error {
