@@ -56,7 +56,7 @@ func TestNewErc20SafeContractsHolder(t *testing.T) {
 func TestErc20SafeContractsHolder_BalanceOf(t *testing.T) {
 	t.Parallel()
 
-	t.Run("address does not exists on map nor blockchain", func(t *testing.T) {
+	t.Run("address does not exist on map nor blockchain", func(t *testing.T) {
 		expectedError := errors.New("no contract code at given address")
 		args := createMockArgsContractsHolder()
 		args.EthClient = &bridgeTests.ContractBackendStub{
@@ -109,7 +109,7 @@ func TestErc20SafeContractsHolder_BalanceOf(t *testing.T) {
 		assert.Equal(t, 0, len(ch.contracts))
 
 		result, err := ch.BalanceOf(context.Background(), contractAddress, address1)
-		// first time the contract does not exists in the map, so it should add it
+		// first time the contract does not exist in the map, so it should add it
 		assert.Nil(t, err)
 		assert.Equal(t, big.NewInt(returnedBalance), result)
 		assert.Equal(t, 1, len(ch.contracts))
@@ -163,7 +163,7 @@ func TestErc20SafeContractsHolder_BalanceOf(t *testing.T) {
 func TestErc20SafeContractsHolder_Decimals(t *testing.T) {
 	t.Parallel()
 
-	t.Run("address does not exists on map nor blockchain", func(t *testing.T) {
+	t.Run("address does not exist on map nor blockchain", func(t *testing.T) {
 		expectedError := errors.New("no contract code at given address")
 		args := createMockArgsContractsHolder()
 		args.EthClient = &bridgeTests.ContractBackendStub{
