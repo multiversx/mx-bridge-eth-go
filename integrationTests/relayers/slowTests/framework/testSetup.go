@@ -170,13 +170,8 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		setup.mutBalances.Lock()
 		setup.esdtBalanceForSafe[token.AbstractTokenIdentifier] = esdtBalanceForSafe
 
-		//setup.ethBalances[setup.AliceKeys.EthAddress.String()] = make(map[string]*big.Int)
 		setup.ethBalances[setup.AliceKeys.EthAddress.String()][token.AbstractTokenIdentifier] = AliceEthBalance
-
-		//setup.ethBalances[setup.BobKeys.EthAddress.String()] = make(map[string]*big.Int)
 		setup.ethBalances[setup.BobKeys.EthAddress.String()][token.AbstractTokenIdentifier] = big.NewInt(0)
-
-		//setup.ethBalances[setup.CharlieKeys.EthAddress.String()] = make(map[string]*big.Int)
 		setup.ethBalances[setup.CharlieKeys.EthAddress.String()][token.AbstractTokenIdentifier] = big.NewInt(0)
 
 		setup.mutBalances.Unlock()
@@ -234,10 +229,6 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(testAddress KeysHolde
 	}
 
 	mvxTestAddrBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, testAddress.MvxAddress, params.AbstractTokenIdentifier)
-	fmt.Println("--------------------")
-	fmt.Println("mvxTestAddrBalance", mvxTestAddrBalance)
-	fmt.Println("expectedValueOnReceiver", expectedValueOnReceiver)
-	fmt.Println("--------------------")
 	if mvxTestAddrBalance.String() != expectedValueOnReceiver.String() {
 		return false
 	}
@@ -281,11 +272,7 @@ func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params Test
 		}
 	}
 
-	receiverBalance := setup.EthereumHandler.GetBalance(setup.AliceKeys.EthAddress, params.AbstractTokenIdentifier)
-	fmt.Println("@@@@@@@@@@@@@@@@@@@@@")
-	fmt.Println("receiverBalance", receiverBalance)
-	fmt.Println("expectedValueOnReceiver", expectedValueOnReceiver)
-	fmt.Println("@@@@@@@@@@@@@@@@@@@@@")
+	receiverBalance := setup.EthereumHandler.GetBalance(setup.BobKeys.EthAddress, params.AbstractTokenIdentifier)
 	return receiverBalance.String() == expectedValueOnReceiver.String()
 }
 
@@ -304,7 +291,6 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(testAddress KeysHol
 	initialBalanceForSafe := setup.esdtBalanceForSafe[params.AbstractTokenIdentifier]
 
 	key := testAddress.EthAddress.String()
-	fmt.Println("---------------KEY:", key)
 	balanceMapping, exists := setup.ethBalances[key]
 	if !exists {
 		return false
@@ -315,10 +301,6 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(testAddress KeysHol
 	setup.mutBalances.Unlock()
 
 	ethTestAddrBalance := setup.EthereumHandler.GetBalance(testAddress.EthAddress, params.AbstractTokenIdentifier)
-	fmt.Println("--------------------")
-	fmt.Println("ethTestAddrBalance", ethTestAddrBalance)
-	fmt.Println("expectedReceiver", expectedReceiver)
-	fmt.Println("--------------------")
 	isTransferDoneFromMultiversX := ethTestAddrBalance.String() == expectedReceiver.String()
 
 	expectedEsdtSafe := big.NewInt(0).Add(initialBalanceForSafe, params.ESDTSafeExtraBalance)

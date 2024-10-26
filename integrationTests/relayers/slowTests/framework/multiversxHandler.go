@@ -453,7 +453,7 @@ func (handler *MultiversxHandler) CheckForZeroBalanceOnReceivers(ctx context.Con
 
 // CheckForZeroBalanceOnReceiversForToken will check that the balance for the test address and the test SC call address is 0
 func (handler *MultiversxHandler) CheckForZeroBalanceOnReceiversForToken(ctx context.Context, token TestTokenParams) {
-	balance := handler.GetESDTUniversalTokenBalance(ctx, handler.TestKeys.MvxAddress, token.AbstractTokenIdentifier)
+	balance := handler.GetESDTUniversalTokenBalance(ctx, handler.BobKeys.MvxAddress, token.AbstractTokenIdentifier)
 	require.Equal(handler, big.NewInt(0).String(), balance.String())
 
 	balance = handler.GetESDTUniversalTokenBalance(ctx, handler.CalleeScAddress, token.AbstractTokenIdentifier)
