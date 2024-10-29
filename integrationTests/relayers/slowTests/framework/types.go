@@ -48,9 +48,9 @@ type TokenOperations struct {
 // TestTokenParams defines a token collection of operations in one or 2 batches
 type TestTokenParams struct {
 	IssueTokenParams
-	TestOperations          []TokenOperations
-	ESDTSafeExtraBalance    *big.Int
-	EthTestAddrExtraBalance *big.Int
+	TestOperations            []TokenOperations
+	ESDTSafeExtraBalance      *big.Int
+	EthTestAddrsExtraBalances map[string][]*big.Int
 }
 
 // TokenData represents a test token data

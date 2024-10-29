@@ -26,6 +26,8 @@ const (
 	quorum                       = "03"
 )
 
+var addressToName = make(map[string]string)
+
 // TestSetup is the struct that holds all subcomponents for the testing infrastructure
 type TestSetup struct {
 	testing.TB
@@ -39,13 +41,14 @@ type TestSetup struct {
 	ScCallerKeys           KeysHolder
 	ScCallerModuleInstance SCCallerModule
 
-	ctxCancel             func()
-	Ctx                   context.Context
-	mutBalances           sync.RWMutex
-	esdtBalanceForSafe    map[string]*big.Int
-	ethBalanceTestAddress map[string]*big.Int
-	ethBalances           map[string]map[string]*big.Int
-	numScCallsInTest      uint32
+	ctxCancel          func()
+	Ctx                context.Context
+	mutBalances        sync.RWMutex
+	esdtBalanceForSafe map[string]*big.Int
+	mvxBalances        map[string]map[string]*big.Int
+	ethBalances        map[string]map[string]*big.Int
+
+	numScCallsInTest uint32
 }
 
 // NewTestSetup creates a new e2e test setup
@@ -53,18 +56,29 @@ func NewTestSetup(tb testing.TB) *TestSetup {
 	log.Info(fmt.Sprintf(LogStepMarker, "starting setup"))
 
 	setup := &TestSetup{
-		TB:                    tb,
-		TokensRegistry:        NewTokenRegistry(tb),
-		WorkingDir:            tb.TempDir(),
-		esdtBalanceForSafe:    make(map[string]*big.Int),
-		ethBalanceTestAddress: make(map[string]*big.Int),
-		ethBalances:           make(map[string]map[string]*big.Int),
+		TB:                 tb,
+		TokensRegistry:     NewTokenRegistry(tb),
+		WorkingDir:         tb.TempDir(),
+		esdtBalanceForSafe: make(map[string]*big.Int),
+		mvxBalances:        make(map[string]map[string]*big.Int),
+		ethBalances:        make(map[string]map[string]*big.Int),
 	}
 	setup.KeysStore = NewKeysStore(tb, setup.WorkingDir, NumRelayers, NumOracles)
+
+	setup.mvxBalances[setup.AliceKeys.MvxAddress.String()] = make(map[string]*big.Int)
+	setup.mvxBalances[setup.BobKeys.MvxAddress.String()] = make(map[string]*big.Int)
+	setup.mvxBalances[setup.CharlieKeys.MvxAddress.String()] = make(map[string]*big.Int)
 
 	setup.ethBalances[setup.AliceKeys.EthAddress.String()] = make(map[string]*big.Int)
 	setup.ethBalances[setup.BobKeys.EthAddress.String()] = make(map[string]*big.Int)
 	setup.ethBalances[setup.CharlieKeys.EthAddress.String()] = make(map[string]*big.Int)
+
+	addressToName[setup.AliceKeys.EthAddress.String()] = "Alice"
+	addressToName[setup.BobKeys.EthAddress.String()] = "Bob"
+	addressToName[setup.CharlieKeys.EthAddress.String()] = "Charlie"
+	addressToName[setup.AliceKeys.MvxAddress.String()] = "Alice"
+	addressToName[setup.BobKeys.MvxAddress.String()] = "Bob"
+	addressToName[setup.CharlieKeys.MvxAddress.String()] = "Charlie"
 
 	// create a test context
 	setup.Ctx, setup.ctxCancel = context.WithCancel(context.Background())
@@ -163,12 +177,19 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		setup.AddToken(token.IssueTokenParams)
 		setup.EthereumHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 		setup.MultiversxHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
+		//setup.transferTokensToTestKey(token)
 
 		esdtBalanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, token.AbstractTokenIdentifier)
+		AliceMvxBalance := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.AliceKeys.MvxAddress, token.AbstractTokenIdentifier)
 		AliceEthBalance := setup.EthereumHandler.GetBalance(setup.AliceKeys.EthAddress, token.AbstractTokenIdentifier)
+
+		fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", AliceMvxBalance)
 
 		setup.mutBalances.Lock()
 		setup.esdtBalanceForSafe[token.AbstractTokenIdentifier] = esdtBalanceForSafe
+
+		setup.mvxBalances[setup.BobKeys.MvxAddress.String()][token.AbstractTokenIdentifier] = big.NewInt(0)
+		setup.mvxBalances[setup.CharlieKeys.MvxAddress.String()][token.AbstractTokenIdentifier] = big.NewInt(0)
 
 		setup.ethBalances[setup.AliceKeys.EthAddress.String()][token.AbstractTokenIdentifier] = AliceEthBalance
 		setup.ethBalances[setup.BobKeys.EthAddress.String()][token.AbstractTokenIdentifier] = big.NewInt(0)
@@ -202,17 +223,53 @@ func (setup *TestSetup) GetNumScCallsOperations() uint32 {
 }
 
 // IsTransferDoneFromEthereum returns true if all provided tokens are bridged from Ethereum towards MultiversX
-func (setup *TestSetup) IsTransferDoneFromEthereum(testAddress KeysHolder, tokens ...TestTokenParams) bool {
+func (setup *TestSetup) IsTransferDoneFromEthereum(sender KeysHolder, receiver KeysHolder, tokens ...TestTokenParams) bool {
 	isDone := true
 	for _, params := range tokens {
-		isDone = isDone && setup.isTransferDoneFromEthereumForToken(testAddress, params)
+		isDone = isDone && setup.isTransferDoneFromEthereumForToken(sender, receiver, params)
 	}
 
 	return isDone
 }
 
-func (setup *TestSetup) isTransferDoneFromEthereumForToken(testAddress KeysHolder, params TestTokenParams) bool {
-	expectedValueOnReceiver := big.NewInt(0)
+func (setup *TestSetup) isTransferDoneFromEthereumForToken(sender KeysHolder, receiver KeysHolder, params TestTokenParams) bool {
+	okSender := setup.checkHolderEthBalanceForToken(sender, true, params)
+	okReceiver := setup.checkHolderMvxBalanceForToken(receiver, false, params)
+	okContract := setup.checkContractMvxBalanceForToken(params)
+
+	return okSender && okReceiver && okContract
+}
+
+func (setup *TestSetup) checkHolderMvxBalanceForToken(holder KeysHolder, isSender bool, params TestTokenParams) bool {
+	setup.mutBalances.Lock()
+
+	addr := holder.MvxAddress.String()
+	balanceMapping, exists := setup.mvxBalances[addr]
+	if !exists {
+		return false
+	}
+	expectedBalance := big.NewInt(0).Set(balanceMapping[params.AbstractTokenIdentifier])
+	holderName := addressToName[addr]
+	transferAmounts := params.EthTestAddrsExtraBalances[holderName]
+
+	setup.mutBalances.Unlock()
+
+	if isSender {
+		expectedBalance.Add(expectedBalance, transferAmounts[0])
+	} else {
+		expectedBalance.Add(expectedBalance, transferAmounts[1])
+	}
+
+	actualBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, holder.MvxAddress, params.AbstractTokenIdentifier)
+	fmt.Println("------------MULTIVERSX-------------------")
+	fmt.Println("actualBalance: ", actualBalance)
+	fmt.Println("expectedBalance: ", expectedBalance)
+	fmt.Println("-------------------------------")
+	return actualBalance.String() == expectedBalance.String()
+}
+
+func (setup *TestSetup) checkContractMvxBalanceForToken(params TestTokenParams) bool {
+	mvxBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.MultiversxHandler.CalleeScAddress, params.AbstractTokenIdentifier)
 	expectedValueOnContract := big.NewInt(0)
 	for _, operation := range params.TestOperations {
 		if operation.ValueToTransferToMvx == nil {
@@ -223,18 +280,10 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(testAddress KeysHolde
 			if !operation.MvxFaultySCCall {
 				expectedValueOnContract.Add(expectedValueOnContract, operation.ValueToTransferToMvx)
 			}
-		} else {
-			expectedValueOnReceiver.Add(expectedValueOnReceiver, operation.ValueToTransferToMvx)
 		}
 	}
 
-	mvxTestAddrBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, testAddress.MvxAddress, params.AbstractTokenIdentifier)
-	if mvxTestAddrBalance.String() != expectedValueOnReceiver.String() {
-		return false
-	}
-
-	contractBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.MultiversxHandler.CalleeScAddress, params.AbstractTokenIdentifier)
-	return contractBalance.String() == expectedValueOnContract.String()
+	return mvxBalance.String() == expectedValueOnContract.String()
 }
 
 // IsTransferDoneFromEthereumWithRefund returns true if all provided tokens are bridged from Ethereum towards MultiversX including refunds
@@ -277,37 +326,57 @@ func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params Test
 }
 
 // IsTransferDoneFromMultiversX returns true if all provided tokens are bridged from MultiversX towards Ethereum
-func (setup *TestSetup) IsTransferDoneFromMultiversX(testAddress KeysHolder, tokens ...TestTokenParams) bool {
+func (setup *TestSetup) IsTransferDoneFromMultiversX(sender KeysHolder, receiver KeysHolder, tokens ...TestTokenParams) bool {
 	isDone := true
 	for _, params := range tokens {
-		isDone = isDone && setup.isTransferDoneFromMultiversXForToken(testAddress, params)
+		isDone = isDone && setup.isTransferDoneFromMultiversXForToken(sender, receiver, params)
 	}
 
 	return isDone
 }
 
-func (setup *TestSetup) isTransferDoneFromMultiversXForToken(testAddress KeysHolder, params TestTokenParams) bool {
+func (setup *TestSetup) isTransferDoneFromMultiversXForToken(sender KeysHolder, receiver KeysHolder, params TestTokenParams) bool {
 	setup.mutBalances.Lock()
 	initialBalanceForSafe := setup.esdtBalanceForSafe[params.AbstractTokenIdentifier]
-
-	key := testAddress.EthAddress.String()
-	balanceMapping, exists := setup.ethBalances[key]
-	if !exists {
-		return false
-	}
-	expectedReceiver := big.NewInt(0).Set(balanceMapping[params.AbstractTokenIdentifier])
-	expectedReceiver.Add(expectedReceiver, params.EthTestAddrExtraBalance)
-
 	setup.mutBalances.Unlock()
 
-	ethTestAddrBalance := setup.EthereumHandler.GetBalance(testAddress.EthAddress, params.AbstractTokenIdentifier)
-	isTransferDoneFromMultiversX := ethTestAddrBalance.String() == expectedReceiver.String()
+	okSender := setup.checkHolderMvxBalanceForToken(sender, true, params)
+	okReceiver := setup.checkHolderEthBalanceForToken(receiver, false, params)
 
 	expectedEsdtSafe := big.NewInt(0).Add(initialBalanceForSafe, params.ESDTSafeExtraBalance)
 	balanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, params.AbstractTokenIdentifier)
 	isSafeContractOnCorrectBalance := expectedEsdtSafe.String() == balanceForSafe.String()
 
-	return isTransferDoneFromMultiversX && isSafeContractOnCorrectBalance
+	return okSender && okReceiver && isSafeContractOnCorrectBalance
+}
+
+func (setup *TestSetup) checkHolderEthBalanceForToken(holder KeysHolder, isSender bool, params TestTokenParams) bool {
+	setup.mutBalances.Lock()
+
+	addr := holder.EthAddress.String()
+	balanceMapping, exists := setup.ethBalances[addr]
+	if !exists {
+		return false
+	}
+	expectedBalance := big.NewInt(0).Set(balanceMapping[params.AbstractTokenIdentifier])
+	holderName := addressToName[addr]
+	transferAmounts := params.EthTestAddrsExtraBalances[holderName]
+
+	setup.mutBalances.Unlock()
+
+	if isSender {
+		expectedBalance.Add(expectedBalance, transferAmounts[0])
+	} else {
+		expectedBalance.Add(expectedBalance, transferAmounts[1])
+	}
+
+	actualBalance := setup.EthereumHandler.GetBalance(holder.EthAddress, params.AbstractTokenIdentifier)
+
+	fmt.Println("-------------ETHEREUM------------------")
+	fmt.Println("expectedBalance: ", expectedBalance)
+	fmt.Println("actualBalance: ", actualBalance)
+	fmt.Println("-------------------------------")
+	return actualBalance.String() == expectedBalance.String()
 }
 
 // CreateBatchOnMultiversX will create deposits that will be gathered in a batch on MultiversX

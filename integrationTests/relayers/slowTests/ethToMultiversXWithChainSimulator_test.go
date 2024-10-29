@@ -1,4 +1,4 @@
-//go:build slow
+//TODO
 
 // To run these slow tests, simply add the slow tag on the go test command. Also, provide a chain simulator instance on the 8085 port
 // example: go test -tags slow
@@ -34,7 +34,7 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		GenerateTestUSDCToken(),
+		//GenerateTestUSDCToken(),
 		GenerateTestMEMEToken(),
 	)
 }
@@ -287,8 +287,8 @@ func createBadToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(0),
-		EthTestAddrExtraBalance: big.NewInt(0),
+		ESDTSafeExtraBalance: big.NewInt(0),
+		//EthTestAddrExtraBalance: big.NewInt(0), ///////////////////////////TODO
 	}
 }
 

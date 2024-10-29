@@ -1,4 +1,4 @@
-//go:build slow
+//TODO
 
 package slowTests
 
@@ -25,7 +25,9 @@ func (flow *startsFromEthereumFlow) process() (finished bool) {
 		return true
 	}
 
-	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.setup.BobKeys, flow.tokens...)
+	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.setup.AliceKeys, flow.setup.BobKeys, flow.tokens...)
+	fmt.Println("SUUUUUUUUUUUUNT AIIIIIIIIIICICICICICICICICIC")
+	fmt.Println(isTransferDoneFromEthereum)
 	if !flow.ethToMvxDone && isTransferDoneFromEthereum {
 		flow.ethToMvxDone = true
 		log.Info(fmt.Sprintf(framework.LogStepMarker, "Ethereum->MultiversX transfer finished, now sending back to Ethereum..."))
@@ -37,7 +39,7 @@ func (flow *startsFromEthereumFlow) process() (finished bool) {
 		return false
 	}
 
-	isTransferDoneFromMultiversX := flow.setup.IsTransferDoneFromMultiversX(flow.setup.CharlieKeys, flow.tokens...)
+	isTransferDoneFromMultiversX := flow.setup.IsTransferDoneFromMultiversX(flow.setup.BobKeys, flow.setup.CharlieKeys, flow.tokens...)
 	if !flow.mvxToEthDone && isTransferDoneFromMultiversX {
 		flow.mvxToEthDone = true
 		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX<->Ethereum from Ethereum transfers done"))
