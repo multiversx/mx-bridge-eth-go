@@ -34,8 +34,8 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		//GenerateTestUSDCToken(),
-		GenerateTestMEMEToken(),
+		GenerateTestUSDCToken(),
+		//GenerateTestMEMEToken(),
 	)
 }
 

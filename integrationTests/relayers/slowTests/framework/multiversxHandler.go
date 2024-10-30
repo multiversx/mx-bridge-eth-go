@@ -573,6 +573,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	handler.setPairDecimalsOnAggregator(ctx, params)
 	handler.setMaxBridgeAmountOnSafe(ctx, params)
 	handler.setMaxBridgeAmountOnMultitransfer(ctx, params)
+	handler.TransferToken(ctx, handler.OwnerKeys, handler.AliceKeys, big.NewInt(1000000000), params)
 }
 
 func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, params IssueTokenParams) {
@@ -588,6 +589,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 	handler.setPairDecimalsOnAggregator(ctx, params)
 	handler.setMaxBridgeAmountOnSafe(ctx, params)
 	handler.setMaxBridgeAmountOnMultitransfer(ctx, params)
+	handler.TransferToken(ctx, handler.OwnerKeys, handler.AliceKeys, big.NewInt(1000000000), params)
 }
 
 func (handler *MultiversxHandler) issueUniversalToken(ctx context.Context, params IssueTokenParams) {
@@ -1020,10 +1022,10 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 }
 
 // TransferToken is able to create an ESDT transfer
-func (handler *MultiversxHandler) TransferToken(ctx context.Context, source KeysHolder, receiver KeysHolder, amount *big.Int, params TestTokenParams) {
+func (handler *MultiversxHandler) TransferToken(ctx context.Context, source KeysHolder, receiver KeysHolder, amount *big.Int, params IssueTokenParams) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
-	// transfer to the test key, so it will have funds to carry on with the deposits
+	// transfer to Alice, so it will have funds to carry on with the deposits
 	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
 		source.MvxSk,

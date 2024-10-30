@@ -177,17 +177,19 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		setup.AddToken(token.IssueTokenParams)
 		setup.EthereumHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 		setup.MultiversxHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
-		//setup.transferTokensToTestKey(token)
+
+		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 10)
 
 		esdtBalanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, token.AbstractTokenIdentifier)
-		AliceMvxBalance := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.AliceKeys.MvxAddress, token.AbstractTokenIdentifier)
+		AliceMvxBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.AliceKeys.MvxAddress, token.AbstractTokenIdentifier)
 		AliceEthBalance := setup.EthereumHandler.GetBalance(setup.AliceKeys.EthAddress, token.AbstractTokenIdentifier)
 
-		fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", AliceMvxBalance)
+		//fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", AliceMvxBalance)
 
 		setup.mutBalances.Lock()
 		setup.esdtBalanceForSafe[token.AbstractTokenIdentifier] = esdtBalanceForSafe
 
+		setup.mvxBalances[setup.AliceKeys.MvxAddress.String()][token.AbstractTokenIdentifier] = AliceMvxBalance
 		setup.mvxBalances[setup.BobKeys.MvxAddress.String()][token.AbstractTokenIdentifier] = big.NewInt(0)
 		setup.mvxBalances[setup.CharlieKeys.MvxAddress.String()][token.AbstractTokenIdentifier] = big.NewInt(0)
 
@@ -252,15 +254,18 @@ func (setup *TestSetup) checkHolderMvxBalanceForToken(holder KeysHolder, isSende
 	holderName := addressToName[addr]
 	transferAmounts := params.EthTestAddrsExtraBalances[holderName]
 
-	setup.mutBalances.Unlock()
-
 	if isSender {
 		expectedBalance.Add(expectedBalance, transferAmounts[0])
 	} else {
 		expectedBalance.Add(expectedBalance, transferAmounts[1])
 	}
 
+	balanceMapping[params.AbstractTokenIdentifier] = expectedBalance
+
+	setup.mutBalances.Unlock()
+
 	actualBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, holder.MvxAddress, params.AbstractTokenIdentifier)
+
 	fmt.Println("------------MULTIVERSX-------------------")
 	fmt.Println("actualBalance: ", actualBalance)
 	fmt.Println("expectedBalance: ", expectedBalance)
@@ -390,7 +395,7 @@ func (setup *TestSetup) createBatchOnMultiversXForToken(params TestTokenParams) 
 	token := setup.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(setup, token)
 
-	setup.transferTokensToTestKey(params)
+	//setup.transferTokensToTestKey(params)
 	valueToMintOnEthereum := setup.createdDepositOnMultiversxForToken(setup.AliceKeys, setup.BobKeys, params)
 	setup.EthereumHandler.Mint(setup.Ctx, params, valueToMintOnEthereum)
 }
@@ -410,7 +415,7 @@ func (setup *TestSetup) transferTokensToTestKey(params TestTokenParams) {
 		setup.OwnerKeys,
 		setup.AliceKeys,
 		depositValue,
-		params,
+		params.IssueTokenParams,
 	)
 }
 

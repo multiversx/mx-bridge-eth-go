@@ -55,7 +55,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 		ESDTSafeExtraBalance: big.NewInt(100), // extra is just for the fees for the 2 transfers mvx->eth
 		EthTestAddrsExtraBalances: map[string][]*big.Int{
 			"Alice":   {big.NewInt(-5000 - 7000 - 1000), big.NewInt(0)},
-			"Bob":     {big.NewInt(-2500 - 300), big.NewInt(0)},
+			"Bob":     {big.NewInt(-2500 - 300), big.NewInt(5000 + 7000)},
 			"Charlie": {big.NewInt(0), big.NewInt(2500 - 50 + 300 - 50)},
 		},
 	}
