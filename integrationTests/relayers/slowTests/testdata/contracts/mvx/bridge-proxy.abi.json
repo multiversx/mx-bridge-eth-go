@@ -62,12 +62,6 @@
             "outputs": []
         },
         {
-            "name": "updateLowestTxId",
-            "mutability": "mutable",
-            "inputs": [],
-            "outputs": []
-        },
-        {
             "name": "getPendingTransactionById",
             "mutability": "readonly",
             "inputs": [
@@ -163,7 +157,7 @@
             ]
         },
         {
-            "name": "lowestTxId",
+            "name": "highestTxId",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [
