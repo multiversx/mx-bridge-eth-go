@@ -67,6 +67,7 @@ const (
 	multiTransferEsdtSetMaxBridgedAmountForTokenFunction = "multiTransferEsdtSetMaxBridgedAmountForToken"
 	submitBatchFunction                                  = "submitBatch"
 	unwrapTokenCreateTransactionFunction                 = "unwrapTokenCreateTransaction"
+	createTransactionFunction                            = "createTransaction"
 	setBridgedTokensWrapperAddressFunction               = "setBridgedTokensWrapperAddress"
 	setMultiTransferAddressFunction                      = "setMultiTransferAddress"
 	withdrawRefundFeesForEthereumFunction                = "withdrawRefundFeesForEthereum"
@@ -942,7 +943,38 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 }
 
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
-func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, token *TokenData, params TestTokenParams, value *big.Int) {
+	if params.HasChainSpecificToken {
+		handler.unwrapCreateTransaction(ctx, token, value)
+		return
+	}
+
+	handler.createTransactionWithoutUnwrap(ctx, token, value)
+}
+
+func (handler *MultiversxHandler) createTransactionWithoutUnwrap(ctx context.Context, token *TokenData, value *big.Int) {
+	// create transaction params
+	params := []string{
+		hex.EncodeToString([]byte(token.MvxUniversalToken)),
+		hex.EncodeToString(value.Bytes()),
+		hex.EncodeToString([]byte(createTransactionFunction)),
+		hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
+	}
+	dataField := strings.Join(params, "@")
+
+	hash, txResult := handler.ChainSimulator.ScCall(
+		ctx,
+		handler.TestKeys.MvxSk,
+		handler.SafeAddress,
+		zeroStringValue,
+		createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)),
+		esdtTransferFunction,
+		params,
+	)
+	log.Info("MultiversX->Ethereum createTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, token *TokenData, value *big.Int) {
 	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
@@ -962,7 +994,7 @@ func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx conte
 		esdtTransferFunction,
 		params,
 	)
-	log.Info("MultiversX->Ethereum transaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+	log.Info("MultiversX->Ethereum unwrapCreateTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
 }
 
 // TestWithdrawFees will try to withdraw the fees for the provided token from the safe contract to the owner

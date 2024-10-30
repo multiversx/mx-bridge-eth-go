@@ -346,7 +346,7 @@ func (setup *TestSetup) sendFromMultiversxToEthereumForToken(params TestTokenPar
 		}
 
 		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
-		setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, token, operation.ValueToSendFromMvX)
+		setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, token, params, operation.ValueToSendFromMvX)
 	}
 
 	return depositValue
