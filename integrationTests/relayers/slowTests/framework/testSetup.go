@@ -254,15 +254,12 @@ func (setup *TestSetup) checkHolderMvxBalanceForToken(holder KeysHolder, isSende
 	holderName := addressToName[addr]
 	transferAmounts := params.EthTestAddrsExtraBalances[holderName]
 
+	setup.mutBalances.Unlock()
+
+	expectedBalance.Add(expectedBalance, transferAmounts[1])
 	if isSender {
 		expectedBalance.Add(expectedBalance, transferAmounts[0])
-	} else {
-		expectedBalance.Add(expectedBalance, transferAmounts[1])
 	}
-
-	balanceMapping[params.AbstractTokenIdentifier] = expectedBalance
-
-	setup.mutBalances.Unlock()
 
 	actualBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, holder.MvxAddress, params.AbstractTokenIdentifier)
 
@@ -369,10 +366,9 @@ func (setup *TestSetup) checkHolderEthBalanceForToken(holder KeysHolder, isSende
 
 	setup.mutBalances.Unlock()
 
+	expectedBalance.Add(expectedBalance, transferAmounts[1])
 	if isSender {
 		expectedBalance.Add(expectedBalance, transferAmounts[0])
-	} else {
-		expectedBalance.Add(expectedBalance, transferAmounts[1])
 	}
 
 	actualBalance := setup.EthereumHandler.GetBalance(holder.EthAddress, params.AbstractTokenIdentifier)

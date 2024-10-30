@@ -31,7 +31,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		testRelayersWithChainSimulatorAndTokensAndRefund(
 			t,
 			make(chan error),
-			//usdcToken,
+			usdcToken,
 			memeToken,
 		)
 	})

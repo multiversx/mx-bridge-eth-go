@@ -35,7 +35,7 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		t,
 		make(chan error),
 		GenerateTestUSDCToken(),
-		//GenerateTestMEMEToken(),
+		GenerateTestMEMEToken(),
 	)
 }
 
@@ -288,7 +288,11 @@ func createBadToken() framework.TestTokenParams {
 			},
 		},
 		ESDTSafeExtraBalance: big.NewInt(0),
-		//EthTestAddrExtraBalance: big.NewInt(0), ///////////////////////////TODO
+		EthTestAddrsExtraBalances: map[string][]*big.Int{
+			"Alice":   {big.NewInt(-5000 - 7000 - 1000), big.NewInt(0)},
+			"Bob":     {big.NewInt(-2500 - 300), big.NewInt(5000 + 7000)},
+			"Charlie": {big.NewInt(0), big.NewInt(2500 - 50 + 300 - 50)},
+		},
 	}
 }
 
