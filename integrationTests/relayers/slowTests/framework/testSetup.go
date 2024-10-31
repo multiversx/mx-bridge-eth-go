@@ -74,10 +74,10 @@ func NewTestSetup(tb testing.TB) *TestSetup {
 	setup.ethBalances[setup.CharlieKeys.EthAddress.String()] = make(map[string]*big.Int)
 
 	addressToName[setup.AliceKeys.EthAddress.String()] = "Alice"
-	addressToName[setup.BobKeys.EthAddress.String()] = "Bob"
-	addressToName[setup.CharlieKeys.EthAddress.String()] = "Charlie"
 	addressToName[setup.AliceKeys.MvxAddress.String()] = "Alice"
+	addressToName[setup.BobKeys.EthAddress.String()] = "Bob"
 	addressToName[setup.BobKeys.MvxAddress.String()] = "Bob"
+	addressToName[setup.CharlieKeys.EthAddress.String()] = "Charlie"
 	addressToName[setup.CharlieKeys.MvxAddress.String()] = "Charlie"
 
 	// create a test context
@@ -184,8 +184,6 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		AliceMvxBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.AliceKeys.MvxAddress, token.AbstractTokenIdentifier)
 		AliceEthBalance := setup.EthereumHandler.GetBalance(setup.AliceKeys.EthAddress, token.AbstractTokenIdentifier)
 
-		//fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", AliceMvxBalance)
-
 		setup.mutBalances.Lock()
 		setup.esdtBalanceForSafe[token.AbstractTokenIdentifier] = esdtBalanceForSafe
 
@@ -263,10 +261,6 @@ func (setup *TestSetup) checkHolderMvxBalanceForToken(holder KeysHolder, isSende
 
 	actualBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, holder.MvxAddress, params.AbstractTokenIdentifier)
 
-	fmt.Println("------------MULTIVERSX-------------------")
-	fmt.Println("actualBalance: ", actualBalance)
-	fmt.Println("expectedBalance: ", expectedBalance)
-	fmt.Println("-------------------------------")
 	return actualBalance.String() == expectedBalance.String()
 }
 
@@ -373,10 +367,6 @@ func (setup *TestSetup) checkHolderEthBalanceForToken(holder KeysHolder, isSende
 
 	actualBalance := setup.EthereumHandler.GetBalance(holder.EthAddress, params.AbstractTokenIdentifier)
 
-	fmt.Println("-------------ETHEREUM------------------")
-	fmt.Println("expectedBalance: ", expectedBalance)
-	fmt.Println("actualBalance: ", actualBalance)
-	fmt.Println("-------------------------------")
 	return actualBalance.String() == expectedBalance.String()
 }
 

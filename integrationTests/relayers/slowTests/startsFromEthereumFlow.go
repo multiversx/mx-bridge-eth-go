@@ -26,7 +26,6 @@ func (flow *startsFromEthereumFlow) process() (finished bool) {
 	}
 
 	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.setup.AliceKeys, flow.setup.BobKeys, flow.tokens...)
-	fmt.Println("SUUUUUUUUUUUUNT AIIIIIIIIIICICICICICICICICIC")
 	fmt.Println(isTransferDoneFromEthereum)
 	if !flow.ethToMvxDone && isTransferDoneFromEthereum {
 		flow.ethToMvxDone = true

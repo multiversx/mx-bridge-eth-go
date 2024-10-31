@@ -21,7 +21,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth) - fees
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()
@@ -52,7 +51,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth) - fees
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()
@@ -71,7 +69,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth) - fees
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()
@@ -90,13 +87,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken.TestOperations[2].MvxSCCallData = nil
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
 		usdcToken.TestOperations[2].MvxForceSCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth) - fees
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = nil
 		memeToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.TestOperations[2].MvxForceSCCall = true
+		memeToken.TestOperations[2].MvxForceSCCall = true
 
 		testRelayersWithChainSimulatorAndTokensAndRefund(
 			t,
@@ -110,7 +106,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth) - fees
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()
@@ -129,7 +124,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth) - fees
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()
@@ -148,7 +142,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth) - fees
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()
@@ -167,7 +160,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth) - fees
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()
@@ -186,7 +178,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth) - fees
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()
@@ -208,7 +199,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth) - fees
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()
@@ -232,7 +222,6 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		//usdcToken.EthTestAddrExtraBalance = big.NewInt(2500 - 50 + 300 - 50) // -(eth->mvx) + (mvx->eth)
 		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 
 		memeToken := GenerateTestMEMEToken()

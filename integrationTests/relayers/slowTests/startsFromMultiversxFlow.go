@@ -24,7 +24,6 @@ func (flow *startsFromMultiversXFlow) process() (finished bool) {
 	if flow.mvxToEthDone && flow.ethToMvxDone {
 		return true
 	}
-	fmt.Println("IS ACIIIIIIIIIIIIIIIIIIIIIIĨIIIII")
 	isTransferDoneFromMultiversX := flow.setup.IsTransferDoneFromMultiversX(flow.setup.AliceKeys, flow.setup.BobKeys, flow.tokens...)
 
 	if !flow.mvxToEthDone && isTransferDoneFromMultiversX {
