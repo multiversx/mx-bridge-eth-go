@@ -1,9 +1,10 @@
-//TODO
+//go:build slow
 
 package slowTests
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
