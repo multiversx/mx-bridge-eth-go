@@ -10,7 +10,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"os"
 	"strings"
