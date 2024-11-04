@@ -13,6 +13,7 @@ type MultiversXClient interface {
 	GetPendingBatch(ctx context.Context) (*bridgeCore.TransferBatch, error)
 	GetBatch(ctx context.Context, batchID uint64) (*bridgeCore.TransferBatch, error)
 	GetLastExecutedEthBatchID(ctx context.Context) (uint64, error)
+	GetLastMvxBatchID(ctx context.Context) (uint64, error)
 	IsMintBurnToken(ctx context.Context, token []byte) (bool, error)
 	IsNativeToken(ctx context.Context, token []byte) (bool, error)
 	TotalBalances(ctx context.Context, token []byte) (*big.Int, error)
@@ -31,6 +32,6 @@ type EthereumClient interface {
 	MintBurnTokens(ctx context.Context, token common.Address) (bool, error)
 	NativeTokens(ctx context.Context, token common.Address) (bool, error)
 	CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error
-	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
+	WasExecuted(ctx context.Context, mvxBatchID uint64) (bool, error)
 	IsInterfaceNil() bool
 }
