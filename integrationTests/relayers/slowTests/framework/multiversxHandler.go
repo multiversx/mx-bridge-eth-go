@@ -1026,7 +1026,7 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 func (handler *MultiversxHandler) TransferToken(ctx context.Context, source KeysHolder, receiver KeysHolder, amount *big.Int, params IssueTokenParams) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
-	// transfer to Alice, so it will have funds to carry on with the deposits
+	// transfer to receiver, so it will have funds to carry on with the deposits
 	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
 		source.MvxSk,

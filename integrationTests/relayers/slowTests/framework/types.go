@@ -48,9 +48,9 @@ type TokenOperations struct {
 // TestTokenParams defines a token collection of operations in one or 2 batches
 type TestTokenParams struct {
 	IssueTokenParams
-	TestOperations            []TokenOperations
-	ESDTSafeExtraBalance      *big.Int
-	EthTestAddrsExtraBalances map[string][]*big.Int
+	TestOperations       []TokenOperations
+	ESDTSafeExtraBalance *big.Int
+	ExtraBalances        map[string]ExtraBalanceHolder
 }
 
 // TokenData represents a test token data
@@ -66,4 +66,9 @@ type TokenData struct {
 	MvxChainSpecificToken string
 	EthErc20Address       common.Address
 	EthErc20Contract      ERC20Contract
+}
+
+type ExtraBalanceHolder struct {
+	SentAmount     *big.Int
+	ReceivedAmount *big.Int
 }

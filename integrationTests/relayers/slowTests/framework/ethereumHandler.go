@@ -428,6 +428,8 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 	to KeysHolder,
 	targetSCAddress core.AddressHandler,
 ) {
+	// TODO: transfer only required amount for deposit to the test key
+
 	// add allowance for the sender
 	auth, _ := bind.NewKeyedTransactorWithChainID(from.EthSK, handler.ChainID)
 
