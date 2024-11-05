@@ -76,6 +76,7 @@ const (
 	getTransactionFeesFunction                           = "getTransactionFees"
 	initSupplyMintBurnEsdtSafe                           = "initSupplyMintBurnEsdtSafe"
 	initSupplyEsdtSafe                                   = "initSupplyEsdtSafe"
+	getMintBalances                                      = "getMintBalances"
 )
 
 var (
@@ -574,7 +575,6 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	handler.setPairDecimalsOnAggregator(ctx, params)
 	handler.setMaxBridgeAmountOnSafe(ctx, params)
 	handler.setMaxBridgeAmountOnMultitransfer(ctx, params)
-	handler.TransferToken(ctx, handler.OwnerKeys, handler.AliceKeys, big.NewInt(startTokenAmount), params)
 }
 
 func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, params IssueTokenParams) {
