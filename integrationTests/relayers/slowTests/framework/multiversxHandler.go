@@ -27,7 +27,7 @@ const (
 	hexFalse                 = "00"
 	gwei                     = "GWEI"
 	maxBridgedAmountForToken = "500000"
-	startTokenAmount         = 1000000000 // 1 billion
+	startTokenAmount         = 2000000000 // 1 billion
 	deployGasLimit           = 150000000  // 150 million
 	setCallsGasLimit         = 80000000   // 80 million
 	issueTokenGasLimit       = 70000000   // 70 million
@@ -589,7 +589,6 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 	handler.setPairDecimalsOnAggregator(ctx, params)
 	handler.setMaxBridgeAmountOnSafe(ctx, params)
 	handler.setMaxBridgeAmountOnMultitransfer(ctx, params)
-	handler.TransferToken(ctx, handler.OwnerKeys, handler.AliceKeys, big.NewInt(startTokenAmount), params)
 }
 
 func (handler *MultiversxHandler) issueUniversalToken(ctx context.Context, params IssueTokenParams) {

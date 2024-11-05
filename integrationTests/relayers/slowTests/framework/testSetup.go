@@ -170,6 +170,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		setup.AddToken(token.IssueTokenParams)
 		setup.EthereumHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 		setup.MultiversxHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
+		setup.transferTokensToTestKey(token) // TODO: (Next PRs) this will be moved an batch creation time
 
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 10)
 
