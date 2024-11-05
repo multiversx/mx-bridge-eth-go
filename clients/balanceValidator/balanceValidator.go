@@ -112,8 +112,6 @@ func (validator *balanceValidator) CheckToken(ctx context.Context, ethToken comm
 		"amount", amount.String(),
 	)
 
-	// TODO(next PRs): fix here to not consider the pending batch in the mvx->eth direction that executed on eth.
-
 	if ethAmount.Cmp(mvxAmount) != 0 {
 		return fmt.Errorf("%w, balance for ERC20 token %s is %s and the balance for ESDT token %s is %s, direction %s",
 			ErrBalanceMismatch, ethToken.String(), ethAmount.String(), mvxToken, mvxAmount.String(), direction)
@@ -271,21 +269,13 @@ func getTotalAmountFromBatch(batch *bridgeCore.TransferBatch, token []byte) *big
 }
 
 func (validator *balanceValidator) getTotalTransferAmountInPendingMvxBatches(ctx context.Context, mvxToken []byte) (*big.Int, error) {
-	batch, err := validator.multiversXClient.GetPendingBatch(ctx)
-	if errors.Is(err, clients.ErrNoPendingBatchAvailable) {
-		return big.NewInt(0), nil
-	}
+	batchID, err := validator.multiversXClient.GetLastMvxBatchID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// check if the pending batch is executed on Ethereum and is not final
+	var batch *bridgeCore.TransferBatch
 	amount := big.NewInt(0)
-	if validator.batchExecutedAndNotFinalOnEth(ctx, batch.ID) {
-		amount.Add(amount, getTotalAmountFromBatch(batch, mvxToken))
-	}
-
-	batchID := batch.ID + 1
 	for {
 		batch, err = validator.multiversXClient.GetBatch(ctx, batchID)
 		if errors.Is(err, clients.ErrNoBatchAvailable) {
@@ -295,16 +285,18 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingMvxBatches(ctx
 			return nil, err
 		}
 
+		wasExecuted, errWasExecuted := validator.ethereumClient.WasExecuted(ctx, batch.ID)
+		if errWasExecuted != nil {
+			return nil, errWasExecuted
+		}
+		if wasExecuted {
+			return amount, nil
+		}
+
 		amountFromBatch := getTotalAmountFromBatch(batch, mvxToken)
 		amount.Add(amount, amountFromBatch)
-		batchID++
+		batchID-- // go to the previous batch
 	}
-}
-
-func (validator *balanceValidator) batchExecutedAndNotFinalOnEth(ctx context.Context, nonce uint64) bool {
-	// TODO: analyze if we need to check the statuses returned
-	_, err := validator.ethereumClient.GetTransactionsStatuses(ctx, nonce)
-	return err != nil
 }
 
 func (validator *balanceValidator) getTotalTransferAmountInPendingEthBatches(ctx context.Context, ethToken common.Address) (*big.Int, error) {

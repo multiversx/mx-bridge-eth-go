@@ -42,6 +42,7 @@ const (
 	getMintBalances                                           = "getMintBalances"
 	getBurnBalances                                           = "getBurnBalances"
 	getAllKnownTokens                                         = "getAllKnownTokens"
+	getLastBatchId                                            = "getLastBatchId"
 )
 
 // ArgsMXClientDataGetter is the arguments DTO used in the NewMXClientDataGetter constructor
@@ -533,6 +534,14 @@ func (dataGetter *mxClientDataGetter) GetAllKnownTokens(ctx context.Context) ([]
 	builder.Function(getAllKnownTokens)
 
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
+}
+
+// GetLastMvxBatchID returns the highest batch ID the safe contract reached. This might be a WIP batch that is not executable yet
+func (dataGetter *mxClientDataGetter) GetLastMvxBatchID(ctx context.Context) (uint64, error) {
+	builder := dataGetter.createSafeDefaultVmQueryBuilder()
+	builder.Function(getLastBatchId)
+
+	return dataGetter.executeQueryUint64FromBuilder(ctx, builder)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
