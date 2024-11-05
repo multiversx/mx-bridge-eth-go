@@ -27,12 +27,11 @@ const (
 	hexFalse                 = "00"
 	gwei                     = "GWEI"
 	maxBridgedAmountForToken = "500000"
-	startTokenAmount         = 2000000000 // 1 billion
-	deployGasLimit           = 150000000  // 150 million
-	setCallsGasLimit         = 80000000   // 80 million
-	issueTokenGasLimit       = 70000000   // 70 million
-	createDepositGasLimit    = 20000000   // 20 million
-	generalSCCallGasLimit    = 50000000   // 50 million
+	deployGasLimit           = 150000000 // 150 million
+	setCallsGasLimit         = 80000000  // 80 million
+	issueTokenGasLimit       = 70000000  // 70 million
+	createDepositGasLimit    = 20000000  // 20 million
+	generalSCCallGasLimit    = 50000000  // 50 million
 	gasLimitPerDataByte      = 1500
 
 	aggregatorContractPath    = "testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
