@@ -68,6 +68,7 @@ type TokenData struct {
 	EthErc20Contract      ERC20Contract
 }
 
+// ExtraBalanceHolder holds the extra balances for a specific address
 type ExtraBalanceHolder struct {
 	SentAmount     *big.Int
 	ReceivedAmount *big.Int
