@@ -133,7 +133,6 @@ func (handler *MultiversxHandler) DeployAndSetContracts(ctx context.Context) {
 
 	handler.wireMultiTransfer(ctx)
 	handler.wireSCProxy(ctx)
-	handler.wireWrapper(ctx)
 	handler.wireSafe(ctx)
 
 	handler.changeOwners(ctx)
@@ -323,22 +322,6 @@ func (handler *MultiversxHandler) wireSCProxy(ctx context.Context) {
 		},
 	)
 	log.Info("Set in SC proxy contract the safe contract", "transaction hash", hash, "status", txResult.Status)
-}
-
-func (handler *MultiversxHandler) wireWrapper(ctx context.Context) {
-	// setEsdtSafeOnWrapper
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.WrapperAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setEsdtSafeOnWrapperFunction,
-		[]string{
-			handler.SafeAddress.Hex(),
-		},
-	)
-	log.Info("Set in wrapper contract the safe contract", "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) wireSafe(ctx context.Context) {
@@ -981,6 +964,7 @@ func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, t
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
+		hex.EncodeToString(handler.SafeAddress.Bytes()),
 		hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
 	}
 	dataField := strings.Join(params, "@")
