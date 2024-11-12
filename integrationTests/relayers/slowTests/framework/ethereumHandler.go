@@ -277,14 +277,22 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 	handler.checkEthTxResult(ctx, tx.Hash())
 
 	if len(params.InitialSupplyValue) > 0 {
-		if params.IsMintBurnOnEth {
-			mintAmount, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
-			require.True(handler, ok)
+		initialSupply, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
+		require.True(handler, ok)
 
-			tx, err = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, mintAmount, zeroValueBigInt)
-			require.NoError(handler, err)
+		if params.IsMintBurnOnEth {
+			var tx2 *types.Transaction
+			var err2 error
+			if params.IsNativeOnEth {
+				burnAmount := initialSupply
+				tx2, err2 = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, zeroValueBigInt, burnAmount)
+			} else {
+				mintAmount := initialSupply
+				tx2, err2 = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, mintAmount, zeroValueBigInt)
+			}
+			require.NoError(handler, err2)
 			handler.SimulatedChain.Commit()
-			handler.checkEthTxResult(ctx, tx.Hash())
+			handler.checkEthTxResult(ctx, tx2.Hash())
 		} else {
 			// reset the tokens value for the safe contract, so it will "know" about the balance that it has in the ERC20 contract
 			tx, err = handler.SafeContract.ResetTotalBalance(auth, erc20Address)
@@ -490,6 +498,27 @@ func (handler *EthereumHandler) Mint(ctx context.Context, params TestTokenParams
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
+}
+
+func (handler *EthereumHandler) GetTotalBalancesForToken(ctx context.Context, address common.Address) *big.Int {
+	opts := &bind.CallOpts{Context: ctx}
+	balance, err := handler.SafeContract.TotalBalances(opts, address)
+	require.NoError(handler, err)
+	return balance
+}
+
+func (handler *EthereumHandler) GetBurnBalanceForToken(ctx context.Context, address common.Address) *big.Int {
+	opts := &bind.CallOpts{Context: ctx}
+	balance, err := handler.SafeContract.BurnBalances(opts, address)
+	require.NoError(handler, err)
+	return balance
+}
+
+func (handler *EthereumHandler) GetMintBalanceForToken(ctx context.Context, address common.Address) *big.Int {
+	opts := &bind.CallOpts{Context: ctx}
+	balance, err := handler.SafeContract.MintBalances(opts, address)
+	require.NoError(handler, err)
+	return balance
 }
 
 // Close will close the resources allocated

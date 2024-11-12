@@ -75,6 +75,9 @@ const (
 	getTransactionFeesFunction                           = "getTransactionFees"
 	initSupplyMintBurnEsdtSafe                           = "initSupplyMintBurnEsdtSafe"
 	initSupplyEsdtSafe                                   = "initSupplyEsdtSafe"
+	getMintBalances                                      = "getMintBalances"
+	getBurnBalances                                      = "getBurnBalances"
+	getTotalBalances                                     = "getTotalBalances"
 )
 
 var (
@@ -800,21 +803,41 @@ func (handler *MultiversxHandler) setInitialSupply(ctx context.Context, params I
 		require.True(handler, okConvert)
 
 		if params.IsMintBurnOnMvX {
-			hash, txResult := handler.ChainSimulator.ScCall(
-				ctx,
-				handler.OwnerKeys.MvxSk,
-				handler.MultisigAddress,
-				zeroStringValue,
-				setCallsGasLimit,
-				initSupplyMintBurnEsdtSafe,
-				[]string{
-					hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-					hex.EncodeToString(initialSupply.Bytes()),
-					hex.EncodeToString([]byte{0}),
-				},
-			)
-			log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
-				"initial mint", params.InitialSupplyValue, "initial burned", "0")
+			if params.IsNativeOnMvX {
+				burnAmount := initialSupply
+				hash, txResult := handler.ChainSimulator.ScCall(
+					ctx,
+					handler.OwnerKeys.MvxSk,
+					handler.MultisigAddress,
+					zeroStringValue,
+					setCallsGasLimit,
+					initSupplyMintBurnEsdtSafe,
+					[]string{
+						hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+						hex.EncodeToString(zeroValueBigInt.Bytes()),
+						hex.EncodeToString(burnAmount.Bytes()),
+					},
+				)
+				log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
+					"initial mint", "0", "initial burned", params.InitialSupplyValue)
+			} else {
+				mintAmount := initialSupply
+				hash, txResult := handler.ChainSimulator.ScCall(
+					ctx,
+					handler.OwnerKeys.MvxSk,
+					handler.MultisigAddress,
+					zeroStringValue,
+					setCallsGasLimit,
+					initSupplyMintBurnEsdtSafe,
+					[]string{
+						hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+						hex.EncodeToString(mintAmount.Bytes()),
+						hex.EncodeToString(zeroValueBigInt.Bytes()),
+					},
+				)
+				log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
+					"initial mint", params.InitialSupplyValue, "initial burned", "0")
+			}
 		} else {
 			hash, txResult := handler.ChainSimulator.ScCall(
 				ctx,
@@ -1041,6 +1064,33 @@ func (handler *MultiversxHandler) TransferToken(ctx context.Context, source Keys
 		"token", tkData.MvxUniversalToken,
 		"amount", amount.String(),
 		"hash", hash, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) GetTotalBalancesForToken(ctx context.Context, token string) *big.Int {
+	queryParams := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getTotalBalances, queryParams)
+	value := big.NewInt(0).SetBytes(responseData[0])
+	return value
+}
+
+func (handler *MultiversxHandler) GetMintedAmountForToken(ctx context.Context, token string) *big.Int {
+	queryParams := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getMintBalances, queryParams)
+	value := big.NewInt(0).SetBytes(responseData[0])
+	return value
+}
+
+func (handler *MultiversxHandler) GetBurnedAmountForToken(ctx context.Context, token string) *big.Int {
+	queryParams := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getBurnBalances, queryParams)
+	value := big.NewInt(0).SetBytes(responseData[0])
+	return value
 }
 
 func getHexBool(input bool) string {

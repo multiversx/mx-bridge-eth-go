@@ -231,12 +231,35 @@ func (setup *TestSetup) IsTransferDoneFromEthereum(sender KeysHolder, receiver K
 	return isDone
 }
 
-func (setup *TestSetup) isTransferDoneFromEthereumForToken(sender KeysHolder, receiver KeysHolder, params TestTokenParams) bool {
-	okSender := setup.checkHolderEthBalanceForToken(sender, true, params)
-	okReceiver := setup.checkHolderMvxBalanceForToken(receiver, false, params)
-	okContract := setup.checkContractMvxBalanceForToken(params)
+func (setup *TestSetup) isTransferDoneFromEthereumForToken(sender, receiver KeysHolder, params TestTokenParams) bool {
+	if !setup.checkHolderEthBalanceForToken(sender, true, params) {
+		return false
+	}
+	if !setup.checkHolderMvxBalanceForToken(receiver, false, params) {
+		return false
+	}
 
-	return okSender && okReceiver && okContract
+	if !setup.checkContractMvxBalanceForToken(params) {
+		return false
+	}
+
+	if params.IsMintBurnOnEth {
+		if !setup.checkEthBurnedTokenBalance(params) {
+			return false
+		}
+	} else if !setup.checkEthLockedBalanceForToken(params, false) {
+		return false
+	}
+
+	if params.IsMintBurnOnMvX {
+		if !setup.checkMvxMintedBalanceForToken(params) {
+			return false
+		}
+	} else if !setup.checkMvxLockedBalanceForToken(params, true) {
+		return false
+	}
+
+	return true
 }
 
 func (setup *TestSetup) checkHolderMvxBalanceForToken(holder KeysHolder, isSender bool, params TestTokenParams) bool {
@@ -308,6 +331,86 @@ func (setup *TestSetup) checkContractMvxBalanceForToken(params TestTokenParams) 
 	return mvxBalance.String() == expectedValueOnContract.String()
 }
 
+func (setup *TestSetup) checkEthLockedBalanceForToken(params TestTokenParams, isSecondBridge bool) bool {
+	token := setup.GetTokenData(params.AbstractTokenIdentifier)
+	lockedTokens := setup.EthereumHandler.GetTotalBalancesForToken(setup.Ctx, token.EthErc20Address)
+
+	expectedValue := setup.computeExpectedValueToMvx(params)
+
+	if params.InitialSupplyValue != "" {
+		if initialSupply, ok := new(big.Int).SetString(params.InitialSupplyValue, 10); ok {
+			expectedValue.Add(expectedValue, initialSupply)
+		}
+	}
+
+	if isSecondBridge {
+		expectedValue.Sub(expectedValue, setup.computeExpectedValueFromMvx(params))
+	}
+
+	return lockedTokens.String() == expectedValue.String()
+}
+
+func (setup *TestSetup) checkEthBurnedTokenBalance(params TestTokenParams) bool {
+	token := setup.GetTokenData(params.AbstractTokenIdentifier)
+	burnedTokens := setup.EthereumHandler.GetBurnBalanceForToken(setup.Ctx, token.EthErc20Address)
+
+	expectedValue := setup.computeExpectedValueToMvx(params)
+
+	if params.IsNativeOnEth {
+		if params.InitialSupplyValue != "" {
+			if initialSupply, ok := new(big.Int).SetString(params.InitialSupplyValue, 10); ok {
+				expectedValue.Add(expectedValue, initialSupply)
+			}
+		}
+	}
+
+	return burnedTokens.String() == expectedValue.String()
+}
+
+func (setup *TestSetup) checkMvxMintedBalanceForToken(params TestTokenParams) bool {
+	token := setup.GetTokenData(params.AbstractTokenIdentifier)
+	mintedTokens := setup.MultiversxHandler.GetMintedAmountForToken(setup.Ctx, token.MvxChainSpecificToken)
+
+	expectedValue := setup.computeExpectedValueToMvx(params)
+
+	if params.IsNativeOnEth {
+		if params.InitialSupplyValue != "" {
+			if initialSupply, ok := new(big.Int).SetString(params.InitialSupplyValue, 10); ok {
+				expectedValue.Add(expectedValue, initialSupply)
+			}
+		}
+	}
+
+	return mintedTokens.String() == expectedValue.String()
+}
+
+func (setup *TestSetup) computeExpectedValueToMvx(params TestTokenParams) *big.Int {
+	expectedValue := big.NewInt(0)
+	for _, operation := range params.TestOperations {
+		if operation.ValueToTransferToMvx == nil {
+			continue
+		}
+
+		expectedValue.Add(expectedValue, operation.ValueToTransferToMvx)
+	}
+
+	return expectedValue
+}
+
+func (setup *TestSetup) computeExpectedValueFromMvx(params TestTokenParams) *big.Int {
+	expectedValue := big.NewInt(0)
+	for _, operation := range params.TestOperations {
+		if operation.ValueToSendFromMvX == nil {
+			continue
+		}
+
+		expectedValue.Add(expectedValue, operation.ValueToSendFromMvX)
+		expectedValue.Sub(expectedValue, feeInt)
+	}
+
+	return expectedValue
+}
+
 // IsTransferDoneFromEthereumWithRefund returns true if all provided tokens are bridged from Ethereum towards MultiversX including refunds
 func (setup *TestSetup) IsTransferDoneFromEthereumWithRefund(tokens ...TestTokenParams) bool {
 	isDone := true
@@ -357,19 +460,96 @@ func (setup *TestSetup) IsTransferDoneFromMultiversX(sender KeysHolder, receiver
 	return isDone
 }
 
-func (setup *TestSetup) isTransferDoneFromMultiversXForToken(sender KeysHolder, receiver KeysHolder, params TestTokenParams) bool {
+func (setup *TestSetup) isTransferDoneFromMultiversXForToken(sender, receiver KeysHolder, params TestTokenParams) bool {
 	setup.mutBalances.Lock()
-	initialBalanceForSafe := setup.esdtBalanceForSafe[params.AbstractTokenIdentifier]
+	initialBalance := setup.esdtBalanceForSafe[params.AbstractTokenIdentifier]
 	setup.mutBalances.Unlock()
 
-	okSender := setup.checkHolderMvxBalanceForToken(sender, true, params)
-	okReceiver := setup.checkHolderEthBalanceForToken(receiver, false, params)
+	if !setup.checkHolderMvxBalanceForToken(sender, true, params) {
+		return false
+	}
+	if !setup.checkHolderEthBalanceForToken(receiver, false, params) {
+		return false
+	}
 
-	expectedEsdtSafe := big.NewInt(0).Add(initialBalanceForSafe, params.ESDTSafeExtraBalance)
-	balanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, params.AbstractTokenIdentifier)
-	isSafeContractOnCorrectBalance := expectedEsdtSafe.String() == balanceForSafe.String()
+	expectedBalance := new(big.Int).Add(initialBalance, params.ESDTSafeExtraBalance)
+	actualBalance := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(
+		setup.Ctx, setup.MultiversxHandler.SafeAddress, params.AbstractTokenIdentifier,
+	)
+	if expectedBalance.Cmp(actualBalance) != 0 {
+		return false
+	}
 
-	return okSender && okReceiver && isSafeContractOnCorrectBalance
+	if params.IsMintBurnOnMvX {
+		if !setup.checkMvxBurnedTokenBalance(params) {
+			return false
+		}
+	} else if !setup.checkMvxLockedBalanceForToken(params, false) {
+		return false
+	}
+
+	if params.IsMintBurnOnEth {
+		if !setup.checkEthMintedBalanceForToken(params) {
+			return false
+		}
+	} else if !setup.checkEthLockedBalanceForToken(params, true) {
+		return false
+	}
+
+	return true
+}
+
+func (setup *TestSetup) checkMvxLockedBalanceForToken(params TestTokenParams, isSecondBridge bool) bool {
+	token := setup.GetTokenData(params.AbstractTokenIdentifier)
+	lockedTokens := setup.MultiversxHandler.GetTotalBalancesForToken(setup.Ctx, token.MvxChainSpecificToken)
+
+	expectedValue := setup.computeExpectedValueFromMvx(params)
+
+	if params.InitialSupplyValue != "" {
+		if initialSupply, ok := new(big.Int).SetString(params.InitialSupplyValue, 10); ok {
+			expectedValue.Add(expectedValue, initialSupply)
+		}
+	}
+
+	if isSecondBridge {
+		expectedValue.Sub(expectedValue, setup.computeExpectedValueToMvx(params))
+	}
+
+	return lockedTokens.String() == expectedValue.String()
+}
+
+func (setup *TestSetup) checkMvxBurnedTokenBalance(params TestTokenParams) bool {
+	token := setup.GetTokenData(params.AbstractTokenIdentifier)
+	burnedTokens := setup.MultiversxHandler.GetBurnedAmountForToken(setup.Ctx, token.MvxChainSpecificToken)
+
+	expectedValue := setup.computeExpectedValueFromMvx(params)
+
+	if params.IsNativeOnMvX {
+		if params.InitialSupplyValue != "" {
+			if initialSupply, ok := new(big.Int).SetString(params.InitialSupplyValue, 10); ok {
+				expectedValue.Add(expectedValue, initialSupply)
+			}
+		}
+	}
+
+	return burnedTokens.String() == expectedValue.String()
+}
+
+func (setup *TestSetup) checkEthMintedBalanceForToken(params TestTokenParams) bool {
+	token := setup.GetTokenData(params.AbstractTokenIdentifier)
+	mintedTokens := setup.EthereumHandler.GetMintBalanceForToken(setup.Ctx, token.EthErc20Address)
+
+	expectedValue := setup.computeExpectedValueFromMvx(params)
+
+	if params.IsNativeOnMvX {
+		if params.InitialSupplyValue != "" {
+			if initialSupply, ok := new(big.Int).SetString(params.InitialSupplyValue, 10); ok {
+				expectedValue.Add(expectedValue, initialSupply)
+			}
+		}
+	}
+
+	return mintedTokens.String() == expectedValue.String()
 }
 
 // CreateBatchOnMultiversX will create deposits that will be gathered in a batch on MultiversX
