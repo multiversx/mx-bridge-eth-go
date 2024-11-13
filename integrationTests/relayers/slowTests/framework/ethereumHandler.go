@@ -281,18 +281,19 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 		require.True(handler, ok)
 
 		if params.IsMintBurnOnEth {
-			var tx2 *types.Transaction
-			var err2 error
+			mintAmount := big.NewInt(0)
+			burnAmount := big.NewInt(0)
+
 			if params.IsNativeOnEth {
-				burnAmount := initialSupply
-				tx2, err2 = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, zeroValueBigInt, burnAmount)
+				burnAmount = initialSupply
 			} else {
-				mintAmount := initialSupply
-				tx2, err2 = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, mintAmount, zeroValueBigInt)
+				mintAmount = initialSupply
 			}
-			require.NoError(handler, err2)
+
+			tx, err = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, mintAmount, burnAmount)
+			require.NoError(handler, err)
 			handler.SimulatedChain.Commit()
-			handler.checkEthTxResult(ctx, tx2.Hash())
+			handler.checkEthTxResult(ctx, tx.Hash())
 		} else {
 			// reset the tokens value for the safe contract, so it will "know" about the balance that it has in the ERC20 contract
 			tx, err = handler.SafeContract.ResetTotalBalance(auth, erc20Address)
@@ -500,6 +501,7 @@ func (handler *EthereumHandler) Mint(ctx context.Context, params TestTokenParams
 	handler.checkEthTxResult(ctx, tx.Hash())
 }
 
+// GetTotalBalancesForToken will return the total locked balance for the provided token
 func (handler *EthereumHandler) GetTotalBalancesForToken(ctx context.Context, address common.Address) *big.Int {
 	opts := &bind.CallOpts{Context: ctx}
 	balance, err := handler.SafeContract.TotalBalances(opts, address)
@@ -507,6 +509,7 @@ func (handler *EthereumHandler) GetTotalBalancesForToken(ctx context.Context, ad
 	return balance
 }
 
+// GetBurnBalanceForToken will return burn balance for the provided token
 func (handler *EthereumHandler) GetBurnBalanceForToken(ctx context.Context, address common.Address) *big.Int {
 	opts := &bind.CallOpts{Context: ctx}
 	balance, err := handler.SafeContract.BurnBalances(opts, address)
@@ -514,6 +517,7 @@ func (handler *EthereumHandler) GetBurnBalanceForToken(ctx context.Context, addr
 	return balance
 }
 
+// GetMintBalanceForToken will return mint balance for the provided token
 func (handler *EthereumHandler) GetMintBalanceForToken(ctx context.Context, address common.Address) *big.Int {
 	opts := &bind.CallOpts{Context: ctx}
 	balance, err := handler.SafeContract.MintBalances(opts, address)

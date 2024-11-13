@@ -803,41 +803,31 @@ func (handler *MultiversxHandler) setInitialSupply(ctx context.Context, params I
 		require.True(handler, okConvert)
 
 		if params.IsMintBurnOnMvX {
+			mintAmount := big.NewInt(0)
+			burnAmount := big.NewInt(0)
+
 			if params.IsNativeOnMvX {
-				burnAmount := initialSupply
-				hash, txResult := handler.ChainSimulator.ScCall(
-					ctx,
-					handler.OwnerKeys.MvxSk,
-					handler.MultisigAddress,
-					zeroStringValue,
-					setCallsGasLimit,
-					initSupplyMintBurnEsdtSafe,
-					[]string{
-						hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-						hex.EncodeToString(zeroValueBigInt.Bytes()),
-						hex.EncodeToString(burnAmount.Bytes()),
-					},
-				)
-				log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
-					"initial mint", "0", "initial burned", params.InitialSupplyValue)
+				burnAmount = initialSupply
 			} else {
-				mintAmount := initialSupply
-				hash, txResult := handler.ChainSimulator.ScCall(
-					ctx,
-					handler.OwnerKeys.MvxSk,
-					handler.MultisigAddress,
-					zeroStringValue,
-					setCallsGasLimit,
-					initSupplyMintBurnEsdtSafe,
-					[]string{
-						hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-						hex.EncodeToString(mintAmount.Bytes()),
-						hex.EncodeToString(zeroValueBigInt.Bytes()),
-					},
-				)
-				log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
-					"initial mint", params.InitialSupplyValue, "initial burned", "0")
+				mintAmount = initialSupply
 			}
+
+			hash, txResult := handler.ChainSimulator.ScCall(
+				ctx,
+				handler.OwnerKeys.MvxSk,
+				handler.MultisigAddress,
+				zeroStringValue,
+				setCallsGasLimit,
+				initSupplyMintBurnEsdtSafe,
+				[]string{
+					hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+					hex.EncodeToString(mintAmount.Bytes()),
+					hex.EncodeToString(burnAmount.Bytes()),
+				},
+			)
+
+			log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
+				"initial mint", mintAmount.String(), "initial burned", burnAmount.String())
 		} else {
 			hash, txResult := handler.ChainSimulator.ScCall(
 				ctx,
@@ -1066,6 +1056,7 @@ func (handler *MultiversxHandler) TransferToken(ctx context.Context, source Keys
 		"hash", hash, "status", txResult.Status)
 }
 
+// GetTotalBalancesForToken will return the total locked balance for the provided token
 func (handler *MultiversxHandler) GetTotalBalancesForToken(ctx context.Context, token string) *big.Int {
 	queryParams := []string{
 		hex.EncodeToString([]byte(token)),
@@ -1075,6 +1066,7 @@ func (handler *MultiversxHandler) GetTotalBalancesForToken(ctx context.Context, 
 	return value
 }
 
+// GetMintedAmountForToken will return mint balance for token
 func (handler *MultiversxHandler) GetMintedAmountForToken(ctx context.Context, token string) *big.Int {
 	queryParams := []string{
 		hex.EncodeToString([]byte(token)),
@@ -1084,6 +1076,7 @@ func (handler *MultiversxHandler) GetMintedAmountForToken(ctx context.Context, t
 	return value
 }
 
+// GetBurnedAmountForToken will return burn balance of token
 func (handler *MultiversxHandler) GetBurnedAmountForToken(ctx context.Context, token string) *big.Int {
 	queryParams := []string{
 		hex.EncodeToString([]byte(token)),
