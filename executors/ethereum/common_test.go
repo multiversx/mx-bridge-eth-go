@@ -148,4 +148,21 @@ func TestConvertPartialMigrationStringToMap(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, expectedResults, results)
 	})
+	t.Run("should not add on a token with max value", func(t *testing.T) {
+		t.Parallel()
+
+		str := "k:1,l:0,m:*,k:*,n:1,k:4"
+		results, err := ConvertPartialMigrationStringToMap(str)
+		assert.Nil(t, err)
+
+		expectedResults := map[string]*FloatWrapper{
+			"k": {Float: big.NewFloat(0), IsMax: true},
+			"l": {Float: big.NewFloat(0), IsMax: false},
+			"m": {Float: big.NewFloat(0), IsMax: true},
+			"n": {Float: big.NewFloat(1), IsMax: false},
+		}
+
+		assert.Nil(t, err)
+		assert.Equal(t, expectedResults, results)
+	})
 }
