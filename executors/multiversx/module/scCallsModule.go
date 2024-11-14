@@ -73,7 +73,7 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chClose
 	}
 
 	argsExecutor := multiversx.ArgsScCallExecutor{
-		ScProxyBech32Address:            cfg.ScProxyBech32Address,
+		ScProxyBech32Addresses:          cfg.ScProxyBech32Addresses,
 		Proxy:                           proxy,
 		Codec:                           &parsers.MultiversxCodec{},
 		Filter:                          filter,
