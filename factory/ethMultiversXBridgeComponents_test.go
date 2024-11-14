@@ -52,17 +52,24 @@ func createMockEthMultiversXBridgeArgs() ArgsEthereumToMultiversXBridge {
 			},
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,
-			MaxBlocksDelta:                     10,
+			ClientAvailabilityAllowDelta:       10,
 		},
 		MultiversX: config.MultiversXConfig{
 			PrivateKeyFile:                  "testdata/grace.pem",
 			IntervalToResendTxsInSeconds:    60,
 			NetworkAddress:                  "http://127.0.0.1:8079",
 			MultisigContractAddress:         "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+			SafeContractAddress:             "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
 			GasMap:                          testsCommon.CreateTestMultiversXGasMap(),
 			MaxRetriesOnQuorumReached:       1,
 			MaxRetriesOnWasTransferProposed: 1,
-			ProxyMaxNoncesDelta:             5,
+			ClientAvailabilityAllowDelta:    10,
+			Proxy: config.ProxyConfig{
+				CacherExpirationSeconds: 600,
+				RestAPIEntityType:       "observer",
+				MaxNoncesDelta:          10,
+				FinalityCheck:           true,
+			},
 		},
 		Relayer: config.ConfigRelayer{
 			RoleProvider: config.RoleProviderConfig{
@@ -251,7 +258,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		components, err := NewEthMultiversXBridgeComponents(args)
 		require.Nil(t, err)
 		require.NotNil(t, components)
-		require.Equal(t, 6, len(components.closableHandlers))
+		require.Equal(t, 7, len(components.closableHandlers))
 		require.False(t, check.IfNil(components.ethToMultiversXStatusHandler))
 		require.False(t, check.IfNil(components.multiversXToEthStatusHandler))
 	})
@@ -266,7 +273,7 @@ func TestEthMultiversXBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
 
 	err = components.Start()
 	assert.Nil(t, err)
-	assert.Equal(t, 6, len(components.closableHandlers))
+	assert.Equal(t, 7, len(components.closableHandlers))
 
 	time.Sleep(time.Second * 2) // allow go routines to start
 
@@ -418,6 +425,7 @@ func TestEthMultiversXBridgeComponents_RelayerAddresses(t *testing.T) {
 	args := createMockEthMultiversXBridgeArgs()
 	components, _ := NewEthMultiversXBridgeComponents(args)
 
-	assert.Equal(t, "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede", components.MultiversXRelayerAddress().AddressAsBech32String())
+	bech32Address, _ := components.MultiversXRelayerAddress().AddressAsBech32String()
+	assert.Equal(t, "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede", bech32Address)
 	assert.Equal(t, "0x3FE464Ac5aa562F7948322F92020F2b668D543d8", components.EthereumRelayerAddress().String())
 }

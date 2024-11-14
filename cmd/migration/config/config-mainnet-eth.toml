@@ -1,0 +1,36 @@
+[Eth]
+    Chain = "Ethereum"
+    NetworkAddress = "" # a network address
+    PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
+    MultisigContractAddress = "0x1Ff78EB04d44a803E73c44FEf8790c5cAbD14596"
+    SafeContractAddress = "0x92A26975433A61CF1134802586aa669bAB8B69f3"
+    GasLimitBase = 350000
+    GasLimitForEach = 30000
+    [Eth.GasStation]
+        Enabled = true
+        URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
+        GasPriceMultiplier = 1000000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 1000000000
+        PollingIntervalInSeconds = 60 # number of seconds between gas price polling
+        RequestRetryDelayInSeconds = 5 # number of seconds of delay after one failed request
+        MaxFetchRetries = 3 # number of fetch retries before printing an error
+        RequestTimeInSeconds = 5 # maximum timeout (in seconds) for the gas price request
+        MaximumAllowedGasPrice = 300 # maximum value allowed for the fetched gas price value
+        # GasPriceSelector available options: "SafeGasPrice", "ProposeGasPrice", "FastGasPrice"
+        GasPriceSelector = "SafeGasPrice" # selector used to provide the gas price
+
+[MultiversX]
+    NetworkAddress = "https://gateway.multiversx.com" # the network address
+    MultisigContractAddress = "erd1qqqqqqqqqqqqqpgqxexs26vrvhwh2m4he62d6y3jzmv3qkujyfkq8yh4z2"
+    SafeContractAddress = "erd1qqqqqqqqqqqqqpgqhxkc48lt5uv2hejj4wtjqvugfm4wgv6gyfkqw0uuxl"
+    [MultiversX.Proxy]
+        CacherExpirationSeconds = 600 # the caching time in seconds
+
+        # valid options for ProxyRestAPIEntityType are "observer" and "proxy". Any other value will trigger an error.
+        # "observer" is useful when querying an observer, directly and "proxy" is useful when querying a squad's proxy (gateway)
+        RestAPIEntityType = "proxy"
+        FinalityCheck = true
+        MaxNoncesDelta = 7 # the number of maximum blocks allowed to be "in front" of what the metachain has notarized
+
+[Logs]
+    LogFileLifeSpanInSec = 86400 # 24h
+    LogFileLifeSpanInMB = 1024 # 1GB

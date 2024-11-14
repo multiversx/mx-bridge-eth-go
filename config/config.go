@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-chain-go/config"
+	p2pConfig "github.com/multiversx/mx-chain-go/p2p/config"
 )
 
 // Configs is a holder for the relayer configuration parameters
@@ -20,8 +21,7 @@ type Config struct {
 	StateMachine      map[string]ConfigStateMachine
 	Relayer           ConfigRelayer
 	Logs              LogsConfig
-	Antiflood         AntifloodConfig
-	BatchValidator    BatchValidatorConfig
+	WebAntiflood      WebAntifloodConfig
 	PeersRatingConfig PeersRatingConfig
 }
 
@@ -38,7 +38,9 @@ type EthereumConfig struct {
 	GasStation                         GasStationConfig
 	MaxRetriesOnQuorumReached          uint64
 	IntervalToWaitForTransferInSeconds uint64
-	MaxBlocksDelta                     uint64
+	ClientAvailabilityAllowDelta       uint64
+	EventsBlockRangeFrom               int64
+	EventsBlockRangeTo                 int64
 }
 
 // GasStationConfig represents the configuration for the gas station handler
@@ -59,7 +61,9 @@ type ConfigP2P struct {
 	Port            string
 	InitialPeerList []string
 	ProtocolID      string
+	Transports      p2pConfig.P2PTransportConfig
 	AntifloodConfig config.AntifloodConfig
+	ResourceLimiter p2pConfig.P2PResourceLimiterConfig
 }
 
 // ConfigRelayer configuration for general relayer configuration
@@ -95,17 +99,10 @@ type WebServerAntifloodConfig struct {
 	SameSourceResetIntervalInSec uint32
 }
 
-// AntifloodConfig will hold all p2p antiflood parameters
-type AntifloodConfig struct {
+// WebAntifloodConfig will hold all web antiflood parameters
+type WebAntifloodConfig struct {
 	Enabled   bool
 	WebServer WebServerAntifloodConfig
-}
-
-// BatchValidatorConfig represents the configuration for the batch validator
-type BatchValidatorConfig struct {
-	Enabled              bool
-	URL                  string
-	RequestTimeInSeconds int
 }
 
 // ApiRoutesConfig holds the configuration related to Rest API routes
@@ -146,15 +143,22 @@ type RoleProviderConfig struct {
 type MultiversXConfig struct {
 	NetworkAddress                  string
 	MultisigContractAddress         string
+	SafeContractAddress             string
 	PrivateKeyFile                  string
 	IntervalToResendTxsInSeconds    uint64
 	GasMap                          MultiversXGasMapConfig
 	MaxRetriesOnQuorumReached       uint64
 	MaxRetriesOnWasTransferProposed uint64
-	ProxyCacherExpirationSeconds    uint64
-	ProxyRestAPIEntityType          string
-	ProxyMaxNoncesDelta             int
-	ProxyFinalityCheck              bool
+	ClientAvailabilityAllowDelta    uint64
+	Proxy                           ProxyConfig
+}
+
+// ProxyConfig represents the configuration for the MultiversX proxy
+type ProxyConfig struct {
+	CacherExpirationSeconds uint64
+	RestAPIEntityType       string
+	MaxNoncesDelta          int
+	FinalityCheck           bool
 }
 
 // MultiversXGasMapConfig represents the gas limits for MultiversX operations
@@ -166,10 +170,57 @@ type MultiversXGasMapConfig struct {
 	ProposeStatusForEach   uint64
 	PerformActionBase      uint64
 	PerformActionForEach   uint64
+	ScCallPerByte          uint64
+	ScCallPerformForEach   uint64
 }
 
 // PeersRatingConfig will hold settings related to peers rating
 type PeersRatingConfig struct {
 	TopRatedCacheCapacity int
 	BadRatedCacheCapacity int
+}
+
+// PendingOperationsFilterConfig defines the filter structure
+type PendingOperationsFilterConfig struct {
+	DeniedEthAddresses  []string
+	AllowedEthAddresses []string
+	DeniedMvxAddresses  []string
+	AllowedMvxAddresses []string
+	DeniedTokens        []string
+	AllowedTokens       []string
+}
+
+// ScCallsModuleConfig will hold the settings for the SC calls module
+type ScCallsModuleConfig struct {
+	ScProxyBech32Address            string
+	ExtraGasToExecute               uint64
+	MaxGasLimitToUse                uint64
+	GasLimitForOutOfGasTransactions uint64
+	NetworkAddress                  string
+	ProxyMaxNoncesDelta             int
+	ProxyFinalityCheck              bool
+	ProxyCacherExpirationSeconds    uint64
+	ProxyRestAPIEntityType          string
+	IntervalToResendTxsInSeconds    uint64
+	PrivateKeyFile                  string
+	PollingIntervalInMillis         uint64
+	Filter                          PendingOperationsFilterConfig
+	Logs                            LogsConfig
+	TransactionChecks               TransactionChecksConfig
+}
+
+// TransactionChecksConfig will hold the setting for how to handle the transaction execution
+type TransactionChecksConfig struct {
+	CheckTransactionResults    bool
+	TimeInSecondsBetweenChecks uint64
+	ExecutionTimeoutInSeconds  uint64
+	CloseAppOnError            bool
+	ExtraDelayInSecondsOnError uint64
+}
+
+// MigrationToolConfig is the migration tool config struct
+type MigrationToolConfig struct {
+	Eth        EthereumConfig
+	MultiversX MultiversXConfig
+	Logs       LogsConfig
 }

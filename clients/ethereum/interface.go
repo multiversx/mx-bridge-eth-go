@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -14,8 +15,8 @@ import (
 // ClientWrapper represents the Ethereum client wrapper that the ethereum client can rely on
 type ClientWrapper interface {
 	core.StatusHandler
-	GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, error)
-	GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, error)
+	GetBatch(ctx context.Context, batchNonce *big.Int) (contract.Batch, bool, error)
+	GetBatchDeposits(ctx context.Context, batchNonce *big.Int) ([]contract.Deposit, bool, error)
 	GetRelayers(ctx context.Context) ([]common.Address, error)
 	WasBatchExecuted(ctx context.Context, batchNonce *big.Int) (bool, error)
 	ChainID(ctx context.Context) (*big.Int, error)
@@ -25,14 +26,22 @@ type ClientWrapper interface {
 		recipients []common.Address, amounts []*big.Int, nonces []*big.Int, batchNonce *big.Int,
 		signatures [][]byte) (*types.Transaction, error)
 	Quorum(ctx context.Context) (*big.Int, error)
-	GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, error)
+	GetStatusesAfterExecution(ctx context.Context, batchID *big.Int) ([]byte, bool, error)
 	BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error)
+	TotalBalances(ctx context.Context, arg0 common.Address) (*big.Int, error)
+	MintBalances(ctx context.Context, arg0 common.Address) (*big.Int, error)
+	BurnBalances(ctx context.Context, arg0 common.Address) (*big.Int, error)
+	MintBurnTokens(ctx context.Context, arg0 common.Address) (bool, error)
+	NativeTokens(ctx context.Context, arg0 common.Address) (bool, error)
+	WhitelistedTokens(ctx context.Context, arg0 common.Address) (bool, error)
 	IsPaused(ctx context.Context) (bool, error)
+	FilterLogs(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error)
 }
 
 // Erc20ContractsHolder defines the Ethereum ERC20 contract operations
 type Erc20ContractsHolder interface {
 	BalanceOf(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error)
+	Decimals(ctx context.Context, erc20Address common.Address) (uint8, error)
 	IsInterfaceNil() bool
 }
 
@@ -63,5 +72,14 @@ type SignaturesHolder interface {
 
 type erc20ContractWrapper interface {
 	BalanceOf(ctx context.Context, account common.Address) (*big.Int, error)
+	Decimals(ctx context.Context) (uint8, error)
+	IsInterfaceNil() bool
+}
+
+// CryptoHandler defines the operations for a component that expose some crypto primitives
+type CryptoHandler interface {
+	Sign(msgHash common.Hash) ([]byte, error)
+	GetAddress() common.Address
+	CreateKeyedTransactor(chainId *big.Int) (*bind.TransactOpts, error)
 	IsInterfaceNil() bool
 }

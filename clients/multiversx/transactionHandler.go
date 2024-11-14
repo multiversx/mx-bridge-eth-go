@@ -40,12 +40,12 @@ func (txHandler *transactionHandler) signTransaction(ctx context.Context, builde
 		return nil, err
 	}
 
-	nonce, err := txHandler.nonceTxHandler.GetNonce(context.Background(), txHandler.relayerAddress)
+	dataBytes, err := builder.ToDataBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	dataBytes, err := builder.ToDataBytes()
+	bech32Address, err := txHandler.relayerAddress.AddressAsBech32String()
 	if err != nil {
 		return nil, err
 	}
@@ -54,12 +54,15 @@ func (txHandler *transactionHandler) signTransaction(ctx context.Context, builde
 		ChainID:  networkConfig.ChainID,
 		Version:  networkConfig.MinTransactionVersion,
 		GasLimit: gasLimit,
-		GasPrice: networkConfig.MinGasPrice,
-		Nonce:    nonce,
 		Data:     dataBytes,
-		Sender:   txHandler.relayerAddress.AddressAsBech32String(),
+		Sender:   bech32Address,
 		Receiver: txHandler.multisigAddressAsBech32,
 		Value:    "0",
+	}
+
+	err = txHandler.nonceTxHandler.ApplyNonceAndGasPrice(context.Background(), txHandler.relayerAddress, tx)
+	if err != nil {
+		return nil, err
 	}
 
 	err = txHandler.signTransactionWithPrivateKey(tx)

@@ -3,11 +3,14 @@ package bridge
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"runtime"
 	"strings"
 	"sync"
 
-	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/ethereum/go-ethereum/common"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
@@ -19,9 +22,9 @@ type BridgeExecutorStub struct {
 
 	PrintInfoCalled                                            func(logLevel logger.LogLevel, message string, extras ...interface{})
 	MyTurnAsLeaderCalled                                       func() bool
-	GetBatchFromMultiversXCalled                               func(ctx context.Context) (*clients.TransferBatch, error)
-	StoreBatchFromMultiversXCalled                             func(batch *clients.TransferBatch) error
-	GetStoredBatchCalled                                       func() *clients.TransferBatch
+	GetBatchFromMultiversXCalled                               func(ctx context.Context) (*bridgeCore.TransferBatch, error)
+	StoreBatchFromMultiversXCalled                             func(batch *bridgeCore.TransferBatch) error
+	GetStoredBatchCalled                                       func() *bridgeCore.TransferBatch
 	GetLastExecutedEthBatchIDFromMultiversXCalled              func(ctx context.Context) (uint64, error)
 	VerifyLastDepositNonceExecutedOnEthereumBatchCalled        func(ctx context.Context) error
 	GetAndStoreActionIDForProposeTransferOnMultiversXCalled    func(ctx context.Context) (uint64, error)
@@ -52,9 +55,9 @@ type BridgeExecutorStub struct {
 	ProcessMaxQuorumRetriesOnEthereumCalled                    func() bool
 	ResetRetriesCountOnEthereumCalled                          func()
 	ClearStoredP2PSignaturesForEthereumCalled                  func()
-	ValidateBatchCalled                                        func(ctx context.Context, batch *clients.TransferBatch) (bool, error)
 	CheckMultiversXClientAvailabilityCalled                    func(ctx context.Context) error
 	CheckEthereumClientAvailabilityCalled                      func(ctx context.Context) error
+	CheckAvailableTokensCalled                                 func(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error
 }
 
 // NewBridgeExecutorStub creates a new BridgeExecutorStub instance
@@ -83,7 +86,7 @@ func (stub *BridgeExecutorStub) MyTurnAsLeader() bool {
 }
 
 // GetBatchFromMultiversX -
-func (stub *BridgeExecutorStub) GetBatchFromMultiversX(ctx context.Context) (*clients.TransferBatch, error) {
+func (stub *BridgeExecutorStub) GetBatchFromMultiversX(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 	stub.incrementFunctionCounter()
 	if stub.GetBatchFromMultiversXCalled != nil {
 		return stub.GetBatchFromMultiversXCalled(ctx)
@@ -92,7 +95,7 @@ func (stub *BridgeExecutorStub) GetBatchFromMultiversX(ctx context.Context) (*cl
 }
 
 // StoreBatchFromMultiversX -
-func (stub *BridgeExecutorStub) StoreBatchFromMultiversX(batch *clients.TransferBatch) error {
+func (stub *BridgeExecutorStub) StoreBatchFromMultiversX(batch *bridgeCore.TransferBatch) error {
 	stub.incrementFunctionCounter()
 	if stub.StoreBatchFromMultiversXCalled != nil {
 		return stub.StoreBatchFromMultiversXCalled(batch)
@@ -101,7 +104,7 @@ func (stub *BridgeExecutorStub) StoreBatchFromMultiversX(batch *clients.Transfer
 }
 
 // GetStoredBatch -
-func (stub *BridgeExecutorStub) GetStoredBatch() *clients.TransferBatch {
+func (stub *BridgeExecutorStub) GetStoredBatch() *bridgeCore.TransferBatch {
 	stub.incrementFunctionCounter()
 	if stub.GetStoredBatchCalled != nil {
 		return stub.GetStoredBatchCalled()
@@ -373,14 +376,6 @@ func (stub *BridgeExecutorStub) ClearStoredP2PSignaturesForEthereum() {
 	}
 }
 
-// ValidateBatch -
-func (stub *BridgeExecutorStub) ValidateBatch(ctx context.Context, batch *clients.TransferBatch) (bool, error) {
-	if stub.ValidateBatchCalled != nil {
-		return stub.ValidateBatchCalled(ctx, batch)
-	}
-	return false, notImplemented
-}
-
 // CheckMultiversXClientAvailability -
 func (stub *BridgeExecutorStub) CheckMultiversXClientAvailability(ctx context.Context) error {
 	if stub.CheckMultiversXClientAvailabilityCalled != nil {
@@ -420,4 +415,13 @@ func (stub *BridgeExecutorStub) GetFunctionCounter(function string) int {
 	defer stub.mutExecutor.Unlock()
 
 	return stub.functionCalledCounter[function]
+}
+
+// CheckAvailableTokens -
+func (stub *BridgeExecutorStub) CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
+	if stub.CheckAvailableTokensCalled != nil {
+		return stub.CheckAvailableTokensCalled(ctx, ethTokens, mvxTokens, amounts, direction)
+	}
+
+	return nil
 }

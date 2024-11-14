@@ -2,10 +2,10 @@ package ethtomultiversx
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
@@ -42,23 +42,18 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 		return step.Identifier()
 	}
 
-	isValid, err := step.bridge.ValidateBatch(ctx, batch)
-	if err != nil {
-		body, _ := json.Marshal(batch)
-		step.bridge.PrintInfo(logger.LogError, "error validating Ethereum batch", "error", err, "batch", string(body))
-		return step.Identifier()
-	}
-
-	if !isValid {
-		step.bridge.PrintInfo(logger.LogError, "batch not valid "+batch.String())
-		return step.Identifier()
-	}
-
 	step.bridge.PrintInfo(logger.LogInfo, "fetched new batch from Ethereum "+batch.String())
 
 	err = step.bridge.VerifyLastDepositNonceExecutedOnEthereumBatch(ctx)
 	if err != nil {
 		step.bridge.PrintInfo(logger.LogError, "verification failed on the new batch from Ethereum", "batch ID", lastEthBatchExecuted+1, "error", err)
+		return step.Identifier()
+	}
+
+	argLists := batchProcessor.ExtractListEthToMvx(batch)
+	err = step.bridge.CheckAvailableTokens(ctx, argLists.EthTokens, argLists.MvxTokenBytes, argLists.Amounts, argLists.Direction)
+	if err != nil {
+		step.bridge.PrintInfo(logger.LogError, "error checking available tokens", "error", err, "batch", batch.String())
 		return step.Identifier()
 	}
 

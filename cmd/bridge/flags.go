@@ -30,7 +30,7 @@ var (
 			"all available routes for Rest API and options to enable or disable them.",
 		Value: "config/api.toml",
 	}
-	// logFile is used when the log output needs to be logged in a file
+	// logSaveFile is used when the log output needs to be logged in a file
 	logSaveFile = cli.BoolFlag{
 		Name:  "log-save",
 		Usage: "Boolean option for enabling log saving. If set, it will automatically save all the logs into a file.",

@@ -2,23 +2,19 @@ package factory
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/disabled"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps/ethToMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps/multiversxToEth"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/topology"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	batchValidatorManagement "github.com/multiversx/mx-bridge-eth-go/clients/batchValidator"
-	batchManagementFactory "github.com/multiversx/mx-bridge-eth-go/clients/batchValidator/factory"
+	balanceValidatorManagement "github.com/multiversx/mx-bridge-eth-go/clients/balanceValidator"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement"
@@ -81,6 +77,7 @@ type ethMultiversXBridgeComponents struct {
 	ethClient                         ethmultiversx.EthereumClient
 	evmCompatibleChain                chain.Chain
 	multiversXMultisigContractAddress sdkCore.AddressHandler
+	multiversXSafeContractAddress     sdkCore.AddressHandler
 	multiversXRelayerPrivateKey       crypto.PrivateKey
 	multiversXRelayerAddress          sdkCore.AddressHandler
 	ethereumRelayerAddress            common.Address
@@ -259,6 +256,11 @@ func (components *ethMultiversXBridgeComponents) createMultiversXKeysAndAddresse
 		return fmt.Errorf("%w for chainConfigs.MultisigContractAddress", err)
 	}
 
+	components.multiversXSafeContractAddress, err = data.NewAddressFromBech32String(chainConfigs.SafeContractAddress)
+	if err != nil {
+		return fmt.Errorf("%w for chainConfigs.SafeContractAddress", err)
+	}
+
 	return nil
 }
 
@@ -266,6 +268,7 @@ func (components *ethMultiversXBridgeComponents) createDataGetter() error {
 	multiversXDataGetterLogId := components.evmCompatibleChain.MultiversXDataGetterLogId()
 	argsMXClientDataGetter := multiversx.ArgsMXClientDataGetter{
 		MultisigContractAddress: components.multiversXMultisigContractAddress,
+		SafeContractAddress:     components.multiversXSafeContractAddress,
 		RelayerAddress:          components.multiversXRelayerAddress,
 		Proxy:                   components.proxy,
 		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(multiversXDataGetterLogId), multiversXDataGetterLogId),
@@ -291,11 +294,12 @@ func (components *ethMultiversXBridgeComponents) createMultiversXClient(args Arg
 		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(multiversXClientLogId), multiversXClientLogId),
 		RelayerPrivateKey:            components.multiversXRelayerPrivateKey,
 		MultisigContractAddress:      components.multiversXMultisigContractAddress,
+		SafeContractAddress:          components.multiversXSafeContractAddress,
 		IntervalToResendTxsInSeconds: chainConfigs.IntervalToResendTxsInSeconds,
 		TokensMapper:                 tokensMapper,
 		RoleProvider:                 components.multiversXRoleProvider,
 		StatusHandler:                args.MultiversXClientStatusHandler,
-		AllowDelta:                   uint64(chainConfigs.ProxyMaxNoncesDelta),
+		ClientAvailabilityAllowDelta: chainConfigs.ClientAvailabilityAllowDelta,
 	}
 
 	components.multiversXClient, err = multiversx.NewClient(clientArgs)
@@ -323,6 +327,8 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 	if err != nil {
 		return err
 	}
+
+	components.addClosableComponent(gs)
 
 	antifloodComponents, err := components.createAntifloodComponents(args.Configs.GeneralConfig.P2P.AntifloodConfig)
 	if err != nil {
@@ -357,22 +363,12 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 		return err
 	}
 
-	privateKeyBytes, err := ioutil.ReadFile(ethereumConfigs.PrivateKeyFile)
-	if err != nil {
-		return err
-	}
-	privateKeyString := converters.TrimWhiteSpaceCharacters(string(privateKeyBytes))
-	privateKey, err := ethCrypto.HexToECDSA(privateKeyString)
+	cryptoHandler, err := ethereum.NewCryptoHandler(ethereumConfigs.PrivateKeyFile)
 	if err != nil {
 		return err
 	}
 
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return errPublicKeyCast
-	}
-	components.ethereumRelayerAddress = ethCrypto.PubkeyToAddress(*publicKeyECDSA)
+	components.ethereumRelayerAddress = cryptoHandler.GetAddress()
 
 	tokensMapper, err := mappers.NewErc20ToMultiversXMapper(components.mxDataGetter)
 	if err != nil {
@@ -390,19 +386,21 @@ func (components *ethMultiversXBridgeComponents) createEthereumClient(args ArgsE
 
 	ethClientLogId := components.evmCompatibleChain.EvmCompatibleChainClientLogId()
 	argsEthClient := ethereum.ArgsEthereumClient{
-		ClientWrapper:           args.ClientWrapper,
-		Erc20ContractsHandler:   args.Erc20ContractsHolder,
-		Log:                     core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
-		AddressConverter:        components.addressConverter,
-		Broadcaster:             components.broadcaster,
-		PrivateKey:              privateKey,
-		TokensMapper:            tokensMapper,
-		SignatureHolder:         signaturesHolder,
-		SafeContractAddress:     safeContractAddress,
-		GasHandler:              gs,
-		TransferGasLimitBase:    ethereumConfigs.GasLimitBase,
-		TransferGasLimitForEach: ethereumConfigs.GasLimitForEach,
-		AllowDelta:              ethereumConfigs.MaxBlocksDelta,
+		ClientWrapper:                args.ClientWrapper,
+		Erc20ContractsHandler:        args.Erc20ContractsHolder,
+		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(ethClientLogId), ethClientLogId),
+		AddressConverter:             components.addressConverter,
+		Broadcaster:                  components.broadcaster,
+		CryptoHandler:                cryptoHandler,
+		TokensMapper:                 tokensMapper,
+		SignatureHolder:              signaturesHolder,
+		SafeContractAddress:          safeContractAddress,
+		GasHandler:                   gs,
+		TransferGasLimitBase:         ethereumConfigs.GasLimitBase,
+		TransferGasLimitForEach:      ethereumConfigs.GasLimitForEach,
+		ClientAvailabilityAllowDelta: ethereumConfigs.ClientAvailabilityAllowDelta,
+		EventsBlockRangeFrom:         ethereumConfigs.EventsBlockRangeFrom,
+		EventsBlockRangeTo:           ethereumConfigs.EventsBlockRangeTo,
 	}
 
 	components.ethClient, err = ethereum.NewEthereumClient(argsEthClient)
@@ -516,7 +514,7 @@ func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXBridg
 
 	timeForTransferExecution := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	batchValidator, err := components.createBatchValidator(components.evmCompatibleChain, chain.MultiversX, args.Configs.GeneralConfig.BatchValidator)
+	balanceValidator, err := components.createBalanceValidator()
 	if err != nil {
 		return err
 	}
@@ -529,7 +527,7 @@ func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXBridg
 		StatusHandler:                components.ethToMultiversXStatusHandler,
 		TimeForWaitOnEthereum:        timeForTransferExecution,
 		SignaturesHolder:             disabled.NewDisabledSignaturesHolder(),
-		BatchValidator:               batchValidator,
+		BalanceValidator:             balanceValidator,
 		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:     args.Configs.GeneralConfig.MultiversX.MaxRetriesOnWasTransferProposed,
@@ -584,7 +582,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXToEthereumBridg
 
 	timeForWaitOnEthereum := time.Second * time.Duration(args.Configs.GeneralConfig.Eth.IntervalToWaitForTransferInSeconds)
 
-	batchValidator, err := components.createBatchValidator(chain.MultiversX, components.evmCompatibleChain, args.Configs.GeneralConfig.BatchValidator)
+	balanceValidator, err := components.createBalanceValidator()
 	if err != nil {
 		return err
 	}
@@ -597,7 +595,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXToEthereumBridg
 		StatusHandler:                components.multiversXToEthStatusHandler,
 		TimeForWaitOnEthereum:        timeForWaitOnEthereum,
 		SignaturesHolder:             components.ethToMultiversXSignaturesHolder,
-		BatchValidator:               batchValidator,
+		BalanceValidator:             balanceValidator,
 		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:     args.Configs.GeneralConfig.MultiversX.MaxRetriesOnWasTransferProposed,
@@ -649,24 +647,21 @@ func (components *ethMultiversXBridgeComponents) Start() error {
 		return err
 	}
 
-	go components.startBroadcastJoinRetriesLoop()
+	var ctx context.Context
+	ctx, components.cancelFunc = context.WithCancel(context.Background())
+	go components.startBroadcastJoinRetriesLoop(ctx)
 
 	return nil
 }
 
-func (components *ethMultiversXBridgeComponents) createBatchValidator(sourceChain chain.Chain, destinationChain chain.Chain, args config.BatchValidatorConfig) (clients.BatchValidator, error) {
-	argsBatchValidator := batchValidatorManagement.ArgsBatchValidator{
-		SourceChain:      sourceChain,
-		DestinationChain: destinationChain,
-		RequestURL:       args.URL,
-		RequestTime:      time.Second * time.Duration(args.RequestTimeInSeconds),
+func (components *ethMultiversXBridgeComponents) createBalanceValidator() (ethmultiversx.BalanceValidator, error) {
+	argsBalanceValidator := balanceValidatorManagement.ArgsBalanceValidator{
+		Log:              components.baseLogger,
+		MultiversXClient: components.multiversXClient,
+		EthereumClient:   components.ethClient,
 	}
 
-	batchValidator, err := batchManagementFactory.CreateBatchValidator(argsBatchValidator, args.Enabled)
-	if err != nil {
-		return nil, err
-	}
-	return batchValidator, err
+	return balanceValidatorManagement.NewBalanceValidator(argsBalanceValidator)
 }
 
 func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXStateMachine() error {
@@ -762,12 +757,10 @@ func (components *ethMultiversXBridgeComponents) createAntifloodComponents(antif
 	return antiFloodComponents, nil
 }
 
-func (components *ethMultiversXBridgeComponents) startBroadcastJoinRetriesLoop() {
+func (components *ethMultiversXBridgeComponents) startBroadcastJoinRetriesLoop(ctx context.Context) {
 	broadcastTimer := time.NewTimer(components.timeBeforeRepeatJoin)
 	defer broadcastTimer.Stop()
 
-	var ctx context.Context
-	ctx, components.cancelFunc = context.WithCancel(context.Background())
 	for {
 		broadcastTimer.Reset(components.timeBeforeRepeatJoin)
 
