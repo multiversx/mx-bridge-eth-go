@@ -120,11 +120,29 @@ func TestConvertPartialMigrationStringToMap(t *testing.T) {
 		results, err := ConvertPartialMigrationStringToMap(str)
 		assert.Nil(t, err)
 
-		expectedResults := map[string]*big.Float{
-			"k": big.NewFloat(3.2),
-			"f": big.NewFloat(1),
-			"g": big.NewFloat(0.001),
-			"h": big.NewFloat(0),
+		expectedResults := map[string]*FloatWrapper{
+			"k": {Float: big.NewFloat(3.2)},
+			"f": {Float: big.NewFloat(1)},
+			"g": {Float: big.NewFloat(0.001)},
+			"h": {Float: big.NewFloat(0)},
+		}
+
+		assert.Nil(t, err)
+		assert.Equal(t, expectedResults, results)
+	})
+	t.Run("should work with maximum available", func(t *testing.T) {
+		t.Parallel()
+
+		str := "k:1,l:0,m:*,n:AlL,o:MaX"
+		results, err := ConvertPartialMigrationStringToMap(str)
+		assert.Nil(t, err)
+
+		expectedResults := map[string]*FloatWrapper{
+			"k": {Float: big.NewFloat(1)},
+			"l": {Float: big.NewFloat(0), IsMax: false},
+			"m": {Float: big.NewFloat(0), IsMax: true},
+			"n": {Float: big.NewFloat(0), IsMax: true},
+			"o": {Float: big.NewFloat(0), IsMax: true},
 		}
 
 		assert.Nil(t, err)

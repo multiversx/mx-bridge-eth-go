@@ -561,11 +561,65 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 			expectedBatch.DepositsInfo[1].DenominatedAmount, _ = big.NewFloat(0).SetString("0.000000000000000020")
 			expectedBatch.DepositsInfo[2].DenominatedAmount, _ = big.NewFloat(0).SetString("120")
 
-			partialMap := map[string]*big.Float{
-				"tkn1": big.NewFloat(0.017),
-				"tkn3": big.NewFloat(120),
+			token2Value, _ := big.NewFloat(0).SetString("0.000000000000000020")
+			partialMap := map[string]*FloatWrapper{
+				"tkn1": {Float: big.NewFloat(0.017)},
+				"tkn2": {Float: token2Value},
+				"tkn3": {Float: big.NewFloat(120)},
 			}
-			partialMap["tkn2"], _ = big.NewFloat(0).SetString("0.000000000000000020")
+
+			batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, partialMap)
+			assert.Nil(t, err)
+			assert.Equal(t, expectedBatch, batch)
+		})
+		t.Run("with trim and all quantity", func(t *testing.T) {
+			expectedBatch := &BatchInfo{
+				OldSafeContractAddress: safeContractAddress.String(),
+				NewSafeContractAddress: newSafeContractAddress.String(),
+				BatchID:                firstFreeBatchId,
+				MessageHash:            common.HexToHash("0x8c1b5bb16418a3dec1990fe8c0cd8363e9e56ca6870b6c7f0e7496f4411f60b0"),
+				DepositsInfo: []*DepositInfo{
+					{
+						DepositNonce:            1,
+						Token:                   "tkn1",
+						ContractAddressString:   common.BytesToAddress(tkn1Erc20Address).String(),
+						ContractAddress:         common.BytesToAddress(tkn1Erc20Address),
+						Amount:                  big.NewInt(17),
+						AmountString:            "17",
+						DenominatedAmountString: "0.017",
+						Decimals:                3,
+					},
+					{
+						DepositNonce:            2,
+						Token:                   "tkn2",
+						ContractAddressString:   common.BytesToAddress(tkn2Erc20Address).String(),
+						ContractAddress:         common.BytesToAddress(tkn2Erc20Address),
+						Amount:                  big.NewInt(38),
+						AmountString:            "38",
+						DenominatedAmountString: "0.000000000000000038",
+						Decimals:                18,
+					},
+					{
+						DepositNonce:            3,
+						Token:                   "tkn3",
+						ContractAddressString:   common.BytesToAddress(tkn3Erc20Address).String(),
+						ContractAddress:         common.BytesToAddress(tkn3Erc20Address),
+						Amount:                  big.NewInt(120),
+						AmountString:            "120",
+						DenominatedAmountString: "120",
+						Decimals:                0,
+					},
+				},
+			}
+			expectedBatch.DepositsInfo[0].DenominatedAmount, _ = big.NewFloat(0).SetString("0.017")
+			expectedBatch.DepositsInfo[1].DenominatedAmount, _ = big.NewFloat(0).SetString("0.000000000000000038")
+			expectedBatch.DepositsInfo[2].DenominatedAmount, _ = big.NewFloat(0).SetString("120")
+
+			partialMap := map[string]*FloatWrapper{
+				"tkn1": {Float: big.NewFloat(0.017)},
+				"tkn2": {Float: big.NewFloat(0), IsMax: true},
+				"tkn3": {Float: big.NewFloat(120)},
+			}
 
 			batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, partialMap)
 			assert.Nil(t, err)
