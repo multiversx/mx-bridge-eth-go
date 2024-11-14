@@ -505,7 +505,7 @@ func (setup *TestSetup) checkTokenOnMvxFirstBridge(params TestTokenParams) bool 
 		return setup.checkMvxBurnedTokenBalance(params)
 	}
 
-	return setup.checkMvxLockedBalanceForToken(params, secondBridge)
+	return setup.checkMvxLockedBalanceForToken(params, firstBridge)
 }
 
 func (setup *TestSetup) checkTokenOnEthSecondBridge(params TestTokenParams) bool {
@@ -513,7 +513,7 @@ func (setup *TestSetup) checkTokenOnEthSecondBridge(params TestTokenParams) bool
 		return setup.checkEthMintedBalanceForToken(params)
 	}
 
-	return setup.checkEthLockedBalanceForToken(params, firstBridge)
+	return setup.checkEthLockedBalanceForToken(params, secondBridge)
 }
 
 func (setup *TestSetup) checkMvxLockedBalanceForToken(params TestTokenParams, bridgeNumber currentBridge) bool {
