@@ -352,7 +352,8 @@ func (setup *TestSetup) checkEthLockedBalanceForToken(params TestTokenParams, br
 	}
 
 	if bridgeNumber == secondBridge {
-		expectedValue.Sub(expectedValue, setup.computeExpectedValueFromMvx(params))
+		expectedValue.Sub(expectedValue, setup.computeExpectedValueFromMvx(params))     // unlock amount of tokens sent back from Eth to Mvx
+		expectedValue.Sub(expectedValue, setup.getMvxTotalRefundAmountForToken(params)) // unlock possible refund amount to be bridged back to Eth
 	}
 
 	return lockedTokens.String() == expectedValue.String()
@@ -530,6 +531,7 @@ func (setup *TestSetup) checkMvxLockedBalanceForToken(params TestTokenParams, br
 
 	if bridgeNumber == secondBridge {
 		expectedValue.Sub(expectedValue, setup.computeExpectedValueToMvx(params))
+		expectedValue.Add(expectedValue, setup.getMvxTotalRefundAmountForToken(params)) // lock possible refund amount from failed SC call on Mvx
 	}
 
 	return lockedTokens.String() == expectedValue.String()
@@ -547,6 +549,8 @@ func (setup *TestSetup) checkMvxBurnedTokenBalance(params TestTokenParams) bool 
 				expectedValue.Add(expectedValue, initialSupply)
 			}
 		}
+	} else {
+		expectedValue.Add(expectedValue, setup.getMvxTotalRefundAmountForToken(params)) // burn possible refund amount to be bridged back to Eth
 	}
 
 	return burnedTokens.String() == expectedValue.String()
@@ -564,9 +568,25 @@ func (setup *TestSetup) checkEthMintedBalanceForToken(params TestTokenParams) bo
 				expectedValue.Add(expectedValue, initialSupply)
 			}
 		}
+	} else {
+		expectedValue.Add(expectedValue, setup.getMvxTotalRefundAmountForToken(params)) // mint possible refund amount from failed SC call on Mvx
 	}
 
 	return mintedTokens.String() == expectedValue.String()
+}
+
+func (setup *TestSetup) getMvxTotalRefundAmountForToken(params TestTokenParams) *big.Int {
+	totalRefund := big.NewInt(0)
+	for _, operation := range params.TestOperations {
+		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
+			if operation.MvxFaultySCCall {
+				// the balance should be bridged back to the receiver on Ethereum - fee
+				totalRefund.Add(totalRefund, operation.ValueToTransferToMvx)
+				totalRefund.Sub(totalRefund, feeInt)
+			}
+		}
+	}
+	return totalRefund
 }
 
 // CreateBatchOnMultiversX will create deposits that will be gathered in a batch on MultiversX
