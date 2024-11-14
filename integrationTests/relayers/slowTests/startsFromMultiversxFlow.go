@@ -24,20 +24,20 @@ func (flow *startsFromMultiversXFlow) process() (finished bool) {
 	if flow.mvxToEthDone && flow.ethToMvxDone {
 		return true
 	}
+	isTransferDoneFromMultiversX := flow.setup.IsTransferDoneFromMultiversX(flow.setup.AliceKeys, flow.setup.BobKeys, flow.tokens...)
 
-	isTransferDoneFromMultiversX := flow.setup.IsTransferDoneFromMultiversX(flow.tokens...)
 	if !flow.mvxToEthDone && isTransferDoneFromMultiversX {
 		flow.mvxToEthDone = true
 		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX->Ethereum transfer finished, now sending back to MultiversX..."))
 
-		flow.setup.EthereumHandler.SendFromEthereumToMultiversX(flow.setup.Ctx, flow.setup.MultiversxHandler.TestCallerAddress, flow.tokens...)
+		flow.setup.EthereumHandler.SendFromEthereumToMultiversX(flow.setup.Ctx, flow.setup.BobKeys, flow.setup.CharlieKeys, flow.setup.MultiversxHandler.CalleeScAddress, flow.tokens...)
 	}
 	if !flow.mvxToEthDone {
 		// return here, no reason to check downwards
 		return false
 	}
 
-	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.tokens...)
+	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.setup.BobKeys, flow.setup.CharlieKeys, flow.tokens...)
 	if !flow.ethToMvxDone && isTransferDoneFromEthereum {
 		flow.ethToMvxDone = true
 		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX<->Ethereum from MultiversX transfers done"))

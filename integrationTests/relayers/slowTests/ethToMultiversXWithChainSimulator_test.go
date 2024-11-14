@@ -159,7 +159,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
 		if len(startsFromEthFlow.tokens) > 0 {
-			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
+			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
 		}
 		if len(startsFromMvXFlow.tokens) > 0 {
 			setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
@@ -287,8 +287,12 @@ func createBadToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(0),
-		EthTestAddrExtraBalance: big.NewInt(0),
+		ESDTSafeExtraBalance: big.NewInt(0),
+		ExtraBalances: map[string]framework.ExtraBalanceHolder{
+			"Alice":   {big.NewInt(-5000 - 7000 - 1000), big.NewInt(0)},
+			"Bob":     {big.NewInt(-2500 - 300), big.NewInt(5000 + 7000)},
+			"Charlie": {big.NewInt(0), big.NewInt(2500 - 50 + 300 - 50)},
+		},
 	}
 }
 
@@ -351,7 +355,7 @@ func testRelayersShouldNotExecuteTransfers(
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
 		if len(startsFromEthFlow.tokens) > 0 {
-			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
+			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
 		}
 		if len(startsFromMvXFlow.tokens) > 0 {
 			setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
@@ -446,7 +450,7 @@ func testCallPayableWithParamsWasCalled(testSetup *framework.TestSetup, value ui
 	}
 
 	vmRequest := &data.VmValueRequest{
-		Address:  testSetup.MultiversxHandler.TestCallerAddress.Bech32(),
+		Address:  testSetup.MultiversxHandler.CalleeScAddress.Bech32(),
 		FuncName: "getCalledDataParams",
 	}
 

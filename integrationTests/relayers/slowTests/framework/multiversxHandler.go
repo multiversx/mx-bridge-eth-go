@@ -95,7 +95,7 @@ type MultiversxHandler struct {
 	MultisigAddress           *MvxAddress
 	MultiTransferAddress      *MvxAddress
 	ScProxyAddress            *MvxAddress
-	TestCallerAddress         *MvxAddress
+	CalleeScAddress           *MvxAddress
 	ESDTSystemContractAddress *MvxAddress
 }
 
@@ -239,15 +239,15 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	log.Info("Deploy: multisig contract", "address", handler.MultisigAddress, "transaction hash", hash)
 
 	// deploy test-caller
-	handler.TestCallerAddress, hash, _ = handler.ChainSimulator.DeploySC(
+	handler.CalleeScAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
 		testCallerContractPath,
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
 	)
-	require.NotEqual(handler, emptyAddress, handler.TestCallerAddress)
-	log.Info("Deploy: test-caller contract", "address", handler.TestCallerAddress, "transaction hash", hash)
+	require.NotEqual(handler, emptyAddress, handler.CalleeScAddress)
+	log.Info("Deploy: test-caller contract", "address", handler.CalleeScAddress, "transaction hash", hash)
 }
 
 func (handler *MultiversxHandler) wireMultiTransfer(ctx context.Context) {
@@ -453,10 +453,10 @@ func (handler *MultiversxHandler) CheckForZeroBalanceOnReceivers(ctx context.Con
 
 // CheckForZeroBalanceOnReceiversForToken will check that the balance for the test address and the test SC call address is 0
 func (handler *MultiversxHandler) CheckForZeroBalanceOnReceiversForToken(ctx context.Context, token TestTokenParams) {
-	balance := handler.GetESDTUniversalTokenBalance(ctx, handler.TestKeys.MvxAddress, token.AbstractTokenIdentifier)
+	balance := handler.GetESDTUniversalTokenBalance(ctx, handler.BobKeys.MvxAddress, token.AbstractTokenIdentifier)
 	require.Equal(handler, big.NewInt(0).String(), balance.String())
 
-	balance = handler.GetESDTUniversalTokenBalance(ctx, handler.TestCallerAddress, token.AbstractTokenIdentifier)
+	balance = handler.GetESDTUniversalTokenBalance(ctx, handler.CalleeScAddress, token.AbstractTokenIdentifier)
 	require.Equal(handler, big.NewInt(0).String(), balance.String())
 }
 
@@ -942,20 +942,20 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 }
 
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
-func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, value *big.Int) {
 	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
-		hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
+		hex.EncodeToString(to.EthAddress.Bytes()),
 	}
 	dataField := strings.Join(params, "@")
 
 	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
-		handler.TestKeys.MvxSk,
+		from.MvxSk,
 		handler.WrapperAddress,
 		zeroStringValue,
 		createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)),
@@ -1020,10 +1020,10 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 }
 
 // TransferToken is able to create an ESDT transfer
-func (handler *MultiversxHandler) TransferToken(ctx context.Context, source KeysHolder, receiver KeysHolder, amount *big.Int, params TestTokenParams) {
+func (handler *MultiversxHandler) TransferToken(ctx context.Context, source KeysHolder, receiver KeysHolder, amount *big.Int, params IssueTokenParams) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
-	// transfer to the test key, so it will have funds to carry on with the deposits
+	// transfer to receiver, so it will have funds to carry on with the deposits
 	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
 		source.MvxSk,
