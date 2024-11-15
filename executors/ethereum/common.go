@@ -37,6 +37,14 @@ type SignatureInfo struct {
 	Signature   string `json:"Signature"`
 }
 
+// FloatWrapper is a wrapper of the big.Float that supports specifying if the value is maximum
+type FloatWrapper struct {
+	*big.Float
+	IsMax bool
+}
+
+var maxValues = []string{"all", "max", "*"}
+
 // TokensBalancesDisplayString will convert the deposit balances into a human-readable string
 func TokensBalancesDisplayString(batchInfo *BatchInfo) string {
 	maxTokenLen := 0
@@ -69,12 +77,12 @@ func TokensBalancesDisplayString(batchInfo *BatchInfo) string {
 }
 
 // ConvertPartialMigrationStringToMap converts the partial migration string to its map representation
-func ConvertPartialMigrationStringToMap(partialMigration string) (map[string]*big.Float, error) {
+func ConvertPartialMigrationStringToMap(partialMigration string) (map[string]*FloatWrapper, error) {
 	partsSeparator := ","
 	tokenAmountSeparator := ":"
 	parts := strings.Split(partialMigration, partsSeparator)
 
-	partialMap := make(map[string]*big.Float)
+	partialMap := make(map[string]*FloatWrapper)
 	for _, part := range parts {
 		part = strings.Trim(part, " \t\n")
 		splt := strings.Split(part, tokenAmountSeparator)
@@ -82,19 +90,48 @@ func ConvertPartialMigrationStringToMap(partialMigration string) (map[string]*bi
 			return nil, fmt.Errorf("%w at token %s, invalid format", errInvalidPartialMigrationString, part)
 		}
 
+		token := splt[0]
+		if isMaxValueString(splt[1]) {
+			partialMap[token] = &FloatWrapper{
+				Float: big.NewFloat(0),
+				IsMax: true,
+			}
+
+			continue
+		}
+
 		amount, ok := big.NewFloat(0).SetString(splt[1])
 		if !ok {
 			return nil, fmt.Errorf("%w at token %s, not a number", errInvalidPartialMigrationString, part)
 		}
 
-		token := splt[0]
 		if partialMap[token] == nil {
-			partialMap[token] = big.NewFloat(0).Set(amount)
+			partialMap[token] = &FloatWrapper{
+				Float: big.NewFloat(0).Set(amount),
+				IsMax: false,
+			}
 			continue
 		}
 
-		partialMap[token].Add(partialMap[token], amount)
+		if partialMap[token].IsMax {
+			// do not attempt to add something to an already max float
+			continue
+		}
+
+		partialMap[token].Add(partialMap[token].Float, amount)
 	}
 
 	return partialMap, nil
+}
+
+func isMaxValueString(value string) bool {
+	value = strings.ToLower(value)
+
+	for _, maxValue := range maxValues {
+		if value == maxValue {
+			return true
+		}
+	}
+
+	return false
 }

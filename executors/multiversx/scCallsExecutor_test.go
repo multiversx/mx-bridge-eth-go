@@ -29,7 +29,9 @@ var testCodec = &testsCommon.TestMultiversXCodec{}
 
 func createMockArgsScCallExecutor() ArgsScCallExecutor {
 	return ArgsScCallExecutor{
-		ScProxyBech32Address:            "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e",
+		ScProxyBech32Addresses: []string{
+			"erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e",
+		},
 		Proxy:                           &interactors.ProxyStub{},
 		Codec:                           &testsCommon.MultiversxCodecStub{},
 		Filter:                          &testsCommon.ScCallsExecuteFilterStub{},
@@ -146,11 +148,21 @@ func TestNewScCallExecutor(t *testing.T) {
 		assert.Nil(t, executor)
 		assert.Equal(t, errNilSingleSigner, err)
 	})
+	t.Run("empty list of sc proxy bech32 addresses should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.ScProxyBech32Addresses = nil
+
+		executor, err := NewScCallExecutor(args)
+		assert.Nil(t, executor)
+		assert.Equal(t, errEmptyListOfBridgeSCProxy, err)
+	})
 	t.Run("invalid sc proxy bech32 address should error", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsScCallExecutor()
-		args.ScProxyBech32Address = "not a valid bech32 address"
+		args.ScProxyBech32Addresses = append(args.ScProxyBech32Addresses, "not a valid bech32 address")
 
 		executor, err := NewScCallExecutor(args)
 		assert.Nil(t, executor)
@@ -279,7 +291,9 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
-		assert.Equal(t, expectedError, err)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), expectedError.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
 		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("get pending returns a not ok status, should error", func(t *testing.T) {
@@ -321,7 +335,9 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
-		assert.ErrorIs(t, err, errInvalidNumberOfResponseLines)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), errInvalidNumberOfResponseLines.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
 		assert.Contains(t, err.Error(), "expected an even number, got 1")
 		assert.Zero(t, executor.GetNumSentTransaction())
 	})
@@ -354,7 +370,9 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
-		assert.ErrorIs(t, err, expectedError)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), expectedError.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
 		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("get network configs errors, should error", func(t *testing.T) {
@@ -389,7 +407,9 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
-		assert.ErrorIs(t, err, expectedError)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), expectedError.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
 		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("ApplyNonceAndGasPrice errors, should error", func(t *testing.T) {
@@ -433,7 +453,9 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
-		assert.ErrorIs(t, err, expectedError)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), expectedError.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
 		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("Sign errors, should error", func(t *testing.T) {
@@ -482,7 +504,9 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
-		assert.ErrorIs(t, err, expectedError)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), expectedError.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
 		assert.Zero(t, executor.GetNumSentTransaction())
 	})
 	t.Run("SendTransaction errors, should error", func(t *testing.T) {
@@ -530,10 +554,12 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		executor, _ := NewScCallExecutor(args)
 		err := executor.Execute(context.Background())
-		assert.ErrorIs(t, err, expectedError)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), expectedError.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
 		assert.Equal(t, uint32(0), executor.GetNumSentTransaction())
 	})
-	t.Run("should work", func(t *testing.T) {
+	t.Run("should work with one SC proxy address", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsScCallExecutor()
@@ -548,7 +574,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				assert.Equal(t, args.ScProxyBech32Address, vmRequest.Address)
+				assert.Equal(t, args.ScProxyBech32Addresses[0], vmRequest.Address)
 				assert.Equal(t, getPendingTransactionsFunction, vmRequest.FuncName)
 
 				return &data.VmValuesResponseData{
@@ -617,7 +643,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 				assert.Equal(t, "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e", tx.Receiver)
 				assert.Equal(t, "0", tx.Value)
 
-				// only the second pending operation gor through the filter
+				// only the second pending operation got through the filter
 				expectedData := scProxyCallFunction + "@02"
 				assert.Equal(t, expectedData, string(tx.Data))
 
@@ -640,6 +666,144 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		assert.Equal(t, uint32(1), executor.GetNumSentTransaction())
 		assert.True(t, processTransactionStatusCalled)
 	})
+	t.Run("should work with one two proxy address", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		pk := args.PrivateKey.GeneratePublic()
+		pkBuff, _ := pk.ToByteArray()
+		sender := data.NewAddressFromBytes(pkBuff)
+		senderAddress, _ := sender.AddressAsBech32String()
+
+		args.ScProxyBech32Addresses = append(args.ScProxyBech32Addresses, "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
+		args.MaxGasLimitToUse = 250000000
+		args.TransactionChecks = createMockCheckConfigs()
+		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
+		txHash := "tx hash"
+		numProcessTransactionStatusCalled := 0
+
+		nonceCounter := uint64(100)
+
+		sentTransactions := make([]*transaction.FrontendTransaction, 0)
+		args.Proxy = &interactors.ProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				assert.Equal(t, getPendingTransactionsFunction, vmRequest.FuncName)
+
+				returnData := make([][]byte, 4)
+				switch vmRequest.Address {
+				case args.ScProxyBech32Addresses[0]:
+					returnData[0] = []byte{0x01}
+					returnData[1] = []byte("ProxySCCompleteCallData 1")
+					returnData[2] = []byte{0x02}
+					returnData[3] = []byte("ProxySCCompleteCallData 2")
+				case args.ScProxyBech32Addresses[1]:
+					returnData[0] = []byte{0x03}
+					returnData[1] = []byte("ProxySCCompleteCallData 3")
+					returnData[2] = []byte{0x04}
+					returnData[3] = []byte("ProxySCCompleteCallData 4")
+				}
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: returnData,
+					},
+				}, nil
+			},
+			GetNetworkConfigCalled: func(ctx context.Context) (*data.NetworkConfig, error) {
+				return &data.NetworkConfig{
+					ChainID:               "TEST",
+					MinTransactionVersion: 111,
+				}, nil
+			},
+			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
+				assert.Contains(t, hexTxHash, txHash)
+				numProcessTransactionStatusCalled++
+
+				return transaction.TxStatusSuccess, nil
+			},
+		}
+		args.Codec = &testsCommon.MultiversxCodecStub{
+			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (parsers.ProxySCCompleteCallData, error) {
+				if string(buff) == "ProxySCCompleteCallData 1" {
+					return createTestProxySCCompleteCallData("tkn1"), nil
+				}
+				if string(buff) == "ProxySCCompleteCallData 2" {
+					return createTestProxySCCompleteCallData("tkn2"), nil
+				}
+				if string(buff) == "ProxySCCompleteCallData 3" {
+					return createTestProxySCCompleteCallData("tkn3"), nil
+				}
+				if string(buff) == "ProxySCCompleteCallData 4" {
+					return createTestProxySCCompleteCallData("tkn4"), nil
+				}
+
+				return parsers.ProxySCCompleteCallData{
+					To: data.NewAddressFromBytes(bytes.Repeat([]byte{1}, 32)),
+				}, errors.New("wrong buffer")
+			},
+			ExtractGasLimitFromRawCallDataCalled: func(buff []byte) (uint64, error) {
+				return 5000000, nil
+			},
+		}
+		args.Filter = &testsCommon.ScCallsExecuteFilterStub{
+			ShouldExecuteCalled: func(callData parsers.ProxySCCompleteCallData) bool {
+				return callData.Token == "tkn2" || callData.Token == "tkn4"
+			},
+		}
+		args.NonceTxHandler = &testsCommon.TxNonceHandlerV2Stub{
+			ApplyNonceAndGasPriceCalled: func(ctx context.Context, address core.AddressHandler, tx *transaction.FrontendTransaction) error {
+				tx.Nonce = nonceCounter
+				tx.GasPrice = 101010
+				nonceCounter++
+				return nil
+			},
+			SendTransactionCalled: func(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {
+				sentTransactions = append(sentTransactions, tx)
+
+				return fmt.Sprintf("%s - %d", txHash, tx.Nonce), nil
+			},
+		}
+		args.SingleSigner = &testCrypto.SingleSignerStub{
+			SignCalled: func(private crypto.PrivateKey, msg []byte) ([]byte, error) {
+				return []byte("sig"), nil
+			},
+		}
+
+		expectedSentTransactions := []*transaction.FrontendTransaction{
+			{
+				Nonce:     100,
+				Value:     "0",
+				Receiver:  "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e",
+				Sender:    senderAddress,
+				GasPrice:  101010,
+				GasLimit:  args.ExtraGasToExecute + 5000000,
+				Data:      []byte(scProxyCallFunction + "@02"),
+				Signature: hex.EncodeToString([]byte("sig")),
+				ChainID:   "TEST",
+				Version:   111,
+			},
+			{
+				Nonce:     101,
+				Value:     "0",
+				Receiver:  "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+				Sender:    senderAddress,
+				GasPrice:  101010,
+				GasLimit:  args.ExtraGasToExecute + 5000000,
+				Data:      []byte(scProxyCallFunction + "@04"),
+				Signature: hex.EncodeToString([]byte("sig")),
+				ChainID:   "TEST",
+				Version:   111,
+			},
+		}
+
+		executor, _ := NewScCallExecutor(args)
+
+		err := executor.Execute(context.Background())
+		assert.Nil(t, err)
+		assert.Equal(t, uint32(2), executor.GetNumSentTransaction())
+		assert.Equal(t, expectedSentTransactions, sentTransactions)
+		assert.Equal(t, 2, numProcessTransactionStatusCalled)
+	})
 	t.Run("should work even if the gas limit decode errors", func(t *testing.T) {
 		t.Parallel()
 
@@ -650,7 +814,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				assert.Equal(t, args.ScProxyBech32Address, vmRequest.Address)
+				assert.Equal(t, args.ScProxyBech32Addresses[0], vmRequest.Address)
 				assert.Equal(t, getPendingTransactionsFunction, vmRequest.FuncName)
 
 				return &data.VmValuesResponseData{
@@ -711,7 +875,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 				assert.Equal(t, "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e", tx.Receiver)
 				assert.Equal(t, "0", tx.Value)
 
-				// only the second pending operation gor through the filter
+				// only the second pending operation got through the filter
 				expectedData := scProxyCallFunction + "@02"
 				assert.Equal(t, expectedData, string(tx.Data))
 
@@ -743,7 +907,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				assert.Equal(t, args.ScProxyBech32Address, vmRequest.Address)
+				assert.Equal(t, args.ScProxyBech32Addresses[0], vmRequest.Address)
 				assert.Equal(t, getPendingTransactionsFunction, vmRequest.FuncName)
 
 				return &data.VmValuesResponseData{
@@ -804,7 +968,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 				assert.Equal(t, "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e", tx.Receiver)
 				assert.Equal(t, "0", tx.Value)
 
-				// only the second pending operation gor through the filter
+				// only the second pending operation got through the filter
 				expectedData := scProxyCallFunction + "@02"
 				assert.Equal(t, expectedData, string(tx.Data))
 
@@ -833,7 +997,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				assert.Equal(t, args.ScProxyBech32Address, vmRequest.Address)
+				assert.Equal(t, args.ScProxyBech32Addresses[0], vmRequest.Address)
 				assert.Equal(t, getPendingTransactionsFunction, vmRequest.FuncName)
 
 				return &data.VmValuesResponseData{
