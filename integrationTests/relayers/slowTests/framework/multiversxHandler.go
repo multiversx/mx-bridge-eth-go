@@ -999,6 +999,7 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 		hex.EncodeToString([]byte(token)),
 	}
 	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getFunction, queryParams)
+	require.Greater(handler, len(responseData), 0)
 	value := big.NewInt(0).SetBytes(responseData[0])
 	require.Equal(handler, expectedDelta.String(), value.String())
 	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
@@ -1062,6 +1063,7 @@ func (handler *MultiversxHandler) GetTotalBalancesForToken(ctx context.Context, 
 		hex.EncodeToString([]byte(token)),
 	}
 	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getTotalBalances, queryParams)
+	require.Greater(handler, len(responseData), 0)
 	value := big.NewInt(0).SetBytes(responseData[0])
 	return value
 }
@@ -1072,6 +1074,7 @@ func (handler *MultiversxHandler) GetMintedAmountForToken(ctx context.Context, t
 		hex.EncodeToString([]byte(token)),
 	}
 	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getMintBalances, queryParams)
+	require.Greater(handler, len(responseData), 0)
 	value := big.NewInt(0).SetBytes(responseData[0])
 	return value
 }
@@ -1082,6 +1085,7 @@ func (handler *MultiversxHandler) GetBurnedAmountForToken(ctx context.Context, t
 		hex.EncodeToString([]byte(token)),
 	}
 	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getBurnBalances, queryParams)
+	require.Greater(handler, len(responseData), 0)
 	value := big.NewInt(0).SetBytes(responseData[0])
 	return value
 }
