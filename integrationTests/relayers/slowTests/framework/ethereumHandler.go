@@ -391,90 +391,60 @@ func (handler *EthereumHandler) mintTokens(
 	require.Equal(handler, mintAmount.String(), balance.String())
 }
 
-// CreateBatchOnEthereum will create a batch on Ethereum using the provided tokens parameters list
-func (handler *EthereumHandler) CreateBatchOnEthereum(
+// ApproveForToken will approve the spender to spend the amount of tokens on the behalf of the approver
+func (handler *EthereumHandler) ApproveForToken(
 	ctx context.Context,
-	mvxCalleeScAddress core.AddressHandler,
-	tokensParams ...TestTokenParams,
+	token *TokenData,
+	approver KeysHolder,
+	spender common.Address,
+	amount *big.Int,
 ) {
-	for _, params := range tokensParams {
-		handler.createDepositsOnEthereumForToken(ctx, params, handler.AliceKeys, handler.BobKeys, mvxCalleeScAddress)
-	}
-
-	// wait until batch is settled
-	batchSettleLimit, _ := handler.SafeContract.BatchSettleLimit(nil)
-	for i := uint8(0); i < batchSettleLimit+1; i++ {
-		handler.SimulatedChain.Commit()
-	}
+	auth, _ := bind.NewKeyedTransactorWithChainID(approver.EthSK, handler.ChainID)
+	tx, err := token.EthErc20Contract.Approve(auth, spender, amount)
+	require.NoError(handler, err)
+	handler.SimulatedChain.Commit()
+	handler.checkEthTxResult(ctx, tx.Hash())
 }
 
-// SendFromEthereumToMultiversX will create the deposit transactions on the Ethereum side
-func (handler *EthereumHandler) SendFromEthereumToMultiversX(
+// SendDepositTransactionFromEthereum will send a deposit transaction from Ethereum to MultiversX
+func (handler *EthereumHandler) SendDepositTransactionFromEthereum(
 	ctx context.Context,
-	from KeysHolder,
-	to KeysHolder,
-	mvxTestCallerAddress core.AddressHandler,
-	tokensParams ...TestTokenParams,
-) {
-	for _, params := range tokensParams {
-		handler.createDepositsOnEthereumForToken(ctx, params, from, to, mvxTestCallerAddress)
-	}
-}
-
-func (handler *EthereumHandler) createDepositsOnEthereumForToken(
-	ctx context.Context,
-	params TestTokenParams,
 	from KeysHolder,
 	to KeysHolder,
 	targetSCAddress core.AddressHandler,
+	token *TokenData,
+	operation TokenOperations,
 ) {
-	// TODO: transfer only required amount for deposit to the test key
+	if operation.ValueToTransferToMvx == nil {
+		return
+	}
 
-	// add allowance for the sender
 	auth, _ := bind.NewKeyedTransactorWithChainID(from.EthSK, handler.ChainID)
 
-	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
-	require.NotNil(handler, token)
-	require.NotNil(handler, token.EthErc20Contract)
-
-	allowanceValue := big.NewInt(0)
-	for _, operation := range params.TestOperations {
-		if operation.ValueToTransferToMvx == nil {
-			continue
-		}
-
-		allowanceValue.Add(allowanceValue, operation.ValueToTransferToMvx)
-	}
-
-	if allowanceValue.Cmp(zeroValueBigInt) > 0 {
-		tx, err := token.EthErc20Contract.Approve(auth, handler.SafeAddress, allowanceValue)
-		require.NoError(handler, err)
-		handler.SimulatedChain.Commit()
-		handler.checkEthTxResult(ctx, tx.Hash())
-	}
-
+	var tx *types.Transaction
 	var err error
-	for _, operation := range params.TestOperations {
-		if operation.ValueToTransferToMvx == nil {
-			continue
-		}
+	if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
+		tx, err = handler.SafeContract.DepositWithSCExecution(
+			auth,
+			token.EthErc20Address,
+			operation.ValueToTransferToMvx,
+			targetSCAddress.AddressSlice(),
+			operation.MvxSCCallData,
+		)
+	} else {
+		tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, to.MvxAddress.AddressSlice())
+	}
 
-		var tx *types.Transaction
-		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
-			tx, err = handler.SafeContract.DepositWithSCExecution(
-				auth,
-				token.EthErc20Address,
-				operation.ValueToTransferToMvx,
-				targetSCAddress.AddressSlice(),
-				operation.MvxSCCallData,
-			)
-		} else {
-			tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, to.MvxAddress.AddressSlice())
-		}
+	require.NoError(handler, err)
+	handler.SimulatedChain.Commit()
+	handler.checkEthTxResult(ctx, tx.Hash())
+}
 
-		require.NoError(handler, err)
+// SettleBatchOnEthereum commits as many blocks as needed to settle the batch on Ethereum
+func (handler *EthereumHandler) SettleBatchOnEthereum() {
+	batchSettleLimit, _ := handler.SafeContract.BatchSettleLimit(nil)
+	for i := uint8(0); i < batchSettleLimit+1; i++ {
 		handler.SimulatedChain.Commit()
-		handler.checkEthTxResult(ctx, tx.Hash())
 	}
 }
 

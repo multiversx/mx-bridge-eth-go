@@ -247,7 +247,7 @@ func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopC
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
 		if len(startsFromEthFlow.tokens) > 0 {
-			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
+			setup.CreateBatchOnEthereum(setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
 		}
 		if len(startsFromMvXFlow.tokens) > 0 {
 			setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
