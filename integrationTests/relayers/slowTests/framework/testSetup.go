@@ -312,13 +312,10 @@ func (setup *TestSetup) checkContractMvxBalanceForToken(params TestTokenParams) 
 		if operation.ValueToTransferToMvx == nil {
 			continue
 		}
-		if !operation.MvxForceSCCall {
+		if len(operation.MvxSCCallData) == 0 && !operation.MvxForceSCCall {
 			continue
 		}
-		if len(operation.MvxSCCallData) == 0 {
-			continue
-		}
-		if !operation.MvxFaultySCCall {
+		if operation.MvxFaultySCCall {
 			continue
 		}
 
@@ -451,10 +448,7 @@ func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params Test
 		}
 
 		expectedValueOnReceiver.Add(expectedValueOnReceiver, big.NewInt(0).Sub(valueToSendFromMvX, valueToTransferToMvx))
-		if !operation.MvxForceSCCall {
-			continue
-		}
-		if len(operation.MvxSCCallData) == 0 {
+		if len(operation.MvxSCCallData) == 0 && !operation.MvxForceSCCall {
 			continue
 		}
 		if !operation.MvxFaultySCCall {
@@ -589,10 +583,7 @@ func (setup *TestSetup) checkEthMintedBalanceForToken(params TestTokenParams) bo
 func (setup *TestSetup) getMvxTotalRefundAmountForToken(params TestTokenParams) *big.Int {
 	totalRefund := big.NewInt(0)
 	for _, operation := range params.TestOperations {
-		if !operation.MvxForceSCCall {
-			continue
-		}
-		if len(operation.MvxSCCallData) == 0 {
+		if len(operation.MvxSCCallData) == 0 && !operation.MvxForceSCCall {
 			continue
 		}
 		if !operation.MvxFaultySCCall {
