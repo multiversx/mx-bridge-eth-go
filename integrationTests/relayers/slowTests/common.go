@@ -52,6 +52,11 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   nil,
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
+			{
+				ValueToTransferToMvx: big.NewInt(49),
+				ValueToSendFromMvX:   nil,
+				IsFaultyDeposit:      true,
+			},
 		},
 		ESDTSafeExtraBalance: big.NewInt(100), // extra is just for the fees for the 2 transfers mvx->eth
 		ExtraBalances: map[string]framework.ExtraBalanceHolder{
@@ -106,6 +111,11 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 				ValueToTransferToMvx: big.NewInt(1000),
 				ValueToSendFromMvX:   big.NewInt(2000),
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
+			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(38),
+				IsFaultyDeposit:      true,
 			},
 		},
 		ESDTSafeExtraBalance: big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract

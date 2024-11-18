@@ -10,6 +10,7 @@ import (
 type IssueTokenParams struct {
 	InitialSupplyParams
 	AbstractTokenIdentifier string
+	AvoidWhiteList          bool
 
 	// MultiversX
 	NumOfDecimalsUniversal           int
@@ -43,6 +44,8 @@ type TokenOperations struct {
 	MvxSCCallData        []byte
 	MvxFaultySCCall      bool
 	MvxForceSCCall       bool
+	IsFaultyDeposit      bool
+	InvalidReceiver      []byte
 }
 
 // TestTokenParams defines a token collection of operations in one or 2 batches

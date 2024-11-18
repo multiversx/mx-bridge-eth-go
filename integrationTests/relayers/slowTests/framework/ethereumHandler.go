@@ -435,7 +435,11 @@ func (handler *EthereumHandler) SendDepositTransactionFromEthereum(
 		tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, to.MvxAddress.AddressSlice())
 	}
 
-	require.NoError(handler, err)
+	if operation.IsFaultyDeposit {
+		require.NotNil(handler, err)
+	} else {
+		require.NoError(handler, err)
+	}
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
 }
