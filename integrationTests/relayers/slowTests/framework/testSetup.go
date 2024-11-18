@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -24,6 +25,7 @@ const (
 	NumRelayers                  = 3
 	NumOracles                   = 3
 	quorum                       = "03"
+	mvxHrp                       = "erd"
 )
 
 // TestSetup is the struct that holds all subcomponents for the testing infrastructure
@@ -168,6 +170,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		setup.AddToken(token.IssueTokenParams)
 		setup.EthereumHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 		setup.MultiversxHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
+		setup.transferTokensToTestKey(token) // TODO: (Next PRs) this will be moved an batch creation time
 
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 10)
 
@@ -237,38 +240,45 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(sender KeysHolder, re
 }
 
 func (setup *TestSetup) checkHolderMvxBalanceForToken(holder KeysHolder, isSender bool, params TestTokenParams) bool {
-	setup.mutBalances.Lock()
-	defer setup.mutBalances.Unlock()
-
-	addr := holder.MvxAddress.String()
-	balanceMapping, exists := setup.mvxBalances[addr]
+	balanceMapping, exists := setup.getBalanceMappingForAddress(holder.MvxAddress.String())
 	if !exists {
 		return false
 	}
 
 	actualBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, holder.MvxAddress, params.AbstractTokenIdentifier)
 
-	return setup.checkHolderBalanceForTokenHelper(balanceMapping, params, actualBalance, addr, isSender)
+	return setup.checkHolderBalanceForTokenHelper(balanceMapping, params, actualBalance, holder.MvxAddress.String(), isSender)
 }
 
 func (setup *TestSetup) checkHolderEthBalanceForToken(holder KeysHolder, isSender bool, params TestTokenParams) bool {
-	setup.mutBalances.Lock()
-	defer setup.mutBalances.Unlock()
-
-	addr := holder.EthAddress.String()
-	balanceMapping, exists := setup.ethBalances[addr]
+	balanceMapping, exists := setup.getBalanceMappingForAddress(holder.EthAddress.String())
 	if !exists {
 		return false
 	}
 
 	actualBalance := setup.EthereumHandler.GetBalance(holder.EthAddress, params.AbstractTokenIdentifier)
 
-	return setup.checkHolderBalanceForTokenHelper(balanceMapping, params, actualBalance, addr, isSender)
+	return setup.checkHolderBalanceForTokenHelper(balanceMapping, params, actualBalance, holder.EthAddress.String(), isSender)
+}
+
+func (setup *TestSetup) getBalanceMappingForAddress(addr string) (map[string]*big.Int, bool) {
+	setup.mutBalances.Lock()
+	defer setup.mutBalances.Unlock()
+
+	if strings.HasPrefix(addr, mvxHrp) {
+		balanceMapping, exists := setup.mvxBalances[addr]
+		return balanceMapping, exists
+	}
+
+	balanceMapping, exists := setup.ethBalances[addr]
+	return balanceMapping, exists
 }
 
 func (setup *TestSetup) checkHolderBalanceForTokenHelper(balanceMapping map[string]*big.Int, params TestTokenParams, actualBalance *big.Int, addr string, isSender bool) bool {
+	setup.mutBalances.Lock()
 	holderName := setup.AddressToName[addr]
 	extraBalances := params.ExtraBalances[holderName]
+	setup.mutBalances.Unlock()
 
 	expectedBalance := big.NewInt(0).Set(balanceMapping[params.AbstractTokenIdentifier])
 
