@@ -415,6 +415,10 @@ func (handler *EthereumHandler) SendDepositTransactionFromEthereum(
 	token *TokenData,
 	operation TokenOperations,
 ) {
+	if operation.ValueToTransferToMvx == nil {
+		return
+	}
+
 	auth, _ := bind.NewKeyedTransactorWithChainID(from.EthSK, handler.ChainID)
 
 	var tx *types.Transaction
