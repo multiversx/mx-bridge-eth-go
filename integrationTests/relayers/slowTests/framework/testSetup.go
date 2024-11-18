@@ -312,12 +312,17 @@ func (setup *TestSetup) checkContractMvxBalanceForToken(params TestTokenParams) 
 		if operation.ValueToTransferToMvx == nil {
 			continue
 		}
-
-		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
-			if !operation.MvxFaultySCCall {
-				expectedValueOnContract.Add(expectedValueOnContract, operation.ValueToTransferToMvx)
-			}
+		if !operation.MvxForceSCCall {
+			continue
 		}
+		if len(operation.MvxSCCallData) == 0 {
+			continue
+		}
+		if !operation.MvxFaultySCCall {
+			continue
+		}
+
+		expectedValueOnContract.Add(expectedValueOnContract, operation.ValueToTransferToMvx)
 	}
 
 	return mvxBalance.String() == expectedValueOnContract.String()
@@ -446,13 +451,19 @@ func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params Test
 		}
 
 		expectedValueOnReceiver.Add(expectedValueOnReceiver, big.NewInt(0).Sub(valueToSendFromMvX, valueToTransferToMvx))
-		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
-			if operation.MvxFaultySCCall {
-				// the balance should be bridged back to the receiver on Ethereum - fee
-				expectedValueOnReceiver.Add(expectedValueOnReceiver, valueToTransferToMvx)
-				expectedValueOnReceiver.Sub(expectedValueOnReceiver, feeInt)
-			}
+		if !operation.MvxForceSCCall {
+			continue
 		}
+		if len(operation.MvxSCCallData) == 0 {
+			continue
+		}
+		if !operation.MvxFaultySCCall {
+			continue
+		}
+
+		// the balance should be bridged back to the receiver on Ethereum - fee
+		expectedValueOnReceiver.Add(expectedValueOnReceiver, valueToTransferToMvx)
+		expectedValueOnReceiver.Sub(expectedValueOnReceiver, feeInt)
 	}
 
 	receiverBalance := setup.EthereumHandler.GetBalance(setup.BobKeys.EthAddress, params.AbstractTokenIdentifier)
@@ -578,13 +589,19 @@ func (setup *TestSetup) checkEthMintedBalanceForToken(params TestTokenParams) bo
 func (setup *TestSetup) getMvxTotalRefundAmountForToken(params TestTokenParams) *big.Int {
 	totalRefund := big.NewInt(0)
 	for _, operation := range params.TestOperations {
-		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
-			if operation.MvxFaultySCCall {
-				// the balance should be bridged back to the receiver on Ethereum - fee
-				totalRefund.Add(totalRefund, operation.ValueToTransferToMvx)
-				totalRefund.Sub(totalRefund, feeInt)
-			}
+		if !operation.MvxForceSCCall {
+			continue
 		}
+		if len(operation.MvxSCCallData) == 0 {
+			continue
+		}
+		if !operation.MvxFaultySCCall {
+			continue
+		}
+
+		// the balance should be bridged back to the receiver on Ethereum - fee
+		totalRefund.Add(totalRefund, operation.ValueToTransferToMvx)
+		totalRefund.Sub(totalRefund, feeInt)
 	}
 	return totalRefund
 }
