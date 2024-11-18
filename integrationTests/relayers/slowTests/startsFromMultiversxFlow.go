@@ -30,7 +30,7 @@ func (flow *startsFromMultiversXFlow) process() (finished bool) {
 		flow.mvxToEthDone = true
 		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX->Ethereum transfer finished, now sending back to MultiversX..."))
 
-		flow.setup.EthereumHandler.SendFromEthereumToMultiversX(flow.setup.Ctx, flow.setup.BobKeys, flow.setup.CharlieKeys, flow.setup.MultiversxHandler.CalleeScAddress, flow.tokens...)
+		flow.setup.SendFromEthereumToMultiversX(flow.setup.BobKeys, flow.setup.CharlieKeys, flow.setup.MultiversxHandler.CalleeScAddress, flow.tokens...)
 	}
 	if !flow.mvxToEthDone {
 		// return here, no reason to check downwards

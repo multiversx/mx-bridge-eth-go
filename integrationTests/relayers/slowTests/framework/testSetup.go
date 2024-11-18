@@ -609,7 +609,7 @@ func (setup *TestSetup) createBatchOnMultiversXForToken(params TestTokenParams) 
 	require.NotNil(setup, token)
 
 	// TODO: transfer only required amount for deposit to the test key
-	valueToMintOnEthereum := setup.createdDepositOnMultiversxForToken(setup.AliceKeys, setup.BobKeys, params)
+	valueToMintOnEthereum := setup.createDepositOnMultiversxForToken(setup.AliceKeys, setup.BobKeys, params)
 	setup.EthereumHandler.Mint(setup.Ctx, params, valueToMintOnEthereum)
 }
 
@@ -635,11 +635,11 @@ func (setup *TestSetup) transferTokensToTestKey(params TestTokenParams) {
 // SendFromMultiversxToEthereum will create the deposits that will be gathered in a batch on MultiversX (without mint on Ethereum)
 func (setup *TestSetup) SendFromMultiversxToEthereum(from KeysHolder, to KeysHolder, tokensParams ...TestTokenParams) {
 	for _, params := range tokensParams {
-		_ = setup.createdDepositOnMultiversxForToken(from, to, params)
+		_ = setup.createDepositOnMultiversxForToken(from, to, params)
 	}
 }
 
-func (setup *TestSetup) createdDepositOnMultiversxForToken(from KeysHolder, to KeysHolder, params TestTokenParams) *big.Int {
+func (setup *TestSetup) createDepositOnMultiversxForToken(from KeysHolder, to KeysHolder, params TestTokenParams) *big.Int {
 	token := setup.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(setup, token)
 
@@ -654,6 +654,58 @@ func (setup *TestSetup) createdDepositOnMultiversxForToken(from KeysHolder, to K
 	}
 
 	return depositValue
+}
+
+// CreateBatchOnEthereum will create deposits that will be gathered in a batch on Ethereum
+func (setup *TestSetup) CreateBatchOnEthereum(mvxCalleeScAddress sdkCore.AddressHandler, tokensParams ...TestTokenParams) {
+	for _, params := range tokensParams {
+		setup.createBatchOnEthereumForToken(mvxCalleeScAddress, params)
+	}
+
+	// wait until batch is settled
+	setup.EthereumHandler.SettleBatchOnEthereum()
+}
+
+func (setup *TestSetup) createBatchOnEthereumForToken(mvxCalleeScAddress sdkCore.AddressHandler, params TestTokenParams) {
+	token := setup.GetTokenData(params.AbstractTokenIdentifier)
+	require.NotNil(setup, token)
+
+	// TODO: transfer only required amount for deposit to the test key
+	setup.createDepositOnEthereumForToken(setup.AliceKeys, setup.BobKeys, mvxCalleeScAddress, params)
+}
+
+// SendFromEthereumToMultiversX will create the deposits that will be gathered in a batch on Ethereum
+func (setup *TestSetup) SendFromEthereumToMultiversX(from KeysHolder, to KeysHolder, mvxTestCallerAddress sdkCore.AddressHandler, tokensParams ...TestTokenParams) {
+	for _, params := range tokensParams {
+		setup.createDepositOnEthereumForToken(from, to, mvxTestCallerAddress, params)
+	}
+}
+
+func (setup *TestSetup) createDepositOnEthereumForToken(from KeysHolder, to KeysHolder, targetSCAddress sdkCore.AddressHandler, params TestTokenParams) {
+	token := setup.GetTokenData(params.AbstractTokenIdentifier)
+	require.NotNil(setup, token)
+	require.NotNil(setup, token.EthErc20Contract)
+
+	allowanceValue := big.NewInt(0)
+	for _, operation := range params.TestOperations {
+		if operation.ValueToTransferToMvx == nil {
+			continue
+		}
+
+		allowanceValue.Add(allowanceValue, operation.ValueToTransferToMvx)
+	}
+
+	if allowanceValue.Cmp(zeroValueBigInt) > 0 {
+		setup.EthereumHandler.ApproveForToken(setup.Ctx, token, from, setup.EthereumHandler.SafeAddress, allowanceValue)
+	}
+
+	for _, operation := range params.TestOperations {
+		if operation.ValueToTransferToMvx == nil {
+			continue
+		}
+
+		setup.EthereumHandler.SendDepositTransactionFromEthereum(setup.Ctx, from, to, targetSCAddress, token, operation)
+	}
 }
 
 // TestWithdrawTotalFeesOnEthereumForTokens will test the withdrawal functionality for the provided test tokens
