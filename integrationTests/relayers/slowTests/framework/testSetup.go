@@ -1,8 +1,10 @@
 package framework
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"os"
 	"path"
@@ -243,6 +245,10 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(sender, receiver Keys
 		return false
 	}
 
+	//if !setup.checkMvxAddressZeroBalanceForToken(params) {
+	//	return false
+	//}
+
 	if !setup.checkContractMvxBalanceForToken(params) {
 		return false
 	}
@@ -261,7 +267,7 @@ func (setup *TestSetup) checkHolderEthBalanceForToken(holder KeysHolder, isSende
 	}
 
 	actualBalance := setup.EthereumHandler.GetBalance(holder.EthAddress, params.AbstractTokenIdentifier)
-
+	fmt.Println("----------------------ETH-------------------------")
 	return setup.checkHolderBalanceForTokenHelper(balanceMapping, params, actualBalance, holder.EthAddress.String(), isSender)
 }
 
@@ -272,29 +278,25 @@ func (setup *TestSetup) checkHolderMvxBalanceForToken(holder KeysHolder, isSende
 	}
 
 	actualBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, holder.MvxAddress, params.AbstractTokenIdentifier)
-
+	fmt.Println("---------------------MVX--------------------------")
 	return setup.checkHolderBalanceForTokenHelper(balanceMapping, params, actualBalance, holder.MvxAddress.String(), isSender)
 }
 
-func (setup *TestSetup) getBalanceMappingForAddress(addr string) (map[string]*big.Int, bool) {
+func (setup *TestSetup) getBalanceMappingForAddress(address string) (map[string]*big.Int, bool) {
 	setup.mutBalances.Lock()
 	defer setup.mutBalances.Unlock()
 
-	if strings.HasPrefix(addr, mvxHrp) {
-		balanceMapping, exists := setup.mvxBalances[addr]
+	if strings.HasPrefix(address, mvxHrp) {
+		balanceMapping, exists := setup.mvxBalances[address]
 		return balanceMapping, exists
 	}
 
-	balanceMapping, exists := setup.ethBalances[addr]
+	balanceMapping, exists := setup.ethBalances[address]
 	return balanceMapping, exists
 }
 
-func (setup *TestSetup) checkHolderBalanceForTokenHelper(balanceMapping map[string]*big.Int, params TestTokenParams, actualBalance *big.Int, addr string, isSender bool) bool {
-	setup.mutBalances.Lock()
-	holderName := setup.AddressToName[addr]
-	extraBalances := params.ExtraBalances[holderName]
-	setup.mutBalances.Unlock()
-
+func (setup *TestSetup) checkHolderBalanceForTokenHelper(balanceMapping map[string]*big.Int, params TestTokenParams, actualBalance *big.Int, address string, isSender bool) bool {
+	extraBalances := setup.getExtraBalanceForHolder(address, params)
 	expectedBalance := big.NewInt(0).Set(balanceMapping[params.AbstractTokenIdentifier])
 
 	expectedBalance.Add(expectedBalance, extraBalances.ReceivedAmount)
@@ -302,7 +304,34 @@ func (setup *TestSetup) checkHolderBalanceForTokenHelper(balanceMapping map[stri
 		expectedBalance.Add(expectedBalance, extraBalances.SentAmount)
 	}
 
+	fmt.Println("expectedBalance", expectedBalance.String())
+	fmt.Println("actualBalance", actualBalance.String())
+	fmt.Println("-----------------------------------------------")
 	return actualBalance.String() == expectedBalance.String()
+}
+
+func (setup *TestSetup) checkMvxAddressZeroBalanceForToken(params TestTokenParams) bool {
+	extraBalances := setup.getExtraBalanceForHolder("", params)
+	expectedBalance := big.NewInt(0).Set(extraBalances.ReceivedAmount)
+
+	zeroAddressMvx := NewMvxAddressFromBytes(setup, bytes.Repeat([]byte{0x00}, 32))
+	actualBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, zeroAddressMvx, params.AbstractTokenIdentifier)
+
+	fmt.Println("expectedBalance", expectedBalance.String())
+	fmt.Println("actualBalance", actualBalance.String())
+	return expectedBalance == actualBalance
+}
+
+func (setup *TestSetup) getExtraBalanceForHolder(address string, params TestTokenParams) ExtraBalanceHolder {
+	setup.mutBalances.Lock()
+	defer setup.mutBalances.Unlock()
+
+	holderName := AddressZero
+	if address != "" {
+		holderName = setup.AddressToName[address]
+	}
+
+	return params.ExtraBalances[holderName]
 }
 
 func (setup *TestSetup) checkContractMvxBalanceForToken(params TestTokenParams) bool {
@@ -322,6 +351,10 @@ func (setup *TestSetup) checkContractMvxBalanceForToken(params TestTokenParams) 
 		expectedValueOnContract.Add(expectedValueOnContract, operation.ValueToTransferToMvx)
 	}
 
+	fmt.Println("---------------------CONTRACT--------------------------")
+	fmt.Println("expectedValueOnContract", expectedValueOnContract.String())
+	fmt.Println("mvxBalance", mvxBalance.String())
+	fmt.Println("-----------------------------------------------")
 	return mvxBalance.String() == expectedValueOnContract.String()
 }
 
@@ -358,6 +391,10 @@ func (setup *TestSetup) checkEthLockedBalanceForToken(params TestTokenParams, br
 		expectedValue.Sub(expectedValue, setup.getMvxTotalRefundAmountForToken(params)) // unlock possible refund amount to be bridged back to Eth
 	}
 
+	fmt.Println("----------------------ETH-------------------------")
+	fmt.Println("lockedTokens", lockedTokens.String())
+	fmt.Println("expectedValue", expectedValue.String())
+	fmt.Println("-----------------------------------------------")
 	return lockedTokens.String() == expectedValue.String()
 }
 
@@ -392,6 +429,10 @@ func (setup *TestSetup) checkMvxMintedBalanceForToken(params TestTokenParams) bo
 		}
 	}
 
+	fmt.Println("---------------------MVX--------------------------")
+	fmt.Println("mintedTokens", mintedTokens.String())
+	fmt.Println("expectedValue", expectedValue.String())
+	fmt.Println("-----------------------------------------------")
 	return mintedTokens.String() == expectedValue.String()
 }
 
@@ -399,6 +440,9 @@ func (setup *TestSetup) computeExpectedValueToMvx(params TestTokenParams) *big.I
 	expectedValue := big.NewInt(0)
 	for _, operation := range params.TestOperations {
 		if operation.ValueToTransferToMvx == nil {
+			continue
+		}
+		if operation.IsFaultyDeposit {
 			continue
 		}
 
@@ -482,6 +526,10 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(sender, receiver Ke
 		return false
 	}
 
+	//if !setup.checkEthAddressZeroBalanceForToken(params) {
+	//	return false
+	//}
+
 	if !setup.checkMvxBalanceForSafe(params) {
 		return false
 	}
@@ -491,6 +539,16 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(sender, receiver Ke
 	}
 
 	return setup.checkTokenOnEthSecondBridge(params)
+}
+
+func (setup *TestSetup) checkEthAddressZeroBalanceForToken(params TestTokenParams) bool {
+	extraBalances := setup.getExtraBalanceForHolder("", params)
+	expectedBalance := big.NewInt(0).Set(extraBalances.SentAmount)
+
+	zeroAddressEth := bytes.Repeat([]byte{0x00}, 20)
+	actualBalance := setup.EthereumHandler.GetBalance(common.Address(zeroAddressEth), params.AbstractTokenIdentifier)
+
+	return expectedBalance == actualBalance
 }
 
 func (setup *TestSetup) checkMvxBalanceForSafe(params TestTokenParams) bool {
@@ -649,6 +707,11 @@ func (setup *TestSetup) createDepositOnMultiversxForToken(from KeysHolder, to Ke
 			continue
 		}
 
+		if operation.InvalidReceiver != nil {
+			badEthAddress := common.Address(bytes.Repeat([]byte{0x00}, 20))
+			to = KeysHolder{EthAddress: badEthAddress}
+		}
+
 		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
 		setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, from, to, token, operation.ValueToSendFromMvX)
 	}
@@ -702,6 +765,12 @@ func (setup *TestSetup) createDepositOnEthereumForToken(from KeysHolder, to Keys
 	for _, operation := range params.TestOperations {
 		if operation.ValueToTransferToMvx == nil {
 			continue
+		}
+
+		if operation.InvalidReceiver != nil {
+			badMvxAddress := NewMvxAddressFromBytes(setup, operation.InvalidReceiver)
+			to = KeysHolder{MvxAddress: badMvxAddress}
+			fmt.Println("to", to.MvxAddress.AddressSlice())
 		}
 
 		setup.EthereumHandler.SendDepositTransactionFromEthereum(setup.Ctx, from, to, targetSCAddress, token, operation)

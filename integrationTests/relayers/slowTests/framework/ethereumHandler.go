@@ -446,9 +446,9 @@ func (handler *EthereumHandler) SendDepositTransactionFromEthereum(
 
 	if operation.IsFaultyDeposit {
 		require.NotNil(handler, err)
-	} else {
-		require.NoError(handler, err)
+		return
 	}
+	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
 }

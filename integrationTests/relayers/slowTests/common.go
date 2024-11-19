@@ -1,8 +1,7 @@
-//go:build slow
-
 package slowTests
 
 import (
+	"bytes"
 	"math/big"
 
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -13,7 +12,9 @@ import (
 )
 
 var (
-	log = logger.GetOrCreate("integrationTests/relayers/slowTests")
+	log            = logger.GetOrCreate("integrationTests/relayers/slowTests")
+	ethZeroAddress = bytes.Repeat([]byte{0x00}, 20)
+	mvxZeroAddress = bytes.Repeat([]byte{0x00}, 32)
 )
 
 // GenerateTestUSDCToken will generate a test USDC token
@@ -53,15 +54,20 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 			{
-				ValueToTransferToMvx: big.NewInt(49),
+				ValueToTransferToMvx: big.NewInt(20),
 				ValueToSendFromMvX:   nil,
 				IsFaultyDeposit:      true,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(900),
+				ValueToSendFromMvX:   nil,
+				InvalidReceiver:      mvxZeroAddress,
 			},
 		},
 		ESDTSafeExtraBalance: big.NewInt(100), // extra is just for the fees for the 2 transfers mvx->eth
 		ExtraBalances: map[string]framework.ExtraBalanceHolder{
 			framework.Alice: {
-				SentAmount:     big.NewInt(-5000 - 7000 - 1000),
+				SentAmount:     big.NewInt(-5000 - 7000 - 1000 - 900),
 				ReceivedAmount: big.NewInt(0),
 			},
 			framework.Bob: {
@@ -71,6 +77,10 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			framework.Charlie: {
 				SentAmount:     big.NewInt(0),
 				ReceivedAmount: big.NewInt(2500 - 50 + 300 - 50),
+			},
+			framework.AddressZero: {
+				SentAmount:     big.NewInt(0),
+				ReceivedAmount: big.NewInt(900),
 			},
 		},
 	}
@@ -112,10 +122,15 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   big.NewInt(2000),
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
+			//{
+			//	ValueToTransferToMvx: nil,
+			//	ValueToSendFromMvX:   big.NewInt(38),
+			//	IsFaultyDeposit:      true,
+			//},
 			{
 				ValueToTransferToMvx: nil,
-				ValueToSendFromMvX:   big.NewInt(38),
-				IsFaultyDeposit:      true,
+				ValueToSendFromMvX:   big.NewInt(650),
+				InvalidReceiver:      ethZeroAddress,
 			},
 		},
 		ESDTSafeExtraBalance: big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
@@ -131,6 +146,10 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			framework.Charlie: {
 				SentAmount:     big.NewInt(0),
 				ReceivedAmount: big.NewInt(2400 + 200),
+			},
+			framework.AddressZero: {
+				SentAmount:     big.NewInt(0),
+				ReceivedAmount: big.NewInt(650),
 			},
 		},
 	}
@@ -172,6 +191,17 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   nil,
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
+			{
+				ValueToTransferToMvx: big.NewInt(49),
+				ValueToSendFromMvX:   nil,
+				IsFaultyDeposit:      true,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(700),
+				ValueToSendFromMvX:   nil,
+				InvalidReceiver:      mvxZeroAddress,
+				IsFaultyDeposit:      true,
+			},
 		},
 		ESDTSafeExtraBalance: big.NewInt(100), // extra is just for the fees for the 2 transfers mvx->eth
 		ExtraBalances: map[string]framework.ExtraBalanceHolder{
@@ -186,6 +216,10 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			framework.Charlie: {
 				SentAmount:     big.NewInt(0),
 				ReceivedAmount: big.NewInt(2510 - 50 + 310 - 50),
+			},
+			framework.AddressZero: {
+				SentAmount:     big.NewInt(0),
+				ReceivedAmount: big.NewInt(700),
 			},
 		},
 	}
@@ -227,6 +261,17 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   big.NewInt(2010),
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
+			//{
+			//	ValueToTransferToMvx: big.NewInt(10),
+			//	ValueToSendFromMvX:   nil,
+			//	IsFaultyDeposit:      true,
+			//},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(800),
+				InvalidReceiver:      ethZeroAddress,
+				IsFaultyDeposit:      true,
+			},
 		},
 		ESDTSafeExtraBalance: big.NewInt(150), // just the fees should be collected in ESDT safe
 		ExtraBalances: map[string]framework.ExtraBalanceHolder{
@@ -241,6 +286,10 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			framework.Charlie: {
 				SentAmount:     big.NewInt(0),
 				ReceivedAmount: big.NewInt(2410 + 210),
+			},
+			framework.AddressZero: {
+				SentAmount:     big.NewInt(0),
+				ReceivedAmount: big.NewInt(800),
 			},
 		},
 	}

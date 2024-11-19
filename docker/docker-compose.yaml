@@ -1,0 +1,140 @@
+version: "3.9"
+
+services:
+  rabbitmq:
+    ports: 
+      - 127.0.0.1:5672:5672
+      - 127.0.0.1:15672:15672
+    container_name: rabbitmq-container
+    image: "rabbitmq:3-management"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: "redis:alpine"
+    command: redis-server
+    ports:
+      - "127.0.0.1:6379:6379"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+
+  events-notifier:
+    container_name: events-notifier-container
+    image: multiversx/events-notifier:latest
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint: >
+        /bin/bash -c "apt-get update && apt-get install curl -y
+        && sed -i '/Enabled will determine if websocket connector will be enabled or not/{n;s/Enabled = false/Enabled = true/}' ./config/config.toml 
+        && sed -i 's|localhost:22111|0.0.0.0:22111|g' ./config/config.toml 
+        && sed -i 's|localhost:6379|redis:6379|g' ./config/config.toml 
+        && sed -i 's|amqp://guest:guest@localhost:5672|amqp://guest:guest@rabbitmq:5672|g' ./config/config.toml 
+        && cat ./config/config.toml
+        && ./notifier --check-duplicates=false --api-type=rabbit-api"    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:5000/status/metrics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    ports: 
+      - 127.0.0.1:9200:9200
+    container_name: elasticsearch-container
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.1
+    environment:
+      - "discovery.type=single-node"
+      - "xpack.security.enabled=false"
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # TODO use the websockets based elastic indexer when the communication problems are solved
+  elastic-indexer:
+    #ports: 22112
+    container_name: elastic-indexer
+    image: multiversx/elastic-indexer:latest
+    depends_on:
+      elasticsearch:
+        condition: service_healthy     
+    entrypoint: >
+        /bin/bash -c "sed -i 's|http://localhost:9200|http://elasticsearch:9200|g' ./config/prefs.toml
+        && sed -i 's|url = \"localhost:22111\"|url = \"0.0.0.0:22111\"|g' ./config/prefs.toml
+        && cat ./config/prefs.toml
+        && ./elasticindexer -log-level *:DEBUG"
+
+  chain-simulator:
+    container_name: chain-simulator
+    ports: 
+      - 8085:8085
+    image: multiversx/chainsimulator:latest
+    environment:
+      EVENTS_NOTIFIER_URL: 'events-notifier:22111'
+      ELASTIC_SEARCH_URL: 'elasticsearch:9200' # just a dummy string for now
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      events-notifier:
+        condition: service_healthy
+    entrypoint: >
+        /bin/bash -c " sed -i 's|http://localhost:9200|http://elasticsearch:9200|g' ./config/node/config/external.toml
+        && ./start-with-services.sh -log-level *:INFO"
+    healthcheck:
+     test: [ "CMD", "curl", "-f", "http://127.0.0.1:8085/simulator/observers" ]
+     interval: 10s
+     timeout: 5s
+     retries: 5
+
+  api:
+    ports: 
+      - 127.0.0.1:3001:3001
+    container_name: api
+    image: multiversx/mx-api-service:test1
+    environment:
+      MVX_ENV: devnet
+      REDIS_IP: redis
+      GATEWAY_URL: http://chain-simulator:8085
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  explorer:
+    ports: 
+      - 3002:80
+    container_name: explorer
+    image: multiversx/mx-explorer-dapp:main
+    environment:
+      START_NAME_STOP: devnet
+      START_CHAIN_ID_STOP: D
+      START_EGLD_LABEL_STOP: xEGLD
+      START_WALLET_ADDRESS_STOP: https://devnet-wallet.multiversx.com
+      START_EXPLORER_ADDRESS_STOP: https://devnet-explorer.multiversx.com
+      START_NFT_EXPLORER_ADDRESS_STOP: https://devnet.xspotlight.com
+      START_API_ADDRESS_STOP: http://127.0.0.1:3001
+
+  lite-wallet:
+    ports:
+      - 3003:80
+    container_name: lite-wallet
+    image: multiversx/mx-lite-wallet-dapp:main
+    environment:
+      START_NETWORK_ID_STOP: custom
+      START_NETWORK_NAME_STOP: custom
+      START_API_ADDRESS_STOP: http://127.0.0.1:3001
+      START_GATEWAY_URL_STOP: http://127.0.0.1:8085
+      START_WALLET_ADDRESS_STOP: https://testnet-wallet.multiversx.com
+      START_WEGLD_ID_STOP: xEGLD
