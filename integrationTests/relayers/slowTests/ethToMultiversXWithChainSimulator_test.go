@@ -149,6 +149,21 @@ func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
 	)
 }
 
+func TestRelayersShouldExecuteTransfersWithInitSupplyMintBurn(t *testing.T) {
+	eurocToken := GenerateTestEUROCToken()
+	eurocToken.InitialSupplyValue = "100010"
+
+	mexToken := GenerateTestMEXToken()
+	mexToken.InitialSupplyValue = "300000"
+
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		eurocToken,
+		mexToken,
+	)
+}
+
 func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
 	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
 

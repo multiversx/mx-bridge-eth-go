@@ -277,11 +277,20 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 	handler.checkEthTxResult(ctx, tx.Hash())
 
 	if len(params.InitialSupplyValue) > 0 {
-		if params.IsMintBurnOnEth {
-			mintAmount, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
-			require.True(handler, ok)
+		initialSupply, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
+		require.True(handler, ok)
 
-			tx, err = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, mintAmount, zeroValueBigInt)
+		if params.IsMintBurnOnEth {
+			mintAmount := big.NewInt(0)
+			burnAmount := big.NewInt(0)
+
+			if params.IsNativeOnEth {
+				burnAmount = initialSupply
+			} else {
+				mintAmount = initialSupply
+			}
+
+			tx, err = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, mintAmount, burnAmount)
 			require.NoError(handler, err)
 			handler.SimulatedChain.Commit()
 			handler.checkEthTxResult(ctx, tx.Hash())
@@ -464,6 +473,30 @@ func (handler *EthereumHandler) Mint(ctx context.Context, params TestTokenParams
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
+}
+
+// GetTotalBalancesForToken will return the total locked balance for the provided token
+func (handler *EthereumHandler) GetTotalBalancesForToken(ctx context.Context, address common.Address) *big.Int {
+	opts := &bind.CallOpts{Context: ctx}
+	balance, err := handler.SafeContract.TotalBalances(opts, address)
+	require.NoError(handler, err)
+	return balance
+}
+
+// GetBurnBalanceForToken will return burn balance for the provided token
+func (handler *EthereumHandler) GetBurnBalanceForToken(ctx context.Context, address common.Address) *big.Int {
+	opts := &bind.CallOpts{Context: ctx}
+	balance, err := handler.SafeContract.BurnBalances(opts, address)
+	require.NoError(handler, err)
+	return balance
+}
+
+// GetMintBalanceForToken will return mint balance for the provided token
+func (handler *EthereumHandler) GetMintBalanceForToken(ctx context.Context, address common.Address) *big.Int {
+	opts := &bind.CallOpts{Context: ctx}
+	balance, err := handler.SafeContract.MintBalances(opts, address)
+	require.NoError(handler, err)
+	return balance
 }
 
 // Close will close the resources allocated
