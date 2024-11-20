@@ -375,7 +375,13 @@ func (c *client) ExecuteTransfer(
 	}
 
 	batchID := big.NewInt(0).SetUint64(batchId)
-	tx, err := c.clientWrapper.ExecuteTransfer(auth, argLists.EthTokens, argLists.Recipients, argLists.Amounts, argLists.Nonces, batchID, signatures)
+
+	mvxTransactions, err := convertArgsListBatchToMvxTransactions(argLists)
+	if err != nil {
+		return "", err
+	}
+
+	tx, err := c.clientWrapper.ExecuteTransfer(auth, mvxTransactions, batchID, signatures)
 	if err != nil {
 		return "", err
 	}
@@ -384,6 +390,39 @@ func (c *client) ExecuteTransfer(
 	c.log.Info("Executed transfer transaction", "batchID", batchID, "hash", txHash)
 
 	return txHash, err
+}
+
+func convertArgsListBatchToMvxTransactions(argLists *batchProcessor.ArgListsBatch) ([]contract.MvxTransaction, error) {
+	numTokens := len(argLists.EthTokens)
+	if len(argLists.Recipients) != numTokens {
+		return nil, fmt.Errorf("%w for argLists.Recipients", errInternalErrorValidatingLists)
+	}
+	if len(argLists.Amounts) != numTokens {
+		return nil, fmt.Errorf("%w for argLists.Amounts", errInternalErrorValidatingLists)
+	}
+	if len(argLists.Nonces) != numTokens {
+		return nil, fmt.Errorf("%w for argLists.Nonces", errInternalErrorValidatingLists)
+	}
+	if len(argLists.Senders) != numTokens {
+		return nil, fmt.Errorf("%w for argLists.Senders", errInternalErrorValidatingLists)
+	}
+	if len(argLists.ScCalls) != numTokens {
+		return nil, fmt.Errorf("%w for argLists.ScCalls", errInternalErrorValidatingLists)
+	}
+
+	mvxTransactions := make([]contract.MvxTransaction, numTokens)
+	for i := range argLists.MvxTokenBytes {
+		mvxTransactions[i] = contract.MvxTransaction{
+			Token:        argLists.EthTokens[i],
+			Sender:       argLists.Senders[i],
+			Recipient:    argLists.Recipients[i],
+			Amount:       argLists.Amounts[i],
+			DepositNonce: argLists.Nonces[i],
+			CallData:     argLists.ScCalls[i],
+		}
+	}
+
+	return mvxTransactions, nil
 }
 
 // CheckClientAvailability will check the client availability and set the metric accordingly
