@@ -239,9 +239,9 @@ func (c *client) GetBatchSCMetadata(ctx context.Context, nonce uint64, blockNumb
 	return depositEvents, nil
 }
 
-// WasExecuted returns true if the batch ID was executed
-func (c *client) WasExecuted(ctx context.Context, batchID uint64) (bool, error) {
-	return c.clientWrapper.WasBatchExecuted(ctx, big.NewInt(0).SetUint64(batchID))
+// WasExecuted returns true if the MultiversX batch ID was executed
+func (c *client) WasExecuted(ctx context.Context, mvxBatchID uint64) (bool, error) {
+	return c.clientWrapper.WasBatchExecuted(ctx, big.NewInt(0).SetUint64(mvxBatchID))
 }
 
 // BroadcastSignatureForMessageHash will send the signature for the provided message hash

@@ -650,7 +650,7 @@ func (setup *TestSetup) createDepositOnMultiversxForToken(from KeysHolder, to Ke
 		}
 
 		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
-		setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, from, to, token, operation.ValueToSendFromMvX)
+		setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, from, to, token, params, operation.ValueToSendFromMvX)
 	}
 
 	return depositValue

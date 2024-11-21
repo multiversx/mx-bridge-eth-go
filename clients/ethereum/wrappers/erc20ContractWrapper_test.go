@@ -69,3 +69,22 @@ func TestErc20ContractWrapper_BalanceOf(t *testing.T) {
 	assert.True(t, handlerCalled)
 	assert.Equal(t, 1, statusHandler.GetIntMetric(core.MetricNumEthClientRequests))
 }
+
+func TestErc20ContractWrapper_Decimals(t *testing.T) {
+	t.Parallel()
+
+	args, statusHandler := createMockArgsErc20ContractWrapper()
+	handlerCalled := false
+	args.Erc20Contract = &interactors.GenericErc20ContractStub{
+		DecimalsCalled: func() (uint8, error) {
+			handlerCalled = true
+			return 37, nil
+		},
+	}
+	wrapper, _ := NewErc20ContractWrapper(args)
+	decimals, err := wrapper.Decimals(context.TODO())
+	assert.Nil(t, err)
+	assert.Equal(t, byte(37), decimals)
+	assert.True(t, handlerCalled)
+	assert.Equal(t, 1, statusHandler.GetIntMetric(core.MetricNumEthClientRequests))
+}

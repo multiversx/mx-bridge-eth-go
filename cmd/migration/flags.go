@@ -25,8 +25,8 @@ var (
 	}
 	mode = cli.StringFlag{
 		Name:  "mode",
-		Usage: "This flag specifies the operation mode. Usage: sign or execute",
-		Value: signMode,
+		Usage: "This flag specifies the operation mode. Usage: query, sign or execute",
+		Value: queryMode,
 	}
 	migrationJsonFile = cli.StringFlag{
 		Name:  "migration-file",
@@ -43,9 +43,12 @@ var (
 		Usage: "The new safe address on Ethereum",
 		Value: "",
 	}
-	denominatedAmount = cli.Uint64Flag{
-		Name:  "denominated-amount",
-		Usage: "The dominated amount that will be used on all deposits. Very useful in an initial test",
+	partialMigration = cli.StringFlag{
+		Name: "partial-migration",
+		Usage: "If a partial migration is wanted, this option can be very handy. We can specify an unlimited tuples in a single string, like this: " +
+			"`-partial-migration token1:amount1,token2:amount2,token1:amount3` and so on. You can see that the same token can be specified multiple times, " +
+			"the amounts will be added. The amount should be specified as a denominated value (does not contain all decimals, the conversion will be done " +
+			"automatically by the tool). Real example: `-partial-migration token1:amount1,token2:amount2,token1:amount3`",
 	}
 )
 
@@ -57,7 +60,7 @@ func getFlags() []cli.Flag {
 		migrationJsonFile,
 		signatureJsonFile,
 		newSafeAddress,
-		denominatedAmount,
+		partialMigration,
 	}
 }
 func getFlagsConfig(ctx *cli.Context) config.ContextFlagsConfig {

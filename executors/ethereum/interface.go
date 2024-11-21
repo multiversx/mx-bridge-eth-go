@@ -18,6 +18,7 @@ type TokensMapper interface {
 // Erc20ContractsHolder defines the Ethereum ERC20 contract operations
 type Erc20ContractsHolder interface {
 	BalanceOf(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error)
+	Decimals(ctx context.Context, address common.Address) (uint8, error)
 	IsInterfaceNil() bool
 }
 
