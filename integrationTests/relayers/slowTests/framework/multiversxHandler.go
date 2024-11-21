@@ -46,7 +46,6 @@ const (
 	setWrappingContractAddressFunction                   = "setWrappingContractAddress"
 	changeOwnerAddressFunction                           = "ChangeOwnerAddress"
 	setEsdtSafeOnMultiTransferFunction                   = "setEsdtSafeOnMultiTransfer"
-	setEsdtSafeOnWrapperFunction                         = "setEsdtSafeContractAddress"
 	setEsdtSafeAddressFunction                           = "setEsdtSafeAddress"
 	stakeFunction                                        = "stake"
 	unpauseFunction                                      = "unpause"
@@ -941,26 +940,32 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
 func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, params TestTokenParams, value *big.Int) {
 	if params.HasChainSpecificToken {
-		handler.unwrapCreateTransaction(ctx, token, value)
+		handler.unwrapCreateTransaction(ctx, token, from, to, value)
 		return
 	}
 
-	handler.createTransactionWithoutUnwrap(ctx, token, value)
+	handler.createTransactionWithoutUnwrap(ctx, token, from, to, value)
 }
 
-func (handler *MultiversxHandler) createTransactionWithoutUnwrap(ctx context.Context, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) createTransactionWithoutUnwrap(
+	ctx context.Context,
+	token *TokenData,
+	from KeysHolder,
+	to KeysHolder,
+	value *big.Int,
+) {
 	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(createTransactionFunction)),
-		hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
+		hex.EncodeToString(to.EthAddress.Bytes()),
 	}
 	dataField := strings.Join(params, "@")
 
 	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
-		handler.TestKeys.MvxSk,
+		from.MvxSk,
 		handler.SafeAddress,
 		zeroStringValue,
 		createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)),
@@ -970,7 +975,7 @@ func (handler *MultiversxHandler) createTransactionWithoutUnwrap(ctx context.Con
 	log.Info("MultiversX->Ethereum createTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
 }
 
-func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, token *TokenData, from KeysHolder, to KeysHolder, value *big.Int) {
 	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
