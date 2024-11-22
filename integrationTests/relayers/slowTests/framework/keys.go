@@ -42,14 +42,22 @@ type KeysStore struct {
 	SCExecutorKeys KeysHolder
 	OwnerKeys      KeysHolder
 	DepositorKeys  KeysHolder
-	TestKeys       KeysHolder
+	AliceKeys      KeysHolder
+	BobKeys        KeysHolder
+	CharlieKeys    KeysHolder
+	AddressToName  map[string]string
 	workingDir     string
 }
 
 const (
 	ethOwnerSK     = "b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291"
 	ethDepositorSK = "9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1"
-	ethTestSk      = "dafea2c94bfe5d25f1a508808c2bc2c2e6c6f18b6b010fc841d8eb80755ba27a"
+	aliceSk        = "3a944a35d9cb7be4dd4e91429d28cec594db960221724cc3a3c81594e0140acb"
+	bobSk          = "c658971dab0b3f2586ef35444554a2ddf5169f750ca46c29d769930205078ded"
+	charlieSk      = "43cba80c6e2ee37fc9cf13f1d445ebbb7fb74f54800884f1162603c6de8d4530"
+	Alice          = "Alice"
+	Bob            = "Bob"
+	Charlie        = "Charlie"
 )
 
 // NewKeysStore will create a KeysStore instance and generate all keys
@@ -63,6 +71,7 @@ func NewKeysStore(
 		TB:             tb,
 		RelayersKeys:   make([]KeysHolder, 0, numRelayers),
 		SCExecutorKeys: KeysHolder{},
+		AddressToName:  make(map[string]string),
 		workingDir:     workingDir,
 	}
 
@@ -74,7 +83,16 @@ func NewKeysStore(
 		"MvX address", keysStore.OwnerKeys.MvxAddress.Bech32(),
 		"Eth address", keysStore.OwnerKeys.EthAddress.String())
 	keysStore.DepositorKeys = keysStore.generateKey(ethDepositorSK, projectedShardForDepositor)
-	keysStore.TestKeys = keysStore.generateKey(ethTestSk, projectedShardForTestKeys)
+	keysStore.AliceKeys = keysStore.generateKey(aliceSk, projectedShardForTestKeys)
+	keysStore.BobKeys = keysStore.generateKey(bobSk, projectedShardForTestKeys)
+	keysStore.CharlieKeys = keysStore.generateKey(charlieSk, projectedShardForTestKeys)
+
+	keysStore.AddressToName[keysStore.AliceKeys.MvxAddress.String()] = Alice
+	keysStore.AddressToName[keysStore.BobKeys.MvxAddress.String()] = Bob
+	keysStore.AddressToName[keysStore.CharlieKeys.MvxAddress.String()] = Charlie
+	keysStore.AddressToName[keysStore.AliceKeys.EthAddress.String()] = Alice
+	keysStore.AddressToName[keysStore.BobKeys.EthAddress.String()] = Bob
+	keysStore.AddressToName[keysStore.CharlieKeys.EthAddress.String()] = Charlie
 
 	filename := path.Join(keysStore.workingDir, SCCallerFilename)
 	SaveMvxKey(keysStore, filename, keysStore.SCExecutorKeys)
@@ -139,7 +157,7 @@ func (keyStore *KeysStore) getAllKeys() []KeysHolder {
 	allKeys := make([]KeysHolder, 0, len(keyStore.RelayersKeys)+10)
 	allKeys = append(allKeys, keyStore.RelayersKeys...)
 	allKeys = append(allKeys, keyStore.OraclesKeys...)
-	allKeys = append(allKeys, keyStore.SCExecutorKeys, keyStore.OwnerKeys, keyStore.DepositorKeys, keyStore.TestKeys)
+	allKeys = append(allKeys, keyStore.SCExecutorKeys, keyStore.OwnerKeys, keyStore.DepositorKeys, keyStore.AliceKeys, keyStore.BobKeys, keyStore.CharlieKeys)
 
 	return allKeys
 }

@@ -53,8 +53,21 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
-		EthTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000), // -(eth->mvx) + (mvx->eth) - fees
+		ESDTSafeExtraBalance: big.NewInt(100), // extra is just for the fees for the 2 transfers mvx->eth
+		ExtraBalances: map[string]framework.ExtraBalanceHolder{
+			framework.Alice: {
+				SentAmount:     big.NewInt(-5000 - 7000 - 1000),
+				ReceivedAmount: big.NewInt(0),
+			},
+			framework.Bob: {
+				SentAmount:     big.NewInt(-2500 - 300),
+				ReceivedAmount: big.NewInt(5000 + 7000),
+			},
+			framework.Charlie: {
+				SentAmount:     big.NewInt(0),
+				ReceivedAmount: big.NewInt(2500 - 50 + 300 - 50),
+			},
+		},
 	}
 }
 
@@ -95,8 +108,21 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
-		EthTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
+		ESDTSafeExtraBalance: big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
+		ExtraBalances: map[string]framework.ExtraBalanceHolder{
+			framework.Alice: {
+				SentAmount:     big.NewInt(-4000 - 6000 - 2000),
+				ReceivedAmount: big.NewInt(0),
+			},
+			framework.Bob: {
+				SentAmount:     big.NewInt(-2400 - 200 - 1000),
+				ReceivedAmount: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
+			},
+			framework.Charlie: {
+				SentAmount:     big.NewInt(0),
+				ReceivedAmount: big.NewInt(2400 + 200),
+			},
+		},
 	}
 }
 
@@ -137,8 +163,21 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
-		EthTestAddrExtraBalance: big.NewInt(-5010 + 2510 - 50 - 7010 + 310 - 50 - 1010), // -(eth->mvx) + (mvx->eth) - fees
+		ESDTSafeExtraBalance: big.NewInt(100), // extra is just for the fees for the 2 transfers mvx->eth
+		ExtraBalances: map[string]framework.ExtraBalanceHolder{
+			framework.Alice: {
+				SentAmount:     big.NewInt(-5010 - 7010 - 1010),
+				ReceivedAmount: big.NewInt(0),
+			},
+			framework.Bob: {
+				SentAmount:     big.NewInt(-2510 - 310),
+				ReceivedAmount: big.NewInt(5010 + 7010),
+			},
+			framework.Charlie: {
+				SentAmount:     big.NewInt(0),
+				ReceivedAmount: big.NewInt(2510 - 50 + 310 - 50),
+			},
+		},
 	}
 }
 
@@ -179,8 +218,21 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(150), // just the fees should be collected in ESDT safe
-		EthTestAddrExtraBalance: big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+		ESDTSafeExtraBalance: big.NewInt(150), // just the fees should be collected in ESDT safe
+		ExtraBalances: map[string]framework.ExtraBalanceHolder{
+			framework.Alice: {
+				SentAmount:     big.NewInt(-4010 - 6010 - 2010),
+				ReceivedAmount: big.NewInt(0),
+			},
+			framework.Bob: {
+				SentAmount:     big.NewInt(-2410 - 210 - 1010),
+				ReceivedAmount: big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+			},
+			framework.Charlie: {
+				SentAmount:     big.NewInt(0),
+				ReceivedAmount: big.NewInt(2410 + 210),
+			},
+		},
 	}
 }
 
