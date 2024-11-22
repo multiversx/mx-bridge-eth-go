@@ -1,19 +1,19 @@
 [Eth]
     Chain = "Ethereum"
-    NetworkAddress = "http://127.0.0.1:8545" # a network address
+    NetworkAddress = "" # a network address
     PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
-    MultisigContractAddress = "1Ff78EB04d44a803E73c44FEf8790c5cAbD14596"
-    SafeContractAddress = "92A26975433A61CF1134802586aa669bAB8B69f3"
+    MultisigContractAddress = "0x1Ff78EB04d44a803E73c44FEf8790c5cAbD14596"
+    SafeContractAddress = "0x92A26975433A61CF1134802586aa669bAB8B69f3"
     GasLimitBase = 350000
     GasLimitForEach = 30000
     [Eth.GasStation]
         Enabled = true
-        URL = "https://api.bscscan.com/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
-        GasPriceMultiplier = 5000000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 1000000000
+        URL = "https://api.etherscan.io/api?module=gastracker&action=gasoracle" # gas station URL. Suggestion to provide the api-key here
+        GasPriceMultiplier = 1000000000 # the value to be multiplied with the fetched value. Useful in test chains. On production chain should be 1000000000
         PollingIntervalInSeconds = 60 # number of seconds between gas price polling
         RequestRetryDelayInSeconds = 5 # number of seconds of delay after one failed request
         MaxFetchRetries = 3 # number of fetch retries before printing an error
-        RequestTimeInSeconds = 2 # maximum timeout (in seconds) for the gas price request
+        RequestTimeInSeconds = 5 # maximum timeout (in seconds) for the gas price request
         MaximumAllowedGasPrice = 300 # maximum value allowed for the fetched gas price value
         # GasPriceSelector available options: "SafeGasPrice", "ProposeGasPrice", "FastGasPrice"
         GasPriceSelector = "SafeGasPrice" # selector used to provide the gas price

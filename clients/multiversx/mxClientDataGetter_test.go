@@ -1588,3 +1588,36 @@ func TestMultiversXClientDataGetter_getBurnBalances(t *testing.T) {
 	assert.Equal(t, result, expectedAccumulatedBurnedTokens)
 	assert.True(t, proxyCalled)
 }
+
+func TestMultiversXClientDataGetter_GetLastMvxBatchID(t *testing.T) {
+	t.Parallel()
+
+	args := createMockArgsMXClientDataGetter()
+	proxyCalled := false
+	args.Proxy = &interactors.ProxyStub{
+		ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+			proxyCalled = true
+			assert.Equal(t, getBech32Address(args.SafeContractAddress), vmRequest.Address)
+			assert.Equal(t, getBech32Address(args.RelayerAddress), vmRequest.CallerAddr)
+			assert.Equal(t, "", vmRequest.CallValue)
+			assert.Equal(t, getLastBatchId, vmRequest.FuncName)
+			assert.Empty(t, vmRequest.Args)
+
+			strResponse := "Dpk="
+			response, _ := base64.StdEncoding.DecodeString(strResponse)
+			return &data.VmValuesResponseData{
+				Data: &vm.VMOutputApi{
+					ReturnCode: okCodeAfterExecution,
+					ReturnData: [][]byte{response},
+				},
+			}, nil
+		},
+	}
+
+	dg, _ := NewMXClientDataGetter(args)
+
+	result, err := dg.GetLastMvxBatchID(context.Background())
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(3737), result)
+	assert.True(t, proxyCalled)
+}

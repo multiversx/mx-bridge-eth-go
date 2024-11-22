@@ -169,21 +169,12 @@
                     "type": "TokenIdentifier"
                 },
                 {
+                    "name": "safe_address",
+                    "type": "Address"
+                },
+                {
                     "name": "to",
                     "type": "EthAddress"
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "setEsdtSafeContractAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_new_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
                 }
             ],
             "outputs": []
@@ -242,16 +233,6 @@
                 {
                     "type": "variadic<TokenIdentifier>",
                     "multi_result": true
-                }
-            ]
-        },
-        {
-            "name": "getEsdtSafeContractAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
                 }
             ]
         },

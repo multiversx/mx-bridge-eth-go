@@ -270,6 +270,8 @@ func (mock *multiversXContractStateMock) processVmRequests(vmRequest *data.VmVal
 		return mock.vmRequestGetMintBalances(vmRequest), nil
 	case "getBurnBalances":
 		return mock.vmRequestGetBurnBalances(vmRequest), nil
+	case "getLastBatchId":
+		return mock.vmRequestGetLastBatchId(vmRequest), nil
 	}
 
 	panic("unimplemented function: " + vmRequest.FuncName)
@@ -330,7 +332,7 @@ func (mock *multiversXContractStateMock) vmRequestGetStatusesAfterExecution(_ *d
 }
 
 func (mock *multiversXContractStateMock) sign(dataSplit []string, tx *transaction.FrontendTransaction) {
-	actionID := getActionIDFromString(dataSplit[1])
+	actionID := getBigIntFromString(dataSplit[1])
 	if !mock.actionIDExists(actionID) {
 		panic(fmt.Sprintf("attempted to sign on a missing action ID: %v as big int, raw: %s", actionID, dataSplit[1]))
 	}
@@ -344,7 +346,7 @@ func (mock *multiversXContractStateMock) sign(dataSplit []string, tx *transactio
 }
 
 func (mock *multiversXContractStateMock) performAction(dataSplit []string, _ *transaction.FrontendTransaction) {
-	actionID := getActionIDFromString(dataSplit[1])
+	actionID := getBigIntFromString(dataSplit[1])
 	if !mock.actionIDExists(actionID) {
 		panic(fmt.Sprintf("attempted to perform on a missing action ID: %v as big int, raw: %s", actionID, dataSplit[1]))
 	}
@@ -360,7 +362,7 @@ func (mock *multiversXContractStateMock) performAction(dataSplit []string, _ *tr
 }
 
 func (mock *multiversXContractStateMock) vmRequestWasActionExecuted(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
-	actionID := getActionIDFromString(vmRequest.Args[0])
+	actionID := getBigIntFromString(vmRequest.Args[0])
 
 	if mock.performedAction == nil {
 		return createOkVmResponse([][]byte{BoolToByteSlice(false)})
@@ -390,7 +392,7 @@ func (mock *multiversXContractStateMock) actionIDExists(actionID *big.Int) bool 
 }
 
 func (mock *multiversXContractStateMock) vmRequestQuorumReached(vmRequest *data.VmValueRequest) *data.VmValuesResponseData {
-	actionID := getActionIDFromString(vmRequest.Args[0])
+	actionID := getBigIntFromString(vmRequest.Args[0])
 	m, found := mock.signedActionIDs[actionID.String()]
 	if !found {
 		return createOkVmResponse([][]byte{BoolToByteSlice(false)})
@@ -434,6 +436,10 @@ func (mock *multiversXContractStateMock) vmRequestGetCurrentPendingBatch(_ *data
 		return createOkVmResponse(make([][]byte, 0))
 	}
 
+	return mock.responseWithPendingBatch()
+}
+
+func (mock *multiversXContractStateMock) responseWithPendingBatch() *data.VmValuesResponseData {
 	args := [][]byte{mock.pendingBatch.Nonce.Bytes()} // first non-empty slice
 	for _, deposit := range mock.pendingBatch.MultiversXDeposits {
 		args = append(args, make([]byte, 0)) // mocked block nonce
@@ -446,7 +452,16 @@ func (mock *multiversXContractStateMock) vmRequestGetCurrentPendingBatch(_ *data
 	return createOkVmResponse(args)
 }
 
-func (mock *multiversXContractStateMock) vmRequestGetBatch(_ *data.VmValueRequest) *data.VmValuesResponseData {
+func (mock *multiversXContractStateMock) vmRequestGetBatch(request *data.VmValueRequest) *data.VmValuesResponseData {
+	if mock.pendingBatch == nil {
+		return createOkVmResponse(make([][]byte, 0))
+	}
+
+	nonce := getBigIntFromString(request.Args[0])
+	if nonce.Cmp(mock.pendingBatch.Nonce) == 0 {
+		return mock.responseWithPendingBatch()
+	}
+
 	return createOkVmResponse(make([][]byte, 0))
 }
 
@@ -456,7 +471,7 @@ func (mock *multiversXContractStateMock) setPendingBatch(pendingBatch *Multivers
 
 func (mock *multiversXContractStateMock) vmRequestSigned(request *data.VmValueRequest) *data.VmValuesResponseData {
 	hexAddress := request.Args[0]
-	actionID := getActionIDFromString(request.Args[1])
+	actionID := getBigIntFromString(request.Args[1])
 
 	actionIDMap, found := mock.signedActionIDs[actionID.String()]
 	if !found {
@@ -512,7 +527,14 @@ func (mock *multiversXContractStateMock) vmRequestGetBurnBalances(vmRequest *dat
 	return createOkVmResponse([][]byte{mock.getBurnBalances(address).Bytes()})
 }
 
-func getActionIDFromString(data string) *big.Int {
+func (mock *multiversXContractStateMock) vmRequestGetLastBatchId(_ *data.VmValueRequest) *data.VmValuesResponseData {
+	if mock.pendingBatch == nil {
+		return createOkVmResponse([][]byte{big.NewInt(0).Bytes()})
+	}
+	return createOkVmResponse([][]byte{mock.pendingBatch.Nonce.Bytes()})
+}
+
+func getBigIntFromString(data string) *big.Int {
 	buff, err := hex.DecodeString(data)
 	if err != nil {
 		panic(err)
