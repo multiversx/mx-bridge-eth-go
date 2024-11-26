@@ -6,6 +6,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// DeltaBalancesOnKeys represents a map of ExtraBalancesHolder where the map's key is username
+type DeltaBalancesOnKeys map[string]*DeltaBalanceHolder
+
 // IssueTokenParams the parameters when issuing a new token
 type IssueTokenParams struct {
 	InitialSupplyParams
@@ -48,9 +51,8 @@ type TokenOperations struct {
 // TestTokenParams defines a token collection of operations in one or 2 batches
 type TestTokenParams struct {
 	IssueTokenParams
-	TestOperations       []TokenOperations
-	ESDTSafeExtraBalance *big.Int
-	ExtraBalances        map[string]ExtraBalanceHolder
+	TestOperations []TokenOperations
+	DeltaBalances  map[HalfBridgeIdentifier]DeltaBalancesOnKeys
 }
 
 // TokenData represents a test token data
@@ -68,8 +70,10 @@ type TokenData struct {
 	EthErc20Contract      ERC20Contract
 }
 
-// ExtraBalanceHolder holds the extra balances for a specific address
-type ExtraBalanceHolder struct {
-	SentAmount     *big.Int
-	ReceivedAmount *big.Int
+// DeltaBalanceHolder holds the delta balances for a specific address
+type DeltaBalanceHolder struct {
+	OnEth    *big.Int
+	OnMvx    *big.Int
+	MvxToken TokenBalanceType
+	//TODO next PR: add checking for mint/burned tokens on ESDT & Wrapper contracts
 }

@@ -302,11 +302,29 @@ func createBadToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance: big.NewInt(0),
-		ExtraBalances: map[string]framework.ExtraBalanceHolder{
-			"Alice":   {big.NewInt(-5000 - 7000 - 1000), big.NewInt(0)},
-			"Bob":     {big.NewInt(-2500 - 300), big.NewInt(5000 + 7000)},
-			"Charlie": {big.NewInt(0), big.NewInt(2500 - 50 + 300 - 50)},
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-5000 - 7000 - 1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(5000 + 7000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(5000 + 7000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
 		},
 	}
 }

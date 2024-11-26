@@ -58,6 +58,9 @@ const (
 	Alice          = "Alice"
 	Bob            = "Bob"
 	Charlie        = "Charlie"
+	WrapperSC      = "Wrapper SC"
+	CalledTestSC   = "Called test SC"
+	SafeSC         = "Safe SC"
 )
 
 // NewKeysStore will create a KeysStore instance and generate all keys
