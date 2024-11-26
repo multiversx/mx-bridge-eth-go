@@ -249,25 +249,27 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 }
 
 func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) {
-	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
+	flows := createFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
-		startsFromMvXFlow.setup = setup
-		startsFromEthFlow.setup = setup
+		for _, flow := range flows {
+			flow.setup = setup
+		}
 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
-		if len(startsFromEthFlow.tokens) > 0 {
-			setup.CreateBatchOnEthereum(setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
-		}
-		if len(startsFromMvXFlow.tokens) > 0 {
-			setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
+		for _, flow := range flows {
+			flow.handlerToStartFirstBridge(flow)
 		}
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
-		if startsFromEthFlow.process() && startsFromMvXFlow.process() && startsFromMvXFlow.areTokensFullyRefunded() {
-			return true
+		allFlowsFinished := true
+		for _, flow := range flows {
+			allFlowsFinished = allFlowsFinished && flow.process()
+			if flow.flowType == startFromMultiversXFlow && len(flow.tokens) >= 0 {
+				allFlowsFinished = allFlowsFinished && flow.setup.IsTransferDoneFromEthereumWithRefund(flow.tokens...)
+			}
 		}
 
 		// commit blocks in order to execute incoming txs from relayers
@@ -275,7 +277,7 @@ func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopC
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
 
-		return false
+		return allFlowsFinished
 	}
 
 	_ = testRelayersWithChainSimulator(tb,
