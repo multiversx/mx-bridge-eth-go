@@ -872,7 +872,6 @@ func (handler *MultiversxHandler) SendWrongDepositTransactionFromMultiversx(ctx 
 	)
 
 	_, err := json.MarshalIndent(txResult, "", "  ")
-	fmt.Println("EROARE", err)
 	require.Nil(handler, err)
 	require.Equal(handler, transaction.TxStatusFail, txStatus)
 }
@@ -985,10 +984,7 @@ func (handler *MultiversxHandler) MoveRefundBatchToSafe(ctx context.Context) {
 // HasRefundBatch will check if there is a refund batch in the multisig
 func (handler *MultiversxHandler) HasRefundBatch(ctx context.Context) bool {
 	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.MultisigAddress, getCurrentRefundBatchFunction, []string{})
-	if len(responseData) != 0 {
-		return true
-	}
-	return false
+	return len(responseData) != 0
 }
 
 func (handler *MultiversxHandler) sendAndCheckTx(ctx context.Context, sender KeysHolder, receiver *MvxAddress, value string, gasLimit uint64, function string, params []string) (string, *data.TransactionOnNetwork) {
