@@ -71,6 +71,7 @@ const (
 	multiTransferEsdtSetMaxBridgedAmountForTokenFunction = "multiTransferEsdtSetMaxBridgedAmountForToken"
 	submitBatchFunction                                  = "submitBatch"
 	unwrapTokenCreateTransactionFunction                 = "unwrapTokenCreateTransaction"
+	createTransactionFunction                            = "createTransaction"
 	setBridgedTokensWrapperAddressFunction               = "setBridgedTokensWrapperAddress"
 	setMultiTransferAddressFunction                      = "setMultiTransferAddress"
 	withdrawRefundFeesForEthereumFunction                = "withdrawRefundFeesForEthereum"
@@ -139,7 +140,6 @@ func (handler *MultiversxHandler) DeployAndSetContracts(ctx context.Context) {
 
 	handler.wireMultiTransfer(ctx)
 	handler.wireSCProxy(ctx)
-	handler.wireWrapper(ctx)
 	handler.wireSafe(ctx)
 
 	handler.changeOwners(ctx)
@@ -299,16 +299,6 @@ func (handler *MultiversxHandler) wireSCProxy(ctx context.Context) {
 	hash, txResult = handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.ScProxyAddress, zeroStringValue, setCallsGasLimit, setEsdtSafeAddressFunction, params)
 
 	log.Info("Set in SC proxy contract the safe contract", "transaction hash", hash, "status", txResult.Status)
-}
-
-func (handler *MultiversxHandler) wireWrapper(ctx context.Context) {
-	// setEsdtSafeOnWrapper
-	params := []string{
-		handler.SafeAddress.Hex(),
-	}
-	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.WrapperAddress, zeroStringValue, setCallsGasLimit, setEsdtSafeOnWrapperFunction, params)
-
-	log.Info("Set in wrapper contract the safe contract", "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) wireSafe(ctx context.Context) {
@@ -497,6 +487,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	}
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
 	handler.addMappingInMultisig(ctx, params)
+	handler.whitelistTokenOnMultisig(ctx, params)
 	handler.setInitialSupply(ctx, params)
 	handler.setPairDecimalsOnAggregator(ctx, params)
 	handler.setMaxBridgeAmountOnSafe(ctx, params)
@@ -812,18 +803,51 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 }
 
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
-func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, params TestTokenParams, value *big.Int) {
+	if params.HasChainSpecificToken {
+		handler.unwrapCreateTransaction(ctx, token, from, to, value)
+		return
+	}
+
+	handler.createTransactionWithoutUnwrap(ctx, token, from, to, value)
+}
+
+func (handler *MultiversxHandler) createTransactionWithoutUnwrap(
+	ctx context.Context,
+	token *TokenData,
+	from KeysHolder,
+	to KeysHolder,
+	value *big.Int,
+) {
+	// create transaction params
+	params := []string{
+		hex.EncodeToString([]byte(token.MvxUniversalToken)),
+		hex.EncodeToString(value.Bytes()),
+		hex.EncodeToString([]byte(createTransactionFunction)),
+		hex.EncodeToString(to.EthAddress.Bytes()),
+	}
+	dataField := strings.Join(params, "@")
+
+	hash, txResult := handler.sendAndCheckTx(ctx, from, handler.SafeAddress, zeroStringValue, createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)), esdtTransferFunction, params)
+
+	log.Info("MultiversX->Ethereum createTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, token *TokenData, from KeysHolder, to KeysHolder, value *big.Int) {
+	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
+		hex.EncodeToString(handler.SafeAddress.Bytes()),
 		hex.EncodeToString(to.EthAddress.Bytes()),
 	}
 	dataField := strings.Join(params, "@")
+
 	hash, txResult := handler.sendAndCheckTx(ctx, from, handler.WrapperAddress, zeroStringValue, createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)), esdtTransferFunction, params)
 
-	log.Info("MultiversX->Ethereum transaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+	log.Info("MultiversX->Ethereum unwrapCreateTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
 }
 
 // SendWrongDepositTransactionFromMultiversx will send a wrong deposit transaction from MultiversX

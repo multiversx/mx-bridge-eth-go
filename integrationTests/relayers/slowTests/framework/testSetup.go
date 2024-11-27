@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"os"
 	"path"
@@ -13,6 +12,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/executors/multiversx/module"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
@@ -548,16 +548,6 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(sender, receiver Ke
 	return setup.checkTokenOnEthSecondBridge(params)
 }
 
-func (setup *TestSetup) checkEthAddressZeroBalanceForToken(params TestTokenParams) bool {
-	extraBalances := setup.getExtraBalanceForHolder("", params)
-	expectedBalance := big.NewInt(0).Set(extraBalances.SentAmount)
-
-	zeroAddressEth := bytes.Repeat([]byte{0x00}, 20)
-	actualBalance := setup.EthereumHandler.GetBalance(common.Address(zeroAddressEth), params.AbstractTokenIdentifier)
-
-	return expectedBalance == actualBalance
-}
-
 func (setup *TestSetup) checkMvxBalanceForSafe(params TestTokenParams) bool {
 	setup.mutBalances.Lock()
 	initialBalance := setup.esdtBalanceForSafe[params.AbstractTokenIdentifier]
@@ -747,7 +737,7 @@ func (setup *TestSetup) createDepositOnMultiversxForToken(from KeysHolder, to Ke
 		if operation.IsFaultyDeposit || params.PreventWhitelist {
 			setup.MultiversxHandler.SendWrongDepositTransactionFromMultiversx(setup.Ctx, from, to, token, operation.ValueToSendFromMvX)
 		} else {
-			setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, from, to, token, operation.ValueToSendFromMvX)
+			setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, from, to, token, params, operation.ValueToSendFromMvX)
 		}
 	}
 
@@ -841,6 +831,7 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 
 			expectedAccumulated.Add(expectedAccumulated, feeInt)
 		}
+
 		setup.MultiversxHandler.TestWithdrawFees(setup.Ctx, token.MvxChainSpecificToken, expectedRefund, expectedAccumulated)
 	}
 }

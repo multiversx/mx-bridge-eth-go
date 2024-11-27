@@ -24,6 +24,7 @@ type MultiversXClient interface {
 	GetActionIDForSetStatusOnPendingTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (uint64, error)
 	GetLastExecutedEthBatchID(ctx context.Context) (uint64, error)
 	GetLastExecutedEthTxID(ctx context.Context) (uint64, error)
+	GetLastMvxBatchID(ctx context.Context) (uint64, error)
 	GetCurrentNonce(ctx context.Context) (uint64, error)
 
 	ProposeSetStatus(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error)
