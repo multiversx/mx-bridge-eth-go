@@ -10,7 +10,7 @@ import (
 type IssueTokenParams struct {
 	InitialSupplyParams
 	AbstractTokenIdentifier string
-	AvoidWhiteList          bool
+	PreventWhitelist        bool
 
 	// MultiversX
 	NumOfDecimalsUniversal           int
@@ -75,4 +75,5 @@ type TokenData struct {
 type ExtraBalanceHolder struct {
 	SentAmount     *big.Int
 	ReceivedAmount *big.Int
+	RefundAmount   *big.Int
 }

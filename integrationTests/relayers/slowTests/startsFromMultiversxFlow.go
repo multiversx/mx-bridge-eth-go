@@ -1,3 +1,5 @@
+//go:build !slow
+
 package slowTests
 
 import (
@@ -53,5 +55,5 @@ func (flow *startsFromMultiversXFlow) areTokensFullyRefunded() bool {
 		return false // regular flow is not completed
 	}
 
-	return flow.setup.IsTransferDoneFromEthereumWithRefund(flow.tokens...)
+	return flow.setup.IsTransferDoneFromEthereumWithRefund(flow.setup.BobKeys, flow.tokens...)
 }

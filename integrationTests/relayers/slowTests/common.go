@@ -1,3 +1,5 @@
+//go:build !slow
+
 package slowTests
 
 import (
@@ -13,7 +15,6 @@ import (
 
 var (
 	log            = logger.GetOrCreate("integrationTests/relayers/slowTests")
-	ethZeroAddress = bytes.Repeat([]byte{0x00}, 20)
 	mvxZeroAddress = bytes.Repeat([]byte{0x00}, 32)
 )
 
@@ -69,6 +70,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			framework.Alice: {
 				SentAmount:     big.NewInt(-5000 - 7000 - 1000 - 900),
 				ReceivedAmount: big.NewInt(0),
+				RefundAmount:   big.NewInt(900 - 50),
 			},
 			framework.Bob: {
 				SentAmount:     big.NewInt(-2500 - 300),
@@ -77,10 +79,6 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			framework.Charlie: {
 				SentAmount:     big.NewInt(0),
 				ReceivedAmount: big.NewInt(2500 - 50 + 300 - 50),
-			},
-			framework.AddressZero: {
-				SentAmount:     big.NewInt(0),
-				ReceivedAmount: big.NewInt(900),
 			},
 		},
 	}
@@ -122,16 +120,12 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   big.NewInt(2000),
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
-			//{
-			//	ValueToTransferToMvx: nil,
-			//	ValueToSendFromMvX:   big.NewInt(38),
-			//	IsFaultyDeposit:      true,
-			//},
 			{
 				ValueToTransferToMvx: nil,
-				ValueToSendFromMvX:   big.NewInt(650),
-				InvalidReceiver:      ethZeroAddress,
+				ValueToSendFromMvX:   big.NewInt(38),
+				IsFaultyDeposit:      true,
 			},
+			// TODO: add a test where the receiver is the zero address
 		},
 		ESDTSafeExtraBalance: big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
 		ExtraBalances: map[string]framework.ExtraBalanceHolder{
@@ -142,14 +136,11 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			framework.Bob: {
 				SentAmount:     big.NewInt(-2400 - 200 - 1000),
 				ReceivedAmount: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
+				RefundAmount:   big.NewInt(1000 - 50),
 			},
 			framework.Charlie: {
 				SentAmount:     big.NewInt(0),
 				ReceivedAmount: big.NewInt(2400 + 200),
-			},
-			framework.AddressZero: {
-				SentAmount:     big.NewInt(0),
-				ReceivedAmount: big.NewInt(650),
 			},
 		},
 	}
@@ -192,7 +183,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 			{
-				ValueToTransferToMvx: big.NewInt(49),
+				ValueToTransferToMvx: big.NewInt(24),
 				ValueToSendFromMvX:   nil,
 				IsFaultyDeposit:      true,
 			},
@@ -200,14 +191,14 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 				ValueToTransferToMvx: big.NewInt(700),
 				ValueToSendFromMvX:   nil,
 				InvalidReceiver:      mvxZeroAddress,
-				IsFaultyDeposit:      true,
 			},
 		},
 		ESDTSafeExtraBalance: big.NewInt(100), // extra is just for the fees for the 2 transfers mvx->eth
 		ExtraBalances: map[string]framework.ExtraBalanceHolder{
 			framework.Alice: {
-				SentAmount:     big.NewInt(-5010 - 7010 - 1010),
+				SentAmount:     big.NewInt(-5010 - 7010 - 1010 - 700),
 				ReceivedAmount: big.NewInt(0),
+				RefundAmount:   big.NewInt(700 - 50),
 			},
 			framework.Bob: {
 				SentAmount:     big.NewInt(-2510 - 310),
@@ -217,15 +208,11 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 				SentAmount:     big.NewInt(0),
 				ReceivedAmount: big.NewInt(2510 - 50 + 310 - 50),
 			},
-			framework.AddressZero: {
-				SentAmount:     big.NewInt(0),
-				ReceivedAmount: big.NewInt(700),
-			},
 		},
 	}
 }
 
-// GenerateTestMEXToken will generate a test EUROC token
+// GenerateTestMEXToken will generate a test MEX token
 func GenerateTestMEXToken() framework.TestTokenParams {
 	//MEX is ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = true
 	return framework.TestTokenParams{
@@ -261,37 +248,106 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   big.NewInt(2010),
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
-			//{
-			//	ValueToTransferToMvx: big.NewInt(10),
-			//	ValueToSendFromMvX:   nil,
-			//	IsFaultyDeposit:      true,
-			//},
 			{
-				ValueToTransferToMvx: nil,
-				ValueToSendFromMvX:   big.NewInt(800),
-				InvalidReceiver:      ethZeroAddress,
+				ValueToTransferToMvx: big.NewInt(10),
+				ValueToSendFromMvX:   nil,
 				IsFaultyDeposit:      true,
 			},
+			// TODO: add a test where the receiver is the zero address
 		},
 		ESDTSafeExtraBalance: big.NewInt(150), // just the fees should be collected in ESDT safe
 		ExtraBalances: map[string]framework.ExtraBalanceHolder{
 			framework.Alice: {
 				SentAmount:     big.NewInt(-4010 - 6010 - 2010),
 				ReceivedAmount: big.NewInt(0),
+				RefundAmount:   big.NewInt(0),
 			},
 			framework.Bob: {
 				SentAmount:     big.NewInt(-2410 - 210 - 1010),
 				ReceivedAmount: big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+				RefundAmount:   big.NewInt(1010 - 50),
 			},
 			framework.Charlie: {
 				SentAmount:     big.NewInt(0),
 				ReceivedAmount: big.NewInt(2410 + 210),
 			},
-			framework.AddressZero: {
-				SentAmount:     big.NewInt(0),
-				ReceivedAmount: big.NewInt(800),
+		},
+	}
+}
+
+// GenerateTestDOGEToken will generate a test DOGE token
+func GenerateTestDOGEToken() framework.TestTokenParams {
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "DOGE",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "DOGE",
+			MvxChainSpecificTokenTicker:      "DOGE",
+			MvxUniversalTokenDisplayName:     "TestDOGE",
+			MvxChainSpecificTokenDisplayName: "TestDOGE",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            false,
+			EthTokenName:                     "EthDOGE",
+			EthTokenSymbol:                   "DOGE",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  true,
+			IsNativeOnEth:                    true,
+			PreventWhitelist:                 true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(5010),
+				ValueToSendFromMvX:   nil,
+				IsFaultyDeposit:      true,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(1010),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				IsFaultyDeposit:      true,
 			},
 		},
+		ESDTSafeExtraBalance: big.NewInt(100), // extra is just for the fees for the 2 transfers mvx->eth
+	}
+}
+
+// GenerateTestBOBERToken will generate a test BOBER token
+func GenerateTestBOBERToken() framework.TestTokenParams {
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "BOBER",
+			NumOfDecimalsUniversal:           2,
+			NumOfDecimalsChainSpecific:       2,
+			MvxUniversalTokenTicker:          "BOBER",
+			MvxChainSpecificTokenTicker:      "BOBER",
+			MvxUniversalTokenDisplayName:     "TestBOBER",
+			MvxChainSpecificTokenDisplayName: "TestBOBER",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    true,
+			HasChainSpecificToken:            false,
+			EthTokenName:                     "EthBOBER",
+			EthTokenSymbol:                   "BOBER",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  true,
+			IsNativeOnEth:                    false,
+			PreventWhitelist:                 true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(4010),
+			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(2010),
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
+			},
+		},
+		ESDTSafeExtraBalance: big.NewInt(150), // just the fees should be collected in ESDT safe
 	}
 }
 

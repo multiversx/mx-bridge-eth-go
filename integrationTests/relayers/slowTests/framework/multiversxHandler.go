@@ -3,11 +3,13 @@ package framework
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
 	"testing"
 
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/require"
 )
@@ -48,6 +50,8 @@ const (
 	setEsdtSafeOnMultiTransferFunction                   = "setEsdtSafeOnMultiTransfer"
 	setEsdtSafeOnWrapperFunction                         = "setEsdtSafeContractAddress"
 	setEsdtSafeAddressFunction                           = "setEsdtSafeAddress"
+	moveRefundBatchToSafeFromChildContractFunction       = "moveRefundBatchToSafeFromChildContract"
+	getCurrentRefundBatchFunction                        = "getCurrentRefundBatch"
 	stakeFunction                                        = "stake"
 	unpauseFunction                                      = "unpause"
 	unpauseEsdtSafeFunction                              = "unpauseEsdtSafe"
@@ -255,165 +259,99 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 
 func (handler *MultiversxHandler) wireMultiTransfer(ctx context.Context) {
 	// setBridgeProxyContractAddress
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.MultiTransferAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setBridgeProxyContractAddressFunction,
-		[]string{
-			handler.ScProxyAddress.Hex(),
-		},
-	)
+	params := []string{
+		handler.ScProxyAddress.Hex(),
+	}
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultiTransferAddress, zeroStringValue, setCallsGasLimit, setBridgeProxyContractAddressFunction, params)
+
 	log.Info("Set in multi-transfer contract the SC proxy contract", "transaction hash", hash, "status", txResult.Status)
 
 	// setWrappingContractAddress
-	hash, txResult = handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.MultiTransferAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setWrappingContractAddressFunction,
-		[]string{
-			handler.WrapperAddress.Hex(),
-		},
-	)
+	params = []string{
+		handler.WrapperAddress.Hex(),
+	}
+	hash, txResult = handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultiTransferAddress, zeroStringValue, setCallsGasLimit, setWrappingContractAddressFunction, params)
+
 	log.Info("Set in multi-transfer contract the wrapper contract", "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) wireSCProxy(ctx context.Context) {
 	// setBridgedTokensWrapper in SC bridge proxy
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.ScProxyAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setBridgedTokensWrapperAddressFunction,
-		[]string{
-			handler.WrapperAddress.Hex(),
-		},
-	)
+	params := []string{
+		handler.WrapperAddress.Hex(),
+	}
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.ScProxyAddress, zeroStringValue, setCallsGasLimit, setBridgedTokensWrapperAddressFunction, params)
+
 	log.Info("Set in SC proxy contract the wrapper contract", "transaction hash", hash, "status", txResult.Status)
 
 	// setMultiTransferAddress in SC bridge proxy
-	hash, txResult = handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.ScProxyAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setMultiTransferAddressFunction,
-		[]string{
-			handler.MultiTransferAddress.Hex(),
-		},
-	)
+	params = []string{
+		handler.MultiTransferAddress.Hex(),
+	}
+	hash, txResult = handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.ScProxyAddress, zeroStringValue, setCallsGasLimit, setMultiTransferAddressFunction, params)
+
 	log.Info("Set in SC proxy contract the multi-transfer contract", "transaction hash", hash, "status", txResult.Status)
 
 	// setEsdtSafeAddress on bridge proxy
-	hash, txResult = handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.ScProxyAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setEsdtSafeAddressFunction,
-		[]string{
-			handler.SafeAddress.Hex(),
-		},
-	)
+	params = []string{
+		handler.SafeAddress.Hex(),
+	}
+	hash, txResult = handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.ScProxyAddress, zeroStringValue, setCallsGasLimit, setEsdtSafeAddressFunction, params)
+
 	log.Info("Set in SC proxy contract the safe contract", "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) wireWrapper(ctx context.Context) {
 	// setEsdtSafeOnWrapper
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.WrapperAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setEsdtSafeOnWrapperFunction,
-		[]string{
-			handler.SafeAddress.Hex(),
-		},
-	)
+	params := []string{
+		handler.SafeAddress.Hex(),
+	}
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.WrapperAddress, zeroStringValue, setCallsGasLimit, setEsdtSafeOnWrapperFunction, params)
+
 	log.Info("Set in wrapper contract the safe contract", "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) wireSafe(ctx context.Context) {
 	// setBridgedTokensWrapperAddress
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.SafeAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setBridgedTokensWrapperAddressFunction,
-		[]string{
-			handler.WrapperAddress.Hex(),
-		},
-	)
+	params := []string{
+		handler.WrapperAddress.Hex(),
+	}
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.SafeAddress, zeroStringValue, setCallsGasLimit, setBridgedTokensWrapperAddressFunction, params)
+
 	log.Info("Set in safe contract the wrapper contract", "transaction hash", hash, "status", txResult.Status)
 
 	//setBridgeProxyContractAddress
-	hash, txResult = handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.SafeAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setBridgeProxyContractAddressFunction,
-		[]string{
-			handler.ScProxyAddress.Hex(),
-		},
-	)
+	params = []string{
+		handler.ScProxyAddress.Hex(),
+	}
+	hash, txResult = handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.SafeAddress, zeroStringValue, setCallsGasLimit, setBridgeProxyContractAddressFunction, params)
+
 	log.Info("Set in safe contract the SC proxy contract", "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) changeOwners(ctx context.Context) {
 	// ChangeOwnerAddress for safe
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.SafeAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		changeOwnerAddressFunction,
-		[]string{
-			handler.MultisigAddress.Hex(),
-		},
-	)
+	params := []string{
+		handler.MultisigAddress.Hex(),
+	}
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.SafeAddress, zeroStringValue, setCallsGasLimit, changeOwnerAddressFunction, params)
+
 	log.Info("ChangeOwnerAddress for safe contract", "transaction hash", hash, "status", txResult.Status)
 
 	// ChangeOwnerAddress for multi-transfer
-	hash, txResult = handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.MultiTransferAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		changeOwnerAddressFunction,
-		[]string{
-			handler.MultisigAddress.Hex(),
-		},
-	)
+	params = []string{
+		handler.MultisigAddress.Hex(),
+	}
+	hash, txResult = handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultiTransferAddress, zeroStringValue, setCallsGasLimit, changeOwnerAddressFunction, params)
+
 	log.Info("ChangeOwnerAddress for multi-transfer contract", "transaction hash", hash, "status", txResult.Status)
 
 	// ChangeOwnerAddress for bridge proxy
-	hash, txResult = handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.ScProxyAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		changeOwnerAddressFunction,
-		[]string{
-			handler.MultisigAddress.Hex(),
-		},
-	)
+	params = []string{
+		handler.MultisigAddress.Hex(),
+	}
+	hash, txResult = handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.ScProxyAddress, zeroStringValue, setCallsGasLimit, changeOwnerAddressFunction, params)
+
 	log.Info("ChangeOwnerAddress for SC proxy contract", "transaction hash", hash, "status", txResult.Status)
 }
 
@@ -423,15 +361,8 @@ func (handler *MultiversxHandler) finishSettings(ctx context.Context) {
 	log.Info("Un-paused SC proxy contract", "transaction hash", hash, "status", txResult.Status)
 
 	// setEsdtSafeOnMultiTransfer
-	hash, txResult = handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.MultisigAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setEsdtSafeOnMultiTransferFunction,
-		[]string{},
-	)
+	hash, txResult = handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultisigAddress, zeroStringValue, setCallsGasLimit, setEsdtSafeOnMultiTransferFunction, []string{})
+
 	log.Info("Set in multisig contract the safe contract (automatically)", "transaction hash", hash, "status", txResult.Status)
 
 	// stake relayers on multisig
@@ -498,15 +429,7 @@ func (handler *MultiversxHandler) GetESDTChainSpecificTokenBalance(
 }
 
 func (handler *MultiversxHandler) callContractNoParams(ctx context.Context, contract *MvxAddress, endpoint string) (string, *data.TransactionOnNetwork) {
-	return handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		contract,
-		zeroStringValue,
-		setCallsGasLimit,
-		endpoint,
-		[]string{},
-	)
+	return handler.sendAndCheckTx(ctx, handler.OwnerKeys, contract, zeroStringValue, setCallsGasLimit, endpoint, []string{})
 }
 
 // UnPauseContractsAfterTokenChanges can unpause contracts after token changes
@@ -541,7 +464,7 @@ func (handler *MultiversxHandler) PauseContractsForTokenChanges(ctx context.Cont
 
 func (handler *MultiversxHandler) stakeAddressesOnContract(ctx context.Context, contract *MvxAddress, allKeys []KeysHolder) {
 	for _, keys := range allKeys {
-		hash, txResult := handler.ChainSimulator.SendTx(
+		hash, txResult, _ := handler.ChainSimulator.SendTx(
 			ctx,
 			keys.MvxSk,
 			contract,
@@ -568,10 +491,12 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
 	handler.transferChainSpecificTokenToSCs(ctx, params)
 	handler.addUniversalTokenToWrapper(ctx, params)
-	handler.whitelistTokenOnWrapper(ctx, params)
+	if !params.PreventWhitelist {
+		handler.whitelistTokenOnMultisig(ctx, params)
+		handler.whitelistTokenOnWrapper(ctx, params)
+	}
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
 	handler.addMappingInMultisig(ctx, params)
-	handler.whitelistTokenOnMultisig(ctx, params)
 	handler.setInitialSupply(ctx, params)
 	handler.setPairDecimalsOnAggregator(ctx, params)
 	handler.setMaxBridgeAmountOnSafe(ctx, params)
@@ -586,7 +511,9 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
 	handler.addMappingInMultisig(ctx, params)
-	handler.whitelistTokenOnMultisig(ctx, params)
+	if !params.PreventWhitelist {
+		handler.whitelistTokenOnMultisig(ctx, params)
+	}
 	handler.setInitialSupply(ctx, params)
 	handler.setPairDecimalsOnAggregator(ctx, params)
 	handler.setMaxBridgeAmountOnSafe(ctx, params)
@@ -601,20 +528,15 @@ func (handler *MultiversxHandler) issueUniversalToken(ctx context.Context, param
 	require.True(handler, ok)
 
 	// issue universal token
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.ESDTSystemContractAddress,
-		esdtIssueCost,
-		issueTokenGasLimit,
-		issueFunction,
-		[]string{
-			hex.EncodeToString([]byte(params.MvxUniversalTokenDisplayName)),
-			hex.EncodeToString([]byte(params.MvxUniversalTokenTicker)),
-			hex.EncodeToString(valueToMintInt.Bytes()),
-			fmt.Sprintf("%02x", params.NumOfDecimalsUniversal),
-			hex.EncodeToString([]byte(canAddSpecialRoles)),
-			hex.EncodeToString([]byte(trueStr))})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(params.MvxUniversalTokenDisplayName)),
+		hex.EncodeToString([]byte(params.MvxUniversalTokenTicker)),
+		hex.EncodeToString(valueToMintInt.Bytes()),
+		fmt.Sprintf("%02x", params.NumOfDecimalsUniversal),
+		hex.EncodeToString([]byte(canAddSpecialRoles)),
+		hex.EncodeToString([]byte(trueStr))}
+
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.ESDTSystemContractAddress, esdtIssueCost, issueTokenGasLimit, issueFunction, scCallParams)
 	mvxUniversalToken := handler.getTokenNameFromResult(*txResult)
 	require.Greater(handler, len(mvxUniversalToken), 0)
 	handler.TokensRegistry.RegisterUniversalToken(params.AbstractTokenIdentifier, mvxUniversalToken)
@@ -625,20 +547,15 @@ func (handler *MultiversxHandler) issueChainSpecificToken(ctx context.Context, p
 	valueToMintInt, ok := big.NewInt(0).SetString(params.ValueToMintOnMvx, 10)
 	require.True(handler, ok)
 
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.ESDTSystemContractAddress,
-		esdtIssueCost,
-		issueTokenGasLimit,
-		issueFunction,
-		[]string{
-			hex.EncodeToString([]byte(params.MvxChainSpecificTokenDisplayName)),
-			hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
-			hex.EncodeToString(valueToMintInt.Bytes()),
-			fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific),
-			hex.EncodeToString([]byte(canAddSpecialRoles)),
-			hex.EncodeToString([]byte(trueStr))})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(params.MvxChainSpecificTokenDisplayName)),
+		hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
+		hex.EncodeToString(valueToMintInt.Bytes()),
+		fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific),
+		hex.EncodeToString([]byte(canAddSpecialRoles)),
+		hex.EncodeToString([]byte(trueStr))}
+
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.ESDTSystemContractAddress, esdtIssueCost, issueTokenGasLimit, issueFunction, scCallParams)
 	mvxChainSpecificToken := handler.getTokenNameFromResult(*txResult)
 	require.Greater(handler, len(mvxChainSpecificToken), 0)
 	handler.TokensRegistry.RegisterChainSpecificToken(params.AbstractTokenIdentifier, mvxChainSpecificToken)
@@ -649,18 +566,14 @@ func (handler *MultiversxHandler) setLocalRolesForUniversalTokenOnWrapper(ctx co
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	// set local roles bridged tokens wrapper
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.ESDTSystemContractAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setSpecialRoleFunction,
-		[]string{
-			hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
-			handler.WrapperAddress.Hex(),
-			hex.EncodeToString([]byte(esdtRoleLocalMint)),
-			hex.EncodeToString([]byte(esdtRoleLocalBurn))})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
+		handler.WrapperAddress.Hex(),
+		hex.EncodeToString([]byte(esdtRoleLocalMint)),
+		hex.EncodeToString([]byte(esdtRoleLocalBurn))}
+
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.ESDTSystemContractAddress, zeroStringValue, setCallsGasLimit, setSpecialRoleFunction, scCallParams)
+
 	log.Info("set local roles bridged tokens wrapper tx executed", "hash", hash, "status", txResult.Status)
 }
 
@@ -672,30 +585,22 @@ func (handler *MultiversxHandler) transferChainSpecificTokenToSCs(ctx context.Co
 
 	// transfer to wrapper sc
 	initialMintValue := valueToMintInt.Div(valueToMintInt, big.NewInt(3))
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.WrapperAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		esdtTransferFunction,
-		[]string{
-			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-			hex.EncodeToString(initialMintValue.Bytes()),
-			hex.EncodeToString([]byte(depositLiquidityFunction))})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+		hex.EncodeToString(initialMintValue.Bytes()),
+		hex.EncodeToString([]byte(depositLiquidityFunction))}
+
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.WrapperAddress, zeroStringValue, setCallsGasLimit, esdtTransferFunction, scCallParams)
+
 	log.Info("transfer to wrapper sc tx executed", "hash", hash, "status", txResult.Status)
 
 	// transfer to safe sc
-	hash, txResult = handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.SafeAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		esdtTransferFunction,
-		[]string{
-			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-			hex.EncodeToString(initialMintValue.Bytes())})
+	scCallParams = []string{
+		hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+		hex.EncodeToString(initialMintValue.Bytes())}
+
+	hash, txResult = handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.SafeAddress, zeroStringValue, setCallsGasLimit, esdtTransferFunction, scCallParams)
+
 	log.Info("transfer to safe sc tx executed", "hash", hash, "status", txResult.Status)
 }
 
@@ -703,17 +608,13 @@ func (handler *MultiversxHandler) addUniversalTokenToWrapper(ctx context.Context
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	// add wrapped token
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.WrapperAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		addWrappedTokenFunction,
-		[]string{
-			hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
-			fmt.Sprintf("%02x", params.NumOfDecimalsUniversal),
-		})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
+		fmt.Sprintf("%02x", params.NumOfDecimalsUniversal),
+	}
+
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.WrapperAddress, zeroStringValue, setCallsGasLimit, addWrappedTokenFunction, scCallParams)
+
 	log.Info("add wrapped token tx executed", "hash", hash, "status", txResult.Status)
 }
 
@@ -721,17 +622,13 @@ func (handler *MultiversxHandler) whitelistTokenOnWrapper(ctx context.Context, p
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	// wrapper whitelist token
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.WrapperAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		whitelistTokenFunction,
-		[]string{
-			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-			fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific),
-			hex.EncodeToString([]byte(tkData.MvxUniversalToken))})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+		fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific),
+		hex.EncodeToString([]byte(tkData.MvxUniversalToken))}
+
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.WrapperAddress, zeroStringValue, setCallsGasLimit, whitelistTokenFunction, scCallParams)
+
 	log.Info("wrapper whitelist token tx executed", "hash", hash, "status", txResult.Status)
 }
 
@@ -739,18 +636,14 @@ func (handler *MultiversxHandler) setRolesForSpecificTokenOnSafe(ctx context.Con
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	// set local roles esdt safe
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.ESDTSystemContractAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setSpecialRoleFunction,
-		[]string{
-			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-			handler.SafeAddress.Hex(),
-			hex.EncodeToString([]byte(esdtRoleLocalMint)),
-			hex.EncodeToString([]byte(esdtRoleLocalBurn))})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+		handler.SafeAddress.Hex(),
+		hex.EncodeToString([]byte(esdtRoleLocalMint)),
+		hex.EncodeToString([]byte(esdtRoleLocalBurn))}
+
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.ESDTSystemContractAddress, zeroStringValue, setCallsGasLimit, setSpecialRoleFunction, scCallParams)
+
 	log.Info("set local roles esdt safe tx executed", "hash", hash, "status", txResult.Status)
 }
 
@@ -758,16 +651,12 @@ func (handler *MultiversxHandler) addMappingInMultisig(ctx context.Context, para
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	// add mapping
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.MultisigAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		addMappingFunction,
-		[]string{
-			hex.EncodeToString(tkData.EthErc20Address.Bytes()),
-			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken))})
+	scCallParams := []string{
+		hex.EncodeToString(tkData.EthErc20Address.Bytes()),
+		hex.EncodeToString([]byte(tkData.MvxChainSpecificToken))}
+
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultisigAddress, zeroStringValue, setCallsGasLimit, addMappingFunction, scCallParams)
+
 	log.Info("add mapping tx executed", "hash", hash, "status", txResult.Status)
 }
 
@@ -775,22 +664,18 @@ func (handler *MultiversxHandler) whitelistTokenOnMultisig(ctx context.Context, 
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	// whitelist token
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.MultisigAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		esdtSafeAddTokenToWhitelistFunction,
-		[]string{
-			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-			hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
-			getHexBool(params.IsMintBurnOnMvX),
-			getHexBool(params.IsNativeOnMvX),
-			hex.EncodeToString(zeroValueBigInt.Bytes()), // total_balance
-			hex.EncodeToString(zeroValueBigInt.Bytes()), // mint_balance
-			hex.EncodeToString(zeroValueBigInt.Bytes()), // burn_balance
-		})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+		hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
+		getHexBool(params.IsMintBurnOnMvX),
+		getHexBool(params.IsNativeOnMvX),
+		hex.EncodeToString(zeroValueBigInt.Bytes()), // total_balance
+		hex.EncodeToString(zeroValueBigInt.Bytes()), // mint_balance
+		hex.EncodeToString(zeroValueBigInt.Bytes()), // burn_balance
+	}
+
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultisigAddress, zeroStringValue, setCallsGasLimit, esdtSafeAddTokenToWhitelistFunction, scCallParams)
+
 	log.Info("whitelist token tx executed", "hash", hash, "status", txResult.Status)
 }
 
@@ -812,37 +697,24 @@ func (handler *MultiversxHandler) setInitialSupply(ctx context.Context, params I
 				mintAmount = initialSupply
 			}
 
-			hash, txResult := handler.ChainSimulator.ScCall(
-				ctx,
-				handler.OwnerKeys.MvxSk,
-				handler.MultisigAddress,
-				zeroStringValue,
-				setCallsGasLimit,
-				initSupplyMintBurnEsdtSafe,
-				[]string{
-					hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-					hex.EncodeToString(mintAmount.Bytes()),
-					hex.EncodeToString(burnAmount.Bytes()),
-				},
-			)
+			scCallParams := []string{
+				hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+				hex.EncodeToString(mintAmount.Bytes()),
+				hex.EncodeToString(burnAmount.Bytes()),
+			}
+			hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultisigAddress, zeroStringValue, setCallsGasLimit, initSupplyMintBurnEsdtSafe, scCallParams)
 
 			log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
 				"initial mint", mintAmount.String(), "initial burned", burnAmount.String())
 		} else {
-			hash, txResult := handler.ChainSimulator.ScCall(
-				ctx,
-				handler.OwnerKeys.MvxSk,
-				handler.MultisigAddress,
-				zeroStringValue,
-				setCallsGasLimit,
-				esdtTransferFunction,
-				[]string{
-					hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-					hex.EncodeToString(initialSupply.Bytes()),
-					hex.EncodeToString([]byte(initSupplyEsdtSafe)),
-					hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-					hex.EncodeToString(initialSupply.Bytes()),
-				})
+			scCallParams := []string{
+				hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+				hex.EncodeToString(initialSupply.Bytes()),
+				hex.EncodeToString([]byte(initSupplyEsdtSafe)),
+				hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+				hex.EncodeToString(initialSupply.Bytes()),
+			}
+			hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultisigAddress, zeroStringValue, setCallsGasLimit, esdtTransferFunction, scCallParams)
 
 			log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
 				"initial value", params.InitialSupplyValue)
@@ -852,17 +724,12 @@ func (handler *MultiversxHandler) setInitialSupply(ctx context.Context, params I
 
 func (handler *MultiversxHandler) setPairDecimalsOnAggregator(ctx context.Context, params IssueTokenParams) {
 	// setPairDecimals on aggregator
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.AggregatorAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setPairDecimalsFunction,
-		[]string{
-			hex.EncodeToString([]byte(gwei)),
-			hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
-			fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific)})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(gwei)),
+		hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
+		fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific)}
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.AggregatorAddress, zeroStringValue, setCallsGasLimit, setPairDecimalsFunction, scCallParams)
+
 	log.Info("setPairDecimals tx executed", "hash", hash, "status", txResult.Status)
 }
 
@@ -871,16 +738,11 @@ func (handler *MultiversxHandler) setMaxBridgeAmountOnSafe(ctx context.Context, 
 
 	// safe set max bridge amount for token
 	maxBridgedAmountForTokenInt, _ := big.NewInt(0).SetString(maxBridgedAmountForToken, 10)
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.MultisigAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		esdtSafeSetMaxBridgedAmountForTokenFunction,
-		[]string{
-			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-			hex.EncodeToString(maxBridgedAmountForTokenInt.Bytes())})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+		hex.EncodeToString(maxBridgedAmountForTokenInt.Bytes())}
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultisigAddress, zeroStringValue, setCallsGasLimit, esdtSafeSetMaxBridgedAmountForTokenFunction, scCallParams)
+
 	log.Info("safe set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status)
 }
 
@@ -889,16 +751,11 @@ func (handler *MultiversxHandler) setMaxBridgeAmountOnMultitransfer(ctx context.
 
 	// multi-transfer set max bridge amount for token
 	maxBridgedAmountForTokenInt, _ := big.NewInt(0).SetString(maxBridgedAmountForToken, 10)
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.MultisigAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		multiTransferEsdtSetMaxBridgedAmountForTokenFunction,
-		[]string{
-			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-			hex.EncodeToString(maxBridgedAmountForTokenInt.Bytes())})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+		hex.EncodeToString(maxBridgedAmountForTokenInt.Bytes())}
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultisigAddress, zeroStringValue, setCallsGasLimit, multiTransferEsdtSetMaxBridgedAmountForTokenFunction, scCallParams)
+
 	log.Info("multi-transfer set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status)
 }
 
@@ -924,7 +781,7 @@ func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, par
 	}
 
 	for _, hash := range txHashes {
-		txResult := handler.ChainSimulator.GetTransactionResult(ctx, hash)
+		txResult, _ := handler.ChainSimulator.GetTransactionResult(ctx, hash)
 		log.Info("submit aggregator batch tx", "hash", hash, "status", txResult.Status)
 	}
 }
@@ -956,7 +813,21 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
 func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, value *big.Int) {
-	// create transaction params
+	params := []string{
+		hex.EncodeToString([]byte(token.MvxUniversalToken)),
+		hex.EncodeToString(value.Bytes()),
+		hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
+		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
+		hex.EncodeToString(to.EthAddress.Bytes()),
+	}
+	dataField := strings.Join(params, "@")
+	hash, txResult := handler.sendAndCheckTx(ctx, from, handler.WrapperAddress, zeroStringValue, createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)), esdtTransferFunction, params)
+
+	log.Info("MultiversX->Ethereum transaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+}
+
+// SendWrongDepositTransactionFromMultiversx will send a wrong deposit transaction from MultiversX
+func (handler *MultiversxHandler) SendWrongDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, value *big.Int) {
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
 		hex.EncodeToString(value.Bytes()),
@@ -966,7 +837,7 @@ func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx conte
 	}
 	dataField := strings.Join(params, "@")
 
-	hash, txResult := handler.ChainSimulator.ScCall(
+	_, txResult, txStatus := handler.ChainSimulator.ScCall(
 		ctx,
 		from.MvxSk,
 		handler.WrapperAddress,
@@ -975,7 +846,11 @@ func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx conte
 		esdtTransferFunction,
 		params,
 	)
-	log.Info("MultiversX->Ethereum transaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+
+	_, err := json.MarshalIndent(txResult, "", "  ")
+	fmt.Println("EROARE", err)
+	require.Nil(handler, err)
+	require.Equal(handler, transaction.TxStatusFail, txStatus)
 }
 
 // TestWithdrawFees will try to withdraw the fees for the provided token from the safe contract to the owner
@@ -1011,17 +886,10 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 	initialBalance, ok := big.NewInt(0).SetString(initialBalanceStr, 10)
 	require.True(handler, ok)
 
-	handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.MultisigAddress,
-		zeroStringValue,
-		generalSCCallGasLimit,
-		withdrawFunction,
-		[]string{
-			hex.EncodeToString([]byte(token)),
-		},
-	)
+	params := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultisigAddress, zeroStringValue, generalSCCallGasLimit, withdrawFunction, params)
 
 	handler.ChainSimulator.GenerateBlocks(ctx, 5) // ensure block finality
 	finalBalanceStr := handler.ChainSimulator.GetESDTBalance(ctx, handler.OwnerKeys.MvxAddress, token)
@@ -1038,16 +906,10 @@ func (handler *MultiversxHandler) TransferToken(ctx context.Context, source Keys
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	// transfer to receiver, so it will have funds to carry on with the deposits
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		source.MvxSk,
-		receiver.MvxAddress,
-		zeroStringValue,
-		createDepositGasLimit,
-		esdtTransferFunction,
-		[]string{
-			hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
-			hex.EncodeToString(amount.Bytes())})
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
+		hex.EncodeToString(amount.Bytes())}
+	hash, txResult := handler.sendAndCheckTx(ctx, source, receiver.MvxAddress, zeroStringValue, createDepositGasLimit, esdtTransferFunction, scCallParams)
 
 	log.Info("transfer to tx executed",
 		"source address", source.MvxAddress.Bech32(),
@@ -1088,6 +950,41 @@ func (handler *MultiversxHandler) GetBurnedAmountForToken(ctx context.Context, t
 	require.Greater(handler, len(responseData), 0)
 	value := big.NewInt(0).SetBytes(responseData[0])
 	return value
+}
+
+// MoveRefundBatchToSafe will move the refund batch from the multisig to the safe
+func (handler *MultiversxHandler) MoveRefundBatchToSafe(ctx context.Context) {
+	hash, txResult := handler.sendAndCheckTx(ctx, handler.OwnerKeys, handler.MultisigAddress, zeroStringValue, setCallsGasLimit, moveRefundBatchToSafeFromChildContractFunction, []string{})
+	log.Info("Moved refund batch from Multisig to EsdtSafe", "transaction hash", hash, "status", txResult.Status)
+}
+
+// HasRefundBatch will check if there is a refund batch in the multisig
+func (handler *MultiversxHandler) HasRefundBatch(ctx context.Context) bool {
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.MultisigAddress, getCurrentRefundBatchFunction, []string{})
+	if len(responseData) != 0 {
+		return true
+	}
+	return false
+}
+
+func (handler *MultiversxHandler) sendAndCheckTx(ctx context.Context, sender KeysHolder, receiver *MvxAddress, value string, gasLimit uint64, function string, params []string) (string, *data.TransactionOnNetwork) {
+	hash, txResult, txStatus := handler.ChainSimulator.ScCall(
+		ctx,
+		sender.MvxSk,
+		receiver,
+		value,
+		gasLimit,
+		function,
+		params,
+	)
+
+	jsonData, err := json.MarshalIndent(txResult, "", "  ")
+	require.Nil(handler, err)
+	require.Equal(handler, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
+
+	log.Info(fmt.Sprintf("Transaction hash %s, status %s", hash, txResult.Status))
+
+	return hash, txResult
 }
 
 func getHexBool(input bool) string {
