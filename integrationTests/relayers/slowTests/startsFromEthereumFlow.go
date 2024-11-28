@@ -25,20 +25,20 @@ func (flow *startsFromEthereumFlow) process() (finished bool) {
 		return true
 	}
 
-	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.setup.AliceKeys, flow.setup.BobKeys, flow.tokens...)
-	if !flow.ethToMvxDone && isTransferDoneFromEthereum {
-		flow.ethToMvxDone = true
-		log.Info(fmt.Sprintf(framework.LogStepMarker, "Ethereum->MultiversX transfer finished, now sending back to Ethereum..."))
-
-		flow.setup.SendFromMultiversxToEthereum(flow.setup.BobKeys, flow.setup.CharlieKeys, flow.tokens...)
-	}
 	if !flow.ethToMvxDone {
-		// return here, no reason to check downwards
+		transferDoneForFirstHalf := flow.setup.AreAllTransfersCompleted(framework.FirstHalfBridge, flow.tokens...)
+		if transferDoneForFirstHalf {
+			flow.ethToMvxDone = true
+			log.Info(fmt.Sprintf(framework.LogStepMarker, "Ethereum->MultiversX transfer finished, now sending back to Ethereum..."))
+
+			flow.setup.SendFromMultiversxToEthereum(flow.setup.BobKeys, flow.setup.CharlieKeys, flow.tokens...)
+		}
+
 		return false
 	}
 
-	isTransferDoneFromMultiversX := flow.setup.IsTransferDoneFromMultiversX(flow.setup.BobKeys, flow.setup.CharlieKeys, flow.tokens...)
-	if !flow.mvxToEthDone && isTransferDoneFromMultiversX {
+	transferDoneForSecondHalf := flow.setup.AreAllTransfersCompleted(framework.SecondHalfBridge, flow.tokens...)
+	if !flow.mvxToEthDone && transferDoneForSecondHalf {
 		flow.mvxToEthDone = true
 		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX<->Ethereum from Ethereum transfers done"))
 		return true

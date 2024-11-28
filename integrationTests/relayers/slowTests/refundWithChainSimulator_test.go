@@ -6,7 +6,6 @@
 package slowTests
 
 import (
-	"math/big"
 	"strings"
 	"testing"
 
@@ -21,11 +20,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
@@ -35,6 +35,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
 		mexToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEXRefundBalances(&mexToken)
 
 		testRelayersWithChainSimulatorAndTokensAndRefund(
 			t,
@@ -50,11 +51,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
@@ -79,11 +81,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
@@ -108,12 +111,13 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken.TestOperations[2].MvxSCCallData = nil
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
 		usdcToken.TestOperations[2].MvxForceSCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = nil
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		memeToken.TestOperations[2].MvxForceSCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = nil
@@ -140,11 +144,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
@@ -169,11 +174,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
@@ -198,11 +204,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
@@ -227,11 +234,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
@@ -256,11 +264,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
@@ -288,11 +297,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
@@ -322,11 +332,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150) // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		ApplyUSDCRefundBalances(&usdcToken)
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
