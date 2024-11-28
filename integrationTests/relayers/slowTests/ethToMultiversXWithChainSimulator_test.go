@@ -1,4 +1,4 @@
-//go:build !slow
+//go:build slow
 
 // To run these slow tests, simply add the slow tag on the go test command. Also, provide a chain simulator instance on the 8085 port
 // example: go test -tags slow
@@ -313,9 +313,9 @@ func createBadToken() framework.TestTokenParams {
 		},
 		ESDTSafeExtraBalance: big.NewInt(0),
 		ExtraBalances: map[string]framework.ExtraBalanceHolder{
-			"Alice":   {big.NewInt(-5000 - 7000 - 1000), big.NewInt(0), big.NewInt(0)},
-			"Bob":     {big.NewInt(-2500 - 300), big.NewInt(5000 + 7000), big.NewInt(0)},
-			"Charlie": {big.NewInt(0), big.NewInt(2500 - 50 + 300 - 50), big.NewInt(0)},
+			"Alice":   {SentAmount: big.NewInt(-5000 - 7000 - 1000), ReceivedAmount: big.NewInt(0), RefundAmount: big.NewInt(0)},
+			"Bob":     {SentAmount: big.NewInt(-2500 - 300), ReceivedAmount: big.NewInt(5000 + 7000), RefundAmount: big.NewInt(0)},
+			"Charlie": {SentAmount: big.NewInt(0), ReceivedAmount: big.NewInt(2500 - 50 + 300 - 50), RefundAmount: big.NewInt(0)},
 		},
 	}
 }
