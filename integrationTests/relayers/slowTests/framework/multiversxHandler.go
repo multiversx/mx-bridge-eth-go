@@ -46,7 +46,6 @@ const (
 	setWrappingContractAddressFunction                   = "setWrappingContractAddress"
 	changeOwnerAddressFunction                           = "ChangeOwnerAddress"
 	setEsdtSafeOnMultiTransferFunction                   = "setEsdtSafeOnMultiTransfer"
-	setEsdtSafeOnWrapperFunction                         = "setEsdtSafeContractAddress"
 	setEsdtSafeAddressFunction                           = "setEsdtSafeAddress"
 	stakeFunction                                        = "stake"
 	unpauseFunction                                      = "unpause"
@@ -67,6 +66,7 @@ const (
 	multiTransferEsdtSetMaxBridgedAmountForTokenFunction = "multiTransferEsdtSetMaxBridgedAmountForToken"
 	submitBatchFunction                                  = "submitBatch"
 	unwrapTokenCreateTransactionFunction                 = "unwrapTokenCreateTransaction"
+	createTransactionFunction                            = "createTransaction"
 	setBridgedTokensWrapperAddressFunction               = "setBridgedTokensWrapperAddress"
 	setMultiTransferAddressFunction                      = "setMultiTransferAddress"
 	withdrawRefundFeesForEthereumFunction                = "withdrawRefundFeesForEthereum"
@@ -75,6 +75,9 @@ const (
 	getTransactionFeesFunction                           = "getTransactionFees"
 	initSupplyMintBurnEsdtSafe                           = "initSupplyMintBurnEsdtSafe"
 	initSupplyEsdtSafe                                   = "initSupplyEsdtSafe"
+	getMintBalances                                      = "getMintBalances"
+	getBurnBalances                                      = "getBurnBalances"
+	getTotalBalances                                     = "getTotalBalances"
 )
 
 var (
@@ -132,7 +135,6 @@ func (handler *MultiversxHandler) DeployAndSetContracts(ctx context.Context) {
 
 	handler.wireMultiTransfer(ctx)
 	handler.wireSCProxy(ctx)
-	handler.wireWrapper(ctx)
 	handler.wireSafe(ctx)
 
 	handler.changeOwners(ctx)
@@ -322,22 +324,6 @@ func (handler *MultiversxHandler) wireSCProxy(ctx context.Context) {
 		},
 	)
 	log.Info("Set in SC proxy contract the safe contract", "transaction hash", hash, "status", txResult.Status)
-}
-
-func (handler *MultiversxHandler) wireWrapper(ctx context.Context) {
-	// setEsdtSafeOnWrapper
-	hash, txResult := handler.ChainSimulator.ScCall(
-		ctx,
-		handler.OwnerKeys.MvxSk,
-		handler.WrapperAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		setEsdtSafeOnWrapperFunction,
-		[]string{
-			handler.SafeAddress.Hex(),
-		},
-	)
-	log.Info("Set in wrapper contract the safe contract", "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) wireSafe(ctx context.Context) {
@@ -800,6 +786,15 @@ func (handler *MultiversxHandler) setInitialSupply(ctx context.Context, params I
 		require.True(handler, okConvert)
 
 		if params.IsMintBurnOnMvX {
+			mintAmount := big.NewInt(0)
+			burnAmount := big.NewInt(0)
+
+			if params.IsNativeOnMvX {
+				burnAmount = initialSupply
+			} else {
+				mintAmount = initialSupply
+			}
+
 			hash, txResult := handler.ChainSimulator.ScCall(
 				ctx,
 				handler.OwnerKeys.MvxSk,
@@ -809,12 +804,13 @@ func (handler *MultiversxHandler) setInitialSupply(ctx context.Context, params I
 				initSupplyMintBurnEsdtSafe,
 				[]string{
 					hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-					hex.EncodeToString(initialSupply.Bytes()),
-					hex.EncodeToString([]byte{0}),
+					hex.EncodeToString(mintAmount.Bytes()),
+					hex.EncodeToString(burnAmount.Bytes()),
 				},
 			)
+
 			log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
-				"initial mint", params.InitialSupplyValue, "initial burned", "0")
+				"initial mint", mintAmount.String(), "initial burned", burnAmount.String())
 		} else {
 			hash, txResult := handler.ChainSimulator.ScCall(
 				ctx,
@@ -942,13 +938,51 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 }
 
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
-func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, params TestTokenParams, value *big.Int) {
+	if params.HasChainSpecificToken {
+		handler.unwrapCreateTransaction(ctx, token, from, to, value)
+		return
+	}
+
+	handler.createTransactionWithoutUnwrap(ctx, token, from, to, value)
+}
+
+func (handler *MultiversxHandler) createTransactionWithoutUnwrap(
+	ctx context.Context,
+	token *TokenData,
+	from KeysHolder,
+	to KeysHolder,
+	value *big.Int,
+) {
+	// create transaction params
+	params := []string{
+		hex.EncodeToString([]byte(token.MvxUniversalToken)),
+		hex.EncodeToString(value.Bytes()),
+		hex.EncodeToString([]byte(createTransactionFunction)),
+		hex.EncodeToString(to.EthAddress.Bytes()),
+	}
+	dataField := strings.Join(params, "@")
+
+	hash, txResult := handler.ChainSimulator.ScCall(
+		ctx,
+		from.MvxSk,
+		handler.SafeAddress,
+		zeroStringValue,
+		createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)),
+		esdtTransferFunction,
+		params,
+	)
+	log.Info("MultiversX->Ethereum createTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, token *TokenData, from KeysHolder, to KeysHolder, value *big.Int) {
 	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
+		hex.EncodeToString(handler.SafeAddress.Bytes()),
 		hex.EncodeToString(to.EthAddress.Bytes()),
 	}
 	dataField := strings.Join(params, "@")
@@ -962,7 +996,7 @@ func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx conte
 		esdtTransferFunction,
 		params,
 	)
-	log.Info("MultiversX->Ethereum transaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+	log.Info("MultiversX->Ethereum unwrapCreateTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
 }
 
 // TestWithdrawFees will try to withdraw the fees for the provided token from the safe contract to the owner
@@ -986,6 +1020,7 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 		hex.EncodeToString([]byte(token)),
 	}
 	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getFunction, queryParams)
+	require.Greater(handler, len(responseData), 0)
 	value := big.NewInt(0).SetBytes(responseData[0])
 	require.Equal(handler, expectedDelta.String(), value.String())
 	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
@@ -1041,6 +1076,39 @@ func (handler *MultiversxHandler) TransferToken(ctx context.Context, source Keys
 		"token", tkData.MvxUniversalToken,
 		"amount", amount.String(),
 		"hash", hash, "status", txResult.Status)
+}
+
+// GetTotalBalancesForToken will return the total locked balance for the provided token
+func (handler *MultiversxHandler) GetTotalBalancesForToken(ctx context.Context, token string) *big.Int {
+	queryParams := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getTotalBalances, queryParams)
+	require.Greater(handler, len(responseData), 0)
+	value := big.NewInt(0).SetBytes(responseData[0])
+	return value
+}
+
+// GetMintedAmountForToken will return mint balance for token
+func (handler *MultiversxHandler) GetMintedAmountForToken(ctx context.Context, token string) *big.Int {
+	queryParams := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getMintBalances, queryParams)
+	require.Greater(handler, len(responseData), 0)
+	value := big.NewInt(0).SetBytes(responseData[0])
+	return value
+}
+
+// GetBurnedAmountForToken will return burn balance of token
+func (handler *MultiversxHandler) GetBurnedAmountForToken(ctx context.Context, token string) *big.Int {
+	queryParams := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getBurnBalances, queryParams)
+	require.Greater(handler, len(responseData), 0)
+	value := big.NewInt(0).SetBytes(responseData[0])
+	return value
 }
 
 func getHexBool(input bool) string {

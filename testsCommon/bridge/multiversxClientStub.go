@@ -38,6 +38,7 @@ type MultiversXClientStub struct {
 	MintBalancesCalled                             func(ctx context.Context, token []byte) (*big.Int, error)
 	BurnBalancesCalled                             func(ctx context.Context, token []byte) (*big.Int, error)
 	CheckRequiredBalanceCalled                     func(ctx context.Context, token []byte, value *big.Int) error
+	GetLastMvxBatchIDCalled                        func(ctx context.Context) (uint64, error)
 	CloseCalled                                    func() error
 }
 
@@ -258,6 +259,15 @@ func (stub *MultiversXClientStub) CheckRequiredBalance(ctx context.Context, toke
 		return stub.CheckRequiredBalanceCalled(ctx, token, value)
 	}
 	return nil
+}
+
+// GetLastMvxBatchID -
+func (stub *MultiversXClientStub) GetLastMvxBatchID(ctx context.Context) (uint64, error) {
+	if stub.GetLastMvxBatchIDCalled != nil {
+		return stub.GetLastMvxBatchIDCalled(ctx)
+	}
+
+	return 0, nil
 }
 
 // Close -
