@@ -33,6 +33,7 @@ const (
 
 type currentBridge string
 
+// CurrentActorState represents the state of an actor in a transaction
 type CurrentActorState struct {
 	isSender           bool
 	HasToReceiveRefund bool

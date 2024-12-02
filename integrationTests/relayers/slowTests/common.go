@@ -275,23 +275,23 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 	}
 }
 
-// GenerateTestDOGEToken will generate a test DOGE token
-func GenerateTestDOGEToken() framework.TestTokenParams {
+// GenerateUnlistedTokenFromEth will generate an unlisted token on Eth
+func GenerateUnlistedTokenFromEth() framework.TestTokenParams {
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
-			AbstractTokenIdentifier:          "DOGE",
+			AbstractTokenIdentifier:          "ULTkE",
 			NumOfDecimalsUniversal:           6,
 			NumOfDecimalsChainSpecific:       6,
-			MvxUniversalTokenTicker:          "DOGE",
-			MvxChainSpecificTokenTicker:      "DOGE",
-			MvxUniversalTokenDisplayName:     "TestDOGE",
-			MvxChainSpecificTokenDisplayName: "TestDOGE",
+			MvxUniversalTokenTicker:          "ULTkE",
+			MvxChainSpecificTokenTicker:      "ULTkE",
+			MvxUniversalTokenDisplayName:     "TestULTkE",
+			MvxChainSpecificTokenDisplayName: "TestULTkE",
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
 			HasChainSpecificToken:            false,
-			EthTokenName:                     "EthDOGE",
-			EthTokenSymbol:                   "DOGE",
+			EthTokenName:                     "EthULTkE",
+			EthTokenSymbol:                   "ULTkE",
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  true,
 			IsNativeOnEth:                    true,
@@ -310,27 +310,27 @@ func GenerateTestDOGEToken() framework.TestTokenParams {
 				IsFaultyDeposit:      true,
 			},
 		},
-		ESDTSafeExtraBalance: big.NewInt(100), // extra is just for the fees for the 2 transfers mvx->eth
+		ESDTSafeExtraBalance: big.NewInt(0),
 	}
 }
 
-// GenerateTestBOBERToken will generate a test BOBER token
-func GenerateTestBOBERToken() framework.TestTokenParams {
+// GenerateUnlistedTokenFromMvx will generate an unlisted token on Mvx
+func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
-			AbstractTokenIdentifier:          "BOBER",
+			AbstractTokenIdentifier:          "ULTKM",
 			NumOfDecimalsUniversal:           2,
 			NumOfDecimalsChainSpecific:       2,
-			MvxUniversalTokenTicker:          "BOBER",
-			MvxChainSpecificTokenTicker:      "BOBER",
-			MvxUniversalTokenDisplayName:     "TestBOBER",
-			MvxChainSpecificTokenDisplayName: "TestBOBER",
+			MvxUniversalTokenTicker:          "ULTKM",
+			MvxChainSpecificTokenTicker:      "ULTKM",
+			MvxUniversalTokenDisplayName:     "TestULTKM",
+			MvxChainSpecificTokenDisplayName: "TestULTKM",
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    true,
 			HasChainSpecificToken:            false,
-			EthTokenName:                     "EthBOBER",
-			EthTokenSymbol:                   "BOBER",
+			EthTokenName:                     "EthULTKM",
+			EthTokenSymbol:                   "ULTKM",
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  true,
 			IsNativeOnEth:                    false,
@@ -341,13 +341,8 @@ func GenerateTestBOBERToken() framework.TestTokenParams {
 				ValueToTransferToMvx: nil,
 				ValueToSendFromMvX:   big.NewInt(4010),
 			},
-			{
-				ValueToTransferToMvx: nil,
-				ValueToSendFromMvX:   big.NewInt(2010),
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
-			},
 		},
-		ESDTSafeExtraBalance: big.NewInt(150), // just the fees should be collected in ESDT safe
+		ESDTSafeExtraBalance: big.NewInt(0),
 	}
 }
 

@@ -52,8 +52,8 @@ func TestRelayersShouldNotExecuteTransfersWithNonWhitelistedTokens(t *testing.T)
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		GenerateTestDOGEToken(),
-		GenerateTestBOBERToken(),
+		GenerateUnlistedTokenFromEth(),
+		GenerateUnlistedTokenFromMvx(),
 	)
 }
 
