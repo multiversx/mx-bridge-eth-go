@@ -3,6 +3,7 @@
 package slowTests
 
 import (
+	"bytes"
 	"math/big"
 
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -13,7 +14,8 @@ import (
 )
 
 var (
-	log = logger.GetOrCreate("integrationTests/relayers/slowTests")
+	log            = logger.GetOrCreate("integrationTests/relayers/slowTests")
+	mvxZeroAddress = bytes.Repeat([]byte{0x00}, 32)
 )
 
 // GenerateTestUSDCToken will generate a test USDC token
@@ -51,6 +53,16 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 				ValueToTransferToMvx: big.NewInt(1000),
 				ValueToSendFromMvX:   nil,
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(20),
+				ValueToSendFromMvX:   nil,
+				IsFaultyDeposit:      true,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(900),
+				ValueToSendFromMvX:   nil,
+				InvalidReceiver:      mvxZeroAddress,
 			},
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
@@ -155,6 +167,12 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   big.NewInt(2000),
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(38),
+				IsFaultyDeposit:      true,
+			},
+			// TODO: add a test where the receiver is the zero address
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
@@ -256,6 +274,16 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   nil,
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
+			{
+				ValueToTransferToMvx: big.NewInt(24),
+				ValueToSendFromMvX:   nil,
+				IsFaultyDeposit:      true,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(700),
+				ValueToSendFromMvX:   nil,
+				InvalidReceiver:      mvxZeroAddress,
+			},
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
@@ -311,7 +339,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 	}
 }
 
-// GenerateTestMEXToken will generate a test EUROC token
+// GenerateTestMEXToken will generate a test MEX token
 func GenerateTestMEXToken() framework.TestTokenParams {
 	//MEX is ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = true
 	return framework.TestTokenParams{
@@ -347,6 +375,12 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   big.NewInt(2010),
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
+			{
+				ValueToTransferToMvx: big.NewInt(10),
+				ValueToSendFromMvX:   nil,
+				IsFaultyDeposit:      true,
+			},
+			// TODO: add a test where the receiver is the zero address
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
@@ -410,6 +444,82 @@ func ApplyMEXRefundBalances(token *framework.TestTokenParams) {
 	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4010 - 50 - 2410 + 6010 - 50 - 210 + 2010 - 50 - 1010 + 960)
 	// no funds remain in the test caller SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
+}
+
+// GenerateUnlistedTokenFromEth will generate an unlisted token on Eth
+func GenerateUnlistedTokenFromEth() framework.TestTokenParams {
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "ULTKE",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "ULTKE",
+			MvxChainSpecificTokenTicker:      "ULTKE",
+			MvxUniversalTokenDisplayName:     "TestULTKE",
+			MvxChainSpecificTokenDisplayName: "TestULTKE",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            false,
+			EthTokenName:                     "EthULTKE",
+			EthTokenSymbol:                   "ULTKE",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  true,
+			IsNativeOnEth:                    true,
+			PreventWhitelist:                 true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(5010),
+				ValueToSendFromMvX:   nil,
+				IsFaultyDeposit:      true,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(1010),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				IsFaultyDeposit:      true,
+			},
+		},
+		ESDTSafeExtraBalance: big.NewInt(0),
+	}
+}
+
+// GenerateUnlistedTokenFromMvx will generate an unlisted token on Mvx
+func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "ULTKM",
+			NumOfDecimalsUniversal:           2,
+			NumOfDecimalsChainSpecific:       2,
+			MvxUniversalTokenTicker:          "ULTKM",
+			MvxChainSpecificTokenTicker:      "ULTKM",
+			MvxUniversalTokenDisplayName:     "TestULTKM",
+			MvxChainSpecificTokenDisplayName: "TestULTKM",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    true,
+			HasChainSpecificToken:            false,
+			EthTokenName:                     "EthULTKM",
+			EthTokenSymbol:                   "ULTKM",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  true,
+			IsNativeOnEth:                    false,
+			PreventWhitelist:                 true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(4010),
+			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(2010),
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
+			},
+		},
+		ESDTSafeExtraBalance: big.NewInt(0),
+	}
 }
 
 func createScCallData(function string, gasLimit uint64, args ...string) []byte {

@@ -46,3 +46,18 @@ func (flow *startsFromEthereumFlow) process() (finished bool) {
 
 	return false
 }
+
+func (flow *startsFromEthereumFlow) areTokensFullyRefunded() bool {
+	if len(flow.tokens) == 0 {
+		return true
+	}
+	if !flow.ethToMvxDone {
+		return false // regular flow is not completed
+	}
+
+	if flow.setup.MultiversxHandler.HasRefundBatch(flow.setup.Ctx) {
+		flow.setup.MultiversxHandler.MoveRefundBatchToSafe(flow.setup.Ctx)
+	}
+
+	return flow.setup.IsTransferDoneFromEthereumWithRefund(flow.setup.AliceKeys, flow.tokens...)
+}
