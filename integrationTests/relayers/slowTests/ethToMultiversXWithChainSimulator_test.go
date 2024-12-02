@@ -48,6 +48,15 @@ func TestRelayersShouldExecuteTransfersWithMintBurnTokens(t *testing.T) {
 	)
 }
 
+func TestRelayersShouldNotExecuteTransfersWithNonWhitelistedTokens(t *testing.T) {
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		GenerateUnlistedTokenFromEth(),
+		GenerateUnlistedTokenFromMvx(),
+	)
+}
+
 func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 	dummyAddress := strings.Repeat("2", 32)
 	dummyUint64 := string([]byte{37})
@@ -182,7 +191,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
-		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
+		if startsFromEthFlow.process() && startsFromMvXFlow.process() && startsFromEthFlow.areTokensFullyRefunded() {
 			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromMvXFlow.tokens...)
 			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromEthFlow.tokens...)
 
@@ -304,9 +313,9 @@ func createBadToken() framework.TestTokenParams {
 		},
 		ESDTSafeExtraBalance: big.NewInt(0),
 		ExtraBalances: map[string]framework.ExtraBalanceHolder{
-			"Alice":   {big.NewInt(-5000 - 7000 - 1000), big.NewInt(0)},
-			"Bob":     {big.NewInt(-2500 - 300), big.NewInt(5000 + 7000)},
-			"Charlie": {big.NewInt(0), big.NewInt(2500 - 50 + 300 - 50)},
+			"Alice":   {SentAmount: big.NewInt(-5000 - 7000 - 1000), ReceivedAmount: big.NewInt(0), RefundAmount: big.NewInt(0)},
+			"Bob":     {SentAmount: big.NewInt(-2500 - 300), ReceivedAmount: big.NewInt(5000 + 7000), RefundAmount: big.NewInt(0)},
+			"Charlie": {SentAmount: big.NewInt(0), ReceivedAmount: big.NewInt(2500 - 50 + 300 - 50), RefundAmount: big.NewInt(0)},
 		},
 	}
 }

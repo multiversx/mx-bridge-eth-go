@@ -146,13 +146,17 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 	}
 
 	hash := instance.signAndSend(ctx, ownerSK, ftx, 1)
-	txResult := instance.GetTransactionResult(ctx, hash)
+	txResult, txStatus := instance.GetTransactionResult(ctx, hash)
+
+	jsonData, err := json.MarshalIndent(txResult, "", "  ")
+	require.Nil(instance, err)
+	require.Equal(instance, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
 
 	return NewMvxAddressFromBech32(instance.TB, txResult.Logs.Events[0].Address), hash, txResult
 }
 
 // GetTransactionResult tries to get a transaction result. It may wait a few blocks
-func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context, hash string) *data.TransactionOnNetwork {
+func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus) {
 	instance.GenerateBlocksUntilTxProcessed(ctx, hash)
 
 	txResult, err := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
@@ -161,11 +165,7 @@ func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context,
 	txStatus, err := instance.proxyInstance.ProcessTransactionStatus(ctx, hash)
 	require.Nil(instance, err)
 
-	jsonData, err := json.MarshalIndent(txResult.Data.Transaction, "", "  ")
-	require.Nil(instance, err)
-	require.Equal(instance, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
-
-	return &txResult.Data.Transaction
+	return &txResult.Data.Transaction, txStatus
 }
 
 // GenerateBlocks calls the chain simulator generate block endpoint
@@ -200,7 +200,7 @@ func (instance *chainSimulatorWrapper) GenerateBlocksUntilTxProcessed(ctx contex
 }
 
 // ScCall will make the provided sc call
-func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork) {
+func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork, transaction.TxStatus) {
 	return instance.SendTx(ctx, senderSK, contract, value, gasLimit, createTxData(function, parameters))
 }
 
@@ -218,12 +218,12 @@ func createTxData(function string, parameters []string) []byte {
 }
 
 // SendTx will build and send a transaction
-func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork) {
+func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork, transaction.TxStatus) {
 	hash := instance.SendTxWithoutGenerateBlocks(ctx, senderSK, receiver, value, gasLimit, dataField)
 	instance.GenerateBlocks(ctx, 1)
-	txResult := instance.GetTransactionResult(ctx, hash)
+	txResult, txStatus := instance.GetTransactionResult(ctx, hash)
 
-	return hash, txResult
+	return hash, txResult, txStatus
 }
 
 // SendTxWithoutGenerateBlocks will build and send a transaction and won't call the generate blocks command

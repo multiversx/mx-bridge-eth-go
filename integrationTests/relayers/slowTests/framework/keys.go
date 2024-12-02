@@ -58,6 +58,7 @@ const (
 	Alice          = "Alice"
 	Bob            = "Bob"
 	Charlie        = "Charlie"
+	AddressZero    = "AddressZero"
 )
 
 // NewKeysStore will create a KeysStore instance and generate all keys
