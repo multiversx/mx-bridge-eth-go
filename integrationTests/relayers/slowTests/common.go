@@ -279,19 +279,19 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 func GenerateUnlistedTokenFromEth() framework.TestTokenParams {
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
-			AbstractTokenIdentifier:          "ULTkE",
+			AbstractTokenIdentifier:          "ULTKE",
 			NumOfDecimalsUniversal:           6,
 			NumOfDecimalsChainSpecific:       6,
-			MvxUniversalTokenTicker:          "ULTkE",
-			MvxChainSpecificTokenTicker:      "ULTkE",
-			MvxUniversalTokenDisplayName:     "TestULTkE",
-			MvxChainSpecificTokenDisplayName: "TestULTkE",
+			MvxUniversalTokenTicker:          "ULTKE",
+			MvxChainSpecificTokenTicker:      "ULTKE",
+			MvxUniversalTokenDisplayName:     "TestULTKE",
+			MvxChainSpecificTokenDisplayName: "TestULTKE",
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
 			HasChainSpecificToken:            false,
-			EthTokenName:                     "EthULTkE",
-			EthTokenSymbol:                   "ULTkE",
+			EthTokenName:                     "EthULTKE",
+			EthTokenSymbol:                   "ULTKE",
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  true,
 			IsNativeOnEth:                    true,
@@ -340,6 +340,11 @@ func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: nil,
 				ValueToSendFromMvX:   big.NewInt(4010),
+			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(2010),
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
 		ESDTSafeExtraBalance: big.NewInt(0),
