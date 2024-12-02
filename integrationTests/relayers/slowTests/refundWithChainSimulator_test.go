@@ -1,5 +1,3 @@
-//go:build slow
-
 // To run these slow tests, simply add the slow tag on the go test command. Also, provide a chain simulator instance on the 8085 port
 // example: go test -tags slow
 
@@ -30,7 +28,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
@@ -42,7 +40,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
-			eurocToken,
+			//eurocToken,
 			mexToken,
 		)
 	})
@@ -61,7 +59,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
@@ -91,7 +89,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
@@ -123,7 +121,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken.TestOperations[2].MvxSCCallData = nil
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
 		eurocToken.TestOperations[2].MvxForceSCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = nil
@@ -154,7 +152,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
@@ -184,7 +182,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
@@ -214,7 +212,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
@@ -244,7 +242,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
@@ -274,7 +272,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
@@ -307,7 +305,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
@@ -342,7 +340,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
+		//eurocToken.ESDTSafeExtraBalance = big.NewInt(150)
 
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData

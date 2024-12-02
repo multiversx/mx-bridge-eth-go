@@ -1,5 +1,3 @@
-//go:build slow
-
 package slowTests
 
 import (
@@ -116,6 +114,18 @@ func ApplyUSDCRefundBalances(token *framework.TestTokenParams) {
 	// Alice will get her tokens back from the refund
 	token.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-5000 - 7000 - 1000 + 950)
 	// no funds remain in the test caller SC
+	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
+}
+
+// ApplyEUROCRefundBalances will apply the refund balances on the involved entities for the EUROC token
+func ApplyEUROCRefundBalances(token *framework.TestTokenParams) {
+	// Adjust SafeSC.OnMvx to account for the fees for the 2 transfers and the failed one that needed refund
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50)
+	// we need to subtract the refunded value from the Ethereum Safe contract
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnEth = big.NewInt(5010 + 7010 + 1010 - 2450 - 250 - 950)
+	// Alice will get her tokens back from the refund
+	token.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-5010 - 7010 - 1010 + 960)
+	// No funds remain in the test caller SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 }
 
