@@ -49,14 +49,3 @@ func (flow *startsFromMultiversXFlow) process() (finished bool) {
 
 	return false
 }
-
-func (flow *startsFromMultiversXFlow) areTokensFullyRefunded() bool {
-	if len(flow.tokens) == 0 {
-		return true
-	}
-	if !flow.ethToMvxDone {
-		return false // regular flow is not completed
-	}
-
-	return flow.setup.IsTransferDoneFromEthereumWithRefund(flow.setup.BobKeys, flow.tokens...)
-}

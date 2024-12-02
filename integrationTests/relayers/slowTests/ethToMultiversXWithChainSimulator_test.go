@@ -191,7 +191,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
-		if startsFromEthFlow.process() && startsFromMvXFlow.process() && startsFromEthFlow.areTokensFullyRefunded() {
+		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
 			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromMvXFlow.tokens...)
 			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromEthFlow.tokens...)
 

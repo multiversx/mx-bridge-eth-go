@@ -68,7 +68,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
 				framework.Alice: {
-					OnEth:    big.NewInt(-5000 - 7000 - 1000),
+					OnEth:    big.NewInt(-5000 - 7000 - 1000 - 900),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -78,7 +78,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.SafeSC: {
-					OnEth:    big.NewInt(5000 + 7000 + 1000),
+					OnEth:    big.NewInt(5000 + 7000 + 1000 + 900),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.ChainSpecificToken,
 				},
@@ -90,7 +90,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			},
 			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
 				framework.Alice: {
-					OnEth:    big.NewInt(-5000 - 7000 - 1000),
+					OnEth:    big.NewInt(-5000 - 7000 - 1000 - 900 + 850), // 850 is the refund value
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -105,8 +105,8 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.SafeSC: {
-					OnEth:    big.NewInt(5000 + 7000 + 1000 - 2450 - 250),
-					OnMvx:    big.NewInt(50 + 50),
+					OnEth:    big.NewInt(5000 + 7000 + 1000 + 900 - 2450 - 250 - 850),
+					OnMvx:    big.NewInt(50 + 50 + 50),
 					MvxToken: framework.ChainSpecificToken,
 				},
 				framework.CalledTestSC: {
@@ -122,11 +122,11 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 // ApplyUSDCRefundBalances will apply the refund balances on the involved entities for the USDC token
 func ApplyUSDCRefundBalances(token *framework.TestTokenParams) {
 	// extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
-	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50 + 50)
 	// we need to subtract the refunded value from the Ethereum Safe contract
-	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnEth = big.NewInt(5000 + 7000 + 1000 - 2450 - 250 - 950)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnEth = big.NewInt(5000 + 7000 + 1000 + 900 - 2450 - 250 - 950 - 850)
 	// Alice will get her tokens back from the refund
-	token.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-5000 - 7000 - 1000 + 950)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-5000 - 7000 - 1000 - 900 + 950 + 850)
 	// no funds remain in the test caller SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 }
@@ -288,7 +288,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
 				framework.Alice: {
-					OnEth:    big.NewInt(-5010 - 7010 - 1010),
+					OnEth:    big.NewInt(-5010 - 7010 - 1010 - 700),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -310,7 +310,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			},
 			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
 				framework.Alice: {
-					OnEth:    big.NewInt(-5010 - 7010 - 1010),
+					OnEth:    big.NewInt(-5010 - 7010 - 1010 - 700 + 650), // 650 is the refund value
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -326,7 +326,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 				},
 				framework.SafeSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(50 + 50),
+					OnMvx:    big.NewInt(50 + 50 + 50),
 					MvxToken: framework.ChainSpecificToken,
 				},
 				framework.CalledTestSC: {
@@ -481,7 +481,62 @@ func GenerateUnlistedTokenFromEth() framework.TestTokenParams {
 				IsFaultyDeposit:      true,
 			},
 		},
-		ESDTSafeExtraBalance: big.NewInt(0),
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
+		},
 	}
 }
 
@@ -518,7 +573,62 @@ func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance: big.NewInt(0),
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
+		},
 	}
 }
 

@@ -266,7 +266,7 @@ func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopC
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
-		if startsFromEthFlow.process() && startsFromMvXFlow.process() && startsFromMvXFlow.areTokensFullyRefunded() {
+		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
 			return true
 		}
 

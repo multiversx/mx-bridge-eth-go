@@ -29,23 +29,6 @@ const (
 	mvxHrp                       = "erd"
 )
 
-// CurrentActorState represents the state of an actor in a transaction
-type CurrentActorState struct {
-	isSender           bool
-	HasToReceiveRefund bool
-}
-
-var (
-	senderState = CurrentActorState{
-		isSender:           true,
-		HasToReceiveRefund: false,
-	}
-	receiverState = CurrentActorState{
-		isSender:           false,
-		HasToReceiveRefund: false,
-	}
-)
-
 // TestSetup is the struct that holds all subcomponents for the testing infrastructure
 type TestSetup struct {
 	testing.TB
@@ -331,7 +314,7 @@ func (setup *TestSetup) getMvxAddressFromEntityName(entityName string) *MvxAddre
 	return nil
 }
 
-func (setup *TestSetup) getBalanceMappingForAddressAndToken(addr string, token TestTokenParams) *big.Int {
+func (setup *TestSetup) getBalanceMappingForAddressAndToken(address string, token TestTokenParams) *big.Int {
 	setup.mutBalances.Lock()
 	defer setup.mutBalances.Unlock()
 
@@ -383,18 +366,6 @@ func (setup *TestSetup) getEthAddressFromEntityName(entityName string) (common.A
 
 	require.Fail(setup, fmt.Sprintf("getEthAddressFromEntityName: unknown entity name %s", entityName))
 	return common.Address{}, false
-}
-
-func (setup *TestSetup) getExtraBalanceForHolder(address string, params TestTokenParams) ExtraBalanceHolder {
-	setup.mutBalances.Lock()
-	defer setup.mutBalances.Unlock()
-
-	holderName := AddressZero
-	if address != "" {
-		holderName = setup.AddressToName[address]
-	}
-
-	return params.ExtraBalances[holderName]
 }
 
 func (setup *TestSetup) checkContractMvxBalanceForToken(params TestTokenParams) bool {
@@ -482,30 +453,6 @@ func (setup *TestSetup) computeExpectedValueFromMvx(params TestTokenParams) *big
 	}
 
 	return expectedValue
-}
-
-// IsTransferDoneFromEthereumWithRefund returns true if all provided tokens are bridged from Ethereum towards MultiversX including refunds
-func (setup *TestSetup) IsTransferDoneFromEthereumWithRefund(holder KeysHolder, tokens ...TestTokenParams) bool {
-	isDone := true
-	for _, params := range tokens {
-		isDone = isDone && setup.isTransferDoneFromEthWithRefundForToken(holder, params)
-	}
-
-	return isDone
-}
-
-func (setup *TestSetup) isTransferDoneFromEthWithRefundForToken(holder KeysHolder, params TestTokenParams) bool {
-	// if token is prevented from whitelist, we can't check the balances
-	if params.PreventWhitelist {
-		return true
-	}
-
-	actorState := CurrentActorState{
-		isSender:           true,
-		HasToReceiveRefund: true,
-	}
-
-	return setup.checkHolderEthBalanceForToken(holder, actorState, params)
 }
 
 func (setup *TestSetup) checkMvxBurnedTokenBalance(params TestTokenParams) bool {
