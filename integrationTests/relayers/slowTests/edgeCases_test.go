@@ -92,9 +92,15 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 }
 
 func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
-	startsFromEthFlow := &startsFromEthereumEdgecaseFlow{
-		TB:     tb,
-		tokens: tokens,
+	startsFromEthFlow := &testFlow{
+		TB:                           tb,
+		tokens:                       tokens,
+		messageAfterFirstHalfBridge:  "Ethereum->MultiversX transfer finished, now sending back to Ethereum & another round from Ethereum...",
+		messageAfterSecondHalfBridge: "MultiversX<->Ethereum from Ethereum transfers done",
+	}
+	startsFromEthFlow.handlerAfterFirstHalfBridge = func(flow *testFlow) {
+		flow.setup.SendFromMultiversxToEthereum(flow.setup.BobKeys, flow.setup.AliceKeys, flow.tokens...)
+		flow.setup.SendFromEthereumToMultiversX(flow.setup.AliceKeys, flow.setup.BobKeys, flow.setup.MultiversxHandler.CalleeScAddress, flow.tokens...)
 	}
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
