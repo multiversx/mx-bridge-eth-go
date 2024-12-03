@@ -49,6 +49,10 @@ func (flow *testFlow) process() (finished bool) {
 		return false
 	}
 
+	if flow.setup.MultiversxHandler.HasRefundBatch(flow.setup.Ctx) {
+		flow.setup.MultiversxHandler.MoveRefundBatchToSafe(flow.setup.Ctx)
+	}
+
 	transferDoneForSecondHalf := flow.setup.AreAllTransfersCompleted(framework.SecondHalfBridge, flow.tokens...)
 	if !flow.secondHalfBridgeDone && transferDoneForSecondHalf {
 		flow.secondHalfBridgeDone = true
