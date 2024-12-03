@@ -259,6 +259,10 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 
 	handler.TokensRegistry.RegisterEthAddressAndContract(params.AbstractTokenIdentifier, erc20Address, erc20ContractInstance)
 
+	if params.PreventWhitelist {
+		return
+	}
+
 	// whitelist eth token
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
 	tx, err := handler.SafeContract.WhitelistToken(
@@ -444,6 +448,10 @@ func (handler *EthereumHandler) SendDepositTransactionFromEthereum(
 		tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, to.MvxAddress.AddressSlice())
 	}
 
+	if operation.IsFaultyDeposit {
+		require.NotNil(handler, err)
+		return
+	}
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())

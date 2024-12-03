@@ -48,6 +48,15 @@ func TestRelayersShouldExecuteTransfersWithMintBurnTokens(t *testing.T) {
 	)
 }
 
+func TestRelayersShouldNotExecuteTransfersWithNonWhitelistedTokens(t *testing.T) {
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		GenerateUnlistedTokenFromEth(),
+		GenerateUnlistedTokenFromMvx(),
+	)
+}
+
 func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 	dummyAddress := strings.Repeat("2", 32)
 	dummyUint64 := string([]byte{37})

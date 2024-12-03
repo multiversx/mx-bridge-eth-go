@@ -61,6 +61,7 @@ const (
 	WrapperSC      = "Wrapper SC"
 	CalledTestSC   = "Called test SC"
 	SafeSC         = "Safe SC"
+	AddressZero    = "AddressZero"
 )
 
 // NewKeysStore will create a KeysStore instance and generate all keys
