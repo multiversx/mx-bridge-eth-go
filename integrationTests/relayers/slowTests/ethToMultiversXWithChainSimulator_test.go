@@ -191,7 +191,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
-		if startsFromEthFlow.process() && startsFromMvXFlow.process() && startsFromEthFlow.areTokensFullyRefunded() {
+		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
 			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromMvXFlow.tokens...)
 			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromEthFlow.tokens...)
 
@@ -311,11 +311,29 @@ func createBadToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance: big.NewInt(0),
-		ExtraBalances: map[string]framework.ExtraBalanceHolder{
-			"Alice":   {SentAmount: big.NewInt(-5000 - 7000 - 1000), ReceivedAmount: big.NewInt(0), RefundAmount: big.NewInt(0)},
-			"Bob":     {SentAmount: big.NewInt(-2500 - 300), ReceivedAmount: big.NewInt(5000 + 7000), RefundAmount: big.NewInt(0)},
-			"Charlie": {SentAmount: big.NewInt(0), ReceivedAmount: big.NewInt(2500 - 50 + 300 - 50), RefundAmount: big.NewInt(0)},
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-5000 - 7000 - 1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(5000 + 7000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(5000 + 7000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
 		},
 	}
 }

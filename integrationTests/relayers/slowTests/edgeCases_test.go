@@ -15,8 +15,6 @@ import (
 )
 
 func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
-	t.Skip("TODO: fix this test")
-
 	errorString := "ERROR"
 	mockLogObserver := mock.NewMockLogObserver(errorString, "got invalid action ID")
 	err := logger.AddLogObserver(mockLogObserver, &logger.PlainFormatter{})
@@ -51,15 +49,40 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 			MvxForceSCCall:       false,
 		},
 	}
-	usdcToken.ESDTSafeExtraBalance = big.NewInt(50)
-	usdcToken.ExtraBalances = map[string]framework.ExtraBalanceHolder{
-		"Alice": {
-			SentAmount:     big.NewInt(-5000),
-			ReceivedAmount: big.NewInt(0),
+	usdcToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+		framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+			framework.Alice: {
+				OnEth:    big.NewInt(-5000),
+				OnMvx:    big.NewInt(0),
+				MvxToken: framework.UniversalToken,
+			},
+			framework.Bob: {
+				OnEth:    big.NewInt(0),
+				OnMvx:    big.NewInt(5000),
+				MvxToken: framework.UniversalToken,
+			},
+			framework.SafeSC: {
+				OnEth:    big.NewInt(5000),
+				OnMvx:    big.NewInt(0),
+				MvxToken: framework.ChainSpecificToken,
+			},
 		},
-		"Bob": {
-			SentAmount:     big.NewInt(-200),
-			ReceivedAmount: big.NewInt(5000),
+		framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+			framework.Alice: {
+				OnEth:    big.NewInt(-5000 - 5000 + 150),
+				OnMvx:    big.NewInt(0),
+				MvxToken: framework.UniversalToken,
+			},
+			framework.Bob: {
+				OnEth:    big.NewInt(0),
+				OnMvx:    big.NewInt(5000 + 4800),
+				MvxToken: framework.UniversalToken,
+			},
+			framework.SafeSC: {
+				OnEth:    big.NewInt(5000 + 5000 - 150),
+				OnMvx:    big.NewInt(50),
+				MvxToken: framework.ChainSpecificToken,
+			},
 		},
 	}
 
