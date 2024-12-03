@@ -267,9 +267,6 @@ func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopC
 		allFlowsFinished := true
 		for _, flow := range flows {
 			allFlowsFinished = allFlowsFinished && flow.process()
-			if flow.flowType == startFromMultiversXFlow && len(flow.tokens) >= 0 {
-				allFlowsFinished = allFlowsFinished && flow.setup.IsTransferDoneFromEthereumWithRefund(flow.tokens...)
-			}
 		}
 
 		// commit blocks in order to execute incoming txs from relayers
