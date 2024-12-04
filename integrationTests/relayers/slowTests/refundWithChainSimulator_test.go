@@ -108,6 +108,38 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			mexToken,
 		)
 	})
+	// TODO: add a test for uninitialised SC addressyyyyyyy
+	t.Run("built-in function should refund", func(t *testing.T) {
+		callData := createScCallData("SaveKeyValue", 50000000, "6b657930", "76616c756530")
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyUSDCRefundBalances(&usdcToken)
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
+
+		eurocToken := GenerateTestEUROCToken()
+		eurocToken.TestOperations[2].MvxSCCallData = callData
+		eurocToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyEUROCRefundBalances(&eurocToken)
+
+		mexToken := GenerateTestMEXToken()
+		mexToken.TestOperations[2].MvxSCCallData = callData
+		mexToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEXRefundBalances(&mexToken)
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+			eurocToken,
+			mexToken,
+		)
+	})
 	t.Run("wrong deposit with empty sc call data should refund", func(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = nil
@@ -175,6 +207,37 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 	})
 	t.Run("small gas limit should refund", func(t *testing.T) {
 		callData := createScCallData("callPayable", 2000)
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyUSDCRefundBalances(&usdcToken)
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
+
+		eurocToken := GenerateTestEUROCToken()
+		eurocToken.TestOperations[2].MvxSCCallData = callData
+		eurocToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyEUROCRefundBalances(&eurocToken)
+
+		mexToken := GenerateTestMEXToken()
+		mexToken.TestOperations[2].MvxSCCallData = callData
+		mexToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEXRefundBalances(&mexToken)
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+			eurocToken,
+			mexToken,
+		)
+	})
+	t.Run("high gas limit should refund", func(t *testing.T) {
+		callData := createScCallData("callPayable", 610000000)
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
