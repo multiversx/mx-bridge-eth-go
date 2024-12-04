@@ -84,7 +84,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 				},
 				framework.CalledTestSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(0),
+					OnMvx:    big.NewInt(1000),
 					MvxToken: framework.UniversalToken,
 				},
 			},
@@ -96,11 +96,11 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 				},
 				framework.Bob: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(2500 + 6700),
+					OnMvx:    big.NewInt(5000 - 2500 + 7000 - 300),
 					MvxToken: framework.UniversalToken,
 				},
 				framework.Charlie: {
-					OnEth:    big.NewInt(2450 + 250),
+					OnEth:    big.NewInt(2500 - 50 + 300 - 50),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -121,13 +121,15 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 
 // ApplyUSDCRefundBalances will apply the refund balances on the involved entities for the USDC token
 func ApplyUSDCRefundBalances(token *framework.TestTokenParams) {
+	// called test SC will have 0 balance since eth->mvx transfer failed
+	token.DeltaBalances[framework.FirstHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 	// extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
 	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50 + 50)
 	// we need to subtract the refunded value from the Ethereum Safe contract
 	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnEth = big.NewInt(5000 + 7000 + 1000 + 900 - 2450 - 250 - 950 - 850)
 	// Alice will get her tokens back from the refund
 	token.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-5000 - 7000 - 1000 - 900 + 950 + 850)
-	// no funds remain in the test caller SC
+	// no funds remain in the called test SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 }
 
@@ -337,6 +339,18 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			},
 		},
 	}
+}
+
+// ApplyEUROCRefundBalances will apply the refund balances on the involved entities for the EUROC token
+func ApplyEUROCRefundBalances(token *framework.TestTokenParams) {
+	// called test SC will have 0 balance since eth->mvx transfer failed
+	token.DeltaBalances[framework.FirstHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
+	// extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50 + 50)
+	// Alice will get her tokens back from the refund
+	token.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-5010 - 7010 - 1010 - 700 + 960 + 650)
+	// no funds remain in the called test SC
+	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 }
 
 // GenerateTestMEXToken will generate a test MEX token
