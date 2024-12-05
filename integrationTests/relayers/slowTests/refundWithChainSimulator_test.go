@@ -11,6 +11,7 @@ import (
 
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
+	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/require"
 )
 
@@ -108,7 +109,42 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			mexToken,
 		)
 	})
-	// TODO: add a test for uninitialised SC addressyyyyyyy
+	t.Run("uninitialized contract should refund", func(t *testing.T) {
+		callData := createScCallData("claim", 50000000)
+		uninitializedSCAddressBytes, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqcc69ts8409p3h77q5chsaqz57y6hugvc4fvs64k74v")
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		usdcToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
+		ApplyUSDCRefundBalances(&usdcToken)
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+		memeToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
+		ApplyMEMERefundBalances(&memeToken)
+
+		eurocToken := GenerateTestEUROCToken()
+		eurocToken.TestOperations[2].MvxSCCallData = callData
+		eurocToken.TestOperations[2].MvxFaultySCCall = true
+		eurocToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
+		ApplyEUROCRefundBalances(&eurocToken)
+
+		mexToken := GenerateTestMEXToken()
+		mexToken.TestOperations[2].MvxSCCallData = callData
+		mexToken.TestOperations[2].MvxFaultySCCall = true
+		mexToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
+		ApplyMEXRefundBalances(&mexToken)
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+			eurocToken,
+			mexToken,
+		)
+	})
 	t.Run("built-in function should refund", func(t *testing.T) {
 		callData := createScCallData("SaveKeyValue", 50000000, "6b657930", "76616c756530")
 		usdcToken := GenerateTestUSDCToken()
