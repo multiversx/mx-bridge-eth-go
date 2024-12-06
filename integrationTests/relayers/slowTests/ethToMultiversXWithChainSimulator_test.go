@@ -48,6 +48,15 @@ func TestRelayersShouldExecuteTransfersWithMintBurnTokens(t *testing.T) {
 	)
 }
 
+func TestRelayersShouldNotExecuteTransfersWithNonWhitelistedTokens(t *testing.T) {
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		GenerateUnlistedTokenFromEth(),
+		GenerateUnlistedTokenFromMvx(),
+	)
+}
+
 func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 	dummyAddress := strings.Repeat("2", 32)
 	dummyUint64 := string([]byte{37})
@@ -149,27 +158,46 @@ func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
 	)
 }
 
+func TestRelayersShouldExecuteTransfersWithInitSupplyMintBurn(t *testing.T) {
+	eurocToken := GenerateTestEUROCToken()
+	eurocToken.InitialSupplyValue = "100010"
+
+	mexToken := GenerateTestMEXToken()
+	mexToken.InitialSupplyValue = "300000"
+
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		eurocToken,
+		mexToken,
+	)
+}
+
 func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
-	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
+	flows := createFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
-		startsFromMvXFlow.setup = setup
-		startsFromEthFlow.setup = setup
+		for _, flow := range flows {
+			flow.setup = setup
+		}
 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
-		if len(startsFromEthFlow.tokens) > 0 {
-			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
-		}
-		if len(startsFromMvXFlow.tokens) > 0 {
-			setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
+		for _, flow := range flows {
+			flow.handlerToStartFirstBridge(flow)
 		}
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
-		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
-			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromMvXFlow.tokens...)
-			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromEthFlow.tokens...)
+		allFlowsFinished := true
+		for _, flow := range flows {
+			allFlowsFinished = allFlowsFinished && flow.process()
+		}
+
+		if allFlowsFinished {
+			for _, flow := range flows {
+				setup.TestWithdrawTotalFeesOnEthereumForTokens(flow.tokens...)
+			}
 
 			return true
 		}
@@ -189,15 +217,41 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 	)
 }
 
-func createFlowsBasedOnToken(tb testing.TB, tokens ...framework.TestTokenParams) (*startsFromEthereumFlow, *startsFromMultiversXFlow) {
-	startsFromEthFlow := &startsFromEthereumFlow{
-		TB:     tb,
-		tokens: make([]framework.TestTokenParams, 0, len(tokens)),
+func createFlowsBasedOnToken(tb testing.TB, tokens ...framework.TestTokenParams) []*testFlow {
+	startsFromEthFlow := &testFlow{
+		flowType:                     startFromEthereumFlow,
+		TB:                           tb,
+		tokens:                       make([]framework.TestTokenParams, 0, len(tokens)),
+		messageAfterFirstHalfBridge:  "Ethereum->MultiversX transfer finished, now sending back to Ethereum...",
+		messageAfterSecondHalfBridge: "MultiversX<->Ethereum from Ethereum transfers done",
+	}
+	startsFromEthFlow.handlerAfterFirstHalfBridge = func(flow *testFlow) {
+		flow.setup.SendFromMultiversxToEthereum(flow.setup.BobKeys, flow.setup.CharlieKeys, flow.tokens...)
+	}
+	startsFromEthFlow.handlerToStartFirstBridge = func(flow *testFlow) {
+		if len(flow.tokens) == 0 {
+			return
+		}
+
+		flow.setup.CreateBatchOnEthereum(flow.setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
 	}
 
-	startsFromMvXFlow := &startsFromMultiversXFlow{
-		TB:     tb,
-		tokens: make([]framework.TestTokenParams, 0, len(tokens)),
+	startsFromMvXFlow := &testFlow{
+		flowType:                     startFromMultiversXFlow,
+		TB:                           tb,
+		tokens:                       make([]framework.TestTokenParams, 0, len(tokens)),
+		messageAfterFirstHalfBridge:  "MultiversX->Ethereum transfer finished, now sending back to MultiversX...",
+		messageAfterSecondHalfBridge: "MultiversX<->Ethereum from MultiversX transfers done",
+	}
+	startsFromMvXFlow.handlerAfterFirstHalfBridge = func(flow *testFlow) {
+		flow.setup.SendFromEthereumToMultiversX(flow.setup.BobKeys, flow.setup.CharlieKeys, flow.setup.MultiversxHandler.CalleeScAddress, flow.tokens...)
+	}
+	startsFromMvXFlow.handlerToStartFirstBridge = func(flow *testFlow) {
+		if len(flow.tokens) == 0 {
+			return
+		}
+
+		flow.setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
 	}
 
 	// split the tokens from where should the bridge start
@@ -213,7 +267,7 @@ func createFlowsBasedOnToken(tb testing.TB, tokens ...framework.TestTokenParams)
 		require.Fail(tb, "invalid setup, found a token that is not native on any chain", "abstract identifier", token.AbstractTokenIdentifier)
 	}
 
-	return startsFromEthFlow, startsFromMvXFlow
+	return []*testFlow{startsFromEthFlow, startsFromMvXFlow}
 }
 
 func testRelayersWithChainSimulator(tb testing.TB,
@@ -287,8 +341,30 @@ func createBadToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(0),
-		EthTestAddrExtraBalance: big.NewInt(0),
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-5000 - 7000 - 1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(5000 + 7000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(5000 + 7000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
+		},
 	}
 }
 
@@ -342,32 +418,32 @@ func testRelayersShouldNotExecuteTransfers(
 	expectedStringInLogs string,
 	tokens ...framework.TestTokenParams,
 ) {
-	startsFromEthFlow, startsFromMvXFlow := createFlowsBasedOnToken(tb, tokens...)
+	flows := createFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
-		startsFromMvXFlow.setup = setup
-		startsFromEthFlow.setup = setup
+		for _, flow := range flows {
+			flow.setup = setup
+		}
 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
-		if len(startsFromEthFlow.tokens) > 0 {
-			setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
-		}
-		if len(startsFromMvXFlow.tokens) > 0 {
-			setup.CreateBatchOnMultiversX(startsFromMvXFlow.tokens...)
+
+		for _, flow := range flows {
+			flow.handlerToStartFirstBridge(flow)
 		}
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
-		if startsFromEthFlow.process() && startsFromMvXFlow.process() {
-			return true
+		allFlowsFinished := true
+		for _, flow := range flows {
+			allFlowsFinished = allFlowsFinished && flow.process()
 		}
 
 		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 
-		return false
+		return allFlowsFinished
 	}
 
 	// start a mocked log observer that is looking for a specific relayer error
@@ -446,7 +522,7 @@ func testCallPayableWithParamsWasCalled(testSetup *framework.TestSetup, value ui
 	}
 
 	vmRequest := &data.VmValueRequest{
-		Address:  testSetup.MultiversxHandler.TestCallerAddress.Bech32(),
+		Address:  testSetup.MultiversxHandler.CalleeScAddress.Bech32(),
 		FuncName: "getCalledDataParams",
 	}
 

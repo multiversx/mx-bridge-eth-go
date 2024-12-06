@@ -49,8 +49,42 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 			MvxForceSCCall:       false,
 		},
 	}
-	usdcToken.ESDTSafeExtraBalance = big.NewInt(50)
-	usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 - 5000 + 200 - 50)
+	usdcToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+		framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+			framework.Alice: {
+				OnEth:    big.NewInt(-5000),
+				OnMvx:    big.NewInt(0),
+				MvxToken: framework.UniversalToken,
+			},
+			framework.Bob: {
+				OnEth:    big.NewInt(0),
+				OnMvx:    big.NewInt(5000),
+				MvxToken: framework.UniversalToken,
+			},
+			framework.SafeSC: {
+				OnEth:    big.NewInt(5000),
+				OnMvx:    big.NewInt(0),
+				MvxToken: framework.ChainSpecificToken,
+			},
+		},
+		framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+			framework.Alice: {
+				OnEth:    big.NewInt(-5000 - 5000 + 150),
+				OnMvx:    big.NewInt(0),
+				MvxToken: framework.UniversalToken,
+			},
+			framework.Bob: {
+				OnEth:    big.NewInt(0),
+				OnMvx:    big.NewInt(5000 + 4800),
+				MvxToken: framework.UniversalToken,
+			},
+			framework.SafeSC: {
+				OnEth:    big.NewInt(5000 + 5000 - 150),
+				OnMvx:    big.NewInt(50),
+				MvxToken: framework.ChainSpecificToken,
+			},
+		},
+	}
 
 	_ = testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(
 		t,
@@ -60,9 +94,15 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 }
 
 func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
-	startsFromEthFlow := &startsFromEthereumEdgecaseFlow{
-		TB:     tb,
-		tokens: tokens,
+	startsFromEthFlow := &testFlow{
+		TB:                           tb,
+		tokens:                       tokens,
+		messageAfterFirstHalfBridge:  "Ethereum->MultiversX transfer finished, now sending back to Ethereum & another round from Ethereum...",
+		messageAfterSecondHalfBridge: "MultiversX<->Ethereum from Ethereum transfers done",
+	}
+	startsFromEthFlow.handlerAfterFirstHalfBridge = func(flow *testFlow) {
+		flow.setup.SendFromMultiversxToEthereum(flow.setup.BobKeys, flow.setup.AliceKeys, flow.tokens...)
+		flow.setup.SendFromEthereumToMultiversX(flow.setup.AliceKeys, flow.setup.BobKeys, flow.setup.MultiversxHandler.CalleeScAddress, flow.tokens...)
 	}
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
@@ -70,7 +110,7 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
-		setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
+		setup.CreateBatchOnEthereum(setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
