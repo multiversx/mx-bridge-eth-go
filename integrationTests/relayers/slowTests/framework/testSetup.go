@@ -375,7 +375,7 @@ func (setup *TestSetup) checkContractMvxBalanceForToken(params TestTokenParams) 
 		if operation.ValueToTransferToMvx == nil {
 			continue
 		}
-		if len(operation.MvxSCCallData) == 0 && !operation.MvxForceSCCall {
+		if !setup.hasCallData(operation) {
 			continue
 		}
 		if operation.MvxFaultySCCall {
@@ -496,7 +496,7 @@ func (setup *TestSetup) checkEthMintedBalanceForToken(params TestTokenParams) bo
 func (setup *TestSetup) getMvxTotalRefundAmountForToken(params TestTokenParams) *big.Int {
 	totalRefund := big.NewInt(0)
 	for _, operation := range params.TestOperations {
-		if len(operation.MvxSCCallData) == 0 && !operation.MvxForceSCCall {
+		if !setup.hasCallData(operation) {
 			continue
 		}
 		if !operation.MvxFaultySCCall {
@@ -561,7 +561,7 @@ func (setup *TestSetup) createDepositOnMultiversxForToken(from KeysHolder, to Ke
 			continue
 		}
 
-		if operation.InvalidReceiver != nil {
+		if operation.InvalidReceiver != nil && !setup.hasCallData(operation) {
 			invalidReceiver := common.Address(operation.InvalidReceiver)
 			to = KeysHolder{EthAddress: invalidReceiver}
 		}
@@ -628,11 +628,20 @@ func (setup *TestSetup) createDepositOnEthereumForToken(from KeysHolder, to Keys
 
 		if operation.InvalidReceiver != nil {
 			invalidReceiver := NewMvxAddressFromBytes(setup, operation.InvalidReceiver)
-			to = KeysHolder{MvxAddress: invalidReceiver}
+
+			if setup.hasCallData(operation) {
+				targetSCAddress = invalidReceiver
+			} else {
+				to = KeysHolder{MvxAddress: invalidReceiver}
+			}
 		}
 
 		setup.EthereumHandler.SendDepositTransactionFromEthereum(setup.Ctx, from, to, targetSCAddress, token, operation)
 	}
+}
+
+func (setup *TestSetup) hasCallData(operation TokenOperations) bool {
+	return len(operation.MvxSCCallData) != 0 || operation.MvxForceSCCall
 }
 
 // TestWithdrawTotalFeesOnEthereumForTokens will test the withdrawal functionality for the provided test tokens
