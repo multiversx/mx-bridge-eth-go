@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.52.3"
+            "version": "0.53.2"
         }
     },
     "name": "MultiTransferEsdt",
@@ -51,32 +51,6 @@
             "outputs": []
         },
         {
-            "name": "setWrappingContractAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_new_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "setBridgeProxyContractAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_new_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
             "name": "addUnprocessedRefundTxToBatch",
             "onlyOwner": true,
             "mutability": "mutable",
@@ -87,49 +61,6 @@
                 }
             ],
             "outputs": []
-        },
-        {
-            "name": "setEsdtSafeContractAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_new_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "getWrappingContractAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
-                }
-            ]
-        },
-        {
-            "name": "getBridgeProxyContractAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
-                }
-            ]
-        },
-        {
-            "name": "getEsdtSafeContractAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
-                }
-            ]
         },
         {
             "name": "setMaxTxBatchSize",

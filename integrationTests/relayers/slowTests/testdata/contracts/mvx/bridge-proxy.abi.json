@@ -13,18 +13,12 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.52.3"
+            "version": "0.53.2"
         }
     },
     "name": "BridgeProxyContract",
     "constructor": {
-        "inputs": [
-            {
-                "name": "opt_multi_transfer_address",
-                "type": "optional<Address>",
-                "multi_arg": true
-            }
-        ],
+        "inputs": [],
         "outputs": []
     },
     "upgradeConstructor": {
@@ -84,75 +78,6 @@
                 {
                     "type": "variadic<multi<u32,EthTransaction>>",
                     "multi_result": true
-                }
-            ]
-        },
-        {
-            "name": "setMultiTransferAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_multi_transfer_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "setBridgedTokensWrapperAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "setEsdtSafeAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "getMultiTransferAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
-                }
-            ]
-        },
-        {
-            "name": "getBridgedTokensWrapperAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
-                }
-            ]
-        },
-        {
-            "name": "getEsdtSafeContractAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
                 }
             ]
         },
