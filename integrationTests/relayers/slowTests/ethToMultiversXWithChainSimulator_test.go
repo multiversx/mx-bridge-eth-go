@@ -356,6 +356,13 @@ func createBadToken() framework.TestTokenParams {
 				},
 			},
 		},
+		MintBurnChecks: &framework.MintBurnBalances{
+			TotalUniversalMint:     big.NewInt(0),
+			TotalChainSpecificMint: big.NewInt(0),
+			TotalUniversalBurn:     big.NewInt(0),
+			TotalChainSpecificBurn: big.NewInt(0),
+			MintBurnValues:         nil,
+		},
 	}
 }
 

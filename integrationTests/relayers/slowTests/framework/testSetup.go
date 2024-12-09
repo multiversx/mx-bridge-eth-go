@@ -671,6 +671,43 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 	}
 }
 
+// CheckTotalMintBurn will return true if all tokens successfully passed the mint/burn checks for total values
+func (setup *TestSetup) CheckTotalMintBurn(tokens ...TestTokenParams) bool {
+	isDone := true
+	for _, params := range tokens {
+		isDone = isDone && setup.isTotalMintBurnCheckOKOnMvx(params)
+	}
+
+	return isDone
+}
+
+func (setup *TestSetup) isTotalMintBurnCheckOKOnMvx(token TestTokenParams) bool {
+	tokenData := setup.TokensRegistry.GetTokenData(token.AbstractTokenIdentifier)
+
+	esdtSupplyForUniversal := setup.MultiversxHandler.ChainSimulator.GetESDTSupplyValues(setup.Ctx, tokenData.MvxUniversalToken)
+	if esdtSupplyForUniversal.Minted != token.MintBurnChecks.TotalUniversalMint.String() {
+		return false
+	}
+	if esdtSupplyForUniversal.Burned != token.MintBurnChecks.TotalUniversalBurn.String() {
+		return false
+	}
+
+	if tokenData.MvxUniversalToken == tokenData.MvxChainSpecificToken {
+		// we do not have a chain specific token, we can return true here
+		return true
+	}
+
+	esdtSupplyForChainSpecific := setup.MultiversxHandler.ChainSimulator.GetESDTSupplyValues(setup.Ctx, tokenData.MvxChainSpecificToken)
+	if esdtSupplyForChainSpecific.Minted != token.MintBurnChecks.TotalChainSpecificMint.String() {
+		return false
+	}
+	if esdtSupplyForChainSpecific.Burned != token.MintBurnChecks.TotalChainSpecificBurn.String() {
+		return false
+	}
+
+	return true
+}
+
 // Close will close the test subcomponents
 func (setup *TestSetup) Close() {
 	log.Info(fmt.Sprintf(LogStepMarker, "closing relayers & sc execution module"))
