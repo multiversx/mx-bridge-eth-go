@@ -13,6 +13,7 @@ type DeltaBalancesOnKeys map[string]*DeltaBalanceHolder
 type IssueTokenParams struct {
 	InitialSupplyParams
 	AbstractTokenIdentifier string
+	PreventWhitelist        bool
 
 	// MultiversX
 	NumOfDecimalsUniversal           int
@@ -46,6 +47,8 @@ type TokenOperations struct {
 	MvxSCCallData        []byte
 	MvxFaultySCCall      bool
 	MvxForceSCCall       bool
+	IsFaultyDeposit      bool
+	InvalidReceiver      []byte
 }
 
 // TestTokenParams defines a token collection of operations in one or 2 batches
