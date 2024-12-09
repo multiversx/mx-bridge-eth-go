@@ -14,6 +14,7 @@ type IssueTokenParams struct {
 	InitialSupplyParams
 	AbstractTokenIdentifier string
 	PreventWhitelist        bool
+	IsFrozen                bool
 
 	// MultiversX
 	NumOfDecimalsUniversal           int
