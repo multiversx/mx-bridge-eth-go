@@ -76,6 +76,8 @@ const (
 	getMintBalances                                      = "getMintBalances"
 	getBurnBalances                                      = "getBurnBalances"
 	getTotalBalances                                     = "getTotalBalances"
+	getRefundTransactions                                = "getRefundTransactions"
+	executeRefundTransaction                             = "executeRefundTransaction"
 )
 
 var (
@@ -430,9 +432,9 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 		return
 	}
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
-	handler.transferChainSpecificTokenToSCs(ctx, params)
 	handler.addUniversalTokenToWrapper(ctx, params)
 	handler.whitelistTokenOnWrapper(ctx, params)
+	handler.transferChainSpecificTokenToSCs(ctx, params)
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
 	handler.addMappingInMultisig(ctx, params)
 	handler.whitelistTokenOnMultisig(ctx, params)
@@ -1102,6 +1104,53 @@ func (handler *MultiversxHandler) scCallAndCheckTx(
 	log.Info(fmt.Sprintf("Transaction hash %s, status %s", hash, txResult.Status))
 
 	return hash, txResult
+}
+
+// RefundAllFromScBridgeProxy will refund transactions from the bridge proxy, if existing
+func (handler *MultiversxHandler) RefundAllFromScBridgeProxy(ctx context.Context) {
+	refundIDs := handler.getAllRefundIDsFromScBridgeProxy(ctx)
+	if len(refundIDs) == 0 {
+		return
+	}
+
+	for _, refundID := range refundIDs {
+		handler.refundTransactionInScBridgeProxy(ctx, refundID)
+	}
+}
+
+func (handler *MultiversxHandler) getAllRefundIDsFromScBridgeProxy(ctx context.Context) []uint64 {
+	responseBytes := handler.ChainSimulator.ExecuteVMQuery(
+		ctx,
+		handler.ScProxyAddress,
+		getRefundTransactions,
+		make([]string, 0),
+	)
+
+	numResponseLines := len(responseBytes)
+	require.Equal(handler, 0, numResponseLines%2, "expected an even number on response")
+
+	refundIDs := make([]uint64, 0, numResponseLines/2)
+	for i := 0; i < numResponseLines; i += 2 {
+		refundID := big.NewInt(0).SetBytes(responseBytes[i])
+		refundIDs = append(refundIDs, refundID.Uint64())
+	}
+
+	return refundIDs
+}
+
+func (handler *MultiversxHandler) refundTransactionInScBridgeProxy(ctx context.Context, refundID uint64) {
+	log.Info("sending refund transaction in SC bridge proxy", "refund ID", refundID)
+	handler.scCallAndCheckTx(
+		ctx,
+		handler.SCExecutorKeys, // anyone can call this, for example, the sc executor
+		handler.ScProxyAddress,
+		"0",
+		generalSCCallGasLimit,
+		executeRefundTransaction,
+		[]string{
+			hex.EncodeToString(big.NewInt(0).SetUint64(refundID).Bytes()),
+		},
+	)
 }
 
 func getHexBool(input bool) string {

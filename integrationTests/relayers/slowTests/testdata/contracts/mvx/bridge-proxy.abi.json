@@ -56,6 +56,17 @@
             "outputs": []
         },
         {
+            "name": "executeRefundTransaction",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "getPendingTransactionById",
             "mutability": "readonly",
             "inputs": [
@@ -72,6 +83,43 @@
         },
         {
             "name": "getPendingTransactions",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<multi<u32,EthTransaction>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "getRefundTransactionById",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "EthTransaction"
+                }
+            ]
+        },
+        {
+            "name": "getRefundTransactions",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<multi<u32,EthTransaction>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "refundTransactions",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [

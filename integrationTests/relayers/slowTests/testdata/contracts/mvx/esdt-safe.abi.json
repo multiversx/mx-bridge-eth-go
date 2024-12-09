@@ -88,6 +88,12 @@
             "outputs": []
         },
         {
+            "name": "addRefundBatchForFailedTx",
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
             "docs": [
                 "Create an MultiversX -> Ethereum transaction. Only fungible tokens are accepted.",
                 "",
@@ -108,15 +114,24 @@
                     "type": "EthAddress"
                 },
                 {
-                    "name": "opt_refund_info",
-                    "type": "optional<RefundInfo>",
+                    "name": "opt_min_bridge_amount",
+                    "type": "optional<BigUint>",
                     "multi_arg": true
                 }
             ],
             "outputs": []
         },
         {
-            "name": "createTransactionSCCall",
+            "docs": [
+                "Create an Ethereum -> MultiversX refund transaction. Only fungible tokens are accepted.",
+                "",
+                "Every transfer will have a part of the tokens subtracted as fees.",
+                "The fee amount depends on the global eth_tx_gas_limit",
+                "and the current GWEI price, respective to the bridged token",
+                "",
+                "fee_amount = price_per_gas_unit * eth_tx_gas_limit"
+            ],
+            "name": "createRefundTransaction",
             "mutability": "mutable",
             "payableInTokens": [
                 "*"
@@ -125,10 +140,6 @@
                 {
                     "name": "to",
                     "type": "EthAddress"
-                },
-                {
-                    "name": "data",
-                    "type": "bytes"
                 },
                 {
                     "name": "opt_refund_info",
@@ -220,6 +231,11 @@
                 {
                     "name": "address",
                     "type": "Address"
+                },
+                {
+                    "name": "opt_tokens",
+                    "type": "optional<variadic<TokenIdentifier>>",
+                    "multi_arg": true
                 }
             ],
             "outputs": [
@@ -377,6 +393,11 @@
                 {
                     "name": "address_percentage_pairs",
                     "type": "List<AddressPercentagePair>"
+                },
+                {
+                    "name": "opt_tokens_to_distribute",
+                    "type": "optional<variadic<TokenIdentifier>>",
+                    "multi_arg": true
                 }
             ],
             "outputs": []

@@ -1,4 +1,4 @@
-//go:build slow
+//TODO: revert this
 
 package slowTests
 
@@ -52,6 +52,9 @@ func (flow *testFlow) process() (finished bool) {
 	if flow.setup.MultiversxHandler.HasRefundBatch(flow.setup.Ctx) {
 		flow.setup.MultiversxHandler.MoveRefundBatchToSafe(flow.setup.Ctx)
 	}
+
+	//TODO: move this logic into the SC calls executor
+	flow.setup.MultiversxHandler.RefundAllFromScBridgeProxy(flow.setup.Ctx)
 
 	transferDoneForSecondHalf := flow.setup.AreAllTransfersCompleted(framework.SecondHalfBridge, flow.tokens...)
 	if !flow.secondHalfBridgeDone && transferDoneForSecondHalf {

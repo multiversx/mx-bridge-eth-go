@@ -228,6 +228,41 @@
             ]
         },
         {
+            "identifier": "transferPerformedSCEvent",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "from",
+                    "type": "EthAddress",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "Address",
+                    "indexed": true
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
             "identifier": "transferFailedInvalidDestination",
             "inputs": [
                 {
@@ -238,6 +273,16 @@
                 {
                     "name": "tx_id",
                     "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "tokenWithTransferRole",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
                     "indexed": true
                 }
             ]
