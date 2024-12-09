@@ -1,4 +1,4 @@
-//TODO: revert this
+//go:build slow
 
 // To run these slow tests, simply add the slow tag on the go test command. Also, provide a chain simulator instance on the 8085 port
 // example: go test -tags slow
@@ -41,9 +41,9 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			t,
 			make(chan error),
 			usdcToken,
-			//memeToken, TODO: fix this
-			//eurocToken,
-			//mexToken,
+			memeToken,
+			eurocToken,
+			mexToken,
 		)
 	})
 	t.Run("malformed SC call data should refund", func(t *testing.T) {
