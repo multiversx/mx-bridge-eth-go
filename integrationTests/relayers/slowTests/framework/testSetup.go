@@ -612,6 +612,10 @@ func (setup *TestSetup) transferTokensToEthTestKey(params TestTokenParams, holde
 		depositValue.Add(depositValue, operation.ValueToTransferToMvx)
 	}
 
+	if params.MultipleSpendings != nil {
+		depositValue.Mul(depositValue, params.MultipleSpendings)
+	}
+
 	setup.EthereumHandler.TransferToken(
 		setup.Ctx,
 		params,

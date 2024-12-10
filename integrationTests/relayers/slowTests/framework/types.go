@@ -14,6 +14,7 @@ type IssueTokenParams struct {
 	InitialSupplyParams
 	AbstractTokenIdentifier string
 	PreventWhitelist        bool
+	MultipleSpendings       *big.Int
 
 	// MultiversX
 	NumOfDecimalsUniversal           int
