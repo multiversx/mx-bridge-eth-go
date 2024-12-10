@@ -54,8 +54,9 @@ func (flow *testFlow) process() (finished bool) {
 	}
 
 	transferDoneForSecondHalf := flow.setup.AreAllTransfersCompleted(framework.SecondHalfBridge, flow.tokens...)
-	transferDoneForSecondHalf = transferDoneForSecondHalf && flow.setup.CheckTotalMintBurn(flow.tokens...)
 	if !flow.secondHalfBridgeDone && transferDoneForSecondHalf {
+		flow.setup.CheckCorrectnessOnMintBurnTokens(flow.tokens...)
+
 		flow.secondHalfBridgeDone = true
 		log.Info(fmt.Sprintf(framework.LogStepMarker, flow.messageAfterSecondHalfBridge))
 

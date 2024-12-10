@@ -90,7 +90,8 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 		TotalChainSpecificMint: big.NewInt(5000 + 5000),
 		TotalUniversalBurn:     big.NewInt(200),
 		TotalChainSpecificBurn: big.NewInt(200 - 50),
-		MintBurnValues:         nil,
+		SafeMintValue:          big.NewInt(5000 + 5000),
+		SafeBurnValue:          big.NewInt(200 - 50),
 	}
 
 	_ = testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(

@@ -87,14 +87,8 @@ type MintBurnBalances struct {
 	TotalChainSpecificMint *big.Int
 	TotalUniversalBurn     *big.Int
 	TotalChainSpecificBurn *big.Int
-	MintBurnValues         map[HalfBridgeIdentifier]MintBurnBalanceHolder
-}
-
-// MintBurnBalanceHolder holds the mint/burn values for a specific address
-type MintBurnBalanceHolder struct {
-	OnEth    *big.Int
-	OnMvx    *big.Int
-	MvxToken TokenBalanceType
+	SafeMintValue          *big.Int
+	SafeBurnValue          *big.Int
 }
 
 // ESDTSupply represents the DTO that holds the supply values for a token
