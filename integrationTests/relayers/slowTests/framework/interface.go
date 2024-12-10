@@ -60,6 +60,7 @@ type ERC20Contract interface {
 	BalanceOf(opts *bind.CallOpts, account common.Address) (*big.Int, error)
 	Mint(opts *bind.TransactOpts, recipientAddress common.Address, amount *big.Int) (*types.Transaction, error)
 	Approve(opts *bind.TransactOpts, spender common.Address, value *big.Int) (*types.Transaction, error)
+	Transfer(opts *bind.TransactOpts, to common.Address, value *big.Int) (*types.Transaction, error)
 }
 
 // TokensRegistry defines the registry used for the tokens in tests

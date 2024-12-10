@@ -161,12 +161,6 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		setup.AddToken(token.IssueTokenParams)
 		setup.EthereumHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 		setup.MultiversxHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
-		if token.IsNativeOnMvX {
-			setup.transferTokensToMvxTestKey(token) // TODO: (Next PRs) this will be moved an batch creation time
-		}
-		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 10)
-
-		esdtBalanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, token.AbstractTokenIdentifier)
 
 		setup.mutBalances.Lock()
 		setup.initMvxInitialBalancesForUniversalUnsafe(token,
@@ -188,6 +182,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		)
 		setup.mutBalances.Unlock()
 
+		esdtBalanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, token.AbstractTokenIdentifier)
 		log.Info("recorded the ESDT balance for safe contract", "token", token.AbstractTokenIdentifier, "balance", esdtBalanceForSafe.String())
 	}
 
@@ -521,11 +516,17 @@ func (setup *TestSetup) createBatchOnMultiversXForToken(params TestTokenParams) 
 	token := setup.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(setup, token)
 
-	// TODO: transfer only required amount for deposit to the test key
+	setup.transferTokensToMvxTestKey(params, setup.AliceKeys)
+	setup.ChainSimulator.GenerateBlocks(setup.Ctx, 10)
+
+	setup.mutBalances.Lock()
+	setup.initMvxInitialBalancesForUniversalUnsafe(params, setup.AliceKeys.MvxAddress)
+	setup.mutBalances.Unlock()
+
 	_ = setup.createDepositOnMultiversxForToken(setup.AliceKeys, setup.BobKeys, params)
 }
 
-func (setup *TestSetup) transferTokensToMvxTestKey(params TestTokenParams) {
+func (setup *TestSetup) transferTokensToMvxTestKey(params TestTokenParams, holder KeysHolder) {
 	depositValue := big.NewInt(0)
 	for _, operation := range params.TestOperations {
 		if operation.ValueToSendFromMvX == nil {
@@ -538,7 +539,7 @@ func (setup *TestSetup) transferTokensToMvxTestKey(params TestTokenParams) {
 	setup.MultiversxHandler.TransferToken(
 		setup.Ctx,
 		setup.OwnerKeys,
-		setup.AliceKeys,
+		holder,
 		depositValue,
 		params.IssueTokenParams,
 	)
@@ -592,8 +593,31 @@ func (setup *TestSetup) createBatchOnEthereumForToken(mvxCalleeScAddress sdkCore
 	token := setup.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(setup, token)
 
-	// TODO: transfer only required amount for deposit to the test key
+	setup.transferTokensToEthTestKey(params, setup.AliceKeys)
+
+	setup.mutBalances.Lock()
+	setup.initEthInitialBalancesUnsafe(params, setup.AliceKeys.EthAddress)
+	setup.mutBalances.Unlock()
+
 	setup.createDepositOnEthereumForToken(setup.AliceKeys, setup.BobKeys, mvxCalleeScAddress, params)
+}
+
+func (setup *TestSetup) transferTokensToEthTestKey(params TestTokenParams, holder KeysHolder) {
+	depositValue := big.NewInt(0)
+	for _, operation := range params.TestOperations {
+		if operation.ValueToTransferToMvx == nil {
+			continue
+		}
+
+		depositValue.Add(depositValue, operation.ValueToTransferToMvx)
+	}
+
+	setup.EthereumHandler.TransferToken(
+		setup.Ctx,
+		params,
+		setup.DepositorKeys,
+		holder,
+		depositValue)
 }
 
 // SendFromEthereumToMultiversX will create the deposits that will be gathered in a batch on Ethereum
