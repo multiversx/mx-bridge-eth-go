@@ -678,6 +678,41 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 	}
 }
 
+// CheckCorrectnessOnMintBurnTokens will check the correctness on the mint/burn tokens
+func (setup *TestSetup) CheckCorrectnessOnMintBurnTokens(tokens ...TestTokenParams) {
+	for _, params := range tokens {
+		setup.checkTotalMintBurnOnMvx(params)
+		setup.checkSafeContractMintBurnOnMvx(params)
+	}
+}
+
+func (setup *TestSetup) checkTotalMintBurnOnMvx(token TestTokenParams) {
+	tokenData := setup.TokensRegistry.GetTokenData(token.AbstractTokenIdentifier)
+
+	esdtSupplyForUniversal := setup.MultiversxHandler.ChainSimulator.GetESDTSupplyValues(setup.Ctx, tokenData.MvxUniversalToken)
+	require.Equal(setup, token.MintBurnChecks.TotalUniversalMint.String(), esdtSupplyForUniversal.Minted, fmt.Sprintf("token: %s", tokenData.MvxUniversalToken))
+	require.Equal(setup, token.MintBurnChecks.TotalUniversalBurn.String(), esdtSupplyForUniversal.Burned, fmt.Sprintf("token: %s", tokenData.MvxUniversalToken))
+
+	if tokenData.MvxUniversalToken == tokenData.MvxChainSpecificToken {
+		// we do not have a chain specific token, we can return true here
+		return
+	}
+
+	esdtSupplyForChainSpecific := setup.MultiversxHandler.ChainSimulator.GetESDTSupplyValues(setup.Ctx, tokenData.MvxChainSpecificToken)
+	require.Equal(setup, token.MintBurnChecks.TotalChainSpecificMint.String(), esdtSupplyForChainSpecific.Minted, fmt.Sprintf("token: %s", tokenData.MvxChainSpecificToken))
+	require.Equal(setup, token.MintBurnChecks.TotalChainSpecificBurn.String(), esdtSupplyForChainSpecific.Burned, fmt.Sprintf("token: %s", tokenData.MvxChainSpecificToken))
+}
+
+func (setup *TestSetup) checkSafeContractMintBurnOnMvx(token TestTokenParams) {
+	tokenData := setup.TokensRegistry.GetTokenData(token.AbstractTokenIdentifier)
+
+	minted := setup.MultiversxHandler.GetMintedAmountForToken(setup.Ctx, tokenData.MvxChainSpecificToken)
+	require.Equal(setup, token.MintBurnChecks.SafeMintValue.String(), minted.String(), fmt.Sprintf("safe contract, token: %s", tokenData.MvxChainSpecificToken))
+
+	burn := setup.MultiversxHandler.GetBurnedAmountForToken(setup.Ctx, tokenData.MvxChainSpecificToken)
+	require.Equal(setup, token.MintBurnChecks.SafeBurnValue.String(), burn.String(), fmt.Sprintf("safe contract, token: %s", tokenData.MvxChainSpecificToken))
+}
+
 // Close will close the test subcomponents
 func (setup *TestSetup) Close() {
 	log.Info(fmt.Sprintf(LogStepMarker, "closing relayers & sc execution module"))
