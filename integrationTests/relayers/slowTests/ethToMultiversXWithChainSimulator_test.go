@@ -144,11 +144,14 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrors(t *testing.T) {
 }
 
 func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
+	usdcInitialValue := big.NewInt(100000)
 	usdcToken := GenerateTestUSDCToken()
-	usdcToken.InitialSupplyValue = "100000"
+	usdcToken.InitialSupplyValue = usdcInitialValue.String()
+	usdcToken.MintBurnChecks.SafeMintValue.Add(usdcToken.MintBurnChecks.SafeMintValue, usdcInitialValue)
 
+	memeInitialValue := big.NewInt(200000)
 	memeToken := GenerateTestMEMEToken()
-	memeToken.InitialSupplyValue = "200000"
+	memeToken.InitialSupplyValue = memeInitialValue.String()
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
@@ -159,11 +162,15 @@ func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
 }
 
 func TestRelayersShouldExecuteTransfersWithInitSupplyMintBurn(t *testing.T) {
+	eurocInitialValue := big.NewInt(100010)
 	eurocToken := GenerateTestEUROCToken()
-	eurocToken.InitialSupplyValue = "100010"
+	eurocToken.InitialSupplyValue = eurocInitialValue.String()
+	eurocToken.MintBurnChecks.SafeMintValue.Add(eurocToken.MintBurnChecks.SafeMintValue, eurocInitialValue)
 
+	mexInitialValue := big.NewInt(300000)
 	mexToken := GenerateTestMEXToken()
-	mexToken.InitialSupplyValue = "300000"
+	mexToken.InitialSupplyValue = mexInitialValue.String()
+	mexToken.MintBurnChecks.SafeBurnValue.Add(mexToken.MintBurnChecks.SafeBurnValue, mexInitialValue)
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
@@ -364,6 +371,14 @@ func createBadToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 			},
+		},
+		MintBurnChecks: &framework.MintBurnBalances{
+			TotalUniversalMint:     big.NewInt(0),
+			TotalChainSpecificMint: big.NewInt(0),
+			TotalUniversalBurn:     big.NewInt(0),
+			TotalChainSpecificBurn: big.NewInt(0),
+			SafeMintValue:          big.NewInt(0),
+			SafeBurnValue:          big.NewInt(0),
 		},
 	}
 }

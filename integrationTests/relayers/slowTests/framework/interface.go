@@ -44,6 +44,7 @@ type ChainSimulatorWrapper interface {
 	GetBlockchainTimeStamp(ctx context.Context) uint64
 	GetTransactionResult(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus)
 	ExecuteVMQuery(ctx context.Context, scAddress *MvxAddress, function string, hexParams []string) [][]byte
+	GetESDTSupplyValues(ctx context.Context, token string) ESDTSupply
 }
 
 // EthereumBlockchainClient defines the operations supported by the Ethereum client
