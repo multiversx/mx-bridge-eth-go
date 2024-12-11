@@ -127,12 +127,15 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
-			TotalUniversalMint:     big.NewInt(5000 + 7000 + 1000),
-			TotalChainSpecificMint: big.NewInt(5000 + 7000 + 1000 + 900),
-			TotalUniversalBurn:     big.NewInt(2500 + 300),
-			TotalChainSpecificBurn: big.NewInt(2500 - 50 + 300 - 50 + 900 - 50),
-			SafeMintValue:          big.NewInt(5000 + 7000 + 1000 + 900),
-			SafeBurnValue:          big.NewInt(2500 - 50 + 300 - 50 + 900 - 50),
+			MvxTotalUniversalMint:     big.NewInt(5000 + 7000 + 1000),
+			MvxTotalChainSpecificMint: big.NewInt(5000 + 7000 + 1000 + 900),
+			MvxTotalUniversalBurn:     big.NewInt(2500 + 300),
+			MvxTotalChainSpecificBurn: big.NewInt(2500 - 50 + 300 - 50 + 900 - 50),
+			MvxSafeMintValue:          big.NewInt(5000 + 7000 + 1000 + 900),
+			MvxSafeBurnValue:          big.NewInt(2500 - 50 + 300 - 50 + 900 - 50),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(5000 + 7000 + 1000 - 2500 - 300),
@@ -155,9 +158,9 @@ func ApplyUSDCRefundBalances(token *framework.TestTokenParams) {
 	// we need to subtract the refunded value from the wrapper contract
 	token.DeltaBalances[framework.SecondHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(5000 + 7000 + 1000 - 2500 - 300 - 1000)
 
-	token.MintBurnChecks.TotalChainSpecificBurn = big.NewInt(2500 - 50 + 300 - 50 + 1000 - 50 + 900 - 50)
-	token.MintBurnChecks.TotalUniversalBurn = big.NewInt(2500 + 300 + 1000)
-	token.MintBurnChecks.SafeBurnValue = big.NewInt(2500 - 50 + 300 - 50 + 1000 - 50 + 900 - 50)
+	token.MintBurnChecks.MvxTotalChainSpecificBurn = big.NewInt(2500 - 50 + 300 - 50 + 1000 - 50 + 900 - 50)
+	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(2500 + 300 + 1000)
+	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(2500 - 50 + 300 - 50 + 1000 - 50 + 900 - 50)
 
 	token.SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(5000 + 7000 + 1000 - 2500 - 300 - 1000)
 }
@@ -267,12 +270,15 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
-			TotalUniversalMint:     big.NewInt(0),
-			TotalChainSpecificMint: big.NewInt(0),
-			TotalUniversalBurn:     big.NewInt(0),
-			TotalChainSpecificBurn: big.NewInt(0),
-			SafeMintValue:          big.NewInt(0),
-			SafeBurnValue:          big.NewInt(0),
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeMintValue: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
+			EthSafeBurnValue: big.NewInt(2400 + 200 + 1000),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
@@ -288,6 +294,8 @@ func ApplyMEMERefundBalances(token *framework.TestTokenParams) {
 	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4000 - 50 - 2400 + 6000 - 50 - 200 + 2000 - 50 - 1000 + 950)
 	// no funds remain in the test caller SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
+
+	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50 + 1000 - 50)
 }
 
 // GenerateTestEUROCToken will generate a test EUROC token
@@ -399,12 +407,15 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
-			TotalUniversalMint:     big.NewInt(5010 + 7010 + 1010 + 700),
-			TotalChainSpecificMint: big.NewInt(0),
-			TotalUniversalBurn:     big.NewInt(2510 - 50 + 310 - 50 + 700 - 50),
-			TotalChainSpecificBurn: big.NewInt(0),
-			SafeMintValue:          big.NewInt(5010 + 7010 + 1010 + 700),
-			SafeBurnValue:          big.NewInt(2510 - 50 + 310 - 50 + 700 - 50),
+			MvxTotalUniversalMint:     big.NewInt(5010 + 7010 + 1010 + 700),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(2510 - 50 + 310 - 50 + 700 - 50),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(5010 + 7010 + 1010 + 700),
+			MvxSafeBurnValue:          big.NewInt(2510 - 50 + 310 - 50 + 700 - 50),
+
+			EthSafeMintValue: big.NewInt(2510 - 50 + 310 - 50 + 650),
+			EthSafeBurnValue: big.NewInt(5010 + 7010 + 1010 + 700),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
@@ -423,8 +434,9 @@ func ApplyEUROCRefundBalances(token *framework.TestTokenParams) {
 	// no funds remain in the called test SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 
-	token.MintBurnChecks.TotalUniversalBurn = big.NewInt(2510 - 50 + 310 - 50 + 700 - 50 + 1010 - 50)
-	token.MintBurnChecks.SafeBurnValue = big.NewInt(2510 - 50 + 310 - 50 + 700 - 50 + 1010 - 50)
+	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(2510 - 50 + 310 - 50 + 700 - 50 + 1010 - 50)
+	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(2510 - 50 + 310 - 50 + 700 - 50 + 1010 - 50)
+	token.MintBurnChecks.EthSafeMintValue = big.NewInt(2510 - 50 + 310 - 50 + 650 + 1010 - 50)
 }
 
 // GenerateTestMEXToken will generate a test MEX token
@@ -532,12 +544,15 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
-			TotalUniversalMint:     big.NewInt(2410 + 210 + 1010),
-			TotalChainSpecificMint: big.NewInt(0),
-			TotalUniversalBurn:     big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
-			TotalChainSpecificBurn: big.NewInt(0),
-			SafeMintValue:          big.NewInt(2410 + 210 + 1010),
-			SafeBurnValue:          big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+			MvxTotalUniversalMint:     big.NewInt(2410 + 210 + 1010),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(2410 + 210 + 1010),
+			MvxSafeBurnValue:          big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+
+			EthSafeMintValue: big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+			EthSafeBurnValue: big.NewInt(2410 + 210 + 1010),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
@@ -554,8 +569,9 @@ func ApplyMEXRefundBalances(token *framework.TestTokenParams) {
 	// no funds remain in the test caller SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 
-	token.MintBurnChecks.TotalUniversalBurn = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 1010 - 50)
-	token.MintBurnChecks.SafeBurnValue = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 1010 - 50)
+	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 1010 - 50)
+	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 1010 - 50)
+	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 1010 - 50)
 }
 
 // GenerateUnlistedTokenFromEth will generate an unlisted token on Eth
@@ -650,12 +666,12 @@ func GenerateUnlistedTokenFromEth() framework.TestTokenParams {
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
-			TotalUniversalMint:     big.NewInt(0),
-			TotalChainSpecificMint: big.NewInt(0),
-			TotalUniversalBurn:     big.NewInt(0),
-			TotalChainSpecificBurn: big.NewInt(0),
-			SafeMintValue:          big.NewInt(0),
-			SafeBurnValue:          big.NewInt(0),
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
@@ -753,12 +769,15 @@ func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
-			TotalUniversalMint:     big.NewInt(0),
-			TotalChainSpecificMint: big.NewInt(0),
-			TotalUniversalBurn:     big.NewInt(0),
-			TotalChainSpecificBurn: big.NewInt(0),
-			SafeMintValue:          big.NewInt(0),
-			SafeBurnValue:          big.NewInt(0),
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(0),

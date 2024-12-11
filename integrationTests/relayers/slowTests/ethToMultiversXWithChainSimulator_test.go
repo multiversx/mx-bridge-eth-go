@@ -147,7 +147,7 @@ func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
 	usdcInitialValue := big.NewInt(100000)
 	usdcToken := GenerateTestUSDCToken()
 	usdcToken.InitialSupplyValue = usdcInitialValue.String()
-	usdcToken.MintBurnChecks.SafeMintValue.Add(usdcToken.MintBurnChecks.SafeMintValue, usdcInitialValue)
+	usdcToken.MintBurnChecks.MvxSafeMintValue.Add(usdcToken.MintBurnChecks.MvxSafeMintValue, usdcInitialValue)
 
 	memeInitialValue := big.NewInt(200000)
 	memeToken := GenerateTestMEMEToken()
@@ -165,12 +165,12 @@ func TestRelayersShouldExecuteTransfersWithInitSupplyMintBurn(t *testing.T) {
 	eurocInitialValue := big.NewInt(100010)
 	eurocToken := GenerateTestEUROCToken()
 	eurocToken.InitialSupplyValue = eurocInitialValue.String()
-	eurocToken.MintBurnChecks.SafeMintValue.Add(eurocToken.MintBurnChecks.SafeMintValue, eurocInitialValue)
+	eurocToken.MintBurnChecks.MvxSafeMintValue.Add(eurocToken.MintBurnChecks.MvxSafeMintValue, eurocInitialValue)
 
 	mexInitialValue := big.NewInt(300000)
 	mexToken := GenerateTestMEXToken()
 	mexToken.InitialSupplyValue = mexInitialValue.String()
-	mexToken.MintBurnChecks.SafeBurnValue.Add(mexToken.MintBurnChecks.SafeBurnValue, mexInitialValue)
+	mexToken.MintBurnChecks.MvxSafeBurnValue.Add(mexToken.MintBurnChecks.MvxSafeBurnValue, mexInitialValue)
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
@@ -373,12 +373,12 @@ func createBadToken() framework.TestTokenParams {
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
-			TotalUniversalMint:     big.NewInt(0),
-			TotalChainSpecificMint: big.NewInt(0),
-			TotalUniversalBurn:     big.NewInt(0),
-			TotalChainSpecificBurn: big.NewInt(0),
-			SafeMintValue:          big.NewInt(0),
-			SafeBurnValue:          big.NewInt(0),
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
 		},
 	}
 }
