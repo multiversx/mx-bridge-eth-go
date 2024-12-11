@@ -82,6 +82,7 @@ const (
 	getMintBalancesFunction                              = "getMintBalances"
 	getBurnBalancesFunction                              = "getBurnBalances"
 	getTotalBalancesFunction                             = "getTotalBalances"
+	getTokenLiquidityFunction                            = "getTokenLiquidity"
 )
 
 var (
@@ -1210,6 +1211,17 @@ func (handler *MultiversxHandler) MoveRefundBatchToSafe(ctx context.Context) {
 func (handler *MultiversxHandler) HasRefundBatch(ctx context.Context) bool {
 	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.MultisigAddress, getCurrentRefundBatchFunction, []string{})
 	return len(responseData) != 0
+}
+
+// GetWrapperLiquidity invokes the getTokenLiquidity function, returning the stored liquidity on the wrapper contract
+func (handler *MultiversxHandler) GetWrapperLiquidity(ctx context.Context, token string) *big.Int {
+	queryParams := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.WrapperAddress, getTokenLiquidityFunction, queryParams)
+	require.Greater(handler, len(responseData), 0)
+	value := big.NewInt(0).SetBytes(responseData[0])
+	return value
 }
 
 func (handler *MultiversxHandler) scCallAndCheckTx(
