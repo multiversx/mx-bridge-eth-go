@@ -152,6 +152,7 @@ func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
 	memeInitialValue := big.NewInt(200000)
 	memeToken := GenerateTestMEMEToken()
 	memeToken.InitialSupplyValue = memeInitialValue.String()
+	memeToken.MintBurnChecks.EthSafeMintValue.Add(memeToken.MintBurnChecks.EthSafeMintValue, memeInitialValue)
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
@@ -166,11 +167,13 @@ func TestRelayersShouldExecuteTransfersWithInitSupplyMintBurn(t *testing.T) {
 	eurocToken := GenerateTestEUROCToken()
 	eurocToken.InitialSupplyValue = eurocInitialValue.String()
 	eurocToken.MintBurnChecks.MvxSafeMintValue.Add(eurocToken.MintBurnChecks.MvxSafeMintValue, eurocInitialValue)
+	eurocToken.MintBurnChecks.EthSafeBurnValue.Add(eurocToken.MintBurnChecks.EthSafeBurnValue, eurocInitialValue)
 
 	mexInitialValue := big.NewInt(300000)
 	mexToken := GenerateTestMEXToken()
 	mexToken.InitialSupplyValue = mexInitialValue.String()
 	mexToken.MintBurnChecks.MvxSafeBurnValue.Add(mexToken.MintBurnChecks.MvxSafeBurnValue, mexInitialValue)
+	mexToken.MintBurnChecks.EthSafeMintValue.Add(mexToken.MintBurnChecks.EthSafeMintValue, mexInitialValue)
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,

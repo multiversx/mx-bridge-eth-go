@@ -672,6 +672,9 @@ func GenerateUnlistedTokenFromEth() framework.TestTokenParams {
 			MvxTotalChainSpecificBurn: big.NewInt(0),
 			MvxSafeMintValue:          big.NewInt(0),
 			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeBurnValue: big.NewInt(0),
+			EthSafeMintValue: big.NewInt(0),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(0),

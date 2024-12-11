@@ -102,6 +102,9 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 		MvxTotalChainSpecificBurn: big.NewInt(200 - 50),
 		MvxSafeMintValue:          big.NewInt(5000 + 5000),
 		MvxSafeBurnValue:          big.NewInt(200 - 50),
+
+		EthSafeMintValue: big.NewInt(0),
+		EthSafeBurnValue: big.NewInt(0),
 	}
 	usdcToken.SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(5000 + 5000 - 200)
 
