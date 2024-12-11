@@ -178,6 +178,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		)
 		setup.initMvxInitialBalancesForChainSpecificUnsafe(token,
 			setup.MultiversxHandler.SafeAddress,
+			setup.MultiversxHandler.WrapperAddress,
 		)
 
 		setup.initEthInitialBalancesUnsafe(token,
@@ -368,148 +369,6 @@ func (setup *TestSetup) getEthAddressFromEntityName(entityName string) (common.A
 	return common.Address{}, false
 }
 
-func (setup *TestSetup) checkContractMvxBalanceForToken(params TestTokenParams) bool {
-	mvxBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.MultiversxHandler.CalleeScAddress, params.AbstractTokenIdentifier)
-	expectedValueOnContract := big.NewInt(0)
-	for _, operation := range params.TestOperations {
-		if operation.ValueToTransferToMvx == nil {
-			continue
-		}
-		if !setup.hasCallData(operation) {
-			continue
-		}
-		if operation.MvxFaultySCCall {
-			continue
-		}
-
-		expectedValueOnContract.Add(expectedValueOnContract, operation.ValueToTransferToMvx)
-	}
-
-	return mvxBalance.String() == expectedValueOnContract.String()
-}
-
-func (setup *TestSetup) checkEthBurnedTokenBalance(params TestTokenParams) bool {
-	token := setup.GetTokenData(params.AbstractTokenIdentifier)
-	burnedTokens := setup.EthereumHandler.GetBurnBalanceForToken(setup.Ctx, token.EthErc20Address)
-
-	expectedValue := setup.computeExpectedValueToMvx(params)
-
-	if params.IsNativeOnEth {
-		if params.InitialSupplyValue != "" {
-			if initialSupply, ok := new(big.Int).SetString(params.InitialSupplyValue, 10); ok {
-				expectedValue.Add(expectedValue, initialSupply)
-			}
-		}
-	}
-
-	return burnedTokens.String() == expectedValue.String()
-}
-
-func (setup *TestSetup) checkMvxMintedBalanceForToken(params TestTokenParams) bool {
-	token := setup.GetTokenData(params.AbstractTokenIdentifier)
-	mintedTokens := setup.MultiversxHandler.GetMintedAmountForToken(setup.Ctx, token.MvxChainSpecificToken)
-
-	expectedValue := setup.computeExpectedValueToMvx(params)
-
-	if params.IsNativeOnEth {
-		if params.InitialSupplyValue != "" {
-			if initialSupply, ok := new(big.Int).SetString(params.InitialSupplyValue, 10); ok {
-				expectedValue.Add(expectedValue, initialSupply)
-			}
-		}
-	}
-
-	return mintedTokens.String() == expectedValue.String()
-}
-
-func (setup *TestSetup) computeExpectedValueToMvx(params TestTokenParams) *big.Int {
-	expectedValue := big.NewInt(0)
-	for _, operation := range params.TestOperations {
-		if operation.ValueToTransferToMvx == nil {
-			continue
-		}
-		if operation.IsFaultyDeposit {
-			continue
-		}
-
-		expectedValue.Add(expectedValue, operation.ValueToTransferToMvx)
-	}
-
-	return expectedValue
-}
-
-func (setup *TestSetup) computeExpectedValueFromMvx(params TestTokenParams) *big.Int {
-	expectedValue := big.NewInt(0)
-	for _, operation := range params.TestOperations {
-		if operation.ValueToSendFromMvX == nil {
-			continue
-		}
-		if operation.IsFaultyDeposit {
-			continue
-		}
-
-		expectedValue.Add(expectedValue, operation.ValueToSendFromMvX)
-		expectedValue.Sub(expectedValue, feeInt)
-	}
-
-	return expectedValue
-}
-
-func (setup *TestSetup) checkMvxBurnedTokenBalance(params TestTokenParams) bool {
-	token := setup.GetTokenData(params.AbstractTokenIdentifier)
-	burnedTokens := setup.MultiversxHandler.GetBurnedAmountForToken(setup.Ctx, token.MvxChainSpecificToken)
-
-	expectedValue := setup.computeExpectedValueFromMvx(params)
-
-	if params.IsNativeOnMvX {
-		if params.InitialSupplyValue != "" {
-			if initialSupply, ok := new(big.Int).SetString(params.InitialSupplyValue, 10); ok {
-				expectedValue.Add(expectedValue, initialSupply)
-			}
-		}
-	} else {
-		expectedValue.Add(expectedValue, setup.getMvxTotalRefundAmountForToken(params)) // burn possible refund amount to be bridged back to Eth
-	}
-
-	return burnedTokens.String() == expectedValue.String()
-}
-
-func (setup *TestSetup) checkEthMintedBalanceForToken(params TestTokenParams) bool {
-	token := setup.GetTokenData(params.AbstractTokenIdentifier)
-	mintedTokens := setup.EthereumHandler.GetMintBalanceForToken(setup.Ctx, token.EthErc20Address)
-
-	expectedValue := setup.computeExpectedValueFromMvx(params)
-
-	if params.IsNativeOnMvX {
-		if params.InitialSupplyValue != "" {
-			if initialSupply, ok := new(big.Int).SetString(params.InitialSupplyValue, 10); ok {
-				expectedValue.Add(expectedValue, initialSupply)
-			}
-		}
-	} else {
-		expectedValue.Add(expectedValue, setup.getMvxTotalRefundAmountForToken(params)) // mint possible refund amount from failed SC call on Mvx
-	}
-
-	return mintedTokens.String() == expectedValue.String()
-}
-
-func (setup *TestSetup) getMvxTotalRefundAmountForToken(params TestTokenParams) *big.Int {
-	totalRefund := big.NewInt(0)
-	for _, operation := range params.TestOperations {
-		if !setup.hasCallData(operation) {
-			continue
-		}
-		if !operation.MvxFaultySCCall {
-			continue
-		}
-
-		// the balance should be bridged back to the receiver on Ethereum - fee
-		totalRefund.Add(totalRefund, operation.ValueToTransferToMvx)
-		totalRefund.Sub(totalRefund, feeInt)
-	}
-	return totalRefund
-}
-
 // CreateBatchOnMultiversX will create deposits that will be gathered in a batch on MultiversX
 func (setup *TestSetup) CreateBatchOnMultiversX(tokensParams ...TestTokenParams) {
 	for _, params := range tokensParams {
@@ -676,6 +535,69 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 
 		setup.MultiversxHandler.TestWithdrawFees(setup.Ctx, token.MvxChainSpecificToken, expectedRefund, expectedAccumulated)
 	}
+}
+
+// CheckCorrectnessOnMintBurnTokens will check the correctness on the mint/burn tokens
+func (setup *TestSetup) CheckCorrectnessOnMintBurnTokens(tokens ...TestTokenParams) {
+	for _, params := range tokens {
+		setup.checkTotalMintBurnOnMvx(params)
+		setup.checkMintBurnOnEth(params)
+		setup.checkSafeContractMintBurnOnMvx(params)
+	}
+}
+
+// ExecuteSpecialChecks will trigger the special checks
+func (setup *TestSetup) ExecuteSpecialChecks(tokens ...TestTokenParams) {
+	for _, params := range tokens {
+		setup.executeSpecialChecks(params)
+	}
+}
+
+func (setup *TestSetup) checkTotalMintBurnOnMvx(token TestTokenParams) {
+	tokenData := setup.TokensRegistry.GetTokenData(token.AbstractTokenIdentifier)
+
+	esdtSupplyForUniversal := setup.MultiversxHandler.ChainSimulator.GetESDTSupplyValues(setup.Ctx, tokenData.MvxUniversalToken)
+	require.Equal(setup, token.MintBurnChecks.MvxTotalUniversalMint.String(), esdtSupplyForUniversal.Minted, fmt.Sprintf("token: %s", tokenData.MvxUniversalToken))
+	require.Equal(setup, token.MintBurnChecks.MvxTotalUniversalBurn.String(), esdtSupplyForUniversal.Burned, fmt.Sprintf("token: %s", tokenData.MvxUniversalToken))
+
+	if tokenData.MvxUniversalToken == tokenData.MvxChainSpecificToken {
+		// we do not have a chain specific token, we can return true here
+		return
+	}
+
+	esdtSupplyForChainSpecific := setup.MultiversxHandler.ChainSimulator.GetESDTSupplyValues(setup.Ctx, tokenData.MvxChainSpecificToken)
+	require.Equal(setup, token.MintBurnChecks.MvxTotalChainSpecificMint.String(), esdtSupplyForChainSpecific.Minted, fmt.Sprintf("token: %s", tokenData.MvxChainSpecificToken))
+	require.Equal(setup, token.MintBurnChecks.MvxTotalChainSpecificBurn.String(), esdtSupplyForChainSpecific.Burned, fmt.Sprintf("token: %s", tokenData.MvxChainSpecificToken))
+}
+
+func (setup *TestSetup) checkMintBurnOnEth(token TestTokenParams) {
+	tokenData := setup.GetTokenData(token.AbstractTokenIdentifier)
+
+	minted := setup.EthereumHandler.GetMintBalanceForToken(setup.Ctx, tokenData.EthErc20Address)
+	require.Equal(setup, token.MintBurnChecks.EthSafeMintValue.String(), minted.String(), fmt.Sprintf("eth safe contract, token: %s", tokenData.EthErc20Address.String()))
+
+	burned := setup.EthereumHandler.GetBurnBalanceForToken(setup.Ctx, tokenData.EthErc20Address)
+	require.Equal(setup, token.MintBurnChecks.EthSafeBurnValue.String(), burned.String(), fmt.Sprintf("eth safe contract, token: %s", tokenData.EthErc20Address.String()))
+}
+
+func (setup *TestSetup) checkSafeContractMintBurnOnMvx(token TestTokenParams) {
+	tokenData := setup.TokensRegistry.GetTokenData(token.AbstractTokenIdentifier)
+
+	minted := setup.MultiversxHandler.GetMintedAmountForToken(setup.Ctx, tokenData.MvxChainSpecificToken)
+	require.Equal(setup, token.MintBurnChecks.MvxSafeMintValue.String(), minted.String(), fmt.Sprintf("Mvx safe contract, token: %s", tokenData.MvxChainSpecificToken))
+
+	burn := setup.MultiversxHandler.GetBurnedAmountForToken(setup.Ctx, tokenData.MvxChainSpecificToken)
+	require.Equal(setup, token.MintBurnChecks.MvxSafeBurnValue.String(), burn.String(), fmt.Sprintf("Mvx safe contract, token: %s", tokenData.MvxChainSpecificToken))
+}
+
+func (setup *TestSetup) executeSpecialChecks(token TestTokenParams) {
+	tokenData := setup.TokensRegistry.GetTokenData(token.AbstractTokenIdentifier)
+
+	actualValue := setup.MultiversxHandler.GetWrapperLiquidity(setup.Ctx, tokenData.MvxChainSpecificToken)
+	initialBalance := setup.getBalanceMappingForAddressAndToken(setup.MultiversxHandler.WrapperAddress.Bech32(), token)
+	expectedValue := big.NewInt(0).Add(initialBalance, token.SpecialChecks.WrapperDeltaLiquidityCheck)
+
+	require.Equal(setup, expectedValue.String(), actualValue.String(), fmt.Sprintf("wrapper contract, token: %s", tokenData.MvxChainSpecificToken))
 }
 
 // Close will close the test subcomponents

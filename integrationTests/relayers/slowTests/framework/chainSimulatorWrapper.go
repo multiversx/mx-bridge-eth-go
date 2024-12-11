@@ -38,6 +38,7 @@ const (
 	numProbeRetries                         = 10
 	networkConfigEndpointTemplate           = "network/status/%d"
 	codeMetadata                            = "0502"
+	esdtSupplyEndpointTemplate              = "network/esdt/supply/%s"
 )
 
 var (
@@ -380,4 +381,21 @@ func (instance *chainSimulatorWrapper) ExecuteVMQuery(
 	require.Nil(instance, err)
 
 	return response.Data.ReturnData
+}
+
+// GetESDTSupplyValues get all supply parameters for a token
+func (instance *chainSimulatorWrapper) GetESDTSupplyValues(ctx context.Context, token string) ESDTSupply {
+	resultBytes, status, err := instance.clientWrapper.GetHTTP(ctx, fmt.Sprintf(esdtSupplyEndpointTemplate, token))
+	if err != nil || status != http.StatusOK {
+		require.Fail(instance, fmt.Sprintf("error %v, status code %d in chainSimulatorWrapper.GetESDTSupplyValues", err, status))
+	}
+
+	resultStruct := struct {
+		Data ESDTSupply `json:"data"`
+	}{}
+
+	err = json.Unmarshal(resultBytes, &resultStruct)
+	require.Nil(instance, err)
+
+	return resultStruct.Data
 }
