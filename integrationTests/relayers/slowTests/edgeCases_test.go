@@ -85,6 +85,14 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 			},
 		},
 	}
+	usdcToken.MintBurnChecks = &framework.MintBurnBalances{
+		TotalUniversalMint:     big.NewInt(5000 + 5000),
+		TotalChainSpecificMint: big.NewInt(5000 + 5000),
+		TotalUniversalBurn:     big.NewInt(200),
+		TotalChainSpecificBurn: big.NewInt(200 - 50),
+		SafeMintValue:          big.NewInt(5000 + 5000),
+		SafeBurnValue:          big.NewInt(200 - 50),
+	}
 
 	_ = testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(
 		t,
