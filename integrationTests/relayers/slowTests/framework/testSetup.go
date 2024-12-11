@@ -178,6 +178,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		)
 		setup.initMvxInitialBalancesForChainSpecificUnsafe(token,
 			setup.MultiversxHandler.SafeAddress,
+			setup.MultiversxHandler.WrapperAddress,
 		)
 
 		setup.initEthInitialBalancesUnsafe(token,
@@ -686,6 +687,13 @@ func (setup *TestSetup) CheckCorrectnessOnMintBurnTokens(tokens ...TestTokenPara
 	}
 }
 
+// ExecuteSpecialChecks will trigger the special checks
+func (setup *TestSetup) ExecuteSpecialChecks(tokens ...TestTokenParams) {
+	for _, params := range tokens {
+		setup.executeSpecialChecks(params)
+	}
+}
+
 func (setup *TestSetup) checkTotalMintBurnOnMvx(token TestTokenParams) {
 	tokenData := setup.TokensRegistry.GetTokenData(token.AbstractTokenIdentifier)
 
@@ -711,6 +719,16 @@ func (setup *TestSetup) checkSafeContractMintBurnOnMvx(token TestTokenParams) {
 
 	burn := setup.MultiversxHandler.GetBurnedAmountForToken(setup.Ctx, tokenData.MvxChainSpecificToken)
 	require.Equal(setup, token.MintBurnChecks.SafeBurnValue.String(), burn.String(), fmt.Sprintf("safe contract, token: %s", tokenData.MvxChainSpecificToken))
+}
+
+func (setup *TestSetup) executeSpecialChecks(token TestTokenParams) {
+	tokenData := setup.TokensRegistry.GetTokenData(token.AbstractTokenIdentifier)
+
+	actualValue := setup.MultiversxHandler.GetWrapperLiquidity(setup.Ctx, tokenData.MvxChainSpecificToken)
+	initialBalance := setup.getBalanceMappingForAddressAndToken(setup.MultiversxHandler.WrapperAddress.Bech32(), token)
+	expectedValue := big.NewInt(0).Add(initialBalance, token.SpecialChecks.WrapperDeltaLiquidityCheck)
+
+	require.Equal(setup, expectedValue.String(), actualValue.String(), fmt.Sprintf("wrapper contract, token: %s", tokenData.MvxChainSpecificToken))
 }
 
 // Close will close the test subcomponents

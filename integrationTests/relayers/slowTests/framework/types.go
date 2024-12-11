@@ -57,6 +57,7 @@ type TestTokenParams struct {
 	TestOperations []TokenOperations
 	DeltaBalances  map[HalfBridgeIdentifier]DeltaBalancesOnKeys
 	MintBurnChecks *MintBurnBalances
+	SpecialChecks  *SpecialBalanceChecks
 }
 
 // TokenData represents a test token data
@@ -96,4 +97,9 @@ type ESDTSupply struct {
 	Supply string `json:"supply"`
 	Minted string `json:"minted"`
 	Burned string `json:"burned"`
+}
+
+// SpecialBalanceChecks stores the special checks that are done at the end of the test
+type SpecialBalanceChecks struct {
+	WrapperDeltaLiquidityCheck *big.Int
 }

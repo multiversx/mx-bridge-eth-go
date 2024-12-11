@@ -87,6 +87,11 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 					OnMvx:    big.NewInt(1000),
 					MvxToken: framework.UniversalToken,
 				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(5000 + 7000 + 1000),
+					MvxToken: framework.ChainSpecificToken,
+				},
 			},
 			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
 				framework.Alice: {
@@ -114,6 +119,11 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 					OnMvx:    big.NewInt(1000),
 					MvxToken: framework.UniversalToken,
 				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(5000 + 7000 + 1000 - 2500 - 300),
+					MvxToken: framework.ChainSpecificToken,
+				},
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
@@ -123,6 +133,9 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			TotalChainSpecificBurn: big.NewInt(2500 - 50 + 300 - 50 + 900 - 50),
 			SafeMintValue:          big.NewInt(5000 + 7000 + 1000 + 900),
 			SafeBurnValue:          big.NewInt(2500 - 50 + 300 - 50 + 900 - 50),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(5000 + 7000 + 1000 - 2500 - 300),
 		},
 	}
 }
@@ -139,10 +152,14 @@ func ApplyUSDCRefundBalances(token *framework.TestTokenParams) {
 	token.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-5000 - 7000 - 1000 - 900 + 950 + 850)
 	// no funds remain in the called test SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
+	// we need to subtract the refunded value from the wrapper contract
+	token.DeltaBalances[framework.SecondHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(5000 + 7000 + 1000 - 2500 - 300 - 1000)
 
 	token.MintBurnChecks.TotalChainSpecificBurn = big.NewInt(2500 - 50 + 300 - 50 + 1000 - 50 + 900 - 50)
 	token.MintBurnChecks.TotalUniversalBurn = big.NewInt(2500 + 300 + 1000)
 	token.MintBurnChecks.SafeBurnValue = big.NewInt(2500 - 50 + 300 - 50 + 1000 - 50 + 900 - 50)
+
+	token.SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(5000 + 7000 + 1000 - 2500 - 300 - 1000)
 }
 
 // GenerateTestMEMEToken will generate a test MEME token
@@ -210,6 +227,11 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
 			},
 			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
 				framework.Alice: {
@@ -237,6 +259,11 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 					OnMvx:    big.NewInt(1000),
 					MvxToken: framework.UniversalToken,
 				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
@@ -246,6 +273,9 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			TotalChainSpecificBurn: big.NewInt(0),
 			SafeMintValue:          big.NewInt(0),
 			SafeBurnValue:          big.NewInt(0),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		},
 	}
 }
@@ -329,6 +359,11 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 					OnMvx:    big.NewInt(1010),
 					MvxToken: framework.UniversalToken,
 				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
 			},
 			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
 				framework.Alice: {
@@ -356,6 +391,11 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 					OnMvx:    big.NewInt(1010),
 					MvxToken: framework.UniversalToken,
 				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
@@ -365,6 +405,9 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			TotalChainSpecificBurn: big.NewInt(0),
 			SafeMintValue:          big.NewInt(5010 + 7010 + 1010 + 700),
 			SafeBurnValue:          big.NewInt(2510 - 50 + 310 - 50 + 700 - 50),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		},
 	}
 }
@@ -449,6 +492,11 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
 			},
 			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
 				framework.Alice: {
@@ -476,6 +524,11 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 					OnMvx:    big.NewInt(1010),
 					MvxToken: framework.UniversalToken,
 				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
@@ -485,6 +538,9 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			TotalChainSpecificBurn: big.NewInt(0),
 			SafeMintValue:          big.NewInt(2410 + 210 + 1010),
 			SafeBurnValue:          big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		},
 	}
 }
@@ -601,6 +657,9 @@ func GenerateUnlistedTokenFromEth() framework.TestTokenParams {
 			SafeMintValue:          big.NewInt(0),
 			SafeBurnValue:          big.NewInt(0),
 		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		},
 	}
 }
 
@@ -700,6 +759,9 @@ func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 			TotalChainSpecificBurn: big.NewInt(0),
 			SafeMintValue:          big.NewInt(0),
 			SafeBurnValue:          big.NewInt(0),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		},
 	}
 }
