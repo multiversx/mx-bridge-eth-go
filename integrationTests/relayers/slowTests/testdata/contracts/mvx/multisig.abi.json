@@ -692,16 +692,6 @@
             "outputs": []
         },
         {
-            "name": "bridgedTokensWrapperDepositLiquidity",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "payableInTokens": [
-                "*"
-            ],
-            "inputs": [],
-            "outputs": []
-        },
-        {
             "docs": [
                 "Minimum number of signatures needed to perform any action."
             ],
