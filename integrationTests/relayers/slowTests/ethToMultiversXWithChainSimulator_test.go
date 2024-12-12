@@ -144,11 +144,15 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrors(t *testing.T) {
 }
 
 func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
+	usdcInitialValue := big.NewInt(100000)
 	usdcToken := GenerateTestUSDCToken()
-	usdcToken.InitialSupplyValue = "100000"
+	usdcToken.InitialSupplyValue = usdcInitialValue.String()
+	usdcToken.MintBurnChecks.MvxSafeMintValue.Add(usdcToken.MintBurnChecks.MvxSafeMintValue, usdcInitialValue)
 
+	memeInitialValue := big.NewInt(200000)
 	memeToken := GenerateTestMEMEToken()
-	memeToken.InitialSupplyValue = "200000"
+	memeToken.InitialSupplyValue = memeInitialValue.String()
+	memeToken.MintBurnChecks.EthSafeMintValue.Add(memeToken.MintBurnChecks.EthSafeMintValue, memeInitialValue)
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
@@ -159,11 +163,17 @@ func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
 }
 
 func TestRelayersShouldExecuteTransfersWithInitSupplyMintBurn(t *testing.T) {
+	eurocInitialValue := big.NewInt(100010)
 	eurocToken := GenerateTestEUROCToken()
-	eurocToken.InitialSupplyValue = "100010"
+	eurocToken.InitialSupplyValue = eurocInitialValue.String()
+	eurocToken.MintBurnChecks.MvxSafeMintValue.Add(eurocToken.MintBurnChecks.MvxSafeMintValue, eurocInitialValue)
+	eurocToken.MintBurnChecks.EthSafeBurnValue.Add(eurocToken.MintBurnChecks.EthSafeBurnValue, eurocInitialValue)
 
+	mexInitialValue := big.NewInt(300000)
 	mexToken := GenerateTestMEXToken()
-	mexToken.InitialSupplyValue = "300000"
+	mexToken.InitialSupplyValue = mexInitialValue.String()
+	mexToken.MintBurnChecks.MvxSafeBurnValue.Add(mexToken.MintBurnChecks.MvxSafeBurnValue, mexInitialValue)
+	mexToken.MintBurnChecks.EthSafeMintValue.Add(mexToken.MintBurnChecks.EthSafeMintValue, mexInitialValue)
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
@@ -364,6 +374,14 @@ func createBadToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 			},
+		},
+		MintBurnChecks: &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
 		},
 	}
 }

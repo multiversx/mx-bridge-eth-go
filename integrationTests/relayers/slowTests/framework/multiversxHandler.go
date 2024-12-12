@@ -77,11 +77,12 @@ const (
 	getRefundFeesForEthereumFunction                     = "getRefundFeesForEthereum"
 	withdrawTransactionFeesFunction                      = "withdrawTransactionFees"
 	getTransactionFeesFunction                           = "getTransactionFees"
-	initSupplyMintBurnEsdtSafe                           = "initSupplyMintBurnEsdtSafe"
-	initSupplyEsdtSafe                                   = "initSupplyEsdtSafe"
-	getMintBalances                                      = "getMintBalances"
-	getBurnBalances                                      = "getBurnBalances"
-	getTotalBalances                                     = "getTotalBalances"
+	initSupplyMintBurnEsdtSafeFunction                   = "initSupplyMintBurnEsdtSafe"
+	initSupplyEsdtSafeFunction                           = "initSupplyEsdtSafe"
+	getMintBalancesFunction                              = "getMintBalances"
+	getBurnBalancesFunction                              = "getBurnBalances"
+	getTotalBalancesFunction                             = "getTotalBalances"
+	getTokenLiquidityFunction                            = "getTokenLiquidity"
 )
 
 var (
@@ -854,7 +855,7 @@ func (handler *MultiversxHandler) setInitialSupply(ctx context.Context, params I
 				handler.MultisigAddress,
 				zeroStringValue,
 				setCallsGasLimit,
-				initSupplyMintBurnEsdtSafe,
+				initSupplyMintBurnEsdtSafeFunction,
 				scCallParams)
 
 			log.Info("initial supply tx executed", "hash", hash, "status", txResult.Status,
@@ -863,7 +864,7 @@ func (handler *MultiversxHandler) setInitialSupply(ctx context.Context, params I
 			scCallParams := []string{
 				hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
 				hex.EncodeToString(initialSupply.Bytes()),
-				hex.EncodeToString([]byte(initSupplyEsdtSafe)),
+				hex.EncodeToString([]byte(initSupplyEsdtSafeFunction)),
 				hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
 				hex.EncodeToString(initialSupply.Bytes()),
 			}
@@ -1165,7 +1166,7 @@ func (handler *MultiversxHandler) GetTotalBalancesForToken(ctx context.Context, 
 	queryParams := []string{
 		hex.EncodeToString([]byte(token)),
 	}
-	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getTotalBalances, queryParams)
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getTotalBalancesFunction, queryParams)
 	require.Greater(handler, len(responseData), 0)
 	value := big.NewInt(0).SetBytes(responseData[0])
 	return value
@@ -1176,7 +1177,7 @@ func (handler *MultiversxHandler) GetMintedAmountForToken(ctx context.Context, t
 	queryParams := []string{
 		hex.EncodeToString([]byte(token)),
 	}
-	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getMintBalances, queryParams)
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getMintBalancesFunction, queryParams)
 	require.Greater(handler, len(responseData), 0)
 	value := big.NewInt(0).SetBytes(responseData[0])
 	return value
@@ -1187,7 +1188,7 @@ func (handler *MultiversxHandler) GetBurnedAmountForToken(ctx context.Context, t
 	queryParams := []string{
 		hex.EncodeToString([]byte(token)),
 	}
-	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getBurnBalances, queryParams)
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getBurnBalancesFunction, queryParams)
 	require.Greater(handler, len(responseData), 0)
 	value := big.NewInt(0).SetBytes(responseData[0])
 	return value
@@ -1210,6 +1211,17 @@ func (handler *MultiversxHandler) MoveRefundBatchToSafe(ctx context.Context) {
 func (handler *MultiversxHandler) HasRefundBatch(ctx context.Context) bool {
 	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.MultisigAddress, getCurrentRefundBatchFunction, []string{})
 	return len(responseData) != 0
+}
+
+// GetWrapperLiquidity invokes the getTokenLiquidity function, returning the stored liquidity on the wrapper contract
+func (handler *MultiversxHandler) GetWrapperLiquidity(ctx context.Context, token string) *big.Int {
+	queryParams := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.WrapperAddress, getTokenLiquidityFunction, queryParams)
+	require.Greater(handler, len(responseData), 0)
+	value := big.NewInt(0).SetBytes(responseData[0])
+	return value
 }
 
 func (handler *MultiversxHandler) scCallAndCheckTx(

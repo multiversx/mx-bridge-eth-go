@@ -67,6 +67,11 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 				OnMvx:    big.NewInt(0),
 				MvxToken: framework.ChainSpecificToken,
 			},
+			framework.WrapperSC: {
+				OnEth:    big.NewInt(0),
+				OnMvx:    big.NewInt(5000),
+				MvxToken: framework.ChainSpecificToken,
+			},
 		},
 		framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
 			framework.Alice: {
@@ -84,8 +89,25 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 				OnMvx:    big.NewInt(50),
 				MvxToken: framework.ChainSpecificToken,
 			},
+			framework.WrapperSC: {
+				OnEth:    big.NewInt(0),
+				OnMvx:    big.NewInt(5000 + 5000 - 200),
+				MvxToken: framework.ChainSpecificToken,
+			},
 		},
 	}
+	usdcToken.MintBurnChecks = &framework.MintBurnBalances{
+		MvxTotalUniversalMint:     big.NewInt(5000 + 5000),
+		MvxTotalChainSpecificMint: big.NewInt(5000 + 5000),
+		MvxTotalUniversalBurn:     big.NewInt(200),
+		MvxTotalChainSpecificBurn: big.NewInt(200 - 50),
+		MvxSafeMintValue:          big.NewInt(5000 + 5000),
+		MvxSafeBurnValue:          big.NewInt(200 - 50),
+
+		EthSafeMintValue: big.NewInt(0),
+		EthSafeBurnValue: big.NewInt(0),
+	}
+	usdcToken.SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(5000 + 5000 - 200)
 
 	_ = testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(
 		t,
