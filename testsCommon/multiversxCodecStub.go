@@ -1,20 +1,22 @@
 package testsCommon
 
-import "github.com/multiversx/mx-bridge-eth-go/parsers"
+import (
+	"github.com/multiversx/mx-bridge-eth-go/core"
+)
 
 // MultiversxCodecStub -
 type MultiversxCodecStub struct {
-	DecodeProxySCCompleteCallDataCalled  func(buff []byte) (parsers.ProxySCCompleteCallData, error)
+	DecodeProxySCCompleteCallDataCalled  func(buff []byte) (core.ProxySCCompleteCallData, error)
 	ExtractGasLimitFromRawCallDataCalled func(buff []byte) (uint64, error)
 }
 
 // DecodeProxySCCompleteCallData -
-func (stub *MultiversxCodecStub) DecodeProxySCCompleteCallData(buff []byte) (parsers.ProxySCCompleteCallData, error) {
+func (stub *MultiversxCodecStub) DecodeProxySCCompleteCallData(buff []byte) (core.ProxySCCompleteCallData, error) {
 	if stub.DecodeProxySCCompleteCallDataCalled != nil {
 		return stub.DecodeProxySCCompleteCallDataCalled(buff)
 	}
 
-	return parsers.ProxySCCompleteCallData{}, nil
+	return core.ProxySCCompleteCallData{}, nil
 }
 
 // ExtractGasLimitFromRawCallData -

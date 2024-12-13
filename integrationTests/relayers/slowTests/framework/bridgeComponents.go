@@ -91,8 +91,9 @@ func NewBridgeComponents(
 			ProposeStatusForEach:   7000000,
 			PerformActionBase:      40000000,
 			PerformActionForEach:   7000000,
-			ScCallPerByte:          100000,
+			ScCallPerByte:          10000,
 			ScCallPerformForEach:   10000000,
+			AbsoluteMaxGasLimit:    600000000,
 		}
 		relayer, err := factory.NewEthMultiversXBridgeComponents(argsBridgeComponents)
 		require.Nil(bridge, err)

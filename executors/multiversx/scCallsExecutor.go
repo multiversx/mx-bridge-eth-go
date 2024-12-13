@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/multiversx/mx-bridge-eth-go/config"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/errors"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	crypto "github.com/multiversx/mx-chain-crypto-go"
@@ -177,7 +177,7 @@ func (executor *scCallExecutor) Execute(ctx context.Context) error {
 	return executor.executeOperations(ctx, filteredPendingOperations)
 }
 
-func (executor *scCallExecutor) getPendingOperations(ctx context.Context) (map[uint64]parsers.ProxySCCompleteCallData, error) {
+func (executor *scCallExecutor) getPendingOperations(ctx context.Context) (map[uint64]bridgeCore.ProxySCCompleteCallData, error) {
 	request := &data.VmValueRequest{
 		Address:  executor.scProxyBech32Address,
 		FuncName: getPendingTransactionsFunction,
@@ -202,13 +202,13 @@ func (executor *scCallExecutor) getPendingOperations(ctx context.Context) (map[u
 	return executor.parseResponse(response)
 }
 
-func (executor *scCallExecutor) parseResponse(response *data.VmValuesResponseData) (map[uint64]parsers.ProxySCCompleteCallData, error) {
+func (executor *scCallExecutor) parseResponse(response *data.VmValuesResponseData) (map[uint64]bridgeCore.ProxySCCompleteCallData, error) {
 	numResponseLines := len(response.Data.ReturnData)
 	if numResponseLines%2 != 0 {
 		return nil, fmt.Errorf("%w: expected an even number, got %d", errInvalidNumberOfResponseLines, numResponseLines)
 	}
 
-	result := make(map[uint64]parsers.ProxySCCompleteCallData, numResponseLines/2)
+	result := make(map[uint64]bridgeCore.ProxySCCompleteCallData, numResponseLines/2)
 
 	for i := 0; i < numResponseLines; i += 2 {
 		pendingOperationID := big.NewInt(0).SetBytes(response.Data.ReturnData[i])
@@ -223,8 +223,8 @@ func (executor *scCallExecutor) parseResponse(response *data.VmValuesResponseDat
 	return result, nil
 }
 
-func (executor *scCallExecutor) filterOperations(pendingOperations map[uint64]parsers.ProxySCCompleteCallData) map[uint64]parsers.ProxySCCompleteCallData {
-	result := make(map[uint64]parsers.ProxySCCompleteCallData)
+func (executor *scCallExecutor) filterOperations(pendingOperations map[uint64]bridgeCore.ProxySCCompleteCallData) map[uint64]bridgeCore.ProxySCCompleteCallData {
+	result := make(map[uint64]bridgeCore.ProxySCCompleteCallData)
 	for id, callData := range pendingOperations {
 		if executor.filter.ShouldExecute(callData) {
 			result[id] = callData
@@ -236,7 +236,7 @@ func (executor *scCallExecutor) filterOperations(pendingOperations map[uint64]pa
 	return result
 }
 
-func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOperations map[uint64]parsers.ProxySCCompleteCallData) error {
+func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOperations map[uint64]bridgeCore.ProxySCCompleteCallData) error {
 	networkConfig, err := executor.proxy.GetNetworkConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("%w while fetching network configs", err)
@@ -261,7 +261,7 @@ func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOp
 func (executor *scCallExecutor) executeOperation(
 	ctx context.Context,
 	id uint64,
-	callData parsers.ProxySCCompleteCallData,
+	callData bridgeCore.ProxySCCompleteCallData,
 	networkConfig *data.NetworkConfig,
 ) error {
 	txBuilder := builders.NewTxDataBuilder()

@@ -2,6 +2,9 @@ package ethmultiversx
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -38,6 +41,7 @@ func createMockExecutorArgs() ArgsBridgeExecutor {
 		MaxQuorumRetriesOnEthereum:   minRetries,
 		MaxQuorumRetriesOnMultiversX: minRetries,
 		MaxRestriesOnWasProposed:     minRetries,
+		MaxNumCharactersForSCCalls:   1024,
 	}
 }
 
@@ -156,6 +160,17 @@ func TestNewBridgeExecutor(t *testing.T) {
 		assert.True(t, check.IfNil(executor))
 		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "for args.MaxRestriesOnWasProposed"))
+	})
+	t.Run("invalid MaxNumCharactersForSCCalls value", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		args.MaxNumCharactersForSCCalls = 0
+		executor, err := NewBridgeExecutor(args)
+
+		assert.True(t, check.IfNil(executor))
+		assert.True(t, errors.Is(err, clients.ErrInvalidValue))
+		assert.True(t, strings.Contains(err.Error(), "for args.MaxNumCharactersForSCCalls"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -530,6 +545,50 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
 		assert.Equal(t, depositData, executor.batch.Deposits[0].Data)
+	})
+	t.Run("should add deposits metadata for sc calls with a large data", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockExecutorArgs()
+		providedNonce := uint64(8346)
+		depositNonce := uint64(100)
+		depositData := make([]byte, args.MaxNumCharactersForSCCalls+1)
+		_, _ = rand.Read(depositData)
+		expectedBatch := &bridgeCore.TransferBatch{
+			ID: providedNonce,
+			Deposits: []*bridgeCore.DepositTransfer{
+				{
+					Nonce: depositNonce,
+				},
+			},
+		}
+		args.EthereumClient = &bridgeTests.EthereumClientStub{
+			GetBatchCalled: func(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error) {
+				assert.Equal(t, providedNonce, nonce)
+				return expectedBatch, true, nil
+			},
+			GetBatchSCMetadataCalled: func(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+				return []*contract.ERC20SafeERC20SCDeposit{{
+					DepositNonce: big.NewInt(0).SetUint64(depositNonce),
+					CallData:     depositData,
+				}}, nil
+			},
+		}
+		executor, _ := NewBridgeExecutor(args)
+		err := executor.GetAndStoreBatchFromEthereum(context.Background(), providedNonce)
+
+		assert.Nil(t, err)
+		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
+
+		expectedPayload := make([]byte, args.MaxNumCharactersForSCCalls)
+		copy(expectedPayload, depositData)
+		buff := make([]byte, 4)
+		binary.BigEndian.PutUint32(buff, uint32(len(depositData))) // we still have the same original length, we just trimmed the whole data byte slice
+		expectedDepositData := []byte{bridgeCore.DataPresentProtocolMarker}
+		expectedDepositData = append(expectedDepositData, buff...)
+		expectedDepositData = append(expectedDepositData, expectedPayload...)
+
+		assert.Equal(t, hex.EncodeToString(expectedDepositData), hex.EncodeToString(executor.batch.Deposits[0].Data))
 	})
 }
 
