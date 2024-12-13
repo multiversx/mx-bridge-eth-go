@@ -169,6 +169,26 @@
     ],
     "events": [
         {
+            "identifier": "executeSuccesfullyFinished",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "executeGeneratedRefund",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32",
+                    "indexed": true
+                }
+            ]
+        },
+        {
             "identifier": "pauseContract",
             "inputs": []
         },
