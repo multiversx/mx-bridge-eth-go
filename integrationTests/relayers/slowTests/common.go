@@ -1,9 +1,8 @@
-//go:build slow
-
 package slowTests
 
 import (
 	"bytes"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -16,6 +15,7 @@ import (
 var (
 	log            = logger.GetOrCreate("integrationTests/relayers/slowTests")
 	mvxZeroAddress = bytes.Repeat([]byte{0x00}, 32)
+	ethZeroAddress = common.Address{}
 )
 
 // GenerateTestUSDCToken will generate a test USDC token
@@ -64,6 +64,11 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   nil,
 				InvalidReceiver:      mvxZeroAddress,
 			},
+			//{
+			//	ValueToTransferToMvx: nil,
+			//	ValueToSendFromMvX:   big.NewInt(600),
+			//	InvalidReceiver:      mvxZeroAddress,
+			//},
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
@@ -207,6 +212,11 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 				IsFaultyDeposit:      true,
 			},
 			// TODO: add a test where the receiver is the zero address
+			{
+				ValueToTransferToMvx: big.NewInt(1300),
+				ValueToSendFromMvX:   nil,
+				InvalidReceiver:      mvxZeroAddress,
+			},
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
@@ -243,7 +253,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.Bob: {
-					OnEth:    big.NewInt(4000 - 50 - 2400 + 6000 - 50 - 200 + 2000 - 50 - 1000),
+					OnEth:    big.NewInt(4000 - 50 - 2400 + 6000 - 50 - 200 + 2000 - 50 - 1000 - 1300 + 1250),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -254,7 +264,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 				},
 				framework.SafeSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(4000 - 2400 + 6000 - 200 + 2000 - 1000),
+					OnMvx:    big.NewInt(4000 - 2400 + 6000 - 200 + 2000 - 1000 - 1300 + 1300),
 					MvxToken: framework.ChainSpecificToken,
 				},
 				framework.CalledTestSC: {
@@ -277,8 +287,8 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			MvxSafeMintValue:          big.NewInt(0),
 			MvxSafeBurnValue:          big.NewInt(0),
 
-			EthSafeMintValue: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
-			EthSafeBurnValue: big.NewInt(2400 + 200 + 1000),
+			EthSafeMintValue: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50 + 1300 - 50),
+			EthSafeBurnValue: big.NewInt(2400 + 200 + 1000 + 1300),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
@@ -289,9 +299,9 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 // ApplyMEMERefundBalances will apply the refund balances on the involved entities for the MEME token
 func ApplyMEMERefundBalances(token *framework.TestTokenParams) {
 	// we need to add the 1000 MEME tokens as the third bridge was done that include the refund on the Ethereum side
-	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(4000 - 2400 + 6000 - 200 + 2000 - 1000 + 1000)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(4000 - 2400 + 6000 - 200 + 2000 - 1300 + 1300 - 1000 + 1000)
 	// Bob will get his tokens back from the refund
-	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4000 - 50 - 2400 + 6000 - 50 - 200 + 2000 - 50 - 1000 + 950)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4000 - 50 - 2400 + 6000 - 50 - 200 + 2000 - 50 - 1300 + 1250 - 1000 + 950)
 	// no funds remain in the test caller SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 
@@ -481,6 +491,11 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 				IsFaultyDeposit:      true,
 			},
 			// TODO: add a test where the receiver is the zero address
+			{
+				ValueToTransferToMvx: big.NewInt(3000),
+				ValueToSendFromMvX:   nil,
+				InvalidReceiver:      mvxZeroAddress,
+			},
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
@@ -517,7 +532,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.Bob: {
-					OnEth:    big.NewInt(4010 - 50 - 2410 + 6010 - 50 - 210 + 2010 - 50 - 1010),
+					OnEth:    big.NewInt(4010 - 50 - 2410 + 6010 - 50 - 210 + 2010 - 50 - 1010 - 3000 + 2950),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -528,7 +543,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 				},
 				framework.SafeSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(50 + 50 + 50),
+					OnMvx:    big.NewInt(50 + 50 + 50 + 50),
 					MvxToken: framework.ChainSpecificToken,
 				},
 				framework.CalledTestSC: {
@@ -544,15 +559,15 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			},
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
-			MvxTotalUniversalMint:     big.NewInt(2410 + 210 + 1010),
+			MvxTotalUniversalMint:     big.NewInt(2410 + 210 + 1010 + 3000),
 			MvxTotalChainSpecificMint: big.NewInt(0),
-			MvxTotalUniversalBurn:     big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+			MvxTotalUniversalBurn:     big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50),
 			MvxTotalChainSpecificBurn: big.NewInt(0),
-			MvxSafeMintValue:          big.NewInt(2410 + 210 + 1010),
-			MvxSafeBurnValue:          big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+			MvxSafeMintValue:          big.NewInt(2410 + 210 + 1010 + 3000),
+			MvxSafeBurnValue:          big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50),
 
-			EthSafeMintValue: big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
-			EthSafeBurnValue: big.NewInt(2410 + 210 + 1010),
+			EthSafeMintValue: big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50),
+			EthSafeBurnValue: big.NewInt(2410 + 210 + 1010 + 3000),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
@@ -565,13 +580,13 @@ func ApplyMEXRefundBalances(token *framework.TestTokenParams) {
 	// 3 normal swaps + the refund one
 	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50 + 50)
 	// Bob will get his tokens back from the refund
-	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4010 - 50 - 2410 + 6010 - 50 - 210 + 2010 - 50 - 1010 + 960)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4010 - 50 - 2410 + 6010 - 50 - 210 + 2010 - 50 - 1010 + 960 - 3000 + 2950)
 	// no funds remain in the test caller SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 
-	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 1010 - 50)
-	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 1010 - 50)
-	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 1010 - 50)
+	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50 + 1010 - 50)
+	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50 + 1010 - 50)
+	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50 + 1010 - 50)
 }
 
 // GenerateUnlistedTokenFromEth will generate an unlisted token on Eth
