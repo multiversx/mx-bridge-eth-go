@@ -3,7 +3,6 @@ package ethmultiversx
 import (
 	"context"
 	"crypto/rand"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -27,6 +26,7 @@ import (
 var expectedErr = errors.New("expected error")
 var providedBatch = &bridgeCore.TransferBatch{}
 var expectedMaxRetries = uint64(3)
+var forcedRefundSCCallData = []byte{0, 0, 0, 1, '=', 0, 0, 0, 0, 0, 0, 0, 1, 0}
 
 func createMockExecutorArgs() ArgsBridgeExecutor {
 	return ArgsBridgeExecutor{
@@ -416,7 +416,9 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		args := createMockExecutorArgs()
 		providedNonce := uint64(8346)
 		depositNonce := uint64(100)
-		depositData := []byte("testData")
+		//           | funclen| function name         | gaslimit     | no args|"
+		hexedData := "0000000c7465737466756e6374696f6e00000000023a472900"
+		depositData, _ := hex.DecodeString(hexedData)
 		expectedBatch := &bridgeCore.TransferBatch{
 			ID: providedNonce,
 			Deposits: []*bridgeCore.DepositTransfer{
@@ -443,10 +445,10 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
 		expectedDepositData := []byte{bridgeCore.DataPresentProtocolMarker, 0, 0, 0, byte(len(depositData))}
-		expectedDepositData = append(expectedDepositData, []byte(depositData)...)
+		expectedDepositData = append(expectedDepositData, depositData...)
 		assert.Equal(t, string(expectedDepositData), string(executor.batch.Deposits[0].Data))
 	})
-	t.Run("should add deposits metadata for sc calls with a data starting with missing data marker", func(t *testing.T) {
+	t.Run("should create a refund string data a SC call data starting with missing data marker", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockExecutorArgs()
@@ -478,8 +480,8 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
-		expectedDepositData := []byte{bridgeCore.DataPresentProtocolMarker, 0, 0, 0, byte(len(depositData))}
-		expectedDepositData = append(expectedDepositData, []byte(depositData)...)
+		expectedDepositData := []byte{bridgeCore.DataPresentProtocolMarker, 0, 0, 0, byte(len(forcedRefundSCCallData))}
+		expectedDepositData = append(expectedDepositData, forcedRefundSCCallData...)
 		assert.Equal(t, string(expectedDepositData), string(executor.batch.Deposits[0].Data))
 	})
 	t.Run("should add deposits metadata for sc calls even if with no data", func(t *testing.T) {
@@ -580,15 +582,9 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromEthereum(t *testing.T
 		assert.Nil(t, err)
 		assert.True(t, expectedBatch == executor.GetStoredBatch()) // pointer testing
 
-		expectedPayload := make([]byte, args.MaxNumCharactersForSCCalls)
-		copy(expectedPayload, depositData)
-		buff := make([]byte, 4)
-		binary.BigEndian.PutUint32(buff, uint32(len(depositData))) // we still have the same original length, we just trimmed the whole data byte slice
-		expectedDepositData := []byte{bridgeCore.DataPresentProtocolMarker}
-		expectedDepositData = append(expectedDepositData, buff...)
-		expectedDepositData = append(expectedDepositData, expectedPayload...)
-
-		assert.Equal(t, hex.EncodeToString(expectedDepositData), hex.EncodeToString(executor.batch.Deposits[0].Data))
+		expectedDepositData := []byte{bridgeCore.DataPresentProtocolMarker, 0, 0, 0, byte(len(forcedRefundSCCallData))}
+		expectedDepositData = append(expectedDepositData, forcedRefundSCCallData...)
+		assert.Equal(t, string(expectedDepositData), string(executor.batch.Deposits[0].Data))
 	})
 }
 

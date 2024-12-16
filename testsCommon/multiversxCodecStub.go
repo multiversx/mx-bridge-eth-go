@@ -6,8 +6,28 @@ import (
 
 // MultiversxCodecStub -
 type MultiversxCodecStub struct {
+	EncodeCallDataStrictCalled           func(callData core.CallData) []byte
+	DecodeCallDataCalled                 func(buff []byte) (core.CallData, error)
 	DecodeProxySCCompleteCallDataCalled  func(buff []byte) (core.ProxySCCompleteCallData, error)
 	ExtractGasLimitFromRawCallDataCalled func(buff []byte) (uint64, error)
+}
+
+// EncodeCallDataStrict -
+func (stub *MultiversxCodecStub) EncodeCallDataStrict(callData core.CallData) []byte {
+	if stub.EncodeCallDataStrictCalled != nil {
+		return stub.EncodeCallDataStrictCalled(callData)
+	}
+
+	return nil
+}
+
+// DecodeCallData -
+func (stub *MultiversxCodecStub) DecodeCallData(buff []byte) (core.CallData, error) {
+	if stub.DecodeCallDataCalled != nil {
+		return stub.DecodeCallDataCalled(buff)
+	}
+
+	return core.CallData{}, nil
 }
 
 // DecodeProxySCCompleteCallData -
