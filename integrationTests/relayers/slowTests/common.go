@@ -313,7 +313,7 @@ func ApplyMEMERefundBalances(token *framework.TestTokenParams) {
 	// no funds remain in the test caller SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 
-	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50 + 1000 - 50)
+	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50 + 1300 - 50 + 1000 - 50)
 }
 
 // GenerateTestEUROCToken will generate a test EUROC token
@@ -597,7 +597,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 // ApplyMEXRefundBalances will apply the refund balances on the involved entities for the MEX token
 func ApplyMEXRefundBalances(token *framework.TestTokenParams) {
 	// 3 normal swaps + the refund one
-	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50 + 50)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50 + 50 + 50)
 	// Bob will get his tokens back from the refund
 	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4010 - 50 - 2410 + 6010 - 50 - 210 + 2010 - 50 - 1010 + 960 - 3000 + 2950)
 	// no funds remain in the test caller SC
