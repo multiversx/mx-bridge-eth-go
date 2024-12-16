@@ -258,7 +258,6 @@ func (setup *TestSetup) isTransferDone(halfBridgeIdentifier HalfBridgeIdentifier
 	require.NotNil(setup, deltaBalancesMap)
 
 	for entityName, deltaBalances := range deltaBalancesMap {
-		fmt.Println(entityName, "---", halfBridgeIdentifier, "---", token.AbstractTokenIdentifier)
 		if !setup.isBalanceOkOnMvx(entityName, deltaBalances, token) {
 			return false
 		}
@@ -288,9 +287,6 @@ func (setup *TestSetup) isBalanceOkOnMvx(entityName string, deltaBalance *DeltaB
 		require.Fail(setup, fmt.Sprintf("Unknown balance type %s for entity name %s", deltaBalance.MvxToken, entityName))
 	}
 
-	fmt.Println("---------------MVX-------------------")
-	fmt.Println("actualBalance", actualBalance.String())
-	fmt.Println("expectedBalance", expectedBalance.String())
 	return expectedBalance.String() == actualBalance.String()
 }
 
@@ -347,9 +343,6 @@ func (setup *TestSetup) isBalanceOkOnEth(entityName string, expectedDeltaBalance
 
 	actualBalance := setup.EthereumHandler.GetBalance(address, token.AbstractTokenIdentifier)
 
-	fmt.Println("---------------ETH-------------------")
-	fmt.Println("actualBalance", actualBalance.String())
-	fmt.Println("expectedBalance", expectedBalance.String())
 	return expectedBalance.String() == actualBalance.String()
 }
 
@@ -550,6 +543,10 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 		}
 
 		for _, operation := range param.TestOperations {
+			if operation.IsFaultyDeposit {
+				continue
+			}
+
 			if operation.InvalidReceiver != nil {
 				expectedRefund.Add(expectedRefund, feeInt)
 			}
@@ -558,9 +555,6 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 				continue
 			}
 			if operation.ValueToSendFromMvX.Cmp(zeroValueBigInt) == 0 {
-				continue
-			}
-			if operation.IsFaultyDeposit {
 				continue
 			}
 
@@ -591,8 +585,6 @@ func (setup *TestSetup) checkTotalMintBurnOnMvx(token TestTokenParams) {
 	tokenData := setup.TokensRegistry.GetTokenData(token.AbstractTokenIdentifier)
 
 	esdtSupplyForUniversal := setup.MultiversxHandler.ChainSimulator.GetESDTSupplyValues(setup.Ctx, tokenData.MvxUniversalToken)
-	fmt.Println("expected", token.MintBurnChecks.MvxTotalUniversalMint.String())
-	fmt.Println("actual", esdtSupplyForUniversal.Minted)
 	require.Equal(setup, token.MintBurnChecks.MvxTotalUniversalMint.String(), esdtSupplyForUniversal.Minted, fmt.Sprintf("token: %s", tokenData.MvxUniversalToken))
 	require.Equal(setup, token.MintBurnChecks.MvxTotalUniversalBurn.String(), esdtSupplyForUniversal.Burned, fmt.Sprintf("token: %s", tokenData.MvxUniversalToken))
 
@@ -610,8 +602,6 @@ func (setup *TestSetup) checkMintBurnOnEth(token TestTokenParams) {
 	tokenData := setup.GetTokenData(token.AbstractTokenIdentifier)
 
 	minted := setup.EthereumHandler.GetMintBalanceForToken(setup.Ctx, tokenData.EthErc20Address)
-	fmt.Println("minted", minted.String())
-	fmt.Println("expected", token.MintBurnChecks.EthSafeMintValue.String())
 	require.Equal(setup, token.MintBurnChecks.EthSafeMintValue.String(), minted.String(), fmt.Sprintf("eth safe contract, token: %s", tokenData.EthErc20Address.String()))
 
 	burned := setup.EthereumHandler.GetBurnBalanceForToken(setup.Ctx, tokenData.EthErc20Address)

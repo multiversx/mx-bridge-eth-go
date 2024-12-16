@@ -1,10 +1,12 @@
+//go:build slow
+
 package slowTests
 
 import (
 	"bytes"
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
@@ -64,11 +66,12 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   nil,
 				InvalidReceiver:      mvxZeroAddress,
 			},
-			//{
-			//	ValueToTransferToMvx: nil,
-			//	ValueToSendFromMvX:   big.NewInt(600),
-			//	InvalidReceiver:      mvxZeroAddress,
-			//},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(730),
+				InvalidReceiver:      ethZeroAddress,
+				IsFaultyDeposit:      true,
+			},
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
@@ -211,7 +214,12 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   big.NewInt(38),
 				IsFaultyDeposit:      true,
 			},
-			// TODO: add a test where the receiver is the zero address
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(420),
+				InvalidReceiver:      ethZeroAddress,
+				IsFaultyDeposit:      true,
+			},
 			{
 				ValueToTransferToMvx: big.NewInt(1300),
 				ValueToSendFromMvX:   nil,
@@ -354,6 +362,12 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   nil,
 				InvalidReceiver:      mvxZeroAddress,
 			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(853),
+				InvalidReceiver:      ethZeroAddress,
+				IsFaultyDeposit:      true,
+			},
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
@@ -490,7 +504,12 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 				ValueToSendFromMvX:   nil,
 				IsFaultyDeposit:      true,
 			},
-			// TODO: add a test where the receiver is the zero address
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(500),
+				InvalidReceiver:      ethZeroAddress,
+				IsFaultyDeposit:      true,
+			},
 			{
 				ValueToTransferToMvx: big.NewInt(3000),
 				ValueToSendFromMvX:   nil,
