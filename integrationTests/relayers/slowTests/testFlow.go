@@ -51,6 +51,9 @@ func (flow *testFlow) process() (finished bool) {
 		flow.setup.MultiversxHandler.MoveRefundBatchToSafe(flow.setup.Ctx)
 	}
 
+	//TODO: move this logic into the SC calls executor
+	flow.setup.MultiversxHandler.RefundAllFromScBridgeProxy(flow.setup.Ctx)
+
 	transferDoneForSecondHalf := flow.setup.AreAllTransfersCompleted(framework.SecondHalfBridge, flow.tokens...)
 	if !flow.secondHalfBridgeDone && transferDoneForSecondHalf {
 		flow.setup.CheckCorrectnessOnMintBurnTokens(flow.tokens...)

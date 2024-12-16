@@ -107,6 +107,69 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			mexToken,
 		)
 	})
+	t.Run("empty function with no args should refund", func(t *testing.T) {
+		callData := createScCallData("", 50000000)
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyUSDCRefundBalances(&usdcToken)
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
+
+		eurocToken := GenerateTestEUROCToken()
+		eurocToken.TestOperations[2].MvxSCCallData = callData
+		eurocToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyEUROCRefundBalances(&eurocToken)
+
+		mexToken := GenerateTestMEXToken()
+		mexToken.TestOperations[2].MvxSCCallData = callData
+		mexToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEXRefundBalances(&mexToken)
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+			eurocToken,
+			mexToken,
+		)
+	})
+	t.Run("empty function with args should refund", func(t *testing.T) {
+		dummyAddress := strings.Repeat("2", 32)
+		callData := createScCallData("", 50000000, dummyAddress)
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.TestOperations[2].MvxSCCallData = callData
+		usdcToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyUSDCRefundBalances(&usdcToken)
+
+		memeToken := GenerateTestMEMEToken()
+		memeToken.TestOperations[2].MvxSCCallData = callData
+		memeToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEMERefundBalances(&memeToken)
+
+		eurocToken := GenerateTestEUROCToken()
+		eurocToken.TestOperations[2].MvxSCCallData = callData
+		eurocToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyEUROCRefundBalances(&eurocToken)
+
+		mexToken := GenerateTestMEXToken()
+		mexToken.TestOperations[2].MvxSCCallData = callData
+		mexToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyMEXRefundBalances(&mexToken)
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			memeToken,
+			eurocToken,
+			mexToken,
+		)
+	})
 	t.Run("uninitialized contract should refund", func(t *testing.T) {
 		callData := createScCallData("claim", 50000000)
 		uninitializedSCAddressBytes, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqcc69ts8409p3h77q5chsaqz57y6hugvc4fvs64k74v")
