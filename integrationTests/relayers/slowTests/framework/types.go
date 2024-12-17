@@ -15,6 +15,7 @@ type IssueTokenParams struct {
 	AbstractTokenIdentifier string
 	PreventWhitelist        bool
 	IsFrozen                bool
+	MultipleSpendings       *big.Int
 
 	// MultiversX
 	NumOfDecimalsUniversal           int
@@ -49,7 +50,7 @@ type TokenOperations struct {
 	MvxFaultySCCall      bool
 	MvxForceSCCall       bool
 	IsFaultyDeposit      bool
-	InvalidReceiver      []byte
+	InvalidReceiver      interface{}
 }
 
 // TestTokenParams defines a token collection of operations in one or 2 batches
