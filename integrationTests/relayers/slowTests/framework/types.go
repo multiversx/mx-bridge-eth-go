@@ -57,6 +57,8 @@ type TestTokenParams struct {
 	IssueTokenParams
 	TestOperations []TokenOperations
 	DeltaBalances  map[HalfBridgeIdentifier]DeltaBalancesOnKeys
+	MintBurnChecks *MintBurnBalances
+	SpecialChecks  *SpecialBalanceChecks
 }
 
 // TokenData represents a test token data
@@ -79,5 +81,29 @@ type DeltaBalanceHolder struct {
 	OnEth    *big.Int
 	OnMvx    *big.Int
 	MvxToken TokenBalanceType
-	//TODO next PR: add checking for mint/burned tokens on ESDT & Wrapper contracts
+}
+
+// MintBurnBalances holds the mint/burn tokens balances for a test token
+type MintBurnBalances struct {
+	MvxTotalUniversalMint     *big.Int
+	MvxTotalChainSpecificMint *big.Int
+	MvxTotalUniversalBurn     *big.Int
+	MvxTotalChainSpecificBurn *big.Int
+	MvxSafeMintValue          *big.Int
+	MvxSafeBurnValue          *big.Int
+
+	EthSafeMintValue *big.Int
+	EthSafeBurnValue *big.Int
+}
+
+// ESDTSupply represents the DTO that holds the supply values for a token
+type ESDTSupply struct {
+	Supply string `json:"supply"`
+	Minted string `json:"minted"`
+	Burned string `json:"burned"`
+}
+
+// SpecialBalanceChecks stores the special checks that are done at the end of the test
+type SpecialBalanceChecks struct {
+	WrapperDeltaLiquidityCheck *big.Int
 }
