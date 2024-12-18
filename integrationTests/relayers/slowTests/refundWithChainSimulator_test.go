@@ -530,12 +530,10 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		)
 	})
 	t.Run("frozen token for receiver should refund", func(t *testing.T) {
-		frozenToken := GenerateFrozenToken()
-
 		testRelayersWithChainSimulatorAndTokensAndRefund(
 			t,
 			make(chan error),
-			frozenToken,
+			GenerateFrozenToken(),
 		)
 	})
 }

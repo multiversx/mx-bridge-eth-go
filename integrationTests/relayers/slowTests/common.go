@@ -874,13 +874,13 @@ func GenerateFrozenToken() framework.TestTokenParams {
 				},
 				framework.CalledTestSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(0),
+					OnMvx:    big.NewInt(1500),
 					MvxToken: framework.UniversalToken,
 				},
 			},
 			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
 				framework.Alice: {
-					OnEth:    big.NewInt(-2000 - 1500 + 1950 + 1450),
+					OnEth:    big.NewInt(-2000 - 1500 + 1950),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
