@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/assert"
@@ -198,7 +199,19 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 		}
 	}
 
+	firstProcessRun := true
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
+		if firstProcessRun {
+			firstProcessRun = false
+
+			//TODO: remove this example
+			setup.ProxyWrapperInstance.RegisterBeforeTransactionSendHandler(func(tx *transaction.FrontendTransaction) {
+				if tx.Sender == setup.MultiversxHandler.SCExecutorKeys.MvxAddress.Bech32() {
+					log.Info("BEFORE SENDING a SC executor transaction. TODO: add more logic")
+				}
+			})
+		}
+
 		allFlowsFinished := true
 		for _, flow := range flows {
 			allFlowsFinished = allFlowsFinished && flow.process()
