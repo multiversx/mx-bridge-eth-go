@@ -37,6 +37,7 @@ const (
 	generateBlocksUntilTxProcessedEndpoint  = "simulator/generate-blocks-until-transaction-processed/%s"
 	numProbeRetries                         = 10
 	networkConfigEndpointTemplate           = "network/status/%d"
+	codeMetadata                            = "0502"
 	esdtSupplyEndpointTemplate              = "network/esdt/supply/%s"
 )
 
@@ -130,7 +131,7 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 	require.Nil(instance.TB, err)
 
 	scCode := wasm.GetSCCode(wasmFilePath)
-	params := []string{scCode, wasm.VMTypeHex, wasm.DummyCodeMetadataHex}
+	params := []string{scCode, wasm.VMTypeHex, codeMetadata}
 	params = append(params, parameters...)
 	txData := strings.Join(params, "@")
 

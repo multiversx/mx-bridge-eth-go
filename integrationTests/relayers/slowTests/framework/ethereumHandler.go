@@ -351,13 +351,6 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 		require.NoError(handler, err)
 		require.Equal(handler, mintAmount.String(), balance.String())
 
-		if params.IsNativeOnEth {
-			tx, err = ethMintBurnContract.Mint(auth, handler.AliceKeys.EthAddress, mintAmount)
-			require.NoError(handler, err)
-			handler.SimulatedChain.Commit()
-			handler.checkEthTxResult(ctx, tx.Hash())
-		}
-
 		return ethMintBurnAddress, ethMintBurnContract
 	}
 
@@ -374,8 +367,8 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 	ethGenericTokenContract, err := contract.NewGenericERC20(ethGenericTokenAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 
-	// mint the address that will create the transfers
-	handler.mintTokens(ctx, ethGenericTokenContract, params.ValueToMintOnEth, handler.AliceKeys.EthAddress)
+	// mint to the depositor
+	handler.mintTokens(ctx, ethGenericTokenContract, params.ValueToMintOnEth, handler.DepositorKeys.EthAddress)
 	if len(params.InitialSupplyValue) > 0 {
 		handler.mintTokens(ctx, ethGenericTokenContract, params.InitialSupplyValue, handler.SafeAddress)
 	}
@@ -465,15 +458,18 @@ func (handler *EthereumHandler) SettleBatchOnEthereum() {
 	}
 }
 
-// Mint will mint the provided token on Ethereum with the provided value on the behalf of the Depositor address
-func (handler *EthereumHandler) Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int) {
-	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
-	require.NotNil(handler, token)
-	require.NotNil(handler, token.EthErc20Contract)
+// TransferToken will transfer the amount of tokens from one address to another
+func (handler *EthereumHandler) TransferToken(
+	ctx context.Context,
+	params TestTokenParams,
+	from KeysHolder,
+	to KeysHolder,
+	amount *big.Int,
+) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
-	// mint erc20 token into eth safe
-	auth, _ := bind.NewKeyedTransactorWithChainID(handler.DepositorKeys.EthSK, handler.ChainID)
-	tx, err := token.EthErc20Contract.Mint(auth, handler.SafeAddress, valueToMint)
+	auth, _ := bind.NewKeyedTransactorWithChainID(from.EthSK, handler.ChainID)
+	tx, err := tkData.EthErc20Contract.Transfer(auth, to.EthAddress, amount)
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
