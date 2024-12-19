@@ -7,14 +7,15 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func createTestProxySCCompleteCallData() ProxySCCompleteCallData {
+func createTestProxySCCompleteCallData() core.ProxySCCompleteCallData {
 	ethUnhexed, _ := hex.DecodeString("880ec53af800b5cd051531672ef4fc4de233bd5d")
-	completeCallData := ProxySCCompleteCallData{
+	completeCallData := core.ProxySCCompleteCallData{
 		RawCallData: []byte{'A', 'B', 'C'},
 		From:        common.Address{},
 		Token:       "ETHUSDC-0ae8ee",
@@ -153,7 +154,7 @@ func TestMultiversxCodec_DecodeProxySCCompleteCallData(t *testing.T) {
 	t.Parallel()
 
 	codec := MultiversxCodec{}
-	emptyCompleteCallData := ProxySCCompleteCallData{}
+	emptyCompleteCallData := core.ProxySCCompleteCallData{}
 
 	t.Run("buffer to short for Ethereum address should error", func(t *testing.T) {
 		t.Parallel()
@@ -255,7 +256,7 @@ func TestMultiversxCodec_DecodeProxySCCompleteCallData(t *testing.T) {
 
 		completeCallData, err := codec.DecodeProxySCCompleteCallData(buff)
 		assert.Nil(t, err)
-		expectedCallData := ProxySCCompleteCallData{
+		expectedCallData := core.ProxySCCompleteCallData{
 			RawCallData: []byte{0x03},
 			From:        common.HexToAddress("0x0101010101010101010101010101010101010101"),
 			To:          data.NewAddressFromBytes(bytes.Repeat([]byte{0x01}, 32)),
@@ -277,5 +278,274 @@ func TestMultiversxCodec_DecodeProxySCCompleteCallData(t *testing.T) {
 		completeCallData, err := codec.DecodeProxySCCompleteCallData(buff)
 		assert.Equal(t, expectedCompleteCallData, completeCallData)
 		assert.Nil(t, err)
+	})
+}
+
+func TestMultiversxCodec_EncodeCallDataStrict(t *testing.T) {
+	t.Parallel()
+
+	codec := MultiversxCodec{}
+
+	t.Run("without arguments", func(t *testing.T) {
+		t.Parallel()
+
+		testCallData := core.CallData{
+			Function:  "testfunction",
+			GasLimit:  37373737,
+			Arguments: nil,
+		}
+
+		buff := codec.EncodeCallDataStrict(testCallData)
+		//           | funclen| function name         | gaslimit     | no args|"
+		hexedData := "0000000c7465737466756e6374696f6e00000000023a472900"
+		assert.Equal(t, hexedData, hex.EncodeToString(buff))
+	})
+	t.Run("with string args", func(t *testing.T) {
+		t.Parallel()
+
+		testCallData := core.CallData{
+			Function: "testfunction",
+			GasLimit: 37373737,
+			Arguments: []string{
+				"38",
+				"param",
+			},
+		}
+
+		buff := codec.EncodeCallDataStrict(testCallData)
+		//           | funclen| function name         | gaslimit     |A|argslen |a0 len |a0 |a1 len|a1        |"
+		hexedData := "0000000c7465737466756e6374696f6e00000000023a4729010000000200000002333800000005706172616d"
+		assert.Equal(t, hexedData, hex.EncodeToString(buff))
+	})
+}
+
+func TestMultiversxCodec_EncodeCallDataWithLenAndMarker(t *testing.T) {
+	t.Parallel()
+
+	codec := MultiversxCodec{}
+
+	t.Run("without arguments", func(t *testing.T) {
+		t.Parallel()
+
+		testCallData := core.CallData{
+			Function:  "testfunction",
+			GasLimit:  37373737,
+			Arguments: nil,
+		}
+
+		buff := codec.EncodeCallDataWithLenAndMarker(testCallData)
+		//            |M|len    | funclen| function name         | gaslimit     | no args|"
+		hexedData := "01000000190000000c7465737466756e6374696f6e00000000023a472900"
+		assert.Equal(t, hexedData, hex.EncodeToString(buff))
+	})
+	t.Run("with string args", func(t *testing.T) {
+		t.Parallel()
+
+		testCallData := core.CallData{
+			Function: "testfunction",
+			GasLimit: 37373737,
+			Arguments: []string{
+				"38",
+				"param",
+			},
+		}
+
+		buff := codec.EncodeCallDataWithLenAndMarker(testCallData)
+		//           |M|len    | funclen| function name         | gaslimit     |A|argslen |a0 len |a0 |a1 len|a1        |"
+		hexedData := "010000002c0000000c7465737466756e6374696f6e00000000023a4729010000000200000002333800000005706172616d"
+		assert.Equal(t, hexedData, hex.EncodeToString(buff))
+	})
+}
+
+func TestMultiversxCodec_DecodeCallData(t *testing.T) {
+	t.Parallel()
+
+	codec := MultiversxCodec{}
+	emptyCallData := core.CallData{}
+	t.Run("nil or empty buffer should error", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := codec.DecodeCallData(nil)
+		assert.Equal(t, emptyCallData, result)
+		assert.Equal(t, errEmptyBuffer, err)
+
+		result, err = codec.DecodeCallData(make([]byte, 0))
+		assert.Equal(t, emptyCallData, result)
+		assert.Equal(t, errEmptyBuffer, err)
+	})
+	t.Run("unexpected marker should error", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := codec.DecodeCallData([]byte{0x3})
+		assert.Equal(t, emptyCallData, result)
+		assert.ErrorIs(t, err, errUnexpectedMarker)
+		assert.Contains(t, err.Error(), ": 3")
+	})
+	t.Run("missing protocol marker should work", func(t *testing.T) {
+		t.Parallel()
+
+		expectedCallData := core.CallData{
+			Type: core.MissingDataProtocolMarker,
+		}
+		result, err := codec.DecodeCallData([]byte{core.MissingDataProtocolMarker})
+		assert.Nil(t, err)
+		assert.Equal(t, expectedCallData, result)
+	})
+	t.Run("error extracting the complete length", func(t *testing.T) {
+		t.Parallel()
+
+		//           |M|bad len| "
+		hexedData := "01000004"
+		buff, _ := hex.DecodeString(hexedData)
+		result, err := codec.DecodeCallData(buff)
+		assert.Equal(t, emptyCallData, result)
+		assert.ErrorIs(t, err, errBufferTooShortForUint32)
+		assert.Contains(t, err.Error(), "when extracting complete buffer length")
+	})
+	t.Run("error complete length mismatch", func(t *testing.T) {
+		t.Parallel()
+
+		//           |M| len   | "
+		hexedData := "0100000004"
+		buff, _ := hex.DecodeString(hexedData)
+		result, err := codec.DecodeCallData(buff)
+		assert.Equal(t, emptyCallData, result)
+		assert.ErrorIs(t, err, errBufferLenMismatch)
+
+		//           |M| len   | "
+		hexedData = "01FFFFFFFF0102"
+		buff, _ = hex.DecodeString(hexedData)
+		result, err = codec.DecodeCallData(buff)
+		assert.Equal(t, emptyCallData, result)
+		assert.ErrorIs(t, err, errBufferLenMismatch)
+
+		//           |M| len   | "
+		hexedData = "010000000201"
+		buff, _ = hex.DecodeString(hexedData)
+		result, err = codec.DecodeCallData(buff)
+		assert.Equal(t, emptyCallData, result)
+		assert.ErrorIs(t, err, errBufferLenMismatch)
+	})
+	t.Run("error extracting function", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("can not extract length", func(t *testing.T) {
+			//           |M| len   | "
+			hexedData := "0100000000"
+			buff, _ := hex.DecodeString(hexedData)
+			result, err := codec.DecodeCallData(buff)
+			assert.Equal(t, emptyCallData, result)
+			assert.ErrorIs(t, err, errBufferTooShortForLength)
+			assert.Contains(t, err.Error(), "when extracting the function")
+		})
+		t.Run("can not extract string", func(t *testing.T) {
+			//           |M| len   |func len|"
+			hexedData := "010000000400000001"
+			buff, _ := hex.DecodeString(hexedData)
+			result, err := codec.DecodeCallData(buff)
+			assert.Equal(t, emptyCallData, result)
+			assert.ErrorIs(t, err, errBufferTooShortForString)
+			assert.Contains(t, err.Error(), "when extracting the function")
+		})
+	})
+	t.Run("error extracting gaslimit", func(t *testing.T) {
+		t.Parallel()
+
+		//           |M| len   |func len| gaslimit    "
+		hexedData := "010000000b0000000000000000000000"
+		buff, _ := hex.DecodeString(hexedData)
+		result, err := codec.DecodeCallData(buff)
+		assert.Equal(t, emptyCallData, result)
+		assert.ErrorIs(t, err, errBufferTooShortForUint64)
+		assert.Contains(t, err.Error(), "when extracting the gas limit")
+	})
+	t.Run("error extracting arguments", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("empty buffer for arguments", func(t *testing.T) {
+			t.Parallel()
+
+			//           |M| len   |func len| gaslimit      |"
+			hexedData := "010000000c000000000000000000000000"
+			buff, _ := hex.DecodeString(hexedData)
+			result, err := codec.DecodeCallData(buff)
+			assert.Equal(t, emptyCallData, result)
+			assert.ErrorIs(t, err, errEmptyBuffer)
+			assert.Contains(t, err.Error(), "when parsing the arguments")
+		})
+		t.Run("error extracting the number of arguments", func(t *testing.T) {
+			t.Parallel()
+
+			//           |M| len   |func len| gaslimit      |A|"
+			hexedData := "010000001000000000000000000000000001000000"
+			buff, _ := hex.DecodeString(hexedData)
+			result, err := codec.DecodeCallData(buff)
+			assert.Equal(t, emptyCallData, result)
+			assert.ErrorIs(t, err, errBufferTooShortForUint32)
+			assert.Contains(t, err.Error(), "when extracting the number of arguments")
+		})
+		t.Run("error extracting an argument", func(t *testing.T) {
+			t.Parallel()
+
+			//           |M| len   |func len| gaslimit      |A|argslen|"
+			hexedData := "010000001300000000000000000000000001000000010000"
+			buff, _ := hex.DecodeString(hexedData)
+			result, err := codec.DecodeCallData(buff)
+			assert.Equal(t, emptyCallData, result)
+			assert.ErrorIs(t, err, errBufferTooShortForLength)
+			assert.Contains(t, err.Error(), "for argument 0")
+		})
+	})
+	t.Run("should work with emtpy function and 0 gas limit and no args", func(t *testing.T) {
+		t.Parallel()
+
+		expectedCallData := core.CallData{
+			Type:      core.DataPresentProtocolMarker,
+			Arguments: make([]string, 0),
+		}
+
+		//           |M| len   |func len| gaslimit      |A"
+		hexedData := "010000000d00000000000000000000000000"
+		buff, _ := hex.DecodeString(hexedData)
+		result, err := codec.DecodeCallData(buff)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedCallData, result)
+	})
+	t.Run("should work without arguments", func(t *testing.T) {
+		t.Parallel()
+
+		expectedCallData := core.CallData{
+			Type:      core.DataPresentProtocolMarker,
+			Function:  "testfunction",
+			GasLimit:  37373737,
+			Arguments: make([]string, 0),
+		}
+
+		//           |M| len   | funclen| function name         | gaslimit     | no args|"
+		hexedData := "01000000190000000c7465737466756e6374696f6e00000000023a472900"
+		buff, _ := hex.DecodeString(hexedData)
+		result, err := codec.DecodeCallData(buff)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedCallData, result)
+	})
+	t.Run("with string args", func(t *testing.T) {
+		t.Parallel()
+
+		expectedCallData := core.CallData{
+			Type:     core.DataPresentProtocolMarker,
+			Function: "testfunction",
+			GasLimit: 37373737,
+			Arguments: []string{
+				"38",
+				"param",
+			},
+		}
+
+		//           |M| len   | funclen| function name         | gaslimit     |A|argslen |a0 len |a0 |a1 len|a1        |"
+		hexedData := "010000002c0000000c7465737466756e6374696f6e00000000023a4729010000000200000002333800000005706172616d"
+		buff, _ := hex.DecodeString(hexedData)
+		result, err := codec.DecodeCallData(buff)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedCallData, result)
 	})
 }

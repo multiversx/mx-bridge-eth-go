@@ -531,6 +531,7 @@ func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXBridg
 		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:     args.Configs.GeneralConfig.MultiversX.MaxRetriesOnWasTransferProposed,
+		MaxNumCharactersForSCCalls:   args.Configs.GeneralConfig.Relayer.ExecutionParameters.MaxNumCharactersForSCCalls,
 	}
 
 	bridge, err := ethmultiversx.NewBridgeExecutor(argsBridgeExecutor)
@@ -599,6 +600,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXToEthereumBridg
 		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:     args.Configs.GeneralConfig.MultiversX.MaxRetriesOnWasTransferProposed,
+		MaxNumCharactersForSCCalls:   args.Configs.GeneralConfig.Relayer.ExecutionParameters.MaxNumCharactersForSCCalls,
 	}
 
 	bridge, err := ethmultiversx.NewBridgeExecutor(argsBridgeExecutor)

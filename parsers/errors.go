@@ -13,4 +13,5 @@ var (
 	errBufferTooShortForMvxAddress = errors.New("buffer too short for MultiversX address")
 	errBufferTooShortForBigInt     = errors.New("buffer too short while extracting the big.Int value")
 	errBufferLenMismatch           = errors.New("buffer length mismatch")
+	errEmptyBuffer                 = errors.New("empty buffer")
 )

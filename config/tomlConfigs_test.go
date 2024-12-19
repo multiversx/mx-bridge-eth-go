@@ -53,6 +53,9 @@ func TestConfigs(t *testing.T) {
 				ProposeStatusForEach:   7000000,
 				PerformActionBase:      40000000,
 				PerformActionForEach:   5500000,
+				ScCallPerByte:          10000,
+				ScCallPerformForEach:   10000000,
+				AbsoluteMaxGasLimit:    500000000,
 			},
 			MaxRetriesOnQuorumReached:       3,
 			MaxRetriesOnWasTransferProposed: 3,
@@ -176,6 +179,9 @@ func TestConfigs(t *testing.T) {
 			},
 		},
 		Relayer: ConfigRelayer{
+			ExecutionParameters: ExecutionParametersConfig{
+				MaxNumCharactersForSCCalls: 1024,
+			},
 			Marshalizer: chainConfig.MarshalizerConfig{
 				Type:           "gogo protobuf",
 				SizeCheckDelta: 10,
@@ -267,6 +273,9 @@ func TestConfigs(t *testing.T) {
         ProposeStatusForEach = 7000000
         PerformActionBase = 40000000
         PerformActionForEach = 5500000
+        ScCallPerByte = 10000 # 1500 tx data field + the rest for the actual storage in the contract
+        ScCallPerformForEach = 10000000
+        AbsoluteMaxGasLimit = 500000000 # absolute maximum gas limit for a sending transaction
 
 [P2P]
     Port = "10010"
@@ -345,6 +354,8 @@ func TestConfigs(t *testing.T) {
                            { Topic = "EthereumToMultiversX_sign", NumMessagesPerSec = 100 }]
 
 [Relayer]
+    [Relayer.ExecutionParameters]
+        MaxNumCharactersForSCCalls = 1024
     [Relayer.Marshalizer]
         Type = "gogo protobuf"
         SizeCheckDelta = 10
