@@ -797,5 +797,8 @@ func createScCallData(function string, gasLimit uint64, args ...string) []byte {
 		Arguments: args,
 	}
 
-	return codec.EncodeCallDataStrict(callData)
+	buff := codec.EncodeCallDataStrict(callData)
+	log.Info("working with SC call data", "buff", buff)
+
+	return buff
 }
