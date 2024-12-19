@@ -10,10 +10,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/executors/multiversx/module"
+	"github.com/multiversx/mx-sdk-go/blockchain"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/require"
 )
@@ -41,6 +43,7 @@ type TestSetup struct {
 	ChainSimulator         ChainSimulatorWrapper
 	ScCallerKeys           KeysHolder
 	ScCallerModuleInstance SCCallerModule
+	ProxyWrapperInstance   *proxyWrapper
 
 	ctxCancel   func()
 	Ctx         context.Context
@@ -141,8 +144,22 @@ func (setup *TestSetup) startScCallerModule() {
 		},
 	}
 
-	var err error
-	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, log, nil)
+	argsProxy := blockchain.ArgsProxy{
+		ProxyURL:            cfg.NetworkAddress,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       cfg.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.ProxyCacherExpirationSeconds),
+		EntityType:          sdkCore.RestAPIEntityType(cfg.ProxyRestAPIEntityType),
+	}
+
+	proxy, err := blockchain.NewProxy(argsProxy)
+	require.Nil(setup, err)
+
+	setup.ProxyWrapperInstance = NewProxyWrapper(proxy)
+
+	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, setup.ProxyWrapperInstance, log, nil)
 	require.Nil(setup, err)
 	log.Info("started SC calls module", "monitoring SC proxy address", setup.MultiversxHandler.ScProxyAddress)
 }
