@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.52.3"
+            "version": "0.53.2"
         }
     },
     "name": "BridgedTokensWrapper",
@@ -91,22 +91,6 @@
             "outputs": []
         },
         {
-            "name": "updateWhitelistedToken",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "chain_specific_token_id",
-                    "type": "TokenIdentifier"
-                },
-                {
-                    "name": "chain_specific_token_decimals",
-                    "type": "u32"
-                }
-            ],
-            "outputs": []
-        },
-        {
             "name": "blacklistToken",
             "onlyOwner": true,
             "mutability": "mutable",
@@ -175,6 +159,11 @@
                 {
                     "name": "to",
                     "type": "EthAddress"
+                },
+                {
+                    "name": "opt_min_bridge_amount",
+                    "type": "optional<BigUint>",
+                    "multi_arg": true
                 }
             ],
             "outputs": []
