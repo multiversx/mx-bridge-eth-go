@@ -41,6 +41,7 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 	}()
 
 	usdcToken := GenerateTestUSDCToken()
+	usdcToken.MultipleSpendings = big.NewInt(2)
 	usdcToken.TestOperations = []framework.TokenOperations{
 		{
 			ValueToTransferToMvx: big.NewInt(5000),
