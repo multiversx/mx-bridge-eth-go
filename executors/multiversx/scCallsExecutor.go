@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -33,7 +34,7 @@ const (
 
 // ArgsScCallExecutor represents the DTO struct for creating a new instance of type scCallExecutor
 type ArgsScCallExecutor struct {
-	ScProxyBech32Address            string
+	ScProxyBech32Addresses          []string
 	Proxy                           Proxy
 	Codec                           Codec
 	Filter                          ScCallsExecuteFilter
@@ -49,7 +50,7 @@ type ArgsScCallExecutor struct {
 }
 
 type scCallExecutor struct {
-	scProxyBech32Address            string
+	scProxyBech32Addresses          []string
 	proxy                           Proxy
 	codec                           Codec
 	filter                          ScCallsExecuteFilter
@@ -85,7 +86,7 @@ func NewScCallExecutor(args ArgsScCallExecutor) (*scCallExecutor, error) {
 	senderAddress := data.NewAddressFromBytes(publicKeyBytes)
 
 	return &scCallExecutor{
-		scProxyBech32Address:            args.ScProxyBech32Address,
+		scProxyBech32Addresses:          args.ScProxyBech32Addresses,
 		proxy:                           args.Proxy,
 		codec:                           args.Codec,
 		filter:                          args.Filter,
@@ -139,9 +140,18 @@ func checkArgs(args ArgsScCallExecutor) error {
 		return err
 	}
 
-	_, err = data.NewAddressFromBech32String(args.ScProxyBech32Address)
+	if len(args.ScProxyBech32Addresses) == 0 {
+		return errEmptyListOfBridgeSCProxy
+	}
 
-	return err
+	for _, scProxyAddress := range args.ScProxyBech32Addresses {
+		_, err = data.NewAddressFromBech32String(scProxyAddress)
+		if err != nil {
+			return fmt.Errorf("%w for address %s", err, scProxyAddress)
+		}
+	}
+
+	return nil
 }
 
 func checkTransactionChecksConfig(args ArgsScCallExecutor) error {
@@ -167,19 +177,36 @@ func checkTransactionChecksConfig(args ArgsScCallExecutor) error {
 
 // Execute will execute one step: get all pending operations, call the filter and send execution transactions
 func (executor *scCallExecutor) Execute(ctx context.Context) error {
-	pendingOperations, err := executor.getPendingOperations(ctx)
+	errorStrings := make([]string, 0)
+	for _, scProxyAddress := range executor.scProxyBech32Addresses {
+		err := executor.executeForScProxyAddress(ctx, scProxyAddress)
+		if err != nil {
+			errorStrings = append(errorStrings, err.Error())
+		}
+	}
+
+	if len(errorStrings) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf("errors found during execution: %s", strings.Join(errorStrings, "\n"))
+}
+
+func (executor *scCallExecutor) executeForScProxyAddress(ctx context.Context, scProxyAddress string) error {
+	executor.log.Info("Executing for the SC proxy address", "address", scProxyAddress)
+	pendingOperations, err := executor.getPendingOperations(ctx, scProxyAddress)
 	if err != nil {
 		return err
 	}
 
 	filteredPendingOperations := executor.filterOperations(pendingOperations)
 
-	return executor.executeOperations(ctx, filteredPendingOperations)
+	return executor.executeOperations(ctx, filteredPendingOperations, scProxyAddress)
 }
 
-func (executor *scCallExecutor) getPendingOperations(ctx context.Context) (map[uint64]bridgeCore.ProxySCCompleteCallData, error) {
+func (executor *scCallExecutor) getPendingOperations(ctx context.Context, scProxyAddress string) (map[uint64]bridgeCore.ProxySCCompleteCallData, error) {
 	request := &data.VmValueRequest{
-		Address:  executor.scProxyBech32Address,
+		Address:  scProxyAddress,
 		FuncName: getPendingTransactionsFunction,
 	}
 
@@ -236,7 +263,11 @@ func (executor *scCallExecutor) filterOperations(pendingOperations map[uint64]br
 	return result
 }
 
-func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOperations map[uint64]bridgeCore.ProxySCCompleteCallData) error {
+func (executor *scCallExecutor) executeOperations(
+	ctx context.Context,
+	pendingOperations map[uint64]bridgeCore.ProxySCCompleteCallData,
+	scProxyAddress string,
+) error {
 	networkConfig, err := executor.proxy.GetNetworkConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("%w while fetching network configs", err)
@@ -247,7 +278,7 @@ func (executor *scCallExecutor) executeOperations(ctx context.Context, pendingOp
 
 		executor.log.Debug("scCallExecutor.executeOperations", "executing ID", id, "call data", callData,
 			"maximum timeout", executor.executionTimeout)
-		err = executor.executeOperation(workingCtx, id, callData, networkConfig)
+		err = executor.executeOperation(workingCtx, id, callData, networkConfig, scProxyAddress)
 		cancel()
 
 		if err != nil {
@@ -263,6 +294,7 @@ func (executor *scCallExecutor) executeOperation(
 	id uint64,
 	callData bridgeCore.ProxySCCompleteCallData,
 	networkConfig *data.NetworkConfig,
+	scProxyAddress string,
 ) error {
 	txBuilder := builders.NewTxDataBuilder()
 	txBuilder.Function(scProxyCallFunction).ArgInt64(int64(id))
@@ -290,7 +322,7 @@ func (executor *scCallExecutor) executeOperation(
 		GasLimit: gasLimit + executor.extraGasToExecute,
 		Data:     dataBytes,
 		Sender:   bech32Address,
-		Receiver: executor.scProxyBech32Address,
+		Receiver: scProxyAddress,
 		Value:    "0",
 	}
 

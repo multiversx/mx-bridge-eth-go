@@ -11,7 +11,9 @@ import (
 
 func createTestConfigs() config.ScCallsModuleConfig {
 	return config.ScCallsModuleConfig{
-		ScProxyBech32Address:            "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+		ScProxyBech32Addresses: []string{
+			"erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+		},
 		ExtraGasToExecute:               6000000,
 		MaxGasLimitToUse:                249999999,
 		GasLimitForOutOfGasTransactions: 30000000,
@@ -104,10 +106,28 @@ func TestNewScCallsModule(t *testing.T) {
 		err = module.Close()
 		assert.Nil(t, err)
 	})
-	t.Run("should work with nil close app chan", func(t *testing.T) {
+	t.Run("should work with not nil close app chan", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
+		cfg.TransactionChecks.CheckTransactionResults = true
+		cfg.TransactionChecks.TimeInSecondsBetweenChecks = 1
+		cfg.TransactionChecks.ExecutionTimeoutInSeconds = 1
+		cfg.TransactionChecks.CloseAppOnError = true
+		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, make(chan struct{}, 1))
+		assert.Nil(t, err)
+		assert.NotNil(t, module)
+
+		assert.Zero(t, module.GetNumSentTransaction())
+
+		err = module.Close()
+		assert.Nil(t, err)
+	})
+	t.Run("should work with not nil close app chan and 2 sc proxy addresses", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := createTestConfigs()
+		cfg.ScProxyBech32Addresses = append(cfg.ScProxyBech32Addresses, "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
 		cfg.TransactionChecks.CheckTransactionResults = true
 		cfg.TransactionChecks.TimeInSecondsBetweenChecks = 1
 		cfg.TransactionChecks.ExecutionTimeoutInSeconds = 1

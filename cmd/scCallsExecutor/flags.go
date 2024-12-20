@@ -73,11 +73,6 @@ var (
 		Name:  "network-address",
 		Usage: "The network address (gateway) to be used. Example: 'https://testnet-explorer.multiversx.com'",
 	}
-	// scProxyBech32Address is the smart contract address used to interact with this tool
-	scProxyBech32Address = cli.StringFlag{
-		Name:  "sc-proxy-address",
-		Usage: "The smart contract address in bech32 format to interact with",
-	}
 	// privateKeyFile is the MultiversX private key file used to issue transaction for the SC calls
 	privateKeyFile = cli.StringFlag{
 		Name:  "private-key-file",
@@ -96,7 +91,6 @@ func getFlags() []cli.Flag {
 		profileMode,
 		restApiInterface,
 		networkAddress,
-		scProxyBech32Address,
 		privateKeyFile,
 	}
 }

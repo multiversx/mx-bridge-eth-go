@@ -199,7 +199,7 @@ type PendingOperationsFilterConfig struct {
 
 // ScCallsModuleConfig will hold the settings for the SC calls module
 type ScCallsModuleConfig struct {
-	ScProxyBech32Address            string
+	ScProxyBech32Addresses          []string
 	ExtraGasToExecute               uint64
 	MaxGasLimitToUse                uint64
 	GasLimitForOutOfGasTransactions uint64
