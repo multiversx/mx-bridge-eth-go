@@ -50,7 +50,7 @@
         ScCallPerformForEach = 10000000
 
 [P2P]
-    Port = "10010"
+    Port = "37373-38383"
     InitialPeerList = []
     ProtocolID = "/erd/relay/1.0.0"
     [P2P.Transports]
