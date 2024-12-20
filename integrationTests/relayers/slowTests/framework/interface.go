@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/data"
 )
@@ -32,17 +33,18 @@ type ChainSimulatorWrapper interface {
 	Proxy() multiversx.Proxy
 	GetNetworkAddress() string
 	DeploySC(ctx context.Context, path string, ownerSK []byte, gasLimit uint64, extraParams []string) (*MvxAddress, string, *data.TransactionOnNetwork)
-	ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork)
+	ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork, transaction.TxStatus)
 	ScCallWithoutGenerateBlocks(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) string
-	SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork)
+	SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork, transaction.TxStatus)
 	SendTxWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) string
 	FundWallets(ctx context.Context, wallets []string)
 	GenerateBlocksUntilEpochReached(ctx context.Context, epoch uint32)
 	GenerateBlocks(ctx context.Context, numBlocks int)
 	GetESDTBalance(ctx context.Context, address *MvxAddress, token string) string
 	GetBlockchainTimeStamp(ctx context.Context) uint64
-	GetTransactionResult(ctx context.Context, hash string) *data.TransactionOnNetwork
+	GetTransactionResult(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus)
 	ExecuteVMQuery(ctx context.Context, scAddress *MvxAddress, function string, hexParams []string) [][]byte
+	GetESDTSupplyValues(ctx context.Context, token string) ESDTSupply
 }
 
 // EthereumBlockchainClient defines the operations supported by the Ethereum client
@@ -59,6 +61,7 @@ type ERC20Contract interface {
 	BalanceOf(opts *bind.CallOpts, account common.Address) (*big.Int, error)
 	Mint(opts *bind.TransactOpts, recipientAddress common.Address, amount *big.Int) (*types.Transaction, error)
 	Approve(opts *bind.TransactOpts, spender common.Address, value *big.Int) (*types.Transaction, error)
+	Transfer(opts *bind.TransactOpts, to common.Address, value *big.Int) (*types.Transaction, error)
 }
 
 // TokensRegistry defines the registry used for the tokens in tests
