@@ -22,6 +22,7 @@ const (
 	slashAmount              = "00"
 	zeroStringValue          = "0"
 	canAddSpecialRoles       = "canAddSpecialRoles"
+	canFreeze                = "canFreeze"
 	trueStr                  = "true"
 	esdtRoleLocalMint        = "ESDTRoleLocalMint"
 	esdtRoleLocalBurn        = "ESDTRoleLocalBurn"
@@ -55,6 +56,7 @@ const (
 	pauseFunction                                        = "pause"
 	issueFunction                                        = "issue"
 	setSpecialRoleFunction                               = "setSpecialRole"
+	freezeFunction                                       = "freeze"
 	esdtTransferFunction                                 = "ESDTTransfer"
 	setPairDecimalsFunction                              = "setPairDecimals"
 	addWrappedTokenFunction                              = "addWrappedToken"
@@ -432,6 +434,9 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	if params.PreventWhitelist {
 		return
 	}
+	if params.IsFrozen {
+		handler.freezeToken(ctx, params)
+	}
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
 	handler.addUniversalTokenToWrapper(ctx, params)
 	handler.whitelistTokenOnWrapper(ctx, params)
@@ -453,6 +458,9 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 
 	if params.PreventWhitelist {
 		return
+	}
+	if params.IsFrozen {
+		handler.freezeToken(ctx, params)
 	}
 
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
@@ -477,6 +485,8 @@ func (handler *MultiversxHandler) issueUniversalToken(ctx context.Context, param
 		hex.EncodeToString([]byte(params.MvxUniversalTokenTicker)),
 		hex.EncodeToString(valueToMintInt.Bytes()),
 		fmt.Sprintf("%02x", params.NumOfDecimalsUniversal),
+		hex.EncodeToString([]byte(canFreeze)),
+		hex.EncodeToString([]byte(trueStr)),
 		hex.EncodeToString([]byte(canAddSpecialRoles)),
 		hex.EncodeToString([]byte(trueStr))}
 
@@ -503,6 +513,8 @@ func (handler *MultiversxHandler) issueChainSpecificToken(ctx context.Context, p
 		hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
 		hex.EncodeToString(valueToMintInt.Bytes()),
 		fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific),
+		hex.EncodeToString([]byte(canFreeze)),
+		hex.EncodeToString([]byte(trueStr)),
 		hex.EncodeToString([]byte(canAddSpecialRoles)),
 		hex.EncodeToString([]byte(trueStr))}
 
@@ -806,6 +818,26 @@ func (handler *MultiversxHandler) setMaxBridgeAmountOnMultitransfer(ctx context.
 		scCallParams)
 
 	log.Info("multi-transfer set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) freezeToken(ctx context.Context, params IssueTokenParams) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
+		handler.BobKeys.MvxAddress.Hex(),
+	}
+
+	hash, txResult := handler.scCallAndCheckTx(
+		ctx,
+		handler.OwnerKeys,
+		handler.ESDTSystemContractAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		freezeFunction,
+		scCallParams)
+
+	log.Info("freeze token tx executed", "hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) getTokenNameFromResult(txResult data.TransactionOnNetwork) string {

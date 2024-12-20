@@ -529,6 +529,13 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			mexToken,
 		)
 	})
+	t.Run("frozen token for receiver should refund", func(t *testing.T) {
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			GenerateFrozenToken(),
+		)
+	})
 }
 
 func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) {
