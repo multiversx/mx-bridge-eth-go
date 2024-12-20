@@ -25,9 +25,6 @@ const (
 	getPendingTransactionsFunction = "getPendingTransactions"
 	okCodeAfterExecution           = "ok"
 	scProxyCallFunction            = "execute"
-	minCheckValues                 = 1
-	transactionNotFoundErrString   = "transaction not found"
-	minGasToExecuteSCCalls         = 2010000 // the absolut minimum gas limit to do a SC call
 	contractMaxGasLimit            = 249999999
 )
 
@@ -134,7 +131,11 @@ func checkArgs(args ArgsScCallExecutor) error {
 	if args.GasLimitForOutOfGasTransactions < minGasToExecuteSCCalls {
 		return fmt.Errorf("%w for GasLimitForOutOfGasTransactions: provided: %d, absolute minimum required: %d", errGasLimitIsLessThanAbsoluteMinimum, args.GasLimitForOutOfGasTransactions, minGasToExecuteSCCalls)
 	}
-	err := checkTransactionChecksConfig(args)
+	//TODO: remove this in the next PR
+	if args.CloseAppChan == nil && args.TransactionChecks.CloseAppOnError {
+		return fmt.Errorf("%w while the TransactionChecks.CloseAppOnError is set to true", errNilCloseAppChannel)
+	}
+	err := checkTransactionChecksConfig(args.TransactionChecks, args.Log)
 	if err != nil {
 		return err
 	}
@@ -142,27 +143,6 @@ func checkArgs(args ArgsScCallExecutor) error {
 	_, err = data.NewAddressFromBech32String(args.ScProxyBech32Address)
 
 	return err
-}
-
-func checkTransactionChecksConfig(args ArgsScCallExecutor) error {
-	if !args.TransactionChecks.CheckTransactionResults {
-		args.Log.Warn("transaction checks are disabled! This can lead to funds being drained in case of a repetitive error")
-		return nil
-	}
-
-	if args.TransactionChecks.TimeInSecondsBetweenChecks < minCheckValues {
-		return fmt.Errorf("%w for TransactionChecks.TimeInSecondsBetweenChecks, minimum: %d, got: %d",
-			errInvalidValue, minCheckValues, args.TransactionChecks.TimeInSecondsBetweenChecks)
-	}
-	if args.TransactionChecks.ExecutionTimeoutInSeconds < minCheckValues {
-		return fmt.Errorf("%w for TransactionChecks.ExecutionTimeoutInSeconds, minimum: %d, got: %d",
-			errInvalidValue, minCheckValues, args.TransactionChecks.ExecutionTimeoutInSeconds)
-	}
-	if args.CloseAppChan == nil && args.TransactionChecks.CloseAppOnError {
-		return fmt.Errorf("%w while the TransactionChecks.CloseAppOnError is set to true", errNilCloseAppChannel)
-	}
-
-	return nil
 }
 
 // Execute will execute one step: get all pending operations, call the filter and send execution transactions

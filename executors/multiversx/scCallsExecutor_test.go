@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	testCrypto "github.com/multiversx/mx-bridge-eth-go/testsCommon/crypto"
@@ -41,16 +40,6 @@ func createMockArgsScCallExecutor() ArgsScCallExecutor {
 		PrivateKey:                      testCrypto.NewPrivateKeyMock(),
 		SingleSigner:                    &testCrypto.SingleSignerStub{},
 		CloseAppChan:                    make(chan struct{}),
-	}
-}
-
-func createMockCheckConfigs() config.TransactionChecksConfig {
-	return config.TransactionChecksConfig{
-		CheckTransactionResults:    true,
-		TimeInSecondsBetweenChecks: 6,
-		ExecutionTimeoutInSeconds:  120,
-		CloseAppOnError:            true,
-		ExtraDelayInSecondsOnError: 120,
 	}
 }
 
