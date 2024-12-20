@@ -6,10 +6,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// DeltaBalancesOnKeys represents a map of ExtraBalancesHolder where the map's key is username
+type DeltaBalancesOnKeys map[string]*DeltaBalanceHolder
+
 // IssueTokenParams the parameters when issuing a new token
 type IssueTokenParams struct {
 	InitialSupplyParams
 	AbstractTokenIdentifier string
+	PreventWhitelist        bool
+	MultipleSpendings       *big.Int
 
 	// MultiversX
 	NumOfDecimalsUniversal           int
@@ -43,14 +48,17 @@ type TokenOperations struct {
 	MvxSCCallData        []byte
 	MvxFaultySCCall      bool
 	MvxForceSCCall       bool
+	IsFaultyDeposit      bool
+	InvalidReceiver      interface{}
 }
 
 // TestTokenParams defines a token collection of operations in one or 2 batches
 type TestTokenParams struct {
 	IssueTokenParams
-	TestOperations          []TokenOperations
-	ESDTSafeExtraBalance    *big.Int
-	EthTestAddrExtraBalance *big.Int
+	TestOperations []TokenOperations
+	DeltaBalances  map[HalfBridgeIdentifier]DeltaBalancesOnKeys
+	MintBurnChecks *MintBurnBalances
+	SpecialChecks  *SpecialBalanceChecks
 }
 
 // TokenData represents a test token data
@@ -66,4 +74,36 @@ type TokenData struct {
 	MvxChainSpecificToken string
 	EthErc20Address       common.Address
 	EthErc20Contract      ERC20Contract
+}
+
+// DeltaBalanceHolder holds the delta balances for a specific address
+type DeltaBalanceHolder struct {
+	OnEth    *big.Int
+	OnMvx    *big.Int
+	MvxToken TokenBalanceType
+}
+
+// MintBurnBalances holds the mint/burn tokens balances for a test token
+type MintBurnBalances struct {
+	MvxTotalUniversalMint     *big.Int
+	MvxTotalChainSpecificMint *big.Int
+	MvxTotalUniversalBurn     *big.Int
+	MvxTotalChainSpecificBurn *big.Int
+	MvxSafeMintValue          *big.Int
+	MvxSafeBurnValue          *big.Int
+
+	EthSafeMintValue *big.Int
+	EthSafeBurnValue *big.Int
+}
+
+// ESDTSupply represents the DTO that holds the supply values for a token
+type ESDTSupply struct {
+	Supply string `json:"supply"`
+	Minted string `json:"minted"`
+	Burned string `json:"burned"`
+}
+
+// SpecialBalanceChecks stores the special checks that are done at the end of the test
+type SpecialBalanceChecks struct {
+	WrapperDeltaLiquidityCheck *big.Int
 }
