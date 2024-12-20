@@ -116,7 +116,9 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 
 func (setup *TestSetup) startScCallerModule() {
 	cfg := config.ScCallsModuleConfig{
-		ScProxyBech32Address:            setup.MultiversxHandler.ScProxyAddress.Bech32(),
+		ScProxyBech32Addresses: []string{
+			setup.MultiversxHandler.ScProxyAddress.Bech32(),
+		},
 		ExtraGasToExecute:               60_000_000,  // 60 million: this ensures that a SC call with 0 gas limit is refunded
 		MaxGasLimitToUse:                249_999_999, // max cross shard limit
 		GasLimitForOutOfGasTransactions: 30_000_000,  // gas to use when a higher than max allowed is encountered

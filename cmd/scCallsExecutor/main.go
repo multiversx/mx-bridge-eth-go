@@ -93,10 +93,6 @@ func startExecutor(ctx *cli.Context, version string) error {
 		}
 	}
 
-	if ctx.IsSet(scProxyBech32Address.Name) {
-		cfg.ScProxyBech32Address = ctx.GlobalString(scProxyBech32Address.Name)
-		log.Info("using flag-defined SC proxy address", "address", cfg.ScProxyBech32Address)
-	}
 	if ctx.IsSet(networkAddress.Name) {
 		cfg.NetworkAddress = ctx.GlobalString(networkAddress.Name)
 		log.Info("using flag-defined network address", "address", cfg.NetworkAddress)
@@ -111,7 +107,7 @@ func startExecutor(ctx *cli.Context, version string) error {
 	}
 
 	args := config.ScCallsModuleConfig{
-		ScProxyBech32Address:            cfg.ScProxyBech32Address,
+		ScProxyBech32Addresses:          cfg.ScProxyBech32Addresses,
 		ExtraGasToExecute:               cfg.ExtraGasToExecute,
 		MaxGasLimitToUse:                cfg.MaxGasLimitToUse,
 		GasLimitForOutOfGasTransactions: cfg.GasLimitForOutOfGasTransactions,
