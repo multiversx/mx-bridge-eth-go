@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.52.3"
+            "version": "0.53.2"
         }
     },
     "name": "EsdtSafe",
@@ -27,14 +27,6 @@
         ],
         "inputs": [
             {
-                "name": "fee_estimator_contract_address",
-                "type": "Address"
-            },
-            {
-                "name": "multi_transfer_contract_address",
-                "type": "Address"
-            },
-            {
                 "name": "eth_tx_gas_limit",
                 "type": "BigUint"
             }
@@ -43,18 +35,6 @@
     },
     "upgradeConstructor": {
         "inputs": [
-            {
-                "name": "fee_estimator_contract_address",
-                "type": "Address"
-            },
-            {
-                "name": "multi_transfer_contract_address",
-                "type": "Address"
-            },
-            {
-                "name": "bridge_proxy_contract_address",
-                "type": "Address"
-            },
             {
                 "name": "eth_tx_gas_limit",
                 "type": "BigUint"
@@ -108,6 +88,12 @@
             "outputs": []
         },
         {
+            "name": "addRefundBatchForFailedTx",
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
             "docs": [
                 "Create an MultiversX -> Ethereum transaction. Only fungible tokens are accepted.",
                 "",
@@ -118,6 +104,34 @@
                 "fee_amount = price_per_gas_unit * eth_tx_gas_limit"
             ],
             "name": "createTransaction",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "to",
+                    "type": "EthAddress"
+                },
+                {
+                    "name": "opt_min_bridge_amount",
+                    "type": "optional<BigUint>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Create an Ethereum -> MultiversX refund transaction. Only fungible tokens are accepted.",
+                "",
+                "Every transfer will have a part of the tokens subtracted as fees.",
+                "The fee amount depends on the global eth_tx_gas_limit",
+                "and the current GWEI price, respective to the bridged token",
+                "",
+                "fee_amount = price_per_gas_unit * eth_tx_gas_limit"
+            ],
+            "name": "createRefundTransaction",
             "mutability": "mutable",
             "payableInTokens": [
                 "*"
@@ -154,32 +168,6 @@
                     "type": "EsdtTokenPayment"
                 }
             ]
-        },
-        {
-            "name": "setBridgedTokensWrapperAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "setBridgeProxyContractAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_new_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
         },
         {
             "name": "withdrawRefundFeesForEthereum",
@@ -243,6 +231,11 @@
                 {
                     "name": "address",
                     "type": "Address"
+                },
+                {
+                    "name": "opt_tokens",
+                    "type": "optional<variadic<TokenIdentifier>>",
+                    "multi_arg": true
                 }
             ],
             "outputs": [
@@ -292,38 +285,6 @@
                     "type": "BigUint"
                 }
             ]
-        },
-        {
-            "name": "getBridgedTokensWrapperAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
-                }
-            ]
-        },
-        {
-            "name": "getBridgeProxyContractAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
-                }
-            ]
-        },
-        {
-            "name": "setFeeEstimatorContractAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "new_address",
-                    "type": "Address"
-                }
-            ],
-            "outputs": []
         },
         {
             "name": "setEthTxGasLimit",
@@ -395,16 +356,6 @@
             ]
         },
         {
-            "name": "getFeeEstimatorContractAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
-                }
-            ]
-        },
-        {
             "name": "getDefaultPricePerGasUnit",
             "mutability": "readonly",
             "inputs": [
@@ -442,6 +393,11 @@
                 {
                     "name": "address_percentage_pairs",
                     "type": "List<AddressPercentagePair>"
+                },
+                {
+                    "name": "opt_tokens_to_distribute",
+                    "type": "optional<variadic<TokenIdentifier>>",
+                    "multi_arg": true
                 }
             ],
             "outputs": []
@@ -561,19 +517,6 @@
             "outputs": []
         },
         {
-            "name": "setMultiTransferContractAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_new_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
             "name": "getAllKnownTokens",
             "mutability": "readonly",
             "inputs": [],
@@ -611,16 +554,6 @@
             "outputs": [
                 {
                     "type": "bool"
-                }
-            ]
-        },
-        {
-            "name": "getMultiTransferContractAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
                 }
             ]
         },
@@ -914,6 +847,96 @@
                 {
                     "name": "initial_tx_id",
                     "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "createRefundTransactionEvent",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "fee",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "initial_batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "initial_tx_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "data",
+                    "type": "bytes",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "createTransactionScCallEvent",
+            "inputs": [
+                {
+                    "name": "batch_id",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "tx_nonce",
+                    "type": "u64",
+                    "indexed": true
+                },
+                {
+                    "name": "payment_token",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "fee",
+                    "type": "BigUint",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "data",
+                    "type": "bytes",
                     "indexed": true
                 }
             ]

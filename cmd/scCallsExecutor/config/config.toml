@@ -1,4 +1,6 @@
-ScProxyBech32Address = "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s"
+ScProxyBech32Addresses = [
+    "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s",
+]
 ExtraGasToExecute = 60000000 # this value allow the SC calls without provided gas limit to be refunded
 MaxGasLimitToUse = 249999999 # this is a safe max gas limit to use both intra-shard & cross-shard
 GasLimitForOutOfGasTransactions = 30000000 # this value will be used when a transaction specified a gas limit > 249999999
