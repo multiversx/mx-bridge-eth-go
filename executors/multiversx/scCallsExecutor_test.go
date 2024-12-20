@@ -724,7 +724,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			},
 		}
 		args.Codec = &testsCommon.MultiversxCodecStub{
-			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (parsers.ProxySCCompleteCallData, error) {
+			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (bridgeCore.ProxySCCompleteCallData, error) {
 				if string(buff) == "ProxySCCompleteCallData 1" {
 					return createTestProxySCCompleteCallData("tkn1"), nil
 				}
@@ -738,7 +738,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 					return createTestProxySCCompleteCallData("tkn4"), nil
 				}
 
-				return parsers.ProxySCCompleteCallData{
+				return bridgeCore.ProxySCCompleteCallData{
 					To: data.NewAddressFromBytes(bytes.Repeat([]byte{1}, 32)),
 				}, errors.New("wrong buffer")
 			},
@@ -747,7 +747,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			},
 		}
 		args.Filter = &testsCommon.ScCallsExecuteFilterStub{
-			ShouldExecuteCalled: func(callData parsers.ProxySCCompleteCallData) bool {
+			ShouldExecuteCalled: func(callData bridgeCore.ProxySCCompleteCallData) bool {
 				return callData.Token == "tkn2" || callData.Token == "tkn4"
 			},
 		}
