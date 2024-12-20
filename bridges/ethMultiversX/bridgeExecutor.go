@@ -14,6 +14,8 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
+	"github.com/multiversx/mx-bridge-eth-go/executors/multiversx"
+	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -22,6 +24,14 @@ import (
 // we wait for the transfer confirmation on Ethereum
 const splits = 10
 const minRetries = 1
+const minLengthForSCCallData = 1
+
+var failureCallData = core.CallData{
+	Type:      core.DataPresentProtocolMarker,
+	Function:  "=", // invalid function name
+	GasLimit:  1,   //small gas limit so the transaction will be automatically refunded
+	Arguments: nil,
+}
 
 // ArgsBridgeExecutor is the arguments DTO struct used in both bridges
 type ArgsBridgeExecutor struct {
@@ -36,6 +46,7 @@ type ArgsBridgeExecutor struct {
 	MaxQuorumRetriesOnEthereum   uint64
 	MaxQuorumRetriesOnMultiversX uint64
 	MaxRestriesOnWasProposed     uint64
+	MaxNumCharactersForSCCalls   uint64
 }
 
 type bridgeExecutor struct {
@@ -47,9 +58,11 @@ type bridgeExecutor struct {
 	statusHandler                core.StatusHandler
 	sigsHolder                   SignaturesHolder
 	balanceValidator             BalanceValidator
+	codec                        multiversx.Codec
 	maxQuorumRetriesOnEthereum   uint64
 	maxQuorumRetriesOnMultiversX uint64
 	maxRetriesOnWasProposed      uint64
+	maxNumCharactersForSCCalls   uint64
 
 	batch                     *bridgeCore.TransferBatch
 	actionID                  uint64
@@ -107,6 +120,10 @@ func checkArgs(args ArgsBridgeExecutor) error {
 		return fmt.Errorf("%w for args.MaxRestriesOnWasProposed, got: %d, minimum: %d",
 			clients.ErrInvalidValue, args.MaxRestriesOnWasProposed, minRetries)
 	}
+	if args.MaxNumCharactersForSCCalls < minLengthForSCCallData {
+		return fmt.Errorf("%w for args.MaxNumCharactersForSCCalls, got: %d, minimum: %d",
+			clients.ErrInvalidValue, args.MaxNumCharactersForSCCalls, minLengthForSCCallData)
+	}
 	return nil
 }
 
@@ -120,9 +137,11 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 		timeForWaitOnEthereum:        args.TimeForWaitOnEthereum,
 		sigsHolder:                   args.SignaturesHolder,
 		balanceValidator:             args.BalanceValidator,
+		codec:                        &parsers.MultiversxCodec{},
 		maxQuorumRetriesOnEthereum:   args.MaxQuorumRetriesOnEthereum,
 		maxQuorumRetriesOnMultiversX: args.MaxQuorumRetriesOnMultiversX,
 		maxRetriesOnWasProposed:      args.MaxRestriesOnWasProposed,
+		maxNumCharactersForSCCalls:   args.MaxNumCharactersForSCCalls,
 	}
 }
 
@@ -482,7 +501,7 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCore.DepositTransfer, events []*contract.ERC20SafeERC20SCDeposit) *bridgeCore.DepositTransfer {
 	for _, event := range events {
 		if event.DepositNonce.Uint64() == transfer.Nonce {
-			processData(transfer, event.CallData)
+			executor.processData(transfer, event.CallData)
 			return transfer
 		}
 	}
@@ -493,7 +512,7 @@ func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCore.Depos
 	return transfer
 }
 
-func processData(transfer *bridgeCore.DepositTransfer, buff []byte) {
+func (executor *bridgeExecutor) processData(transfer *bridgeCore.DepositTransfer, buff []byte) {
 	transfer.Data = buff
 	dataLen := len(transfer.Data)
 	if dataLen == 0 {
@@ -506,14 +525,32 @@ func processData(transfer *bridgeCore.DepositTransfer, buff []byte) {
 		return
 	}
 
+	_, err := executor.codec.DecodeCallData(prependLenAndDataMarker(buff))
+	if err != nil {
+		executor.log.Warn("found an invalid call data, will put replace with a string that will cause a refund",
+			"error decoding", err)
+
+		transfer.Data = executor.codec.EncodeCallDataStrict(failureCallData)
+	}
+
+	if len(transfer.Data) > int(executor.maxNumCharactersForSCCalls) {
+		executor.log.Warn("found a too long transfer.Data field, will put replace with a string that will cause a refund", "length", len(transfer.Data))
+
+		transfer.Data = executor.codec.EncodeCallDataStrict(failureCallData)
+	}
+
 	// we have a data field, add the marker & the correct length
 	transfer.DisplayableData = hex.EncodeToString(transfer.Data)
+	transfer.Data = prependLenAndDataMarker(transfer.Data)
+}
+
+func prependLenAndDataMarker(input []byte) []byte {
 	buff32 := make([]byte, bridgeCore.Uint32ArgBytes)
-	binary.BigEndian.PutUint32(buff32, uint32(dataLen))
+	binary.BigEndian.PutUint32(buff32, uint32(len(input)))
 
 	prefix := append([]byte{bridgeCore.DataPresentProtocolMarker}, buff32...)
 
-	transfer.Data = append(prefix, transfer.Data...)
+	return append(prefix, input...)
 }
 
 // WasTransferPerformedOnEthereum returns true if the batch was performed on Ethereum

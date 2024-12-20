@@ -1,4 +1,4 @@
-package parsers
+package core
 
 import (
 	"encoding/hex"

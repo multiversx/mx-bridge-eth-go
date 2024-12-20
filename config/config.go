@@ -68,9 +68,15 @@ type ConfigP2P struct {
 
 // ConfigRelayer configuration for general relayer configuration
 type ConfigRelayer struct {
+	ExecutionParameters  ExecutionParametersConfig
 	Marshalizer          config.MarshalizerConfig
 	RoleProvider         RoleProviderConfig
 	StatusMetricsStorage config.StorageConfig
+}
+
+// ExecutionParametersConfig configuration for the relayer execution params
+type ExecutionParametersConfig struct {
+	MaxNumCharactersForSCCalls uint64
 }
 
 // ConfigStateMachine the configuration for the state machine
@@ -172,6 +178,7 @@ type MultiversXGasMapConfig struct {
 	PerformActionForEach   uint64
 	ScCallPerByte          uint64
 	ScCallPerformForEach   uint64
+	AbsoluteMaxGasLimit    uint64
 }
 
 // PeersRatingConfig will hold settings related to peers rating

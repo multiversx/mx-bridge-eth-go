@@ -72,6 +72,9 @@ func createMockEthMultiversXBridgeArgs() ArgsEthereumToMultiversXBridge {
 			},
 		},
 		Relayer: config.ConfigRelayer{
+			ExecutionParameters: config.ExecutionParametersConfig{
+				MaxNumCharactersForSCCalls: 1024,
+			},
 			RoleProvider: config.RoleProviderConfig{
 				PollingIntervalInMillis: 1000,
 			},
