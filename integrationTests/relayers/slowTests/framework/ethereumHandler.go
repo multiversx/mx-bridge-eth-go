@@ -29,16 +29,16 @@ const (
 	ethMinAmountAllowedToTransfer = 25
 	ethMaxAmountAllowedToTransfer = 500000
 
-	erc20SafeABI          = "testdata/contracts/eth/ERC20Safe.abi.json"
-	erc20SafeBytecode     = "testdata/contracts/eth/ERC20Safe.hex"
-	bridgeABI             = "testdata/contracts/eth/Bridge.abi.json"
-	bridgeBytecode        = "testdata/contracts/eth/Bridge.hex"
-	genericERC20ABI       = "testdata/contracts/eth/GenericERC20.abi.json"
-	genericERC20Bytecode  = "testdata/contracts/eth/GenericERC20.hex"
-	mintBurnERC20ABI      = "testdata/contracts/eth/MintBurnERC20.abi.json"
-	mintBurnERC20Bytecode = "testdata/contracts/eth/MintBurnERC20.hex"
-	proxyABI              = "testdata/contracts/eth/Proxy.abi.json"
-	proxyBytecode         = "testdata/contracts/eth/Proxy.hex"
+	erc20SafeABI          = SlowTestWorkingDir + "testdata/contracts/eth/ERC20Safe.abi.json"
+	erc20SafeBytecode     = SlowTestWorkingDir + "testdata/contracts/eth/ERC20Safe.hex"
+	bridgeABI             = SlowTestWorkingDir + "testdata/contracts/eth/Bridge.abi.json"
+	bridgeBytecode        = SlowTestWorkingDir + "testdata/contracts/eth/Bridge.hex"
+	genericERC20ABI       = SlowTestWorkingDir + "testdata/contracts/eth/GenericERC20.abi.json"
+	genericERC20Bytecode  = SlowTestWorkingDir + "testdata/contracts/eth/GenericERC20.hex"
+	mintBurnERC20ABI      = SlowTestWorkingDir + "testdata/contracts/eth/MintBurnERC20.abi.json"
+	mintBurnERC20Bytecode = SlowTestWorkingDir + "testdata/contracts/eth/MintBurnERC20.hex"
+	proxyABI              = SlowTestWorkingDir + "testdata/contracts/eth/Proxy.abi.json"
+	proxyBytecode         = SlowTestWorkingDir + "testdata/contracts/eth/Proxy.hex"
 
 	proxyInitializeFunction = "initialize"
 )

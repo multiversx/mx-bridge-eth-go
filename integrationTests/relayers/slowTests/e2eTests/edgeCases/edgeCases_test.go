@@ -1,6 +1,6 @@
-//go:build slow
+//go:test parallel 1
 
-package slowTests
+package edgeCases
 
 import (
 	"context"
@@ -9,12 +9,17 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
+	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/e2eTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
+	if e2eTests.ShouldSkipTest() {
+		t.Skip("skipping this test because the .env file is not found in the slowTests directory")
+	}
+
 	errorString := "ERROR"
 	mockLogObserver := mock.NewMockLogObserver(errorString, "got invalid action ID")
 	err := logger.AddLogObserver(mockLogObserver, &logger.PlainFormatter{})
@@ -39,7 +44,7 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 		}
 	}()
 
-	usdcToken := GenerateTestUSDCToken()
+	usdcToken := e2eTests.GenerateTestUSDCToken()
 	usdcToken.MultipleSpendings = big.NewInt(2)
 	usdcToken.TestOperations = []framework.TokenOperations{
 		{
@@ -117,28 +122,28 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 }
 
 func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
-	startsFromEthFlow := &testFlow{
+	startsFromEthFlow := &e2eTests.TestFlow{
 		TB:                           tb,
-		tokens:                       tokens,
-		messageAfterFirstHalfBridge:  "Ethereum->MultiversX transfer finished, now sending back to Ethereum & another round from Ethereum...",
-		messageAfterSecondHalfBridge: "MultiversX<->Ethereum from Ethereum transfers done",
+		Tokens:                       tokens,
+		MessageAfterFirstHalfBridge:  "Ethereum->MultiversX transfer finished, now sending back to Ethereum & another round from Ethereum...",
+		MessageAfterSecondHalfBridge: "MultiversX<->Ethereum from Ethereum transfers done",
 	}
-	startsFromEthFlow.handlerAfterFirstHalfBridge = func(flow *testFlow) {
-		flow.setup.SendFromMultiversxToEthereum(flow.setup.BobKeys, flow.setup.AliceKeys, flow.tokens...)
-		flow.setup.SendFromEthereumToMultiversX(flow.setup.AliceKeys, flow.setup.BobKeys, flow.setup.MultiversxHandler.CalleeScAddress, flow.tokens...)
+	startsFromEthFlow.HandlerAfterFirstHalfBridge = func(flow *e2eTests.TestFlow) {
+		flow.Setup.SendFromMultiversxToEthereum(flow.Setup.BobKeys, flow.Setup.AliceKeys, flow.Tokens...)
+		flow.Setup.SendFromEthereumToMultiversX(flow.Setup.AliceKeys, flow.Setup.BobKeys, flow.Setup.MultiversxHandler.CalleeScAddress, flow.Tokens...)
 	}
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
-		startsFromEthFlow.setup = setup
+		startsFromEthFlow.Setup = setup
 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
-		setup.CreateBatchOnEthereum(setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
+		setup.CreateBatchOnEthereum(setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.Tokens...)
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
-		if startsFromEthFlow.process() {
-			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromEthFlow.tokens...)
+		if startsFromEthFlow.Process() {
+			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromEthFlow.Tokens...)
 
 			return true
 		}
@@ -150,7 +155,7 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 		return false
 	}
 
-	return testRelayersWithChainSimulator(tb,
+	return e2eTests.TestRelayersWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,

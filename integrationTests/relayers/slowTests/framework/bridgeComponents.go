@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	relayerETHKeyPathFormat = "../testdata/ethereum%d.sk"
+	relayerETHKeyPathFormat = SlowTestWorkingDir + "testdata/ethereum%d.sk"
 )
 
 // BridgeComponents holds and manages the relayers components

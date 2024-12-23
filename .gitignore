@@ -22,7 +22,9 @@
 .env
 *.log
 # prevent accidental commit of key files
-*.pem
+# TODO: revert these
+# *.pem
+# *.sk
 
 mytestnet/**
 

@@ -23,6 +23,8 @@ const (
 	UniversalToken TokenBalanceType = "universal"
 	// ChainSpecificToken is the chain-specific token identifier
 	ChainSpecificToken TokenBalanceType = "chain-specific"
+	// SlowTestWorkingDir represents the prefix to add for a test file resource
+	SlowTestWorkingDir = "../../"
 )
 
 var (

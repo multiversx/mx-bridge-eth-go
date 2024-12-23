@@ -18,9 +18,14 @@ test-coverage:
 	CURRENT_DIRECTORY=$(CURRENT_DIRECTORY) go test -cover -coverprofile=coverage.txt -covermode=atomic -v ${TESTS_TO_RUN}
 
 slow-tests: clean-test
+	touch ./integrationTests/relayers/slowTests/.env
 	@docker compose -f docker/docker-compose.yml build
-	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/... -v -timeout 40m -tags slow
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests... -v -p 1
 	@docker compose -f docker/docker-compose.yml down -v
+
+slow-test-no-chainsimulator: clean-test
+	touch ./integrationTests/relayers/slowTests/.env
+	go test ./integrationTests/relayers/slowTests... -v -p 1
 
 lint-install:
 ifeq (,$(wildcard test -f bin/golangci-lint))

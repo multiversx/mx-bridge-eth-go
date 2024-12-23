@@ -1,10 +1,10 @@
-//go:build slow
-
-package slowTests
+package e2eTests
 
 import (
 	"bytes"
 	"math/big"
+	"os"
+	"runtime"
 
 	"github.com/ethereum/go-ethereum/common"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -15,9 +15,10 @@ import (
 )
 
 var (
-	log            = logger.GetOrCreate("integrationTests/relayers/slowTests")
-	mvxZeroAddress = bytes.Repeat([]byte{0x00}, 32)
-	ethZeroAddress = common.Address{}
+	log                       = logger.GetOrCreate("integrationTests/relayers/slowTests")
+	mvxZeroAddress            = bytes.Repeat([]byte{0x00}, 32)
+	ethZeroAddress            = common.Address{}
+	projectedShardForTestKeys = byte(2)
 )
 
 // GenerateTestUSDCToken will generate a test USDC token
@@ -54,7 +55,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(1000),
 				ValueToSendFromMvX:   nil,
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(20),
@@ -207,7 +208,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(1000),
 				ValueToSendFromMvX:   big.NewInt(2000),
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 			{
 				ValueToTransferToMvx: nil,
@@ -350,7 +351,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(1010),
 				ValueToSendFromMvX:   nil,
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(24),
@@ -497,7 +498,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(1010),
 				ValueToSendFromMvX:   big.NewInt(2010),
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(10),
@@ -639,7 +640,7 @@ func GenerateUnlistedTokenFromEth() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(1010),
 				ValueToSendFromMvX:   nil,
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 				IsFaultyDeposit:      true,
 			},
 		},
@@ -746,7 +747,7 @@ func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: nil,
 				ValueToSendFromMvX:   big.NewInt(2010),
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
@@ -822,7 +823,8 @@ func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 	}
 }
 
-func createScCallData(function string, gasLimit uint64, args ...string) []byte {
+// CreateScCallData creates a byte slice by encoding a Call data
+func CreateScCallData(function string, gasLimit uint64, args ...string) []byte {
 	codec := testsCommon.TestMultiversXCodec{}
 	callData := parsers.CallData{
 		Type:      bridgeCore.DataPresentProtocolMarker,
@@ -835,4 +837,84 @@ func createScCallData(function string, gasLimit uint64, args ...string) []byte {
 	log.Info("working with SC call data", "buff", buff)
 
 	return buff
+}
+
+// ShouldSkipTest returns true if there is no .env file in the ./integrationTests/relayers/slowTests
+func ShouldSkipTest() bool {
+	targetFile := "../../.env"
+	_, err := os.ReadFile(targetFile)
+
+	if err != nil {
+		return true
+	}
+
+	// we are in slow test mode, force the tests to be run sequentially
+	runtime.GOMAXPROCS(1)
+	return false
+}
+
+// CreateBadToken creates a token that is used in unhappy scenarios
+func CreateBadToken() framework.TestTokenParams {
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "BAD",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "BAD",
+			MvxChainSpecificTokenTicker:      "ETHBAD",
+			MvxUniversalTokenDisplayName:     "WrappedBAD",
+			MvxChainSpecificTokenDisplayName: "EthereumWrappedBAD",
+			ValueToMintOnMvx:                 "10000000000",
+			EthTokenName:                     "ETHTOKEN",
+			EthTokenSymbol:                   "ETHT",
+			ValueToMintOnEth:                 "10000000000",
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(5000),
+				ValueToSendFromMvX:   big.NewInt(2500),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(7000),
+				ValueToSendFromMvX:   big.NewInt(300),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(1000),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
+			},
+		},
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-5000 - 7000 - 1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(5000 + 7000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(5000 + 7000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
+		},
+		MintBurnChecks: &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
+		},
+	}
 }

@@ -36,13 +36,13 @@ const (
 	generalSCCallGasLimit    = 50000000  // 50 million
 	gasLimitPerDataByte      = 1500
 
-	aggregatorContractPath    = "testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
-	wrapperContractPath       = "testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
-	multiTransferContractPath = "testdata/contracts/mvx/multi-transfer-esdt.wasm"
-	safeContractPath          = "testdata/contracts/mvx/esdt-safe.wasm"
-	multisigContractPath      = "testdata/contracts/mvx/multisig.wasm"
-	bridgeProxyContractPath   = "testdata/contracts/mvx/bridge-proxy.wasm"
-	testCallerContractPath    = "testdata/contracts/mvx/test-caller.wasm"
+	aggregatorContractPath    = SlowTestWorkingDir + "testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
+	wrapperContractPath       = SlowTestWorkingDir + "testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
+	multiTransferContractPath = SlowTestWorkingDir + "testdata/contracts/mvx/multi-transfer-esdt.wasm"
+	safeContractPath          = SlowTestWorkingDir + "testdata/contracts/mvx/esdt-safe.wasm"
+	multisigContractPath      = SlowTestWorkingDir + "testdata/contracts/mvx/multisig.wasm"
+	bridgeProxyContractPath   = SlowTestWorkingDir + "testdata/contracts/mvx/bridge-proxy.wasm"
+	testCallerContractPath    = SlowTestWorkingDir + "testdata/contracts/mvx/test-caller.wasm"
 
 	changeOwnerAddressFunction                           = "ChangeOwnerAddress"
 	moveRefundBatchToSafeFromChildContractFunction       = "moveRefundBatchToSafeFromChildContract"
