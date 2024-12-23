@@ -47,3 +47,17 @@ type Codec interface {
 	DecodeCallData(buff []byte) (bridgeCore.CallData, error)
 	IsInterfaceNil() bool
 }
+
+// TransactionExecutor defines the operations of an entity able to send executable transactions
+type TransactionExecutor interface {
+	ExecuteTransaction(
+		ctx context.Context,
+		networkConfig *data.NetworkConfig,
+		receiver string,
+		transactionType string,
+		gasLimit uint64,
+		dataBytes []byte,
+	) error
+	GetNumSentTransaction() uint32
+	IsInterfaceNil() bool
+}
