@@ -60,7 +60,7 @@ type GasStationConfig struct {
 type ConfigP2P struct {
 	Port            string
 	InitialPeerList []string
-	ProtocolID      string
+	ProtocolIDs     []string
 	Transports      p2pConfig.P2PTransportConfig
 	AntifloodConfig config.AntifloodConfig
 	ResourceLimiter p2pConfig.P2PResourceLimiterConfig
