@@ -36,13 +36,13 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chClose
 	}
 
 	argsProxy := blockchain.ArgsProxy{
-		ProxyURL:            cfg.NetworkAddress,
+		ProxyURL:            cfg.General.NetworkAddress,
 		SameScState:         false,
 		ShouldBeSynced:      false,
-		FinalityCheck:       cfg.ProxyFinalityCheck,
-		AllowedDeltaToFinal: cfg.ProxyMaxNoncesDelta,
-		CacheExpirationTime: time.Second * time.Duration(cfg.ProxyCacherExpirationSeconds),
-		EntityType:          sdkCore.RestAPIEntityType(cfg.ProxyRestAPIEntityType),
+		FinalityCheck:       cfg.General.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+		EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
 	}
 
 	proxy, err := blockchain.NewProxy(argsProxy)
@@ -54,7 +54,7 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chClose
 
 	argNonceHandler := nonceHandlerV2.ArgsNonceTransactionsHandlerV2{
 		Proxy:            proxy,
-		IntervalToResend: time.Second * time.Duration(cfg.IntervalToResendTxsInSeconds),
+		IntervalToResend: time.Second * time.Duration(cfg.General.IntervalToResendTxsInSeconds),
 	}
 	module.nonceTxsHandler, err = nonceHandlerV2.NewNonceTransactionHandlerV2(argNonceHandler)
 	if err != nil {
@@ -62,7 +62,7 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chClose
 	}
 
 	wallet := interactors.NewWallet()
-	multiversXPrivateKeyBytes, err := wallet.LoadPrivateKeyFromPemFile(cfg.PrivateKeyFile)
+	multiversXPrivateKeyBytes, err := wallet.LoadPrivateKeyFromPemFile(cfg.General.PrivateKeyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -72,20 +72,30 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chClose
 		return nil, err
 	}
 
+	argsTxExecutor := multiversx.ArgsTransactionExecutor{
+		Proxy:             proxy,
+		Log:               log,
+		NonceTxHandler:    module.nonceTxsHandler,
+		PrivateKey:        privateKey,
+		SingleSigner:      singleSigner,
+		TransactionChecks: cfg.TransactionChecks,
+		CloseAppChan:      chCloseApp,
+	}
+
+	transactionExecutor, err := multiversx.NewTransactionExecutor(argsTxExecutor)
+	if err != nil {
+		return nil, err
+	}
+
 	argsExecutor := multiversx.ArgsScCallExecutor{
-		ScProxyBech32Addresses:          cfg.ScProxyBech32Addresses,
-		Proxy:                           proxy,
-		Codec:                           &parsers.MultiversxCodec{},
-		Filter:                          filter,
-		Log:                             log,
-		ExtraGasToExecute:               cfg.ExtraGasToExecute,
-		MaxGasLimitToUse:                cfg.MaxGasLimitToUse,
-		GasLimitForOutOfGasTransactions: cfg.GasLimitForOutOfGasTransactions,
-		NonceTxHandler:                  module.nonceTxsHandler,
-		PrivateKey:                      privateKey,
-		SingleSigner:                    singleSigner,
-		CloseAppChan:                    chCloseApp,
-		TransactionChecks:               cfg.TransactionChecks,
+		ScProxyBech32Addresses: cfg.General.ScProxyBech32Addresses,
+		TransactionExecutor:    transactionExecutor,
+		Proxy:                  proxy,
+		Codec:                  &parsers.MultiversxCodec{},
+		Filter:                 filter,
+		Log:                    log,
+		ExecutorConfig:         cfg.ScCallsExecutor,
+		TransactionChecks:      cfg.TransactionChecks,
 	}
 	module.executorInstance, err = multiversx.NewScCallExecutor(argsExecutor)
 	if err != nil {
@@ -95,8 +105,8 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chClose
 	argsPollingHandler := polling.ArgsPollingHandler{
 		Log:              log,
 		Name:             "MultiversX SC calls",
-		PollingInterval:  time.Duration(cfg.PollingIntervalInMillis) * time.Millisecond,
-		PollingWhenError: time.Duration(cfg.PollingIntervalInMillis) * time.Millisecond,
+		PollingInterval:  time.Duration(cfg.ScCallsExecutor.PollingIntervalInMillis) * time.Millisecond,
+		PollingWhenError: time.Duration(cfg.ScCallsExecutor.PollingIntervalInMillis) * time.Millisecond,
 		Executor:         module.executorInstance,
 	}
 

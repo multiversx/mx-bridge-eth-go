@@ -94,38 +94,20 @@ func startExecutor(ctx *cli.Context, version string) error {
 	}
 
 	if ctx.IsSet(networkAddress.Name) {
-		cfg.NetworkAddress = ctx.GlobalString(networkAddress.Name)
-		log.Info("using flag-defined network address", "address", cfg.NetworkAddress)
+		cfg.General.NetworkAddress = ctx.GlobalString(networkAddress.Name)
+		log.Info("using flag-defined network address", "address", cfg.General.NetworkAddress)
 	}
 	if ctx.IsSet(privateKeyFile.Name) {
-		cfg.PrivateKeyFile = ctx.GlobalString(privateKeyFile.Name)
-		log.Info("using flag-defined private key file", "filename", cfg.PrivateKeyFile)
+		cfg.General.PrivateKeyFile = ctx.GlobalString(privateKeyFile.Name)
+		log.Info("using flag-defined private key file", "filename", cfg.General.PrivateKeyFile)
 	}
 
-	if len(cfg.NetworkAddress) == 0 {
+	if len(cfg.General.NetworkAddress) == 0 {
 		return fmt.Errorf("empty NetworkAddress in config file")
 	}
 
-	args := config.ScCallsModuleConfig{
-		ScProxyBech32Addresses:          cfg.ScProxyBech32Addresses,
-		ExtraGasToExecute:               cfg.ExtraGasToExecute,
-		MaxGasLimitToUse:                cfg.MaxGasLimitToUse,
-		GasLimitForOutOfGasTransactions: cfg.GasLimitForOutOfGasTransactions,
-		NetworkAddress:                  cfg.NetworkAddress,
-		ProxyMaxNoncesDelta:             cfg.ProxyMaxNoncesDelta,
-		ProxyFinalityCheck:              cfg.ProxyFinalityCheck,
-		ProxyCacherExpirationSeconds:    cfg.ProxyCacherExpirationSeconds,
-		ProxyRestAPIEntityType:          cfg.ProxyRestAPIEntityType,
-		IntervalToResendTxsInSeconds:    cfg.IntervalToResendTxsInSeconds,
-		PrivateKeyFile:                  cfg.PrivateKeyFile,
-		PollingIntervalInMillis:         cfg.PollingIntervalInMillis,
-		Filter:                          cfg.Filter,
-		Logs:                            cfg.Logs,
-		TransactionChecks:               cfg.TransactionChecks,
-	}
-
 	chCloseApp := make(chan struct{}, 1)
-	scCallsExecutor, err := module.NewScCallsModule(args, log, chCloseApp)
+	scCallsExecutor, err := module.NewScCallsModule(cfg, log, chCloseApp)
 	if err != nil {
 		return err
 	}

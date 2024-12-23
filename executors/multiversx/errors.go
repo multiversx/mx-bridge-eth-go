@@ -16,4 +16,5 @@ var (
 	errTransactionFailed                 = errors.New("transaction failed")
 	errGasLimitIsLessThanAbsoluteMinimum = errors.New("provided gas limit is less than absolute minimum required")
 	errEmptyListOfBridgeSCProxy          = errors.New("the bridge SC proxy addresses list is empty")
+	errNilTransactionExecutor            = errors.New("nil transaction executor")
 )

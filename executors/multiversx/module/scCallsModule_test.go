@@ -11,20 +11,24 @@ import (
 
 func createTestConfigs() config.ScCallsModuleConfig {
 	return config.ScCallsModuleConfig{
-		ScProxyBech32Addresses: []string{
-			"erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+		General: config.GeneralScCallsModuleConfig{
+			ScProxyBech32Addresses: []string{
+				"erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+			},
+			NetworkAddress:               "http://127.0.0.1:8079",
+			ProxyMaxNoncesDelta:          5,
+			ProxyFinalityCheck:           false,
+			ProxyCacherExpirationSeconds: 60,
+			ProxyRestAPIEntityType:       string(sdkCore.ObserverNode),
+			IntervalToResendTxsInSeconds: 1,
+			PrivateKeyFile:               "testdata/grace.pem",
 		},
-		ExtraGasToExecute:               6000000,
-		MaxGasLimitToUse:                249999999,
-		GasLimitForOutOfGasTransactions: 30000000,
-		NetworkAddress:                  "http://127.0.0.1:8079",
-		ProxyMaxNoncesDelta:             5,
-		ProxyFinalityCheck:              false,
-		ProxyCacherExpirationSeconds:    60,
-		ProxyRestAPIEntityType:          string(sdkCore.ObserverNode),
-		IntervalToResendTxsInSeconds:    1,
-		PrivateKeyFile:                  "testdata/grace.pem",
-		PollingIntervalInMillis:         10000,
+		ScCallsExecutor: config.ScCallsExecutorConfig{
+			ExtraGasToExecute:               6000000,
+			MaxGasLimitToUse:                249999999,
+			GasLimitForOutOfGasTransactions: 30000000,
+			PollingIntervalInMillis:         10000,
+		},
 		Filter: config.PendingOperationsFilterConfig{
 			DeniedEthAddresses:  nil,
 			AllowedEthAddresses: []string{"*"},
@@ -54,7 +58,7 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		cfg.ProxyCacherExpirationSeconds = 0
+		cfg.General.ProxyCacherExpirationSeconds = 0
 
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
 		assert.NotNil(t, err)
@@ -65,7 +69,7 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		cfg.IntervalToResendTxsInSeconds = 0
+		cfg.General.IntervalToResendTxsInSeconds = 0
 
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
 		assert.NotNil(t, err)
@@ -76,7 +80,7 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		cfg.PrivateKeyFile = ""
+		cfg.General.PrivateKeyFile = ""
 
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
 		assert.NotNil(t, err)
@@ -86,7 +90,7 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		cfg.PollingIntervalInMillis = 0
+		cfg.ScCallsExecutor.PollingIntervalInMillis = 0
 
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
 		assert.NotNil(t, err)
@@ -127,7 +131,7 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		cfg.ScProxyBech32Addresses = append(cfg.ScProxyBech32Addresses, "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
+		cfg.General.ScProxyBech32Addresses = append(cfg.General.ScProxyBech32Addresses, "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
 		cfg.TransactionChecks.CheckTransactionResults = true
 		cfg.TransactionChecks.TimeInSecondsBetweenChecks = 1
 		cfg.TransactionChecks.ExecutionTimeoutInSeconds = 1
