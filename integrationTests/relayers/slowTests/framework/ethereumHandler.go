@@ -499,6 +499,16 @@ func (handler *EthereumHandler) GetMintBalanceForToken(ctx context.Context, addr
 	return balance
 }
 
+// SetBatchSize will set a custom batch size
+func (handler *EthereumHandler) SetBatchSize(ctx context.Context, newBatchSize uint16) {
+	ownerAuth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
+
+	tx, err := handler.SafeContract.SetBatchSize(ownerAuth, newBatchSize)
+	require.NoError(handler, err)
+	handler.SimulatedChain.Commit()
+	handler.checkEthTxResult(ctx, tx.Hash())
+}
+
 // Close will close the resources allocated
 func (handler *EthereumHandler) Close() error {
 	return handler.SimulatedChain.Close()

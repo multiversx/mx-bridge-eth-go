@@ -47,6 +47,7 @@ func createMockClientArgs() ClientArgs {
 			PerformActionForEach:   70,
 			ScCallPerByte:          80,
 			ScCallPerformForEach:   90,
+			AbsoluteMaxGasLimit:    500000,
 		},
 		Proxy:                        &interactors.ProxyStub{},
 		Log:                          logger.GetOrCreate("test"),
@@ -619,6 +620,45 @@ func TestClient_ProposeSetStatus(t *testing.T) {
 				assert.Equal(t, expectedDataField, dataField)
 				expectedGasLimit := c.gasMapConfig.ProposeStatusBase + uint64(len(expectedStatus))*c.gasMapConfig.ProposeStatusForEach
 				assert.Equal(t, gasLimit, expectedGasLimit)
+
+				return expectedHash, nil
+			},
+		}
+
+		hash, err := c.ProposeSetStatus(context.Background(), createMockBatch())
+		assert.Nil(t, err)
+		assert.Equal(t, expectedHash, hash)
+		assert.True(t, sendWasCalled)
+	})
+	t.Run("should propose set status with a trimmed value for gas limit", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockClientArgs()
+		args.GasMapConfig.AbsoluteMaxGasLimit = 5000000
+		args.GasMapConfig.ProposeStatusBase = 4999999
+		args.Proxy = createMockProxy(make([][]byte, 0))
+		expectedHash := "expected hash"
+		c, _ := NewClient(args)
+		sendWasCalled := false
+		c.txHandler = &bridgeTests.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+				sendWasCalled = true
+
+				dataField, err := builder.ToDataString()
+				assert.Nil(t, err)
+
+				expectedArgs := []string{
+					proposeSetStatusFuncName,
+					hex.EncodeToString(big.NewInt(112233).Bytes()),
+				}
+				expectedStatus := []byte{bridgeCore.Rejected, bridgeCore.Executed}
+				for _, stat := range expectedStatus {
+					expectedArgs = append(expectedArgs, hex.EncodeToString([]byte{stat}))
+				}
+
+				expectedDataField := strings.Join(expectedArgs, "@")
+				assert.Equal(t, expectedDataField, dataField)
+				assert.Equal(t, args.GasMapConfig.AbsoluteMaxGasLimit, gasLimit)
 
 				return expectedHash, nil
 			},

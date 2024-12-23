@@ -1,14 +1,16 @@
 package testsCommon
 
-import "github.com/multiversx/mx-bridge-eth-go/parsers"
+import (
+	"github.com/multiversx/mx-bridge-eth-go/core"
+)
 
 // ScCallsExecuteFilterStub -
 type ScCallsExecuteFilterStub struct {
-	ShouldExecuteCalled func(callData parsers.ProxySCCompleteCallData) bool
+	ShouldExecuteCalled func(callData core.ProxySCCompleteCallData) bool
 }
 
 // ShouldExecute -
-func (stub *ScCallsExecuteFilterStub) ShouldExecute(callData parsers.ProxySCCompleteCallData) bool {
+func (stub *ScCallsExecuteFilterStub) ShouldExecute(callData core.ProxySCCompleteCallData) bool {
 	if stub.ShouldExecuteCalled != nil {
 		return stub.ShouldExecuteCalled(callData)
 	}
