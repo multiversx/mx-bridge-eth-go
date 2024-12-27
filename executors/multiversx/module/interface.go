@@ -22,6 +22,5 @@ type pollingHandler interface {
 
 type executor interface {
 	Execute(ctx context.Context) error
-	GetNumSentTransaction() uint32
 	IsInterfaceNil() bool
 }

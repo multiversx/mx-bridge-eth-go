@@ -610,11 +610,13 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 				ValueToTransferToMvx: big.NewInt(500),
 				ValueToSendFromMvX:   nil,
 				MvxSCCallData:        callData,
+				MvxFaultySCCall:      true,
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(600),
 				ValueToSendFromMvX:   nil,
 				MvxSCCallData:        callData,
+				MvxFaultySCCall:      true,
 			},
 		}
 		usdcToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
@@ -691,11 +693,13 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 				ValueToTransferToMvx: big.NewInt(500),
 				ValueToSendFromMvX:   nil,
 				MvxSCCallData:        callData,
+				MvxFaultySCCall:      true,
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(600),
 				ValueToSendFromMvX:   nil,
 				MvxSCCallData:        callData,
+				MvxFaultySCCall:      true,
 			},
 		}
 		usdcToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{

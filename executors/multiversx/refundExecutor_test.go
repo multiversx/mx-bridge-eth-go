@@ -4,13 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
 	"github.com/multiversx/mx-chain-core-go/data/vm"
@@ -18,10 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testCodec = &parsers.MultiversxCodec{}
-
-func createMockArgsScCallExecutor() ArgsScCallExecutor {
-	return ArgsScCallExecutor{
+func createMockArgsRefundExecutor() ArgsRefundExecutor {
+	return ArgsRefundExecutor{
 		ScProxyBech32Addresses: []string{
 			"erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e",
 		},
@@ -30,158 +24,123 @@ func createMockArgsScCallExecutor() ArgsScCallExecutor {
 		Codec:               &testsCommon.MultiversxCodecStub{},
 		Filter:              &testsCommon.ScCallsExecuteFilterStub{},
 		Log:                 &testsCommon.LoggerStub{},
-		ExecutorConfig: config.ScCallsExecutorConfig{
-			ExtraGasToExecute:               100,
-			MaxGasLimitToUse:                minGasToExecuteSCCalls,
-			GasLimitForOutOfGasTransactions: minGasToExecuteSCCalls,
-		},
+		GasToExecute:        minGasToExecuteSCCalls,
 	}
 }
 
-func createTestProxySCCompleteCallData(token string) bridgeCore.ProxySCCompleteCallData {
-	callData := bridgeCore.ProxySCCompleteCallData{
-		RawCallData: testCodec.EncodeCallDataWithLenAndMarker(
-			bridgeCore.CallData{
-				Type:      1,
-				Function:  "callMe",
-				GasLimit:  5000000,
-				Arguments: []string{"arg1", "arg2"},
-			}),
-		From:   common.Address{},
-		Token:  token,
-		Amount: big.NewInt(37),
-		Nonce:  1,
-	}
-	callData.To, _ = data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqnf2w270lhxhlj57jvthxw4tqsunrwnq0anaqm4d4fn")
-
-	return callData
-}
-
-func TestNewScCallExecutor(t *testing.T) {
+func TestNewRefundExecutor(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil proxy should error", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
+		args := createMockArgsRefundExecutor()
 		args.Proxy = nil
 
-		executor, err := NewScCallExecutor(args)
+		executor, err := NewRefundExecutor(args)
 		assert.Nil(t, executor)
 		assert.Equal(t, errNilProxy, err)
 	})
 	t.Run("nil transaction executor should error", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
+		args := createMockArgsRefundExecutor()
 		args.TransactionExecutor = nil
 
-		executor, err := NewScCallExecutor(args)
+		executor, err := NewRefundExecutor(args)
 		assert.Nil(t, executor)
 		assert.Equal(t, errNilTransactionExecutor, err)
 	})
 	t.Run("nil codec should error", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
+		args := createMockArgsRefundExecutor()
 		args.Codec = nil
 
-		executor, err := NewScCallExecutor(args)
+		executor, err := NewRefundExecutor(args)
 		assert.Nil(t, executor)
 		assert.Equal(t, errNilCodec, err)
 	})
 	t.Run("nil filter should error", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
+		args := createMockArgsRefundExecutor()
 		args.Filter = nil
 
-		executor, err := NewScCallExecutor(args)
+		executor, err := NewRefundExecutor(args)
 		assert.Nil(t, executor)
 		assert.Equal(t, errNilFilter, err)
 	})
 	t.Run("nil logger should error", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
+		args := createMockArgsRefundExecutor()
 		args.Log = nil
 
-		executor, err := NewScCallExecutor(args)
+		executor, err := NewRefundExecutor(args)
 		assert.Nil(t, executor)
 		assert.Equal(t, errNilLogger, err)
 	})
 	t.Run("empty list of sc proxy bech32 addresses should error", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
+		args := createMockArgsRefundExecutor()
 		args.ScProxyBech32Addresses = nil
 
-		executor, err := NewScCallExecutor(args)
+		executor, err := NewRefundExecutor(args)
 		assert.Nil(t, executor)
 		assert.Equal(t, errEmptyListOfBridgeSCProxy, err)
 	})
 	t.Run("invalid sc proxy bech32 address should error", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
+		args := createMockArgsRefundExecutor()
 		args.ScProxyBech32Addresses = append(args.ScProxyBech32Addresses, "not a valid bech32 address")
 
-		executor, err := NewScCallExecutor(args)
+		executor, err := NewRefundExecutor(args)
 		assert.Nil(t, executor)
 		assert.NotNil(t, err)
 	})
-	t.Run("invalid MaxGasLimitToUse should error", func(t *testing.T) {
+	t.Run("invalid GasToExecute should error", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
-		args.ExecutorConfig.MaxGasLimitToUse = minGasToExecuteSCCalls - 1
+		args := createMockArgsRefundExecutor()
+		args.GasToExecute = minGasToExecuteSCCalls - 1
 
-		executor, err := NewScCallExecutor(args)
+		executor, err := NewRefundExecutor(args)
 		assert.Nil(t, executor)
 		assert.ErrorIs(t, err, errGasLimitIsLessThanAbsoluteMinimum)
 		assert.Contains(t, err.Error(), "provided: 2009999, absolute minimum required: 2010000")
-		assert.Contains(t, err.Error(), "MaxGasLimitToUse")
-	})
-	t.Run("invalid GasLimitForOutOfGasTransactions should error", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockArgsScCallExecutor()
-		args.ExecutorConfig.GasLimitForOutOfGasTransactions = minGasToExecuteSCCalls - 1
-
-		executor, err := NewScCallExecutor(args)
-		assert.Nil(t, executor)
-		assert.ErrorIs(t, err, errGasLimitIsLessThanAbsoluteMinimum)
-		assert.Contains(t, err.Error(), "provided: 2009999, absolute minimum required: 2010000")
-		assert.Contains(t, err.Error(), "GasLimitForOutOfGasTransactions")
+		assert.Contains(t, err.Error(), "GasToExecute")
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
+		args := createMockArgsRefundExecutor()
 
-		executor, err := NewScCallExecutor(args)
+		executor, err := NewRefundExecutor(args)
 		assert.NotNil(t, executor)
 		assert.Nil(t, err)
 	})
 }
 
-func TestScCallExecutor_IsInterfaceNil(t *testing.T) {
+func TestRefundExecutor_IsInterfaceNil(t *testing.T) {
 	t.Parallel()
 
-	var instance *scCallExecutor
+	var instance *refundExecutor
 	assert.True(t, instance.IsInterfaceNil())
 
-	instance = &scCallExecutor{}
+	instance = &refundExecutor{}
 	assert.False(t, instance.IsInterfaceNil())
 }
 
-func TestScCallExecutor_Execute(t *testing.T) {
+func TestRefundExecutor_Execute(t *testing.T) {
 	t.Parallel()
 
 	runError := errors.New("run error")
 	expectedError := errors.New("expected error")
 
-	argsForErrors := createMockArgsScCallExecutor()
+	argsForErrors := createMockArgsRefundExecutor()
 	argsForErrors.TransactionExecutor = &testsCommon.TransactionExecutorStub{
 		ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
 			assert.Fail(t, "should have not called ExecuteTransactionCalled")
@@ -199,7 +158,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewScCallExecutor(args)
+		executor, _ := NewRefundExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), expectedError.Error())
@@ -219,7 +178,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewScCallExecutor(args)
+		executor, _ := NewRefundExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "got response code 'NOT OK'")
@@ -241,7 +200,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewScCallExecutor(args)
+		executor, _ := NewRefundExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), errInvalidNumberOfResponseLines.Error())
@@ -275,7 +234,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewScCallExecutor(args)
+		executor, _ := NewRefundExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), expectedError.Error())
@@ -311,7 +270,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewScCallExecutor(args)
+		executor, _ := NewRefundExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), expectedError.Error())
@@ -320,7 +279,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 	t.Run("SendTransaction errors, should error", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
+		args := createMockArgsRefundExecutor()
 		args.TransactionExecutor = &testsCommon.TransactionExecutorStub{
 			ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
 				return expectedError
@@ -352,71 +311,23 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewScCallExecutor(args)
+		executor, _ := NewRefundExecutor(args)
 		err := executor.Execute(context.Background())
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), expectedError.Error())
 		assert.Contains(t, err.Error(), "errors found during execution")
 	})
-	t.Run("should not execute transactions with high gas limit usage", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockArgsScCallExecutor()
-		args.ExecutorConfig.MaxGasLimitToUse = 5000000
-
-		args.Proxy = &interactors.ProxyStub{
-			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{
-						ReturnCode: okCodeAfterExecution,
-						ReturnData: [][]byte{
-							{0x01},
-							{0x03, 0x04},
-						},
-					},
-				}, nil
-			},
-			GetNetworkConfigCalled: func(ctx context.Context) (*data.NetworkConfig, error) {
-				return &data.NetworkConfig{}, nil
-			},
-		}
-		args.Codec = &testsCommon.MultiversxCodecStub{
-			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (bridgeCore.ProxySCCompleteCallData, error) {
-				assert.Equal(t, []byte{0x03, 0x04}, buff)
-
-				return bridgeCore.ProxySCCompleteCallData{
-					RawCallData: []byte("dummy"),
-					To:          data.NewAddressFromBytes(bytes.Repeat([]byte{1}, 32)),
-				}, nil
-			},
-			ExtractGasLimitFromRawCallDataCalled: func(buff []byte) (uint64, error) {
-				assert.Equal(t, "dummy", string(buff))
-				return 5000000, nil
-			},
-		}
-		args.TransactionExecutor = &testsCommon.TransactionExecutorStub{
-			ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
-				assert.Fail(t, "should have not called execute transaction")
-
-				return nil
-			},
-		}
-
-		executor, _ := NewScCallExecutor(args)
-		err := executor.Execute(context.Background())
-		assert.Nil(t, err)
-	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
-		args.ExecutorConfig.MaxGasLimitToUse = 250000000
+		args := createMockArgsRefundExecutor()
+		args.GasToExecute = 250000000
 		sendWasCalled := false
 
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
 				assert.Equal(t, args.ScProxyBech32Addresses[0], vmRequest.Address)
-				assert.Equal(t, getPendingTransactionsFunction, vmRequest.FuncName)
+				assert.Equal(t, getRefundTransactionsFunction, vmRequest.FuncName)
 
 				return &data.VmValuesResponseData{
 					Data: &vm.VMOutputApi{
@@ -463,11 +374,11 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
 				assert.Equal(t, "TEST", networkConfig.ChainID)
 				assert.Equal(t, uint32(111), networkConfig.MinTransactionVersion)
-				assert.Equal(t, args.ExecutorConfig.ExtraGasToExecute+5000000, gasLimit)
+				assert.Equal(t, args.GasToExecute, gasLimit)
 				assert.Equal(t, "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e", receiver)
-				assert.Equal(t, scCallTxType, transactionType)
+				assert.Equal(t, refundTxType, transactionType)
 
-				expectedData := scProxyCallFunction + "@02"
+				expectedData := executeRefundTransactionFunction + "@02"
 				assert.Equal(t, expectedData, string(dataBytes))
 
 				sendWasCalled = true
@@ -476,7 +387,7 @@ func TestScCallExecutor_Execute(t *testing.T) {
 			},
 		}
 
-		executor, _ := NewScCallExecutor(args)
+		executor, _ := NewRefundExecutor(args)
 
 		err := executor.Execute(context.Background())
 		assert.Nil(t, err)
@@ -485,13 +396,13 @@ func TestScCallExecutor_Execute(t *testing.T) {
 	t.Run("should work with one two proxy address", func(t *testing.T) {
 		t.Parallel()
 
-		args := createMockArgsScCallExecutor()
+		args := createMockArgsRefundExecutor()
 		args.ScProxyBech32Addresses = append(args.ScProxyBech32Addresses, "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
-		args.ExecutorConfig.MaxGasLimitToUse = 250000000
+		args.GasToExecute = 250000000
 
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				assert.Equal(t, getPendingTransactionsFunction, vmRequest.FuncName)
+				assert.Equal(t, getRefundTransactionsFunction, vmRequest.FuncName)
 
 				returnData := make([][]byte, 4)
 				switch vmRequest.Address {
@@ -573,168 +484,22 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		expectedSentTransactions := []*sentTxValues{
 			{
 				receiver:        "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e",
-				transactionType: scCallTxType,
-				gasLimit:        args.ExecutorConfig.ExtraGasToExecute + 5000000,
-				dataBytes:       []byte(scProxyCallFunction + "@02"),
+				transactionType: refundTxType,
+				gasLimit:        args.GasToExecute,
+				dataBytes:       []byte(executeRefundTransactionFunction + "@02"),
 			},
 			{
 				receiver:        "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
-				transactionType: scCallTxType,
-				gasLimit:        args.ExecutorConfig.ExtraGasToExecute + 5000000,
-				dataBytes:       []byte(scProxyCallFunction + "@04"),
+				transactionType: refundTxType,
+				gasLimit:        args.GasToExecute,
+				dataBytes:       []byte(executeRefundTransactionFunction + "@04"),
 			},
 		}
 
-		executor, _ := NewScCallExecutor(args)
+		executor, _ := NewRefundExecutor(args)
 
 		err := executor.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.Equal(t, expectedSentTransactions, sentTransactions)
-	})
-	t.Run("should work even if the gas limit decode errors", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockArgsScCallExecutor()
-		sendWasCalled := false
-
-		args.Proxy = &interactors.ProxyStub{
-			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				assert.Equal(t, args.ScProxyBech32Addresses[0], vmRequest.Address)
-				assert.Equal(t, getPendingTransactionsFunction, vmRequest.FuncName)
-
-				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{
-						ReturnCode: okCodeAfterExecution,
-						ReturnData: [][]byte{
-							{0x01},
-							[]byte("ProxySCCompleteCallData 1"),
-							{0x02},
-							[]byte("ProxySCCompleteCallData 2"),
-						},
-					},
-				}, nil
-			},
-			GetNetworkConfigCalled: func(ctx context.Context) (*data.NetworkConfig, error) {
-				return &data.NetworkConfig{
-					ChainID:               "TEST",
-					MinTransactionVersion: 111,
-				}, nil
-			},
-		}
-		args.Codec = &testsCommon.MultiversxCodecStub{
-			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (bridgeCore.ProxySCCompleteCallData, error) {
-				if string(buff) == "ProxySCCompleteCallData 1" {
-					return createTestProxySCCompleteCallData("tkn1"), nil
-				}
-				if string(buff) == "ProxySCCompleteCallData 2" {
-					return createTestProxySCCompleteCallData("tkn2"), nil
-				}
-
-				return bridgeCore.ProxySCCompleteCallData{}, errors.New("wrong buffer")
-			},
-			ExtractGasLimitFromRawCallDataCalled: func(buff []byte) (uint64, error) {
-				return 0, expectedError
-			},
-		}
-		args.Filter = &testsCommon.ScCallsExecuteFilterStub{
-			ShouldExecuteCalled: func(callData bridgeCore.ProxySCCompleteCallData) bool {
-				return callData.Token == "tkn2"
-			},
-		}
-		args.TransactionExecutor = &testsCommon.TransactionExecutorStub{
-			ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
-				assert.Equal(t, "TEST", networkConfig.ChainID)
-				assert.Equal(t, uint32(111), networkConfig.MinTransactionVersion)
-				assert.Equal(t, args.ExecutorConfig.ExtraGasToExecute, gasLimit)
-				assert.Equal(t, "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e", receiver)
-				assert.Equal(t, scCallTxType, transactionType)
-
-				expectedData := scProxyCallFunction + "@02"
-				assert.Equal(t, expectedData, string(dataBytes))
-
-				sendWasCalled = true
-
-				return nil
-			},
-		}
-
-		executor, _ := NewScCallExecutor(args)
-
-		err := executor.Execute(context.Background())
-		assert.Nil(t, err)
-		assert.True(t, sendWasCalled)
-	})
-	t.Run("should work if the gas limit is above the contract threshold", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockArgsScCallExecutor()
-		sendWasCalled := false
-
-		args.Proxy = &interactors.ProxyStub{
-			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
-				assert.Equal(t, args.ScProxyBech32Addresses[0], vmRequest.Address)
-				assert.Equal(t, getPendingTransactionsFunction, vmRequest.FuncName)
-
-				return &data.VmValuesResponseData{
-					Data: &vm.VMOutputApi{
-						ReturnCode: okCodeAfterExecution,
-						ReturnData: [][]byte{
-							{0x01},
-							[]byte("ProxySCCompleteCallData 1"),
-							{0x02},
-							[]byte("ProxySCCompleteCallData 2"),
-						},
-					},
-				}, nil
-			},
-			GetNetworkConfigCalled: func(ctx context.Context) (*data.NetworkConfig, error) {
-				return &data.NetworkConfig{
-					ChainID:               "TEST",
-					MinTransactionVersion: 111,
-				}, nil
-			},
-		}
-		args.Codec = &testsCommon.MultiversxCodecStub{
-			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (bridgeCore.ProxySCCompleteCallData, error) {
-				if string(buff) == "ProxySCCompleteCallData 1" {
-					return createTestProxySCCompleteCallData("tkn1"), nil
-				}
-				if string(buff) == "ProxySCCompleteCallData 2" {
-					return createTestProxySCCompleteCallData("tkn2"), nil
-				}
-
-				return bridgeCore.ProxySCCompleteCallData{}, errors.New("wrong buffer")
-			},
-			ExtractGasLimitFromRawCallDataCalled: func(buff []byte) (uint64, error) {
-				return contractMaxGasLimit + 1, nil
-			},
-		}
-		args.Filter = &testsCommon.ScCallsExecuteFilterStub{
-			ShouldExecuteCalled: func(callData bridgeCore.ProxySCCompleteCallData) bool {
-				return callData.Token == "tkn2"
-			},
-		}
-		args.TransactionExecutor = &testsCommon.TransactionExecutorStub{
-			ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
-				assert.Equal(t, "TEST", networkConfig.ChainID)
-				assert.Equal(t, uint32(111), networkConfig.MinTransactionVersion)
-				assert.Equal(t, args.ExecutorConfig.GasLimitForOutOfGasTransactions, gasLimit)
-				assert.Equal(t, "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e", receiver)
-				assert.Equal(t, scCallTxType, transactionType)
-
-				expectedData := scProxyCallFunction + "@02"
-				assert.Equal(t, expectedData, string(dataBytes))
-
-				sendWasCalled = true
-
-				return nil
-			},
-		}
-
-		executor, _ := NewScCallExecutor(args)
-
-		err := executor.Execute(context.Background())
-		assert.Nil(t, err)
-		assert.True(t, sendWasCalled)
 	})
 }

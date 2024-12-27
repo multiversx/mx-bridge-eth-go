@@ -4,13 +4,10 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"strings"
-	"time"
 
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/errors"
-	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/builders"
 	"github.com/multiversx/mx-sdk-go/data"
@@ -33,20 +30,13 @@ type ArgsScCallExecutor struct {
 	Filter                 ScCallsExecuteFilter
 	Log                    logger.Logger
 	ExecutorConfig         config.ScCallsExecutorConfig
-	TransactionChecks      config.TransactionChecksConfig
 }
 
 type scCallExecutor struct {
-	scProxyBech32Addresses          []string
-	proxy                           Proxy
-	transactionExecutor             TransactionExecutor
-	codec                           Codec
-	filter                          ScCallsExecuteFilter
-	log                             logger.Logger
+	*baseExecutor
 	extraGasToExecute               uint64
 	maxGasLimitToUse                uint64
 	gasLimitForOutOfGasTransactions uint64
-	executionTimeout                time.Duration
 }
 
 // NewScCallExecutor creates a new instance of type scCallExecutor
@@ -56,56 +46,34 @@ func NewScCallExecutor(args ArgsScCallExecutor) (*scCallExecutor, error) {
 		return nil, err
 	}
 
-	return &scCallExecutor{
-		scProxyBech32Addresses:          args.ScProxyBech32Addresses,
-		proxy:                           args.Proxy,
-		transactionExecutor:             args.TransactionExecutor,
-		codec:                           args.Codec,
-		filter:                          args.Filter,
-		log:                             args.Log,
+	executor := &scCallExecutor{
+		baseExecutor: &baseExecutor{
+			scProxyBech32Addresses: args.ScProxyBech32Addresses,
+			proxy:                  args.Proxy,
+			transactionExecutor:    args.TransactionExecutor,
+			codec:                  args.Codec,
+			filter:                 args.Filter,
+			log:                    args.Log,
+		},
 		extraGasToExecute:               args.ExecutorConfig.ExtraGasToExecute,
 		maxGasLimitToUse:                args.ExecutorConfig.MaxGasLimitToUse,
 		gasLimitForOutOfGasTransactions: args.ExecutorConfig.GasLimitForOutOfGasTransactions,
-		executionTimeout:                time.Second * time.Duration(args.TransactionChecks.ExecutionTimeoutInSeconds),
-	}, nil
+	}
+
+	err = executor.checkBaseComponents()
+	if err != nil {
+		return nil, err
+	}
+
+	return executor, nil
 }
 
 func checkScCallExecutorArgs(args ArgsScCallExecutor) error {
-	if check.IfNil(args.Proxy) {
-		return errNilProxy
-	}
-	if check.IfNil(args.TransactionExecutor) {
-		return errNilTransactionExecutor
-	}
-	if check.IfNil(args.Codec) {
-		return errNilCodec
-	}
-	if check.IfNil(args.Filter) {
-		return errNilFilter
-	}
-	if check.IfNil(args.Log) {
-		return errNilLogger
-	}
 	if args.ExecutorConfig.MaxGasLimitToUse < minGasToExecuteSCCalls {
 		return fmt.Errorf("%w for MaxGasLimitToUse: provided: %d, absolute minimum required: %d", errGasLimitIsLessThanAbsoluteMinimum, args.ExecutorConfig.MaxGasLimitToUse, minGasToExecuteSCCalls)
 	}
 	if args.ExecutorConfig.GasLimitForOutOfGasTransactions < minGasToExecuteSCCalls {
 		return fmt.Errorf("%w for GasLimitForOutOfGasTransactions: provided: %d, absolute minimum required: %d", errGasLimitIsLessThanAbsoluteMinimum, args.ExecutorConfig.GasLimitForOutOfGasTransactions, minGasToExecuteSCCalls)
-	}
-	err := checkTransactionChecksConfig(args.TransactionChecks, args.Log)
-	if err != nil {
-		return err
-	}
-
-	if len(args.ScProxyBech32Addresses) == 0 {
-		return errEmptyListOfBridgeSCProxy
-	}
-
-	for _, scProxyAddress := range args.ScProxyBech32Addresses {
-		_, err = data.NewAddressFromBech32String(scProxyAddress)
-		if err != nil {
-			return fmt.Errorf("%w for address %s", err, scProxyAddress)
-		}
 	}
 
 	return nil
@@ -113,29 +81,18 @@ func checkScCallExecutorArgs(args ArgsScCallExecutor) error {
 
 // Execute will execute one step: get all pending operations, call the filter and send execution transactions
 func (executor *scCallExecutor) Execute(ctx context.Context) error {
-	errorStrings := make([]string, 0)
-	for _, scProxyAddress := range executor.scProxyBech32Addresses {
-		err := executor.executeForScProxyAddress(ctx, scProxyAddress)
-		if err != nil {
-			errorStrings = append(errorStrings, err.Error())
-		}
-	}
-
-	if len(errorStrings) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf("errors found during execution: %s", strings.Join(errorStrings, "\n"))
+	return executor.executeOnAllScProxyAddress(ctx, executor.executeScCallForScProxyAddress)
 }
 
-func (executor *scCallExecutor) executeForScProxyAddress(ctx context.Context, scProxyAddress string) error {
-	executor.log.Info("Executing for the SC proxy address", "address", scProxyAddress)
+func (executor *scCallExecutor) executeScCallForScProxyAddress(ctx context.Context, scProxyAddress string) error {
+	executor.log.Info("Executing SC calls for the SC proxy address", "address", scProxyAddress)
+
 	pendingOperations, err := executor.getPendingOperations(ctx, scProxyAddress)
 	if err != nil {
 		return err
 	}
 
-	filteredPendingOperations := executor.filterOperations(pendingOperations)
+	filteredPendingOperations := executor.filterOperations("scCallExecutor", pendingOperations)
 
 	return executor.executeOperations(ctx, filteredPendingOperations, scProxyAddress)
 }
@@ -186,19 +143,6 @@ func (executor *scCallExecutor) parseResponse(response *data.VmValuesResponseDat
 	return result, nil
 }
 
-func (executor *scCallExecutor) filterOperations(pendingOperations map[uint64]bridgeCore.ProxySCCompleteCallData) map[uint64]bridgeCore.ProxySCCompleteCallData {
-	result := make(map[uint64]bridgeCore.ProxySCCompleteCallData)
-	for id, callData := range pendingOperations {
-		if executor.filter.ShouldExecute(callData) {
-			result[id] = callData
-		}
-	}
-
-	executor.log.Debug("scCallExecutor.filterOperations", "input pending ops", len(pendingOperations), "result pending ops", len(result))
-
-	return result
-}
-
 func (executor *scCallExecutor) executeOperations(
 	ctx context.Context,
 	pendingOperations map[uint64]bridgeCore.ProxySCCompleteCallData,
@@ -210,12 +154,8 @@ func (executor *scCallExecutor) executeOperations(
 	}
 
 	for id, callData := range pendingOperations {
-		workingCtx, cancel := context.WithTimeout(ctx, executor.executionTimeout)
-
-		executor.log.Debug("scCallExecutor.executeOperations", "executing ID", id, "call data", callData,
-			"maximum timeout", executor.executionTimeout)
-		err = executor.executeOperation(workingCtx, id, callData, networkConfig, scProxyAddress)
-		cancel()
+		executor.log.Debug("scCallExecutor.executeOperations", "executing ID", id, "call data", callData)
+		err = executor.executeOperation(context.Background(), id, callData, networkConfig, scProxyAddress)
 
 		if err != nil {
 			return fmt.Errorf("%w for call data: %s", err, callData)
@@ -279,11 +219,6 @@ func (executor *scCallExecutor) executeOperation(
 	}
 
 	return executor.transactionExecutor.ExecuteTransaction(ctx, networkConfig, scProxyAddress, scCallTxType, txGasLimit, dataBytes)
-}
-
-// GetNumSentTransaction returns the total sent transactions
-func (executor *scCallExecutor) GetNumSentTransaction() uint32 {
-	return executor.transactionExecutor.GetNumSentTransaction()
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

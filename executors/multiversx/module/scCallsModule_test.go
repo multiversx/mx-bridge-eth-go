@@ -29,6 +29,10 @@ func createTestConfigs() config.ScCallsModuleConfig {
 			GasLimitForOutOfGasTransactions: 30000000,
 			PollingIntervalInMillis:         10000,
 		},
+		RefundExecutor: config.RefundExecutorConfig{
+			GasToExecute:            30000000,
+			PollingIntervalInMillis: 10000,
+		},
 		Filter: config.PendingOperationsFilterConfig{
 			DeniedEthAddresses:  nil,
 			AllowedEthAddresses: []string{"*"},
@@ -86,7 +90,7 @@ func TestNewScCallsModule(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, module)
 	})
-	t.Run("invalid polling interval should error", func(t *testing.T) {
+	t.Run("invalid polling interval for SC calls should error", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
@@ -95,6 +99,39 @@ func TestNewScCallsModule(t *testing.T) {
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid value for PollingInterval")
+		assert.Nil(t, module)
+	})
+	t.Run("invalid max gas to execute for SC calls should error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := createTestConfigs()
+		cfg.ScCallsExecutor.MaxGasLimitToUse = 1
+
+		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "provided gas limit is less than absolute minimum required for MaxGasLimitToUse")
+		assert.Nil(t, module)
+	})
+	t.Run("invalid polling interval for refunds should error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := createTestConfigs()
+		cfg.RefundExecutor.PollingIntervalInMillis = 0
+
+		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "invalid value for PollingInterval")
+		assert.Nil(t, module)
+	})
+	t.Run("invalid gas to execute for refunds should error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := createTestConfigs()
+		cfg.RefundExecutor.GasToExecute = 0
+
+		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "provided gas limit is less than absolute minimum required for GasToExecute")
 		assert.Nil(t, module)
 	})
 	t.Run("should work with nil close app chan", func(t *testing.T) {
