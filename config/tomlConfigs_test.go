@@ -70,7 +70,9 @@ func TestConfigs(t *testing.T) {
 		P2P: ConfigP2P{
 			Port:            "10010",
 			InitialPeerList: make([]string, 0),
-			ProtocolID:      "/erd/relay/1.0.0",
+			ProtocolIDs: []string{
+				"/erd/relay/1.0.0",
+			},
 			Transports: p2pConfig.P2PTransportConfig{
 				TCP: config.TCPProtocolConfig{
 					ListenAddress:    "/ip4/0.0.0.0/tcp/%d",
@@ -280,7 +282,9 @@ func TestConfigs(t *testing.T) {
 [P2P]
     Port = "10010"
     InitialPeerList = []
-    ProtocolID = "/erd/relay/1.0.0"
+    ProtocolIDs = [
+		"/erd/relay/1.0.0",
+	]
     [P2P.Transports]
         QUICAddress = "" # optional QUIC address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/udp/%d/quic-v1
         WebSocketAddress = "" # optional WebSocket address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/tcp/%d/ws

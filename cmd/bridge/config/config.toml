@@ -53,7 +53,9 @@
 [P2P]
     Port = "37373-38383"
     InitialPeerList = []
-    ProtocolID = "/erd/relay/1.0.0"
+    ProtocolIDs = [
+        "/multiversx/evm",
+    ]
     [P2P.Transports]
         QUICAddress = "" # optional QUIC address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/udp/%d/quic-v1
         WebSocketAddress = "" # optional WebSocket address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/tcp/%d/ws
