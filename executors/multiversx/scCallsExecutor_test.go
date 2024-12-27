@@ -205,6 +205,36 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		assert.Contains(t, err.Error(), expectedError.Error())
 		assert.Contains(t, err.Error(), "errors found during execution")
 	})
+	t.Run("get pending returns an invalid vm values response (nil and nil), should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := argsForErrors // value copy
+		args.Proxy = &interactors.ProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return nil, nil
+			},
+		}
+
+		executor, _ := NewScCallExecutor(args)
+		err := executor.Execute(context.Background())
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "nil response data")
+	})
+	t.Run("get pending returns an invalid vm values response (nil data), should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := argsForErrors // value copy
+		args.Proxy = &interactors.ProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{}, nil
+			},
+		}
+
+		executor, _ := NewScCallExecutor(args)
+		err := executor.Execute(context.Background())
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "nil response data")
+	})
 	t.Run("get pending returns a not ok status, should error", func(t *testing.T) {
 		t.Parallel()
 

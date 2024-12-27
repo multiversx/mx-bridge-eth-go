@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/errors"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/data"
@@ -78,4 +79,38 @@ func (executor *baseExecutor) filterOperations(component string, pendingOperatio
 	executor.log.Debug(component, "input pending ops", len(pendingOperations), "result pending ops", len(result))
 
 	return result
+}
+
+func (executor *baseExecutor) executeVmQuery(ctx context.Context, scProxyAddress string, function string) (*data.VmValuesResponseData, error) {
+	request := &data.VmValueRequest{
+		Address:  scProxyAddress,
+		FuncName: function,
+	}
+
+	response, err := executor.proxy.ExecuteVMQuery(ctx, request)
+	if err != nil {
+		executor.log.Error("got error on VMQuery", "FuncName", request.FuncName,
+			"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr, "error", err)
+		return nil, err
+	}
+	if response == nil || response.Data == nil {
+		return nil, errors.NewQueryResponseError(
+			emptyErrorCode,
+			nilResponseData,
+			request.FuncName,
+			request.Address,
+			request.Args...,
+		)
+	}
+	if response.Data.ReturnCode != okCodeAfterExecution {
+		return nil, errors.NewQueryResponseError(
+			response.Data.ReturnCode,
+			response.Data.ReturnMessage,
+			request.FuncName,
+			request.Address,
+			request.Args...,
+		)
+	}
+
+	return response, nil
 }

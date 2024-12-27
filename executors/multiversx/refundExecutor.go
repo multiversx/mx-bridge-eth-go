@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
-	"github.com/multiversx/mx-bridge-eth-go/errors"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/builders"
 	"github.com/multiversx/mx-sdk-go/data"
@@ -16,6 +15,8 @@ const (
 	getRefundTransactionsFunction    = "getRefundTransactions"
 	executeRefundTransactionFunction = "executeRefundTransaction"
 	refundTxType                     = "refund"
+	nilResponseData                  = "nil response data"
+	emptyErrorCode                   = ""
 )
 
 // ArgsRefundExecutor represents the DTO struct for creating a new instance of type refundExecutor
@@ -79,25 +80,9 @@ func (executor *refundExecutor) executeRefundForScProxyAddress(ctx context.Conte
 }
 
 func (executor *refundExecutor) getPendingRefunds(ctx context.Context, scProxyAddress string) (map[uint64]bridgeCore.ProxySCCompleteCallData, error) {
-	request := &data.VmValueRequest{
-		Address:  scProxyAddress,
-		FuncName: getRefundTransactionsFunction,
-	}
-
-	response, err := executor.proxy.ExecuteVMQuery(ctx, request)
+	response, err := executor.executeVmQuery(ctx, scProxyAddress, getRefundTransactionsFunction)
 	if err != nil {
-		executor.log.Error("got error on VMQuery", "FuncName", request.FuncName,
-			"Args", request.Args, "SC address", request.Address, "Caller", request.CallerAddr, "error", err)
 		return nil, err
-	}
-	if response.Data.ReturnCode != okCodeAfterExecution {
-		return nil, errors.NewQueryResponseError(
-			response.Data.ReturnCode,
-			response.Data.ReturnMessage,
-			request.FuncName,
-			request.Address,
-			request.Args...,
-		)
 	}
 
 	return executor.parseResponse(response)
