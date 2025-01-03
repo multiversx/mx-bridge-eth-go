@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -53,6 +54,8 @@ func NewScCallExecutor(args ArgsScCallExecutor) (*scCallExecutor, error) {
 			codec:                  args.Codec,
 			filter:                 args.Filter,
 			log:                    args.Log,
+			ttlForFailedRefundID:   time.Duration(args.ExecutorConfig.TTLForFailedRefundIdInSeconds) * time.Second,
+			failedRefundMap:        make(map[uint64]time.Time),
 		},
 		extraGasToExecute:               args.ExecutorConfig.ExtraGasToExecute,
 		maxGasLimitToUse:                args.ExecutorConfig.MaxGasLimitToUse,
@@ -80,6 +83,8 @@ func checkScCallExecutorArgs(args ArgsScCallExecutor) error {
 
 // Execute will execute one step: get all pending operations, call the filter and send execution transactions
 func (executor *scCallExecutor) Execute(ctx context.Context) error {
+	executor.cleanupTTLCache(scCallTxType)
+
 	return executor.executeOnAllScProxyAddress(ctx, executor.executeScCallForScProxyAddress)
 }
 
@@ -201,7 +206,12 @@ func (executor *scCallExecutor) executeOperation(
 		return nil
 	}
 
-	return executor.transactionExecutor.ExecuteTransaction(ctx, networkConfig, scProxyAddress, scCallTxType, txGasLimit, dataBytes)
+	err = executor.transactionExecutor.ExecuteTransaction(ctx, networkConfig, scProxyAddress, scCallTxType, txGasLimit, dataBytes)
+	if err != nil {
+		executor.addFailed(id)
+	}
+
+	return err
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
