@@ -44,7 +44,6 @@ type transactionExecutor struct {
 	senderAddress       core.AddressHandler
 	log                 logger.Logger
 	timeBetweenChecks   time.Duration
-	closeAppOnError     bool
 	executionTimeout    time.Duration
 	mutCriticalSection  sync.Mutex
 }
