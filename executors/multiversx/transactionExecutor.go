@@ -47,6 +47,7 @@ type transactionExecutor struct {
 	timeBetweenChecks       time.Duration
 	closeAppOnError         bool
 	extraDelayOnError       time.Duration
+	executionTimeout        time.Duration
 	closeAppChan            chan struct{}
 	checkTransactionResults bool
 	mutCriticalSection      sync.Mutex
@@ -77,6 +78,7 @@ func NewTransactionExecutor(args ArgsTransactionExecutor) (*transactionExecutor,
 		timeBetweenChecks:       time.Second * time.Duration(args.TransactionChecks.TimeInSecondsBetweenChecks),
 		closeAppOnError:         args.TransactionChecks.CloseAppOnError,
 		extraDelayOnError:       time.Second * time.Duration(args.TransactionChecks.ExtraDelayInSecondsOnError),
+		executionTimeout:        time.Second * time.Duration(args.TransactionChecks.ExecutionTimeoutInSeconds),
 		closeAppChan:            args.CloseAppChan,
 	}, nil
 }
@@ -161,7 +163,14 @@ func (executor *transactionExecutor) ExecuteTransaction(
 		Value:    "0",
 	}
 
-	hash, err := executor.executeAsCriticalSection(ctx, tx)
+	workingCtx := ctx
+	if executor.checkTransactionResults {
+		var cancel func()
+		workingCtx, cancel = context.WithTimeout(ctx, executor.executionTimeout)
+		defer cancel()
+	}
+
+	hash, err := executor.executeAsCriticalSection(workingCtx, tx)
 	if err != nil {
 		return err
 	}
@@ -176,7 +185,7 @@ func (executor *transactionExecutor) ExecuteTransaction(
 
 	atomic.AddUint32(&executor.numSentTransactions, 1)
 
-	return executor.handleResults(ctx, hash)
+	return executor.handleResults(workingCtx, hash)
 }
 
 func (executor *transactionExecutor) executeAsCriticalSection(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {

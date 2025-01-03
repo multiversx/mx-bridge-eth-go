@@ -134,11 +134,16 @@ func (setup *TestSetup) startScCallerModule() {
 			GasLimitForOutOfGasTransactions: 30_000_000,  // gas to use when a higher than max allowed is encountered
 			PollingIntervalInMillis:         1000,        // 1 second
 		},
+		RefundExecutor: config.RefundExecutorConfig{
+			GasToExecute:            30_000_000,
+			PollingIntervalInMillis: 1000,
+		},
 		Filter: config.PendingOperationsFilterConfig{
 			AllowedEthAddresses: []string{"*"},
 			AllowedMvxAddresses: []string{"*"},
 			AllowedTokens:       []string{"*"},
 		},
+		Logs: config.LogsConfig{},
 		TransactionChecks: config.TransactionChecksConfig{
 			CheckTransactionResults:    true,
 			CloseAppOnError:            false,
@@ -235,6 +240,10 @@ func (setup *TestSetup) processNumScCallsOperations(token TestTokenParams) {
 	for _, op := range token.TestOperations {
 		if len(op.MvxSCCallData) > 0 || op.MvxForceSCCall {
 			atomic.AddUint32(&setup.numScCallsInTest, 1)
+			if op.MvxFaultySCCall {
+				// one more call for the refund operation
+				atomic.AddUint32(&setup.numScCallsInTest, 1)
+			}
 		}
 	}
 }

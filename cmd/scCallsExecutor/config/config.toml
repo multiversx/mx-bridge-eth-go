@@ -17,7 +17,7 @@
     PollingIntervalInMillis = 6000
 
 [RefundExecutor]
-    GasToExecute = 20000000
+    GasToExecute = 30000000
     PollingIntervalInMillis = 6000
 
 [Filter]

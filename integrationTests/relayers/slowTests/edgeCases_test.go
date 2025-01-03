@@ -173,6 +173,7 @@ func TestRelayerShouldExecuteMultipleSwapsWithLargeData(t *testing.T) {
 			ValueToTransferToMvx: big.NewInt(50),
 			ValueToSendFromMvX:   nil,
 			MvxSCCallData:        scCallData,
+			MvxFaultySCCall:      true,
 		}
 		usdcToken.TestOperations = append(usdcToken.TestOperations, tokenOperation)
 	}
