@@ -479,7 +479,7 @@ func TestScCallsExecutorConfigs(t *testing.T) {
 	MaxGasLimitToUse = 249999999 # this is a safe max gas limit to use both intra-shard & cross-shard
 	GasLimitForOutOfGasTransactions = 30000000 # this value will be used when a transaction specified a gas limit > 249999999 
 	PollingIntervalInMillis = 6000
-    TTLForFailedRefundIdInSeconds = 3600
+	TTLForFailedRefundIdInSeconds = 3600
 
 [RefundExecutor]
 	GasToExecute = 20000000
