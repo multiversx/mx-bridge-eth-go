@@ -119,23 +119,34 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 
 func (setup *TestSetup) startScCallerModule() {
 	cfg := config.ScCallsModuleConfig{
-		ScProxyBech32Address:            setup.MultiversxHandler.ScProxyAddress.Bech32(),
-		ExtraGasToExecute:               60_000_000,  // 60 million: this ensures that a SC call with 0 gas limit is refunded
-		MaxGasLimitToUse:                249_999_999, // max cross shard limit
-		GasLimitForOutOfGasTransactions: 30_000_000,  // gas to use when a higher than max allowed is encountered
-		NetworkAddress:                  setup.ChainSimulator.GetNetworkAddress(),
-		ProxyMaxNoncesDelta:             5,
-		ProxyFinalityCheck:              false,
-		ProxyCacherExpirationSeconds:    60, // 1 minute
-		ProxyRestAPIEntityType:          string(sdkCore.Proxy),
-		IntervalToResendTxsInSeconds:    1,
-		PrivateKeyFile:                  path.Join(setup.WorkingDir, SCCallerFilename),
-		PollingIntervalInMillis:         1000, // 1 second
+		General: config.GeneralScCallsModuleConfig{
+			ScProxyBech32Addresses: []string{
+				setup.MultiversxHandler.ScProxyAddress.Bech32(),
+			},
+			NetworkAddress:               setup.ChainSimulator.GetNetworkAddress(),
+			ProxyMaxNoncesDelta:          7,
+			ProxyFinalityCheck:           true,
+			ProxyCacherExpirationSeconds: 60,
+			ProxyRestAPIEntityType:       string(sdkCore.Proxy),
+			IntervalToResendTxsInSeconds: 1,
+			PrivateKeyFile:               path.Join(setup.WorkingDir, SCCallerFilename),
+		},
+		ScCallsExecutor: config.ScCallsExecutorConfig{
+			ExtraGasToExecute:               60_000_000,  // 60 million: this ensures that a SC call with 0 gas limit is refunded
+			MaxGasLimitToUse:                249_999_999, // max cross shard limit
+			GasLimitForOutOfGasTransactions: 30_000_000,  // gas to use when a higher than max allowed is encountered
+			PollingIntervalInMillis:         1000,        // 1 second
+		},
+		RefundExecutor: config.RefundExecutorConfig{
+			GasToExecute:            30_000_000,
+			PollingIntervalInMillis: 1000,
+		},
 		Filter: config.PendingOperationsFilterConfig{
 			AllowedEthAddresses: []string{"*"},
 			AllowedMvxAddresses: []string{"*"},
 			AllowedTokens:       []string{"*"},
 		},
+		Logs: config.LogsConfig{},
 		TransactionChecks: config.TransactionChecksConfig{
 			CheckTransactionResults:    true,
 			CloseAppOnError:            false,
@@ -246,6 +257,10 @@ func (setup *TestSetup) processNumScCallsOperations(token TestTokenParams) {
 	for _, op := range token.TestOperations {
 		if len(op.MvxSCCallData) > 0 || op.MvxForceSCCall {
 			atomic.AddUint32(&setup.numScCallsInTest, 1)
+			if op.MvxFaultySCCall {
+				// one more call for the refund operation
+				atomic.AddUint32(&setup.numScCallsInTest, 1)
+			}
 		}
 	}
 }

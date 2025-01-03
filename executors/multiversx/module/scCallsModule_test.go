@@ -11,18 +11,28 @@ import (
 
 func createTestConfigs() config.ScCallsModuleConfig {
 	return config.ScCallsModuleConfig{
-		ScProxyBech32Address:            "erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
-		ExtraGasToExecute:               6000000,
-		MaxGasLimitToUse:                249999999,
-		GasLimitForOutOfGasTransactions: 30000000,
-		NetworkAddress:                  "http://127.0.0.1:8079",
-		ProxyMaxNoncesDelta:             5,
-		ProxyFinalityCheck:              false,
-		ProxyCacherExpirationSeconds:    60,
-		ProxyRestAPIEntityType:          string(sdkCore.ObserverNode),
-		IntervalToResendTxsInSeconds:    1,
-		PrivateKeyFile:                  "testdata/grace.pem",
-		PollingIntervalInMillis:         10000,
+		General: config.GeneralScCallsModuleConfig{
+			ScProxyBech32Addresses: []string{
+				"erd1qqqqqqqqqqqqqpgqgftcwj09u0nhmskrw7xxqcqh8qmzwyexd8ss7ftcxx",
+			},
+			NetworkAddress:               "http://127.0.0.1:8079",
+			ProxyMaxNoncesDelta:          5,
+			ProxyFinalityCheck:           false,
+			ProxyCacherExpirationSeconds: 60,
+			ProxyRestAPIEntityType:       string(sdkCore.ObserverNode),
+			IntervalToResendTxsInSeconds: 1,
+			PrivateKeyFile:               "testdata/grace.pem",
+		},
+		ScCallsExecutor: config.ScCallsExecutorConfig{
+			ExtraGasToExecute:               6000000,
+			MaxGasLimitToUse:                249999999,
+			GasLimitForOutOfGasTransactions: 30000000,
+			PollingIntervalInMillis:         10000,
+		},
+		RefundExecutor: config.RefundExecutorConfig{
+			GasToExecute:            30000000,
+			PollingIntervalInMillis: 10000,
+		},
 		Filter: config.PendingOperationsFilterConfig{
 			DeniedEthAddresses:  nil,
 			AllowedEthAddresses: []string{"*"},
@@ -52,7 +62,7 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		cfg.ProxyCacherExpirationSeconds = 0
+		cfg.General.ProxyCacherExpirationSeconds = 0
 
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
 		assert.NotNil(t, err)
@@ -63,7 +73,7 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		cfg.IntervalToResendTxsInSeconds = 0
+		cfg.General.IntervalToResendTxsInSeconds = 0
 
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
 		assert.NotNil(t, err)
@@ -74,21 +84,54 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		cfg.PrivateKeyFile = ""
+		cfg.General.PrivateKeyFile = ""
 
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
 		assert.NotNil(t, err)
 		assert.Nil(t, module)
 	})
-	t.Run("invalid polling interval should error", func(t *testing.T) {
+	t.Run("invalid polling interval for SC calls should error", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		cfg.PollingIntervalInMillis = 0
+		cfg.ScCallsExecutor.PollingIntervalInMillis = 0
 
 		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid value for PollingInterval")
+		assert.Nil(t, module)
+	})
+	t.Run("invalid max gas to execute for SC calls should error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := createTestConfigs()
+		cfg.ScCallsExecutor.MaxGasLimitToUse = 1
+
+		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "provided gas limit is less than absolute minimum required for MaxGasLimitToUse")
+		assert.Nil(t, module)
+	})
+	t.Run("invalid polling interval for refunds should error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := createTestConfigs()
+		cfg.RefundExecutor.PollingIntervalInMillis = 0
+
+		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "invalid value for PollingInterval")
+		assert.Nil(t, module)
+	})
+	t.Run("invalid gas to execute for refunds should error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := createTestConfigs()
+		cfg.RefundExecutor.GasToExecute = 0
+
+		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, nil)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "provided gas limit is less than absolute minimum required for GasToExecute")
 		assert.Nil(t, module)
 	})
 	t.Run("should work with nil close app chan", func(t *testing.T) {
@@ -104,10 +147,28 @@ func TestNewScCallsModule(t *testing.T) {
 		err = module.Close()
 		assert.Nil(t, err)
 	})
-	t.Run("should work with nil close app chan", func(t *testing.T) {
+	t.Run("should work with not nil close app chan", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
+		cfg.TransactionChecks.CheckTransactionResults = true
+		cfg.TransactionChecks.TimeInSecondsBetweenChecks = 1
+		cfg.TransactionChecks.ExecutionTimeoutInSeconds = 1
+		cfg.TransactionChecks.CloseAppOnError = true
+		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{}, make(chan struct{}, 1))
+		assert.Nil(t, err)
+		assert.NotNil(t, module)
+
+		assert.Zero(t, module.GetNumSentTransaction())
+
+		err = module.Close()
+		assert.Nil(t, err)
+	})
+	t.Run("should work with not nil close app chan and 2 sc proxy addresses", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := createTestConfigs()
+		cfg.General.ScProxyBech32Addresses = append(cfg.General.ScProxyBech32Addresses, "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
 		cfg.TransactionChecks.CheckTransactionResults = true
 		cfg.TransactionChecks.TimeInSecondsBetweenChecks = 1
 		cfg.TransactionChecks.ExecutionTimeoutInSeconds = 1

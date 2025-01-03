@@ -584,8 +584,12 @@ func processCalledDataParams(buff []byte) (uint64, string) {
 	valBuff := buff[:8]
 	value := binary.BigEndian.Uint64(valBuff)
 
-	buff = buff[8+32+4:] // trim the nonce, address and length of the token
-	token := string(buff)
+	buff = buff[8+32:] // trim the nonce and the address
+	tokenLenBuff := buff[:4]
+	tokenLen := binary.BigEndian.Uint32(tokenLenBuff)
+	buff = buff[4:] // trim the length of the token string
+
+	token := string(buff[:tokenLen])
 
 	return value, token
 }

@@ -53,6 +53,9 @@ func TestConfigs(t *testing.T) {
 				ProposeStatusForEach:   7000000,
 				PerformActionBase:      40000000,
 				PerformActionForEach:   5500000,
+				ScCallPerByte:          10000,
+				ScCallPerformForEach:   10000000,
+				AbsoluteMaxGasLimit:    500000000,
 			},
 			MaxRetriesOnQuorumReached:       3,
 			MaxRetriesOnWasTransferProposed: 3,
@@ -67,7 +70,9 @@ func TestConfigs(t *testing.T) {
 		P2P: ConfigP2P{
 			Port:            "10010",
 			InitialPeerList: make([]string, 0),
-			ProtocolID:      "/erd/relay/1.0.0",
+			ProtocolIDs: []string{
+				"/erd/relay/1.0.0",
+			},
 			Transports: p2pConfig.P2PTransportConfig{
 				TCP: config.TCPProtocolConfig{
 					ListenAddress:    "/ip4/0.0.0.0/tcp/%d",
@@ -176,6 +181,9 @@ func TestConfigs(t *testing.T) {
 			},
 		},
 		Relayer: ConfigRelayer{
+			ExecutionParameters: ExecutionParametersConfig{
+				MaxNumCharactersForSCCalls: 1024,
+			},
 			Marshalizer: chainConfig.MarshalizerConfig{
 				Type:           "gogo protobuf",
 				SizeCheckDelta: 10,
@@ -267,11 +275,16 @@ func TestConfigs(t *testing.T) {
         ProposeStatusForEach = 7000000
         PerformActionBase = 40000000
         PerformActionForEach = 5500000
+        ScCallPerByte = 10000 # 1500 tx data field + the rest for the actual storage in the contract
+        ScCallPerformForEach = 10000000
+        AbsoluteMaxGasLimit = 500000000 # absolute maximum gas limit for a sending transaction
 
 [P2P]
     Port = "10010"
     InitialPeerList = []
-    ProtocolID = "/erd/relay/1.0.0"
+    ProtocolIDs = [
+		"/erd/relay/1.0.0",
+	]
     [P2P.Transports]
         QUICAddress = "" # optional QUIC address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/udp/%d/quic-v1
         WebSocketAddress = "" # optional WebSocket address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/tcp/%d/ws
@@ -345,6 +358,8 @@ func TestConfigs(t *testing.T) {
                            { Topic = "EthereumToMultiversX_sign", NumMessagesPerSec = 100 }]
 
 [Relayer]
+    [Relayer.ExecutionParameters]
+        MaxNumCharactersForSCCalls = 1024
     [Relayer.Marshalizer]
         Type = "gogo protobuf"
         SizeCheckDelta = 10
@@ -405,18 +420,29 @@ func TestScCallsExecutorConfigs(t *testing.T) {
 	t.Parallel()
 
 	expectedConfig := ScCallsModuleConfig{
-		ScProxyBech32Address:            "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s",
-		ExtraGasToExecute:               50000000,
-		MaxGasLimitToUse:                249999999,
-		GasLimitForOutOfGasTransactions: 30000000,
-		NetworkAddress:                  "127.0.0.1:8085",
-		ProxyMaxNoncesDelta:             7,
-		ProxyFinalityCheck:              true,
-		ProxyCacherExpirationSeconds:    600,
-		ProxyRestAPIEntityType:          "observer",
-		IntervalToResendTxsInSeconds:    60,
-		PrivateKeyFile:                  "keys/multiversx.pem",
-		PollingIntervalInMillis:         6000,
+		General: GeneralScCallsModuleConfig{
+			ScProxyBech32Addresses: []string{
+				"erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s",
+				"erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+			},
+			NetworkAddress:               "127.0.0.1:8085",
+			ProxyMaxNoncesDelta:          7,
+			ProxyFinalityCheck:           true,
+			ProxyCacherExpirationSeconds: 600,
+			ProxyRestAPIEntityType:       "observer",
+			IntervalToResendTxsInSeconds: 60,
+			PrivateKeyFile:               "keys/multiversx.pem",
+		},
+		ScCallsExecutor: ScCallsExecutorConfig{
+			ExtraGasToExecute:               50000000,
+			MaxGasLimitToUse:                249999999,
+			GasLimitForOutOfGasTransactions: 30000000,
+			PollingIntervalInMillis:         6000,
+		},
+		RefundExecutor: RefundExecutorConfig{
+			GasToExecute:            20000000,
+			PollingIntervalInMillis: 6000,
+		},
 		Filter: PendingOperationsFilterConfig{
 			AllowedEthAddresses: []string{"*"},
 			AllowedMvxAddresses: []string{"*"},
@@ -436,18 +462,28 @@ func TestScCallsExecutorConfigs(t *testing.T) {
 	}
 
 	testString := `
-ScProxyBech32Address = "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s"
-ExtraGasToExecute = 50000000
-MaxGasLimitToUse = 249999999 # this is a safe max gas limit to use both intra-shard & cross-shard
-GasLimitForOutOfGasTransactions = 30000000 # this value will be used when a transaction specified a gas limit > 249999999 
-NetworkAddress = "127.0.0.1:8085"
-ProxyMaxNoncesDelta = 7
-ProxyFinalityCheck = true
-ProxyCacherExpirationSeconds = 600
-ProxyRestAPIEntityType = "observer"
-IntervalToResendTxsInSeconds = 60
-PrivateKeyFile = "keys/multiversx.pem"
-PollingIntervalInMillis = 6000
+[General]
+	ScProxyBech32Addresses = [
+		"erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s",
+    	"erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+	]
+	NetworkAddress = "127.0.0.1:8085"
+	ProxyMaxNoncesDelta = 7
+	ProxyFinalityCheck = true
+	ProxyCacherExpirationSeconds = 600
+	ProxyRestAPIEntityType = "observer"
+	IntervalToResendTxsInSeconds = 60
+	PrivateKeyFile = "keys/multiversx.pem"
+
+[ScCallsExecutor]
+	ExtraGasToExecute = 50000000
+	MaxGasLimitToUse = 249999999 # this is a safe max gas limit to use both intra-shard & cross-shard
+	GasLimitForOutOfGasTransactions = 30000000 # this value will be used when a transaction specified a gas limit > 249999999 
+	PollingIntervalInMillis = 6000
+
+[RefundExecutor]
+	GasToExecute = 20000000
+	PollingIntervalInMillis = 6000
 
 [Filter]
 	AllowedEthAddresses = ["*"]		# execute SC calls from all ETH addresses

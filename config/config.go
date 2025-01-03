@@ -60,7 +60,7 @@ type GasStationConfig struct {
 type ConfigP2P struct {
 	Port            string
 	InitialPeerList []string
-	ProtocolID      string
+	ProtocolIDs     []string
 	Transports      p2pConfig.P2PTransportConfig
 	AntifloodConfig config.AntifloodConfig
 	ResourceLimiter p2pConfig.P2PResourceLimiterConfig
@@ -68,9 +68,15 @@ type ConfigP2P struct {
 
 // ConfigRelayer configuration for general relayer configuration
 type ConfigRelayer struct {
+	ExecutionParameters  ExecutionParametersConfig
 	Marshalizer          config.MarshalizerConfig
 	RoleProvider         RoleProviderConfig
 	StatusMetricsStorage config.StorageConfig
+}
+
+// ExecutionParametersConfig configuration for the relayer execution params
+type ExecutionParametersConfig struct {
+	MaxNumCharactersForSCCalls uint64
 }
 
 // ConfigStateMachine the configuration for the state machine
@@ -172,6 +178,7 @@ type MultiversXGasMapConfig struct {
 	PerformActionForEach   uint64
 	ScCallPerByte          uint64
 	ScCallPerformForEach   uint64
+	AbsoluteMaxGasLimit    uint64
 }
 
 // PeersRatingConfig will hold settings related to peers rating
@@ -192,21 +199,38 @@ type PendingOperationsFilterConfig struct {
 
 // ScCallsModuleConfig will hold the settings for the SC calls module
 type ScCallsModuleConfig struct {
-	ScProxyBech32Address            string
+	General           GeneralScCallsModuleConfig
+	ScCallsExecutor   ScCallsExecutorConfig
+	RefundExecutor    RefundExecutorConfig
+	Filter            PendingOperationsFilterConfig
+	Logs              LogsConfig
+	TransactionChecks TransactionChecksConfig
+}
+
+// GeneralScCallsModuleConfig will hold the general settings for the SC calls module
+type GeneralScCallsModuleConfig struct {
+	ScProxyBech32Addresses       []string
+	NetworkAddress               string
+	ProxyMaxNoncesDelta          int
+	ProxyFinalityCheck           bool
+	ProxyCacherExpirationSeconds uint64
+	ProxyRestAPIEntityType       string
+	IntervalToResendTxsInSeconds uint64
+	PrivateKeyFile               string
+}
+
+// ScCallsExecutorConfig will hold the settings for the SC calls executor
+type ScCallsExecutorConfig struct {
 	ExtraGasToExecute               uint64
 	MaxGasLimitToUse                uint64
 	GasLimitForOutOfGasTransactions uint64
-	NetworkAddress                  string
-	ProxyMaxNoncesDelta             int
-	ProxyFinalityCheck              bool
-	ProxyCacherExpirationSeconds    uint64
-	ProxyRestAPIEntityType          string
-	IntervalToResendTxsInSeconds    uint64
-	PrivateKeyFile                  string
 	PollingIntervalInMillis         uint64
-	Filter                          PendingOperationsFilterConfig
-	Logs                            LogsConfig
-	TransactionChecks               TransactionChecksConfig
+}
+
+// RefundExecutorConfig will hold the settings for the refund executor
+type RefundExecutorConfig struct {
+	GasToExecute            uint64
+	PollingIntervalInMillis uint64
 }
 
 // TransactionChecksConfig will hold the setting for how to handle the transaction execution

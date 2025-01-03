@@ -60,6 +60,20 @@
             "outputs": []
         },
         {
+            "name": "callPayableWithBuff",
+            "mutability": "readonly",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "buff",
+                    "type": "bytes"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "getCalledDataParams",
             "mutability": "readonly",
             "inputs": [],
@@ -88,6 +102,10 @@
                 {
                     "name": "token_identifier",
                     "type": "TokenIdentifier"
+                },
+                {
+                    "name": "buff",
+                    "type": "bytes"
                 }
             ]
         }

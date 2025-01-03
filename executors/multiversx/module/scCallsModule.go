@@ -22,93 +22,50 @@ var keyGen = signing.NewKeyGenerator(suite)
 var singleSigner = &singlesig.Ed25519Signer{}
 
 type scCallsModule struct {
-	nonceTxsHandler  nonceTransactionsHandler
-	pollingHandler   pollingHandler
-	executorInstance executor
+	cfg             config.ScCallsModuleConfig
+	log             logger.Logger
+	filter          multiversx.ScCallsExecuteFilter
+	proxy           multiversx.Proxy
+	nonceTxsHandler nonceTransactionsHandler
+	txExecutor      multiversx.TransactionExecutor
+
+	pollingHandlers []pollingHandler
+	executors       []executor
 }
 
 // NewScCallsModule creates a starts a new scCallsModule instance
 func NewScCallsModule(cfg config.ScCallsModuleConfig, proxy multiversx.Proxy, log logger.Logger, chCloseApp chan struct{}) (*scCallsModule, error) {
-	filter, err := filters.NewPendingOperationFilter(cfg.Filter, log)
-	if err != nil {
-		return nil, err
-	}
 	if check.IfNil(proxy) {
 		return nil, errNilProxy //TODO: add unit test for this
 	}
 
-	//TODO: move this where necessary
-	//argsProxy := blockchain.ArgsProxy{
-	//	ProxyURL:            cfg.NetworkAddress,
-	//	SameScState:         false,
-	//	ShouldBeSynced:      false,
-	//	FinalityCheck:       cfg.ProxyFinalityCheck,
-	//	AllowedDeltaToFinal: cfg.ProxyMaxNoncesDelta,
-	//	CacheExpirationTime: time.Second * time.Duration(cfg.ProxyCacherExpirationSeconds),
-	//	EntityType:          sdkCore.RestAPIEntityType(cfg.ProxyRestAPIEntityType),
-	//}
-	//
-	//proxy, err := blockchain.NewProxy(argsProxy)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	module := &scCallsModule{}
-
-	argNonceHandler := nonceHandlerV2.ArgsNonceTransactionsHandlerV2{
-		Proxy:            proxy,
-		IntervalToResend: time.Second * time.Duration(cfg.IntervalToResendTxsInSeconds),
+	module := &scCallsModule{
+		cfg: cfg,
+		log: log,
+		proxy: proxy,
 	}
-	module.nonceTxsHandler, err = nonceHandlerV2.NewNonceTransactionHandlerV2(argNonceHandler)
+
+	err := module.createFilter()
 	if err != nil {
 		return nil, err
 	}
 
-	wallet := interactors.NewWallet()
-	multiversXPrivateKeyBytes, err := wallet.LoadPrivateKeyFromPemFile(cfg.PrivateKeyFile)
+	err = module.createNonceTxHandler()
 	if err != nil {
 		return nil, err
 	}
 
-	privateKey, err := keyGen.PrivateKeyFromByteArray(multiversXPrivateKeyBytes)
+	err = module.createTransactionExecutor(chCloseApp)
 	if err != nil {
 		return nil, err
 	}
 
-	argsExecutor := multiversx.ArgsScCallExecutor{
-		ScProxyBech32Address:            cfg.ScProxyBech32Address,
-		Proxy:                           proxy,
-		Codec:                           &parsers.MultiversxCodec{},
-		Filter:                          filter,
-		Log:                             log,
-		ExtraGasToExecute:               cfg.ExtraGasToExecute,
-		MaxGasLimitToUse:                cfg.MaxGasLimitToUse,
-		GasLimitForOutOfGasTransactions: cfg.GasLimitForOutOfGasTransactions,
-		NonceTxHandler:                  module.nonceTxsHandler,
-		PrivateKey:                      privateKey,
-		SingleSigner:                    singleSigner,
-		CloseAppChan:                    chCloseApp,
-		TransactionChecks:               cfg.TransactionChecks,
-	}
-	module.executorInstance, err = multiversx.NewScCallExecutor(argsExecutor)
+	err = module.createScCallsExecutor()
 	if err != nil {
 		return nil, err
 	}
 
-	argsPollingHandler := polling.ArgsPollingHandler{
-		Log:              log,
-		Name:             "MultiversX SC calls",
-		PollingInterval:  time.Duration(cfg.PollingIntervalInMillis) * time.Millisecond,
-		PollingWhenError: time.Duration(cfg.PollingIntervalInMillis) * time.Millisecond,
-		Executor:         module.executorInstance,
-	}
-
-	module.pollingHandler, err = polling.NewPollingHandler(argsPollingHandler)
-	if err != nil {
-		return nil, err
-	}
-
-	err = module.pollingHandler.StartProcessingLoop()
+	err = module.createRefundExecutor()
 	if err != nil {
 		return nil, err
 	}
@@ -116,18 +73,150 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, proxy multiversx.Proxy, lo
 	return module, nil
 }
 
+func (module *scCallsModule) createFilter() error {
+	var err error
+	module.filter, err = filters.NewPendingOperationFilter(module.cfg.Filter, module.log)
+
+	return err
+}
+
+func (module *scCallsModule) createNonceTxHandler() error {
+	argNonceHandler := nonceHandlerV2.ArgsNonceTransactionsHandlerV2{
+		Proxy:            module.proxy,
+		IntervalToResend: time.Second * time.Duration(module.cfg.General.IntervalToResendTxsInSeconds),
+	}
+
+	var err error
+	module.nonceTxsHandler, err = nonceHandlerV2.NewNonceTransactionHandlerV2(argNonceHandler)
+
+	return err
+}
+
+func (module *scCallsModule) createTransactionExecutor(chCloseApp chan struct{}) error {
+	wallet := interactors.NewWallet()
+	multiversXPrivateKeyBytes, err := wallet.LoadPrivateKeyFromPemFile(module.cfg.General.PrivateKeyFile)
+	if err != nil {
+		return err
+	}
+
+	privateKey, err := keyGen.PrivateKeyFromByteArray(multiversXPrivateKeyBytes)
+	if err != nil {
+		return err
+	}
+
+	argsTxExecutor := multiversx.ArgsTransactionExecutor{
+		Proxy:             module.proxy,
+		Log:               module.log,
+		NonceTxHandler:    module.nonceTxsHandler,
+		PrivateKey:        privateKey,
+		SingleSigner:      singleSigner,
+		TransactionChecks: module.cfg.TransactionChecks,
+		CloseAppChan:      chCloseApp,
+	}
+
+	module.txExecutor, err = multiversx.NewTransactionExecutor(argsTxExecutor)
+
+	return err
+}
+
+func (module *scCallsModule) createScCallsExecutor() error {
+	argsExecutor := multiversx.ArgsScCallExecutor{
+		ScProxyBech32Addresses: module.cfg.General.ScProxyBech32Addresses,
+		TransactionExecutor:    module.txExecutor,
+		Proxy:                  module.proxy,
+		Codec:                  &parsers.MultiversxCodec{},
+		Filter:                 module.filter,
+		Log:                    module.log,
+		ExecutorConfig:         module.cfg.ScCallsExecutor,
+	}
+
+	executorInstance, err := multiversx.NewScCallExecutor(argsExecutor)
+	if err != nil {
+		return err
+	}
+	module.executors = append(module.executors, executorInstance)
+
+	argsPollingHandler := polling.ArgsPollingHandler{
+		Log:              module.log,
+		Name:             "MultiversX SC calls",
+		PollingInterval:  time.Duration(module.cfg.ScCallsExecutor.PollingIntervalInMillis) * time.Millisecond,
+		PollingWhenError: time.Duration(module.cfg.ScCallsExecutor.PollingIntervalInMillis) * time.Millisecond,
+		Executor:         executorInstance,
+	}
+
+	pollingHandlerInstance, err := polling.NewPollingHandler(argsPollingHandler)
+	if err != nil {
+		return err
+	}
+
+	err = pollingHandlerInstance.StartProcessingLoop()
+	if err != nil {
+		return err
+	}
+	module.pollingHandlers = append(module.pollingHandlers, pollingHandlerInstance)
+
+	return nil
+}
+
+func (module *scCallsModule) createRefundExecutor() error {
+	argsExecutor := multiversx.ArgsRefundExecutor{
+		ScProxyBech32Addresses: module.cfg.General.ScProxyBech32Addresses,
+		TransactionExecutor:    module.txExecutor,
+		Proxy:                  module.proxy,
+		Codec:                  &parsers.MultiversxCodec{},
+		Filter:                 module.filter,
+		Log:                    module.log,
+		GasToExecute:           module.cfg.RefundExecutor.GasToExecute,
+	}
+
+	executorInstance, err := multiversx.NewRefundExecutor(argsExecutor)
+	if err != nil {
+		return err
+	}
+	module.executors = append(module.executors, executorInstance)
+
+	argsPollingHandler := polling.ArgsPollingHandler{
+		Log:              module.log,
+		Name:             "MultiversX refund executor",
+		PollingInterval:  time.Duration(module.cfg.RefundExecutor.PollingIntervalInMillis) * time.Millisecond,
+		PollingWhenError: time.Duration(module.cfg.RefundExecutor.PollingIntervalInMillis) * time.Millisecond,
+		Executor:         executorInstance,
+	}
+
+	pollingHandlerInstance, err := polling.NewPollingHandler(argsPollingHandler)
+	if err != nil {
+		return err
+	}
+
+	err = pollingHandlerInstance.StartProcessingLoop()
+	if err != nil {
+		return err
+	}
+	module.pollingHandlers = append(module.pollingHandlers, pollingHandlerInstance)
+
+	return nil
+}
+
 // GetNumSentTransaction returns the total sent transactions
 func (module *scCallsModule) GetNumSentTransaction() uint32 {
-	return module.executorInstance.GetNumSentTransaction()
+	return module.txExecutor.GetNumSentTransaction()
 }
 
 // Close closes any components started
 func (module *scCallsModule) Close() error {
-	errPollingHandler := module.pollingHandler.Close()
-	errNonceTxsHandler := module.nonceTxsHandler.Close()
+	var lastError error
 
-	if errPollingHandler != nil {
-		return errPollingHandler
+	for _, handlers := range module.pollingHandlers {
+		err := handlers.Close()
+		if err != nil {
+			lastError = err
+		}
 	}
-	return errNonceTxsHandler
+
+	err := module.nonceTxsHandler.Close()
+	if err != nil {
+		lastError = err
+	}
+
+	return lastError
 }

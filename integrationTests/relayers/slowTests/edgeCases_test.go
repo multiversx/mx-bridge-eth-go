@@ -1,7 +1,10 @@
+//go:build slow
+
 package slowTests
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"math/big"
 	"testing"
@@ -142,6 +145,137 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 			return true
 		}
 
+		setup.EthereumHandler.SimulatedChain.Commit()
+		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
+		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
+
+		return false
+	}
+
+	return testRelayersWithChainSimulator(tb,
+		setupFunc,
+		processFunc,
+		manualStopChan,
+	)
+}
+
+func TestRelayerShouldExecuteMultipleSwapsWithLargeData(t *testing.T) {
+	usdcToken := GenerateTestUSDCToken()
+
+	numTxs := int64(17)
+	maxLimitWithForScCalls := 984
+	buff := make([]byte, maxLimitWithForScCalls)
+	_, _ = rand.Read(buff)
+	scCallData := createScCallData("callPayableWithBuff", 100000000, string(buff))
+
+	usdcToken.TestOperations = make([]framework.TokenOperations, 0, numTxs)
+	for i := 0; i < int(numTxs); i++ {
+		tokenOperation := framework.TokenOperations{
+			ValueToTransferToMvx: big.NewInt(50),
+			ValueToSendFromMvX:   nil,
+			MvxSCCallData:        scCallData,
+			MvxFaultySCCall:      true,
+		}
+		usdcToken.TestOperations = append(usdcToken.TestOperations, tokenOperation)
+	}
+	usdcToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+		framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+			framework.Alice: {
+				OnEth:    big.NewInt(-50 * numTxs),
+				OnMvx:    big.NewInt(0),
+				MvxToken: framework.UniversalToken,
+			},
+			framework.SafeSC: {
+				OnEth:    big.NewInt(50 * numTxs),
+				OnMvx:    big.NewInt(0),
+				MvxToken: framework.ChainSpecificToken,
+			},
+			framework.WrapperSC: {
+				OnEth:    big.NewInt(0),
+				OnMvx:    big.NewInt(50 * numTxs),
+				MvxToken: framework.ChainSpecificToken,
+			},
+			framework.CalledTestSC: {
+				OnEth:    big.NewInt(0),
+				OnMvx:    big.NewInt(50 * numTxs),
+				MvxToken: framework.UniversalToken,
+			},
+		},
+		framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+			framework.Alice: {
+				OnEth:    big.NewInt(-50 * numTxs),
+				OnMvx:    big.NewInt(0),
+				MvxToken: framework.UniversalToken,
+			},
+			framework.SafeSC: {
+				OnEth:    big.NewInt(50 * numTxs),
+				OnMvx:    big.NewInt(0),
+				MvxToken: framework.ChainSpecificToken,
+			},
+			framework.WrapperSC: {
+				OnEth:    big.NewInt(0),
+				OnMvx:    big.NewInt(50 * numTxs),
+				MvxToken: framework.ChainSpecificToken,
+			},
+			framework.CalledTestSC: {
+				OnEth:    big.NewInt(0),
+				OnMvx:    big.NewInt(50 * numTxs),
+				MvxToken: framework.UniversalToken,
+			},
+		},
+	}
+	usdcToken.MintBurnChecks = &framework.MintBurnBalances{
+		MvxTotalUniversalMint:     big.NewInt(50 * numTxs),
+		MvxTotalChainSpecificMint: big.NewInt(50 * numTxs),
+		MvxTotalUniversalBurn:     big.NewInt(0),
+		MvxTotalChainSpecificBurn: big.NewInt(0),
+		MvxSafeMintValue:          big.NewInt(50 * numTxs),
+		MvxSafeBurnValue:          big.NewInt(0),
+
+		EthSafeMintValue: big.NewInt(0),
+		EthSafeBurnValue: big.NewInt(0),
+	}
+	usdcToken.SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(50 * numTxs)
+
+	_ = testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(
+		t,
+		make(chan error),
+		usdcToken,
+	)
+}
+
+func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
+	flows := createFlowsBasedOnToken(tb, tokens...)
+
+	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
+		for _, flow := range flows {
+			flow.setup = setup
+		}
+
+		setup.EthereumHandler.SetBatchSize(setup.Ctx, 100)
+
+		setup.IssueAndConfigureTokens(tokens...)
+		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
+		for _, flow := range flows {
+			flow.handlerToStartFirstBridge(flow)
+		}
+	}
+
+	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
+		allFlowsFinished := true
+		for _, flow := range flows {
+			allFlowsFinished = allFlowsFinished && flow.process()
+		}
+
+		if allFlowsFinished {
+			for _, flow := range flows {
+				setup.TestWithdrawTotalFeesOnEthereumForTokens(flow.tokens...)
+			}
+
+			return true
+		}
+
+		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
