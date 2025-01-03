@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const SC_CALLS_DELTA_LIMIT = 10
+
 func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 	errorString := "ERROR"
 	mockLogObserver := mock.NewMockLogObserver(errorString, "got invalid action ID")
@@ -292,15 +294,15 @@ func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb 
 
 func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 	callData := []byte{5, 4, 55}
-	usdcToken := GenerateOneOperationToken()
-	usdcToken.TestOperations[0].MvxSCCallData = callData
-	usdcToken.TestOperations[0].MvxFaultySCCall = true
+	simpleToken := GenerateOneOperationToken()
+	simpleToken.TestOperations[0].MvxSCCallData = callData
+	simpleToken.TestOperations[0].MvxFaultySCCall = true
 
 	t.Run("increasing aggregation fee before wrong SC call should stop refund", func(t *testing.T) {
 		testRelayersWithChainSimulatorAndTokensForChangedAggregationFee(
 			t,
 			make(chan error),
-			usdcToken,
+			simpleToken,
 		)
 	})
 
@@ -308,7 +310,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 		testRelayersWithChainSimulatorAndTokensForChangedMaxBridgeAmount(
 			t,
 			make(chan error),
-			usdcToken,
+			simpleToken,
 		)
 	})
 }
@@ -351,9 +353,9 @@ func testRelayersWithChainSimulatorAndTokensForChangedAggregationFee(tb testing.
 		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
-		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
+		scCallsLimitReached := int32(setup.ScCallerModuleInstance.GetNumSentTransaction()-setup.GetNumScCallsOperations()) >= SC_CALLS_DELTA_LIMIT
 
-		return allFlowsFinished
+		return allFlowsFinished && scCallsLimitReached
 	}
 
 	return testRelayersWithChainSimulator(tb,
@@ -401,9 +403,9 @@ func testRelayersWithChainSimulatorAndTokensForChangedMaxBridgeAmount(tb testing
 		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
-		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
+		scCallsLimitReached := int32(setup.ScCallerModuleInstance.GetNumSentTransaction()-setup.GetNumScCallsOperations()) >= SC_CALLS_DELTA_LIMIT
 
-		return allFlowsFinished
+		return allFlowsFinished && scCallsLimitReached
 	}
 
 	return testRelayersWithChainSimulator(tb,

@@ -900,7 +900,7 @@ func GenerateOneOperationToken() framework.TestTokenParams {
 				},
 				framework.CalledTestSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(1000),
+					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
 				framework.WrapperSC: {

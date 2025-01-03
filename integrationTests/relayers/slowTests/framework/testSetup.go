@@ -156,13 +156,13 @@ func (setup *TestSetup) startScCallerModule() {
 	}
 
 	argsProxy := blockchain.ArgsProxy{
-		ProxyURL:            cfg.NetworkAddress,
+		ProxyURL:            cfg.General.NetworkAddress,
 		SameScState:         false,
 		ShouldBeSynced:      false,
-		FinalityCheck:       cfg.ProxyFinalityCheck,
-		AllowedDeltaToFinal: cfg.ProxyMaxNoncesDelta,
-		CacheExpirationTime: time.Second * time.Duration(cfg.ProxyCacherExpirationSeconds),
-		EntityType:          sdkCore.RestAPIEntityType(cfg.ProxyRestAPIEntityType),
+		FinalityCheck:       cfg.General.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+		EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
 	}
 
 	proxy, err := blockchain.NewProxy(argsProxy)
