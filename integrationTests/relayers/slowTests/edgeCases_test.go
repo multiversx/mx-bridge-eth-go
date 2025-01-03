@@ -1,5 +1,3 @@
-//go:build slow
-
 package slowTests
 
 import (
@@ -10,6 +8,7 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/require"
 )
@@ -148,6 +147,129 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
 
 		return false
+	}
+
+	return testRelayersWithChainSimulator(tb,
+		setupFunc,
+		processFunc,
+		manualStopChan,
+	)
+}
+
+func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
+	callData := []byte{5, 4, 55}
+	usdcToken := GenerateOneOperationToken()
+	usdcToken.TestOperations[0].MvxSCCallData = callData
+	usdcToken.TestOperations[0].MvxFaultySCCall = true
+
+	t.Run("increasing aggregation fee before wrong SC call should stop refund", func(t *testing.T) {
+		testRelayersWithChainSimulatorAndTokensForChangedAggregationFee(
+			t,
+			make(chan error),
+			usdcToken,
+		)
+	})
+
+	t.Run("decreasing max bridge amount on Safe before wrong SC call should stop refund", func(t *testing.T) {
+		testRelayersWithChainSimulatorAndTokensForChangedMaxBridgeAmount(
+			t,
+			make(chan error),
+			usdcToken,
+		)
+	})
+}
+
+func testRelayersWithChainSimulatorAndTokensForChangedAggregationFee(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
+	flows := createFlowsBasedOnToken(tb, tokens...)
+
+	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
+		for _, flow := range flows {
+			flow.setup = setup
+		}
+
+		setup.IssueAndConfigureTokens(tokens...)
+		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
+		for _, flow := range flows {
+			flow.handlerToStartFirstBridge(flow)
+		}
+	}
+
+	firstProcessRun := true
+	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
+		if firstProcessRun {
+			firstProcessRun = false
+
+			setup.ProxyWrapperInstance.RegisterBeforeTransactionSendHandler(func(tx *transaction.FrontendTransaction) {
+				if tx.Sender == setup.MultiversxHandler.SCExecutorKeys.MvxAddress.Bech32() {
+					if len(tokens) == 0 {
+						return
+					}
+					setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, tokens[0].IssueTokenParams, big.NewInt(1200))
+				}
+			})
+		}
+
+		allFlowsFinished := true
+		for _, flow := range flows {
+			allFlowsFinished = allFlowsFinished && flow.process()
+		}
+
+		// commit blocks in order to execute incoming txs from relayers
+		setup.EthereumHandler.SimulatedChain.Commit()
+		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
+		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
+
+		return allFlowsFinished
+	}
+
+	return testRelayersWithChainSimulator(tb,
+		setupFunc,
+		processFunc,
+		manualStopChan,
+	)
+}
+
+func testRelayersWithChainSimulatorAndTokensForChangedMaxBridgeAmount(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
+	flows := createFlowsBasedOnToken(tb, tokens...)
+
+	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
+		for _, flow := range flows {
+			flow.setup = setup
+		}
+
+		setup.IssueAndConfigureTokens(tokens...)
+		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
+		for _, flow := range flows {
+			flow.handlerToStartFirstBridge(flow)
+		}
+	}
+
+	firstProcessRun := true
+	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
+		if firstProcessRun {
+			firstProcessRun = false
+
+			setup.ProxyWrapperInstance.RegisterBeforeTransactionSendHandler(func(tx *transaction.FrontendTransaction) {
+				if tx.Sender == setup.MultiversxHandler.SCExecutorKeys.MvxAddress.Bech32() {
+					if len(tokens) == 0 {
+						return
+					}
+					setup.MultiversxHandler.SetMaxBridgeAmountOnSafe(setup.Ctx, tokens[0].IssueTokenParams, "800")
+				}
+			})
+		}
+
+		allFlowsFinished := true
+		for _, flow := range flows {
+			allFlowsFinished = allFlowsFinished && flow.process()
+		}
+
+		// commit blocks in order to execute incoming txs from relayers
+		setup.EthereumHandler.SimulatedChain.Commit()
+		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
+		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
+
+		return allFlowsFinished
 	}
 
 	return testRelayersWithChainSimulator(tb,

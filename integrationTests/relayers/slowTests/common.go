@@ -822,6 +822,112 @@ func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 	}
 }
 
+// GenerateOneOperationToken will generate a test USDC token
+func GenerateOneOperationToken() framework.TestTokenParams {
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "ONE",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "ONE",
+			MvxChainSpecificTokenTicker:      "ONEUSDC",
+			MvxUniversalTokenDisplayName:     "WrappedONE",
+			MvxChainSpecificTokenDisplayName: "EthereumWrappedONE",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            true,
+			EthTokenName:                     "EthONE",
+			EthTokenSymbol:                   "ONE",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  false,
+			IsNativeOnEth:                    true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(1000),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
+			},
+		},
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(1000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(1000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(1000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		},
+		MintBurnChecks: &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(1000),
+			MvxTotalChainSpecificMint: big.NewInt(1000),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(1000),
+			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(1000),
+		},
+	}
+}
+
 func createScCallData(function string, gasLimit uint64, args ...string) []byte {
 	codec := testsCommon.TestMultiversXCodec{}
 	callData := parsers.CallData{

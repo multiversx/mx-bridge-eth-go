@@ -208,7 +208,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 	setup.MultiversxHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
 
 	for _, token := range tokens {
-		setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, token.IssueTokenParams)
+		setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, token.IssueTokenParams, feeInt)
 	}
 }
 
