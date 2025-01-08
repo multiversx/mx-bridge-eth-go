@@ -438,10 +438,12 @@ func TestScCallsExecutorConfigs(t *testing.T) {
 			MaxGasLimitToUse:                249999999,
 			GasLimitForOutOfGasTransactions: 30000000,
 			PollingIntervalInMillis:         6000,
+			TTLForFailedRefundIdInSeconds:   3600,
 		},
 		RefundExecutor: RefundExecutorConfig{
-			GasToExecute:            20000000,
-			PollingIntervalInMillis: 6000,
+			GasToExecute:                  20000000,
+			PollingIntervalInMillis:       6000,
+			TTLForFailedRefundIdInSeconds: 86400,
 		},
 		Filter: PendingOperationsFilterConfig{
 			AllowedEthAddresses: []string{"*"},
@@ -453,11 +455,8 @@ func TestScCallsExecutorConfigs(t *testing.T) {
 			LogFileLifeSpanInMB:  1024,
 		},
 		TransactionChecks: TransactionChecksConfig{
-			CheckTransactionResults:    true,
 			TimeInSecondsBetweenChecks: 6,
 			ExecutionTimeoutInSeconds:  120,
-			CloseAppOnError:            false,
-			ExtraDelayInSecondsOnError: 120,
 		},
 	}
 
@@ -480,10 +479,12 @@ func TestScCallsExecutorConfigs(t *testing.T) {
 	MaxGasLimitToUse = 249999999 # this is a safe max gas limit to use both intra-shard & cross-shard
 	GasLimitForOutOfGasTransactions = 30000000 # this value will be used when a transaction specified a gas limit > 249999999 
 	PollingIntervalInMillis = 6000
+	TTLForFailedRefundIdInSeconds = 3600
 
 [RefundExecutor]
 	GasToExecute = 20000000
 	PollingIntervalInMillis = 6000
+	TTLForFailedRefundIdInSeconds = 86400
 
 [Filter]
 	AllowedEthAddresses = ["*"]		# execute SC calls from all ETH addresses
@@ -495,11 +496,8 @@ func TestScCallsExecutorConfigs(t *testing.T) {
     LogFileLifeSpanInMB = 1024 # 1GB
 
 [TransactionChecks]
-	CheckTransactionResults = true     # enable or disable the transaction execution checking
 	TimeInSecondsBetweenChecks = 6     # the number of seconds to recheck the status of the transaction
-	ExecutionTimeoutInSeconds  = 120   # the number of seconds after the transaction is considered failed if it was not seen by the blockchain 
-	CloseAppOnError            = false # enable or disable if the executor should automatically close on a transaction execution error  
-	ExtraDelayInSecondsOnError = 120   # extra delay in seconds if the transaction execution errored 
+	ExecutionTimeoutInSeconds  = 120   # the number of seconds after the transaction is considered failed if it was not seen by the blockchain
 `
 
 	cfg := ScCallsModuleConfig{}

@@ -225,21 +225,20 @@ type ScCallsExecutorConfig struct {
 	MaxGasLimitToUse                uint64
 	GasLimitForOutOfGasTransactions uint64
 	PollingIntervalInMillis         uint64
+	TTLForFailedRefundIdInSeconds   uint64
 }
 
 // RefundExecutorConfig will hold the settings for the refund executor
 type RefundExecutorConfig struct {
-	GasToExecute            uint64
-	PollingIntervalInMillis uint64
+	GasToExecute                  uint64
+	PollingIntervalInMillis       uint64
+	TTLForFailedRefundIdInSeconds uint64
 }
 
 // TransactionChecksConfig will hold the setting for how to handle the transaction execution
 type TransactionChecksConfig struct {
-	CheckTransactionResults    bool
 	TimeInSecondsBetweenChecks uint64
 	ExecutionTimeoutInSeconds  uint64
-	CloseAppOnError            bool
-	ExtraDelayInSecondsOnError uint64
 }
 
 // MigrationToolConfig is the migration tool config struct

@@ -31,17 +31,10 @@ func createMockArgsTransactionExecutor() ArgsTransactionExecutor {
 		NonceTxHandler: &testsCommon.TxNonceHandlerV2Stub{},
 		PrivateKey:     testCrypto.NewPrivateKeyMock(),
 		SingleSigner:   &testCrypto.SingleSignerStub{},
-		CloseAppChan:   make(chan struct{}),
-	}
-}
-
-func createMockCheckConfigs() config.TransactionChecksConfig {
-	return config.TransactionChecksConfig{
-		CheckTransactionResults:    true,
-		TimeInSecondsBetweenChecks: 6,
-		ExecutionTimeoutInSeconds:  120,
-		CloseAppOnError:            true,
-		ExtraDelayInSecondsOnError: 120,
+		TransactionChecks: config.TransactionChecksConfig{
+			TimeInSecondsBetweenChecks: 6,
+			ExecutionTimeoutInSeconds:  120,
+		},
 	}
 }
 
@@ -102,7 +95,6 @@ func TestNewExecutor(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsTransactionExecutor()
-		args.TransactionChecks = createMockCheckConfigs()
 		args.TransactionChecks.TimeInSecondsBetweenChecks = 0
 
 		executor, err := NewTransactionExecutor(args)
@@ -114,7 +106,6 @@ func TestNewExecutor(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsTransactionExecutor()
-		args.TransactionChecks = createMockCheckConfigs()
 		args.TransactionChecks.ExecutionTimeoutInSeconds = 0
 
 		executor, err := NewTransactionExecutor(args)
@@ -122,32 +113,10 @@ func TestNewExecutor(t *testing.T) {
 		assert.ErrorIs(t, err, errInvalidValue)
 		assert.Contains(t, err.Error(), "for TransactionChecks.ExecutionTimeoutInSeconds, minimum: 1, got: 0")
 	})
-	t.Run("nil close app chan should error", func(t *testing.T) {
+	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsTransactionExecutor()
-		args.TransactionChecks = createMockCheckConfigs()
-		args.CloseAppChan = nil
-
-		executor, err := NewTransactionExecutor(args)
-		assert.Nil(t, executor)
-		assert.ErrorIs(t, err, errNilCloseAppChannel)
-		assert.Contains(t, err.Error(), "while the TransactionChecks.CloseAppOnError is set to true")
-	})
-	t.Run("should work without transaction checks", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockArgsTransactionExecutor()
-
-		executor, err := NewTransactionExecutor(args)
-		assert.NotNil(t, executor)
-		assert.Nil(t, err)
-	})
-	t.Run("should work with transaction checks", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockArgsTransactionExecutor()
-		args.TransactionChecks = createMockCheckConfigs()
 
 		executor, err := NewTransactionExecutor(args)
 		assert.NotNil(t, executor)
@@ -268,7 +237,6 @@ func TestTransactionExecutor_ExecuteTransaction(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsTransactionExecutor()
-		args.TransactionChecks = createMockCheckConfigs()
 		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
 		txHash := "tx hash"
 		processTransactionStatusCalled := false
@@ -331,27 +299,10 @@ func TestTransactionExecutor_ExecuteTransaction(t *testing.T) {
 	})
 }
 
-func TestTransactionExecutor_handleResults(t *testing.T) {
+func TestTransactionExecutor_checkResultsUntilDone(t *testing.T) {
 	t.Parallel()
 
 	testHash := "test hash"
-	t.Run("checkTransactionResults false should not check and return nil", func(t *testing.T) {
-		t.Parallel()
-
-		args := createMockArgsTransactionExecutor()
-		args.Proxy = &interactors.ProxyStub{
-			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
-				assert.Fail(t, "should have not called ProcessTransactionStatusCalled")
-
-				return transaction.TxStatusFail, nil
-			},
-		}
-
-		executor, _ := NewTransactionExecutor(args)
-
-		err := executor.handleResults(context.Background(), testHash)
-		assert.Nil(t, err)
-	})
 	t.Run("timeout before process transaction called", func(t *testing.T) {
 		t.Parallel()
 
@@ -363,14 +314,13 @@ func TestTransactionExecutor_handleResults(t *testing.T) {
 				return transaction.TxStatusFail, nil
 			},
 		}
-		args.TransactionChecks = createMockCheckConfigs()
 
 		executor, _ := NewTransactionExecutor(args)
 
 		workingCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 
-		err := executor.handleResults(workingCtx, testHash)
+		err := executor.checkResultsUntilDone(workingCtx, testHash)
 		assert.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 	t.Run("transaction not found should continuously request the status", func(t *testing.T) {
@@ -389,13 +339,12 @@ func TestTransactionExecutor_handleResults(t *testing.T) {
 				return transaction.TxStatusInvalid, errors.New("transaction not found")
 			},
 		}
-		args.TransactionChecks = createMockCheckConfigs()
 		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
 
 		executor, _ := NewTransactionExecutor(args)
 
 		go func() {
-			err := executor.handleResults(context.Background(), testHash)
+			err := executor.checkResultsUntilDone(context.Background(), testHash)
 			assert.ErrorIs(t, err, context.DeadlineExceeded) // this will be the actual error when the function finishes
 		}()
 
@@ -422,13 +371,12 @@ func TestTransactionExecutor_handleResults(t *testing.T) {
 				return transaction.TxStatusPending, nil
 			},
 		}
-		args.TransactionChecks = createMockCheckConfigs()
 		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
 
 		executor, _ := NewTransactionExecutor(args)
 
 		go func() {
-			err := executor.handleResults(context.Background(), testHash)
+			err := executor.checkResultsUntilDone(context.Background(), testHash)
 			assert.ErrorIs(t, err, context.DeadlineExceeded) // this will be the actual error when the function finishes
 		}()
 
@@ -439,67 +387,31 @@ func TestTransactionExecutor_handleResults(t *testing.T) {
 			assert.Fail(t, "timeout")
 		}
 	})
-	t.Run("error while requesting the status should return the error and wait", func(t *testing.T) {
+	t.Run("error while requesting the status should return the error", func(t *testing.T) {
 		t.Parallel()
 
 		expectedErr := errors.New("expected error")
 		args := createMockArgsTransactionExecutor()
-		args.CloseAppChan = make(chan struct{}, 1)
 		args.Proxy = &interactors.ProxyStub{
 			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
 				return transaction.TxStatusInvalid, expectedErr
 			},
 		}
-		args.TransactionChecks = createMockCheckConfigs()
 		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
-		args.TransactionChecks.ExtraDelayInSecondsOnError = 6
 
 		executor, _ := NewTransactionExecutor(args)
 
 		start := time.Now()
-		err := executor.handleResults(context.Background(), testHash)
+		err := executor.checkResultsUntilDone(context.Background(), testHash)
 		assert.Equal(t, expectedErr, err)
 		end := time.Now()
 
-		assert.GreaterOrEqual(t, end.Sub(start), time.Second*6)
-		select {
-		case <-args.CloseAppChan:
-		default:
-			assert.Fail(t, "failed to write on the close app chan")
-		}
-	})
-	t.Run("error while requesting the status should not write on the close app chan, if not enabled", func(t *testing.T) {
-		t.Parallel()
-
-		expectedErr := errors.New("expected error")
-		args := createMockArgsTransactionExecutor()
-		args.CloseAppChan = make(chan struct{}, 1)
-		args.Proxy = &interactors.ProxyStub{
-			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
-				return transaction.TxStatusInvalid, expectedErr
-			},
-		}
-		args.TransactionChecks = createMockCheckConfigs()
-		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
-		args.TransactionChecks.ExtraDelayInSecondsOnError = 1
-		args.TransactionChecks.CloseAppOnError = false
-
-		executor, _ := NewTransactionExecutor(args)
-
-		err := executor.handleResults(context.Background(), testHash)
-		assert.Equal(t, expectedErr, err)
-
-		select {
-		case <-args.CloseAppChan:
-			assert.Fail(t, "should have not written on the close chan")
-		default:
-		}
+		assert.GreaterOrEqual(t, end.Sub(start), time.Second)
 	})
 	t.Run("transaction failed, should get more info and signal error", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsTransactionExecutor()
-		args.CloseAppChan = make(chan struct{}, 1)
 		args.Proxy = &interactors.ProxyStub{
 			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
 				return transaction.TxStatusFail, nil
@@ -508,20 +420,12 @@ func TestTransactionExecutor_handleResults(t *testing.T) {
 				return &data.TransactionInfo{}, nil
 			},
 		}
-		args.TransactionChecks = createMockCheckConfigs()
 		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
-		args.TransactionChecks.ExtraDelayInSecondsOnError = 1
 
 		executor, _ := NewTransactionExecutor(args)
 
-		err := executor.handleResults(context.Background(), testHash)
+		err := executor.checkResultsUntilDone(context.Background(), testHash)
 		assert.ErrorIs(t, err, errTransactionFailed)
-
-		select {
-		case <-args.CloseAppChan:
-		default:
-			assert.Fail(t, "failed to write on the close app chan")
-		}
 	})
 	t.Run("transaction failed, get more info fails, should signal error and not panic", func(t *testing.T) {
 		t.Parallel()
@@ -534,7 +438,6 @@ func TestTransactionExecutor_handleResults(t *testing.T) {
 		}()
 
 		args := createMockArgsTransactionExecutor()
-		args.CloseAppChan = make(chan struct{}, 1)
 		args.Proxy = &interactors.ProxyStub{
 			ProcessTransactionStatusCalled: func(ctx context.Context, hexTxHash string) (transaction.TxStatus, error) {
 				return transaction.TxStatusFail, nil
@@ -543,20 +446,12 @@ func TestTransactionExecutor_handleResults(t *testing.T) {
 				return nil, fmt.Errorf("random error")
 			},
 		}
-		args.TransactionChecks = createMockCheckConfigs()
 		args.TransactionChecks.TimeInSecondsBetweenChecks = 1
-		args.TransactionChecks.ExtraDelayInSecondsOnError = 1
 
 		executor, _ := NewTransactionExecutor(args)
 
-		err := executor.handleResults(context.Background(), testHash)
+		err := executor.checkResultsUntilDone(context.Background(), testHash)
 		assert.ErrorIs(t, err, errTransactionFailed)
-
-		select {
-		case <-args.CloseAppChan:
-		default:
-			assert.Fail(t, "failed to write on the close app chan")
-		}
 	})
 }
 
@@ -564,7 +459,6 @@ func TestTransactionExecutor_ExecuteTransactionInParallelShouldWork(t *testing.T
 	t.Parallel()
 
 	args := createMockArgsTransactionExecutor()
-	args.TransactionChecks = createMockCheckConfigs()
 	args.TransactionChecks.TimeInSecondsBetweenChecks = 1
 
 	nonceCounter := uint64(100)

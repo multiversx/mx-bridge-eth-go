@@ -33,24 +33,19 @@ type ArgsTransactionExecutor struct {
 	PrivateKey        crypto.PrivateKey
 	SingleSigner      crypto.SingleSigner
 	TransactionChecks config.TransactionChecksConfig
-	CloseAppChan      chan struct{}
 }
 
 type transactionExecutor struct {
-	proxy                   Proxy
-	nonceTxHandler          NonceTransactionsHandler
-	numSentTransactions     uint32
-	privateKey              crypto.PrivateKey
-	singleSigner            crypto.SingleSigner
-	senderAddress           core.AddressHandler
-	log                     logger.Logger
-	timeBetweenChecks       time.Duration
-	closeAppOnError         bool
-	extraDelayOnError       time.Duration
-	executionTimeout        time.Duration
-	closeAppChan            chan struct{}
-	checkTransactionResults bool
-	mutCriticalSection      sync.Mutex
+	proxy               Proxy
+	nonceTxHandler      NonceTransactionsHandler
+	numSentTransactions uint32
+	privateKey          crypto.PrivateKey
+	singleSigner        crypto.SingleSigner
+	senderAddress       core.AddressHandler
+	log                 logger.Logger
+	timeBetweenChecks   time.Duration
+	executionTimeout    time.Duration
+	mutCriticalSection  sync.Mutex
 }
 
 // NewTransactionExecutor creates a new executor instance that is able to send transactions & handle results
@@ -68,18 +63,14 @@ func NewTransactionExecutor(args ArgsTransactionExecutor) (*transactionExecutor,
 	senderAddress := data.NewAddressFromBytes(publicKeyBytes)
 
 	return &transactionExecutor{
-		proxy:                   args.Proxy,
-		log:                     args.Log,
-		nonceTxHandler:          args.NonceTxHandler,
-		privateKey:              args.PrivateKey,
-		singleSigner:            args.SingleSigner,
-		senderAddress:           senderAddress,
-		checkTransactionResults: args.TransactionChecks.CheckTransactionResults,
-		timeBetweenChecks:       time.Second * time.Duration(args.TransactionChecks.TimeInSecondsBetweenChecks),
-		closeAppOnError:         args.TransactionChecks.CloseAppOnError,
-		extraDelayOnError:       time.Second * time.Duration(args.TransactionChecks.ExtraDelayInSecondsOnError),
-		executionTimeout:        time.Second * time.Duration(args.TransactionChecks.ExecutionTimeoutInSeconds),
-		closeAppChan:            args.CloseAppChan,
+		proxy:             args.Proxy,
+		log:               args.Log,
+		nonceTxHandler:    args.NonceTxHandler,
+		privateKey:        args.PrivateKey,
+		singleSigner:      args.SingleSigner,
+		senderAddress:     senderAddress,
+		timeBetweenChecks: time.Second * time.Duration(args.TransactionChecks.TimeInSecondsBetweenChecks),
+		executionTimeout:  time.Second * time.Duration(args.TransactionChecks.ExecutionTimeoutInSeconds),
 	}, nil
 }
 
@@ -100,24 +91,15 @@ func checkTransactionExecutorArgs(args ArgsTransactionExecutor) error {
 	if check.IfNil(args.SingleSigner) {
 		return errNilSingleSigner
 	}
-	err := checkTransactionChecksConfig(args.TransactionChecks, args.Log)
+	err := checkTransactionChecksConfig(args.TransactionChecks)
 	if err != nil {
 		return err
-	}
-
-	if args.CloseAppChan == nil && args.TransactionChecks.CloseAppOnError {
-		return fmt.Errorf("%w while the TransactionChecks.CloseAppOnError is set to true", errNilCloseAppChannel)
 	}
 
 	return nil
 }
 
-func checkTransactionChecksConfig(args config.TransactionChecksConfig, log logger.Logger) error {
-	if !args.CheckTransactionResults {
-		log.Warn("transaction checks are disabled! This can lead to funds being drained in case of a repetitive error")
-		return nil
-	}
-
+func checkTransactionChecksConfig(args config.TransactionChecksConfig) error {
 	if args.TimeInSecondsBetweenChecks < minCheckValues {
 		return fmt.Errorf("%w for TransactionChecks.TimeInSecondsBetweenChecks, minimum: %d, got: %d",
 			errInvalidValue, minCheckValues, args.TimeInSecondsBetweenChecks)
@@ -163,12 +145,8 @@ func (executor *transactionExecutor) ExecuteTransaction(
 		Value:    "0",
 	}
 
-	workingCtx := ctx
-	if executor.checkTransactionResults {
-		var cancel func()
-		workingCtx, cancel = context.WithTimeout(ctx, executor.executionTimeout)
-		defer cancel()
-	}
+	workingCtx, cancel := context.WithTimeout(ctx, executor.executionTimeout)
+	defer cancel()
 
 	hash, err := executor.executeAsCriticalSection(workingCtx, tx)
 	if err != nil {
@@ -185,7 +163,7 @@ func (executor *transactionExecutor) ExecuteTransaction(
 
 	atomic.AddUint32(&executor.numSentTransactions, 1)
 
-	return executor.handleResults(workingCtx, hash)
+	return executor.checkResultsUntilDone(workingCtx, hash)
 }
 
 func (executor *transactionExecutor) executeAsCriticalSection(ctx context.Context, tx *transaction.FrontendTransaction) (string, error) {
@@ -223,16 +201,6 @@ func (executor *transactionExecutor) signTransactionWithPrivateKey(tx *transacti
 	return nil
 }
 
-func (executor *transactionExecutor) handleResults(ctx context.Context, hash string) error {
-	if !executor.checkTransactionResults {
-		return nil
-	}
-
-	err := executor.checkResultsUntilDone(ctx, hash)
-	executor.waitForExtraDelay(ctx, err)
-	return err
-}
-
 func (executor *transactionExecutor) checkResultsUntilDone(ctx context.Context, hash string) error {
 	timer := time.NewTimer(executor.timeBetweenChecks)
 	defer timer.Stop()
@@ -246,7 +214,6 @@ func (executor *transactionExecutor) checkResultsUntilDone(ctx context.Context, 
 		case <-timer.C:
 			err, shouldStop := executor.checkResults(ctx, hash)
 			if shouldStop {
-				executor.handleError(ctx, err)
 				return err
 			}
 		}
@@ -288,36 +255,6 @@ func (executor *transactionExecutor) logFullTransaction(ctx context.Context, has
 	}
 
 	executor.log.Error("transaction failed", "hash", hash, "full transaction details", string(txDataString))
-}
-
-func (executor *transactionExecutor) handleError(ctx context.Context, err error) {
-	if err == nil {
-		return
-	}
-	if !executor.closeAppOnError {
-		return
-	}
-
-	go func() {
-		// wait here until we could write in the close app chan
-		// ... or the context expired (application might close)
-		select {
-		case <-ctx.Done():
-		case executor.closeAppChan <- struct{}{}:
-		}
-	}()
-}
-
-func (executor *transactionExecutor) waitForExtraDelay(ctx context.Context, err error) {
-	if err == nil {
-		return
-	}
-
-	timer := time.NewTimer(executor.extraDelayOnError)
-	select {
-	case <-ctx.Done():
-	case <-timer.C:
-	}
 }
 
 // GetNumSentTransaction returns the total sent transactions

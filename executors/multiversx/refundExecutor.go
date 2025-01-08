@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"time"
 
+	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/builders"
@@ -27,7 +29,7 @@ type ArgsRefundExecutor struct {
 	Codec                  Codec
 	Filter                 ScCallsExecuteFilter
 	Log                    logger.Logger
-	GasToExecute           uint64
+	RefundConfig           config.RefundExecutorConfig
 }
 
 type refundExecutor struct {
@@ -37,8 +39,8 @@ type refundExecutor struct {
 
 // NewRefundExecutor creates a new instance of type refundExecutor
 func NewRefundExecutor(args ArgsRefundExecutor) (*refundExecutor, error) {
-	if args.GasToExecute < minGasToExecuteSCCalls {
-		return nil, fmt.Errorf("%w for GasToExecute: provided: %d, absolute minimum required: %d", errGasLimitIsLessThanAbsoluteMinimum, args.GasToExecute, minGasToExecuteSCCalls)
+	if args.RefundConfig.GasToExecute < minGasToExecuteSCCalls {
+		return nil, fmt.Errorf("%w for GasToExecute: provided: %d, absolute minimum required: %d", errGasLimitIsLessThanAbsoluteMinimum, args.RefundConfig.GasToExecute, minGasToExecuteSCCalls)
 	}
 
 	executor := &refundExecutor{
@@ -49,8 +51,10 @@ func NewRefundExecutor(args ArgsRefundExecutor) (*refundExecutor, error) {
 			codec:                  args.Codec,
 			filter:                 args.Filter,
 			log:                    args.Log,
+			ttlForFailedRefundID:   time.Duration(args.RefundConfig.TTLForFailedRefundIdInSeconds) * time.Second,
+			failedRefundMap:        make(map[uint64]time.Time),
 		},
-		gasToExecute: args.GasToExecute,
+		gasToExecute: args.RefundConfig.GasToExecute,
 	}
 
 	err := executor.checkBaseComponents()
@@ -63,6 +67,8 @@ func NewRefundExecutor(args ArgsRefundExecutor) (*refundExecutor, error) {
 
 // Execute will execute one step: get all pending operations, call the filter and send execution transactions
 func (executor *refundExecutor) Execute(ctx context.Context) error {
+	executor.cleanupTTLCache(refundTxType)
+
 	return executor.executeOnAllScProxyAddress(ctx, executor.executeRefundForScProxyAddress)
 }
 
@@ -141,7 +147,12 @@ func (executor *refundExecutor) executeOperation(
 		return err
 	}
 
-	return executor.transactionExecutor.ExecuteTransaction(ctx, networkConfig, scProxyAddress, refundTxType, executor.gasToExecute, dataBytes)
+	err = executor.transactionExecutor.ExecuteTransaction(ctx, networkConfig, scProxyAddress, refundTxType, executor.gasToExecute, dataBytes)
+	if err != nil {
+		executor.addFailed(id)
+	}
+
+	return err
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

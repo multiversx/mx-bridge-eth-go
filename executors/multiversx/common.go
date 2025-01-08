@@ -4,12 +4,18 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/errors"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/data"
+)
+
+const (
+	minTTLForFailedRefundID = time.Second
 )
 
 type baseExecutor struct {
@@ -19,6 +25,9 @@ type baseExecutor struct {
 	codec                  Codec
 	filter                 ScCallsExecuteFilter
 	log                    logger.Logger
+	ttlForFailedRefundID   time.Duration
+	mutFailedRefundMap     sync.RWMutex
+	failedRefundMap        map[uint64]time.Time
 }
 
 func (executor *baseExecutor) checkBaseComponents() error {
@@ -36,6 +45,9 @@ func (executor *baseExecutor) checkBaseComponents() error {
 	}
 	if check.IfNil(executor.log) {
 		return errNilLogger
+	}
+	if executor.ttlForFailedRefundID < minTTLForFailedRefundID {
+		return fmt.Errorf("%w for TTLForFailedRefundID: provided: %v, absolute minimum required: %v", errInvalidValue, executor.ttlForFailedRefundID, minTTLForFailedRefundID)
 	}
 
 	if len(executor.scProxyBech32Addresses) == 0 {
@@ -71,14 +83,49 @@ func (executor *baseExecutor) executeOnAllScProxyAddress(ctx context.Context, ha
 func (executor *baseExecutor) filterOperations(component string, pendingOperations map[uint64]bridgeCore.ProxySCCompleteCallData) map[uint64]bridgeCore.ProxySCCompleteCallData {
 	result := make(map[uint64]bridgeCore.ProxySCCompleteCallData)
 	for id, callData := range pendingOperations {
-		if executor.filter.ShouldExecute(callData) {
-			result[id] = callData
+		if !executor.filter.ShouldExecute(callData) {
+			continue
 		}
+		if executor.isFailed(id) {
+			continue
+		}
+
+		result[id] = callData
 	}
 
 	executor.log.Debug(component, "input pending ops", len(pendingOperations), "result pending ops", len(result))
 
 	return result
+}
+
+func (executor *baseExecutor) isFailed(id uint64) bool {
+	executor.mutFailedRefundMap.RLock()
+	defer executor.mutFailedRefundMap.RUnlock()
+
+	_, found := executor.failedRefundMap[id]
+	return found
+}
+
+func (executor *baseExecutor) addFailed(id uint64) {
+	executor.mutFailedRefundMap.Lock()
+	defer executor.mutFailedRefundMap.Unlock()
+
+	executor.failedRefundMap[id] = time.Now()
+}
+
+func (executor *baseExecutor) cleanupTTLCache(source string) {
+	executor.mutFailedRefundMap.Lock()
+	defer executor.mutFailedRefundMap.Unlock()
+
+	for id, insertedTime := range executor.failedRefundMap {
+		if insertedTime.Add(executor.ttlForFailedRefundID).Unix() < time.Now().Unix() {
+			executor.log.Debug("TTL expired, remove from cache",
+				"ID", id,
+				"executor", source,
+				"TTL", executor.ttlForFailedRefundID)
+			delete(executor.failedRefundMap, id)
+		}
+	}
 }
 
 func (executor *baseExecutor) executeVmQuery(ctx context.Context, scProxyAddress string, function string) (*data.VmValuesResponseData, error) {
