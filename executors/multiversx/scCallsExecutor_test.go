@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
@@ -34,6 +35,7 @@ func createMockArgsScCallExecutor() ArgsScCallExecutor {
 			ExtraGasToExecute:               100,
 			MaxGasLimitToUse:                minGasToExecuteSCCalls,
 			GasLimitForOutOfGasTransactions: minGasToExecuteSCCalls,
+			TTLForFailedRefundIdInSeconds:   1,
 		},
 	}
 }
@@ -153,6 +155,17 @@ func TestNewScCallExecutor(t *testing.T) {
 		assert.ErrorIs(t, err, errGasLimitIsLessThanAbsoluteMinimum)
 		assert.Contains(t, err.Error(), "provided: 2009999, absolute minimum required: 2010000")
 		assert.Contains(t, err.Error(), "GasLimitForOutOfGasTransactions")
+	})
+	t.Run("invalid TTLForFailedRefundID should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.ExecutorConfig.TTLForFailedRefundIdInSeconds = 0
+
+		executor, err := NewScCallExecutor(args)
+		assert.Nil(t, executor)
+		assert.ErrorIs(t, err, errInvalidValue)
+		assert.Contains(t, err.Error(), "provided: 0s, absolute minimum required: 1s")
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -347,12 +360,15 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		assert.Contains(t, err.Error(), expectedError.Error())
 		assert.Contains(t, err.Error(), "errors found during execution")
 	})
-	t.Run("SendTransaction errors, should error", func(t *testing.T) {
+	t.Run("SendTransaction errors, should error and register the failed id", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsScCallExecutor()
+		args.ExecutorConfig.TTLForFailedRefundIdInSeconds = 60
+		numExecuted := 0
 		args.TransactionExecutor = &testsCommon.TransactionExecutorStub{
 			ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
+				numExecuted++
 				return expectedError
 			},
 		}
@@ -387,6 +403,71 @@ func TestScCallExecutor_Execute(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), expectedError.Error())
 		assert.Contains(t, err.Error(), "errors found during execution")
+
+		//re-run the same call, no errors should be found
+		err = executor.Execute(context.Background())
+		assert.Nil(t, err)
+
+		//only one sent transaction should be
+		assert.Equal(t, 1, numExecuted)
+		assert.True(t, executor.isFailed(1))
+	})
+	t.Run("SendTransaction errors, should error and register the failed id, after TTL expires should call again", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsScCallExecutor()
+		args.ExecutorConfig.TTLForFailedRefundIdInSeconds = 2
+		numExecuted := 0
+		args.TransactionExecutor = &testsCommon.TransactionExecutorStub{
+			ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
+				numExecuted++
+				return expectedError
+			},
+		}
+		args.Proxy = &interactors.ProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{
+							{0x01},
+							{0x03, 0x04},
+						},
+					},
+				}, nil
+			},
+			GetNetworkConfigCalled: func(ctx context.Context) (*data.NetworkConfig, error) {
+				return &data.NetworkConfig{}, nil
+			},
+		}
+		args.Codec = &testsCommon.MultiversxCodecStub{
+			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (bridgeCore.ProxySCCompleteCallData, error) {
+				assert.Equal(t, []byte{0x03, 0x04}, buff)
+
+				return bridgeCore.ProxySCCompleteCallData{
+					To: data.NewAddressFromBytes(bytes.Repeat([]byte{1}, 32)),
+				}, nil
+			},
+		}
+
+		executor, _ := NewScCallExecutor(args)
+		err := executor.Execute(context.Background())
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), expectedError.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
+
+		//wait for TTL to expire
+		time.Sleep(time.Second * 3)
+
+		//re-run the same call, same error should be found
+		err = executor.Execute(context.Background())
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), expectedError.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
+
+		//only one sent transaction should be
+		assert.Equal(t, 2, numExecuted)
+		assert.True(t, executor.isFailed(1))
 	})
 	t.Run("should not execute transactions with high gas limit usage", func(t *testing.T) {
 		t.Parallel()

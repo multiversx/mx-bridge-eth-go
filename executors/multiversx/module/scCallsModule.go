@@ -35,7 +35,7 @@ type scCallsModule struct {
 }
 
 // NewScCallsModule creates a starts a new scCallsModule instance
-func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chCloseApp chan struct{}) (*scCallsModule, error) {
+func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger) (*scCallsModule, error) {
 	module := &scCallsModule{
 		cfg: cfg,
 		log: log,
@@ -56,7 +56,7 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger, chClose
 		return nil, err
 	}
 
-	err = module.createTransactionExecutor(chCloseApp)
+	err = module.createTransactionExecutor()
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (module *scCallsModule) createNonceTxHandler() error {
 	return err
 }
 
-func (module *scCallsModule) createTransactionExecutor(chCloseApp chan struct{}) error {
+func (module *scCallsModule) createTransactionExecutor() error {
 	wallet := interactors.NewWallet()
 	multiversXPrivateKeyBytes, err := wallet.LoadPrivateKeyFromPemFile(module.cfg.General.PrivateKeyFile)
 	if err != nil {
@@ -129,7 +129,6 @@ func (module *scCallsModule) createTransactionExecutor(chCloseApp chan struct{})
 		PrivateKey:        privateKey,
 		SingleSigner:      singleSigner,
 		TransactionChecks: module.cfg.TransactionChecks,
-		CloseAppChan:      chCloseApp,
 	}
 
 	module.txExecutor, err = multiversx.NewTransactionExecutor(argsTxExecutor)
@@ -184,7 +183,7 @@ func (module *scCallsModule) createRefundExecutor() error {
 		Codec:                  &parsers.MultiversxCodec{},
 		Filter:                 module.filter,
 		Log:                    module.log,
-		GasToExecute:           module.cfg.RefundExecutor.GasToExecute,
+		RefundConfig:           module.cfg.RefundExecutor,
 	}
 
 	executorInstance, err := multiversx.NewRefundExecutor(argsExecutor)

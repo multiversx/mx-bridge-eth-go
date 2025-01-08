@@ -133,10 +133,12 @@ func (setup *TestSetup) startScCallerModule() {
 			MaxGasLimitToUse:                249_999_999, // max cross shard limit
 			GasLimitForOutOfGasTransactions: 30_000_000,  // gas to use when a higher than max allowed is encountered
 			PollingIntervalInMillis:         1000,        // 1 second
+			TTLForFailedRefundIdInSeconds:   1,           // 1 second
 		},
 		RefundExecutor: config.RefundExecutorConfig{
-			GasToExecute:            30_000_000,
-			PollingIntervalInMillis: 1000,
+			GasToExecute:                  30_000_000,
+			PollingIntervalInMillis:       1000,
+			TTLForFailedRefundIdInSeconds: 1,
 		},
 		Filter: config.PendingOperationsFilterConfig{
 			AllowedEthAddresses: []string{"*"},
@@ -145,15 +147,13 @@ func (setup *TestSetup) startScCallerModule() {
 		},
 		Logs: config.LogsConfig{},
 		TransactionChecks: config.TransactionChecksConfig{
-			CheckTransactionResults:    true,
-			CloseAppOnError:            false,
 			ExecutionTimeoutInSeconds:  2,
 			TimeInSecondsBetweenChecks: 1,
 		},
 	}
 
 	var err error
-	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, log, nil)
+	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, log)
 	require.Nil(setup, err)
 	log.Info("started SC calls module", "monitoring SC proxy address", setup.MultiversxHandler.ScProxyAddress)
 }

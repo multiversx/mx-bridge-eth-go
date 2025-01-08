@@ -5,7 +5,9 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
+	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
@@ -24,7 +26,10 @@ func createMockArgsRefundExecutor() ArgsRefundExecutor {
 		Codec:               &testsCommon.MultiversxCodecStub{},
 		Filter:              &testsCommon.ScCallsExecuteFilterStub{},
 		Log:                 &testsCommon.LoggerStub{},
-		GasToExecute:        minGasToExecuteSCCalls,
+		RefundConfig: config.RefundExecutorConfig{
+			GasToExecute:                  minGasToExecuteSCCalls,
+			TTLForFailedRefundIdInSeconds: 1,
+		},
 	}
 }
 
@@ -105,13 +110,24 @@ func TestNewRefundExecutor(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsRefundExecutor()
-		args.GasToExecute = minGasToExecuteSCCalls - 1
+		args.RefundConfig.GasToExecute = minGasToExecuteSCCalls - 1
 
 		executor, err := NewRefundExecutor(args)
 		assert.Nil(t, executor)
 		assert.ErrorIs(t, err, errGasLimitIsLessThanAbsoluteMinimum)
 		assert.Contains(t, err.Error(), "provided: 2009999, absolute minimum required: 2010000")
 		assert.Contains(t, err.Error(), "GasToExecute")
+	})
+	t.Run("invalid TTLForFailedRefundID should error", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsRefundExecutor()
+		args.RefundConfig.TTLForFailedRefundIdInSeconds = 0
+
+		executor, err := NewRefundExecutor(args)
+		assert.Nil(t, executor)
+		assert.ErrorIs(t, err, errInvalidValue)
+		assert.Contains(t, err.Error(), "provided: 0s, absolute minimum required: 1s")
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -306,12 +322,15 @@ func TestRefundExecutor_Execute(t *testing.T) {
 		assert.Contains(t, err.Error(), expectedError.Error())
 		assert.Contains(t, err.Error(), "errors found during execution")
 	})
-	t.Run("SendTransaction errors, should error", func(t *testing.T) {
+	t.Run("SendTransaction errors, should error and register the failed id", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsRefundExecutor()
+		args.RefundConfig.TTLForFailedRefundIdInSeconds = 60
+		numExecuted := 0
 		args.TransactionExecutor = &testsCommon.TransactionExecutorStub{
 			ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
+				numExecuted++
 				return expectedError
 			},
 		}
@@ -346,12 +365,78 @@ func TestRefundExecutor_Execute(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), expectedError.Error())
 		assert.Contains(t, err.Error(), "errors found during execution")
+
+		//re-run the same call, no errors should be found
+		err = executor.Execute(context.Background())
+		assert.Nil(t, err)
+
+		//only one sent transaction should be
+		assert.Equal(t, 1, numExecuted)
+		assert.True(t, executor.isFailed(1))
+	})
+	t.Run("SendTransaction errors, should error and register the failed id, after TTL expires should call again", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsRefundExecutor()
+		args.RefundConfig.TTLForFailedRefundIdInSeconds = 2
+		numExecuted := 0
+		args.TransactionExecutor = &testsCommon.TransactionExecutorStub{
+			ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
+				numExecuted++
+				return expectedError
+			},
+		}
+		args.Proxy = &interactors.ProxyStub{
+			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
+				return &data.VmValuesResponseData{
+					Data: &vm.VMOutputApi{
+						ReturnCode: okCodeAfterExecution,
+						ReturnData: [][]byte{
+							{0x01},
+							{0x03, 0x04},
+						},
+					},
+				}, nil
+			},
+			GetNetworkConfigCalled: func(ctx context.Context) (*data.NetworkConfig, error) {
+				return &data.NetworkConfig{}, nil
+			},
+		}
+		args.Codec = &testsCommon.MultiversxCodecStub{
+			DecodeProxySCCompleteCallDataCalled: func(buff []byte) (bridgeCore.ProxySCCompleteCallData, error) {
+				assert.Equal(t, []byte{0x03, 0x04}, buff)
+
+				return bridgeCore.ProxySCCompleteCallData{
+					To: data.NewAddressFromBytes(bytes.Repeat([]byte{1}, 32)),
+				}, nil
+			},
+		}
+
+		executor, _ := NewRefundExecutor(args)
+		err := executor.Execute(context.Background())
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), expectedError.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
+		assert.True(t, executor.isFailed(1))
+
+		//wait for TTL to expire
+		time.Sleep(time.Second * 3)
+
+		//re-run the same call, same error should be found
+		err = executor.Execute(context.Background())
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), expectedError.Error())
+		assert.Contains(t, err.Error(), "errors found during execution")
+
+		//only one sent transaction should be
+		assert.Equal(t, 2, numExecuted)
+		assert.True(t, executor.isFailed(1))
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsRefundExecutor()
-		args.GasToExecute = 250000000
+		args.RefundConfig.GasToExecute = 250000000
 		sendWasCalled := false
 
 		args.Proxy = &interactors.ProxyStub{
@@ -404,7 +489,7 @@ func TestRefundExecutor_Execute(t *testing.T) {
 			ExecuteTransactionCalled: func(ctx context.Context, networkConfig *data.NetworkConfig, receiver string, transactionType string, gasLimit uint64, dataBytes []byte) error {
 				assert.Equal(t, "TEST", networkConfig.ChainID)
 				assert.Equal(t, uint32(111), networkConfig.MinTransactionVersion)
-				assert.Equal(t, args.GasToExecute, gasLimit)
+				assert.Equal(t, args.RefundConfig.GasToExecute, gasLimit)
 				assert.Equal(t, "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e", receiver)
 				assert.Equal(t, refundTxType, transactionType)
 
@@ -422,13 +507,15 @@ func TestRefundExecutor_Execute(t *testing.T) {
 		err := executor.Execute(context.Background())
 		assert.Nil(t, err)
 		assert.True(t, sendWasCalled)
+		assert.False(t, executor.isFailed(1))
+		assert.False(t, executor.isFailed(2))
 	})
-	t.Run("should work with one two proxy address", func(t *testing.T) {
+	t.Run("should work with two proxy addresses", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsRefundExecutor()
 		args.ScProxyBech32Addresses = append(args.ScProxyBech32Addresses, "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf")
-		args.GasToExecute = 250000000
+		args.RefundConfig.GasToExecute = 250000000
 
 		args.Proxy = &interactors.ProxyStub{
 			ExecuteVMQueryCalled: func(ctx context.Context, vmRequest *data.VmValueRequest) (*data.VmValuesResponseData, error) {
@@ -515,13 +602,13 @@ func TestRefundExecutor_Execute(t *testing.T) {
 			{
 				receiver:        "erd1qqqqqqqqqqqqqpgqk839entmk46ykukvhpn90g6knskju3dtanaq20f66e",
 				transactionType: refundTxType,
-				gasLimit:        args.GasToExecute,
+				gasLimit:        args.RefundConfig.GasToExecute,
 				dataBytes:       []byte(executeRefundTransactionFunction + "@02"),
 			},
 			{
 				receiver:        "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
 				transactionType: refundTxType,
-				gasLimit:        args.GasToExecute,
+				gasLimit:        args.RefundConfig.GasToExecute,
 				dataBytes:       []byte(executeRefundTransactionFunction + "@04"),
 			},
 		}
