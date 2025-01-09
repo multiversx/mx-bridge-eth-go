@@ -1,7 +1,10 @@
 package module
 
 import (
+	"github.com/multiversx/mx-sdk-go/blockchain"
+	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
@@ -53,13 +56,33 @@ func createTestConfigs() config.ScCallsModuleConfig {
 func TestNewScCallsModule(t *testing.T) {
 	t.Parallel()
 
+	t.Run("nil proxy should error", func(t *testing.T) {
+		t.Parallel()
+		cfg := createTestConfigs()
+		module, err := NewScCallsModule(cfg, nil, &testsCommon.LoggerStub{})
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "nil proxy")
+		assert.Nil(t, module)
+	})
 	t.Run("invalid filter config should error", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
 		cfg.Filter.DeniedTokens = []string{"*"}
+		argsProxy := blockchain.ArgsProxy{
+			ProxyURL:            cfg.General.NetworkAddress,
+			SameScState:         false,
+			ShouldBeSynced:      false,
+			FinalityCheck:       cfg.General.ProxyFinalityCheck,
+			AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+			CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+			EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		proxy, err := blockchain.NewProxy(argsProxy)
+		require.Nil(t, err)
+
+		module, err := NewScCallsModule(cfg, proxy, &testsCommon.LoggerStub{})
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "unsupported marker * on item at index 0 in list DeniedTokens")
 		assert.Nil(t, module)
@@ -69,19 +92,40 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.General.ProxyCacherExpirationSeconds = 0
+		argsProxy := blockchain.ArgsProxy{
+			ProxyURL:            cfg.General.NetworkAddress,
+			SameScState:         false,
+			ShouldBeSynced:      false,
+			FinalityCheck:       cfg.General.ProxyFinalityCheck,
+			AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+			CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+			EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		proxy, err := blockchain.NewProxy(argsProxy)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid caching duration, provided: 0s, minimum: 1s")
-		assert.Nil(t, module)
+		assert.Nil(t, proxy)
 	})
 	t.Run("invalid resend interval should error", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
 		cfg.General.IntervalToResendTxsInSeconds = 0
+		argsProxy := blockchain.ArgsProxy{
+			ProxyURL:            cfg.General.NetworkAddress,
+			SameScState:         false,
+			ShouldBeSynced:      false,
+			FinalityCheck:       cfg.General.ProxyFinalityCheck,
+			AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+			CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+			EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		proxy, err := blockchain.NewProxy(argsProxy)
+		require.Nil(t, err)
+
+		module, err := NewScCallsModule(cfg, proxy, &testsCommon.LoggerStub{})
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid value for intervalToResend in NewNonceTransactionHandlerV2")
 		assert.Nil(t, module)
@@ -91,8 +135,20 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.General.PrivateKeyFile = ""
+		argsProxy := blockchain.ArgsProxy{
+			ProxyURL:            cfg.General.NetworkAddress,
+			SameScState:         false,
+			ShouldBeSynced:      false,
+			FinalityCheck:       cfg.General.ProxyFinalityCheck,
+			AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+			CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+			EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		proxy, err := blockchain.NewProxy(argsProxy)
+		require.Nil(t, err)
+
+		module, err := NewScCallsModule(cfg, proxy, &testsCommon.LoggerStub{})
 		assert.NotNil(t, err)
 		assert.Nil(t, module)
 	})
@@ -101,8 +157,20 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.ScCallsExecutor.PollingIntervalInMillis = 0
+		argsProxy := blockchain.ArgsProxy{
+			ProxyURL:            cfg.General.NetworkAddress,
+			SameScState:         false,
+			ShouldBeSynced:      false,
+			FinalityCheck:       cfg.General.ProxyFinalityCheck,
+			AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+			CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+			EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		proxy, err := blockchain.NewProxy(argsProxy)
+		require.Nil(t, err)
+
+		module, err := NewScCallsModule(cfg, proxy, &testsCommon.LoggerStub{})
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid value for PollingInterval")
 		assert.Nil(t, module)
@@ -112,8 +180,20 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.ScCallsExecutor.MaxGasLimitToUse = 1
+		argsProxy := blockchain.ArgsProxy{
+			ProxyURL:            cfg.General.NetworkAddress,
+			SameScState:         false,
+			ShouldBeSynced:      false,
+			FinalityCheck:       cfg.General.ProxyFinalityCheck,
+			AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+			CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+			EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		proxy, err := blockchain.NewProxy(argsProxy)
+		require.Nil(t, err)
+
+		module, err := NewScCallsModule(cfg, proxy, &testsCommon.LoggerStub{})
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "provided gas limit is less than absolute minimum required for MaxGasLimitToUse")
 		assert.Nil(t, module)
@@ -123,8 +203,20 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.RefundExecutor.PollingIntervalInMillis = 0
+		argsProxy := blockchain.ArgsProxy{
+			ProxyURL:            cfg.General.NetworkAddress,
+			SameScState:         false,
+			ShouldBeSynced:      false,
+			FinalityCheck:       cfg.General.ProxyFinalityCheck,
+			AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+			CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+			EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		proxy, err := blockchain.NewProxy(argsProxy)
+		require.Nil(t, err)
+
+		module, err := NewScCallsModule(cfg, proxy, &testsCommon.LoggerStub{})
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid value for PollingInterval")
 		assert.Nil(t, module)
@@ -134,8 +226,20 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.RefundExecutor.GasToExecute = 0
+		argsProxy := blockchain.ArgsProxy{
+			ProxyURL:            cfg.General.NetworkAddress,
+			SameScState:         false,
+			ShouldBeSynced:      false,
+			FinalityCheck:       cfg.General.ProxyFinalityCheck,
+			AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+			CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+			EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		proxy, err := blockchain.NewProxy(argsProxy)
+		require.Nil(t, err)
+
+		module, err := NewScCallsModule(cfg, proxy, &testsCommon.LoggerStub{})
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "provided gas limit is less than absolute minimum required for GasToExecute")
 		assert.Nil(t, module)
@@ -144,7 +248,20 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		argsProxy := blockchain.ArgsProxy{
+			ProxyURL:            cfg.General.NetworkAddress,
+			SameScState:         false,
+			ShouldBeSynced:      false,
+			FinalityCheck:       cfg.General.ProxyFinalityCheck,
+			AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+			CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+			EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+		}
+
+		proxy, err := blockchain.NewProxy(argsProxy)
+		require.Nil(t, err)
+
+		module, err := NewScCallsModule(cfg, proxy, &testsCommon.LoggerStub{})
 		assert.Nil(t, err)
 		assert.NotNil(t, module)
 

@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const SC_CALLS_DELTA_LIMIT = 10
+const ScCallsDeltaLimit = 10
 
 func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 	errorString := "ERROR"
@@ -293,16 +293,116 @@ func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb 
 }
 
 func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
-	callData := []byte{5, 4, 55}
-	simpleToken := GenerateOneOperationToken()
-	simpleToken.TestOperations[0].MvxSCCallData = callData
-	simpleToken.TestOperations[0].MvxFaultySCCall = true
+	badCallData := []byte{5, 4, 55}
+	testToken := framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "TEST",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "TEST",
+			MvxChainSpecificTokenTicker:      "ONETEST",
+			MvxUniversalTokenDisplayName:     "WrappedTEST",
+			MvxChainSpecificTokenDisplayName: "EthereumWrappedTEST",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            true,
+			EthTokenName:                     "EthTEST",
+			EthTokenSymbol:                   "TEST",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  false,
+			IsNativeOnEth:                    true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(1000),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        badCallData,
+				MvxFaultySCCall:      true,
+			},
+		},
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(1000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(1000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		},
+		MintBurnChecks: &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(1000),
+			MvxTotalChainSpecificMint: big.NewInt(1000),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(1000),
+			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(1000),
+		},
+	}
 
 	t.Run("increasing aggregation fee before wrong SC call should stop refund", func(t *testing.T) {
 		testRelayersWithChainSimulatorAndTokensForChangedAggregationFee(
 			t,
 			make(chan error),
-			simpleToken,
+			testToken,
 		)
 	})
 
@@ -310,7 +410,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 		testRelayersWithChainSimulatorAndTokensForChangedMaxBridgeAmount(
 			t,
 			make(chan error),
-			simpleToken,
+			testToken,
 		)
 	})
 }
@@ -353,7 +453,7 @@ func testRelayersWithChainSimulatorAndTokensForChangedAggregationFee(tb testing.
 		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
-		scCallsLimitReached := int32(setup.ScCallerModuleInstance.GetNumSentTransaction()-setup.GetNumScCallsOperations()) >= SC_CALLS_DELTA_LIMIT
+		scCallsLimitReached := int32(setup.ScCallerModuleInstance.GetNumSentTransaction()-setup.GetNumScCallsOperations()) >= ScCallsDeltaLimit
 
 		return allFlowsFinished && scCallsLimitReached
 	}
@@ -403,7 +503,7 @@ func testRelayersWithChainSimulatorAndTokensForChangedMaxBridgeAmount(tb testing
 		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
-		scCallsLimitReached := int32(setup.ScCallerModuleInstance.GetNumSentTransaction()-setup.GetNumScCallsOperations()) >= SC_CALLS_DELTA_LIMIT
+		scCallsLimitReached := int32(setup.ScCallerModuleInstance.GetNumSentTransaction()-setup.GetNumScCallsOperations()) >= ScCallsDeltaLimit
 
 		return allFlowsFinished && scCallsLimitReached
 	}
