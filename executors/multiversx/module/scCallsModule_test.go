@@ -58,28 +58,28 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 		cfg := createTestConfigs()
 		argsScCallsModule := ArgsScCallsModule{
-			Cfg:   cfg,
-			Proxy: nil,
-			Log:   &testsCommon.LoggerStub{},
+			Config: cfg,
+			Proxy:  nil,
+			Log:    &testsCommon.LoggerStub{},
 		}
 
 		module, err := NewScCallsModule(argsScCallsModule)
 		assert.NotNil(t, err)
-		assert.Equal(t, err, errNilProxy)
+		assert.Equal(t, errNilProxy, err)
 		assert.Nil(t, module)
 	})
 	t.Run("nil logger should error", func(t *testing.T) {
 		t.Parallel()
 		cfg := createTestConfigs()
 		argsScCallsModule := ArgsScCallsModule{
-			Cfg:   cfg,
-			Proxy: &interactors.ProxyStub{},
-			Log:   nil,
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    nil,
 		}
 
 		module, err := NewScCallsModule(argsScCallsModule)
 		assert.NotNil(t, err)
-		assert.Equal(t, err, errNilLogger)
+		assert.Equal(t, errNilLogger, err)
 		assert.Nil(t, module)
 	})
 	t.Run("invalid filter config should error", func(t *testing.T) {
@@ -88,9 +88,9 @@ func TestNewScCallsModule(t *testing.T) {
 		cfg := createTestConfigs()
 		cfg.Filter.DeniedTokens = []string{"*"}
 		argsScCallsModule := ArgsScCallsModule{
-			Cfg:   cfg,
-			Proxy: &interactors.ProxyStub{},
-			Log:   &testsCommon.LoggerStub{},
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
 		}
 
 		module, err := NewScCallsModule(argsScCallsModule)
@@ -104,9 +104,9 @@ func TestNewScCallsModule(t *testing.T) {
 		cfg := createTestConfigs()
 		cfg.General.IntervalToResendTxsInSeconds = 0
 		argsScCallsModule := ArgsScCallsModule{
-			Cfg:   cfg,
-			Proxy: &interactors.ProxyStub{},
-			Log:   &testsCommon.LoggerStub{},
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
 		}
 
 		module, err := NewScCallsModule(argsScCallsModule)
@@ -120,9 +120,9 @@ func TestNewScCallsModule(t *testing.T) {
 		cfg := createTestConfigs()
 		cfg.General.PrivateKeyFile = ""
 		argsScCallsModule := ArgsScCallsModule{
-			Cfg:   cfg,
-			Proxy: &interactors.ProxyStub{},
-			Log:   &testsCommon.LoggerStub{},
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
 		}
 
 		module, err := NewScCallsModule(argsScCallsModule)
@@ -135,9 +135,9 @@ func TestNewScCallsModule(t *testing.T) {
 		cfg := createTestConfigs()
 		cfg.ScCallsExecutor.PollingIntervalInMillis = 0
 		argsScCallsModule := ArgsScCallsModule{
-			Cfg:   cfg,
-			Proxy: &interactors.ProxyStub{},
-			Log:   &testsCommon.LoggerStub{},
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
 		}
 
 		module, err := NewScCallsModule(argsScCallsModule)
@@ -151,9 +151,9 @@ func TestNewScCallsModule(t *testing.T) {
 		cfg := createTestConfigs()
 		cfg.ScCallsExecutor.MaxGasLimitToUse = 1
 		argsScCallsModule := ArgsScCallsModule{
-			Cfg:   cfg,
-			Proxy: &interactors.ProxyStub{},
-			Log:   &testsCommon.LoggerStub{},
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
 		}
 
 		module, err := NewScCallsModule(argsScCallsModule)
@@ -167,9 +167,9 @@ func TestNewScCallsModule(t *testing.T) {
 		cfg := createTestConfigs()
 		cfg.RefundExecutor.PollingIntervalInMillis = 0
 		argsScCallsModule := ArgsScCallsModule{
-			Cfg:   cfg,
-			Proxy: &interactors.ProxyStub{},
-			Log:   &testsCommon.LoggerStub{},
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
 		}
 
 		module, err := NewScCallsModule(argsScCallsModule)
@@ -183,9 +183,9 @@ func TestNewScCallsModule(t *testing.T) {
 		cfg := createTestConfigs()
 		cfg.RefundExecutor.GasToExecute = 0
 		argsScCallsModule := ArgsScCallsModule{
-			Cfg:   cfg,
-			Proxy: &interactors.ProxyStub{},
-			Log:   &testsCommon.LoggerStub{},
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
 		}
 
 		module, err := NewScCallsModule(argsScCallsModule)
@@ -198,9 +198,9 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		argsScCallsModule := ArgsScCallsModule{
-			Cfg:   cfg,
-			Proxy: &interactors.ProxyStub{},
-			Log:   &testsCommon.LoggerStub{},
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
 		}
 
 		module, err := NewScCallsModule(argsScCallsModule)

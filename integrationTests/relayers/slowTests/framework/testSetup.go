@@ -171,9 +171,9 @@ func (setup *TestSetup) startScCallerModule() {
 	setup.ProxyWrapperInstance = NewProxyWrapper(proxy)
 
 	argsScCallsModule := module.ArgsScCallsModule{
-		Cfg:   cfg,
-		Proxy: setup.ProxyWrapperInstance,
-		Log:   log,
+		Config: cfg,
+		Proxy:  setup.ProxyWrapperInstance,
+		Log:    log,
 	}
 
 	setup.ScCallerModuleInstance, err = module.NewScCallsModule(argsScCallsModule)

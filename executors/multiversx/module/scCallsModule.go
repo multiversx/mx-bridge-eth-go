@@ -35,9 +35,9 @@ type scCallsModule struct {
 
 // ArgsScCallsModule holds the arguments for creating a new scCallsModule instance
 type ArgsScCallsModule struct {
-	Cfg   config.ScCallsModuleConfig
-	Proxy multiversx.Proxy
-	Log   logger.Logger
+	Config config.ScCallsModuleConfig
+	Proxy  multiversx.Proxy
+	Log    logger.Logger
 }
 
 // NewScCallsModule creates a starts a new scCallsModule instance
@@ -51,7 +51,7 @@ func NewScCallsModule(args ArgsScCallsModule) (*scCallsModule, error) {
 	}
 
 	module := &scCallsModule{
-		cfg:   args.Cfg,
+		cfg:   args.Config,
 		log:   args.Log,
 		proxy: args.Proxy,
 	}

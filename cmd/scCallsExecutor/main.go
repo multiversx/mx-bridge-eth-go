@@ -124,9 +124,9 @@ func startExecutor(ctx *cli.Context, version string) error {
 	}
 
 	argsScCallsModule := module.ArgsScCallsModule{
-		Cfg:   cfg,
-		Proxy: proxy,
-		Log:   log,
+		Config: cfg,
+		Proxy:  proxy,
+		Log:    log,
 	}
 
 	scCallsExecutor, err := module.NewScCallsModule(argsScCallsModule)
