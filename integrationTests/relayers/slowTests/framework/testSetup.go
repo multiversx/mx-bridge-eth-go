@@ -170,7 +170,13 @@ func (setup *TestSetup) startScCallerModule() {
 
 	setup.ProxyWrapperInstance = NewProxyWrapper(proxy)
 
-	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, setup.ProxyWrapperInstance, log)
+	argsScCallsModule := module.ArgsScCallsModule{
+		Cfg:   cfg,
+		Proxy: setup.ProxyWrapperInstance,
+		Log:   log,
+	}
+
+	setup.ScCallerModuleInstance, err = module.NewScCallsModule(argsScCallsModule)
 	require.Nil(setup, err)
 	log.Info("started SC calls module", "monitoring SC proxy address", setup.MultiversxHandler.ScProxyAddress)
 }

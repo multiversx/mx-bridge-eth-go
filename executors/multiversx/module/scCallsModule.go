@@ -33,16 +33,27 @@ type scCallsModule struct {
 	executors       []executor
 }
 
+// ArgsScCallsModule holds the arguments for creating a new scCallsModule instance
+type ArgsScCallsModule struct {
+	Cfg   config.ScCallsModuleConfig
+	Proxy multiversx.Proxy
+	Log   logger.Logger
+}
+
 // NewScCallsModule creates a starts a new scCallsModule instance
-func NewScCallsModule(cfg config.ScCallsModuleConfig, proxy multiversx.Proxy, log logger.Logger) (*scCallsModule, error) {
-	if check.IfNil(proxy) {
-		return nil, errNilProxy //TODO: add unit test for this
+func NewScCallsModule(args ArgsScCallsModule) (*scCallsModule, error) {
+	if check.IfNil(args.Proxy) {
+		return nil, errNilProxy
+	}
+
+	if check.IfNil(args.Log) {
+		return nil, errNilLogger
 	}
 
 	module := &scCallsModule{
-		cfg: cfg,
-		log: log,
-		proxy: proxy,
+		cfg:   args.Cfg,
+		log:   args.Log,
+		proxy: args.Proxy,
 	}
 
 	err := module.createFilter()

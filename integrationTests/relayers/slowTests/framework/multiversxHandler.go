@@ -766,6 +766,7 @@ func (handler *MultiversxHandler) setPairDecimalsOnAggregator(ctx context.Contex
 	log.Info("setPairDecimals tx executed", "hash", hash, "status", txResult.Status)
 }
 
+// SetMaxBridgeAmountOnSafe will set the max bridge amount for the token on the safe contract
 func (handler *MultiversxHandler) SetMaxBridgeAmountOnSafe(ctx context.Context, params IssueTokenParams, maxBridgedAmountForToken string) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 

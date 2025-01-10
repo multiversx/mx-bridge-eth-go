@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const ScCallsDeltaLimit = 10
+const scCallsDeltaLimit = 10
 
 func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 	errorString := "ERROR"
@@ -399,73 +399,46 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 	}
 
 	t.Run("increasing aggregation fee before wrong SC call should stop refund", func(t *testing.T) {
-		testRelayersWithChainSimulatorAndTokensForChangedAggregationFee(
-			t,
-			make(chan error),
-			testToken,
-		)
-	})
-
-	t.Run("decreasing max bridge amount on Safe before wrong SC call should stop refund", func(t *testing.T) {
-		testRelayersWithChainSimulatorAndTokensForChangedMaxBridgeAmount(
-			t,
-			make(chan error),
-			testToken,
-		)
-	})
-}
-
-func testRelayersWithChainSimulatorAndTokensForChangedAggregationFee(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
-	flows := createFlowsBasedOnToken(tb, tokens...)
-
-	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
-		for _, flow := range flows {
-			flow.setup = setup
-		}
-
-		setup.IssueAndConfigureTokens(tokens...)
-		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
-		for _, flow := range flows {
-			flow.handlerToStartFirstBridge(flow)
-		}
-	}
-
-	firstProcessRun := true
-	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
-		if firstProcessRun {
-			firstProcessRun = false
-
+		handler := func(setup *framework.TestSetup, tokens []framework.TestTokenParams) {
 			setup.ProxyWrapperInstance.RegisterBeforeTransactionSendHandler(func(tx *transaction.FrontendTransaction) {
-				if tx.Sender == setup.MultiversxHandler.SCExecutorKeys.MvxAddress.Bech32() {
-					if len(tokens) == 0 {
-						return
-					}
+				if tx.Sender == setup.MultiversxHandler.SCExecutorKeys.MvxAddress.Bech32() && len(tokens) > 0 {
 					setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, tokens[0].IssueTokenParams, big.NewInt(1200))
 				}
 			})
 		}
 
-		allFlowsFinished := true
-		for _, flow := range flows {
-			allFlowsFinished = allFlowsFinished && flow.process()
+		testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
+			t,
+			make(chan error),
+			handler,
+			testToken,
+		)
+	})
+
+	t.Run("decreasing max bridge amount on Safe before wrong SC call should stop refund", func(t *testing.T) {
+		handler := func(setup *framework.TestSetup, tokens []framework.TestTokenParams) {
+			setup.ProxyWrapperInstance.RegisterBeforeTransactionSendHandler(func(tx *transaction.FrontendTransaction) {
+				if tx.Sender == setup.MultiversxHandler.SCExecutorKeys.MvxAddress.Bech32() && len(tokens) > 0 {
+					setup.MultiversxHandler.SetMaxBridgeAmountOnSafe(setup.Ctx, tokens[0].IssueTokenParams, "800")
+				}
+			})
 		}
 
-		// commit blocks in order to execute incoming txs from relayers
-		setup.EthereumHandler.SimulatedChain.Commit()
-		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
-		scCallsLimitReached := int32(setup.ScCallerModuleInstance.GetNumSentTransaction()-setup.GetNumScCallsOperations()) >= ScCallsDeltaLimit
-
-		return allFlowsFinished && scCallsLimitReached
-	}
-
-	return testRelayersWithChainSimulator(tb,
-		setupFunc,
-		processFunc,
-		manualStopChan,
-	)
+		testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
+			t,
+			make(chan error),
+			handler,
+			testToken,
+		)
+	})
 }
 
-func testRelayersWithChainSimulatorAndTokensForChangedMaxBridgeAmount(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
+func testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
+	tb testing.TB,
+	manualStopChan chan error,
+	beforeTransactionHandler func(setup *framework.TestSetup, tokens []framework.TestTokenParams),
+	tokens ...framework.TestTokenParams,
+) *framework.TestSetup {
 	flows := createFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
@@ -485,14 +458,9 @@ func testRelayersWithChainSimulatorAndTokensForChangedMaxBridgeAmount(tb testing
 		if firstProcessRun {
 			firstProcessRun = false
 
-			setup.ProxyWrapperInstance.RegisterBeforeTransactionSendHandler(func(tx *transaction.FrontendTransaction) {
-				if tx.Sender == setup.MultiversxHandler.SCExecutorKeys.MvxAddress.Bech32() {
-					if len(tokens) == 0 {
-						return
-					}
-					setup.MultiversxHandler.SetMaxBridgeAmountOnSafe(setup.Ctx, tokens[0].IssueTokenParams, "800")
-				}
-			})
+			if beforeTransactionHandler != nil {
+				beforeTransactionHandler(setup, tokens)
+			}
 		}
 
 		allFlowsFinished := true
@@ -503,7 +471,7 @@ func testRelayersWithChainSimulatorAndTokensForChangedMaxBridgeAmount(tb testing
 		// commit blocks in order to execute incoming txs from relayers
 		setup.EthereumHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
-		scCallsLimitReached := int32(setup.ScCallerModuleInstance.GetNumSentTransaction()-setup.GetNumScCallsOperations()) >= ScCallsDeltaLimit
+		scCallsLimitReached := int32(setup.ScCallerModuleInstance.GetNumSentTransaction()-setup.GetNumScCallsOperations()) >= scCallsDeltaLimit
 
 		return allFlowsFinished && scCallsLimitReached
 	}

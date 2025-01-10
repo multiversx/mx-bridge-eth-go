@@ -123,7 +123,13 @@ func startExecutor(ctx *cli.Context, version string) error {
 		return fmt.Errorf("empty NetworkAddress in config file")
 	}
 
-	scCallsExecutor, err := module.NewScCallsModule(cfg, proxy, log)
+	argsScCallsModule := module.ArgsScCallsModule{
+		Cfg:   cfg,
+		Proxy: proxy,
+		Log:   log,
+	}
+
+	scCallsExecutor, err := module.NewScCallsModule(argsScCallsModule)
 	if err != nil {
 		return err
 	}
