@@ -5,6 +5,7 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
+	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/assert"
 )
@@ -53,26 +54,48 @@ func createTestConfigs() config.ScCallsModuleConfig {
 func TestNewScCallsModule(t *testing.T) {
 	t.Parallel()
 
+	t.Run("nil proxy should error", func(t *testing.T) {
+		t.Parallel()
+		cfg := createTestConfigs()
+		argsScCallsModule := ArgsScCallsModule{
+			Config: cfg,
+			Proxy:  nil,
+			Log:    &testsCommon.LoggerStub{},
+		}
+
+		module, err := NewScCallsModule(argsScCallsModule)
+		assert.NotNil(t, err)
+		assert.Equal(t, errNilProxy, err)
+		assert.Nil(t, module)
+	})
+	t.Run("nil logger should error", func(t *testing.T) {
+		t.Parallel()
+		cfg := createTestConfigs()
+		argsScCallsModule := ArgsScCallsModule{
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    nil,
+		}
+
+		module, err := NewScCallsModule(argsScCallsModule)
+		assert.NotNil(t, err)
+		assert.Equal(t, errNilLogger, err)
+		assert.Nil(t, module)
+	})
 	t.Run("invalid filter config should error", func(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
 		cfg.Filter.DeniedTokens = []string{"*"}
+		argsScCallsModule := ArgsScCallsModule{
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		module, err := NewScCallsModule(argsScCallsModule)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "unsupported marker * on item at index 0 in list DeniedTokens")
-		assert.Nil(t, module)
-	})
-	t.Run("invalid proxy cacher interval expiration should error", func(t *testing.T) {
-		t.Parallel()
-
-		cfg := createTestConfigs()
-		cfg.General.ProxyCacherExpirationSeconds = 0
-
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
-		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "invalid caching duration, provided: 0s, minimum: 1s")
 		assert.Nil(t, module)
 	})
 	t.Run("invalid resend interval should error", func(t *testing.T) {
@@ -80,8 +103,13 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.General.IntervalToResendTxsInSeconds = 0
+		argsScCallsModule := ArgsScCallsModule{
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		module, err := NewScCallsModule(argsScCallsModule)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid value for intervalToResend in NewNonceTransactionHandlerV2")
 		assert.Nil(t, module)
@@ -91,8 +119,13 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.General.PrivateKeyFile = ""
+		argsScCallsModule := ArgsScCallsModule{
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		module, err := NewScCallsModule(argsScCallsModule)
 		assert.NotNil(t, err)
 		assert.Nil(t, module)
 	})
@@ -101,8 +134,13 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.ScCallsExecutor.PollingIntervalInMillis = 0
+		argsScCallsModule := ArgsScCallsModule{
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		module, err := NewScCallsModule(argsScCallsModule)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid value for PollingInterval")
 		assert.Nil(t, module)
@@ -112,8 +150,13 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.ScCallsExecutor.MaxGasLimitToUse = 1
+		argsScCallsModule := ArgsScCallsModule{
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		module, err := NewScCallsModule(argsScCallsModule)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "provided gas limit is less than absolute minimum required for MaxGasLimitToUse")
 		assert.Nil(t, module)
@@ -123,8 +166,13 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.RefundExecutor.PollingIntervalInMillis = 0
+		argsScCallsModule := ArgsScCallsModule{
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		module, err := NewScCallsModule(argsScCallsModule)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "invalid value for PollingInterval")
 		assert.Nil(t, module)
@@ -134,8 +182,13 @@ func TestNewScCallsModule(t *testing.T) {
 
 		cfg := createTestConfigs()
 		cfg.RefundExecutor.GasToExecute = 0
+		argsScCallsModule := ArgsScCallsModule{
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
+		}
 
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		module, err := NewScCallsModule(argsScCallsModule)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "provided gas limit is less than absolute minimum required for GasToExecute")
 		assert.Nil(t, module)
@@ -144,7 +197,13 @@ func TestNewScCallsModule(t *testing.T) {
 		t.Parallel()
 
 		cfg := createTestConfigs()
-		module, err := NewScCallsModule(cfg, &testsCommon.LoggerStub{})
+		argsScCallsModule := ArgsScCallsModule{
+			Config: cfg,
+			Proxy:  &interactors.ProxyStub{},
+			Log:    &testsCommon.LoggerStub{},
+		}
+
+		module, err := NewScCallsModule(argsScCallsModule)
 		assert.Nil(t, err)
 		assert.NotNil(t, module)
 

@@ -11,9 +11,12 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
+	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/require"
 )
+
+const scCallsDeltaLimit = 10
 
 func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 	errorString := "ERROR"
@@ -280,6 +283,197 @@ func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb 
 		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
 
 		return false
+	}
+
+	return testRelayersWithChainSimulator(tb,
+		setupFunc,
+		processFunc,
+		manualStopChan,
+	)
+}
+
+func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
+	badCallData := []byte{5, 4, 55}
+	testToken := framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "TEST",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "TEST",
+			MvxChainSpecificTokenTicker:      "ONETEST",
+			MvxUniversalTokenDisplayName:     "WrappedTEST",
+			MvxChainSpecificTokenDisplayName: "EthereumWrappedTEST",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            true,
+			EthTokenName:                     "EthTEST",
+			EthTokenSymbol:                   "TEST",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  false,
+			IsNativeOnEth:                    true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(1000),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        badCallData,
+				MvxFaultySCCall:      true,
+			},
+		},
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(1000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(1000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(1000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		},
+		MintBurnChecks: &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(1000),
+			MvxTotalChainSpecificMint: big.NewInt(1000),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(1000),
+			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(1000),
+		},
+	}
+
+	t.Run("increasing aggregation fee before wrong SC call should stop refund", func(t *testing.T) {
+		handler := func(setup *framework.TestSetup, tokens []framework.TestTokenParams) {
+			setup.ProxyWrapperInstance.RegisterBeforeTransactionSendHandler(func(tx *transaction.FrontendTransaction) {
+				if tx.Sender == setup.MultiversxHandler.SCExecutorKeys.MvxAddress.Bech32() && len(tokens) > 0 {
+					setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, tokens[0].IssueTokenParams, big.NewInt(1200))
+				}
+			})
+		}
+
+		testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
+			t,
+			make(chan error),
+			handler,
+			testToken,
+		)
+	})
+
+	t.Run("decreasing max bridge amount on Safe before wrong SC call should stop refund", func(t *testing.T) {
+		handler := func(setup *framework.TestSetup, tokens []framework.TestTokenParams) {
+			setup.ProxyWrapperInstance.RegisterBeforeTransactionSendHandler(func(tx *transaction.FrontendTransaction) {
+				if tx.Sender == setup.MultiversxHandler.SCExecutorKeys.MvxAddress.Bech32() && len(tokens) > 0 {
+					setup.MultiversxHandler.SetMaxBridgeAmountOnSafe(setup.Ctx, tokens[0].IssueTokenParams, "800")
+				}
+			})
+		}
+
+		testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
+			t,
+			make(chan error),
+			handler,
+			testToken,
+		)
+	})
+}
+
+func testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
+	tb testing.TB,
+	manualStopChan chan error,
+	beforeTransactionHandler func(setup *framework.TestSetup, tokens []framework.TestTokenParams),
+	tokens ...framework.TestTokenParams,
+) *framework.TestSetup {
+	flows := createFlowsBasedOnToken(tb, tokens...)
+
+	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
+		for _, flow := range flows {
+			flow.setup = setup
+		}
+
+		setup.IssueAndConfigureTokens(tokens...)
+		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
+		for _, flow := range flows {
+			flow.handlerToStartFirstBridge(flow)
+		}
+	}
+
+	firstProcessRun := true
+	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
+		if firstProcessRun {
+			firstProcessRun = false
+
+			if beforeTransactionHandler != nil {
+				beforeTransactionHandler(setup, tokens)
+			}
+		}
+
+		allFlowsFinished := true
+		for _, flow := range flows {
+			allFlowsFinished = allFlowsFinished && flow.process()
+		}
+
+		// commit blocks in order to execute incoming txs from relayers
+		setup.EthereumHandler.SimulatedChain.Commit()
+		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
+		scCallsLimitReached := int32(setup.ScCallerModuleInstance.GetNumSentTransaction()-setup.GetNumScCallsOperations()) >= scCallsDeltaLimit
+
+		return allFlowsFinished && scCallsLimitReached
 	}
 
 	return testRelayersWithChainSimulator(tb,

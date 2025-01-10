@@ -7,12 +7,11 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/executors/multiversx"
 	"github.com/multiversx/mx-bridge-eth-go/executors/multiversx/filters"
 	"github.com/multiversx/mx-bridge-eth-go/parsers"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-crypto-go/signing"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519"
 	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519/singlesig"
 	logger "github.com/multiversx/mx-chain-logger-go"
-	"github.com/multiversx/mx-sdk-go/blockchain"
-	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/multiversx/mx-sdk-go/core/polling"
 	"github.com/multiversx/mx-sdk-go/interactors"
 	"github.com/multiversx/mx-sdk-go/interactors/nonceHandlerV2"
@@ -34,19 +33,30 @@ type scCallsModule struct {
 	executors       []executor
 }
 
+// ArgsScCallsModule holds the arguments for creating a new scCallsModule instance
+type ArgsScCallsModule struct {
+	Config config.ScCallsModuleConfig
+	Proxy  multiversx.Proxy
+	Log    logger.Logger
+}
+
 // NewScCallsModule creates a starts a new scCallsModule instance
-func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger) (*scCallsModule, error) {
+func NewScCallsModule(args ArgsScCallsModule) (*scCallsModule, error) {
+	if check.IfNil(args.Proxy) {
+		return nil, errNilProxy
+	}
+
+	if check.IfNil(args.Log) {
+		return nil, errNilLogger
+	}
+
 	module := &scCallsModule{
-		cfg: cfg,
-		log: log,
+		cfg:   args.Config,
+		log:   args.Log,
+		proxy: args.Proxy,
 	}
 
 	err := module.createFilter()
-	if err != nil {
-		return nil, err
-	}
-
-	err = module.createProxy()
 	if err != nil {
 		return nil, err
 	}
@@ -77,23 +87,6 @@ func NewScCallsModule(cfg config.ScCallsModuleConfig, log logger.Logger) (*scCal
 func (module *scCallsModule) createFilter() error {
 	var err error
 	module.filter, err = filters.NewPendingOperationFilter(module.cfg.Filter, module.log)
-
-	return err
-}
-
-func (module *scCallsModule) createProxy() error {
-	argsProxy := blockchain.ArgsProxy{
-		ProxyURL:            module.cfg.General.NetworkAddress,
-		SameScState:         false,
-		ShouldBeSynced:      false,
-		FinalityCheck:       module.cfg.General.ProxyFinalityCheck,
-		AllowedDeltaToFinal: module.cfg.General.ProxyMaxNoncesDelta,
-		CacheExpirationTime: time.Second * time.Duration(module.cfg.General.ProxyCacherExpirationSeconds),
-		EntityType:          sdkCore.RestAPIEntityType(module.cfg.General.ProxyRestAPIEntityType),
-	}
-
-	var err error
-	module.proxy, err = blockchain.NewProxy(argsProxy)
 
 	return err
 }

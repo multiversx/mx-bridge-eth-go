@@ -16,6 +16,8 @@ import (
 	chainCommon "github.com/multiversx/mx-chain-go/common"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-logger-go/file"
+	"github.com/multiversx/mx-sdk-go/blockchain"
+	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/urfave/cli"
 )
 
@@ -84,6 +86,21 @@ func startExecutor(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	argsProxy := blockchain.ArgsProxy{
+		ProxyURL:            cfg.General.NetworkAddress,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       cfg.General.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+		EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+	}
+
+	proxy, err := blockchain.NewProxy(argsProxy)
+	if err != nil {
+		return err
+	}
+
 	if !check.IfNil(fileLogging) {
 		timeLogLifeSpan := time.Second * time.Duration(cfg.Logs.LogFileLifeSpanInSec)
 		sizeLogLifeSpanInMB := uint64(cfg.Logs.LogFileLifeSpanInMB)
@@ -106,7 +123,13 @@ func startExecutor(ctx *cli.Context, version string) error {
 		return fmt.Errorf("empty NetworkAddress in config file")
 	}
 
-	scCallsExecutor, err := module.NewScCallsModule(cfg, log)
+	argsScCallsModule := module.ArgsScCallsModule{
+		Config: cfg,
+		Proxy:  proxy,
+		Log:    log,
+	}
+
+	scCallsExecutor, err := module.NewScCallsModule(argsScCallsModule)
 	if err != nil {
 		return err
 	}

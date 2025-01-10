@@ -10,10 +10,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/executors/multiversx/module"
+	"github.com/multiversx/mx-sdk-go/blockchain"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/require"
 )
@@ -41,6 +43,7 @@ type TestSetup struct {
 	ChainSimulator         ChainSimulatorWrapper
 	ScCallerKeys           KeysHolder
 	ScCallerModuleInstance SCCallerModule
+	ProxyWrapperInstance   *proxyWrapper
 
 	ctxCancel   func()
 	Ctx         context.Context
@@ -152,8 +155,28 @@ func (setup *TestSetup) startScCallerModule() {
 		},
 	}
 
-	var err error
-	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, log)
+	argsProxy := blockchain.ArgsProxy{
+		ProxyURL:            cfg.General.NetworkAddress,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       cfg.General.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+		EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+	}
+
+	proxy, err := blockchain.NewProxy(argsProxy)
+	require.Nil(setup, err)
+
+	setup.ProxyWrapperInstance = NewProxyWrapper(proxy)
+
+	argsScCallsModule := module.ArgsScCallsModule{
+		Config: cfg,
+		Proxy:  setup.ProxyWrapperInstance,
+		Log:    log,
+	}
+
+	setup.ScCallerModuleInstance, err = module.NewScCallsModule(argsScCallsModule)
 	require.Nil(setup, err)
 	log.Info("started SC calls module", "monitoring SC proxy address", setup.MultiversxHandler.ScProxyAddress)
 }
@@ -202,7 +225,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 	setup.MultiversxHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
 
 	for _, token := range tokens {
-		setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, token.IssueTokenParams)
+		setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, token.IssueTokenParams, feeInt)
 	}
 }
 

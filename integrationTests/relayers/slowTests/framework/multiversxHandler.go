@@ -439,7 +439,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	handler.whitelistTokenOnMultisig(ctx, params)
 	handler.setInitialSupply(ctx, params)
 	handler.setPairDecimalsOnAggregator(ctx, params)
-	handler.setMaxBridgeAmountOnSafe(ctx, params)
+	handler.SetMaxBridgeAmountOnSafe(ctx, params, maxBridgedAmountForToken)
 	handler.setMaxBridgeAmountOnMultitransfer(ctx, params)
 }
 
@@ -458,7 +458,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 	handler.whitelistTokenOnMultisig(ctx, params)
 	handler.setInitialSupply(ctx, params)
 	handler.setPairDecimalsOnAggregator(ctx, params)
-	handler.setMaxBridgeAmountOnSafe(ctx, params)
+	handler.SetMaxBridgeAmountOnSafe(ctx, params, maxBridgedAmountForToken)
 	handler.setMaxBridgeAmountOnMultitransfer(ctx, params)
 }
 
@@ -766,7 +766,8 @@ func (handler *MultiversxHandler) setPairDecimalsOnAggregator(ctx context.Contex
 	log.Info("setPairDecimals tx executed", "hash", hash, "status", txResult.Status)
 }
 
-func (handler *MultiversxHandler) setMaxBridgeAmountOnSafe(ctx context.Context, params IssueTokenParams) {
+// SetMaxBridgeAmountOnSafe will set the max bridge amount for the token on the safe contract
+func (handler *MultiversxHandler) SetMaxBridgeAmountOnSafe(ctx context.Context, params IssueTokenParams, maxBridgedAmountForToken string) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	// safe set max bridge amount for token
@@ -820,10 +821,10 @@ func (handler *MultiversxHandler) getTokenNameFromResult(txResult data.Transacti
 }
 
 // SubmitAggregatorBatch will submit the aggregator batch
-func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, params IssueTokenParams) {
+func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, params IssueTokenParams, price *big.Int) {
 	txHashes := make([]string, 0, len(handler.OraclesKeys))
 	for _, key := range handler.OraclesKeys {
-		hash := handler.submitAggregatorBatchForKey(ctx, key, params)
+		hash := handler.submitAggregatorBatchForKey(ctx, key, params, price)
 		txHashes = append(txHashes, hash)
 	}
 
@@ -833,7 +834,7 @@ func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, par
 	}
 }
 
-func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Context, key KeysHolder, params IssueTokenParams) string {
+func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Context, key KeysHolder, params IssueTokenParams, price *big.Int) string {
 	timestamp := handler.ChainSimulator.GetBlockchainTimeStamp(ctx)
 	require.Greater(handler, timestamp, uint64(0), "something went wrong and the chain simulator returned 0 for the current timestamp")
 
@@ -850,7 +851,7 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 			hex.EncodeToString([]byte(gwei)),
 			hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
 			hex.EncodeToString(timestampAsBigInt.Bytes()),
-			hex.EncodeToString(feeInt.Bytes()),
+			hex.EncodeToString(price.Bytes()),
 			fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific)})
 
 	log.Info("submit aggregator batch tx sent", "transaction hash", hash, "submitter", key.MvxAddress.Bech32())
