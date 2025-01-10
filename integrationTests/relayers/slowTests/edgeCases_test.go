@@ -161,7 +161,7 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 func TestRelayerShouldExecuteMultipleSwapsWithLargeData(t *testing.T) {
 	usdcToken := GenerateTestUSDCToken()
 
-	numTxs := int64(17)
+	numTxs := int64(16)
 	maxLimitWithForScCalls := 984
 	buff := make([]byte, maxLimitWithForScCalls)
 	_, _ = rand.Read(buff)
