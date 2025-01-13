@@ -36,6 +36,7 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		make(chan error),
 		GenerateTestUSDCToken(),
 		GenerateTestMEMEToken(),
+		GenerateTestTADAToken(),
 	)
 }
 
@@ -69,11 +70,15 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 	memeToken := GenerateTestMEMEToken()
 	memeToken.TestOperations[2].MvxSCCallData = callData
 
+	tadaToken := GenerateTestTADAToken()
+	tadaToken.TestOperations[2].MvxSCCallData = callData
+
 	testSetup := testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
 		usdcToken,
 		memeToken,
+		tadaToken,
 	)
 
 	testCallPayableWithParamsWasCalled(
@@ -81,6 +86,7 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 		37,
 		usdcToken.AbstractTokenIdentifier,
 		memeToken.AbstractTokenIdentifier,
+		tadaToken.AbstractTokenIdentifier,
 	)
 }
 
@@ -154,11 +160,17 @@ func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
 	memeToken.InitialSupplyValue = memeInitialValue.String()
 	memeToken.MintBurnChecks.EthSafeMintValue.Add(memeToken.MintBurnChecks.EthSafeMintValue, memeInitialValue)
 
+	tadaInitialValue := big.NewInt(300000)
+	tadaToken := GenerateTestTADAToken()
+	tadaToken.InitialSupplyValue = tadaInitialValue.String()
+	tadaToken.MintBurnChecks.EthSafeMintValue.Add(tadaToken.MintBurnChecks.EthSafeMintValue, tadaInitialValue)
+
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
 		usdcToken,
 		memeToken,
+		tadaToken,
 	)
 }
 
