@@ -328,7 +328,7 @@ func GenerateTestTADAToken() framework.TestTokenParams {
 			MvxUniversalTokenDisplayName:     "WrappedTADA",
 			MvxChainSpecificTokenDisplayName: "EthereumWrappedTADA",
 			ValueToMintOnMvx:                 "10000000000",
-			IsMintBurnOnMvX:                  false,
+			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    true,
 			HasChainSpecificToken:            true,
 			EthTokenName:                     "EthTADA",
@@ -382,7 +382,7 @@ func GenerateTestTADAToken() framework.TestTokenParams {
 				},
 				framework.SafeSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(5980 + 2300 + 4000),
+					OnMvx:    big.NewInt(50 + 50 + 50),
 					MvxToken: framework.ChainSpecificToken,
 				},
 				framework.CalledTestSC: {
@@ -414,7 +414,7 @@ func GenerateTestTADAToken() framework.TestTokenParams {
 				},
 				framework.SafeSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(5980 - 3100 + 2300 - 800 + 4000 - 2000 - 1900 + 1900),
+					OnMvx:    big.NewInt(50 + 50 + 50 + 50),
 					MvxToken: framework.ChainSpecificToken,
 				},
 				framework.CalledTestSC: {
@@ -431,11 +431,11 @@ func GenerateTestTADAToken() framework.TestTokenParams {
 		},
 		MintBurnChecks: &framework.MintBurnBalances{
 			MvxTotalUniversalMint:     big.NewInt(3100 + 800 + 2000),
-			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(3100 + 800 + 2000 + 1900),
 			MvxTotalUniversalBurn:     big.NewInt(5980 + 2300 + 4000),
-			MvxTotalChainSpecificBurn: big.NewInt(0),
-			MvxSafeMintValue:          big.NewInt(0),
-			MvxSafeBurnValue:          big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 1900 - 50),
+			MvxSafeMintValue:          big.NewInt(3100 + 800 + 2000 + 1900),
+			MvxSafeBurnValue:          big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 1900 - 50),
 
 			EthSafeMintValue: big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 1900 - 50),
 			EthSafeBurnValue: big.NewInt(3100 + 800 + 2000 + 1900),
@@ -449,7 +449,7 @@ func GenerateTestTADAToken() framework.TestTokenParams {
 // ApplyTADARefundBalances will apply the refund balances on the involved entities for the MEME token
 func ApplyTADARefundBalances(token *framework.TestTokenParams) {
 	// we need to add the 1000 MEME tokens as the third bridge was done that include the refund on the Ethereum side
-	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(5980 - 3100 + 2300 - 800 + 4000 - 1900 + 1900 - 2000 + 2000)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50 + 50 + 50)
 	// Bob will get his tokens back from the refund
 	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(5980 - 50 - 3100 + 2300 - 50 - 800 + 4000 - 50 - 1900 + 1850 - 2000 + 1950)
 	// no funds remain in the test caller SC
@@ -457,8 +457,10 @@ func ApplyTADARefundBalances(token *framework.TestTokenParams) {
 	// we need to subtract the refunded value from the wrapper contract
 	token.DeltaBalances[framework.SecondHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(-5980 - 2300 - 4000 + 3100 + 800 + 2000 - 2000)
 
+	token.MintBurnChecks.MvxTotalChainSpecificBurn = big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 2000 - 50 + 1900 - 50)
 	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(5980 + 2300 + 4000 + 2000)
-	token.MintBurnChecks.EthSafeMintValue = big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 1900 - 50 + 2000 - 50)
+	token.MintBurnChecks.EthSafeMintValue = big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 2000 - 50 + 1900 - 50)
+	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 2000 - 50 + 1900 - 50)
 
 	token.SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(-5980 - 2300 - 4000 + 3100 + 800 + 2000 - 2000)
 }
