@@ -31,6 +31,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			MvxChainSpecificTokenTicker:      "ETHUSDC",
 			MvxUniversalTokenDisplayName:     "WrappedUSDC",
 			MvxChainSpecificTokenDisplayName: "EthereumWrappedUSDC",
+			MvxToEthFee:                      big.NewInt(50),
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
@@ -184,6 +185,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			MvxChainSpecificTokenTicker:      "ETHMEME",
 			MvxUniversalTokenDisplayName:     "WrappedMEME",
 			MvxChainSpecificTokenDisplayName: "EthereumWrappedMEME",
+			MvxToEthFee:                      big.NewInt(51),
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  false,
 			IsNativeOnMvX:                    true,
@@ -233,7 +235,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.Bob: {
-					OnEth:    big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
+					OnEth:    big.NewInt(4000 - 51 + 6000 - 51 + 2000 - 51),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -260,7 +262,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.Bob: {
-					OnEth:    big.NewInt(4000 - 50 - 2400 + 6000 - 50 - 200 + 2000 - 50 - 1000 - 1300 + 1250),
+					OnEth:    big.NewInt(4000 - 51 - 2400 + 6000 - 51 - 200 + 2000 - 51 - 1000 - 1300 + 1249),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -294,7 +296,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			MvxSafeMintValue:          big.NewInt(0),
 			MvxSafeBurnValue:          big.NewInt(0),
 
-			EthSafeMintValue: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50 + 1300 - 50),
+			EthSafeMintValue: big.NewInt(4000 - 51 + 6000 - 51 + 2000 - 51 + 1300 - 51),
 			EthSafeBurnValue: big.NewInt(2400 + 200 + 1000 + 1300),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
@@ -308,11 +310,11 @@ func ApplyMEMERefundBalances(token *framework.TestTokenParams) {
 	// we need to add the 1000 MEME tokens as the third bridge was done that include the refund on the Ethereum side
 	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(4000 - 2400 + 6000 - 200 + 2000 - 1300 + 1300 - 1000 + 1000)
 	// Bob will get his tokens back from the refund
-	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4000 - 50 - 2400 + 6000 - 50 - 200 + 2000 - 50 - 1300 + 1250 - 1000 + 950)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4000 - 51 - 2400 + 6000 - 51 - 200 + 2000 - 51 - 1300 + 1249 - 1000 + 949)
 	// no funds remain in the test caller SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 
-	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50 + 1300 - 50 + 1000 - 50)
+	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4000 - 51 + 6000 - 51 + 2000 - 51 + 1300 - 51 + 1000 - 51)
 }
 
 // GenerateTestEUROCToken will generate a test EUROC token
@@ -327,6 +329,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			MvxChainSpecificTokenTicker:      "EUROC",
 			MvxUniversalTokenDisplayName:     "TestEUROC",
 			MvxChainSpecificTokenDisplayName: "TestEUROC",
+			MvxToEthFee:                      big.NewInt(52),
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
@@ -398,7 +401,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			},
 			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
 				framework.Alice: {
-					OnEth:    big.NewInt(-5010 - 7010 - 1010 - 700 + 650), // 650 is the refund value
+					OnEth:    big.NewInt(-5010 - 7010 - 1010 - 700 + 648), // 648 is the refund value
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -408,13 +411,13 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.Charlie: {
-					OnEth:    big.NewInt(2510 - 50 + 310 - 50),
+					OnEth:    big.NewInt(2510 - 52 + 310 - 52),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
 				framework.SafeSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(50 + 50 + 50),
+					OnMvx:    big.NewInt(52 + 52 + 52),
 					MvxToken: framework.ChainSpecificToken,
 				},
 				framework.CalledTestSC: {
@@ -432,12 +435,12 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 		MintBurnChecks: &framework.MintBurnBalances{
 			MvxTotalUniversalMint:     big.NewInt(5010 + 7010 + 1010 + 700),
 			MvxTotalChainSpecificMint: big.NewInt(0),
-			MvxTotalUniversalBurn:     big.NewInt(2510 - 50 + 310 - 50 + 700 - 50),
+			MvxTotalUniversalBurn:     big.NewInt(2510 - 52 + 310 - 52 + 700 - 52),
 			MvxTotalChainSpecificBurn: big.NewInt(0),
 			MvxSafeMintValue:          big.NewInt(5010 + 7010 + 1010 + 700),
-			MvxSafeBurnValue:          big.NewInt(2510 - 50 + 310 - 50 + 700 - 50),
+			MvxSafeBurnValue:          big.NewInt(2510 - 52 + 310 - 52 + 700 - 52),
 
-			EthSafeMintValue: big.NewInt(2510 - 50 + 310 - 50 + 650),
+			EthSafeMintValue: big.NewInt(2510 - 52 + 310 - 52 + 648),
 			EthSafeBurnValue: big.NewInt(5010 + 7010 + 1010 + 700),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
@@ -451,15 +454,15 @@ func ApplyEUROCRefundBalances(token *framework.TestTokenParams) {
 	// called test SC will have 0 balance since eth->mvx transfer failed
 	token.DeltaBalances[framework.FirstHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 	// extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
-	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50 + 50)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(52 + 52 + 52 + 52)
 	// Alice will get her tokens back from the refund
-	token.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-5010 - 7010 - 1010 - 700 + 960 + 650)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-5010 - 7010 - 1010 - 700 + 958 + 648)
 	// no funds remain in the called test SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 
-	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(2510 - 50 + 310 - 50 + 700 - 50 + 1010 - 50)
-	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(2510 - 50 + 310 - 50 + 700 - 50 + 1010 - 50)
-	token.MintBurnChecks.EthSafeMintValue = big.NewInt(2510 - 50 + 310 - 50 + 650 + 1010 - 50)
+	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(2510 - 52 + 310 - 52 + 700 - 52 + 1010 - 52)
+	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(2510 - 52 + 310 - 52 + 700 - 52 + 1010 - 52)
+	token.MintBurnChecks.EthSafeMintValue = big.NewInt(2510 - 52 + 310 - 52 + 648 + 1010 - 52)
 }
 
 // GenerateTestMEXToken will generate a test MEX token
@@ -474,6 +477,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			MvxChainSpecificTokenTicker:      "MEX",
 			MvxUniversalTokenDisplayName:     "TestMEX",
 			MvxChainSpecificTokenDisplayName: "TestMEX",
+			MvxToEthFee:                      big.NewInt(53),
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    true,
@@ -523,13 +527,13 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.Bob: {
-					OnEth:    big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+					OnEth:    big.NewInt(4010 - 53 + 6010 - 53 + 2010 - 53),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
 				framework.SafeSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(50 + 50 + 50),
+					OnMvx:    big.NewInt(53 + 53 + 53),
 					MvxToken: framework.ChainSpecificToken,
 				},
 				framework.CalledTestSC: {
@@ -550,7 +554,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.Bob: {
-					OnEth:    big.NewInt(4010 - 50 - 2410 + 6010 - 50 - 210 + 2010 - 50 - 1010 - 3000 + 2950),
+					OnEth:    big.NewInt(4010 - 53 - 2410 + 6010 - 53 - 210 + 2010 - 53 - 1010 - 3000 + 2947),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -561,7 +565,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 				},
 				framework.SafeSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(50 + 50 + 50 + 50),
+					OnMvx:    big.NewInt(53 + 53 + 53 + 53),
 					MvxToken: framework.ChainSpecificToken,
 				},
 				framework.CalledTestSC: {
@@ -579,12 +583,12 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 		MintBurnChecks: &framework.MintBurnBalances{
 			MvxTotalUniversalMint:     big.NewInt(2410 + 210 + 1010 + 3000),
 			MvxTotalChainSpecificMint: big.NewInt(0),
-			MvxTotalUniversalBurn:     big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50),
+			MvxTotalUniversalBurn:     big.NewInt(4010 - 53 + 6010 - 53 + 2010 - 53 + 3000 - 53),
 			MvxTotalChainSpecificBurn: big.NewInt(0),
 			MvxSafeMintValue:          big.NewInt(2410 + 210 + 1010 + 3000),
-			MvxSafeBurnValue:          big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50),
+			MvxSafeBurnValue:          big.NewInt(4010 - 53 + 6010 - 53 + 2010 - 53 + 3000 - 53),
 
-			EthSafeMintValue: big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50),
+			EthSafeMintValue: big.NewInt(4010 - 53 + 6010 - 53 + 2010 - 53 + 3000 - 53),
 			EthSafeBurnValue: big.NewInt(2410 + 210 + 1010 + 3000),
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
@@ -596,15 +600,15 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 // ApplyMEXRefundBalances will apply the refund balances on the involved entities for the MEX token
 func ApplyMEXRefundBalances(token *framework.TestTokenParams) {
 	// 3 normal swaps + the refund one
-	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50 + 50 + 50)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(53 + 53 + 53 + 53 + 53)
 	// Bob will get his tokens back from the refund
-	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4010 - 50 - 2410 + 6010 - 50 - 210 + 2010 - 50 - 1010 + 960 - 3000 + 2950)
+	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(4010 - 53 - 2410 + 6010 - 53 - 210 + 2010 - 53 - 1010 + 957 - 3000 + 2947)
 	// no funds remain in the test caller SC
 	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
 
-	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50 + 1010 - 50)
-	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50 + 1010 - 50)
-	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50 + 3000 - 50 + 1010 - 50)
+	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(4010 - 53 + 6010 - 53 + 2010 - 53 + 3000 - 53 + 1010 - 53)
+	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(4010 - 53 + 6010 - 53 + 2010 - 53 + 3000 - 53 + 1010 - 53)
+	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4010 - 53 + 6010 - 53 + 2010 - 53 + 3000 - 53 + 1010 - 53)
 }
 
 // GenerateUnlistedTokenFromEth will generate an unlisted token on Eth
@@ -619,6 +623,7 @@ func GenerateUnlistedTokenFromEth() framework.TestTokenParams {
 			MvxUniversalTokenDisplayName:     "TestULTKE",
 			MvxChainSpecificTokenDisplayName: "TestULTKE",
 			ValueToMintOnMvx:                 "10000000000",
+			MvxToEthFee:                      big.NewInt(54),
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
 			HasChainSpecificToken:            false,
@@ -726,6 +731,7 @@ func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 			MvxChainSpecificTokenTicker:      "ULTKM",
 			MvxUniversalTokenDisplayName:     "TestULTKM",
 			MvxChainSpecificTokenDisplayName: "TestULTKM",
+			MvxToEthFee:                      big.NewInt(55),
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    true,
