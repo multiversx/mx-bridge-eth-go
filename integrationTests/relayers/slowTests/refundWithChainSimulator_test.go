@@ -30,6 +30,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -45,6 +50,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -61,6 +67,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -76,6 +87,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -92,6 +104,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -107,6 +124,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -123,6 +141,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -138,6 +161,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -154,6 +178,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -169,6 +198,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -186,6 +216,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -201,6 +236,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -220,6 +256,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		tadaToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -237,6 +279,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -253,6 +296,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -268,6 +316,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -284,6 +333,12 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		memeToken.TestOperations[2].MvxForceSCCall = true
 		ApplyMEMERefundBalances(&memeToken)
+
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = nil
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		tadaToken.TestOperations[2].MvxForceSCCall = true
+		ApplyTADARefundBalances(&tadaToken)
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = nil
@@ -302,6 +357,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -318,6 +374,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -333,6 +394,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -349,6 +411,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -364,6 +431,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -380,6 +448,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -395,6 +468,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -411,6 +485,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -426,6 +505,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -442,6 +522,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -457,6 +542,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -473,6 +559,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -488,6 +579,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -507,6 +599,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -522,6 +619,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -543,6 +641,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -558,6 +661,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
@@ -579,6 +683,11 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		ApplyMEMERefundBalances(&memeToken)
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.TestOperations[2].MvxSCCallData = callData
+		tadaToken.TestOperations[2].MvxFaultySCCall = true
+		ApplyTADARefundBalances(&tadaToken)
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
@@ -594,6 +703,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
