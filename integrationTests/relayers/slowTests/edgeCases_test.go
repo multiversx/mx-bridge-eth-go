@@ -430,7 +430,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 			testToken,
 		)
 	})
-	t.Run("making a failing deposit on eth with MVX_MAX_BRIDGE_AMOUNT + 1 should still refund", func(t *testing.T) {
+	t.Run("making a failing deposit on Eth with Mvx maxBridgedAmountForToken + 1 should still refund", func(t *testing.T) {
 		testToken = framework.TestTokenParams{
 			IssueTokenParams: framework.IssueTokenParams{
 				AbstractTokenIdentifier:          "TEST",
@@ -452,7 +452,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 			},
 			TestOperations: []framework.TokenOperations{
 				{
-					ValueToTransferToMvx: big.NewInt(500101),
+					ValueToTransferToMvx: big.NewInt(500001),
 					ValueToSendFromMvX:   nil,
 					MvxSCCallData:        badCallData,
 					MvxFaultySCCall:      true,
@@ -461,7 +461,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 			DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
 				framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
 					framework.Alice: {
-						OnEth:    big.NewInt(-500101),
+						OnEth:    big.NewInt(-500001),
 						OnMvx:    big.NewInt(0),
 						MvxToken: framework.UniversalToken,
 					},
@@ -471,7 +471,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 						MvxToken: framework.UniversalToken,
 					},
 					framework.SafeSC: {
-						OnEth:    big.NewInt(500101),
+						OnEth:    big.NewInt(500001),
 						OnMvx:    big.NewInt(0),
 						MvxToken: framework.ChainSpecificToken,
 					},
@@ -488,7 +488,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 				},
 				framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
 					framework.Alice: {
-						OnEth:    big.NewInt(-500101 + 500051),
+						OnEth:    big.NewInt(-500001 + 499951),
 						OnMvx:    big.NewInt(0),
 						MvxToken: framework.UniversalToken,
 					},
@@ -503,7 +503,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 						MvxToken: framework.UniversalToken,
 					},
 					framework.SafeSC: {
-						OnEth:    big.NewInt(500101 - 500051),
+						OnEth:    big.NewInt(500001 - 499951),
 						OnMvx:    big.NewInt(50),
 						MvxToken: framework.ChainSpecificToken,
 					},
@@ -514,24 +514,24 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 					},
 					framework.WrapperSC: {
 						OnEth:    big.NewInt(0),
-						OnMvx:    big.NewInt(500101 - 500101),
+						OnMvx:    big.NewInt(500001 - 499951),
 						MvxToken: framework.ChainSpecificToken,
 					},
 				},
 			},
 			MintBurnChecks: &framework.MintBurnBalances{
 				MvxTotalUniversalMint:     big.NewInt(0),
-				MvxTotalChainSpecificMint: big.NewInt(500101),
+				MvxTotalChainSpecificMint: big.NewInt(500001),
 				MvxTotalUniversalBurn:     big.NewInt(0),
-				MvxTotalChainSpecificBurn: big.NewInt(500101 - 50),
-				MvxSafeMintValue:          big.NewInt(500101),
-				MvxSafeBurnValue:          big.NewInt(500101 - 50),
+				MvxTotalChainSpecificBurn: big.NewInt(500001 - 50),
+				MvxSafeMintValue:          big.NewInt(500001),
+				MvxSafeBurnValue:          big.NewInt(500001 - 50),
 
 				EthSafeMintValue: big.NewInt(0),
 				EthSafeBurnValue: big.NewInt(0),
 			},
 			SpecialChecks: &framework.SpecialBalanceChecks{
-				WrapperDeltaLiquidityCheck: big.NewInt(500101 - 500101),
+				WrapperDeltaLiquidityCheck: big.NewInt(500001 - 500001),
 			},
 		}
 
