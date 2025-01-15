@@ -442,6 +442,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 				MvxUniversalTokenDisplayName:     "WrappedTEST",
 				MvxChainSpecificTokenDisplayName: "EthereumWrappedTEST",
 				ValueToMintOnMvx:                 "10000000000",
+				MvxToEthFee:                      big.NewInt(50),
 				IsMintBurnOnMvX:                  true,
 				IsNativeOnMvX:                    false,
 				HasChainSpecificToken:            true,
@@ -515,7 +516,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 					},
 					framework.WrapperSC: {
 						OnEth:    big.NewInt(0),
-						OnMvx:    big.NewInt(500001 - 499951),
+						OnMvx:    big.NewInt(500001 - 500001),
 						MvxToken: framework.ChainSpecificToken,
 					},
 				},
