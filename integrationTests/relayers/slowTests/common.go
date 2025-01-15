@@ -317,6 +317,156 @@ func ApplyMEMERefundBalances(token *framework.TestTokenParams) {
 	token.MintBurnChecks.EthSafeMintValue = big.NewInt(4000 - 51 + 6000 - 51 + 2000 - 51 + 1300 - 51 + 1000 - 51)
 }
 
+// GenerateTestTADAToken will generate a test MEME token
+func GenerateTestTADAToken() framework.TestTokenParams {
+	//TADA is ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = false, hasChainSpecificToken = true
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "TADA",
+			NumOfDecimalsUniversal:           1,
+			NumOfDecimalsChainSpecific:       1,
+			MvxUniversalTokenTicker:          "TADA",
+			MvxChainSpecificTokenTicker:      "ETHTADA",
+			MvxUniversalTokenDisplayName:     "WrappedTADA",
+			MvxChainSpecificTokenDisplayName: "EthereumWrappedTADA",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    true,
+			HasChainSpecificToken:            true,
+			EthTokenName:                     "EthTADA",
+			EthTokenSymbol:                   "TADA",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  true,
+			IsNativeOnEth:                    false,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(3100),
+				ValueToSendFromMvX:   big.NewInt(5980),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(800),
+				ValueToSendFromMvX:   big.NewInt(2300),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(2000),
+				ValueToSendFromMvX:   big.NewInt(4000),
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
+			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(29),
+				IsFaultyDeposit:      true,
+			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(670),
+				InvalidReceiver:      ethZeroAddress,
+				IsFaultyDeposit:      true,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(1900),
+				ValueToSendFromMvX:   nil,
+				InvalidReceiver:      mvxZeroAddress,
+			},
+		},
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-5980 - 2300 - 4000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(50 + 50 + 50),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-5980 - 2300 - 4000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-5980 - 2300 - 4000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(5980 - 50 - 3100 + 2300 - 50 - 800 + 4000 - 50 - 2000 - 1900 + 1850),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(3100 + 800),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(50 + 50 + 50 + 50),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(2000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-5980 - 2300 - 4000 + 3100 + 800 + 2000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		},
+		MintBurnChecks: &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(3100 + 800 + 2000),
+			MvxTotalChainSpecificMint: big.NewInt(3100 + 800 + 2000 + 1900),
+			MvxTotalUniversalBurn:     big.NewInt(5980 + 2300 + 4000),
+			MvxTotalChainSpecificBurn: big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 1900 - 50),
+			MvxSafeMintValue:          big.NewInt(3100 + 800 + 2000 + 1900),
+			MvxSafeBurnValue:          big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 1900 - 50),
+
+			EthSafeMintValue: big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 1900 - 50),
+			EthSafeBurnValue: big.NewInt(3100 + 800 + 2000 + 1900),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(-5980 - 2300 - 4000 + 3100 + 800 + 2000),
+		},
+	}
+}
+
+// ApplyTADARefundBalances will apply the refund balances on the involved entities for the MEME token
+func ApplyTADARefundBalances(token *framework.TestTokenParams) {
+	// we need to add the 1000 MEME tokens as the third bridge was done that include the refund on the Ethereum side
+	token.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50 + 50 + 50 + 50)
+	// Bob will get his tokens back from the refund
+	token.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnEth = big.NewInt(5980 - 50 - 3100 + 2300 - 50 - 800 + 4000 - 50 - 1900 + 1850 - 2000 + 1950)
+	// no funds remain in the test caller SC
+	token.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
+	// we need to subtract the refunded value from the wrapper contract
+	token.DeltaBalances[framework.SecondHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(-5980 - 2300 - 4000 + 3100 + 800 + 2000 - 2000)
+
+	token.MintBurnChecks.MvxTotalChainSpecificBurn = big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 2000 - 50 + 1900 - 50)
+	token.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(5980 + 2300 + 4000 + 2000)
+	token.MintBurnChecks.EthSafeMintValue = big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 2000 - 50 + 1900 - 50)
+	token.MintBurnChecks.MvxSafeBurnValue = big.NewInt(5980 - 50 + 2300 - 50 + 4000 - 50 + 2000 - 50 + 1900 - 50)
+
+	token.SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(-5980 - 2300 - 4000 + 3100 + 800 + 2000 - 2000)
+}
+
 // GenerateTestEUROCToken will generate a test EUROC token
 func GenerateTestEUROCToken() framework.TestTokenParams {
 	//EUROC is ethNative = true, ethMintBurn = true, mvxNative = false, mvxMintBurn = true
