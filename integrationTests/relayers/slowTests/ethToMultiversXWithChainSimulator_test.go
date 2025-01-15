@@ -344,6 +344,7 @@ func createBadToken() framework.TestTokenParams {
 			MvxChainSpecificTokenTicker:      "ETHBAD",
 			MvxUniversalTokenDisplayName:     "WrappedBAD",
 			MvxChainSpecificTokenDisplayName: "EthereumWrappedBAD",
+			MvxToEthFee:                      big.NewInt(50),
 			ValueToMintOnMvx:                 "10000000000",
 			EthTokenName:                     "ETHTOKEN",
 			EthTokenSymbol:                   "ETHT",
