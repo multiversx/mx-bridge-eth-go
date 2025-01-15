@@ -225,7 +225,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 	setup.MultiversxHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
 
 	for _, token := range tokens {
-		setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, token.IssueTokenParams, feeInt)
+		setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, token.IssueTokenParams, token.MvxToEthFee)
 	}
 }
 
@@ -586,7 +586,7 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 			}
 
 			if operation.InvalidReceiver != nil {
-				expectedRefund.Add(expectedRefund, feeInt)
+				expectedRefund.Add(expectedRefund, param.MvxToEthFee)
 			}
 
 			if operation.ValueToSendFromMvX == nil {
@@ -596,7 +596,7 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 				continue
 			}
 
-			expectedAccumulated.Add(expectedAccumulated, feeInt)
+			expectedAccumulated.Add(expectedAccumulated, param.MvxToEthFee)
 		}
 
 		setup.MultiversxHandler.TestWithdrawFees(setup.Ctx, token.MvxChainSpecificToken, expectedRefund, expectedAccumulated)
