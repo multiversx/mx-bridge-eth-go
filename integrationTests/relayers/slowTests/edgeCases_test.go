@@ -300,7 +300,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 			NumOfDecimalsUniversal:           6,
 			NumOfDecimalsChainSpecific:       6,
 			MvxUniversalTokenTicker:          "TEST",
-			MvxChainSpecificTokenTicker:      "ONETEST",
+			MvxChainSpecificTokenTicker:      "ETHTEST",
 			MvxUniversalTokenDisplayName:     "WrappedTEST",
 			MvxChainSpecificTokenDisplayName: "EthereumWrappedTEST",
 			ValueToMintOnMvx:                 "10000000000",
@@ -415,7 +415,6 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 			testToken,
 		)
 	})
-
 	t.Run("decreasing max bridge amount on Safe before wrong SC call should stop refund", func(t *testing.T) {
 		handler := func(setup *framework.TestSetup, tokens []framework.TestTokenParams) {
 			setup.ProxyWrapperInstance.RegisterBeforeTransactionSendHandler(func(tx *transaction.FrontendTransaction) {
@@ -429,6 +428,118 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 			t,
 			make(chan error),
 			handler,
+			testToken,
+		)
+	})
+	t.Run("making a failing deposit on Eth with Mvx maxBridgedAmountForToken + 1 should still refund", func(t *testing.T) {
+		testToken = framework.TestTokenParams{
+			IssueTokenParams: framework.IssueTokenParams{
+				AbstractTokenIdentifier:          "TEST",
+				NumOfDecimalsUniversal:           6,
+				NumOfDecimalsChainSpecific:       6,
+				MvxUniversalTokenTicker:          "TEST",
+				MvxChainSpecificTokenTicker:      "ETHTEST",
+				MvxUniversalTokenDisplayName:     "WrappedTEST",
+				MvxChainSpecificTokenDisplayName: "EthereumWrappedTEST",
+				ValueToMintOnMvx:                 "10000000000",
+				MvxToEthFee:                      big.NewInt(50),
+				IsMintBurnOnMvX:                  true,
+				IsNativeOnMvX:                    false,
+				HasChainSpecificToken:            true,
+				EthTokenName:                     "EthTEST",
+				EthTokenSymbol:                   "TEST",
+				ValueToMintOnEth:                 "10000000000",
+				IsMintBurnOnEth:                  false,
+				IsNativeOnEth:                    true,
+			},
+			TestOperations: []framework.TokenOperations{
+				{
+					ValueToTransferToMvx: big.NewInt(500001),
+					ValueToSendFromMvX:   nil,
+					MvxSCCallData:        badCallData,
+					MvxFaultySCCall:      true,
+				},
+			},
+			DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+				framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+					framework.Alice: {
+						OnEth:    big.NewInt(-500001),
+						OnMvx:    big.NewInt(0),
+						MvxToken: framework.UniversalToken,
+					},
+					framework.Bob: {
+						OnEth:    big.NewInt(0),
+						OnMvx:    big.NewInt(0),
+						MvxToken: framework.UniversalToken,
+					},
+					framework.SafeSC: {
+						OnEth:    big.NewInt(500001),
+						OnMvx:    big.NewInt(0),
+						MvxToken: framework.ChainSpecificToken,
+					},
+					framework.CalledTestSC: {
+						OnEth:    big.NewInt(0),
+						OnMvx:    big.NewInt(0),
+						MvxToken: framework.UniversalToken,
+					},
+					framework.WrapperSC: {
+						OnEth:    big.NewInt(0),
+						OnMvx:    big.NewInt(0),
+						MvxToken: framework.ChainSpecificToken,
+					},
+				},
+				framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+					framework.Alice: {
+						OnEth:    big.NewInt(-500001 + 499951),
+						OnMvx:    big.NewInt(0),
+						MvxToken: framework.UniversalToken,
+					},
+					framework.Bob: {
+						OnEth:    big.NewInt(0),
+						OnMvx:    big.NewInt(0),
+						MvxToken: framework.UniversalToken,
+					},
+					framework.Charlie: {
+						OnEth:    big.NewInt(0),
+						OnMvx:    big.NewInt(0),
+						MvxToken: framework.UniversalToken,
+					},
+					framework.SafeSC: {
+						OnEth:    big.NewInt(500001 - 499951),
+						OnMvx:    big.NewInt(50),
+						MvxToken: framework.ChainSpecificToken,
+					},
+					framework.CalledTestSC: {
+						OnEth:    big.NewInt(0),
+						OnMvx:    big.NewInt(0),
+						MvxToken: framework.UniversalToken,
+					},
+					framework.WrapperSC: {
+						OnEth:    big.NewInt(0),
+						OnMvx:    big.NewInt(500001 - 500001),
+						MvxToken: framework.ChainSpecificToken,
+					},
+				},
+			},
+			MintBurnChecks: &framework.MintBurnBalances{
+				MvxTotalUniversalMint:     big.NewInt(0),
+				MvxTotalChainSpecificMint: big.NewInt(500001),
+				MvxTotalUniversalBurn:     big.NewInt(0),
+				MvxTotalChainSpecificBurn: big.NewInt(500001 - 50),
+				MvxSafeMintValue:          big.NewInt(500001),
+				MvxSafeBurnValue:          big.NewInt(500001 - 50),
+
+				EthSafeMintValue: big.NewInt(0),
+				EthSafeBurnValue: big.NewInt(0),
+			},
+			SpecialChecks: &framework.SpecialBalanceChecks{
+				WrapperDeltaLiquidityCheck: big.NewInt(500001 - 500001),
+			},
+		}
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
 			testToken,
 		)
 	})

@@ -27,7 +27,7 @@ const (
 	ethStatusSuccess              = uint64(1)
 	minterRoleString              = "MINTER_ROLE"
 	ethMinAmountAllowedToTransfer = 25
-	ethMaxAmountAllowedToTransfer = 500000
+	ethMaxAmountAllowedToTransfer = 1000000
 
 	erc20SafeABI          = "testdata/contracts/eth/ERC20Safe.abi.json"
 	erc20SafeBytecode     = "testdata/contracts/eth/ERC20Safe.hex"
