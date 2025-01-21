@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -117,6 +118,12 @@ func startExecutor(ctx *cli.Context, version string) error {
 	if ctx.IsSet(privateKeyFile.Name) {
 		cfg.General.PrivateKeyFile = ctx.GlobalString(privateKeyFile.Name)
 		log.Info("using flag-defined private key file", "filename", cfg.General.PrivateKeyFile)
+	}
+	if ctx.IsSet(scProxyAddresses.Name) {
+		scProxyAddressesValue := ctx.GlobalString(scProxyAddresses.Name)
+		cfg.General.ScProxyBech32Addresses = strings.Split(scProxyAddressesValue, ",")
+		log.Info("using flag-defined SC addresses",
+			"SC addresses to be monitored", strings.Join(cfg.General.ScProxyBech32Addresses, ", "))
 	}
 
 	if len(cfg.General.NetworkAddress) == 0 {

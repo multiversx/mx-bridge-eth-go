@@ -33,3 +33,17 @@ run-lint:
 	bin/golangci-lint run --max-issues-per-linter 0 --max-same-issues 0 --timeout=2m
 
 lint: lint-install run-lint
+
+cli-docs:
+	cd ./cmd/scCallsExecutor && go build
+	cd ./cmd && bash ./CLI.md.sh
+
+check-cli-md:
+	cd ./cmd/scCallsExecutor && go build
+	cd ./cmd && bash ./CLI.md.sh
+	@status=$$(git status --porcelain | grep CLI); \
+    	if [ ! -z "$${status}" ]; \
+    	then \
+    		echo "Error - please update all CLI.md files by running the 'cli-docs' or 'check-cli-md' from Makefile!"; \
+    		exit 1; \
+    	fi

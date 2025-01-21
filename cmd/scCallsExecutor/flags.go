@@ -78,6 +78,11 @@ var (
 		Name:  "private-key-file",
 		Usage: "The MultiversX private key file used to issue transaction for the SC calls",
 	}
+	// scProxyAddresses is the MultiversX SC addresses to be monitored
+	scProxyAddresses = cli.StringFlag{
+		Name:  "sc-proxy-addresses",
+		Usage: "The MultiversX SC addresses to be monitored separated by comma. Example: '--sc-proxy-addresses erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf,erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus'",
+	}
 )
 
 func getFlags() []cli.Flag {
@@ -92,6 +97,7 @@ func getFlags() []cli.Flag {
 		restApiInterface,
 		networkAddress,
 		privateKeyFile,
+		scProxyAddresses,
 	}
 }
 func getFlagsConfig(ctx *cli.Context) config.ContextFlagsConfig {
