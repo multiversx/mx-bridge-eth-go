@@ -1,0 +1,114 @@
+{
+    "buildInfo": {
+        "rustc": {
+            "version": "1.84.0",
+            "commitHash": "9fc6b43126469e3858e2fe86cafb4f0fd5068869",
+            "commitDate": "2025-01-07",
+            "channel": "Stable",
+            "short": "rustc 1.84.0 (9fc6b4312 2025-01-07)"
+        },
+        "contractCrate": {
+            "name": "helper-contract",
+            "version": "0.0.0"
+        },
+        "framework": {
+            "name": "multiversx-sc",
+            "version": "0.55.0"
+        }
+    },
+    "name": "HelperContract",
+    "constructor": {
+        "inputs": [],
+        "outputs": []
+    },
+    "upgradeConstructor": {
+        "inputs": [],
+        "outputs": []
+    },
+    "endpoints": [
+        {
+            "name": "getCalleeAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "setCallee",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "address",
+                    "type": "Address"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "callDeposit",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "eth_tx",
+                    "type": "EthTransaction"
+                },
+                {
+                    "name": "batch_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": []
+        }
+    ],
+    "esdtAttributes": [],
+    "hasCallback": false,
+    "types": {
+        "EthAddress": {
+            "type": "struct",
+            "docs": [
+                "Wrapper over a 20-byte array"
+            ],
+            "fields": [
+                {
+                    "name": "raw_addr",
+                    "type": "array20<u8>"
+                }
+            ]
+        },
+        "EthTransaction": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "EthAddress"
+                },
+                {
+                    "name": "to",
+                    "type": "Address"
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "tx_nonce",
+                    "type": "u64"
+                },
+                {
+                    "name": "call_data",
+                    "type": "Option<bytes>"
+                }
+            ]
+        }
+    }
+}

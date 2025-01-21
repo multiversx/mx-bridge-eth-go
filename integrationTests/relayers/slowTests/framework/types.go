@@ -107,3 +107,12 @@ type ESDTSupply struct {
 type SpecialBalanceChecks struct {
 	WrapperDeltaLiquidityCheck *big.Int
 }
+
+type EthTransaction struct {
+	From     []byte
+	To       []byte
+	TokenID  string
+	Amount   *big.Int
+	Nonce    uint64
+	CallData []byte
+}
