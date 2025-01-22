@@ -38,9 +38,7 @@ cli-docs:
 	cd ./cmd/scCallsExecutor && go build
 	cd ./cmd && bash ./CLI.md.sh
 
-check-cli-md:
-	cd ./cmd/scCallsExecutor && go build
-	cd ./cmd && bash ./CLI.md.sh
+check-cli-md: cli-docs
 	@status=$$(git status --porcelain | grep CLI); \
     	if [ ! -z "$${status}" ]; \
     	then \

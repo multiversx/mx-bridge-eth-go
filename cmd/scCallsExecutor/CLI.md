@@ -23,9 +23,9 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --working-directory directory          This flag specifies the directory where the node will store databases and logs.
-   --log-level level(s)                   This flag specifies the logger level(s). It can contain multiple comma-separated value. For example, if set to *:INFO the logs for all packages will have the INFO level. However, if set to *:INFO,api:DEBUG the logs for all packages will have the INFO level, excepting the api package which will receive a DEBUG log level. (default: "*:DEBUG")
+   --log-level level(s)                   This flag specifies the logger level(s). It can contain multiple comma-separated values. For example, if set to *:INFO the logs for all packages will have the INFO level. However, if set to *:INFO,api:DEBUG the logs for all packages will have the INFO level, excepting the api package which will receive a DEBUG log level. (default: "*:DEBUG")
    --disable-ansi-color                   Boolean option for disabling ANSI colors in the logging system.
-   --config [path]                        The [path] for the main configuration file. This TOML file contain the main configurations such as monitored SC, gateway URL, timings and so on (default: "config/config.toml")
+   --config [path]                        The [path] for the main configuration file. This TOML file contains the main configurations such as monitored SC, gateway URL, timings and so on (default: "config/config.toml")
    --log-save                             Boolean option for enabling log saving. If set, it will automatically save all the logs into a file.
    --log-logger-name                      Boolean option for logger name in the logs.
    --profile-mode                         Boolean option for enabling the profiling mode. If set, the /debug/pprof routes will be available on the node for profiling the application.

@@ -10,7 +10,7 @@ import (
 var (
 	logLevel = cli.StringFlag{
 		Name: "log-level",
-		Usage: "This flag specifies the logger `level(s)`. It can contain multiple comma-separated value. For example" +
+		Usage: "This flag specifies the logger `level(s)`. It can contain multiple comma-separated values. For example" +
 			", if set to *:INFO the logs for all packages will have the INFO level. However, if set to *:INFO,api:DEBUG" +
 			" the logs for all packages will have the INFO level, excepting the api package which will receive a DEBUG" +
 			" log level.",
@@ -19,7 +19,7 @@ var (
 	// configurationFile defines a flag for the path to the main toml configuration file
 	configurationFile = cli.StringFlag{
 		Name: "config",
-		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contain the main " +
+		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contains the main " +
 			"configurations such as monitored SC, gateway URL, timings and so on",
 		Value: "config/config.toml",
 	}

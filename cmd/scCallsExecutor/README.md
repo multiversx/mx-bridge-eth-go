@@ -115,7 +115,7 @@ It is strongly recommended to use a GitHub access token because the scripts cons
 throttling might occur without the access token.
 
 The `EXTRA_FLAGS` can contain extra flags to be called whenever the application is started. 
-The complete list of the cli command can be found [here](./cmd/scCallsExecutor/CLI.md) 
+The complete list of the cli commands can be found [here](./cmd/scCallsExecutor/CLI.md) 
 
 The `OVERRIDE_VER` can be used during testing to manually specify an override tag/branch that will be used when building 
 the application. If left empty, the upgrade process will automatically fetch and use the latest release.
