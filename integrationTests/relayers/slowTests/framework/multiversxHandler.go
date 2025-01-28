@@ -84,10 +84,6 @@ const (
 	executeFunction                                      = "execute"
 )
 
-var (
-	feeInt = big.NewInt(50)
-)
-
 // MultiversxHandler will handle all the operations on the MultiversX side
 type MultiversxHandler struct {
 	testing.TB
