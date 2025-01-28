@@ -298,6 +298,7 @@ func (handler *MultiversxHandler) changeOwners(ctx context.Context) {
 	handler.ChangeOwnerForBridgeProxy(ctx)
 }
 
+// ChangeOwnerForBridgeProxy will change the owner for the bridge proxy contract
 func (handler *MultiversxHandler) ChangeOwnerForBridgeProxy(ctx context.Context) {
 	params := []string{
 		handler.MultisigAddress.Hex(),
@@ -331,6 +332,7 @@ func (handler *MultiversxHandler) finishSettings(ctx context.Context) {
 	handler.UnPauseContractsAfterTokenChanges(ctx)
 }
 
+// UnpauseBridgeProxy will unpause the bridge proxy contract
 func (handler *MultiversxHandler) UnpauseBridgeProxy(ctx context.Context) {
 	hash, txResult := handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseProxyFunction)
 	log.Info("Un-paused SC proxy contract", "transaction hash", hash, "status", txResult.Status)
@@ -1208,7 +1210,7 @@ func (handler *MultiversxHandler) CallDepositOnBridgeProxy(ctx context.Context, 
 }
 
 // ExecuteDepositWithoutGenerateBlocks will execute the deposit on the bridge proxy without generating blocks
-func (handler *MultiversxHandler) ExecuteDepositWithoutGenerateBlocks(ctx context.Context, depositId uint64, txNonce uint64) {
+func (handler *MultiversxHandler) ExecuteDepositWithoutGenerateBlocks(ctx context.Context, depositId uint64, txNonce uint64) string {
 	buffDepositId := make([]byte, 8)
 	binary.BigEndian.PutUint64(buffDepositId, depositId)
 
@@ -1218,27 +1220,18 @@ func (handler *MultiversxHandler) ExecuteDepositWithoutGenerateBlocks(ctx contex
 	}
 	txData := strings.Join(params, "@")
 
-	hash := handler.ChainSimulator.SendTxWithoutGenerateBlocksAndNonce(
+	hash := handler.ChainSimulator.SendTxWithNonceWithoutGenerateBlocks(
 		ctx,
 		handler.SCExecutorKeys.MvxSk,
 		handler.ScProxyAddress,
 		txNonce,
 		zeroStringValue,
 		generalSCCallGasLimit,
-		[]byte(txData))
-
+		[]byte(txData),
+	)
 	log.Info("execute deposit on bridge proxy tx sent", "transaction hash", hash)
 
-	txResult, txStatus := handler.ChainSimulator.GetTransactionResult(ctx, hash)
-	jsonData, err := json.MarshalIndent(txResult, "", "  ")
-	require.Nil(handler, err)
-
-	if txNonce == 0 {
-		require.Equal(handler, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
-	} else {
-		require.Equal(handler, transaction.TxStatusFail, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
-	}
-
+	return hash
 }
 
 func getHexBool(input bool) string {

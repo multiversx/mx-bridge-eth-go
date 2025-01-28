@@ -109,6 +109,7 @@ type SpecialBalanceChecks struct {
 	WrapperDeltaLiquidityCheck *big.Int
 }
 
+// EthTransaction encapsulates the details of an Ethereum transaction.
 type EthTransaction struct {
 	From     []byte
 	To       []byte

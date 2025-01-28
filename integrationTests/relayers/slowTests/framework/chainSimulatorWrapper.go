@@ -161,6 +161,10 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus) {
 	instance.GenerateBlocksUntilTxProcessed(ctx, hash)
 
+	return instance.GetTransactionResultWithoutGenerateBlocks(ctx, hash)
+}
+
+func (instance *chainSimulatorWrapper) GetTransactionResultWithoutGenerateBlocks(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus) {
 	txResult, err := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
 	require.Nil(instance, err)
 
@@ -234,11 +238,11 @@ func (instance *chainSimulatorWrapper) SendTxWithoutGenerateBlocks(ctx context.C
 	nonce, err := instance.getNonce(ctx, senderPK)
 	require.Nil(instance, err)
 
-	return instance.SendTxWithoutGenerateBlocksAndNonce(ctx, senderSK, receiver, nonce, value, gasLimit, dataField)
+	return instance.SendTxWithNonceWithoutGenerateBlocks(ctx, senderSK, receiver, nonce, value, gasLimit, dataField)
 }
 
-// SendTxWithoutGenerateBlocksAndNonce will build a transaction with given nonce and send it without generating blocks
-func (instance *chainSimulatorWrapper) SendTxWithoutGenerateBlocksAndNonce(ctx context.Context, senderSK []byte, receiver *MvxAddress, nonce uint64, value string, gasLimit uint64, dataField []byte) string {
+// SendTxWithNonceWithoutGenerateBlocks will build a transaction with given nonce and send it without generating blocks
+func (instance *chainSimulatorWrapper) SendTxWithNonceWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *MvxAddress, nonce uint64, value string, gasLimit uint64, dataField []byte) string {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	require.Nil(instance, err)
 
