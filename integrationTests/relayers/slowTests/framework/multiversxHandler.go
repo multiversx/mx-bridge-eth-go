@@ -81,6 +81,7 @@ const (
 	getTokenLiquidityFunction                            = "getTokenLiquidity"
 	setCalleeFunction                                    = "setCallee"
 	callDepositFunction                                  = "callDeposit"
+	executeFunction                                      = "execute"
 )
 
 var (
@@ -202,24 +203,14 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	require.NotEqual(handler, emptyAddress, handler.SafeAddress)
 	log.Info("Deploy: safe contract", "address", handler.SafeAddress, "transaction hash", hash)
 
-	// deploy bridge proxy
 	handler.DeployBridgeProxy(ctx)
 
-	// deploy multisig
 	handler.DeployMultisig(ctx)
 
-	// deploy test-caller
-	handler.CalleeScAddress, hash, _ = handler.ChainSimulator.DeploySC(
-		ctx,
-		testCallerContractPath,
-		handler.OwnerKeys.MvxSk,
-		deployGasLimit,
-		[]string{},
-	)
-	require.NotEqual(handler, emptyAddress, handler.CalleeScAddress)
-	log.Info("Deploy: test-caller contract", "address", handler.CalleeScAddress, "transaction hash", hash)
+	handler.DeployTestCaller(ctx)
 }
 
+// DeployBridgeProxy will deploy the bridge proxy contract
 func (handler *MultiversxHandler) DeployBridgeProxy(ctx context.Context) {
 	hash := ""
 	handler.ScProxyAddress, hash, _ = handler.ChainSimulator.DeploySC(
@@ -230,22 +221,10 @@ func (handler *MultiversxHandler) DeployBridgeProxy(ctx context.Context) {
 		make([]string, 0),
 	)
 	require.NotEqual(handler, emptyAddress, handler.ScProxyAddress)
-	log.Info("Deploy: SC proxy contract", "address", handler.ScProxyAddress, "transaction hash", hash)
+	log.Info("Deploy: Bridge Proxy contract", "address", handler.ScProxyAddress, "transaction hash", hash)
 }
 
-func (handler *MultiversxHandler) DeployTestHelperContract(ctx context.Context) {
-	hash := ""
-	handler.TestHelperAddress, hash, _ = handler.ChainSimulator.DeploySC(
-		ctx,
-		testHelperContractPath,
-		handler.OwnerKeys.MvxSk,
-		deployGasLimit,
-		make([]string, 0),
-	)
-	require.NotEqual(handler, emptyAddress, handler.TestHelperAddress)
-	log.Info("Deploy: Test helper contract", "address", handler.TestHelperAddress, "transaction hash", hash)
-}
-
+// DeployMultisig will deploy the multisig contract
 func (handler *MultiversxHandler) DeployMultisig(ctx context.Context) {
 	minRelayerStakeInt, _ := big.NewInt(0).SetString(minRelayerStake, 10)
 	minRelayerStakeHex := hex.EncodeToString(minRelayerStakeInt.Bytes())
@@ -272,7 +251,20 @@ func (handler *MultiversxHandler) DeployMultisig(ctx context.Context) {
 	)
 	require.NotEqual(handler, emptyAddress, handler.MultisigAddress)
 	log.Info("Deploy: multisig contract", "address", handler.MultisigAddress, "transaction hash", hash)
+}
 
+// DeployTestCaller will deploy the test caller contract
+func (handler *MultiversxHandler) DeployTestCaller(ctx context.Context) {
+	hash := ""
+	handler.CalleeScAddress, hash, _ = handler.ChainSimulator.DeploySC(
+		ctx,
+		testCallerContractPath,
+		handler.OwnerKeys.MvxSk,
+		deployGasLimit,
+		[]string{},
+	)
+	require.NotEqual(handler, emptyAddress, handler.CalleeScAddress)
+	log.Info("Deploy: test-caller contract", "address", handler.CalleeScAddress, "transaction hash", hash)
 }
 
 func (handler *MultiversxHandler) changeOwners(ctx context.Context) {
@@ -307,10 +299,14 @@ func (handler *MultiversxHandler) changeOwners(ctx context.Context) {
 	log.Info("ChangeOwnerAddress for multi-transfer contract", "transaction hash", hash, "status", txResult.Status)
 
 	// ChangeOwnerAddress for bridge proxy
-	params = []string{
+	handler.ChangeOwnerForBridgeProxy(ctx)
+}
+
+func (handler *MultiversxHandler) ChangeOwnerForBridgeProxy(ctx context.Context) {
+	params := []string{
 		handler.MultisigAddress.Hex(),
 	}
-	hash, txResult = handler.scCallAndCheckTx(
+	hash, txResult := handler.scCallAndCheckTx(
 		ctx,
 		handler.OwnerKeys,
 		handler.ScProxyAddress,
@@ -324,8 +320,7 @@ func (handler *MultiversxHandler) changeOwners(ctx context.Context) {
 
 func (handler *MultiversxHandler) finishSettings(ctx context.Context) {
 	// unpause sc proxy
-	hash, txResult := handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseProxyFunction)
-	log.Info("Un-paused SC proxy contract", "transaction hash", hash, "status", txResult.Status)
+	handler.UnpauseBridgeProxy(ctx)
 
 	// stake relayers on multisig
 	handler.stakeAddressesOnContract(ctx, handler.MultisigAddress, handler.RelayersKeys)
@@ -334,10 +329,15 @@ func (handler *MultiversxHandler) finishSettings(ctx context.Context) {
 	handler.stakeAddressesOnContract(ctx, handler.AggregatorAddress, handler.OraclesKeys)
 
 	// unpause multisig
-	hash, txResult = handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseFunction)
+	hash, txResult := handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseFunction)
 	log.Info("Un-paused multisig contract", "transaction hash", hash, "status", txResult.Status)
 
 	handler.UnPauseContractsAfterTokenChanges(ctx)
+}
+
+func (handler *MultiversxHandler) UnpauseBridgeProxy(ctx context.Context) {
+	hash, txResult := handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseProxyFunction)
+	log.Info("Un-paused SC proxy contract", "transaction hash", hash, "status", txResult.Status)
 }
 
 // CheckForZeroBalanceOnReceivers will check that the balances for all provided tokens are 0 for the test address and the test SC call address
@@ -1147,6 +1147,21 @@ func (handler *MultiversxHandler) scCallAndCheckTx(
 	return hash, txResult
 }
 
+// DeployTestHelperContract will deploy the test helper contract
+func (handler *MultiversxHandler) DeployTestHelperContract(ctx context.Context) {
+	hash := ""
+	handler.TestHelperAddress, hash, _ = handler.ChainSimulator.DeploySC(
+		ctx,
+		testHelperContractPath,
+		handler.OwnerKeys.MvxSk,
+		deployGasLimit,
+		make([]string, 0),
+	)
+	require.NotEqual(handler, emptyAddress, handler.TestHelperAddress)
+	log.Info("Deploy: Test helper contract", "address", handler.TestHelperAddress, "transaction hash", hash)
+}
+
+// SetBridgeProxyAddressOnHelper will set the bridge proxy address on the helper contract
 func (handler *MultiversxHandler) SetBridgeProxyAddressOnHelper(ctx context.Context) {
 	params := []string{
 		hex.EncodeToString(handler.ScProxyAddress.Bytes()),
@@ -1163,7 +1178,8 @@ func (handler *MultiversxHandler) SetBridgeProxyAddressOnHelper(ctx context.Cont
 	log.Info("set bridge proxy address to helper", "hash", hash, "status", txResult.Status)
 }
 
-func (handler *MultiversxHandler) CallDepositOnBridgeProxy(ctx context.Context, ethTx EthTransaction, batchId uint64) {
+// CallDepositOnBridgeProxy will call the callDeposit function from test helper contract which will call the deposit function on the bridge proxy
+func (handler *MultiversxHandler) CallDepositOnBridgeProxy(ctx context.Context, ethTx EthTransaction, batchId uint64, token *TokenData) {
 	buffNonce := make([]byte, 8)
 	binary.BigEndian.PutUint64(buffNonce, ethTx.Nonce)
 
@@ -1171,15 +1187,17 @@ func (handler *MultiversxHandler) CallDepositOnBridgeProxy(ctx context.Context, 
 	binary.BigEndian.PutUint64(buffBatchId, batchId)
 
 	params := []string{
+		hex.EncodeToString([]byte(token.MvxUniversalToken)),
+		hex.EncodeToString(ethTx.Amount.Bytes()),
+		hex.EncodeToString([]byte(callDepositFunction)),
+		hex.EncodeToString(buffBatchId),
 		hex.EncodeToString(ethTx.From),
 		hex.EncodeToString(ethTx.To),
 		hex.EncodeToString([]byte(ethTx.TokenID)),
 		hex.EncodeToString(ethTx.Amount.Bytes()),
 		hex.EncodeToString(buffNonce),
 		hex.EncodeToString(ethTx.CallData),
-		hex.EncodeToString(buffBatchId),
 	}
-	//dataField := strings.Join(params, "@")
 
 	hash, txResult := handler.scCallAndCheckTx(
 		ctx,
@@ -1187,10 +1205,44 @@ func (handler *MultiversxHandler) CallDepositOnBridgeProxy(ctx context.Context, 
 		handler.TestHelperAddress,
 		zeroStringValue,
 		generalSCCallGasLimit,
-		callDepositFunction,
+		esdtTransferFunction,
 		params)
 
 	log.Info("deposit on bridge proxy tx executed", "hash", hash, "status", txResult.Status)
+}
+
+// ExecuteDepositWithoutGenerateBlocks will execute the deposit on the bridge proxy without generating blocks
+func (handler *MultiversxHandler) ExecuteDepositWithoutGenerateBlocks(ctx context.Context, depositId uint64, txNonce uint64) {
+	buffDepositId := make([]byte, 8)
+	binary.BigEndian.PutUint64(buffDepositId, depositId)
+
+	params := []string{
+		executeFunction,
+		hex.EncodeToString(buffDepositId),
+	}
+	txData := strings.Join(params, "@")
+
+	hash := handler.ChainSimulator.SendTxWithoutGenerateBlocksAndNonce(
+		ctx,
+		handler.SCExecutorKeys.MvxSk,
+		handler.ScProxyAddress,
+		txNonce,
+		zeroStringValue,
+		generalSCCallGasLimit,
+		[]byte(txData))
+
+	log.Info("execute deposit on bridge proxy tx sent", "transaction hash", hash)
+
+	txResult, txStatus := handler.ChainSimulator.GetTransactionResult(ctx, hash)
+	jsonData, err := json.MarshalIndent(txResult, "", "  ")
+	require.Nil(handler, err)
+
+	if txNonce == 0 {
+		require.Equal(handler, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
+	} else {
+		require.Equal(handler, transaction.TxStatusFail, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
+	}
+
 }
 
 func getHexBool(input bool) string {
