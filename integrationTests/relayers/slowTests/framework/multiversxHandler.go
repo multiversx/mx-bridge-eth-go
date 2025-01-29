@@ -79,7 +79,7 @@ const (
 	getBurnBalancesFunction                              = "getBurnBalances"
 	getTotalBalancesFunction                             = "getTotalBalances"
 	getTokenLiquidityFunction                            = "getTokenLiquidity"
-	setCalleeFunction                                    = "setCallee"
+	setBridgeProxyAddressFunction                        = "setBridgeProxyAddress"
 	callDepositFunction                                  = "callDeposit"
 	executeFunction                                      = "execute"
 )
@@ -1170,7 +1170,7 @@ func (handler *MultiversxHandler) SetBridgeProxyAddressOnHelper(ctx context.Cont
 		handler.TestHelperAddress,
 		zeroStringValue,
 		setCallsGasLimit,
-		setCalleeFunction,
+		setBridgeProxyAddressFunction,
 		params)
 
 	log.Info("set bridge proxy address to helper", "hash", hash, "status", txResult.Status)

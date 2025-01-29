@@ -27,17 +27,7 @@
     },
     "endpoints": [
         {
-            "name": "getCalleeAddress",
-            "mutability": "readonly",
-            "inputs": [],
-            "outputs": [
-                {
-                    "type": "Address"
-                }
-            ]
-        },
-        {
-            "name": "setCallee",
+            "name": "setBridgeProxyAddress",
             "mutability": "mutable",
             "inputs": [
                 {
@@ -65,6 +55,16 @@
                 }
             ],
             "outputs": []
+        },
+        {
+            "name": "getBridgeProxyAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
         }
     ],
     "esdtAttributes": [],
