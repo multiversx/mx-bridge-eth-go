@@ -989,6 +989,7 @@ func GenerateFrozenToken() framework.TestTokenParams {
 			MvxChainSpecificTokenTicker:      "FROZEN",
 			MvxUniversalTokenDisplayName:     "TestFROZEN",
 			MvxChainSpecificTokenDisplayName: "TestFROZEN",
+			MvxToEthFee:                      big.NewInt(50),
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
@@ -1019,6 +1020,11 @@ func GenerateFrozenToken() framework.TestTokenParams {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
 					OnEth:    big.NewInt(0),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
@@ -1057,7 +1063,7 @@ func GenerateFrozenToken() framework.TestTokenParams {
 				},
 				framework.CalledTestSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(0),
+					OnMvx:    big.NewInt(1500),
 					MvxToken: framework.UniversalToken,
 				},
 			},
