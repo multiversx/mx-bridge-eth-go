@@ -79,12 +79,6 @@ const (
 	getBurnBalancesFunction                              = "getBurnBalances"
 	getTotalBalancesFunction                             = "getTotalBalances"
 	getTokenLiquidityFunction                            = "getTokenLiquidity"
-	getRefundTransactions                                = "getRefundTransactions"
-	executeRefundTransaction                             = "executeRefundTransaction"
-)
-
-var (
-	feeInt = big.NewInt(50)
 )
 
 // MultiversxHandler will handle all the operations on the MultiversX side
@@ -446,7 +440,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	handler.whitelistTokenOnMultisig(ctx, params)
 	handler.setInitialSupply(ctx, params)
 	handler.setPairDecimalsOnAggregator(ctx, params)
-	handler.setMaxBridgeAmountOnSafe(ctx, params)
+	handler.SetMaxBridgeAmountOnSafe(ctx, params, maxBridgedAmountForToken)
 	handler.setMaxBridgeAmountOnMultitransfer(ctx, params)
 }
 
@@ -468,7 +462,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 	handler.whitelistTokenOnMultisig(ctx, params)
 	handler.setInitialSupply(ctx, params)
 	handler.setPairDecimalsOnAggregator(ctx, params)
-	handler.setMaxBridgeAmountOnSafe(ctx, params)
+	handler.SetMaxBridgeAmountOnSafe(ctx, params, maxBridgedAmountForToken)
 	handler.setMaxBridgeAmountOnMultitransfer(ctx, params)
 }
 
@@ -780,7 +774,8 @@ func (handler *MultiversxHandler) setPairDecimalsOnAggregator(ctx context.Contex
 	log.Info("setPairDecimals tx executed", "hash", hash, "status", txResult.Status)
 }
 
-func (handler *MultiversxHandler) setMaxBridgeAmountOnSafe(ctx context.Context, params IssueTokenParams) {
+// SetMaxBridgeAmountOnSafe will set the max bridge amount for the token on the safe contract
+func (handler *MultiversxHandler) SetMaxBridgeAmountOnSafe(ctx context.Context, params IssueTokenParams, maxBridgedAmountForToken string) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	// safe set max bridge amount for token
@@ -854,10 +849,10 @@ func (handler *MultiversxHandler) getTokenNameFromResult(txResult data.Transacti
 }
 
 // SubmitAggregatorBatch will submit the aggregator batch
-func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, params IssueTokenParams) {
+func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, params IssueTokenParams, price *big.Int) {
 	txHashes := make([]string, 0, len(handler.OraclesKeys))
 	for _, key := range handler.OraclesKeys {
-		hash := handler.submitAggregatorBatchForKey(ctx, key, params)
+		hash := handler.submitAggregatorBatchForKey(ctx, key, params, price)
 		txHashes = append(txHashes, hash)
 	}
 
@@ -867,7 +862,7 @@ func (handler *MultiversxHandler) SubmitAggregatorBatch(ctx context.Context, par
 	}
 }
 
-func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Context, key KeysHolder, params IssueTokenParams) string {
+func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Context, key KeysHolder, params IssueTokenParams, price *big.Int) string {
 	timestamp := handler.ChainSimulator.GetBlockchainTimeStamp(ctx)
 	require.Greater(handler, timestamp, uint64(0), "something went wrong and the chain simulator returned 0 for the current timestamp")
 
@@ -884,7 +879,7 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 			hex.EncodeToString([]byte(gwei)),
 			hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
 			hex.EncodeToString(timestampAsBigInt.Bytes()),
-			hex.EncodeToString(feeInt.Bytes()),
+			hex.EncodeToString(price.Bytes()),
 			fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific)})
 
 	log.Info("submit aggregator batch tx sent", "transaction hash", hash, "submitter", key.MvxAddress.Bech32())
@@ -1148,53 +1143,6 @@ func (handler *MultiversxHandler) scCallAndCheckTx(
 	log.Info(fmt.Sprintf("Transaction hash %s, status %s", hash, txResult.Status))
 
 	return hash, txResult
-}
-
-// RefundAllFromScBridgeProxy will refund transactions from the bridge proxy, if existing
-func (handler *MultiversxHandler) RefundAllFromScBridgeProxy(ctx context.Context) {
-	refundIDs := handler.getAllRefundIDsFromScBridgeProxy(ctx)
-	if len(refundIDs) == 0 {
-		return
-	}
-
-	for _, refundID := range refundIDs {
-		handler.refundTransactionInScBridgeProxy(ctx, refundID)
-	}
-}
-
-func (handler *MultiversxHandler) getAllRefundIDsFromScBridgeProxy(ctx context.Context) []uint64 {
-	responseBytes := handler.ChainSimulator.ExecuteVMQuery(
-		ctx,
-		handler.ScProxyAddress,
-		getRefundTransactions,
-		make([]string, 0),
-	)
-
-	numResponseLines := len(responseBytes)
-	require.Equal(handler, 0, numResponseLines%2, "expected an even number on response")
-
-	refundIDs := make([]uint64, 0, numResponseLines/2)
-	for i := 0; i < numResponseLines; i += 2 {
-		refundID := big.NewInt(0).SetBytes(responseBytes[i])
-		refundIDs = append(refundIDs, refundID.Uint64())
-	}
-
-	return refundIDs
-}
-
-func (handler *MultiversxHandler) refundTransactionInScBridgeProxy(ctx context.Context, refundID uint64) {
-	log.Info("sending refund transaction in SC bridge proxy", "refund ID", refundID)
-	handler.scCallAndCheckTx(
-		ctx,
-		handler.SCExecutorKeys, // anyone can call this, for example, the sc executor
-		handler.ScProxyAddress,
-		"0",
-		generalSCCallGasLimit,
-		executeRefundTransaction,
-		[]string{
-			hex.EncodeToString(big.NewInt(0).SetUint64(refundID).Bytes()),
-		},
-	)
 }
 
 func getHexBool(input bool) string {

@@ -8,10 +8,10 @@ services:
     restart: unless-stopped
     volumes:
       - "../keys:/multiversx/keys"
-    # change the `network-address`, `sc-proxy-address` and `private-key-file` accordingly
+    # change the `network-address`, `sc-proxy-addresses` and `private-key-file` accordingly
     entrypoint: "./scCallsExecutor \
     -log-level *:DEBUG \
     -log-save \
     -network-address https://devnet-gateway.multiversx.com \
-    -sc-proxy-address erd1qqqqqqqqqqqqqpgq5l0743nyv45vdptmfh3jydkqtyzjqpgsrcjq8yuzxk \
+    -sc-proxy-addresses erd1qqqqqqqqqqqqqpgq5l0743nyv45vdptmfh3jydkqtyzjqpgsrcjq8yuzxk \
     -private-key-file ./keys/walletKey.pem"

@@ -46,13 +46,16 @@
         ProposeStatusForEach = 7000000
         PerformActionBase = 40000000
         PerformActionForEach = 7000000
-        ScCallPerByte = 100000 # 1500 tx data field + the rest for the actual storage in the contract
+        ScCallPerByte = 10000 # 1500 tx data field + the rest for the actual storage in the contract
         ScCallPerformForEach = 10000000
+        AbsoluteMaxGasLimit = 500000000 # absolute maximum gas limit for a sending transaction
 
 [P2P]
-    Port = "10010"
+    Port = "37373-38383"
     InitialPeerList = []
-    ProtocolID = "/erd/relay/1.0.0"
+    ProtocolIDs = [
+        "/multiversx/evm",
+    ]
     [P2P.Transports]
         QUICAddress = "" # optional QUIC address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/udp/%d/quic-v1
         WebSocketAddress = "" # optional WebSocket address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/tcp/%d/ws
@@ -126,6 +129,8 @@
                            { Topic = "EthereumToMultiversX_sign", NumMessagesPerSec = 100 }]
 
 [Relayer]
+    [Relayer.ExecutionParameters]
+        MaxNumCharactersForSCCalls = 1024
     [Relayer.Marshalizer]
         Type = "gogo protobuf"
         SizeCheckDelta = 10

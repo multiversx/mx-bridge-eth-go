@@ -6,12 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
 	ethereumClient "github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement"
 	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement/factory"
@@ -309,6 +311,11 @@ func executeTransfer(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 		return err
 	}
 
+	err = waitForGasPrice(gs)
+	if err != nil {
+		return err
+	}
+
 	args := ethereum.ArgsMigrationBatchExecutor{
 		EthereumChainWrapper:    components.ethereumChainWrapper,
 		CryptoHandler:           components.cryptoHandler,
@@ -326,6 +333,28 @@ func executeTransfer(ctx *cli.Context, cfg config.MigrationToolConfig) error {
 	}
 
 	return executor.ExecuteTransfer(context.Background())
+}
+
+func waitForGasPrice(gs clients.GasHandler) error {
+	log.Info("Fetching a gas price value. Please wait...")
+	numRetries := 5
+	timeBetweenChecks := time.Second
+
+	var err error
+	var gasPrice *big.Int
+	for i := 0; i < numRetries; i++ {
+		time.Sleep(timeBetweenChecks)
+		gasPrice, err = gs.GetCurrentGasPrice()
+		if err != nil {
+			log.Debug("waitForGasPrice", "error", err)
+			continue
+		}
+
+		log.Info("Fetched the gas price", "value", gasPrice.String())
+		return nil
+	}
+
+	return err
 }
 
 func loadConfig(filepath string) (config.MigrationToolConfig, error) {

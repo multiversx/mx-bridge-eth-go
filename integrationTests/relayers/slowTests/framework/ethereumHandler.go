@@ -27,7 +27,7 @@ const (
 	ethStatusSuccess              = uint64(1)
 	minterRoleString              = "MINTER_ROLE"
 	ethMinAmountAllowedToTransfer = 25
-	ethMaxAmountAllowedToTransfer = 500000
+	ethMaxAmountAllowedToTransfer = 1000000
 
 	erc20SafeABI          = "testdata/contracts/eth/ERC20Safe.abi.json"
 	erc20SafeBytecode     = "testdata/contracts/eth/ERC20Safe.hex"
@@ -497,6 +497,16 @@ func (handler *EthereumHandler) GetMintBalanceForToken(ctx context.Context, addr
 	balance, err := handler.SafeContract.MintBalances(opts, address)
 	require.NoError(handler, err)
 	return balance
+}
+
+// SetBatchSize will set a custom batch size
+func (handler *EthereumHandler) SetBatchSize(ctx context.Context, newBatchSize uint16) {
+	ownerAuth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
+
+	tx, err := handler.SafeContract.SetBatchSize(ownerAuth, newBatchSize)
+	require.NoError(handler, err)
+	handler.SimulatedChain.Commit()
+	handler.checkEthTxResult(ctx, tx.Hash())
 }
 
 // Close will close the resources allocated

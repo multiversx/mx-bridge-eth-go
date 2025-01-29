@@ -24,6 +24,7 @@ type IssueTokenParams struct {
 	MvxChainSpecificTokenTicker      string
 	MvxUniversalTokenDisplayName     string
 	MvxChainSpecificTokenDisplayName string
+	MvxToEthFee                      *big.Int
 	ValueToMintOnMvx                 string
 	IsMintBurnOnMvX                  bool
 	IsNativeOnMvX                    bool

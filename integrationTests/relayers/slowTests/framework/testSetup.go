@@ -10,10 +10,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/executors/multiversx/module"
+	"github.com/multiversx/mx-sdk-go/blockchain"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/require"
 )
@@ -41,6 +43,7 @@ type TestSetup struct {
 	ChainSimulator         ChainSimulatorWrapper
 	ScCallerKeys           KeysHolder
 	ScCallerModuleInstance SCCallerModule
+	ProxyWrapperInstance   *proxyWrapper
 
 	ctxCancel   func()
 	Ctx         context.Context
@@ -116,33 +119,64 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 
 func (setup *TestSetup) startScCallerModule() {
 	cfg := config.ScCallsModuleConfig{
-		ScProxyBech32Address:            setup.MultiversxHandler.ScProxyAddress.Bech32(),
-		ExtraGasToExecute:               60_000_000,  // 60 million: this ensures that a SC call with 0 gas limit is refunded
-		MaxGasLimitToUse:                249_999_999, // max cross shard limit
-		GasLimitForOutOfGasTransactions: 30_000_000,  // gas to use when a higher than max allowed is encountered
-		NetworkAddress:                  setup.ChainSimulator.GetNetworkAddress(),
-		ProxyMaxNoncesDelta:             5,
-		ProxyFinalityCheck:              false,
-		ProxyCacherExpirationSeconds:    60, // 1 minute
-		ProxyRestAPIEntityType:          string(sdkCore.Proxy),
-		IntervalToResendTxsInSeconds:    1,
-		PrivateKeyFile:                  path.Join(setup.WorkingDir, SCCallerFilename),
-		PollingIntervalInMillis:         1000, // 1 second
+		General: config.GeneralScCallsModuleConfig{
+			ScProxyBech32Addresses: []string{
+				setup.MultiversxHandler.ScProxyAddress.Bech32(),
+			},
+			NetworkAddress:               setup.ChainSimulator.GetNetworkAddress(),
+			ProxyMaxNoncesDelta:          7,
+			ProxyFinalityCheck:           true,
+			ProxyCacherExpirationSeconds: 60,
+			ProxyRestAPIEntityType:       string(sdkCore.Proxy),
+			IntervalToResendTxsInSeconds: 1,
+			PrivateKeyFile:               path.Join(setup.WorkingDir, SCCallerFilename),
+		},
+		ScCallsExecutor: config.ScCallsExecutorConfig{
+			ExtraGasToExecute:               60_000_000,  // 60 million: this ensures that a SC call with 0 gas limit is refunded
+			MaxGasLimitToUse:                249_999_999, // max cross shard limit
+			GasLimitForOutOfGasTransactions: 30_000_000,  // gas to use when a higher than max allowed is encountered
+			PollingIntervalInMillis:         1000,        // 1 second
+			TTLForFailedRefundIdInSeconds:   1,           // 1 second
+		},
+		RefundExecutor: config.RefundExecutorConfig{
+			GasToExecute:                  30_000_000,
+			PollingIntervalInMillis:       1000,
+			TTLForFailedRefundIdInSeconds: 1,
+		},
 		Filter: config.PendingOperationsFilterConfig{
 			AllowedEthAddresses: []string{"*"},
 			AllowedMvxAddresses: []string{"*"},
 			AllowedTokens:       []string{"*"},
 		},
+		Logs: config.LogsConfig{},
 		TransactionChecks: config.TransactionChecksConfig{
-			CheckTransactionResults:    true,
-			CloseAppOnError:            false,
 			ExecutionTimeoutInSeconds:  2,
 			TimeInSecondsBetweenChecks: 1,
 		},
 	}
 
-	var err error
-	setup.ScCallerModuleInstance, err = module.NewScCallsModule(cfg, log, nil)
+	argsProxy := blockchain.ArgsProxy{
+		ProxyURL:            cfg.General.NetworkAddress,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       cfg.General.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+		EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+	}
+
+	proxy, err := blockchain.NewProxy(argsProxy)
+	require.Nil(setup, err)
+
+	setup.ProxyWrapperInstance = NewProxyWrapper(proxy)
+
+	argsScCallsModule := module.ArgsScCallsModule{
+		Config: cfg,
+		Proxy:  setup.ProxyWrapperInstance,
+		Log:    log,
+	}
+
+	setup.ScCallerModuleInstance, err = module.NewScCallsModule(argsScCallsModule)
 	require.Nil(setup, err)
 	log.Info("started SC calls module", "monitoring SC proxy address", setup.MultiversxHandler.ScProxyAddress)
 }
@@ -191,7 +225,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 	setup.MultiversxHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
 
 	for _, token := range tokens {
-		setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, token.IssueTokenParams)
+		setup.MultiversxHandler.SubmitAggregatorBatch(setup.Ctx, token.IssueTokenParams, token.MvxToEthFee)
 	}
 }
 
@@ -229,6 +263,10 @@ func (setup *TestSetup) processNumScCallsOperations(token TestTokenParams) {
 	for _, op := range token.TestOperations {
 		if len(op.MvxSCCallData) > 0 || op.MvxForceSCCall {
 			atomic.AddUint32(&setup.numScCallsInTest, 1)
+			if op.MvxFaultySCCall {
+				// one more call for the refund operation
+				atomic.AddUint32(&setup.numScCallsInTest, 1)
+			}
 		}
 	}
 }
@@ -548,7 +586,7 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 			}
 
 			if operation.InvalidReceiver != nil {
-				expectedRefund.Add(expectedRefund, feeInt)
+				expectedRefund.Add(expectedRefund, param.MvxToEthFee)
 			}
 
 			if operation.ValueToSendFromMvX == nil {
@@ -558,7 +596,7 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 				continue
 			}
 
-			expectedAccumulated.Add(expectedAccumulated, feeInt)
+			expectedAccumulated.Add(expectedAccumulated, param.MvxToEthFee)
 		}
 
 		setup.MultiversxHandler.TestWithdrawFees(setup.Ctx, token.MvxChainSpecificToken, expectedRefund, expectedAccumulated)

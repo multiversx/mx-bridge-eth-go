@@ -45,6 +45,7 @@ func TestRelayersShouldExecuteTransfersWithMintBurnTokens(t *testing.T) {
 		make(chan error),
 		GenerateTestEUROCToken(),
 		GenerateTestMEXToken(),
+		GenerateTestTADAToken(),
 	)
 }
 
@@ -96,11 +97,15 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArgumentsWithMintBurnToken
 	mexToken := GenerateTestMEXToken()
 	mexToken.TestOperations[2].MvxSCCallData = callData
 
+	tadaToken := GenerateTestTADAToken()
+	tadaToken.TestOperations[2].MvxSCCallData = callData
+
 	testSetup := testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
 		eurocToken,
 		mexToken,
+		tadaToken,
 	)
 
 	testCallPayableWithParamsWasCalled(
@@ -108,6 +113,7 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArgumentsWithMintBurnToken
 		37,
 		eurocToken.AbstractTokenIdentifier,
 		mexToken.AbstractTokenIdentifier,
+		tadaToken.AbstractTokenIdentifier,
 	)
 }
 
@@ -175,11 +181,18 @@ func TestRelayersShouldExecuteTransfersWithInitSupplyMintBurn(t *testing.T) {
 	mexToken.MintBurnChecks.MvxSafeBurnValue.Add(mexToken.MintBurnChecks.MvxSafeBurnValue, mexInitialValue)
 	mexToken.MintBurnChecks.EthSafeMintValue.Add(mexToken.MintBurnChecks.EthSafeMintValue, mexInitialValue)
 
+	tadaInitialValue := big.NewInt(300000)
+	tadaToken := GenerateTestTADAToken()
+	tadaToken.InitialSupplyValue = tadaInitialValue.String()
+	tadaToken.MintBurnChecks.MvxSafeBurnValue.Add(tadaToken.MintBurnChecks.MvxSafeBurnValue, tadaInitialValue)
+	tadaToken.MintBurnChecks.EthSafeMintValue.Add(tadaToken.MintBurnChecks.EthSafeMintValue, tadaInitialValue)
+
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
 		eurocToken,
 		mexToken,
+		tadaToken,
 	)
 }
 
@@ -331,6 +344,7 @@ func createBadToken() framework.TestTokenParams {
 			MvxChainSpecificTokenTicker:      "ETHBAD",
 			MvxUniversalTokenDisplayName:     "WrappedBAD",
 			MvxChainSpecificTokenDisplayName: "EthereumWrappedBAD",
+			MvxToEthFee:                      big.NewInt(50),
 			ValueToMintOnMvx:                 "10000000000",
 			EthTokenName:                     "ETHTOKEN",
 			EthTokenSymbol:                   "ETHT",
@@ -571,8 +585,12 @@ func processCalledDataParams(buff []byte) (uint64, string) {
 	valBuff := buff[:8]
 	value := binary.BigEndian.Uint64(valBuff)
 
-	buff = buff[8+32+4:] // trim the nonce, address and length of the token
-	token := string(buff)
+	buff = buff[8+32:] // trim the nonce and the address
+	tokenLenBuff := buff[:4]
+	tokenLen := binary.BigEndian.Uint32(tokenLenBuff)
+	buff = buff[4:] // trim the length of the token string
+
+	token := string(buff[:tokenLen])
 
 	return value, token
 }
