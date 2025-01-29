@@ -2,13 +2,11 @@ package framework
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"github.com/multiversx/mx-chain-core-go/data/transaction"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -89,17 +87,4 @@ func (setup *BridgeProxyTestSetup) deployContracts() {
 func (setup *BridgeProxyTestSetup) IssueToken(token TestTokenParams) {
 	setup.AddToken(token.IssueTokenParams)
 	setup.MultiversxHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
-}
-
-// CheckTransactionStatus checks that first transaction has succeeded and the second has failed
-func (setup *BridgeProxyTestSetup) CheckTransactionStatus(hash string, txNonce uint64) {
-	txResult, txStatus := setup.ChainSimulator.GetTransactionResultWithoutGenerateBlocks(setup.Ctx, hash)
-	jsonData, err := json.MarshalIndent(txResult, "", "  ")
-	require.Nil(setup, err)
-
-	if txNonce == 0 {
-		require.Equal(setup, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
-	} else {
-		require.Equal(setup, transaction.TxStatusFail, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
-	}
 }
