@@ -164,6 +164,7 @@ func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context,
 	return instance.GetTransactionResultWithoutGenerateBlocks(ctx, hash)
 }
 
+// GetTransactionResultWithoutGenerateBlocks tries to get a transaction result at the current blockchain state without advancing the block height
 func (instance *chainSimulatorWrapper) GetTransactionResultWithoutGenerateBlocks(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus) {
 	txResult, err := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
 	require.Nil(instance, err)
