@@ -2,10 +2,9 @@ version: "3.9"
 
 services:
  chain-simulator:
-  image: multiversx/chainsimulator:v1.8.6
+  image: multiversx/chainsimulator:v1.8.9
   ports:
     - 8085:8085
   volumes:
     - "../scripts:/docker/scripts"
   entrypoint: "./chainsimulator -log-level *:INFO"
-  #entrypoint: "./chainsimulator -log-level *:DEBUG,process:TRACE,vm:TRACE,gasTrace:TRACE --log-save"
