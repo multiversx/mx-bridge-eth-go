@@ -191,6 +191,9 @@
             ]
         }
     ],
+    "promisesCallbackNames": [
+        "transfer_callback"
+    ],
     "events": [
         {
             "identifier": "transferPerformedEvent",
