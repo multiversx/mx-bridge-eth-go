@@ -461,7 +461,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 		return
 	}
 	if params.IsFrozen {
-		handler.freezeToken(ctx, params)
+		handler.freezeChainSpecificToken(ctx, params)
 	}
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
 	handler.addUniversalTokenToWrapper(ctx, params)
@@ -486,7 +486,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 		return
 	}
 	if params.IsFrozen {
-		handler.freezeToken(ctx, params)
+		handler.freezeUniversalToken(ctx, params)
 	}
 
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
@@ -847,7 +847,7 @@ func (handler *MultiversxHandler) setMaxBridgeAmountOnMultitransfer(ctx context.
 	log.Info("multi-transfer set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status)
 }
 
-func (handler *MultiversxHandler) freezeToken(ctx context.Context, params IssueTokenParams) {
+func (handler *MultiversxHandler) freezeUniversalToken(ctx context.Context, params IssueTokenParams) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	scCallParams := []string{
@@ -864,7 +864,27 @@ func (handler *MultiversxHandler) freezeToken(ctx context.Context, params IssueT
 		freezeFunction,
 		scCallParams)
 
-	log.Info("freeze token tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("freeze universal token tx executed", "hash", hash, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) freezeChainSpecificToken(ctx context.Context, params IssueTokenParams) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+		handler.BobKeys.MvxAddress.Hex(),
+	}
+
+	hash, txResult := handler.scCallAndCheckTx(
+		ctx,
+		handler.OwnerKeys,
+		handler.ESDTSystemContractAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		freezeFunction,
+		scCallParams)
+
+	log.Info("freeze chain specific token tx executed", "hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) getTokenNameFromResult(txResult data.TransactionOnNetwork) string {
