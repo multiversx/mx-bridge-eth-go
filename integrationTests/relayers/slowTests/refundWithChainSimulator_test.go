@@ -877,7 +877,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			usdcToken,
 		)
 	})
-	t.Run("frozen token for receiver should refund", func(t *testing.T) {
+	t.Run("frozen euroc token for receiver should refund", func(t *testing.T) {
 		frozenToken := GenerateTestEUROCToken()
 		frozenToken.IssueTokenParams.IsFrozen = true
 
@@ -967,6 +967,103 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			t,
 			make(chan error),
 			frozenToken,
+		)
+	})
+	t.Run("frozen usdc token for receiver should refund", func(t *testing.T) {
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.IssueTokenParams.IsFrozen = true
+
+		usdcToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(3000),
+				ValueToSendFromMvX:   nil,
+			},
+		}
+		usdcToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-3000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(3000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(3000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-3000 + 2950),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(-3000 + 2950),
+					OnMvx:    big.NewInt(50),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(3000 - 2950),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		}
+		usdcToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(2000 + 1500),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(2000 - 52),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(2000 + 1500),
+			MvxSafeBurnValue:          big.NewInt(2000 - 52),
+
+			EthSafeMintValue: big.NewInt(2000 - 52),
+			EthSafeBurnValue: big.NewInt(2000 + 1500),
+		}
+		usdcToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
+		testRelayersWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
 		)
 	})
 }

@@ -461,6 +461,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 		return
 	}
 	if params.IsFrozen {
+		handler.freezeUniversalToken(ctx, params)
 		handler.freezeChainSpecificToken(ctx, params)
 	}
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
