@@ -108,3 +108,13 @@ type ESDTSupply struct {
 type SpecialBalanceChecks struct {
 	WrapperDeltaLiquidityCheck *big.Int
 }
+
+// EthTransaction encapsulates the details of an Ethereum transaction.
+type EthTransaction struct {
+	From     []byte
+	To       []byte
+	TokenID  string
+	Amount   *big.Int
+	Nonce    uint64
+	CallData []byte
+}

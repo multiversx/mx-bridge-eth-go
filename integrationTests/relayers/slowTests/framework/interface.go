@@ -37,12 +37,14 @@ type ChainSimulatorWrapper interface {
 	ScCallWithoutGenerateBlocks(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) string
 	SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork, transaction.TxStatus)
 	SendTxWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) string
+	SendTxWithNonceWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *MvxAddress, nonce uint64, value string, gasLimit uint64, dataField []byte) string
 	FundWallets(ctx context.Context, wallets []string)
 	GenerateBlocksUntilEpochReached(ctx context.Context, epoch uint32)
 	GenerateBlocks(ctx context.Context, numBlocks int)
 	GetESDTBalance(ctx context.Context, address *MvxAddress, token string) string
 	GetBlockchainTimeStamp(ctx context.Context) uint64
 	GetTransactionResult(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus)
+	GetTransactionResultWithoutGenerateBlocks(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus)
 	ExecuteVMQuery(ctx context.Context, scAddress *MvxAddress, function string, hexParams []string) [][]byte
 	GetESDTSupplyValues(ctx context.Context, token string) ESDTSupply
 }

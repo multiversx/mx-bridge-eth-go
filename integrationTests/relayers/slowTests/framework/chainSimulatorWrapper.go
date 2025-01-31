@@ -161,6 +161,11 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus) {
 	instance.GenerateBlocksUntilTxProcessed(ctx, hash)
 
+	return instance.GetTransactionResultWithoutGenerateBlocks(ctx, hash)
+}
+
+// GetTransactionResultWithoutGenerateBlocks tries to get a transaction result at the current blockchain state without advancing the block height
+func (instance *chainSimulatorWrapper) GetTransactionResultWithoutGenerateBlocks(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus) {
 	txResult, err := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
 	require.Nil(instance, err)
 
@@ -228,14 +233,21 @@ func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []by
 	return hash, txResult, txStatus
 }
 
-// SendTxWithoutGenerateBlocks will build and send a transaction and won't call the generate blocks command
+// SendTxWithoutGenerateBlocks will build and send a transaction without generating blocks
 func (instance *chainSimulatorWrapper) SendTxWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) string {
+	senderPK := instance.getPublicKey(senderSK)
+	nonce, err := instance.getNonce(ctx, senderPK)
+	require.Nil(instance, err)
+
+	return instance.SendTxWithNonceWithoutGenerateBlocks(ctx, senderSK, receiver, nonce, value, gasLimit, dataField)
+}
+
+// SendTxWithNonceWithoutGenerateBlocks will build a transaction with given nonce and send it without generating blocks
+func (instance *chainSimulatorWrapper) SendTxWithNonceWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *MvxAddress, nonce uint64, value string, gasLimit uint64, dataField []byte) string {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	require.Nil(instance, err)
 
 	senderPK := instance.getPublicKey(senderSK)
-	nonce, err := instance.getNonce(ctx, senderPK)
-	require.Nil(instance, err)
 
 	ftx := &transaction.FrontendTransaction{
 		Nonce:    nonce,
