@@ -462,7 +462,6 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	}
 	if params.IsFrozen {
 		handler.freezeUniversalToken(ctx, params)
-		handler.freezeChainSpecificToken(ctx, params)
 	}
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
 	handler.addUniversalTokenToWrapper(ctx, params)
@@ -866,26 +865,6 @@ func (handler *MultiversxHandler) freezeUniversalToken(ctx context.Context, para
 		scCallParams)
 
 	log.Info("freeze universal token tx executed", "hash", hash, "status", txResult.Status)
-}
-
-func (handler *MultiversxHandler) freezeChainSpecificToken(ctx context.Context, params IssueTokenParams) {
-	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
-
-	scCallParams := []string{
-		hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
-		handler.BobKeys.MvxAddress.Hex(),
-	}
-
-	hash, txResult := handler.scCallAndCheckTx(
-		ctx,
-		handler.OwnerKeys,
-		handler.ESDTSystemContractAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		freezeFunction,
-		scCallParams)
-
-	log.Info("freeze chain specific token tx executed", "hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) getTokenNameFromResult(txResult data.TransactionOnNetwork) string {

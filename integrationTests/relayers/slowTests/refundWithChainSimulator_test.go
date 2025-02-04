@@ -877,7 +877,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			usdcToken,
 		)
 	})
-	t.Run("frozen euroc token for receiver should refund", func(t *testing.T) {
+	t.Run("frozen EUROC token for receiver should refund", func(t *testing.T) {
 		frozenToken := GenerateTestEUROCToken()
 		frozenToken.IssueTokenParams.IsFrozen = true
 
@@ -969,7 +969,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			frozenToken,
 		)
 	})
-	t.Run("frozen usdc token for receiver should refund", func(t *testing.T) {
+	t.Run("frozen USDC token for receiver should refund", func(t *testing.T) {
 		usdcToken := GenerateTestUSDCToken()
 		usdcToken.IssueTokenParams.IsFrozen = true
 
@@ -1029,7 +1029,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 					MvxToken: framework.UniversalToken,
 				},
 				framework.SafeSC: {
-					OnEth:    big.NewInt(-3000 + 2950),
+					OnEth:    big.NewInt(3000 - 2950),
 					OnMvx:    big.NewInt(50),
 					MvxToken: framework.ChainSpecificToken,
 				},
@@ -1040,21 +1040,21 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 				},
 				framework.WrapperSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(3000 - 2950),
+					OnMvx:    big.NewInt(3000 - 3000),
 					MvxToken: framework.ChainSpecificToken,
 				},
 			},
 		}
 		usdcToken.MintBurnChecks = &framework.MintBurnBalances{
-			MvxTotalUniversalMint:     big.NewInt(2000 + 1500),
-			MvxTotalChainSpecificMint: big.NewInt(0),
-			MvxTotalUniversalBurn:     big.NewInt(2000 - 52),
-			MvxTotalChainSpecificBurn: big.NewInt(0),
-			MvxSafeMintValue:          big.NewInt(2000 + 1500),
-			MvxSafeBurnValue:          big.NewInt(2000 - 52),
+			MvxTotalUniversalMint:     big.NewInt(3000),
+			MvxTotalChainSpecificMint: big.NewInt(3000),
+			MvxTotalUniversalBurn:     big.NewInt(3000),
+			MvxTotalChainSpecificBurn: big.NewInt(3000 - 50),
+			MvxSafeMintValue:          big.NewInt(3000),
+			MvxSafeBurnValue:          big.NewInt(3000 - 50),
 
-			EthSafeMintValue: big.NewInt(2000 - 52),
-			EthSafeBurnValue: big.NewInt(2000 + 1500),
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
 		}
 		usdcToken.SpecialChecks = &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
