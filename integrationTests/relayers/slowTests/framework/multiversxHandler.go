@@ -461,7 +461,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 		return
 	}
 	if params.IsFrozen {
-		handler.freezeUniversalToken(ctx, params)
+		handler.freezeToken(ctx, params)
 	}
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
 	handler.addUniversalTokenToWrapper(ctx, params)
@@ -486,7 +486,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 		return
 	}
 	if params.IsFrozen {
-		handler.freezeUniversalToken(ctx, params)
+		handler.freezeToken(ctx, params)
 	}
 
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
@@ -847,12 +847,18 @@ func (handler *MultiversxHandler) setMaxBridgeAmountOnMultitransfer(ctx context.
 	log.Info("multi-transfer set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status)
 }
 
-func (handler *MultiversxHandler) freezeUniversalToken(ctx context.Context, params IssueTokenParams) {
+func (handler *MultiversxHandler) freezeToken(ctx context.Context, params IssueTokenParams) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
+	keyHolderToFreeze := handler.BobKeys
+	// If the bridge starts from Mvx, Charlie will receive the Mvx tokens
+	if params.IsNativeOnMvX {
+		keyHolderToFreeze = handler.CharlieKeys
+	}
 
 	scCallParams := []string{
 		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
-		handler.BobKeys.MvxAddress.Hex(),
+		keyHolderToFreeze.MvxAddress.Hex(),
 	}
 
 	hash, txResult := handler.scCallAndCheckTx(
