@@ -1051,6 +1051,90 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		}
 
+		tadaToken := GenerateTestTADAToken()
+		tadaToken.IssueTokenParams.IsFrozen = true
+		tadaToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(700),
+				ValueToSendFromMvX:   big.NewInt(4700),
+			},
+		}
+		tadaToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-4700),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(4700 - 57),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(57),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-4700),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-4700),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(4700 - 57 - 700 + 700 - 57),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(57 + 57),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-4700 + 700 - 700),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		}
+		tadaToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(700),
+			MvxTotalChainSpecificMint: big.NewInt(700),
+			MvxTotalUniversalBurn:     big.NewInt(4700 + 700),
+			MvxTotalChainSpecificBurn: big.NewInt(4700 - 57 + 700 - 57),
+			MvxSafeMintValue:          big.NewInt(700),
+			MvxSafeBurnValue:          big.NewInt(4700 - 57 + 700 - 57),
+
+			EthSafeMintValue: big.NewInt(4700 - 57 + 700 - 57),
+			EthSafeBurnValue: big.NewInt(700),
+		}
+		tadaToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(-4700),
+		}
+
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.IssueTokenParams.IsFrozen = true
 		eurocToken.TestOperations = []framework.TokenOperations{
@@ -1224,6 +1308,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			make(chan error),
 			usdcToken,
 			memeToken,
+			tadaToken,
 			eurocToken,
 			mexToken,
 		)
