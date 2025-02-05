@@ -877,10 +877,98 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			usdcToken,
 		)
 	})
-	t.Run("frozen meme token for receiver should refund", func(t *testing.T) {
+	t.Run("frozen tokens for receiver should refund", func(t *testing.T) {
+		usdcToken := GenerateTestUSDCToken()
+		usdcToken.IssueTokenParams.IsFrozen = true
+		usdcToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(3000),
+				ValueToSendFromMvX:   nil,
+			},
+		}
+		usdcToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-3000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(3000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(3000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-3000 + 2950),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(3000 - 2950),
+					OnMvx:    big.NewInt(50),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		}
+		usdcToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(3000),
+			MvxTotalChainSpecificMint: big.NewInt(3000),
+			MvxTotalUniversalBurn:     big.NewInt(3000),
+			MvxTotalChainSpecificBurn: big.NewInt(3000 - 50),
+			MvxSafeMintValue:          big.NewInt(3000),
+			MvxSafeBurnValue:          big.NewInt(3000 - 50),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		}
+		usdcToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
 		memeToken := GenerateTestMEMEToken()
 		memeToken.IssueTokenParams.IsFrozen = true
-
 		memeToken.TestOperations = []framework.TokenOperations{
 			{
 				ValueToTransferToMvx: big.NewInt(1300),
@@ -963,16 +1051,8 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		}
 
-		testRelayersWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			memeToken,
-		)
-	})
-	t.Run("frozen euroc token for receiver should refund", func(t *testing.T) {
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.IssueTokenParams.IsFrozen = true
-
 		eurocToken.TestOperations = []framework.TokenOperations{
 			{
 				ValueToTransferToMvx: big.NewInt(2000),
@@ -1055,16 +1135,8 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		}
 
-		testRelayersWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			eurocToken,
-		)
-	})
-	t.Run("frozen mex token for receiver should refund", func(t *testing.T) {
 		mexToken := GenerateTestMEXToken()
 		mexToken.IssueTokenParams.IsFrozen = true
-
 		mexToken.TestOperations = []framework.TokenOperations{
 			{
 				ValueToTransferToMvx: big.NewInt(6500),
@@ -1150,6 +1222,9 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		testRelayersWithChainSimulatorAndTokensAndRefund(
 			t,
 			make(chan error),
+			usdcToken,
+			memeToken,
+			eurocToken,
 			mexToken,
 		)
 	})
