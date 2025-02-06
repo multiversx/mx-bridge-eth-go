@@ -52,7 +52,7 @@ func TestConfigs(t *testing.T) {
 				ProposeStatusBase:      10000000,
 				ProposeStatusForEach:   7000000,
 				PerformActionBase:      40000000,
-				PerformActionForEach:   11000000,
+				PerformActionForEach:   15000000,
 				ScCallPerByte:          10000,
 				ScCallPerformForEach:   10000000,
 				AbsoluteMaxGasLimit:    500000000,
@@ -274,7 +274,7 @@ func TestConfigs(t *testing.T) {
         ProposeStatusBase = 10000000
         ProposeStatusForEach = 7000000
         PerformActionBase = 40000000
-        PerformActionForEach = 11000000
+        PerformActionForEach = 15000000
         ScCallPerByte = 10000 # 1500 tx data field + the rest for the actual storage in the contract
         ScCallPerformForEach = 10000000
         AbsoluteMaxGasLimit = 500000000 # absolute maximum gas limit for a sending transaction

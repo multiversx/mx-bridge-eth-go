@@ -90,7 +90,7 @@ func NewBridgeComponents(
 			ProposeStatusBase:      10000000,
 			ProposeStatusForEach:   7000000,
 			PerformActionBase:      40000000,
-			PerformActionForEach:   11000000,
+			PerformActionForEach:   15000000,
 			ScCallPerByte:          10000,
 			ScCallPerformForEach:   10000000,
 			AbsoluteMaxGasLimit:    600000000,
