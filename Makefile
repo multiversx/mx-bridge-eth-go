@@ -17,9 +17,49 @@ test-coverage:
 	@echo "Running unit tests"
 	CURRENT_DIRECTORY=$(CURRENT_DIRECTORY) go test -cover -coverprofile=coverage.txt -covermode=atomic -v ${TESTS_TO_RUN}
 
-slow-tests: clean-test
+integration-tests: clean-test
 	@docker compose -f docker/docker-compose.yml build
-	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/... -v -timeout 60m -tags slow
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/... -v -timeout 20m -tags integration
+	@docker compose -f docker/docker-compose.yml down -v
+
+slow-tests-01: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/01happyFlowTests/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
+slow-tests-02: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/02setupErrorTests/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
+slow-tests-03: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/03edgeCaseTests/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
+slow-tests-04: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/04refundTestsWithMalformedSCData/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
+slow-tests-05: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/05refundTestsWrongFunction/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
+slow-tests-06: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/06refundTestsWrongGasLimit/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
+slow-tests-07: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/07refundTestsWrongParams/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
+slow-tests-08: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/08refundTestsOther/... -v -timeout 20m -tags slow
 	@docker compose -f docker/docker-compose.yml down -v
 
 lint-install:

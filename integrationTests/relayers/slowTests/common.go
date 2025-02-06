@@ -1,5 +1,3 @@
-//go:build slow
-
 package slowTests
 
 import (
@@ -54,7 +52,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(1000),
 				ValueToSendFromMvX:   nil,
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(20),
@@ -208,7 +206,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(1000),
 				ValueToSendFromMvX:   big.NewInt(2000),
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 			{
 				ValueToTransferToMvx: nil,
@@ -352,7 +350,7 @@ func GenerateTestTADAToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(2000),
 				ValueToSendFromMvX:   big.NewInt(4000),
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 			{
 				ValueToTransferToMvx: nil,
@@ -503,7 +501,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(1010),
 				ValueToSendFromMvX:   nil,
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(24),
@@ -651,7 +649,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(1010),
 				ValueToSendFromMvX:   big.NewInt(2010),
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 			{
 				ValueToTransferToMvx: big.NewInt(10),
@@ -794,7 +792,7 @@ func GenerateUnlistedTokenFromEth() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: big.NewInt(1010),
 				ValueToSendFromMvX:   nil,
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 				IsFaultyDeposit:      true,
 			},
 		},
@@ -902,7 +900,7 @@ func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 			{
 				ValueToTransferToMvx: nil,
 				ValueToSendFromMvX:   big.NewInt(2010),
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
+				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
 			},
 		},
 		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
@@ -978,7 +976,8 @@ func GenerateUnlistedTokenFromMvx() framework.TestTokenParams {
 	}
 }
 
-func createScCallData(function string, gasLimit uint64, args ...string) []byte {
+// CreateScCallData creates a valid SC call data byte slice
+func CreateScCallData(function string, gasLimit uint64, args ...string) []byte {
 	codec := parsers.MultiversxCodec{}
 	callData := bridgeCore.CallData{
 		Type:      bridgeCore.DataPresentProtocolMarker,
