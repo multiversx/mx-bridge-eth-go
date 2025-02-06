@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Integration-tests
+    name: Semi-integration-tests
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go 1.x
@@ -23,5 +23,5 @@ jobs:
       - name: Get dependencies
         run: |
           go get -v -t -d ./...
-      - name: Integration tests
-        run: make integration-tests
+      - name: Semi integration tests
+        run: make semi-integration-tests
