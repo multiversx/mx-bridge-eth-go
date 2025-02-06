@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	relayerETHKeyPathFormat = "../testdata/ethereum%d.sk"
+	relayerETHKeyPathFormat = "testdata/ethereum%d.sk"
 )
 
 // BridgeComponents holds and manages the relayers components
@@ -59,7 +59,7 @@ func NewBridgeComponents(
 
 	for i := 0; i < numRelayers; i++ {
 		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir, gasStationURL)
-		generalConfigs.Eth.PrivateKeyFile = fmt.Sprintf(relayerETHKeyPathFormat, i)
+		generalConfigs.Eth.PrivateKeyFile = normalizePathToRelayersTests(fmt.Sprintf(relayerETHKeyPathFormat, i))
 		argsBridgeComponents := factory.ArgsEthereumToMultiversXBridge{
 			Configs: config.Configs{
 				GeneralConfig:   generalConfigs,

@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Slow
+    name: Slow-tests-2
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go 1.x
@@ -23,5 +23,5 @@ jobs:
       - name: Get dependencies
         run: |
           go get -v -t -d ./...
-      - name: Slow tests
-        run: make slow-tests
+      - name: Slow tests 02
+        run: make slow-tests-02

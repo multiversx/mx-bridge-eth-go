@@ -2,6 +2,10 @@ package framework
 
 import (
 	"math/big"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -30,3 +34,12 @@ var (
 	addressPubkeyConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, "erd")
 	zeroValueBigInt           = big.NewInt(0)
 )
+
+func normalizePathToRelayersTests(partialPath string) string {
+	wd, _ := os.Getwd()
+	for !strings.HasSuffix(wd, "mx-bridge-eth-go") {
+		wd = filepath.Dir(wd)
+	}
+
+	return path.Join(wd, "integrationTests", "relayers", partialPath)
+}

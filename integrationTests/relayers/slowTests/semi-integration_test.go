@@ -1,4 +1,4 @@
-//go:build slow
+//go:build integration
 
 package slowTests
 
@@ -30,7 +30,7 @@ func TestBridgeProxyExecuteTwiceSameDeposit(t *testing.T) {
 		TokenID:  token.MvxUniversalTokenTicker,
 		Amount:   big.NewInt(100),
 		Nonce:    1,
-		CallData: prependLenAndDataMarker(createScCallData("callPayable", 500000000)),
+		CallData: prependLenAndDataMarker(CreateScCallData("callPayable", 500000000)),
 	}
 
 	ethTx2 := framework.EthTransaction{
@@ -39,7 +39,7 @@ func TestBridgeProxyExecuteTwiceSameDeposit(t *testing.T) {
 		TokenID:  token.MvxUniversalTokenTicker,
 		Amount:   big.NewInt(2000),
 		Nonce:    2,
-		CallData: prependLenAndDataMarker(createScCallData("callPayable", 500000000)),
+		CallData: prependLenAndDataMarker(CreateScCallData("callPayable", 500000000)),
 	}
 
 	// deposit txs in bridge proxy

@@ -2,6 +2,7 @@ package framework
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"os"
@@ -17,6 +18,8 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/executors/multiversx/module"
 	"github.com/multiversx/mx-sdk-go/blockchain"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-sdk-go/data"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -664,6 +667,60 @@ func (setup *TestSetup) executeSpecialChecks(token TestTokenParams) {
 	expectedValue := big.NewInt(0).Add(initialBalance, token.SpecialChecks.WrapperDeltaLiquidityCheck)
 
 	require.Equal(setup, expectedValue.String(), actualValue.String(), fmt.Sprintf("wrapper contract, token: %s", tokenData.MvxChainSpecificToken))
+}
+
+// TestCallPayableWithParamsWasCalled will test that the test SC was called
+func (setup *TestSetup) TestCallPayableWithParamsWasCalled(value uint64, tokens ...string) {
+	if len(tokens) == 0 {
+		return
+	}
+
+	universalTokens := make([]string, 0, len(tokens))
+	for _, identifier := range tokens {
+		tkData := setup.TokensRegistry.GetTokenData(identifier)
+		universalTokens = append(universalTokens, tkData.MvxUniversalToken)
+	}
+
+	vmRequest := &data.VmValueRequest{
+		Address:  setup.MultiversxHandler.CalleeScAddress.Bech32(),
+		FuncName: "getCalledDataParams",
+	}
+
+	vmResponse, err := setup.ChainSimulator.Proxy().ExecuteVMQuery(context.Background(), vmRequest)
+	require.Nil(setup, err)
+
+	returnedData := vmResponse.Data.ReturnData
+	require.Equal(setup, len(tokens), len(returnedData))
+
+	mapUniversalTokens := make(map[string]int)
+	for _, tokenIdentifier := range universalTokens {
+		mapUniversalTokens[tokenIdentifier] = 0
+	}
+
+	for _, buff := range returnedData {
+		parsedValue, parsedToken := processCalledDataParams(buff)
+		assert.Equal(setup, value, parsedValue)
+		mapUniversalTokens[parsedToken]++
+	}
+
+	assert.Equal(setup, len(tokens), len(mapUniversalTokens))
+	for _, numTokens := range mapUniversalTokens {
+		assert.Equal(setup, 1, numTokens)
+	}
+}
+
+func processCalledDataParams(buff []byte) (uint64, string) {
+	valBuff := buff[:8]
+	value := binary.BigEndian.Uint64(valBuff)
+
+	buff = buff[8+32:] // trim the nonce and the address
+	tokenLenBuff := buff[:4]
+	tokenLen := binary.BigEndian.Uint32(tokenLenBuff)
+	buff = buff[4:] // trim the length of the token string
+
+	token := string(buff[:tokenLen])
+
+	return value, token
 }
 
 // Close will close the test subcomponents

@@ -1,5 +1,3 @@
-//go:build slow
-
 package slowTests
 
 import (
@@ -9,57 +7,61 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 )
 
-type flowType string
+// FlowType defines the flow type
+type FlowType string
 
+// definition of the defined test flows
 const (
-	startFromEthereumFlow   flowType = "start from Ethereum"
-	startFromMultiversXFlow flowType = "start from MultiversX"
+	StartFromEthereumFlow   FlowType = "start from Ethereum"
+	StartFromMultiversXFlow FlowType = "start from MultiversX"
 )
 
-type testFlow struct {
+// TestFlow defines the struct used in a test flow
+type TestFlow struct {
 	testing.TB
-	flowType
-	setup                        *framework.TestSetup
-	firstHalfBridgeDone          bool
-	secondHalfBridgeDone         bool
-	tokens                       []framework.TestTokenParams
-	messageAfterFirstHalfBridge  string
-	messageAfterSecondHalfBridge string
-	handlerAfterFirstHalfBridge  func(flow *testFlow)
-	handlerToStartFirstBridge    func(flow *testFlow)
+	FlowType
+	Setup                        *framework.TestSetup
+	FirstHalfBridgeDone          bool
+	SecondHalfBridgeDone         bool
+	Tokens                       []framework.TestTokenParams
+	MessageAfterFirstHalfBridge  string
+	MessageAfterSecondHalfBridge string
+	HandlerAfterFirstHalfBridge  func(flow *TestFlow)
+	HandlerToStartFirstBridge    func(flow *TestFlow)
 }
 
-func (flow *testFlow) process() (finished bool) {
-	if len(flow.tokens) == 0 {
+// Process is the flow's main process function
+func (flow *TestFlow) Process() (finished bool) {
+	if len(flow.Tokens) == 0 {
 		return true
 	}
-	if flow.firstHalfBridgeDone && flow.secondHalfBridgeDone {
+	if flow.FirstHalfBridgeDone && flow.SecondHalfBridgeDone {
 		return true
 	}
 
-	if !flow.firstHalfBridgeDone {
-		transferDoneForFirstHalf := flow.setup.AreAllTransfersCompleted(framework.FirstHalfBridge, flow.tokens...)
+	if !flow.FirstHalfBridgeDone {
+		transferDoneForFirstHalf := flow.Setup.AreAllTransfersCompleted(framework.FirstHalfBridge, flow.Tokens...)
 		if transferDoneForFirstHalf {
-			flow.firstHalfBridgeDone = true
-			log.Info(fmt.Sprintf(framework.LogStepMarker, flow.messageAfterFirstHalfBridge))
+			flow.FirstHalfBridgeDone = true
+			log.Info(fmt.Sprintf(framework.LogStepMarker, flow.MessageAfterFirstHalfBridge))
 
-			flow.handlerAfterFirstHalfBridge(flow)
+			flow.HandlerAfterFirstHalfBridge(flow)
 		}
 
 		return false
 	}
 
-	if flow.setup.MultiversxHandler.HasRefundBatch(flow.setup.Ctx) {
-		flow.setup.MultiversxHandler.MoveRefundBatchToSafe(flow.setup.Ctx)
+	if flow.Setup.MultiversxHandler.HasRefundBatch(flow.Setup.Ctx) {
+		flow.Setup.MultiversxHandler.MoveRefundBatchToSafe(flow.Setup.Ctx)
 	}
 
-	transferDoneForSecondHalf := flow.setup.AreAllTransfersCompleted(framework.SecondHalfBridge, flow.tokens...)
-	if !flow.secondHalfBridgeDone && transferDoneForSecondHalf {
-		flow.setup.CheckCorrectnessOnMintBurnTokens(flow.tokens...)
-		flow.setup.ExecuteSpecialChecks(flow.tokens...)
+	transferDoneForSecondHalf := flow.Setup.AreAllTransfersCompleted(framework.SecondHalfBridge, flow.Tokens...)
+	if !flow.SecondHalfBridgeDone && transferDoneForSecondHalf {
+		flow.Setup.CheckCorrectnessOnMintBurnTokens(flow.Tokens...)
+		flow.Setup.ExecuteSpecialChecks(flow.Tokens...)
 
-		flow.secondHalfBridgeDone = true
-		log.Info(fmt.Sprintf(framework.LogStepMarker, flow.messageAfterSecondHalfBridge))
+		flow.SecondHalfBridgeDone = true
+		log.Info(fmt.Sprintf(framework.LogStepMarker, flow.MessageAfterSecondHalfBridge))
 
 		return true
 	}
