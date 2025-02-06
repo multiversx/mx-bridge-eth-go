@@ -915,7 +915,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 				},
 				framework.WrapperSC: {
 					OnEth:    big.NewInt(0),
-					OnMvx:    big.NewInt(3000),
+					OnMvx:    big.NewInt(0),
 					MvxToken: framework.ChainSpecificToken,
 				},
 			},
