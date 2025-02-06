@@ -15,6 +15,7 @@ type IssueTokenParams struct {
 	AbstractTokenIdentifier string
 	PreventWhitelist        bool
 	MultipleSpendings       *big.Int
+	TransferRoleParams
 
 	// MultiversX
 	NumOfDecimalsUniversal           int
@@ -40,6 +41,12 @@ type IssueTokenParams struct {
 // InitialSupplyParams represents the initial supply parameters
 type InitialSupplyParams struct {
 	InitialSupplyValue string
+}
+
+// TransferRoleParams represents the settings for a test with transfer role token
+type TransferRoleParams struct {
+	HasTransferRole         bool
+	GrantRoleToAllAddresses bool
 }
 
 // TokenOperations defines a token operation in a test. Usually this can define one or to deposits in a batch
