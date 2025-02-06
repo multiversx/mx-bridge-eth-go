@@ -38,14 +38,14 @@ const (
 	generalSCCallGasLimit    = 50000000  // 50 million
 	gasLimitPerDataByte      = 1500
 
-	aggregatorContractPath    = "testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
-	wrapperContractPath       = "testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
-	multiTransferContractPath = "testdata/contracts/mvx/multi-transfer-esdt.wasm"
-	safeContractPath          = "testdata/contracts/mvx/esdt-safe.wasm"
-	multisigContractPath      = "testdata/contracts/mvx/multisig.wasm"
-	bridgeProxyContractPath   = "testdata/contracts/mvx/bridge-proxy.wasm"
-	testCallerContractPath    = "testdata/contracts/mvx/test-caller.wasm"
-	testHelperContractPath    = "testdata/contracts/mvx/helper-contract.wasm"
+	aggregatorContractPath    = "slowTests/testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
+	wrapperContractPath       = "slowTests/testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
+	multiTransferContractPath = "slowTests/testdata/contracts/mvx/multi-transfer-esdt.wasm"
+	safeContractPath          = "slowTests/testdata/contracts/mvx/esdt-safe.wasm"
+	multisigContractPath      = "slowTests/testdata/contracts/mvx/multisig.wasm"
+	bridgeProxyContractPath   = "slowTests/testdata/contracts/mvx/bridge-proxy.wasm"
+	testCallerContractPath    = "slowTests/testdata/contracts/mvx/test-caller.wasm"
+	testHelperContractPath    = "slowTests/testdata/contracts/mvx/helper-contract.wasm"
 
 	changeOwnerAddressFunction                           = "ChangeOwnerAddress"
 	moveRefundBatchToSafeFromChildContractFunction       = "moveRefundBatchToSafeFromChildContract"
@@ -158,7 +158,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	hash := ""
 	handler.AggregatorAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		aggregatorContractPath,
+		normalizePathToRelayersTests(aggregatorContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		aggregatorDeployParams,
@@ -169,7 +169,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy wrapper
 	handler.WrapperAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		wrapperContractPath,
+		normalizePathToRelayersTests(wrapperContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
@@ -180,7 +180,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy multi-transfer
 	handler.MultiTransferAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		multiTransferContractPath,
+		normalizePathToRelayersTests(multiTransferContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
@@ -191,7 +191,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy safe
 	handler.SafeAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		safeContractPath,
+		normalizePathToRelayersTests(safeContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{
@@ -213,7 +213,7 @@ func (handler *MultiversxHandler) DeployBridgeProxy(ctx context.Context) {
 	hash := ""
 	handler.ScProxyAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		bridgeProxyContractPath,
+		normalizePathToRelayersTests(bridgeProxyContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		make([]string, 0),
@@ -242,7 +242,7 @@ func (handler *MultiversxHandler) DeployMultisig(ctx context.Context) {
 	hash := ""
 	handler.MultisigAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		multisigContractPath,
+		normalizePathToRelayersTests(multisigContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		params,
@@ -256,7 +256,7 @@ func (handler *MultiversxHandler) DeployTestCaller(ctx context.Context) {
 	hash := ""
 	handler.CalleeScAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		testCallerContractPath,
+		normalizePathToRelayersTests(testCallerContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
@@ -1188,7 +1188,7 @@ func (handler *MultiversxHandler) DeployTestHelperContract(ctx context.Context) 
 	hash := ""
 	handler.TestHelperAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		testHelperContractPath,
+		normalizePathToRelayersTests(testHelperContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		make([]string, 0),

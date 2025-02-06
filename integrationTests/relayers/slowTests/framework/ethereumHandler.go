@@ -29,16 +29,16 @@ const (
 	ethMinAmountAllowedToTransfer = 25
 	ethMaxAmountAllowedToTransfer = 1000000
 
-	erc20SafeABI          = "testdata/contracts/eth/ERC20Safe.abi.json"
-	erc20SafeBytecode     = "testdata/contracts/eth/ERC20Safe.hex"
-	bridgeABI             = "testdata/contracts/eth/Bridge.abi.json"
-	bridgeBytecode        = "testdata/contracts/eth/Bridge.hex"
-	genericERC20ABI       = "testdata/contracts/eth/GenericERC20.abi.json"
-	genericERC20Bytecode  = "testdata/contracts/eth/GenericERC20.hex"
-	mintBurnERC20ABI      = "testdata/contracts/eth/MintBurnERC20.abi.json"
-	mintBurnERC20Bytecode = "testdata/contracts/eth/MintBurnERC20.hex"
-	proxyABI              = "testdata/contracts/eth/Proxy.abi.json"
-	proxyBytecode         = "testdata/contracts/eth/Proxy.hex"
+	erc20SafeABI          = "slowTests/testdata/contracts/eth/ERC20Safe.abi.json"
+	erc20SafeBytecode     = "slowTests/testdata/contracts/eth/ERC20Safe.hex"
+	bridgeABI             = "slowTests/testdata/contracts/eth/Bridge.abi.json"
+	bridgeBytecode        = "slowTests/testdata/contracts/eth/Bridge.hex"
+	genericERC20ABI       = "slowTests/testdata/contracts/eth/GenericERC20.abi.json"
+	genericERC20Bytecode  = "slowTests/testdata/contracts/eth/GenericERC20.hex"
+	mintBurnERC20ABI      = "slowTests/testdata/contracts/eth/MintBurnERC20.abi.json"
+	mintBurnERC20Bytecode = "slowTests/testdata/contracts/eth/MintBurnERC20.hex"
+	proxyABI              = "slowTests/testdata/contracts/eth/Proxy.abi.json"
+	proxyBytecode         = "slowTests/testdata/contracts/eth/Proxy.hex"
 
 	proxyInitializeFunction = "initialize"
 )
@@ -102,7 +102,7 @@ func NewEthereumHandler(
 // DeployContracts will deploy all required contracts on Ethereum side
 func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 	// deploy safe
-	handler.SafeAddress = handler.DeployUpgradeableContract(ctx, erc20SafeABI, erc20SafeBytecode)
+	handler.SafeAddress = handler.DeployUpgradeableContract(ctx, normalizePathToRelayersTests(erc20SafeABI), normalizePathToRelayersTests(erc20SafeBytecode))
 	ethSafeContract, err := contract.NewERC20Safe(handler.SafeAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 	handler.SafeContract = ethSafeContract
@@ -113,7 +113,7 @@ func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 		ethRelayersAddresses = append(ethRelayersAddresses, relayerKeys.EthAddress)
 	}
 	quorumInt, _ := big.NewInt(0).SetString(handler.Quorum, 10)
-	handler.BridgeAddress = handler.DeployUpgradeableContract(ctx, bridgeABI, bridgeBytecode, ethRelayersAddresses, quorumInt, handler.SafeAddress)
+	handler.BridgeAddress = handler.DeployUpgradeableContract(ctx, normalizePathToRelayersTests(bridgeABI), normalizePathToRelayersTests(bridgeBytecode), ethRelayersAddresses, quorumInt, handler.SafeAddress)
 	handler.BridgeContract, err = contract.NewBridge(handler.BridgeAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 
@@ -194,7 +194,7 @@ func (handler *EthereumHandler) DeployUpgradeableContract(
 		handler.OwnerKeys.EthAddress, // make the owner of the logic contract the admin for the proxy
 		packedParams,
 	}
-	proxyAddress := handler.DeployContract(ctx, proxyABI, proxyBytecode, proxyParams...)
+	proxyAddress := handler.DeployContract(ctx, normalizePathToRelayersTests(proxyABI), normalizePathToRelayersTests(proxyBytecode), proxyParams...)
 
 	log.Info("deployed proxy contract", "address", proxyAddress.Hex())
 
@@ -312,8 +312,8 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 	if params.IsMintBurnOnEth {
 		ethMintBurnAddress := handler.DeployUpgradeableContract(
 			ctx,
-			mintBurnERC20ABI,
-			mintBurnERC20Bytecode,
+			normalizePathToRelayersTests(mintBurnERC20ABI),
+			normalizePathToRelayersTests(mintBurnERC20Bytecode),
 			params.EthTokenName,
 			params.EthTokenSymbol,
 			params.NumOfDecimalsChainSpecific,
@@ -357,8 +357,8 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 	// deploy generic eth token
 	ethGenericTokenAddress := handler.DeployContract(
 		ctx,
-		genericERC20ABI,
-		genericERC20Bytecode,
+		normalizePathToRelayersTests(genericERC20ABI),
+		normalizePathToRelayersTests(genericERC20Bytecode),
 		params.EthTokenName,
 		params.EthTokenSymbol,
 		params.NumOfDecimalsChainSpecific,
