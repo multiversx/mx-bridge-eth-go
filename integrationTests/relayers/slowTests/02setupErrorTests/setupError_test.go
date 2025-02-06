@@ -21,14 +21,6 @@ import (
 const projectedShardForTestKeys = byte(2)
 
 func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
-	t.Run("non-whitelisted tokens", func(t *testing.T) {
-		_ = slowTests.NewTestEnvironmentWithChainSimulatorAndTokens(
-			t,
-			make(chan error),
-			slowTests.GenerateUnlistedTokenFromEth(),
-			slowTests.GenerateUnlistedTokenFromMvx(),
-		)
-	})
 	t.Run("bad setup", func(t *testing.T) {
 		t.Run("isNativeOnEth = true, isMintBurnOnEth = false, isNativeOnMvX = true, isMintBurnOnMvX = false", func(t *testing.T) {
 			badToken := createBadToken()
@@ -72,6 +64,14 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 
 			testEthContractsShouldError(t, badToken)
 		})
+	})
+	t.Run("non-whitelisted tokens", func(t *testing.T) {
+		_ = slowTests.NewTestEnvironmentWithChainSimulatorAndTokens(
+			t,
+			make(chan error),
+			slowTests.GenerateUnlistedTokenFromEth(),
+			slowTests.GenerateUnlistedTokenFromMvx(),
+		)
 	})
 }
 
