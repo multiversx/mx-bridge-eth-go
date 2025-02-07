@@ -121,28 +121,28 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 }
 
 func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
-	startsFromEthFlow := &testFlow{
+	startsFromEthFlow := &TestFlow{
 		TB:                           tb,
-		tokens:                       tokens,
-		messageAfterFirstHalfBridge:  "Ethereum->MultiversX transfer finished, now sending back to Ethereum & another round from Ethereum...",
-		messageAfterSecondHalfBridge: "MultiversX<->Ethereum from Ethereum transfers done",
+		Tokens:                       tokens,
+		MessageAfterFirstHalfBridge:  "Ethereum->MultiversX transfer finished, now sending back to Ethereum & another round from Ethereum...",
+		MessageAfterSecondHalfBridge: "MultiversX<->Ethereum from Ethereum transfers done",
 	}
-	startsFromEthFlow.handlerAfterFirstHalfBridge = func(flow *testFlow) {
-		flow.setup.SendFromMultiversxToEthereum(flow.setup.BobKeys, flow.setup.AliceKeys, flow.tokens...)
-		flow.setup.SendFromEthereumToMultiversX(flow.setup.AliceKeys, flow.setup.BobKeys, flow.setup.MultiversxHandler.CalleeScAddress, flow.tokens...)
+	startsFromEthFlow.HandlerAfterFirstHalfBridge = func(flow *TestFlow) {
+		flow.Setup.SendFromMultiversxToEthereum(flow.Setup.BobKeys, flow.Setup.AliceKeys, flow.Tokens...)
+		flow.Setup.SendFromEthereumToMultiversX(flow.Setup.AliceKeys, flow.Setup.BobKeys, flow.Setup.MultiversxHandler.CalleeScAddress, flow.Tokens...)
 	}
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
-		startsFromEthFlow.setup = setup
+		startsFromEthFlow.Setup = setup
 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
-		setup.CreateBatchOnEthereum(setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.tokens...)
+		setup.CreateBatchOnEthereum(setup.MultiversxHandler.CalleeScAddress, startsFromEthFlow.Tokens...)
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
-		if startsFromEthFlow.process() {
-			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromEthFlow.tokens...)
+		if startsFromEthFlow.Process() {
+			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromEthFlow.Tokens...)
 
 			return true
 		}
@@ -154,7 +154,7 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 		return false
 	}
 
-	return testRelayersWithChainSimulator(tb,
+	return NewTestEnvironmentWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
@@ -168,7 +168,7 @@ func TestRelayerShouldExecuteMultipleSwapsWithLargeData(t *testing.T) {
 	maxLimitWithForScCalls := 984
 	buff := make([]byte, maxLimitWithForScCalls)
 	_, _ = rand.Read(buff)
-	scCallData := createScCallData("callPayableWithBuff", 100000000, string(buff))
+	scCallData := CreateScCallData("callPayableWithBuff", 100000000, string(buff))
 
 	usdcToken.TestOperations = make([]framework.TokenOperations, 0, numTxs)
 	for i := 0; i < int(numTxs); i++ {
@@ -247,11 +247,11 @@ func TestRelayerShouldExecuteMultipleSwapsWithLargeData(t *testing.T) {
 }
 
 func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
-	flows := createFlowsBasedOnToken(tb, tokens...)
+	flows := CreateFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
 		for _, flow := range flows {
-			flow.setup = setup
+			flow.Setup = setup
 		}
 
 		setup.EthereumHandler.SetBatchSize(setup.Ctx, 100)
@@ -259,19 +259,19 @@ func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
 		for _, flow := range flows {
-			flow.handlerToStartFirstBridge(flow)
+			flow.HandlerToStartFirstBridge(flow)
 		}
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
 		allFlowsFinished := true
 		for _, flow := range flows {
-			allFlowsFinished = allFlowsFinished && flow.process()
+			allFlowsFinished = allFlowsFinished && flow.Process()
 		}
 
 		if allFlowsFinished {
 			for _, flow := range flows {
-				setup.TestWithdrawTotalFeesOnEthereumForTokens(flow.tokens...)
+				setup.TestWithdrawTotalFeesOnEthereumForTokens(flow.Tokens...)
 			}
 
 			return true
@@ -285,7 +285,7 @@ func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb 
 		return false
 	}
 
-	return testRelayersWithChainSimulator(tb,
+	return NewTestEnvironmentWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
@@ -537,7 +537,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 			},
 		}
 
-		testRelayersWithChainSimulatorAndTokensAndRefund(
+		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
 			t,
 			make(chan error),
 			testToken,
@@ -551,17 +551,17 @@ func testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
 	beforeTransactionHandler func(setup *framework.TestSetup, tokens []framework.TestTokenParams),
 	tokens ...framework.TestTokenParams,
 ) *framework.TestSetup {
-	flows := createFlowsBasedOnToken(tb, tokens...)
+	flows := CreateFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
 		for _, flow := range flows {
-			flow.setup = setup
+			flow.Setup = setup
 		}
 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
 		for _, flow := range flows {
-			flow.handlerToStartFirstBridge(flow)
+			flow.HandlerToStartFirstBridge(flow)
 		}
 	}
 
@@ -577,7 +577,7 @@ func testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
 
 		allFlowsFinished := true
 		for _, flow := range flows {
-			allFlowsFinished = allFlowsFinished && flow.process()
+			allFlowsFinished = allFlowsFinished && flow.Process()
 		}
 
 		// commit blocks in order to execute incoming txs from relayers
@@ -588,7 +588,7 @@ func testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
 		return allFlowsFinished && scCallsLimitReached
 	}
 
-	return testRelayersWithChainSimulator(tb,
+	return NewTestEnvironmentWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
