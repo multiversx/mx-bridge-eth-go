@@ -1,6 +1,6 @@
 //go:build slow
 
-package slowTests
+package edgeCaseTests
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
+	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -43,7 +44,7 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 		}
 	}()
 
-	usdcToken := GenerateTestUSDCToken()
+	usdcToken := slowTests.GenerateTestUSDCToken()
 	usdcToken.MultipleSpendings = big.NewInt(2)
 	usdcToken.TestOperations = []framework.TokenOperations{
 		{
@@ -121,13 +122,13 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 }
 
 func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
-	startsFromEthFlow := &TestFlow{
+	startsFromEthFlow := &slowTests.TestFlow{
 		TB:                           tb,
 		Tokens:                       tokens,
 		MessageAfterFirstHalfBridge:  "Ethereum->MultiversX transfer finished, now sending back to Ethereum & another round from Ethereum...",
 		MessageAfterSecondHalfBridge: "MultiversX<->Ethereum from Ethereum transfers done",
 	}
-	startsFromEthFlow.HandlerAfterFirstHalfBridge = func(flow *TestFlow) {
+	startsFromEthFlow.HandlerAfterFirstHalfBridge = func(flow *slowTests.TestFlow) {
 		flow.Setup.SendFromMultiversxToEthereum(flow.Setup.BobKeys, flow.Setup.AliceKeys, flow.Tokens...)
 		flow.Setup.SendFromEthereumToMultiversX(flow.Setup.AliceKeys, flow.Setup.BobKeys, flow.Setup.MultiversxHandler.CalleeScAddress, flow.Tokens...)
 	}
@@ -154,7 +155,7 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 		return false
 	}
 
-	return NewTestEnvironmentWithChainSimulator(tb,
+	return slowTests.NewTestEnvironmentWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
@@ -162,13 +163,13 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 }
 
 func TestRelayerShouldExecuteMultipleSwapsWithLargeData(t *testing.T) {
-	usdcToken := GenerateTestUSDCToken()
+	usdcToken := slowTests.GenerateTestUSDCToken()
 
 	numTxs := int64(16)
 	maxLimitWithForScCalls := 984
 	buff := make([]byte, maxLimitWithForScCalls)
 	_, _ = rand.Read(buff)
-	scCallData := CreateScCallData("callPayableWithBuff", 100000000, string(buff))
+	scCallData := slowTests.CreateScCallData("callPayableWithBuff", 100000000, string(buff))
 
 	usdcToken.TestOperations = make([]framework.TokenOperations, 0, numTxs)
 	for i := 0; i < int(numTxs); i++ {
@@ -247,7 +248,7 @@ func TestRelayerShouldExecuteMultipleSwapsWithLargeData(t *testing.T) {
 }
 
 func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb testing.TB, manualStopChan chan error, tokens ...framework.TestTokenParams) *framework.TestSetup {
-	flows := CreateFlowsBasedOnToken(tb, tokens...)
+	flows := slowTests.CreateFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
 		for _, flow := range flows {
@@ -285,7 +286,7 @@ func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb 
 		return false
 	}
 
-	return NewTestEnvironmentWithChainSimulator(tb,
+	return slowTests.NewTestEnvironmentWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
@@ -537,7 +538,7 @@ func TestRelayersShouldExecuteTransfersForEdgeCases(t *testing.T) {
 			},
 		}
 
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
+		slowTests.NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
 			t,
 			make(chan error),
 			testToken,
@@ -551,7 +552,7 @@ func testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
 	beforeTransactionHandler func(setup *framework.TestSetup, tokens []framework.TestTokenParams),
 	tokens ...framework.TestTokenParams,
 ) *framework.TestSetup {
-	flows := CreateFlowsBasedOnToken(tb, tokens...)
+	flows := slowTests.CreateFlowsBasedOnToken(tb, tokens...)
 
 	setupFunc := func(tb testing.TB, setup *framework.TestSetup) {
 		for _, flow := range flows {
@@ -588,7 +589,7 @@ func testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
 		return allFlowsFinished && scCallsLimitReached
 	}
 
-	return NewTestEnvironmentWithChainSimulator(tb,
+	return slowTests.NewTestEnvironmentWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
