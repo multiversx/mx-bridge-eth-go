@@ -1,359 +1,51 @@
 //go:build slow
 
-// To run these slow tests, simply add the slow tag on the go test command. Also, provide a chain simulator instance on the 8085 port
-// example: go test -tags slow
-
-package slowTests
+package refundTestsOther
 
 import (
 	"math/big"
-	"strings"
 	"testing"
 
-	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	"github.com/multiversx/mx-sdk-go/data"
 )
 
-func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
+func TestRelayersShouldExecuteTransfersWithRefundForOtherSituations(t *testing.T) {
 	t.Run("uninitialized contract should refund", func(t *testing.T) {
-		callData := CreateScCallData("claim", 50000000)
+		callData := slowTests.CreateScCallData("claim", 50000000)
 		uninitializedSCAddressBytes, _ := data.NewAddressFromBech32String("erd1qqqqqqqqqqqqqpgqcc69ts8409p3h77q5chsaqz57y6hugvc4fvs64k74v")
-		usdcToken := GenerateTestUSDCToken()
+		usdcToken := slowTests.GenerateTestUSDCToken()
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
 		usdcToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
-		ApplyUSDCRefundBalances(&usdcToken)
+		slowTests.ApplyUSDCRefundBalances(&usdcToken)
 
-		memeToken := GenerateTestMEMEToken()
+		memeToken := slowTests.GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
 		memeToken.TestOperations[2].MvxFaultySCCall = true
 		memeToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
-		ApplyMEMERefundBalances(&memeToken)
+		slowTests.ApplyMEMERefundBalances(&memeToken)
 
-		tadaToken := GenerateTestTADAToken()
+		tadaToken := slowTests.GenerateTestTADAToken()
 		tadaToken.TestOperations[2].MvxSCCallData = callData
 		tadaToken.TestOperations[2].MvxFaultySCCall = true
 		tadaToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
-		ApplyTADARefundBalances(&tadaToken)
+		slowTests.ApplyTADARefundBalances(&tadaToken)
 
-		eurocToken := GenerateTestEUROCToken()
+		eurocToken := slowTests.GenerateTestEUROCToken()
 		eurocToken.TestOperations[2].MvxSCCallData = callData
 		eurocToken.TestOperations[2].MvxFaultySCCall = true
 		eurocToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
-		ApplyEUROCRefundBalances(&eurocToken)
+		slowTests.ApplyEUROCRefundBalances(&eurocToken)
 
-		mexToken := GenerateTestMEXToken()
+		mexToken := slowTests.GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
 		mexToken.TestOperations[2].MvxFaultySCCall = true
 		mexToken.TestOperations[2].InvalidReceiver = uninitializedSCAddressBytes.AddressBytes()
-		ApplyMEXRefundBalances(&mexToken)
+		slowTests.ApplyMEXRefundBalances(&mexToken)
 
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			usdcToken,
-			memeToken,
-			tadaToken,
-			eurocToken,
-			mexToken,
-		)
-	})
-	t.Run("0 gas limit should refund", func(t *testing.T) {
-		callData := CreateScCallData("callPayable", 0)
-		usdcToken := GenerateTestUSDCToken()
-		usdcToken.TestOperations[2].MvxSCCallData = callData
-		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyUSDCRefundBalances(&usdcToken)
-
-		memeToken := GenerateTestMEMEToken()
-		memeToken.TestOperations[2].MvxSCCallData = callData
-		memeToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEMERefundBalances(&memeToken)
-
-		tadaToken := GenerateTestTADAToken()
-		tadaToken.TestOperations[2].MvxSCCallData = callData
-		tadaToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyTADARefundBalances(&tadaToken)
-
-		eurocToken := GenerateTestEUROCToken()
-		eurocToken.TestOperations[2].MvxSCCallData = callData
-		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyEUROCRefundBalances(&eurocToken)
-
-		mexToken := GenerateTestMEXToken()
-		mexToken.TestOperations[2].MvxSCCallData = callData
-		mexToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEXRefundBalances(&mexToken)
-
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			usdcToken,
-			memeToken,
-			tadaToken,
-			eurocToken,
-			mexToken,
-		)
-	})
-	t.Run("small gas limit should refund", func(t *testing.T) {
-		callData := CreateScCallData("callPayable", 2000)
-		usdcToken := GenerateTestUSDCToken()
-		usdcToken.TestOperations[2].MvxSCCallData = callData
-		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyUSDCRefundBalances(&usdcToken)
-
-		memeToken := GenerateTestMEMEToken()
-		memeToken.TestOperations[2].MvxSCCallData = callData
-		memeToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEMERefundBalances(&memeToken)
-
-		tadaToken := GenerateTestTADAToken()
-		tadaToken.TestOperations[2].MvxSCCallData = callData
-		tadaToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyTADARefundBalances(&tadaToken)
-
-		eurocToken := GenerateTestEUROCToken()
-		eurocToken.TestOperations[2].MvxSCCallData = callData
-		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyEUROCRefundBalances(&eurocToken)
-
-		mexToken := GenerateTestMEXToken()
-		mexToken.TestOperations[2].MvxSCCallData = callData
-		mexToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEXRefundBalances(&mexToken)
-
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			usdcToken,
-			memeToken,
-			tadaToken,
-			eurocToken,
-			mexToken,
-		)
-	})
-	t.Run("high gas limit should refund", func(t *testing.T) {
-		callData := CreateScCallData("callPayable", 610000000)
-		usdcToken := GenerateTestUSDCToken()
-		usdcToken.TestOperations[2].MvxSCCallData = callData
-		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyUSDCRefundBalances(&usdcToken)
-
-		memeToken := GenerateTestMEMEToken()
-		memeToken.TestOperations[2].MvxSCCallData = callData
-		memeToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEMERefundBalances(&memeToken)
-
-		tadaToken := GenerateTestTADAToken()
-		tadaToken.TestOperations[2].MvxSCCallData = callData
-		tadaToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyTADARefundBalances(&tadaToken)
-
-		eurocToken := GenerateTestEUROCToken()
-		eurocToken.TestOperations[2].MvxSCCallData = callData
-		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyEUROCRefundBalances(&eurocToken)
-
-		mexToken := GenerateTestMEXToken()
-		mexToken.TestOperations[2].MvxSCCallData = callData
-		mexToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEXRefundBalances(&mexToken)
-
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			usdcToken,
-			memeToken,
-			tadaToken,
-			eurocToken,
-			mexToken,
-		)
-	})
-	t.Run("extra parameter should refund", func(t *testing.T) {
-		callData := CreateScCallData("callPayable", 50000000, "extra parameter")
-		usdcToken := GenerateTestUSDCToken()
-		usdcToken.TestOperations[2].MvxSCCallData = callData
-		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyUSDCRefundBalances(&usdcToken)
-
-		memeToken := GenerateTestMEMEToken()
-		memeToken.TestOperations[2].MvxSCCallData = callData
-		memeToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEMERefundBalances(&memeToken)
-
-		tadaToken := GenerateTestTADAToken()
-		tadaToken.TestOperations[2].MvxSCCallData = callData
-		tadaToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyTADARefundBalances(&tadaToken)
-
-		eurocToken := GenerateTestEUROCToken()
-		eurocToken.TestOperations[2].MvxSCCallData = callData
-		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyEUROCRefundBalances(&eurocToken)
-
-		mexToken := GenerateTestMEXToken()
-		mexToken.TestOperations[2].MvxSCCallData = callData
-		mexToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEXRefundBalances(&mexToken)
-
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			usdcToken,
-			memeToken,
-			tadaToken,
-			eurocToken,
-			mexToken,
-		)
-	})
-	t.Run("no arguments should refund", func(t *testing.T) {
-		callData := CreateScCallData("callPayableWithParams", 50000000)
-		usdcToken := GenerateTestUSDCToken()
-		usdcToken.TestOperations[2].MvxSCCallData = callData
-		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyUSDCRefundBalances(&usdcToken)
-
-		memeToken := GenerateTestMEMEToken()
-		memeToken.TestOperations[2].MvxSCCallData = callData
-		memeToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEMERefundBalances(&memeToken)
-
-		tadaToken := GenerateTestTADAToken()
-		tadaToken.TestOperations[2].MvxSCCallData = callData
-		tadaToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyTADARefundBalances(&tadaToken)
-
-		eurocToken := GenerateTestEUROCToken()
-		eurocToken.TestOperations[2].MvxSCCallData = callData
-		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyEUROCRefundBalances(&eurocToken)
-
-		mexToken := GenerateTestMEXToken()
-		mexToken.TestOperations[2].MvxSCCallData = callData
-		mexToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEXRefundBalances(&mexToken)
-
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			usdcToken,
-			memeToken,
-			tadaToken,
-			eurocToken,
-			mexToken,
-		)
-	})
-	t.Run("wrong number of arguments should refund", func(t *testing.T) {
-		callData := CreateScCallData("callPayableWithParams", 50000000, string([]byte{37}))
-		usdcToken := GenerateTestUSDCToken()
-		usdcToken.TestOperations[2].MvxSCCallData = callData
-		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyUSDCRefundBalances(&usdcToken)
-
-		memeToken := GenerateTestMEMEToken()
-		memeToken.TestOperations[2].MvxSCCallData = callData
-		memeToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEMERefundBalances(&memeToken)
-
-		tadaToken := GenerateTestTADAToken()
-		tadaToken.TestOperations[2].MvxSCCallData = callData
-		tadaToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyTADARefundBalances(&tadaToken)
-
-		eurocToken := GenerateTestEUROCToken()
-		eurocToken.TestOperations[2].MvxSCCallData = callData
-		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyEUROCRefundBalances(&eurocToken)
-
-		mexToken := GenerateTestMEXToken()
-		mexToken.TestOperations[2].MvxSCCallData = callData
-		mexToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEXRefundBalances(&mexToken)
-
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			usdcToken,
-			memeToken,
-			tadaToken,
-			eurocToken,
-			mexToken,
-		)
-	})
-	t.Run("not an uint64 argument should refund", func(t *testing.T) {
-		malformedUint64String := string([]byte{37, 36, 35, 34, 33, 32, 31, 32, 33}) // 9 bytes instead of 8
-		dummyAddress := strings.Repeat("2", 32)
-
-		callData := CreateScCallData("callPayableWithParams", 50000000, malformedUint64String, dummyAddress)
-		usdcToken := GenerateTestUSDCToken()
-		usdcToken.TestOperations[2].MvxSCCallData = callData
-		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyUSDCRefundBalances(&usdcToken)
-
-		memeToken := GenerateTestMEMEToken()
-		memeToken.TestOperations[2].MvxSCCallData = callData
-		memeToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEMERefundBalances(&memeToken)
-
-		tadaToken := GenerateTestTADAToken()
-		tadaToken.TestOperations[2].MvxSCCallData = callData
-		tadaToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyTADARefundBalances(&tadaToken)
-
-		eurocToken := GenerateTestEUROCToken()
-		eurocToken.TestOperations[2].MvxSCCallData = callData
-		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyEUROCRefundBalances(&eurocToken)
-
-		mexToken := GenerateTestMEXToken()
-		mexToken.TestOperations[2].MvxSCCallData = callData
-		mexToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEXRefundBalances(&mexToken)
-
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			usdcToken,
-			memeToken,
-			tadaToken,
-			eurocToken,
-			mexToken,
-		)
-	})
-	t.Run("wrong arguments encoding should refund", func(t *testing.T) {
-		callData := CreateScCallData("callPayableWithParams", 50000000)
-		// the last byte is the data missing marker, we will replace that
-		callData[len(callData)-1] = bridgeCore.DataPresentProtocolMarker
-		// add garbage data
-		callData = append(callData, []byte{5, 4, 55}...)
-
-		usdcToken := GenerateTestUSDCToken()
-		usdcToken.TestOperations[2].MvxSCCallData = callData
-		usdcToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyUSDCRefundBalances(&usdcToken)
-
-		memeToken := GenerateTestMEMEToken()
-		memeToken.TestOperations[2].MvxSCCallData = callData
-		memeToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEMERefundBalances(&memeToken)
-
-		tadaToken := GenerateTestTADAToken()
-		tadaToken.TestOperations[2].MvxSCCallData = callData
-		tadaToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyTADARefundBalances(&tadaToken)
-
-		eurocToken := GenerateTestEUROCToken()
-		eurocToken.TestOperations[2].MvxSCCallData = callData
-		eurocToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyEUROCRefundBalances(&eurocToken)
-
-		mexToken := GenerateTestMEXToken()
-		mexToken.TestOperations[2].MvxSCCallData = callData
-		mexToken.TestOperations[2].MvxFaultySCCall = true
-		ApplyMEXRefundBalances(&mexToken)
-
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
+		slowTests.NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
 			t,
 			make(chan error),
 			usdcToken,
@@ -364,7 +56,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		)
 	})
 	t.Run("frozen tokens for receiver should refund", func(t *testing.T) {
-		usdcToken := GenerateTestUSDCToken()
+		usdcToken := slowTests.GenerateTestUSDCToken()
 		usdcToken.IssueTokenParams.IsFrozen = true
 		usdcToken.TestOperations = []framework.TokenOperations{
 			{
@@ -453,7 +145,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		}
 
-		memeToken := GenerateTestMEMEToken()
+		memeToken := slowTests.GenerateTestMEMEToken()
 		memeToken.IssueTokenParams.IsFrozen = true
 		memeToken.TestOperations = []framework.TokenOperations{
 			{
@@ -537,7 +229,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		}
 
-		tadaToken := GenerateTestTADAToken()
+		tadaToken := slowTests.GenerateTestTADAToken()
 		tadaToken.IssueTokenParams.IsFrozen = true
 		tadaToken.TestOperations = []framework.TokenOperations{
 			{
@@ -621,7 +313,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			WrapperDeltaLiquidityCheck: big.NewInt(-4700),
 		}
 
-		eurocToken := GenerateTestEUROCToken()
+		eurocToken := slowTests.GenerateTestEUROCToken()
 		eurocToken.IssueTokenParams.IsFrozen = true
 		eurocToken.TestOperations = []framework.TokenOperations{
 			{
@@ -631,7 +323,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			{
 				ValueToTransferToMvx: big.NewInt(1500),
 				ValueToSendFromMvX:   nil,
-				MvxSCCallData:        CreateScCallData("callPayable", 50000000),
+				MvxSCCallData:        slowTests.CreateScCallData("callPayable", 50000000),
 			},
 		}
 		eurocToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
@@ -705,7 +397,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		}
 
-		mexToken := GenerateTestMEXToken()
+		mexToken := slowTests.GenerateTestMEXToken()
 		mexToken.IssueTokenParams.IsFrozen = true
 		mexToken.TestOperations = []framework.TokenOperations{
 			{
@@ -789,7 +481,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 			WrapperDeltaLiquidityCheck: big.NewInt(0),
 		}
 
-		NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
+		slowTests.NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
 			t,
 			make(chan error),
 			usdcToken,
