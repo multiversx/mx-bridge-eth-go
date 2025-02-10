@@ -491,4 +491,382 @@ func TestRelayersShouldExecuteTransfersWithRefundForOtherSituations(t *testing.T
 			mexToken,
 		)
 	})
+	t.Run("only Alice having transfer role for tokens should refund", func(t *testing.T) {
+		usdcToken := slowTests.GenerateTestUSDCToken()
+		usdcToken.IssueTokenParams.HasTransferRole = true
+		usdcToken.IssueTokenParams.GrantRoleToAllAddresses = false
+		usdcToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(3000),
+				ValueToSendFromMvX:   nil,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(5050),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        slowTests.CreateScCallData("callPayable", 50000000),
+			},
+		}
+		usdcToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-3000 - 5050),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(3000 + 5050),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-3000 - 5050 + 2950 + 5000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(3000 + 5050),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		}
+		usdcToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(3000),
+			MvxTotalChainSpecificMint: big.NewInt(3000),
+			MvxTotalUniversalBurn:     big.NewInt(3000),
+			MvxTotalChainSpecificBurn: big.NewInt(3000 - 50),
+			MvxSafeMintValue:          big.NewInt(3000),
+			MvxSafeBurnValue:          big.NewInt(3000 - 50),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		}
+		usdcToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
+		eurocToken := slowTests.GenerateTestEUROCToken()
+		eurocToken.IssueTokenParams.HasTransferRole = true
+		eurocToken.IssueTokenParams.GrantRoleToAllAddresses = false
+		eurocToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(2000),
+				ValueToSendFromMvX:   nil,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(1500),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        slowTests.CreateScCallData("callPayable", 50000000),
+			},
+		}
+		eurocToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-2000 - 1500),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-2000 - 1500 + 1948 + 1448),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(52 + 52),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
+		}
+		eurocToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(2000 + 1500),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(2000 - 52),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(2000 + 1500),
+			MvxSafeBurnValue:          big.NewInt(2000 - 52),
+
+			EthSafeMintValue: big.NewInt(2000 - 52),
+			EthSafeBurnValue: big.NewInt(2000 + 1500),
+		}
+		eurocToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
+		slowTests.NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			//usdcToken,
+			eurocToken,
+		)
+	})
+	t.Run("refunds should work with tokens with transfer role", func(t *testing.T) {
+		usdcToken := slowTests.GenerateTestUSDCToken()
+		usdcToken.IssueTokenParams.HasTransferRole = true
+		usdcToken.IssueTokenParams.GrantRoleToAllAddresses = true
+		usdcToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(3000),
+				ValueToSendFromMvX:   nil,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(5050),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        slowTests.CreateScCallData("unknownFunction", 50000000),
+				MvxFaultySCCall:      true,
+			},
+		}
+		usdcToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-3000 - 5050),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(3000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(3000 + 5050),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(3000 + 5050),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-3000 - 5050 + 5050 - 50),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(3000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(3000 + 5050 - 5000),
+					OnMvx:    big.NewInt(50),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(3000 + 5050 - 5050),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		}
+		usdcToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(3000 + 5050),
+			MvxTotalChainSpecificMint: big.NewInt(3000 + 5050),
+			MvxTotalUniversalBurn:     big.NewInt(5050),
+			MvxTotalChainSpecificBurn: big.NewInt(5050 - 50),
+			MvxSafeMintValue:          big.NewInt(3000 + 5050),
+			MvxSafeBurnValue:          big.NewInt(5050 - 50),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		}
+		usdcToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(3000),
+		}
+
+		eurocToken := slowTests.GenerateTestEUROCToken()
+		eurocToken.IssueTokenParams.HasTransferRole = true
+		eurocToken.IssueTokenParams.GrantRoleToAllAddresses = true
+		eurocToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(2000),
+				ValueToSendFromMvX:   nil,
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(1500),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        slowTests.CreateScCallData("callPayableWithParams", 50000000),
+				MvxFaultySCCall:      true,
+			},
+		}
+		eurocToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-2000 - 1500),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(2000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-2000 - 1500 + 1500 - 52),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(2000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(52),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+			},
+		}
+		eurocToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(2000 + 1500),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(1500 - 52),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(2000 + 1500),
+			MvxSafeBurnValue:          big.NewInt(1500 - 52),
+
+			EthSafeMintValue: big.NewInt(1500 - 52),
+			EthSafeBurnValue: big.NewInt(2000 + 1500),
+		}
+		eurocToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
+		slowTests.NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
+			t,
+			make(chan error),
+			usdcToken,
+			eurocToken,
+		)
+	})
 }

@@ -1282,7 +1282,7 @@ func (handler *MultiversxHandler) ExecuteDepositWithoutGenerateBlocks(ctx contex
 }
 
 func (handler *MultiversxHandler) getEligibleAddressesForTransferRole(params IssueTokenParams) []*MvxAddress {
-	if params.GrantRoleToAllAddresses == false {
+	if !params.GrantRoleToAllAddresses {
 		return []*MvxAddress{handler.AliceKeys.MvxAddress}
 	}
 
