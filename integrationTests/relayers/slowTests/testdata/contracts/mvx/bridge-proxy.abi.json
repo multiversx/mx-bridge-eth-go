@@ -1,11 +1,11 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.84.0",
-            "commitHash": "9fc6b43126469e3858e2fe86cafb4f0fd5068869",
-            "commitDate": "2025-01-07",
+            "version": "1.78.0",
+            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
+            "commitDate": "2024-04-29",
             "channel": "Stable",
-            "short": "rustc 1.84.0 (9fc6b4312 2025-01-07)"
+            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
         },
         "contractCrate": {
             "name": "bridge-proxy",
@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.56.1"
+            "version": "0.56.0"
         }
     },
     "name": "BridgeProxyContract",

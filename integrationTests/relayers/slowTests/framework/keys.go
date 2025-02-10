@@ -105,7 +105,7 @@ func NewKeysStore(
 
 func (keyStore *KeysStore) generateRelayersKeys(numKeys int) {
 	for i := 0; i < numKeys; i++ {
-		relayerETHSKBytes, err := os.ReadFile(fmt.Sprintf(relayerETHKeyPathFormat, i))
+		relayerETHSKBytes, err := os.ReadFile(normalizePathToRelayersTests(fmt.Sprintf(relayerETHKeyPathFormat, i)))
 		require.Nil(keyStore, err)
 
 		relayerKeys := keyStore.generateKey(string(relayerETHSKBytes), projectedShardForBridgeSetup)

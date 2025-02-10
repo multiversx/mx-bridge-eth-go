@@ -23,6 +23,7 @@ const (
 	slashAmount              = "00"
 	zeroStringValue          = "0"
 	canAddSpecialRoles       = "canAddSpecialRoles"
+	canFreeze                = "canFreeze"
 	trueStr                  = "true"
 	esdtRoleLocalMint        = "ESDTRoleLocalMint"
 	esdtRoleLocalBurn        = "ESDTRoleLocalBurn"
@@ -38,14 +39,14 @@ const (
 	generalSCCallGasLimit    = 50000000  // 50 million
 	gasLimitPerDataByte      = 1500
 
-	aggregatorContractPath    = "testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
-	wrapperContractPath       = "testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
-	multiTransferContractPath = "testdata/contracts/mvx/multi-transfer-esdt.wasm"
-	safeContractPath          = "testdata/contracts/mvx/esdt-safe.wasm"
-	multisigContractPath      = "testdata/contracts/mvx/multisig.wasm"
-	bridgeProxyContractPath   = "testdata/contracts/mvx/bridge-proxy.wasm"
-	testCallerContractPath    = "testdata/contracts/mvx/test-caller.wasm"
-	testHelperContractPath    = "testdata/contracts/mvx/helper-contract.wasm"
+	aggregatorContractPath    = "slowTests/testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
+	wrapperContractPath       = "slowTests/testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
+	multiTransferContractPath = "slowTests/testdata/contracts/mvx/multi-transfer-esdt.wasm"
+	safeContractPath          = "slowTests/testdata/contracts/mvx/esdt-safe.wasm"
+	multisigContractPath      = "slowTests/testdata/contracts/mvx/multisig.wasm"
+	bridgeProxyContractPath   = "slowTests/testdata/contracts/mvx/bridge-proxy.wasm"
+	testCallerContractPath    = "slowTests/testdata/contracts/mvx/test-caller.wasm"
+	testHelperContractPath    = "slowTests/testdata/contracts/mvx/helper-contract.wasm"
 
 	changeOwnerAddressFunction                           = "ChangeOwnerAddress"
 	moveRefundBatchToSafeFromChildContractFunction       = "moveRefundBatchToSafeFromChildContract"
@@ -58,6 +59,7 @@ const (
 	pauseFunction                                        = "pause"
 	issueFunction                                        = "issue"
 	setSpecialRoleFunction                               = "setSpecialRole"
+	freezeFunction                                       = "freeze"
 	esdtTransferFunction                                 = "ESDTTransfer"
 	setPairDecimalsFunction                              = "setPairDecimals"
 	addWrappedTokenFunction                              = "addWrappedToken"
@@ -157,7 +159,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	hash := ""
 	handler.AggregatorAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		aggregatorContractPath,
+		normalizePathToRelayersTests(aggregatorContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		aggregatorDeployParams,
@@ -168,7 +170,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy wrapper
 	handler.WrapperAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		wrapperContractPath,
+		normalizePathToRelayersTests(wrapperContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
@@ -179,7 +181,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy multi-transfer
 	handler.MultiTransferAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		multiTransferContractPath,
+		normalizePathToRelayersTests(multiTransferContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
@@ -190,7 +192,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy safe
 	handler.SafeAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		safeContractPath,
+		normalizePathToRelayersTests(safeContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{
@@ -212,7 +214,7 @@ func (handler *MultiversxHandler) DeployBridgeProxy(ctx context.Context) {
 	hash := ""
 	handler.ScProxyAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		bridgeProxyContractPath,
+		normalizePathToRelayersTests(bridgeProxyContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		make([]string, 0),
@@ -241,7 +243,7 @@ func (handler *MultiversxHandler) DeployMultisig(ctx context.Context) {
 	hash := ""
 	handler.MultisigAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		multisigContractPath,
+		normalizePathToRelayersTests(multisigContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		params,
@@ -255,7 +257,7 @@ func (handler *MultiversxHandler) DeployTestCaller(ctx context.Context) {
 	hash := ""
 	handler.CalleeScAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		testCallerContractPath,
+		normalizePathToRelayersTests(testCallerContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
@@ -459,6 +461,9 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	if params.PreventWhitelist {
 		return
 	}
+	if params.IsFrozen {
+		handler.freezeToken(ctx, params)
+	}
 	if params.HasTransferRole {
 		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
 		handler.setTransferRolesForToken(ctx, params, eligibleAddresses)
@@ -484,6 +489,9 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 
 	if params.PreventWhitelist {
 		return
+	}
+	if params.IsFrozen {
+		handler.freezeToken(ctx, params)
 	}
 	if params.HasTransferRole {
 		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
@@ -512,6 +520,8 @@ func (handler *MultiversxHandler) issueUniversalToken(ctx context.Context, param
 		hex.EncodeToString([]byte(params.MvxUniversalTokenTicker)),
 		hex.EncodeToString(valueToMintInt.Bytes()),
 		fmt.Sprintf("%02x", params.NumOfDecimalsUniversal),
+		hex.EncodeToString([]byte(canFreeze)),
+		hex.EncodeToString([]byte(trueStr)),
 		hex.EncodeToString([]byte(canAddSpecialRoles)),
 		hex.EncodeToString([]byte(trueStr))}
 
@@ -538,6 +548,8 @@ func (handler *MultiversxHandler) issueChainSpecificToken(ctx context.Context, p
 		hex.EncodeToString([]byte(params.MvxChainSpecificTokenTicker)),
 		hex.EncodeToString(valueToMintInt.Bytes()),
 		fmt.Sprintf("%02x", params.NumOfDecimalsChainSpecific),
+		hex.EncodeToString([]byte(canFreeze)),
+		hex.EncodeToString([]byte(trueStr)),
 		hex.EncodeToString([]byte(canAddSpecialRoles)),
 		hex.EncodeToString([]byte(trueStr))}
 
@@ -842,6 +854,32 @@ func (handler *MultiversxHandler) setMaxBridgeAmountOnMultitransfer(ctx context.
 		scCallParams)
 
 	log.Info("multi-transfer set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) freezeToken(ctx context.Context, params IssueTokenParams) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
+	keyHolderToFreeze := handler.BobKeys
+	// If the bridge starts from Mvx, Charlie will receive the Mvx tokens
+	if params.IsNativeOnMvX {
+		keyHolderToFreeze = handler.CharlieKeys
+	}
+
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
+		keyHolderToFreeze.MvxAddress.Hex(),
+	}
+
+	hash, txResult := handler.scCallAndCheckTx(
+		ctx,
+		handler.OwnerKeys,
+		handler.ESDTSystemContractAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		freezeFunction,
+		scCallParams)
+
+	log.Info("freeze universal token tx executed", "hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) getTokenNameFromResult(txResult data.TransactionOnNetwork) string {
@@ -1159,7 +1197,7 @@ func (handler *MultiversxHandler) DeployTestHelperContract(ctx context.Context) 
 	hash := ""
 	handler.TestHelperAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		testHelperContractPath,
+		normalizePathToRelayersTests(testHelperContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		make([]string, 0),
