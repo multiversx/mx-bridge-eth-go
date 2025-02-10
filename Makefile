@@ -32,6 +32,21 @@ slow-tests-02: clean-test
 	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/02setupErrorTests/... -v -timeout 20m -tags slow
 	@docker compose -f docker/docker-compose.yml down -v
 
+slow-tests-03: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/03edgeCaseTests/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
+slow-tests-04: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/04refundTestsWithMalformedSCData/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
+slow-tests-05: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/05refundTestsWrongFunction/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
 lint-install:
 ifeq (,$(wildcard test -f bin/golangci-lint))
 	@echo "Installing golint"
