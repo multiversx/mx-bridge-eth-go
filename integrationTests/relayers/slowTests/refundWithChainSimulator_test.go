@@ -975,6 +975,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 
 		eurocToken := GenerateTestEUROCToken()
 		eurocToken.IssueTokenParams.HasTransferRole = true
+		eurocToken.IssueTokenParams.GrantRoleToAllAddresses = false
 		eurocToken.TestOperations = []framework.TokenOperations{
 			{
 				ValueToTransferToMvx: big.NewInt(2000),
