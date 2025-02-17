@@ -43,15 +43,15 @@ type gasStation struct {
 	maximumFetchRetries    int
 	log                    logger.Logger
 	httpClient             HTTPClient
-	maximumGasPrice        int
+	maximumGasPrice        float64
 	cancel                 func()
 	gasPriceSelector       core.EthGasPriceSelector
 	loopStatus             *atomic.Flag
-	gasPriceMultiplier     *big.Int
-	minGasPriceValue       *big.Int
+	gasPriceMultiplier     float64
+	minGasPriceValue       float64
 
 	mut            sync.RWMutex
-	latestGasPrice int
+	latestGasPrice float64
 	fetchRetries   int
 }
 
@@ -69,11 +69,11 @@ func NewGasStation(args ArgsGasStation) (*gasStation, error) {
 		requestRetryDelay:      args.RequestRetryDelay,
 		maximumFetchRetries:    args.MaximumFetchRetries,
 		httpClient:             http.DefaultClient,
-		maximumGasPrice:        args.MaximumGasPrice,
+		maximumGasPrice:        float64(args.MaximumGasPrice),
 		gasPriceSelector:       args.GasPriceSelector,
 		loopStatus:             &atomic.Flag{},
-		gasPriceMultiplier:     big.NewInt(int64(args.GasPriceMultiplier)),
-		minGasPriceValue:       big.NewInt(minGasPriceValue),
+		gasPriceMultiplier:     float64(args.GasPriceMultiplier),
+		minGasPriceValue:       float64(minGasPriceValue),
 		latestGasPrice:         -1,
 		fetchRetries:           0,
 	}
@@ -169,11 +169,11 @@ func (gs *gasStation) doRequest(ctx context.Context) error {
 	gs.latestGasPrice = -1
 	switch gs.gasPriceSelector {
 	case core.EthFastGasPrice:
-		_, err = fmt.Sscanf(response.Result.FastGasPrice, "%d", &gs.latestGasPrice)
+		_, err = fmt.Sscanf(response.Result.FastGasPrice, "%f", &gs.latestGasPrice)
 	case core.EthProposeGasPrice:
-		_, err = fmt.Sscanf(response.Result.ProposeGasPrice, "%d", &gs.latestGasPrice)
+		_, err = fmt.Sscanf(response.Result.ProposeGasPrice, "%f", &gs.latestGasPrice)
 	case core.EthSafeGasPrice:
-		_, err = fmt.Sscanf(response.Result.SafeGasPrice, "%d", &gs.latestGasPrice)
+		_, err = fmt.Sscanf(response.Result.SafeGasPrice, "%f", &gs.latestGasPrice)
 	default:
 		err = fmt.Errorf("%w: %q", ErrInvalidGasPriceSelector, gs.gasPriceSelector)
 	}
@@ -219,15 +219,17 @@ func (gs *gasStation) GetCurrentGasPrice() (*big.Int, error) {
 	}
 
 	if gs.latestGasPrice > gs.maximumGasPrice {
-		return big.NewInt(0), fmt.Errorf("%w maximum value: %d, fetched value: %d, gas price selector: %s",
+		return big.NewInt(0), fmt.Errorf("%w maximum value: %0.3f, fetched value: %0.3f, gas price selector: %s",
 			ErrGasPriceIsHigherThanTheMaximumSet, gs.maximumGasPrice, gs.latestGasPrice, gs.gasPriceSelector)
 	}
 
-	result := big.NewInt(int64(gs.latestGasPrice))
-	if result.Cmp(gs.minGasPriceValue) < 0 {
-		result.Set(gs.minGasPriceValue)
+	result := gs.latestGasPrice
+	if result < gs.minGasPriceValue {
+		result = gs.minGasPriceValue
 	}
-	return result.Mul(result, gs.gasPriceMultiplier), nil
+
+	result = result * gs.gasPriceMultiplier
+	return big.NewInt(0).SetInt64(int64(result)), nil
 }
 
 // Close will stop any started go routines
