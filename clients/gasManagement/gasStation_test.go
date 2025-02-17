@@ -155,7 +155,7 @@ func TestGasStation_InvalidJsonResponse(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 500)
 	assert.False(t, gs.loopStatus.IsSet())
-	assert.Equal(t, gs.GetLatestGasPrice(), -1)
+	assert.Equal(t, float64(-1), gs.GetLatestGasPrice())
 	gasPrice, err := gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
@@ -189,10 +189,10 @@ func TestGasStation_GoodResponseShouldSave(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 500)
 	assert.False(t, gs.loopStatus.IsSet())
-	var expectedPrice = -1
-	_, err = fmt.Sscanf(gsResponse.Result.SafeGasPrice, "%d", &expectedPrice)
+	var expectedPrice = float64(-1)
+	_, err = fmt.Sscanf(gsResponse.Result.SafeGasPrice, "%f", &expectedPrice)
 	require.Nil(t, err)
-	assert.Equal(t, gs.GetLatestGasPrice(), expectedPrice)
+	assert.Equal(t, expectedPrice, gs.GetLatestGasPrice())
 }
 
 func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
@@ -228,7 +228,7 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	chanNok <- struct{}{}
 	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, -1, gs.GetLatestGasPrice())
+	assert.Equal(t, float64(-1), gs.GetLatestGasPrice())
 	gasPrice, err := gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
@@ -236,7 +236,7 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	chanNok <- struct{}{}
 	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, -1, gs.GetLatestGasPrice())
+	assert.Equal(t, float64(-1), gs.GetLatestGasPrice())
 	gasPrice, err = gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
@@ -244,7 +244,7 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	chanNok <- struct{}{}
 	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, -1, gs.GetLatestGasPrice())
+	assert.Equal(t, float64(-1), gs.GetLatestGasPrice())
 	gasPrice, err = gs.GetCurrentGasPrice()
 	assert.Equal(t, big.NewInt(0), gasPrice)
 	assert.Equal(t, ErrLatestGasPricesWereNotFetched, err)
@@ -252,9 +252,9 @@ func TestGasStation_RetryMechanism_FailsFirstRequests(t *testing.T) {
 	chanOk <- struct{}{} // response is now ok
 	time.Sleep(time.Millisecond * 100)
 	assert.True(t, gs.loopStatus.IsSet())
-	assert.Equal(t, 81, gs.GetLatestGasPrice())
+	assert.Equal(t, float64(81), gs.GetLatestGasPrice())
 	gasPrice, err = gs.GetCurrentGasPrice()
-	assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*args.GasPriceMultiplier)), gasPrice)
+	assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*float64(args.GasPriceMultiplier))), gasPrice)
 	assert.Nil(t, err)
 	_ = gs.Close()
 
@@ -300,9 +300,9 @@ func TestGasStation_RetryMechanism_IntermittentFails(t *testing.T) {
 		time.Sleep(time.Millisecond * 100)
 
 		assert.True(t, gs.loopStatus.IsSet())
-		assert.Equal(t, 81, gs.GetLatestGasPrice())
+		assert.Equal(t, float64(81), gs.GetLatestGasPrice())
 		gasPrice, errGet := gs.GetCurrentGasPrice()
-		assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*args.GasPriceMultiplier)), gasPrice)
+		assert.Equal(t, big.NewInt(int64(gs.GetLatestGasPrice()*float64(args.GasPriceMultiplier))), gasPrice)
 		assert.Nil(t, errGet)
 	}
 
@@ -312,12 +312,50 @@ func TestGasStation_RetryMechanism_IntermittentFails(t *testing.T) {
 	assert.False(t, gs.loopStatus.IsSet())
 }
 
-func TestGasStation_GetCurrentGasPrice(t *testing.T) {
+func TestGasStation_GetCurrentGasPriceShouldWork(t *testing.T) {
 	t.Parallel()
 
-	gsResponse := createMockGasStationResponse()
-	args := createMockArgsGasStation()
-	gasPriceMultiplier := big.NewInt(int64(args.GasPriceMultiplier))
+	t.Run("should work with int values", func(t *testing.T) {
+		gsResponse := createMockGasStationResponse()
+		args := createMockArgsGasStation()
+
+		expectedFast := big.NewInt(83000000000)
+		expectedPropose := big.NewInt(82000000000)
+		expectedSafe := big.NewInt(81000000000)
+
+		testGetCurrentGasPrice(t, gsResponse, args, expectedFast, expectedPropose, expectedSafe)
+	})
+	t.Run("should work with float64 values and no trim", func(t *testing.T) {
+		gsResponse := createMockGasStationResponseWithFloatValues()
+		args := createMockArgsGasStation()
+
+		expectedFast := big.NewInt(1460784306)
+		expectedPropose := big.NewInt(1327985733)
+		expectedSafe := big.NewInt(1289774824)
+
+		testGetCurrentGasPrice(t, gsResponse, args, expectedFast, expectedPropose, expectedSafe)
+	})
+	t.Run("should work with float64 values with trim", func(t *testing.T) {
+		gsResponse := createMockGasStationResponseWithFloatValues()
+		args := createMockArgsGasStation()
+		args.GasPriceMultiplier = 10000
+
+		expectedFast := big.NewInt(14607)
+		expectedPropose := big.NewInt(13279)
+		expectedSafe := big.NewInt(12897)
+
+		testGetCurrentGasPrice(t, gsResponse, args, expectedFast, expectedPropose, expectedSafe)
+	})
+}
+
+func testGetCurrentGasPrice(
+	t *testing.T,
+	gsResponse gasStationResponse,
+	args ArgsGasStation,
+	expectedFast *big.Int,
+	expectedPropose *big.Int,
+	expectedSafe *big.Int,
+) {
 	// synchronize the process loop & the testing go routine with an unbuffered channel
 	chanOk := make(chan struct{})
 	httpServer := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -343,36 +381,21 @@ func TestGasStation_GetCurrentGasPrice(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 	price, err := gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	expectedPrice := -1
-	_, err = fmt.Sscanf(gsResponse.Result.FastGasPrice, "%d", &expectedPrice)
-	require.Nil(t, err)
-	assert.NotEqual(t, expectedPrice, -1)
-	expected := big.NewInt(0).Mul(big.NewInt(int64(expectedPrice)), gasPriceMultiplier)
-	assert.Equal(t, expected, price)
+	assert.Equal(t, expectedFast, price)
 
 	gs.SetSelector(core.EthProposeGasPrice)
 	chanOk <- struct{}{}
 	time.Sleep(time.Millisecond * 100)
 	price, err = gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	expectedPrice = -1
-	_, err = fmt.Sscanf(gsResponse.Result.ProposeGasPrice, "%d", &expectedPrice)
-	require.Nil(t, err)
-	assert.NotEqual(t, expectedPrice, -1)
-	expected = big.NewInt(0).Mul(big.NewInt(int64(expectedPrice)), gasPriceMultiplier)
-	assert.Equal(t, expected, price)
+	assert.Equal(t, expectedPropose, price)
 
 	gs.SetSelector(core.EthSafeGasPrice)
 	chanOk <- struct{}{}
 	time.Sleep(time.Millisecond * 100)
 	price, err = gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	expectedPrice = -1
-	_, err = fmt.Sscanf(gsResponse.Result.SafeGasPrice, "%d", &expectedPrice)
-	require.Nil(t, err)
-	assert.NotEqual(t, expectedPrice, -1)
-	expected = big.NewInt(0).Mul(big.NewInt(int64(expectedPrice)), gasPriceMultiplier)
-	assert.Equal(t, expected, price)
+	assert.Equal(t, expectedSafe, price)
 
 	gs.SetSelector("invalid")
 	chanOk <- struct{}{}
@@ -410,7 +433,10 @@ func TestGasStation_GetCurrentGasPriceExceededMaximum(t *testing.T) {
 	assert.True(t, gs.loopStatus.IsSet())
 
 	price, err := gs.GetCurrentGasPrice()
-	require.True(t, errors.Is(err, ErrGasPriceIsHigherThanTheMaximumSet))
+	require.ErrorIs(t, err, ErrGasPriceIsHigherThanTheMaximumSet)
+	require.Contains(t, err.Error(), "set maximum value: 100.000")
+	require.Contains(t, err.Error(), "fetched value: 101.000")
+	require.Contains(t, err.Error(), "gas price selector: SafeGasPrice")
 	assert.Equal(t, big.NewInt(0), price)
 	_ = gs.Close()
 }
@@ -433,14 +459,14 @@ func TestGasStation_GetCurrentGasPriceBelowMin(t *testing.T) {
 
 	gs, err := NewGasStation(args)
 	require.Nil(t, err)
-	expectedPrice := big.NewInt(0).Mul(gs.minGasPriceValue, gs.gasPriceMultiplier)
+	expectedPrice := gs.minGasPriceValue * gs.gasPriceMultiplier
 
 	time.Sleep(time.Second * 2)
 	assert.True(t, gs.loopStatus.IsSet())
 
 	price, err := gs.GetCurrentGasPrice()
 	require.Nil(t, err)
-	assert.Equal(t, expectedPrice, price)
+	assert.Equal(t, big.NewInt(0).SetInt64(int64(expectedPrice)), price)
 	_ = gs.Close()
 }
 
@@ -462,6 +488,28 @@ func createMockGasStationResponse() gasStationResponse {
 			FastGasPrice:    "83",
 			SuggestBaseFee:  "80.856621497",
 			GasUsedRatio:    "0.0422401857919075,0.636178148305543,0.399708304558626,0.212555933333333,0.645151576152554",
+		},
+	}
+}
+
+func createMockGasStationResponseWithFloatValues() gasStationResponse {
+	return gasStationResponse{
+		Status:  "1",
+		Message: "OK-Missing/Invalid API Key, rate limit of 1/5sec applied",
+		Result: struct {
+			LastBlock       string `json:"LastBlock"`
+			SafeGasPrice    string `json:"SafeGasPrice"`
+			ProposeGasPrice string `json:"ProposeGasPrice"`
+			FastGasPrice    string `json:"FastGasPrice"`
+			SuggestBaseFee  string `json:"suggestBaseFee"`
+			GasUsedRatio    string `json:"gasUsedRatio"`
+		}{
+			LastBlock:       "21779373",
+			SafeGasPrice:    "1.289774824",
+			ProposeGasPrice: "1.327985733",
+			FastGasPrice:    "1.460784306",
+			SuggestBaseFee:  "1.289774824",
+			GasUsedRatio:    "0.339906295527105,0.348258876646649,0.41887262757803,0.316123823179043,0.659216773979187",
 		},
 	}
 }
