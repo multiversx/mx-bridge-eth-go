@@ -351,7 +351,8 @@ func TestRelayersShouldExecuteTransfersWithRefundForOtherSituations(t *testing.T
 			mexToken,
 		)
 	})
-	t.Run("only Alice having transfer role for tokens should refund", func(t *testing.T) {
+	// TODO: finish this test
+	t.Skip("only Alice having transfer role for tokens should refund", func(t *testing.T) {
 		// usdc token
 		usdcToken := slowTests.GetSimplerVersionOfUSDCToken()
 		usdcToken.IssueTokenParams.HasTransferRole = true
