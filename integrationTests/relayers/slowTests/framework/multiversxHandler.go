@@ -27,6 +27,7 @@ const (
 	trueStr                  = "true"
 	esdtRoleLocalMint        = "ESDTRoleLocalMint"
 	esdtRoleLocalBurn        = "ESDTRoleLocalBurn"
+	esdtTransferRole         = "ESDTTransferRole"
 	hexTrue                  = "01"
 	hexFalse                 = "00"
 	gwei                     = "GWEI"
@@ -463,6 +464,10 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	if params.IsFrozen {
 		handler.freezeToken(ctx, params)
 	}
+	if params.HasTransferRole {
+		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
+		handler.setTransferRolesForToken(ctx, params, eligibleAddresses)
+	}
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
 	handler.addUniversalTokenToWrapper(ctx, params)
 	handler.whitelistTokenOnWrapper(ctx, params)
@@ -487,6 +492,10 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 	}
 	if params.IsFrozen {
 		handler.freezeToken(ctx, params)
+	}
+	if params.HasTransferRole {
+		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
+		handler.setTransferRolesForToken(ctx, params, eligibleAddresses)
 	}
 
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
@@ -1270,6 +1279,40 @@ func (handler *MultiversxHandler) ExecuteDepositWithoutGenerateBlocks(ctx contex
 	log.Info("execute deposit on bridge proxy tx sent", "transaction hash", hash)
 
 	return hash
+}
+
+func (handler *MultiversxHandler) getEligibleAddressesForTransferRole(params IssueTokenParams) []*MvxAddress {
+	if !params.GrantRoleToAllAddresses {
+		return []*MvxAddress{handler.AliceKeys.MvxAddress}
+	}
+
+	return []*MvxAddress{
+		handler.AliceKeys.MvxAddress,
+		handler.ScProxyAddress,
+		handler.MultiTransferAddress,
+	}
+}
+
+func (handler *MultiversxHandler) setTransferRolesForToken(ctx context.Context, params IssueTokenParams, keyHolders []*MvxAddress) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
+	for _, addr := range keyHolders {
+		scCallParams := []string{
+			hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
+			addr.Hex(),
+			hex.EncodeToString([]byte(esdtTransferRole))}
+
+		hash, txResult := handler.scCallAndCheckTx(
+			ctx,
+			handler.OwnerKeys,
+			handler.ESDTSystemContractAddress,
+			zeroStringValue,
+			setCallsGasLimit,
+			setSpecialRoleFunction,
+			scCallParams)
+
+		log.Info("set transfer role on universal token tx executed", "hash", hash, "status", txResult.Status)
+	}
 }
 
 func getHexBool(input bool) string {

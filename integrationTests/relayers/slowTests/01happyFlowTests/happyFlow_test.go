@@ -164,4 +164,20 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 			tadaToken,
 		)
 	})
+	t.Run("tokens with transfer role", func(t *testing.T) {
+		usdcToken := slowTests.GetSimplerVersionOfUSDCToken()
+		usdcToken.IssueTokenParams.HasTransferRole = true
+		usdcToken.IssueTokenParams.GrantRoleToAllAddresses = true
+
+		eurocToken := slowTests.GetSimplerVersionOfEUROCToken()
+		eurocToken.IssueTokenParams.HasTransferRole = true
+		eurocToken.IssueTokenParams.GrantRoleToAllAddresses = true
+
+		_ = slowTests.NewTestEnvironmentWithChainSimulatorAndTokens(
+			t,
+			make(chan error),
+			usdcToken,
+			eurocToken,
+		)
+	})
 }
