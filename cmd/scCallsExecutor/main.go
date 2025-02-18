@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 	chainCommon "github.com/multiversx/mx-chain-go/common"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-logger-go/file"
+	"github.com/multiversx/mx-sdk-go/blockchain"
+	sdkCore "github.com/multiversx/mx-sdk-go/core"
 	"github.com/urfave/cli"
 )
 
@@ -84,6 +87,21 @@ func startExecutor(ctx *cli.Context, version string) error {
 		return err
 	}
 
+	argsProxy := blockchain.ArgsProxy{
+		ProxyURL:            cfg.General.NetworkAddress,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       cfg.General.ProxyFinalityCheck,
+		AllowedDeltaToFinal: cfg.General.ProxyMaxNoncesDelta,
+		CacheExpirationTime: time.Second * time.Duration(cfg.General.ProxyCacherExpirationSeconds),
+		EntityType:          sdkCore.RestAPIEntityType(cfg.General.ProxyRestAPIEntityType),
+	}
+
+	proxy, err := blockchain.NewProxy(argsProxy)
+	if err != nil {
+		return err
+	}
+
 	if !check.IfNil(fileLogging) {
 		timeLogLifeSpan := time.Second * time.Duration(cfg.Logs.LogFileLifeSpanInSec)
 		sizeLogLifeSpanInMB := uint64(cfg.Logs.LogFileLifeSpanInMB)
@@ -93,43 +111,32 @@ func startExecutor(ctx *cli.Context, version string) error {
 		}
 	}
 
-	if ctx.IsSet(scProxyBech32Address.Name) {
-		cfg.ScProxyBech32Address = ctx.GlobalString(scProxyBech32Address.Name)
-		log.Info("using flag-defined SC proxy address", "address", cfg.ScProxyBech32Address)
-	}
 	if ctx.IsSet(networkAddress.Name) {
-		cfg.NetworkAddress = ctx.GlobalString(networkAddress.Name)
-		log.Info("using flag-defined network address", "address", cfg.NetworkAddress)
+		cfg.General.NetworkAddress = ctx.GlobalString(networkAddress.Name)
+		log.Info("using flag-defined network address", "address", cfg.General.NetworkAddress)
 	}
 	if ctx.IsSet(privateKeyFile.Name) {
-		cfg.PrivateKeyFile = ctx.GlobalString(privateKeyFile.Name)
-		log.Info("using flag-defined private key file", "filename", cfg.PrivateKeyFile)
+		cfg.General.PrivateKeyFile = ctx.GlobalString(privateKeyFile.Name)
+		log.Info("using flag-defined private key file", "filename", cfg.General.PrivateKeyFile)
+	}
+	if ctx.IsSet(scProxyAddresses.Name) {
+		scProxyAddressesValue := ctx.GlobalString(scProxyAddresses.Name)
+		cfg.General.ScProxyBech32Addresses = strings.Split(scProxyAddressesValue, ",")
+		log.Info("using flag-defined SC addresses",
+			"SC addresses to be monitored", strings.Join(cfg.General.ScProxyBech32Addresses, ", "))
 	}
 
-	if len(cfg.NetworkAddress) == 0 {
+	if len(cfg.General.NetworkAddress) == 0 {
 		return fmt.Errorf("empty NetworkAddress in config file")
 	}
 
-	args := config.ScCallsModuleConfig{
-		ScProxyBech32Address:            cfg.ScProxyBech32Address,
-		ExtraGasToExecute:               cfg.ExtraGasToExecute,
-		MaxGasLimitToUse:                cfg.MaxGasLimitToUse,
-		GasLimitForOutOfGasTransactions: cfg.GasLimitForOutOfGasTransactions,
-		NetworkAddress:                  cfg.NetworkAddress,
-		ProxyMaxNoncesDelta:             cfg.ProxyMaxNoncesDelta,
-		ProxyFinalityCheck:              cfg.ProxyFinalityCheck,
-		ProxyCacherExpirationSeconds:    cfg.ProxyCacherExpirationSeconds,
-		ProxyRestAPIEntityType:          cfg.ProxyRestAPIEntityType,
-		IntervalToResendTxsInSeconds:    cfg.IntervalToResendTxsInSeconds,
-		PrivateKeyFile:                  cfg.PrivateKeyFile,
-		PollingIntervalInMillis:         cfg.PollingIntervalInMillis,
-		Filter:                          cfg.Filter,
-		Logs:                            cfg.Logs,
-		TransactionChecks:               cfg.TransactionChecks,
+	argsScCallsModule := module.ArgsScCallsModule{
+		Config: cfg,
+		Proxy:  proxy,
+		Log:    log,
 	}
 
-	chCloseApp := make(chan struct{}, 1)
-	scCallsExecutor, err := module.NewScCallsModule(args, log, chCloseApp)
+	scCallsExecutor, err := module.NewScCallsModule(argsScCallsModule)
 	if err != nil {
 		return err
 	}
@@ -137,12 +144,9 @@ func startExecutor(ctx *cli.Context, version string) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	select {
-	case <-sigs:
-		log.Info("application closing by user error input, calling Close on all subcomponents...")
-	case <-chCloseApp:
-		log.Info("application closing, requested internally, calling Close on all subcomponents...")
-	}
+	<-sigs
+
+	log.Info("application closing by user error input, calling Close on all subcomponents...")
 
 	return scCallsExecutor.Close()
 }

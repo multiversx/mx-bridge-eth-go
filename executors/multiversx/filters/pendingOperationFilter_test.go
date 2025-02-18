@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
+	"github.com/multiversx/mx-bridge-eth-go/core"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/assert"
@@ -190,7 +190,7 @@ func TestPendingOperationFilter_ShouldExecute(t *testing.T) {
 	t.Run("nil callData.To should return false", func(t *testing.T) {
 		t.Parallel()
 
-		callData := parsers.ProxySCCompleteCallData{
+		callData := core.ProxySCCompleteCallData{
 			To: nil,
 		}
 
@@ -202,7 +202,7 @@ func TestPendingOperationFilter_ShouldExecute(t *testing.T) {
 	t.Run("callData.To is not a valid Mvx address should return false", func(t *testing.T) {
 		t.Parallel()
 
-		callData := parsers.ProxySCCompleteCallData{
+		callData := core.ProxySCCompleteCallData{
 			To: data.NewAddressFromBytes([]byte{0x1, 0x2}),
 		}
 
@@ -214,7 +214,7 @@ func TestPendingOperationFilter_ShouldExecute(t *testing.T) {
 	t.Run("eth address", func(t *testing.T) {
 		t.Parallel()
 
-		callData := parsers.ProxySCCompleteCallData{
+		callData := core.ProxySCCompleteCallData{
 			From: common.BytesToAddress(ethTestAddress1Bytes),
 		}
 		callData.To, _ = data.NewAddressFromBech32String(mvxTestAddress1)
@@ -260,7 +260,7 @@ func TestPendingOperationFilter_ShouldExecute(t *testing.T) {
 	t.Run("mvx address", func(t *testing.T) {
 		t.Parallel()
 
-		callData := parsers.ProxySCCompleteCallData{
+		callData := core.ProxySCCompleteCallData{
 			From: common.BytesToAddress(ethTestAddress1Bytes),
 		}
 		callData.To, _ = data.NewAddressFromBech32String(mvxTestAddress1)
@@ -308,7 +308,7 @@ func TestPendingOperationFilter_ShouldExecute(t *testing.T) {
 
 		token1 := "tkn1"
 		token2 := "tkn2"
-		callData := parsers.ProxySCCompleteCallData{
+		callData := core.ProxySCCompleteCallData{
 			From:  common.BytesToAddress(ethTestAddress1Bytes),
 			Token: token1,
 		}

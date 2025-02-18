@@ -2,9 +2,31 @@ package framework
 
 import (
 	"math/big"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
 
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	logger "github.com/multiversx/mx-chain-logger-go"
+)
+
+// HalfBridgeIdentifier is the type that holds the half-bridge identifier (counter)
+type HalfBridgeIdentifier string
+
+// TokenBalanceType represents the token type that should be checked for balance
+type TokenBalanceType string
+
+const (
+	// FirstHalfBridge represents the first half bridge in the tests
+	FirstHalfBridge HalfBridgeIdentifier = "first half bridge"
+	// SecondHalfBridge represents the second half bridge in the tests
+	SecondHalfBridge HalfBridgeIdentifier = "second half bridge"
+
+	// UniversalToken is the universal token identifier
+	UniversalToken TokenBalanceType = "universal"
+	// ChainSpecificToken is the chain-specific token identifier
+	ChainSpecificToken TokenBalanceType = "chain-specific"
 )
 
 var (
@@ -12,3 +34,12 @@ var (
 	addressPubkeyConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, "erd")
 	zeroValueBigInt           = big.NewInt(0)
 )
+
+func normalizePathToRelayersTests(partialPath string) string {
+	wd, _ := os.Getwd()
+	for !strings.HasSuffix(wd, "mx-bridge-eth-go") {
+		wd = filepath.Dir(wd)
+	}
+
+	return path.Join(wd, "integrationTests", "relayers", partialPath)
+}

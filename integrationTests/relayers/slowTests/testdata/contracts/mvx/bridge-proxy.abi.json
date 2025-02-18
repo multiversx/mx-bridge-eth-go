@@ -13,18 +13,12 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.52.3"
+            "version": "0.56.1"
         }
     },
     "name": "BridgeProxyContract",
     "constructor": {
-        "inputs": [
-            {
-                "name": "opt_multi_transfer_address",
-                "type": "optional<Address>",
-                "multi_arg": true
-            }
-        ],
+        "inputs": [],
         "outputs": []
     },
     "upgradeConstructor": {
@@ -62,6 +56,17 @@
             "outputs": []
         },
         {
+            "name": "executeRefundTransaction",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "getPendingTransactionById",
             "mutability": "readonly",
             "inputs": [
@@ -88,71 +93,39 @@
             ]
         },
         {
-            "name": "setMultiTransferAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_multi_transfer_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "setBridgedTokensWrapperAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "setEsdtSafeAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "getMultiTransferAddress",
+            "name": "getRefundTransactionById",
             "mutability": "readonly",
-            "inputs": [],
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32"
+                }
+            ],
             "outputs": [
                 {
-                    "type": "Address"
+                    "type": "EthTransaction"
                 }
             ]
         },
         {
-            "name": "getBridgedTokensWrapperAddress",
+            "name": "getRefundTransactions",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [
                 {
-                    "type": "Address"
+                    "type": "variadic<multi<u32,EthTransaction>>",
+                    "multi_result": true
                 }
             ]
         },
         {
-            "name": "getEsdtSafeContractAddress",
+            "name": "refundTransactions",
             "mutability": "readonly",
             "inputs": [],
             "outputs": [
                 {
-                    "type": "Address"
+                    "type": "variadic<multi<u32,EthTransaction>>",
+                    "multi_result": true
                 }
             ]
         },
@@ -195,6 +168,26 @@
         "execution_callback"
     ],
     "events": [
+        {
+            "identifier": "executeSuccesfullyFinished",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "executeGeneratedRefund",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32",
+                    "indexed": true
+                }
+            ]
+        },
         {
             "identifier": "pauseContract",
             "inputs": []

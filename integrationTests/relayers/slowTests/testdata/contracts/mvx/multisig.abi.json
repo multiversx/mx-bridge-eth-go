@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.52.3"
+            "version": "0.56.1"
         }
     },
     "docs": [
@@ -37,6 +37,14 @@
             },
             {
                 "name": "proxy_sc_address",
+                "type": "Address"
+            },
+            {
+                "name": "bridged_tokens_wrapper_sc_address",
+                "type": "Address"
+            },
+            {
+                "name": "price_aggregator_sc_address",
                 "type": "Address"
             },
             {
@@ -71,6 +79,14 @@
             },
             {
                 "name": "proxy_sc_address",
+                "type": "Address"
+            },
+            {
+                "name": "bridged_tokens_wrapper_sc_address",
+                "type": "Address"
+            },
+            {
+                "name": "price_aggregator_sc_address",
                 "type": "Address"
             }
         ],
@@ -263,6 +279,17 @@
             "outputs": []
         },
         {
+            "name": "clearActionsForBatchId",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "eth_batch_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "docs": [
                 "Used by board members to sign actions."
             ],
@@ -288,10 +315,6 @@
                 {
                     "name": "source_address",
                     "type": "Address"
-                },
-                {
-                    "name": "is_payable",
-                    "type": "bool"
                 },
                 {
                     "name": "init_args",
@@ -460,26 +483,6 @@
             "outputs": []
         },
         {
-            "name": "changeFeeEstimatorContractAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "new_address",
-                    "type": "Address"
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "docs": [
-                "Sets the gas limit being used for Ethereum transactions",
-                "This is used in the EsdtSafe contract to determine the fee amount",
-                "",
-                "fee_amount = eth_gas_limit * price_per_gas_unit",
-                "",
-                "where price_per_gas_unit is queried from the aggregator (fee estimator SC)"
-            ],
             "name": "changeMultiversXToEthGasLimit",
             "onlyOwner": true,
             "mutability": "mutable",
@@ -569,20 +572,6 @@
                     "multi_arg": true
                 }
             ],
-            "outputs": []
-        },
-        {
-            "name": "setMultiTransferOnEsdtSafe",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [],
-            "outputs": []
-        },
-        {
-            "name": "setEsdtSafeOnMultiTransfer",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [],
             "outputs": []
         },
         {
@@ -698,28 +687,6 @@
                 {
                     "name": "new_max_tx_batch_block_duration",
                     "type": "u64"
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "docs": [
-                "Sets the wrapping contract address.",
-                "This contract is used to map multiple tokens to a universal one.",
-                "Useful in cases where a single token (USDC for example)",
-                "is being transferred from multiple chains.",
-                "",
-                "They will all have different token IDs, but can be swapped 1:1 in the wrapping SC.",
-                "The wrapping is done automatically, so the user only receives the universal token."
-            ],
-            "name": "multiTransferEsdtSetWrappingContractAddress",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "opt_wrapping_contract_address",
-                    "type": "optional<Address>",
-                    "multi_arg": true
                 }
             ],
             "outputs": []
@@ -892,6 +859,26 @@
             ]
         },
         {
+            "name": "getBridgedTokensWrapperAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getFeeEstimatorAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
             "docs": [
                 "Returns the current EsdtSafe batch.",
                 "",
@@ -950,10 +937,6 @@
             ]
         },
         {
-            "docs": [
-                "Actions are cleared after execution, so an empty entry means the action was executed already",
-                "Returns \"false\" if the action ID is invalid"
-            ],
             "name": "wasActionExecuted",
             "mutability": "readonly",
             "inputs": [

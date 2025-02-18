@@ -364,7 +364,7 @@ func buildNetMessenger(cfg config.Config, marshalizer marshal.Marshalizer) (p2p.
 	peerDiscoveryConfig := p2pConfig.KadDhtPeerDiscoveryConfig{
 		Enabled:                          true,
 		RefreshIntervalInSec:             5,
-		ProtocolID:                       cfg.P2P.ProtocolID,
+		ProtocolIDs:                      cfg.P2P.ProtocolIDs,
 		InitialPeerList:                  cfg.P2P.InitialPeerList,
 		BucketSize:                       0,
 		RoutingTableRefreshIntervalInSec: 300,

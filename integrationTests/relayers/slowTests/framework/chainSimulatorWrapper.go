@@ -37,6 +37,8 @@ const (
 	generateBlocksUntilTxProcessedEndpoint  = "simulator/generate-blocks-until-transaction-processed/%s"
 	numProbeRetries                         = 10
 	networkConfigEndpointTemplate           = "network/status/%d"
+	codeMetadata                            = "0502"
+	esdtSupplyEndpointTemplate              = "network/esdt/supply/%s"
 )
 
 var (
@@ -129,7 +131,7 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 	require.Nil(instance.TB, err)
 
 	scCode := wasm.GetSCCode(wasmFilePath)
-	params := []string{scCode, wasm.VMTypeHex, wasm.DummyCodeMetadataHex}
+	params := []string{scCode, wasm.VMTypeHex, codeMetadata}
 	params = append(params, parameters...)
 	txData := strings.Join(params, "@")
 
@@ -146,26 +148,31 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 	}
 
 	hash := instance.signAndSend(ctx, ownerSK, ftx, 1)
-	txResult := instance.GetTransactionResult(ctx, hash)
+	txResult, txStatus := instance.GetTransactionResult(ctx, hash)
+
+	jsonData, err := json.MarshalIndent(txResult, "", "  ")
+	require.Nil(instance, err)
+	require.Equal(instance, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
 
 	return NewMvxAddressFromBech32(instance.TB, txResult.Logs.Events[0].Address), hash, txResult
 }
 
 // GetTransactionResult tries to get a transaction result. It may wait a few blocks
-func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context, hash string) *data.TransactionOnNetwork {
+func (instance *chainSimulatorWrapper) GetTransactionResult(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus) {
 	instance.GenerateBlocksUntilTxProcessed(ctx, hash)
 
+	return instance.GetTransactionResultWithoutGenerateBlocks(ctx, hash)
+}
+
+// GetTransactionResultWithoutGenerateBlocks tries to get a transaction result at the current blockchain state without advancing the block height
+func (instance *chainSimulatorWrapper) GetTransactionResultWithoutGenerateBlocks(ctx context.Context, hash string) (*data.TransactionOnNetwork, transaction.TxStatus) {
 	txResult, err := instance.proxyInstance.GetTransactionInfoWithResults(ctx, hash)
 	require.Nil(instance, err)
 
 	txStatus, err := instance.proxyInstance.ProcessTransactionStatus(ctx, hash)
 	require.Nil(instance, err)
 
-	jsonData, err := json.MarshalIndent(txResult.Data.Transaction, "", "  ")
-	require.Nil(instance, err)
-	require.Equal(instance, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
-
-	return &txResult.Data.Transaction
+	return &txResult.Data.Transaction, txStatus
 }
 
 // GenerateBlocks calls the chain simulator generate block endpoint
@@ -200,7 +207,7 @@ func (instance *chainSimulatorWrapper) GenerateBlocksUntilTxProcessed(ctx contex
 }
 
 // ScCall will make the provided sc call
-func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork) {
+func (instance *chainSimulatorWrapper) ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork, transaction.TxStatus) {
 	return instance.SendTx(ctx, senderSK, contract, value, gasLimit, createTxData(function, parameters))
 }
 
@@ -218,22 +225,29 @@ func createTxData(function string, parameters []string) []byte {
 }
 
 // SendTx will build and send a transaction
-func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork) {
+func (instance *chainSimulatorWrapper) SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork, transaction.TxStatus) {
 	hash := instance.SendTxWithoutGenerateBlocks(ctx, senderSK, receiver, value, gasLimit, dataField)
 	instance.GenerateBlocks(ctx, 1)
-	txResult := instance.GetTransactionResult(ctx, hash)
+	txResult, txStatus := instance.GetTransactionResult(ctx, hash)
 
-	return hash, txResult
+	return hash, txResult, txStatus
 }
 
-// SendTxWithoutGenerateBlocks will build and send a transaction and won't call the generate blocks command
+// SendTxWithoutGenerateBlocks will build and send a transaction without generating blocks
 func (instance *chainSimulatorWrapper) SendTxWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) string {
+	senderPK := instance.getPublicKey(senderSK)
+	nonce, err := instance.getNonce(ctx, senderPK)
+	require.Nil(instance, err)
+
+	return instance.SendTxWithNonceWithoutGenerateBlocks(ctx, senderSK, receiver, nonce, value, gasLimit, dataField)
+}
+
+// SendTxWithNonceWithoutGenerateBlocks will build a transaction with given nonce and send it without generating blocks
+func (instance *chainSimulatorWrapper) SendTxWithNonceWithoutGenerateBlocks(ctx context.Context, senderSK []byte, receiver *MvxAddress, nonce uint64, value string, gasLimit uint64, dataField []byte) string {
 	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
 	require.Nil(instance, err)
 
 	senderPK := instance.getPublicKey(senderSK)
-	nonce, err := instance.getNonce(ctx, senderPK)
-	require.Nil(instance, err)
 
 	ftx := &transaction.FrontendTransaction{
 		Nonce:    nonce,
@@ -379,4 +393,21 @@ func (instance *chainSimulatorWrapper) ExecuteVMQuery(
 	require.Nil(instance, err)
 
 	return response.Data.ReturnData
+}
+
+// GetESDTSupplyValues get all supply parameters for a token
+func (instance *chainSimulatorWrapper) GetESDTSupplyValues(ctx context.Context, token string) ESDTSupply {
+	resultBytes, status, err := instance.clientWrapper.GetHTTP(ctx, fmt.Sprintf(esdtSupplyEndpointTemplate, token))
+	if err != nil || status != http.StatusOK {
+		require.Fail(instance, fmt.Sprintf("error %v, status code %d in chainSimulatorWrapper.GetESDTSupplyValues", err, status))
+	}
+
+	resultStruct := struct {
+		Data ESDTSupply `json:"data"`
+	}{}
+
+	err = json.Unmarshal(resultBytes, &resultStruct)
+	require.Nil(instance, err)
+
+	return resultStruct.Data
 }

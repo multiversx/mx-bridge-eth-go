@@ -1,0 +1,36 @@
+[General]
+    ScProxyBech32Addresses = [
+        "erd1qqqqqqqqqqqqqpgqnef5f5aq32d63kljld8w5vnvz4gk5sy9hrrq2ld08s",
+    ]
+    NetworkAddress = "http://127.0.0.1:8085"
+    ProxyMaxNoncesDelta = 7
+    ProxyFinalityCheck = true
+    ProxyCacherExpirationSeconds = 600
+    ProxyRestAPIEntityType = "proxy"
+    IntervalToResendTxsInSeconds = 60
+    PrivateKeyFile = "keys/multiversx.pem"
+
+[ScCallsExecutor]
+    ExtraGasToExecute = 60000000 # this value allow the SC calls without provided gas limit to be refunded
+    MaxGasLimitToUse = 249999999 # this is a safe max gas limit to use both intra-shard & cross-shard
+    GasLimitForOutOfGasTransactions = 30000000 # this value will be used when a transaction specified a gas limit > 249999999
+    PollingIntervalInMillis = 6000
+    TTLForFailedRefundIdInSeconds = 3600
+
+[RefundExecutor]
+    GasToExecute = 30000000
+    PollingIntervalInMillis = 6000
+    TTLForFailedRefundIdInSeconds = 86400
+
+[Filter]
+    AllowedEthAddresses = ["*"]   # execute SC calls from all ETH addresses
+    AllowedMvxAddresses = ["*"]   # execute SC calls to all MvX contracts
+    AllowedTokens = ["*"]         # execute SC calls for all tokens
+
+[Logs]
+    LogFileLifeSpanInSec = 86400 # 24h
+    LogFileLifeSpanInMB = 1024 # 1GB
+
+[TransactionChecks]
+    TimeInSecondsBetweenChecks = 6     # the number of seconds to recheck the status of the transaction
+    ExecutionTimeoutInSeconds  = 120   # the number of seconds reserved for each execution to complete

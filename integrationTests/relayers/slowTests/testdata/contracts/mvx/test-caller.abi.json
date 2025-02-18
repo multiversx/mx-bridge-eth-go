@@ -13,7 +13,7 @@
         },
         "framework": {
             "name": "multiversx-sc",
-            "version": "0.52.3"
+            "version": "0.56.1"
         }
     },
     "name": "TestCallerContract",
@@ -60,6 +60,20 @@
             "outputs": []
         },
         {
+            "name": "callPayableWithBuff",
+            "mutability": "readonly",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "buff",
+                    "type": "bytes"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "getCalledDataParams",
             "mutability": "readonly",
             "inputs": [],
@@ -88,6 +102,10 @@
                 {
                     "name": "token_identifier",
                     "type": "TokenIdentifier"
+                },
+                {
+                    "name": "buff",
+                    "type": "bytes"
                 }
             ]
         }

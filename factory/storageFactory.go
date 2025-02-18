@@ -11,8 +11,7 @@ import (
 
 // CreateUnitStorer based on the config and the working directory
 func CreateUnitStorer(config config.StorageConfig, workingDir string) (core.Storer, error) {
-	dbConfigHandler := factory.NewDBConfigHandler(config.DB)
-	persisterCreator, err := factory.NewPersisterFactory(dbConfigHandler)
+	persisterCreator, err := factory.NewPersisterFactory(config.DB)
 	if err != nil {
 		return nil, err
 	}
