@@ -1079,33 +1079,17 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 	getFunction string,
 	withdrawFunction string,
 ) {
-	queryParams := []string{
-		hex.EncodeToString([]byte(token)),
-	}
-	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getFunction, queryParams)
-	require.Greater(handler, len(responseData), 0)
-	value := big.NewInt(0).SetBytes(responseData[0])
-	require.Equal(handler, expectedDelta.String(), value.String())
-	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
-		return
-	}
-
 	handler.ChainSimulator.GenerateBlocks(ctx, 5) // ensure block finality
 	initialBalanceStr := handler.ChainSimulator.GetESDTBalance(ctx, handler.OwnerKeys.MvxAddress, token)
 	initialBalance, ok := big.NewInt(0).SetString(initialBalanceStr, 10)
 	require.True(handler, ok)
 
-	params := []string{
-		hex.EncodeToString([]byte(token)),
-	}
-	handler.scCallAndCheckTx(
-		ctx,
-		handler.OwnerKeys,
-		handler.MultisigAddress,
-		zeroStringValue,
-		generalSCCallGasLimit,
-		withdrawFunction,
-		params)
+	hash, txResult, txStatus := handler.withdrawFeesCommon(ctx, token, expectedDelta, getFunction, withdrawFunction)
+	jsonData, err := json.MarshalIndent(txResult, "", "  ")
+	require.Nil(handler, err)
+	require.Equal(handler, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
+
+	log.Info(fmt.Sprintf("Transaction hash %s, status %s", hash, txResult.Status))
 
 	handler.ChainSimulator.GenerateBlocks(ctx, 5) // ensure block finality
 	finalBalanceStr := handler.ChainSimulator.GetESDTBalance(ctx, handler.OwnerKeys.MvxAddress, token)
@@ -1132,6 +1116,19 @@ func (handler *MultiversxHandler) withdrawFeesShouldFail(ctx context.Context,
 	getFunction string,
 	withdrawFunction string,
 ) {
+	_, txResult, txStatus := handler.withdrawFeesCommon(ctx, token, expectedDelta, getFunction, withdrawFunction)
+
+	_, err := json.MarshalIndent(txResult, "", "  ")
+	require.Nil(handler, err)
+	require.Equal(handler, transaction.TxStatusFail, txStatus)
+}
+
+func (handler *MultiversxHandler) withdrawFeesCommon(ctx context.Context,
+	token string,
+	expectedDelta *big.Int,
+	getFunction string,
+	withdrawFunction string,
+) (string, *data.TransactionOnNetwork, transaction.TxStatus) {
 	queryParams := []string{
 		hex.EncodeToString([]byte(token)),
 	}
@@ -1140,13 +1137,13 @@ func (handler *MultiversxHandler) withdrawFeesShouldFail(ctx context.Context,
 	value := big.NewInt(0).SetBytes(responseData[0])
 	require.Equal(handler, expectedDelta.String(), value.String())
 	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
-		return
+		return "", nil, transaction.TxStatusSuccess
 	}
 
 	params := []string{
 		hex.EncodeToString([]byte(token)),
 	}
-	_, txResult, txStatus := handler.ChainSimulator.ScCall(
+	return handler.ChainSimulator.ScCall(
 		ctx,
 		handler.OwnerKeys.MvxSk,
 		handler.MultisigAddress,
@@ -1154,10 +1151,6 @@ func (handler *MultiversxHandler) withdrawFeesShouldFail(ctx context.Context,
 		generalSCCallGasLimit,
 		withdrawFunction,
 		params)
-
-	_, err := json.MarshalIndent(txResult, "", "  ")
-	require.Nil(handler, err)
-	require.Equal(handler, transaction.TxStatusFail, txStatus)
 }
 
 // TransferToken is able to create an ESDT transfer

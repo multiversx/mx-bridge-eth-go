@@ -290,7 +290,7 @@ func (setup *TestSetup) AreAllTransfersCompleted(halfBridgeIdentifier HalfBridge
 }
 
 func (setup *TestSetup) isTransferDone(halfBridgeIdentifier HalfBridgeIdentifier, token TestTokenParams) bool {
-	// if token is prevented from whitelist or alice don't have the permission to transfer it, we can't check the balances
+	// if token is prevented from whitelist or Alice don't have the permission to transfer it, we can't check the balances
 	if token.PreventWhitelist || !setup.hasAddressTransferRole(token, Alice) {
 		return true
 	}
