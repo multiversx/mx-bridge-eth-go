@@ -290,8 +290,8 @@ func (setup *TestSetup) AreAllTransfersCompleted(halfBridgeIdentifier HalfBridge
 }
 
 func (setup *TestSetup) isTransferDone(halfBridgeIdentifier HalfBridgeIdentifier, token TestTokenParams) bool {
-	// if token is prevented from whitelist, we can't check the balances
-	if token.PreventWhitelist {
+	// if token is prevented from whitelist or alice don't have the permission to transfer it, we can't check the balances
+	if token.PreventWhitelist || !setup.hasAddressTransferRole(token, Alice) {
 		return true
 	}
 
@@ -468,8 +468,8 @@ func (setup *TestSetup) createDepositOnMultiversxForToken(from KeysHolder, to Ke
 
 		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
 
-		if operation.IsFaultyDeposit || params.PreventWhitelist {
-			setup.MultiversxHandler.SendWrongDepositTransactionFromMultiversx(setup.Ctx, from, to, token, operation.ValueToSendFromMvX)
+		if operation.IsFaultyDeposit || params.PreventWhitelist || !setup.hasAddressTransferRole(params, Alice) {
+			setup.MultiversxHandler.SendWrongDepositTransactionFromMultiversx(setup.Ctx, from, to, token, params, operation.ValueToSendFromMvX)
 		} else {
 			setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, from, to, token, params, operation.ValueToSendFromMvX)
 		}
@@ -579,7 +579,7 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 		expectedRefund := big.NewInt(0)
 		expectedAccumulated := big.NewInt(0)
 
-		if param.PreventWhitelist {
+		if param.PreventWhitelist || !setup.hasAddressTransferRole(param, Alice) {
 			continue
 		}
 
@@ -602,8 +602,25 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 			expectedAccumulated.Add(expectedAccumulated, param.MvxToEthFee)
 		}
 
-		setup.MultiversxHandler.TestWithdrawFees(setup.Ctx, token.MvxChainSpecificToken, expectedRefund, expectedAccumulated)
+		if setup.hasAddressTransferRole(param, SafeSC) {
+			setup.MultiversxHandler.TestWithdrawFees(setup.Ctx, token.MvxChainSpecificToken, expectedRefund, expectedAccumulated)
+		} else {
+			setup.MultiversxHandler.TestWithdrawFeesShouldFail(setup.Ctx, token.MvxChainSpecificToken, expectedAccumulated)
+		}
 	}
+}
+
+func (setup *TestSetup) hasAddressTransferRole(params TestTokenParams, address string) bool {
+	if len(params.AddressesWithTransferRole) == 0 {
+		return true
+	}
+
+	for _, item := range params.AddressesWithTransferRole {
+		if item == address {
+			return true
+		}
+	}
+	return false
 }
 
 // CheckCorrectnessOnMintBurnTokens will check the correctness on the mint/burn tokens

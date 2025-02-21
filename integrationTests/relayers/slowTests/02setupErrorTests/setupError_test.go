@@ -73,6 +73,374 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 			slowTests.GenerateUnlistedTokenFromMvx(),
 		)
 	})
+	t.Run("mvx token with transfer role for no actor, blacklisted, frozen should fail when creating deposit", func(t *testing.T) {
+		// meme token
+		memeToken := slowTests.GenerateTestMEMEToken()
+		memeToken.IsFrozen = true
+		memeToken.AddressesWithTransferRole = []string{framework.Owner}
+		memeToken.IsBlacklisted = true
+
+		memeToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(1800),
+			},
+		}
+		memeToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		}
+		memeToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		}
+		memeToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
+		// mex token
+		mexToken := slowTests.GenerateTestMEXToken()
+		mexToken.IsFrozen = true
+		mexToken.AddressesWithTransferRole = []string{framework.Owner}
+		mexToken.IsBlacklisted = true
+
+		mexToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(9000),
+			},
+		}
+		mexToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		}
+		mexToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		}
+		mexToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
+		_ = slowTests.NewTestEnvironmentWithChainSimulatorAndTokens(
+			t,
+			make(chan error),
+			memeToken,
+			mexToken,
+		)
+	})
+	t.Run("mvx token with transfer role only for Alice, blacklisted, frozen should fail when withdrawing fees", func(t *testing.T) {
+		// meme token
+		memeToken := slowTests.GenerateTestMEMEToken()
+		memeToken.IsFrozen = true
+		memeToken.AddressesWithTransferRole = []string{framework.Alice}
+		memeToken.IsBlacklisted = true
+
+		memeToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(1800),
+			},
+		}
+		memeToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-1800),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(1800 - 51),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(1800),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-1800),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(1800 - 51),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(1800),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		}
+		memeToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeMintValue: big.NewInt(1800 - 51),
+			EthSafeBurnValue: big.NewInt(0),
+		}
+		memeToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
+		// mex token
+		mexToken := slowTests.GenerateTestMEXToken()
+		mexToken.IsFrozen = true
+		mexToken.AddressesWithTransferRole = []string{framework.Alice}
+		mexToken.IsBlacklisted = true
+
+		mexToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(9000),
+			},
+		}
+		mexToken.DeltaBalances = map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-9000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(9000 - 53),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(53),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(-9000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(9000 - 53),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(53),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		}
+		mexToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(9000 - 53),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(9000 - 53),
+
+			EthSafeMintValue: big.NewInt(9000 - 53),
+			EthSafeBurnValue: big.NewInt(0),
+		}
+		mexToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
+		_ = slowTests.NewTestEnvironmentWithChainSimulatorAndTokens(
+			t,
+			make(chan error),
+			memeToken,
+			mexToken,
+		)
+	})
 }
 
 func createBadToken() framework.TestTokenParams {

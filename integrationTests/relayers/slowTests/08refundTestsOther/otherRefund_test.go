@@ -351,54 +351,10 @@ func TestRelayersShouldExecuteTransfersWithRefundForOtherSituations(t *testing.T
 			mexToken,
 		)
 	})
-	// TODO: finish this test
-	t.Skip("only Alice having transfer role for tokens should refund", func(t *testing.T) {
-		// usdc token
-		usdcToken := slowTests.GetSimplerVersionOfUSDCToken()
-		usdcToken.IssueTokenParams.HasTransferRole = true
-		usdcToken.IssueTokenParams.GrantRoleToAllAddresses = false
-
-		usdcToken.DeltaBalances[framework.FirstHalfBridge][framework.Bob].OnMvx = big.NewInt(0)
-		usdcToken.DeltaBalances[framework.FirstHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
-		usdcToken.DeltaBalances[framework.FirstHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(0)
-		usdcToken.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-3000 - 5050 + 2950 + 5000)
-		usdcToken.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnMvx = big.NewInt(0)
-		usdcToken.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
-		usdcToken.DeltaBalances[framework.SecondHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(0)
-
-		usdcToken.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(5050)
-		usdcToken.MintBurnChecks.MvxTotalChainSpecificBurn = big.NewInt(5050 - 50)
-		usdcToken.MintBurnChecks.MvxSafeBurnValue = big.NewInt(5050 - 50)
-		usdcToken.SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(3000)
-
-		// euroc token
-		eurocToken := slowTests.GetSimplerVersionOfEUROCToken()
-		eurocToken.IssueTokenParams.HasTransferRole = true
-		eurocToken.IssueTokenParams.GrantRoleToAllAddresses = false
-
-		eurocToken.DeltaBalances[framework.FirstHalfBridge][framework.Bob].OnMvx = big.NewInt(0)
-		eurocToken.DeltaBalances[framework.FirstHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
-		eurocToken.DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-2000 - 1500 + 1948 + 1448)
-		eurocToken.DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnMvx = big.NewInt(0)
-		eurocToken.DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(52 + 52)
-		eurocToken.DeltaBalances[framework.SecondHalfBridge][framework.CalledTestSC].OnMvx = big.NewInt(0)
-
-		eurocToken.MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(1500 - 52)
-		eurocToken.MintBurnChecks.MvxSafeBurnValue = big.NewInt(1500 - 52)
-		eurocToken.MintBurnChecks.EthSafeMintValue = big.NewInt(1500 - 52)
-
-		slowTests.NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(
-			t,
-			make(chan error),
-			usdcToken,
-			eurocToken,
-		)
-	})
 	t.Run("refunds should work with tokens with transfer role", func(t *testing.T) {
 		// usdc token
 		usdcToken := slowTests.GetSimplerVersionOfUSDCToken()
-		usdcToken.IssueTokenParams.HasTransferRole = true
-		usdcToken.IssueTokenParams.GrantRoleToAllAddresses = true
+		usdcToken.AddressesWithTransferRole = []string{framework.Alice, framework.SafeSC, framework.MultiTransfer, framework.ScProxy}
 
 		usdcToken.TestOperations[1].MvxSCCallData = slowTests.CreateScCallData("unknownFunction", 50000000)
 		usdcToken.TestOperations[1].MvxFaultySCCall = true
@@ -417,8 +373,7 @@ func TestRelayersShouldExecuteTransfersWithRefundForOtherSituations(t *testing.T
 
 		// euroc token
 		eurocToken := slowTests.GetSimplerVersionOfEUROCToken()
-		eurocToken.IssueTokenParams.HasTransferRole = true
-		eurocToken.IssueTokenParams.GrantRoleToAllAddresses = true
+		usdcToken.AddressesWithTransferRole = []string{framework.Alice, framework.SafeSC, framework.MultiTransfer, framework.ScProxy}
 
 		eurocToken.TestOperations[1].MvxSCCallData = slowTests.CreateScCallData("callPayableWithParams", 50000000)
 		eurocToken.TestOperations[1].MvxFaultySCCall = true

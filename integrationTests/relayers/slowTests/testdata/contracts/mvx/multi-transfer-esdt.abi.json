@@ -63,6 +63,18 @@
             "outputs": []
         },
         {
+            "name": "blacklistToken",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "setMaxTxBatchSize",
             "onlyOwner": true,
             "mutability": "mutable",
@@ -281,7 +293,7 @@
             ]
         },
         {
-            "identifier": "tokenWithTransferRole",
+            "identifier": "blacklistToken",
             "inputs": [
                 {
                     "name": "token_id",

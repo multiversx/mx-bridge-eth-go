@@ -265,6 +265,18 @@
             "outputs": []
         },
         {
+            "name": "blacklistToken",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "docs": [
                 "Proposers and board members use this to launch signed actions."
             ],
