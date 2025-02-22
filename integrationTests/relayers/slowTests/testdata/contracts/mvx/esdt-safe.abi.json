@@ -202,6 +202,17 @@
             "outputs": []
         },
         {
+            "name": "addToBatchEndpoint",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "refund_tx",
+                    "type": "Transaction"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "computeTotalAmmountsFromIndex",
             "mutability": "readonly",
             "inputs": [

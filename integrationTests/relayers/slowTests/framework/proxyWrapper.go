@@ -60,3 +60,10 @@ func (wrapper *proxyWrapper) RegisterBeforeTransactionSendHandler(handler func(t
 	wrapper.beforeTxSendHandlers = append(wrapper.beforeTxSendHandlers, handler)
 	wrapper.mutHandlers.Unlock()
 }
+
+// ClearTransactionSendHandlers will remove any registered handlers to be called before a transaction is being sent
+func (wrapper *proxyWrapper) ClearTransactionSendHandlers() {
+	wrapper.mutHandlers.Lock()
+	wrapper.beforeTxSendHandlers = make([]func(tx *transaction.FrontendTransaction), 0)
+	wrapper.mutHandlers.Unlock()
+}

@@ -63,6 +63,52 @@
             "outputs": []
         },
         {
+            "name": "blacklistToken",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "removeBlacklistToken",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "refundTransactionForBlacklistTokens",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getTransactionForBlacklistTokens",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<multi<u64,EthTransaction>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
             "name": "setMaxTxBatchSize",
             "onlyOwner": true,
             "mutability": "mutable",
@@ -281,7 +327,17 @@
             ]
         },
         {
-            "identifier": "tokenWithTransferRole",
+            "identifier": "blacklistToken",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "removeBlacklistToken",
             "inputs": [
                 {
                     "name": "token_id",
@@ -337,6 +393,16 @@
         },
         {
             "identifier": "unprocessedRefundTxs",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u64",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "transactionsForBlacklistTokens",
             "inputs": [
                 {
                     "name": "tx_id",
