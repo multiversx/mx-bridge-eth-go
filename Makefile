@@ -62,6 +62,11 @@ slow-tests-08: clean-test
 	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/08refundTestsOther/... -v -timeout 20m -tags slow
 	@docker compose -f docker/docker-compose.yml down -v
 
+slow-tests-09: clean-test
+	@docker compose -f docker/docker-compose.yml build
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/relayers/slowTests/09ESDTtransferIssues/... -v -timeout 20m -tags slow
+	@docker compose -f docker/docker-compose.yml down -v
+
 
 lint-install:
 ifeq (,$(wildcard test -f bin/golangci-lint))

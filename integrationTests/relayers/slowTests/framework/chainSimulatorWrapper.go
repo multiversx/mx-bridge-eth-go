@@ -74,13 +74,15 @@ func CreateChainSimulatorWrapper(args ArgChainSimulatorWrapper) *chainSimulatorW
 	proxyInstance, err := blockchain.NewProxy(argsProxy)
 	require.Nil(args.TB, err)
 
+	proxyWrapperInstance := NewProxyWrapper(proxyInstance)
+
 	pubKeyConverter, err := pubkeyConverter.NewBech32PubkeyConverter(32, "erd")
 	require.Nil(args.TB, err)
 
 	instance := &chainSimulatorWrapper{
 		TB:            args.TB,
 		clientWrapper: sdkHttp.NewHttpClientWrapper(nil, proxyURL),
-		proxyInstance: proxyInstance,
+		proxyInstance: proxyWrapperInstance,
 		pkConv:        pubKeyConverter,
 	}
 

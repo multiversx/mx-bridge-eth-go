@@ -86,6 +86,9 @@ const (
 	callDepositFunction                                  = "callDeposit"
 	executeFunction                                      = "execute"
 	blacklistTokenFunction                               = "blacklistToken"
+	removeBlacklistTokenFunction                         = "removeBlacklistToken"
+	refundTransactionForBlacklistTokensFunction          = "refundTransactionForBlacklistTokens"
+	getTransactionForBlacklistTokensFunction             = "getTransactionForBlacklistTokens"
 )
 
 // MultiversxHandler will handle all the operations on the MultiversX side
@@ -467,10 +470,10 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	}
 	if len(params.AddressesWithTransferRole) > 0 {
 		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
-		handler.setTransferRolesForToken(ctx, params, eligibleAddresses)
+		handler.SetTransferRolesForToken(ctx, params, eligibleAddresses...)
 	}
 	if params.IsBlacklisted {
-		handler.blacklistToken(ctx, params)
+		handler.BlacklistToken(ctx, params)
 	}
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
 	handler.addUniversalTokenToWrapper(ctx, params)
@@ -499,10 +502,10 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 	}
 	if len(params.AddressesWithTransferRole) > 0 {
 		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
-		handler.setTransferRolesForToken(ctx, params, eligibleAddresses)
+		handler.SetTransferRolesForToken(ctx, params, eligibleAddresses...)
 	}
 	if params.IsBlacklisted {
-		handler.blacklistToken(ctx, params)
+		handler.BlacklistToken(ctx, params)
 	}
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
 	handler.addMappingInMultisig(ctx, params)
@@ -1382,7 +1385,8 @@ func (handler *MultiversxHandler) getEligibleAddressesForTransferRole(params Iss
 	return addresses
 }
 
-func (handler *MultiversxHandler) setTransferRolesForToken(ctx context.Context, params IssueTokenParams, keyHolders []*MvxAddress) {
+// SetTransferRolesForToken will set the transfer role only to the provided keys holder addresses
+func (handler *MultiversxHandler) SetTransferRolesForToken(ctx context.Context, params IssueTokenParams, keyHolders ...*MvxAddress) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
 	for _, addr := range keyHolders {
@@ -1404,23 +1408,69 @@ func (handler *MultiversxHandler) setTransferRolesForToken(ctx context.Context, 
 	}
 }
 
-func (handler *MultiversxHandler) blacklistToken(ctx context.Context, params IssueTokenParams) {
+// BlacklistToken will mark the provided token as blacklisted
+func (handler *MultiversxHandler) BlacklistToken(ctx context.Context, params IssueTokenParams) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
-
-	scCallParams := []string{
-		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
-	}
 
 	hash, txResult := handler.scCallAndCheckTx(
 		ctx,
 		handler.OwnerKeys,
 		handler.MultisigAddress,
 		zeroStringValue,
-		setCallsGasLimit,
+		generalSCCallGasLimit,
 		blacklistTokenFunction,
-		scCallParams)
+		[]string{
+			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+		})
 
-	log.Info("blacklist universal token tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("blacklisted token", "token", tkData.MvxChainSpecificToken, "hash", hash, "status", txResult.Status)
+}
+
+// RemoveBlacklistedToken will remove the provided token from the blacklisted list
+func (handler *MultiversxHandler) RemoveBlacklistedToken(ctx context.Context, params IssueTokenParams) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
+	hash, txResult := handler.scCallAndCheckTx(
+		ctx,
+		handler.OwnerKeys,
+		handler.MultisigAddress,
+		zeroStringValue,
+		generalSCCallGasLimit,
+		removeBlacklistTokenFunction,
+		[]string{
+			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken)),
+		})
+
+	log.Info("removed blacklisted token", "token", tkData.MvxChainSpecificToken, "hash", hash, "status", txResult.Status)
+}
+
+// RefundTransactionForBlacklistTokens will try to send the refund from the stored failed transaction
+func (handler *MultiversxHandler) RefundTransactionForBlacklistTokens(ctx context.Context, txID uint64) transaction.TxStatus {
+	hash, txResult, txStatus := handler.ChainSimulator.ScCall(
+		ctx,
+		handler.OwnerKeys.MvxSk,
+		handler.MultiTransferAddress,
+		zeroStringValue,
+		generalSCCallGasLimit,
+		refundTransactionForBlacklistTokensFunction,
+		[]string{
+			hex.EncodeToString(big.NewInt(int64(txID)).Bytes()),
+		},
+	)
+
+	log.Info("created refund for the transaction with blacklisted token", "tx id", txID, "hash", hash, "status", txResult.Status)
+
+	return txStatus
+}
+
+// GetTransactionForBlacklistTokens queries the multitransfer SC for failed transactions because of blacklisted tokens
+func (handler *MultiversxHandler) GetTransactionForBlacklistTokens(ctx context.Context) [][]byte {
+	return handler.ChainSimulator.ExecuteVMQuery(
+		ctx,
+		handler.MultiTransferAddress,
+		getTransactionForBlacklistTokensFunction,
+		make([]string, 0),
+	)
 }
 
 func getHexBool(input bool) string {
