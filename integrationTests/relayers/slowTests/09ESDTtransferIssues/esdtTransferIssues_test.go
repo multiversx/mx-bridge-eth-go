@@ -109,7 +109,7 @@ func step1PrepareMissingTransferRoleStep(
 	testFlowEthToMvx *slowTests.TestFlow,
 	failedTransactionNotifier FailedTransactionNotifier,
 ) {
-	log.Info(fmt.Sprintf(testMarker, "Starting step 1 - swaps that do not work for tokens without transfer role"))
+	log.Info(fmt.Sprintf(testMarker, "Starting step 1 - swaps that do not work (bridge lock) because the bridge SCs do not have transfer role for a token"))
 
 	testFlowEthToMvx.Setup.SendFromEthereumToMultiversX(
 		testFlowEthToMvx.Setup.AliceKeys,

@@ -470,10 +470,10 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	}
 	if len(params.AddressesWithTransferRole) > 0 {
 		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
-		handler.setTransferRolesForToken(ctx, params, eligibleAddresses)
+		handler.SetTransferRolesForToken(ctx, params, eligibleAddresses...)
 	}
 	if params.IsBlacklisted {
-		handler.blacklistToken(ctx, params)
+		handler.BlacklistToken(ctx, params)
 	}
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
 	handler.addUniversalTokenToWrapper(ctx, params)
@@ -502,10 +502,10 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 	}
 	if len(params.AddressesWithTransferRole) > 0 {
 		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
-		handler.setTransferRolesForToken(ctx, params, eligibleAddresses)
+		handler.SetTransferRolesForToken(ctx, params, eligibleAddresses...)
 	}
 	if params.IsBlacklisted {
-		handler.blacklistToken(ctx, params)
+		handler.BlacklistToken(ctx, params)
 	}
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
 	handler.addMappingInMultisig(ctx, params)
@@ -1383,47 +1383,6 @@ func (handler *MultiversxHandler) getEligibleAddressesForTransferRole(params Iss
 		}
 	}
 	return addresses
-}
-
-func (handler *MultiversxHandler) setTransferRolesForToken(ctx context.Context, params IssueTokenParams, keyHolders []*MvxAddress) {
-	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
-
-	for _, addr := range keyHolders {
-		scCallParams := []string{
-			hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
-			addr.Hex(),
-			hex.EncodeToString([]byte(esdtTransferRole))}
-
-		hash, txResult := handler.scCallAndCheckTx(
-			ctx,
-			handler.OwnerKeys,
-			handler.ESDTSystemContractAddress,
-			zeroStringValue,
-			setCallsGasLimit,
-			setSpecialRoleFunction,
-			scCallParams)
-
-		log.Info("set transfer role on universal token tx executed", "hash", hash, "status", txResult.Status)
-	}
-}
-
-func (handler *MultiversxHandler) blacklistToken(ctx context.Context, params IssueTokenParams) {
-	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
-
-	scCallParams := []string{
-		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
-	}
-
-	hash, txResult := handler.scCallAndCheckTx(
-		ctx,
-		handler.OwnerKeys,
-		handler.MultisigAddress,
-		zeroStringValue,
-		setCallsGasLimit,
-		blacklistTokenFunction,
-		scCallParams)
-
-	log.Info("blacklist universal token tx executed", "hash", hash, "status", txResult.Status)
 }
 
 // SetTransferRolesForToken will set the transfer role only to the provided keys holder addresses
