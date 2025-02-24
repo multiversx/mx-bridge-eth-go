@@ -1085,7 +1085,7 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 	require.True(handler, ok)
 
 	hash, txResult, txStatus := handler.withdrawFeesCommon(ctx, token, expectedDelta, getFunction, withdrawFunction)
-	if txStatus == transaction.TxStatusInvalid {
+	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
 		return
 	}
 	jsonData, err := json.MarshalIndent(txResult, "", "  ")
@@ -1120,7 +1120,7 @@ func (handler *MultiversxHandler) withdrawFeesShouldFail(ctx context.Context,
 	withdrawFunction string,
 ) {
 	_, txResult, txStatus := handler.withdrawFeesCommon(ctx, token, expectedDelta, getFunction, withdrawFunction)
-	if txStatus == transaction.TxStatusInvalid {
+	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
 		return
 	}
 
@@ -1143,7 +1143,7 @@ func (handler *MultiversxHandler) withdrawFeesCommon(ctx context.Context,
 	value := big.NewInt(0).SetBytes(responseData[0])
 	require.Equal(handler, expectedDelta.String(), value.String())
 	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
-		return "", nil, transaction.TxStatusInvalid
+		return "", nil, transaction.TxStatusSuccess
 	}
 
 	params := []string{
