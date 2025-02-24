@@ -12,10 +12,12 @@ type DeltaBalancesOnKeys map[string]*DeltaBalanceHolder
 // IssueTokenParams the parameters when issuing a new token
 type IssueTokenParams struct {
 	InitialSupplyParams
-	AbstractTokenIdentifier string
-	PreventWhitelist        bool
-	IsFrozen                bool
-	MultipleSpendings       *big.Int
+	AbstractTokenIdentifier   string
+	PreventWhitelist          bool
+	IsBlacklisted             bool
+	IsFrozen                  bool
+	MultipleSpendings         *big.Int
+	AddressesWithTransferRole []string
 
 	// MultiversX
 	NumOfDecimalsUniversal           int
