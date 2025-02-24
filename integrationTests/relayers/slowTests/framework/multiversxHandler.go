@@ -60,6 +60,7 @@ const (
 	issueFunction                                        = "issue"
 	setSpecialRoleFunction                               = "setSpecialRole"
 	freezeFunction                                       = "freeze"
+	unFreezeFunction                                     = "unFreeze"
 	esdtTransferFunction                                 = "ESDTTransfer"
 	setPairDecimalsFunction                              = "setPairDecimals"
 	addWrappedTokenFunction                              = "addWrappedToken"
@@ -465,9 +466,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	if params.PreventWhitelist {
 		return
 	}
-	if params.IsFrozen {
-		handler.freezeToken(ctx, params)
-	}
+	handler.processFrozenToken(ctx, params)
 	if len(params.AddressesWithTransferRole) > 0 {
 		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
 		handler.SetTransferRolesForToken(ctx, params, eligibleAddresses...)
@@ -497,9 +496,7 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 	if params.PreventWhitelist {
 		return
 	}
-	if params.IsFrozen {
-		handler.freezeToken(ctx, params)
-	}
+	handler.processFrozenToken(ctx, params)
 	if len(params.AddressesWithTransferRole) > 0 {
 		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
 		handler.SetTransferRolesForToken(ctx, params, eligibleAddresses...)
@@ -865,8 +862,10 @@ func (handler *MultiversxHandler) setMaxBridgeAmountOnMultitransfer(ctx context.
 	log.Info("multi-transfer set max bridge amount for token tx executed", "hash", hash, "status", txResult.Status)
 }
 
-func (handler *MultiversxHandler) freezeToken(ctx context.Context, params IssueTokenParams) {
-	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+func (handler *MultiversxHandler) processFrozenToken(ctx context.Context, params IssueTokenParams) {
+	if !params.IsFrozen {
+		return
+	}
 
 	keyHolderToFreeze := handler.BobKeys
 	// If the bridge starts from Mvx, Charlie will receive the Mvx tokens
@@ -874,9 +873,22 @@ func (handler *MultiversxHandler) freezeToken(ctx context.Context, params IssueT
 		keyHolderToFreeze = handler.CharlieKeys
 	}
 
+	handler.freezeTokenForAddress(ctx, params, keyHolderToFreeze.MvxAddress)
+}
+
+// FreezeTokenForAddresses will create transactions that will freeze all provided addresses for the specified token
+func (handler *MultiversxHandler) FreezeTokenForAddresses(ctx context.Context, params IssueTokenParams, addressesToFreeze ...*MvxAddress) {
+	for _, addr := range addressesToFreeze {
+		handler.freezeTokenForAddress(ctx, params, addr)
+	}
+}
+
+func (handler *MultiversxHandler) freezeTokenForAddress(ctx context.Context, params IssueTokenParams, addressToFreeze *MvxAddress) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
 	scCallParams := []string{
 		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
-		keyHolderToFreeze.MvxAddress.Hex(),
+		addressToFreeze.Hex(),
 	}
 
 	hash, txResult := handler.scCallAndCheckTx(
@@ -888,7 +900,40 @@ func (handler *MultiversxHandler) freezeToken(ctx context.Context, params IssueT
 		freezeFunction,
 		scCallParams)
 
-	log.Info("freeze universal token tx executed", "hash", hash, "status", txResult.Status)
+	log.Info("freeze universal token tx executed",
+		"token", params.AbstractTokenIdentifier,
+		"address", addressToFreeze.Bech32(),
+		"hash", hash, "status", txResult.Status)
+}
+
+// UnFreezeTokenForAddresses will create transactions that will un-freeze all provided addresses for the specified token
+func (handler *MultiversxHandler) UnFreezeTokenForAddresses(ctx context.Context, params IssueTokenParams, addressesToUnFreeze ...*MvxAddress) {
+	for _, addr := range addressesToUnFreeze {
+		handler.unFreezeTokenForAddress(ctx, params, addr)
+	}
+}
+
+func (handler *MultiversxHandler) unFreezeTokenForAddress(ctx context.Context, params IssueTokenParams, addressToFreeze *MvxAddress) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
+		addressToFreeze.Hex(),
+	}
+
+	hash, txResult := handler.scCallAndCheckTx(
+		ctx,
+		handler.OwnerKeys,
+		handler.ESDTSystemContractAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		unFreezeFunction,
+		scCallParams)
+
+	log.Info("unFreeze universal token tx executed",
+		"token", params.AbstractTokenIdentifier,
+		"address", addressToFreeze.Bech32(),
+		"hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) getTokenNameFromResult(txResult data.TransactionOnNetwork) string {
