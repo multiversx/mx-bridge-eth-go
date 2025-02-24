@@ -11,6 +11,7 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests"
+	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/require"
 )
@@ -162,6 +163,20 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 			eurocToken,
 			mexToken,
 			tadaToken,
+		)
+	})
+	t.Run("tokens with transfer role", func(t *testing.T) {
+		usdcToken := slowTests.GetSimplerVersionOfUSDCToken()
+		usdcToken.AddressesWithTransferRole = []string{framework.Alice, framework.SafeSC, framework.MultiTransfer, framework.ScProxy}
+
+		eurocToken := slowTests.GetSimplerVersionOfEUROCToken()
+		usdcToken.AddressesWithTransferRole = []string{framework.Alice, framework.SafeSC, framework.MultiTransfer, framework.ScProxy}
+
+		_ = slowTests.NewTestEnvironmentWithChainSimulatorAndTokens(
+			t,
+			make(chan error),
+			usdcToken,
+			eurocToken,
 		)
 	})
 }

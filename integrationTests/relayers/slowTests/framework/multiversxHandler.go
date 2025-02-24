@@ -468,6 +468,13 @@ func (handler *MultiversxHandler) issueAndWhitelistTokensWithChainSpecific(ctx c
 	if params.IsFrozen {
 		handler.freezeToken(ctx, params)
 	}
+	if len(params.AddressesWithTransferRole) > 0 {
+		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
+		handler.setTransferRolesForToken(ctx, params, eligibleAddresses)
+	}
+	if params.IsBlacklisted {
+		handler.blacklistToken(ctx, params)
+	}
 	handler.setLocalRolesForUniversalTokenOnWrapper(ctx, params)
 	handler.addUniversalTokenToWrapper(ctx, params)
 	handler.whitelistTokenOnWrapper(ctx, params)
@@ -493,7 +500,13 @@ func (handler *MultiversxHandler) issueAndWhitelistTokens(ctx context.Context, p
 	if params.IsFrozen {
 		handler.freezeToken(ctx, params)
 	}
-
+	if len(params.AddressesWithTransferRole) > 0 {
+		eligibleAddresses := handler.getEligibleAddressesForTransferRole(params)
+		handler.setTransferRolesForToken(ctx, params, eligibleAddresses)
+	}
+	if params.IsBlacklisted {
+		handler.blacklistToken(ctx, params)
+	}
 	handler.setRolesForSpecificTokenOnSafe(ctx, params)
 	handler.addMappingInMultisig(ctx, params)
 	handler.whitelistTokenOnMultisig(ctx, params)
@@ -993,12 +1006,22 @@ func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, t
 }
 
 // SendWrongDepositTransactionFromMultiversx will send a wrong deposit transaction from MultiversX
-func (handler *MultiversxHandler) SendWrongDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) SendWrongDepositTransactionFromMultiversx(ctx context.Context, from KeysHolder, to KeysHolder, token *TokenData, params TestTokenParams, value *big.Int) {
+	if params.HasChainSpecificToken {
+		handler.unwrapCreateTransactionShouldFail(ctx, token, from, to, value)
+		return
+	}
+
+	handler.createTransactionWithoutUnwrapShouldFail(ctx, token, from, to, value)
+}
+
+func (handler *MultiversxHandler) unwrapCreateTransactionShouldFail(ctx context.Context, token *TokenData, from KeysHolder, to KeysHolder, value *big.Int) {
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
+		hex.EncodeToString(handler.SafeAddress.Bytes()),
 		hex.EncodeToString(to.EthAddress.Bytes()),
 	}
 	dataField := strings.Join(params, "@")
@@ -1007,6 +1030,30 @@ func (handler *MultiversxHandler) SendWrongDepositTransactionFromMultiversx(ctx 
 		ctx,
 		from.MvxSk,
 		handler.WrapperAddress,
+		zeroStringValue,
+		createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)),
+		esdtTransferFunction,
+		params,
+	)
+
+	_, err := json.MarshalIndent(txResult, "", "  ")
+	require.Nil(handler, err)
+	require.Equal(handler, transaction.TxStatusFail, txStatus)
+}
+
+func (handler *MultiversxHandler) createTransactionWithoutUnwrapShouldFail(ctx context.Context, token *TokenData, from KeysHolder, to KeysHolder, value *big.Int) {
+	params := []string{
+		hex.EncodeToString([]byte(token.MvxUniversalToken)),
+		hex.EncodeToString(value.Bytes()),
+		hex.EncodeToString([]byte(createTransactionFunction)),
+		hex.EncodeToString(to.EthAddress.Bytes()),
+	}
+	dataField := strings.Join(params, "@")
+
+	_, txResult, txStatus := handler.ChainSimulator.ScCall(
+		ctx,
+		from.MvxSk,
+		handler.SafeAddress,
 		zeroStringValue,
 		createDepositGasLimit+gasLimitPerDataByte*uint64(len(dataField)),
 		esdtTransferFunction,
@@ -1035,33 +1082,20 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 	getFunction string,
 	withdrawFunction string,
 ) {
-	queryParams := []string{
-		hex.EncodeToString([]byte(token)),
-	}
-	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getFunction, queryParams)
-	require.Greater(handler, len(responseData), 0)
-	value := big.NewInt(0).SetBytes(responseData[0])
-	require.Equal(handler, expectedDelta.String(), value.String())
-	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
-		return
-	}
-
 	handler.ChainSimulator.GenerateBlocks(ctx, 5) // ensure block finality
 	initialBalanceStr := handler.ChainSimulator.GetESDTBalance(ctx, handler.OwnerKeys.MvxAddress, token)
 	initialBalance, ok := big.NewInt(0).SetString(initialBalanceStr, 10)
 	require.True(handler, ok)
 
-	params := []string{
-		hex.EncodeToString([]byte(token)),
+	hash, txResult, txStatus := handler.withdrawFeesCommon(ctx, token, expectedDelta, getFunction, withdrawFunction)
+	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
+		return
 	}
-	handler.scCallAndCheckTx(
-		ctx,
-		handler.OwnerKeys,
-		handler.MultisigAddress,
-		zeroStringValue,
-		generalSCCallGasLimit,
-		withdrawFunction,
-		params)
+	jsonData, err := json.MarshalIndent(txResult, "", "  ")
+	require.Nil(handler, err)
+	require.Equal(handler, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
+
+	log.Info(fmt.Sprintf("Transaction hash %s, status %s", hash, txResult.Status))
 
 	handler.ChainSimulator.GenerateBlocks(ctx, 5) // ensure block finality
 	finalBalanceStr := handler.ChainSimulator.GetESDTBalance(ctx, handler.OwnerKeys.MvxAddress, token)
@@ -1071,6 +1105,61 @@ func (handler *MultiversxHandler) withdrawFees(ctx context.Context,
 	require.Equal(handler, expectedDelta, finalBalance.Sub(finalBalance, initialBalance),
 		fmt.Sprintf("mismatch on balance check after the call to %s: initial balance: %s, final balance %s, expected delta: %s",
 			withdrawFunction, initialBalanceStr, finalBalanceStr, expectedDelta.String()))
+}
+
+// TestWithdrawFeesShouldFail will try to withdraw the fees for the provided token from the safe contract to the owner
+func (handler *MultiversxHandler) TestWithdrawFeesShouldFail(
+	ctx context.Context,
+	token string,
+	expectedDeltaForAccumulated *big.Int,
+) {
+	handler.withdrawFeesShouldFail(ctx, token, expectedDeltaForAccumulated, getTransactionFeesFunction, withdrawTransactionFeesFunction)
+}
+
+func (handler *MultiversxHandler) withdrawFeesShouldFail(ctx context.Context,
+	token string,
+	expectedDelta *big.Int,
+	getFunction string,
+	withdrawFunction string,
+) {
+	_, txResult, txStatus := handler.withdrawFeesCommon(ctx, token, expectedDelta, getFunction, withdrawFunction)
+	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
+		return
+	}
+
+	_, err := json.MarshalIndent(txResult, "", "  ")
+	require.Nil(handler, err)
+	require.Equal(handler, transaction.TxStatusFail, txStatus)
+}
+
+func (handler *MultiversxHandler) withdrawFeesCommon(ctx context.Context,
+	token string,
+	expectedDelta *big.Int,
+	getFunction string,
+	withdrawFunction string,
+) (string, *data.TransactionOnNetwork, transaction.TxStatus) {
+	queryParams := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	responseData := handler.ChainSimulator.ExecuteVMQuery(ctx, handler.SafeAddress, getFunction, queryParams)
+	require.Greater(handler, len(responseData), 0)
+	value := big.NewInt(0).SetBytes(responseData[0])
+	require.Equal(handler, expectedDelta.String(), value.String())
+	if expectedDelta.Cmp(zeroValueBigInt) == 0 {
+		return "", nil, transaction.TxStatusSuccess
+	}
+
+	params := []string{
+		hex.EncodeToString([]byte(token)),
+	}
+	return handler.ChainSimulator.ScCall(
+		ctx,
+		handler.OwnerKeys.MvxSk,
+		handler.MultisigAddress,
+		zeroStringValue,
+		generalSCCallGasLimit,
+		withdrawFunction,
+		params)
 }
 
 // TransferToken is able to create an ESDT transfer
@@ -1275,6 +1364,66 @@ func (handler *MultiversxHandler) ExecuteDepositWithoutGenerateBlocks(ctx contex
 	log.Info("execute deposit on bridge proxy tx sent", "transaction hash", hash)
 
 	return hash
+}
+
+func (handler *MultiversxHandler) getEligibleAddressesForTransferRole(params IssueTokenParams) []*MvxAddress {
+	addresses := make([]*MvxAddress, 0, len(params.AddressesWithTransferRole))
+	for _, keyHolder := range params.AddressesWithTransferRole {
+		switch keyHolder {
+		case Owner:
+			addresses = append(addresses, handler.OwnerKeys.MvxAddress)
+		case Alice:
+			addresses = append(addresses, handler.AliceKeys.MvxAddress)
+		case SafeSC:
+			addresses = append(addresses, handler.SafeAddress)
+		case MultiTransfer:
+			addresses = append(addresses, handler.MultiTransferAddress)
+		case ScProxy:
+			addresses = append(addresses, handler.ScProxyAddress)
+		}
+	}
+	return addresses
+}
+
+func (handler *MultiversxHandler) setTransferRolesForToken(ctx context.Context, params IssueTokenParams, keyHolders []*MvxAddress) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
+	for _, addr := range keyHolders {
+		scCallParams := []string{
+			hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
+			addr.Hex(),
+			hex.EncodeToString([]byte(esdtTransferRole))}
+
+		hash, txResult := handler.scCallAndCheckTx(
+			ctx,
+			handler.OwnerKeys,
+			handler.ESDTSystemContractAddress,
+			zeroStringValue,
+			setCallsGasLimit,
+			setSpecialRoleFunction,
+			scCallParams)
+
+		log.Info("set transfer role on universal token tx executed", "hash", hash, "status", txResult.Status)
+	}
+}
+
+func (handler *MultiversxHandler) blacklistToken(ctx context.Context, params IssueTokenParams) {
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+
+	scCallParams := []string{
+		hex.EncodeToString([]byte(tkData.MvxUniversalToken)),
+	}
+
+	hash, txResult := handler.scCallAndCheckTx(
+		ctx,
+		handler.OwnerKeys,
+		handler.MultisigAddress,
+		zeroStringValue,
+		setCallsGasLimit,
+		blacklistTokenFunction,
+		scCallParams)
+
+	log.Info("blacklist universal token tx executed", "hash", hash, "status", txResult.Status)
 }
 
 // SetTransferRolesForToken will set the transfer role only to the provided keys holder addresses

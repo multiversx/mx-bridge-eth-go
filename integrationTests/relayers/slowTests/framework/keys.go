@@ -55,12 +55,15 @@ const (
 	aliceSk        = "3a944a35d9cb7be4dd4e91429d28cec594db960221724cc3a3c81594e0140acb"
 	bobSk          = "c658971dab0b3f2586ef35444554a2ddf5169f750ca46c29d769930205078ded"
 	charlieSk      = "43cba80c6e2ee37fc9cf13f1d445ebbb7fb74f54800884f1162603c6de8d4530"
+	Owner          = "Owner"
 	Alice          = "Alice"
 	Bob            = "Bob"
 	Charlie        = "Charlie"
 	WrapperSC      = "Wrapper SC"
 	CalledTestSC   = "Called test SC"
 	SafeSC         = "Safe SC"
+	MultiTransfer  = "MultiTransfer"
+	ScProxy        = "SC Proxy"
 )
 
 // NewKeysStore will create a KeysStore instance and generate all keys
