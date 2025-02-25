@@ -73,12 +73,10 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 			slowTests.GenerateUnlistedTokenFromMvx(),
 		)
 	})
-	t.Run("mvx token with transfer role for no actor, blacklisted, frozen should fail when creating deposit", func(t *testing.T) {
+	t.Run("mvx token with transfer role for no actor should fail when creating deposit", func(t *testing.T) {
 		// meme token
 		memeToken := slowTests.GenerateTestMEMEToken()
-		memeToken.IsFrozen = true
 		memeToken.AddressesWithTransferRole = []string{framework.Owner}
-		memeToken.IsBlacklisted = true
 
 		memeToken.TestOperations = []framework.TokenOperations{
 			{
@@ -164,9 +162,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 
 		// mex token
 		mexToken := slowTests.GenerateTestMEXToken()
-		mexToken.IsFrozen = true
 		mexToken.AddressesWithTransferRole = []string{framework.Owner}
-		mexToken.IsBlacklisted = true
 
 		mexToken.TestOperations = []framework.TokenOperations{
 			{
@@ -257,7 +253,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 			mexToken,
 		)
 	})
-	t.Run("mvx token with transfer role only for Alice, blacklisted, frozen should fail when withdrawing fees", func(t *testing.T) {
+	t.Run("mvx token with transfer role only for Alice, frozen, should fail when withdrawing fees", func(t *testing.T) {
 		// meme token
 		memeToken := slowTests.GenerateTestMEMEToken()
 		memeToken.IsFrozen = true
