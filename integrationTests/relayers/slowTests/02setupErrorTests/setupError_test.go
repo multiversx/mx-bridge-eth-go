@@ -258,7 +258,6 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		memeToken := slowTests.GenerateTestMEMEToken()
 		memeToken.IsFrozen = true
 		memeToken.AddressesWithTransferRole = []string{framework.Alice}
-		memeToken.IsBlacklisted = true
 
 		memeToken.TestOperations = []framework.TokenOperations{
 			{
@@ -346,7 +345,6 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		mexToken := slowTests.GenerateTestMEXToken()
 		mexToken.IsFrozen = true
 		mexToken.AddressesWithTransferRole = []string{framework.Alice}
-		mexToken.IsBlacklisted = true
 
 		mexToken.TestOperations = []framework.TokenOperations{
 			{
