@@ -276,8 +276,7 @@ func (setup *TestSetup) AreAllTransfersCompleted(halfBridgeIdentifier HalfBridge
 }
 
 func (setup *TestSetup) isTransferDone(halfBridgeIdentifier HalfBridgeIdentifier, token TestTokenParams) bool {
-	// if token is prevented from whitelist or Alice don't have the permission to transfer it, we can't check the balances
-	if token.PreventWhitelist || !setup.hasAddressTransferRole(token, Alice) {
+	if setup.shouldAvoidChecks(token) {
 		return true
 	}
 
@@ -295,6 +294,21 @@ func (setup *TestSetup) isTransferDone(halfBridgeIdentifier HalfBridgeIdentifier
 	}
 
 	return true
+}
+
+func (setup *TestSetup) shouldAvoidChecks(token TestTokenParams) bool {
+	if token.PreventWhitelist {
+		return true
+	}
+	// if Alice doesn't have transfer role, we can't check the balances
+	if !setup.hasAddressTransferRole(token, Alice) {
+		return true
+	}
+	if token.IsBlacklisted {
+		return true
+	}
+
+	return false
 }
 
 func (setup *TestSetup) isBalanceOkOnMvx(entityName string, deltaBalance *DeltaBalanceHolder, token TestTokenParams) bool {
@@ -454,7 +468,7 @@ func (setup *TestSetup) createDepositOnMultiversxForToken(from KeysHolder, to Ke
 
 		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
 
-		if operation.IsFaultyDeposit || params.PreventWhitelist || !setup.hasAddressTransferRole(params, Alice) {
+		if setup.isWrongDeposit(operation, params) {
 			setup.MultiversxHandler.SendWrongDepositTransactionFromMultiversx(setup.Ctx, from, to, token, params, operation.ValueToSendFromMvX)
 		} else {
 			setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, from, to, token, params, operation.ValueToSendFromMvX)
@@ -462,6 +476,23 @@ func (setup *TestSetup) createDepositOnMultiversxForToken(from KeysHolder, to Ke
 	}
 
 	return depositValue
+}
+
+func (setup *TestSetup) isWrongDeposit(operation TokenOperations, params TestTokenParams) bool {
+	if params.IsBlacklisted {
+		return true
+	}
+	if params.PreventWhitelist {
+		return true
+	}
+	if operation.IsFaultyDeposit {
+		return true
+	}
+	if !setup.hasAddressTransferRole(params, Alice) {
+		return true
+	}
+
+	return false
 }
 
 // CreateBatchOnEthereum will create deposits that will be gathered in a batch on Ethereum
@@ -565,7 +596,7 @@ func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ..
 		expectedRefund := big.NewInt(0)
 		expectedAccumulated := big.NewInt(0)
 
-		if param.PreventWhitelist || !setup.hasAddressTransferRole(param, Alice) {
+		if setup.shouldAvoidChecks(param) {
 			continue
 		}
 

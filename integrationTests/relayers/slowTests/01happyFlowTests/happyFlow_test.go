@@ -179,4 +179,61 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 			eurocToken,
 		)
 	})
+	t.Run("1 universal blacklisted token, 1 chain specific blacklisted token, 1 good token", func(t *testing.T) {
+		memeToken := slowTests.GenerateTestMEMEToken()
+		memeToken.IsBlacklisted = true
+		memeToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(1800),
+			},
+		}
+		memeToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		}
+		memeToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
+		mexToken := slowTests.GenerateTestMEXToken()
+		mexToken.IsBlacklisted = true
+		mexToken.TestOperations = []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(2700),
+			},
+		}
+		mexToken.MintBurnChecks = &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(0),
+			MvxTotalChainSpecificMint: big.NewInt(0),
+			MvxTotalUniversalBurn:     big.NewInt(0),
+			MvxTotalChainSpecificBurn: big.NewInt(0),
+			MvxSafeMintValue:          big.NewInt(0),
+			MvxSafeBurnValue:          big.NewInt(0),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		}
+		mexToken.SpecialChecks = &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		}
+
+		tadaToken := slowTests.GenerateTestTADAToken()
+
+		_ = slowTests.NewTestEnvironmentWithChainSimulatorAndTokens(
+			t,
+			make(chan error),
+			memeToken,
+			mexToken,
+			tadaToken,
+		)
+	})
 }
