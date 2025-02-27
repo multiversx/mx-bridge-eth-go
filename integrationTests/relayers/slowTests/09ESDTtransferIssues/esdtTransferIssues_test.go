@@ -366,6 +366,7 @@ func executeComplexScenario(
 		setupFunc,
 		processFunc,
 		make(chan error),
+		framework.ContractsVersion3p1,
 	)
 }
 

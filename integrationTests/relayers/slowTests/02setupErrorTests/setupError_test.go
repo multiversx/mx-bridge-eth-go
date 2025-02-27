@@ -569,7 +569,7 @@ func testRelayersShouldNotExecuteTransfers(
 		}
 	}()
 
-	_ = slowTests.NewTestEnvironmentWithChainSimulator(tb, setupFunc, processFunc, stopChan)
+	_ = slowTests.NewTestEnvironmentWithChainSimulator(tb, setupFunc, processFunc, stopChan, framework.ContractsVersion3p1)
 }
 
 func testEthContractsShouldError(tb testing.TB, testToken framework.TestTokenParams) {
@@ -598,5 +598,6 @@ func testEthContractsShouldError(tb testing.TB, testToken framework.TestTokenPar
 		setupFunc,
 		processFunc,
 		make(chan error),
+		framework.ContractsVersion3p1,
 	)
 }

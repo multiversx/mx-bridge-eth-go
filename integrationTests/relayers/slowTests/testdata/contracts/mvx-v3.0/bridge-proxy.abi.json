@@ -1,0 +1,252 @@
+{
+    "buildInfo": {
+        "rustc": {
+            "version": "1.78.0",
+            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
+            "commitDate": "2024-04-29",
+            "channel": "Stable",
+            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
+        },
+        "contractCrate": {
+            "name": "bridge-proxy",
+            "version": "0.0.0"
+        },
+        "framework": {
+            "name": "multiversx-sc",
+            "version": "0.52.3"
+        }
+    },
+    "name": "BridgeProxyContract",
+    "constructor": {
+        "inputs": [
+            {
+                "name": "opt_multi_transfer_address",
+                "type": "optional<Address>",
+                "multi_arg": true
+            }
+        ],
+        "outputs": []
+    },
+    "upgradeConstructor": {
+        "inputs": [],
+        "outputs": []
+    },
+    "endpoints": [
+        {
+            "name": "deposit",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [
+                {
+                    "name": "eth_tx",
+                    "type": "EthTransaction"
+                },
+                {
+                    "name": "batch_id",
+                    "type": "u64"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "execute",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getPendingTransactionById",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "tx_id",
+                    "type": "u32"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "EthTransaction"
+                }
+            ]
+        },
+        {
+            "name": "getPendingTransactions",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<multi<u32,EthTransaction>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "setMultiTransferAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_multi_transfer_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setBridgedTokensWrapperAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "setEsdtSafeAddress",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "opt_address",
+                    "type": "optional<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getMultiTransferAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getBridgedTokensWrapperAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "getEsdtSafeContractAddress",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "Address"
+                }
+            ]
+        },
+        {
+            "name": "highestTxId",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "u32"
+                }
+            ]
+        },
+        {
+            "name": "pause",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "unpause",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "isPaused",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "bool"
+                }
+            ]
+        }
+    ],
+    "promisesCallbackNames": [
+        "execution_callback"
+    ],
+    "events": [
+        {
+            "identifier": "pauseContract",
+            "inputs": []
+        },
+        {
+            "identifier": "unpauseContract",
+            "inputs": []
+        }
+    ],
+    "esdtAttributes": [],
+    "hasCallback": false,
+    "types": {
+        "EthAddress": {
+            "type": "struct",
+            "docs": [
+                "Wrapper over a 20-byte array"
+            ],
+            "fields": [
+                {
+                    "name": "raw_addr",
+                    "type": "array20<u8>"
+                }
+            ]
+        },
+        "EthTransaction": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "from",
+                    "type": "EthAddress"
+                },
+                {
+                    "name": "to",
+                    "type": "Address"
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                },
+                {
+                    "name": "amount",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "tx_nonce",
+                    "type": "u64"
+                },
+                {
+                    "name": "call_data",
+                    "type": "Option<bytes>"
+                }
+            ]
+        }
+    }
+}

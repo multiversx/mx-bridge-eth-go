@@ -159,6 +159,7 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 		setupFunc,
 		processFunc,
 		manualStopChan,
+		framework.ContractsVersion3p1,
 	)
 }
 
@@ -290,6 +291,7 @@ func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb 
 		setupFunc,
 		processFunc,
 		manualStopChan,
+		framework.ContractsVersion3p1,
 	)
 }
 
@@ -593,5 +595,6 @@ func testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
 		setupFunc,
 		processFunc,
 		manualStopChan,
+		framework.ContractsVersion3p1,
 	)
 }

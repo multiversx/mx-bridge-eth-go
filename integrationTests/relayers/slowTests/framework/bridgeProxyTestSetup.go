@@ -70,17 +70,17 @@ func (setup *BridgeProxyTestSetup) deployAndSetContracts() {
 }
 
 func (setup *BridgeProxyTestSetup) deployContracts() {
-	setup.MultiversxHandler.DeployBridgeProxy(setup.Ctx)
+	setup.MultiversxHandler.DeployBridgeProxy(setup.Ctx, ContractsVersion3p1)
 
-	setup.MultiversxHandler.DeployTestHelperContract(setup.Ctx)
+	setup.MultiversxHandler.DeployTestHelperContract(setup.Ctx, ContractsVersion3p1)
 
 	setup.MultiversxHandler.MultiTransferAddress = setup.MultiversxHandler.TestHelperAddress
 	setup.MultiversxHandler.SafeAddress = NewMvxAddressFromBech32(setup.TB, scAddress)
 	setup.MultiversxHandler.WrapperAddress = NewMvxAddressFromBech32(setup.TB, scAddress)
 	setup.MultiversxHandler.AggregatorAddress = NewMvxAddressFromBech32(setup.TB, scAddress)
-	setup.MultiversxHandler.DeployMultisig(setup.Ctx)
+	setup.MultiversxHandler.DeployMultisig(setup.Ctx, ContractsVersion3p1)
 
-	setup.MultiversxHandler.DeployTestCaller(setup.Ctx)
+	setup.MultiversxHandler.DeployTestCaller(setup.Ctx, ContractsVersion3p1)
 }
 
 // IssueToken adds a token to the registry and issues it
