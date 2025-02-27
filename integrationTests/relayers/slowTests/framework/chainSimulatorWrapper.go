@@ -39,6 +39,7 @@ const (
 	networkConfigEndpointTemplate           = "network/status/%d"
 	codeMetadata                            = "0502"
 	esdtSupplyEndpointTemplate              = "network/esdt/supply/%s"
+	upgradeFunction                         = "upgradeContract"
 )
 
 var (
@@ -157,6 +158,42 @@ func (instance *chainSimulatorWrapper) DeploySC(ctx context.Context, wasmFilePat
 	require.Equal(instance, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
 
 	return NewMvxAddressFromBech32(instance.TB, txResult.Logs.Events[0].Address), hash, txResult
+}
+
+// UpgradeSC will upgrade the provided smart contract
+func (instance *chainSimulatorWrapper) UpgradeSC(ctx context.Context, scAddress *MvxAddress, wasmFilePath string, ownerSK []byte, gasLimit uint64, parameters []string) (string, *data.TransactionOnNetwork) {
+	networkConfig, err := instance.proxyInstance.GetNetworkConfig(ctx)
+	require.Nil(instance.TB, err)
+
+	ownerPK := instance.getPublicKey(ownerSK)
+	nonce, err := instance.getNonce(ctx, ownerPK)
+	require.Nil(instance.TB, err)
+
+	scCode := wasm.GetSCCode(wasmFilePath)
+	params := []string{upgradeFunction, scCode, codeMetadata}
+	params = append(params, parameters...)
+	txData := strings.Join(params, "@")
+
+	ftx := &transaction.FrontendTransaction{
+		Nonce:    nonce,
+		Value:    "0",
+		Receiver: scAddress.Bech32(),
+		Sender:   ownerPK,
+		GasPrice: networkConfig.MinGasPrice,
+		GasLimit: gasLimit,
+		Data:     []byte(txData),
+		ChainID:  networkConfig.ChainID,
+		Version:  1,
+	}
+
+	hash := instance.signAndSend(ctx, ownerSK, ftx, 1)
+	txResult, txStatus := instance.GetTransactionResult(ctx, hash)
+
+	jsonData, err := json.MarshalIndent(txResult, "", "  ")
+	require.Nil(instance, err)
+	require.Equal(instance, transaction.TxStatusSuccess, txStatus, fmt.Sprintf("tx hash: %s,\n tx: %s", hash, string(jsonData)))
+
+	return hash, txResult
 }
 
 // GetTransactionResult tries to get a transaction result. It may wait a few blocks
