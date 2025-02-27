@@ -155,10 +155,12 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 		return false
 	}
 
-	return slowTests.NewTestEnvironmentWithChainSimulator(tb,
+	return slowTests.NewTestEnvironmentWithChainSimulator(
+		tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
+		framework.ContractsVersion3p1,
 	)
 }
 
@@ -286,10 +288,12 @@ func testRelayersWithChainSimulatorAndTokensWithMultipleSwapsAndLargeScCalls(tb 
 		return false
 	}
 
-	return slowTests.NewTestEnvironmentWithChainSimulator(tb,
+	return slowTests.NewTestEnvironmentWithChainSimulator(
+		tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
+		framework.ContractsVersion3p1,
 	)
 }
 
@@ -589,9 +593,11 @@ func testRelayersWithChainSimulatorAndTokensForDynamicPriceChange(
 		return allFlowsFinished && scCallsLimitReached
 	}
 
-	return slowTests.NewTestEnvironmentWithChainSimulator(tb,
+	return slowTests.NewTestEnvironmentWithChainSimulator(
+		tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
+		framework.ContractsVersion3p1,
 	)
 }

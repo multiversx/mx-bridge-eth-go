@@ -56,6 +56,7 @@ func NewTestEnvironmentWithChainSimulatorAndTokens(tb testing.TB, manualStopChan
 		setupFunc,
 		processFunc,
 		manualStopChan,
+		framework.ContractsVersion3p1,
 	)
 }
 
@@ -118,6 +119,7 @@ func NewTestEnvironmentWithChainSimulator(tb testing.TB,
 	setupFunc func(tb testing.TB, setup *framework.TestSetup),
 	processLoopFunc func(tb testing.TB, setup *framework.TestSetup) bool,
 	stopChan chan error,
+	contractsVersion string,
 ) *framework.TestSetup {
 	defer func() {
 		r := recover()
@@ -126,7 +128,7 @@ func NewTestEnvironmentWithChainSimulator(tb testing.TB,
 		}
 	}()
 
-	testSetup := framework.NewTestSetup(tb)
+	testSetup := framework.NewTestSetup(tb, contractsVersion)
 	log.Info(fmt.Sprintf(framework.LogStepMarker, "calling setupFunc"))
 	setupFunc(tb, testSetup)
 
@@ -189,5 +191,6 @@ func NewTestEnvironmentWithChainSimulatorAndTokensAndRefund(tb testing.TB, manua
 		setupFunc,
 		processFunc,
 		manualStopChan,
+		framework.ContractsVersion3p1,
 	)
 }

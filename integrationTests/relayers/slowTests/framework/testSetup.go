@@ -56,7 +56,7 @@ type TestSetup struct {
 }
 
 // NewTestSetup creates a new e2e test setup
-func NewTestSetup(tb testing.TB) *TestSetup {
+func NewTestSetup(tb testing.TB, mvxContractVersion string) *TestSetup {
 	log.Info(fmt.Sprintf(LogStepMarker, "starting setup"))
 
 	setup := &TestSetup{
@@ -76,7 +76,7 @@ func NewTestSetup(tb testing.TB) *TestSetup {
 
 	setup.createChainSimulatorWrapper()
 	setup.MultiversxHandler = NewMultiversxHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, setup.ChainSimulator, quorum)
-	setup.MultiversxHandler.DeployAndSetContracts(setup.Ctx)
+	setup.MultiversxHandler.DeployAndSetContracts(setup.Ctx, mvxContractVersion)
 
 	setup.ProxyWrapperInstance = setup.ChainSimulator.Proxy().(*proxyWrapper)
 

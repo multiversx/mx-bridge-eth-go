@@ -1,0 +1,537 @@
+{
+    "buildInfo": {
+        "rustc": {
+            "version": "1.78.0",
+            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
+            "commitDate": "2024-04-29",
+            "channel": "Stable",
+            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
+        },
+        "contractCrate": {
+            "name": "multiversx-price-aggregator-sc",
+            "version": "0.47.1",
+            "gitVersion": "v0.45.2.1-reproducible-378-ge72c201"
+        },
+        "framework": {
+            "name": "multiversx-sc",
+            "version": "0.53.2"
+        }
+    },
+    "name": "PriceAggregator",
+    "constructor": {
+        "inputs": [
+            {
+                "name": "staking_token",
+                "type": "EgldOrEsdtTokenIdentifier"
+            },
+            {
+                "name": "staking_amount",
+                "type": "BigUint"
+            },
+            {
+                "name": "slash_amount",
+                "type": "BigUint"
+            },
+            {
+                "name": "slash_quorum",
+                "type": "u32"
+            },
+            {
+                "name": "submission_count",
+                "type": "u32"
+            },
+            {
+                "name": "oracles",
+                "type": "variadic<Address>",
+                "multi_arg": true
+            }
+        ],
+        "outputs": []
+    },
+    "upgradeConstructor": {
+        "inputs": [],
+        "outputs": []
+    },
+    "endpoints": [
+        {
+            "name": "changeAmounts",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "staking_amount",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "slash_amount",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "addOracles",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "oracles",
+                    "type": "variadic<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "docs": [
+                "Also receives submission count,",
+                "so the owner does not have to update it manually with setSubmissionCount before this call"
+            ],
+            "name": "removeOracles",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "submission_count",
+                    "type": "u32"
+                },
+                {
+                    "name": "oracles",
+                    "type": "variadic<Address>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "submit",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes"
+                },
+                {
+                    "name": "to",
+                    "type": "bytes"
+                },
+                {
+                    "name": "submission_timestamp",
+                    "type": "u64"
+                },
+                {
+                    "name": "price",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "decimals",
+                    "type": "u8"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "submitBatch",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "submissions",
+                    "type": "variadic<multi<bytes,bytes,u64,BigUint,u8>>",
+                    "multi_arg": true
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "latestRoundData",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<PriceFeed>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "latestPriceFeed",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes"
+                },
+                {
+                    "name": "to",
+                    "type": "bytes"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "u32"
+                },
+                {
+                    "type": "bytes"
+                },
+                {
+                    "type": "bytes"
+                },
+                {
+                    "type": "u64"
+                },
+                {
+                    "type": "BigUint"
+                },
+                {
+                    "type": "u8"
+                }
+            ]
+        },
+        {
+            "name": "latestPriceFeedOptional",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes"
+                },
+                {
+                    "name": "to",
+                    "type": "bytes"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "optional<multi<u32,bytes,bytes,u64,BigUint,u8>>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "setSubmissionCount",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "submission_count",
+                    "type": "u32"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getOracles",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "variadic<Address>",
+                    "multi_result": true
+                }
+            ]
+        },
+        {
+            "name": "setPairDecimals",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes"
+                },
+                {
+                    "name": "to",
+                    "type": "bytes"
+                },
+                {
+                    "name": "decimals",
+                    "type": "u8"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "getPairDecimals",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes"
+                },
+                {
+                    "name": "to",
+                    "type": "bytes"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "u8"
+                }
+            ]
+        },
+        {
+            "name": "submission_count",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "u32"
+                }
+            ]
+        },
+        {
+            "name": "pause",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "unpause",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "isPaused",
+            "mutability": "readonly",
+            "inputs": [],
+            "outputs": [
+                {
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "stake",
+            "mutability": "mutable",
+            "payableInTokens": [
+                "*"
+            ],
+            "inputs": [],
+            "outputs": []
+        },
+        {
+            "name": "unstake",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "unstake_amount",
+                    "type": "BigUint"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "voteSlashMember",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "member_to_slash",
+                    "type": "Address"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "cancelVoteSlashMember",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "member_to_slash",
+                    "type": "Address"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "slashMember",
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "member_to_slash",
+                    "type": "Address"
+                }
+            ],
+            "outputs": []
+        }
+    ],
+    "events": [
+        {
+            "identifier": "pauseContract",
+            "inputs": []
+        },
+        {
+            "identifier": "unpauseContract",
+            "inputs": []
+        },
+        {
+            "identifier": "new_round",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "round",
+                    "type": "u32",
+                    "indexed": true
+                },
+                {
+                    "name": "new_round_event",
+                    "type": "NewRoundEvent"
+                }
+            ]
+        },
+        {
+            "identifier": "discard_submission",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "round",
+                    "type": "u32",
+                    "indexed": true
+                },
+                {
+                    "name": "discard_submission_event",
+                    "type": "DiscardSubmissionEvent"
+                }
+            ]
+        },
+        {
+            "identifier": "discard_round",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "round",
+                    "type": "u32",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "add_submission",
+            "inputs": [
+                {
+                    "name": "from",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "to",
+                    "type": "bytes",
+                    "indexed": true
+                },
+                {
+                    "name": "round",
+                    "type": "u32",
+                    "indexed": true
+                },
+                {
+                    "name": "price",
+                    "type": "BigUint"
+                }
+            ]
+        }
+    ],
+    "esdtAttributes": [],
+    "hasCallback": false,
+    "types": {
+        "DiscardSubmissionEvent": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "submission_timestamp",
+                    "type": "u64"
+                },
+                {
+                    "name": "first_submission_timestamp",
+                    "type": "u64"
+                },
+                {
+                    "name": "has_caller_already_submitted",
+                    "type": "bool"
+                }
+            ]
+        },
+        "NewRoundEvent": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "price",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "u64"
+                },
+                {
+                    "name": "decimals",
+                    "type": "u8"
+                },
+                {
+                    "name": "block",
+                    "type": "u64"
+                },
+                {
+                    "name": "epoch",
+                    "type": "u64"
+                }
+            ]
+        },
+        "PriceFeed": {
+            "type": "struct",
+            "fields": [
+                {
+                    "name": "round_id",
+                    "type": "u32"
+                },
+                {
+                    "name": "from",
+                    "type": "bytes"
+                },
+                {
+                    "name": "to",
+                    "type": "bytes"
+                },
+                {
+                    "name": "timestamp",
+                    "type": "u64"
+                },
+                {
+                    "name": "price",
+                    "type": "BigUint"
+                },
+                {
+                    "name": "decimals",
+                    "type": "u8"
+                }
+            ]
+        }
+    }
+}
