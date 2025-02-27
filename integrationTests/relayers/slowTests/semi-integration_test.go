@@ -1,4 +1,4 @@
-//TODO
+//go:build integration
 
 package slowTests
 
