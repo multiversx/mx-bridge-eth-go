@@ -38,6 +38,7 @@ const (
 	gwei                     = "GWEI"
 	maxBridgedAmountForToken = "500000"
 	deployGasLimit           = 150000000 // 150 million
+	upgradeGasLimit          = 200000000 // 200 million
 	setCallsGasLimit         = 80000000  // 80 million
 	issueTokenGasLimit       = 70000000  // 70 million
 	createDepositGasLimit    = 20000000  // 20 million
@@ -62,6 +63,7 @@ const (
 	unpauseProxyFunction                                 = "unpauseProxy"
 	pauseEsdtSafeFunction                                = "pauseEsdtSafe"
 	pauseFunction                                        = "pause"
+	pauseProxyFunction                                   = "pauseProxy"
 	issueFunction                                        = "issue"
 	setSpecialRoleFunction                               = "setSpecialRole"
 	freezeFunction                                       = "freeze"
@@ -94,6 +96,7 @@ const (
 	removeBlacklistTokenFunction                         = "removeBlacklistToken"
 	refundTransactionForBlacklistTokensFunction          = "refundTransactionForBlacklistTokens"
 	getTransactionForBlacklistTokensFunction             = "getTransactionForBlacklistTokens"
+	upgradeChildContractFromSourceFunction               = "upgradeChildContractFromSource"
 )
 
 // MultiversxHandler will handle all the operations on the MultiversX side
@@ -438,6 +441,16 @@ func (handler *MultiversxHandler) UnPauseContractsAfterTokenChanges(ctx context.
 	log.Info("unpaused aggregator executed", "hash", hash, "status", txResult.Status)
 }
 
+// UnPauseAllContracts will unpause all bridge contracts
+func (handler *MultiversxHandler) UnPauseAllContracts(ctx context.Context) {
+	// unpause multisig
+	hash, txResult := handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseFunction)
+	log.Info("unpaused multisig executed", "hash", hash, "status", txResult.Status)
+
+	handler.UnPauseContractsAfterTokenChanges(ctx)
+	handler.UnpauseBridgeProxy(ctx)
+}
+
 // PauseContractsForTokenChanges can pause contracts for token changes
 func (handler *MultiversxHandler) PauseContractsForTokenChanges(ctx context.Context) {
 	// pause safe
@@ -451,6 +464,19 @@ func (handler *MultiversxHandler) PauseContractsForTokenChanges(ctx context.Cont
 	// pause wrapper
 	hash, txResult = handler.callContractNoParams(ctx, handler.WrapperAddress, pauseFunction)
 	log.Info("paused wrapper executed", "hash", hash, "status", txResult.Status)
+}
+
+// PauseAllContracts will pause all bridge contracts
+func (handler *MultiversxHandler) PauseAllContracts(ctx context.Context) {
+	// pause multisig
+	hash, txResult := handler.callContractNoParams(ctx, handler.MultisigAddress, pauseFunction)
+	log.Info("paused multisig executed", "hash", hash, "status", txResult.Status)
+
+	handler.PauseContractsForTokenChanges(ctx)
+
+	// pause bridge proxy
+	hash, txResult = handler.callContractNoParams(ctx, handler.MultisigAddress, pauseProxyFunction)
+	log.Info("paused bridge proxy executed", "hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) stakeAddressesOnContract(ctx context.Context, contract *MvxAddress, allKeys []KeysHolder) {
@@ -1496,4 +1522,110 @@ func getHexBool(input bool) string {
 	}
 
 	return hexFalse
+}
+
+// UpgradeContractsToVersion will attempt to upgrade the contracts to the provided version
+func (handler *MultiversxHandler) UpgradeContractsToVersion(ctx context.Context, version string) {
+	hash, txResult := handler.ChainSimulator.UpgradeSC(
+		ctx,
+		handler.AggregatorAddress,
+		normalizePathToRelayersTests(fmt.Sprintf(aggregatorContractPathTemplate, version)),
+		handler.OwnerKeys.MvxSk,
+		upgradeGasLimit,
+		make([]string, 0),
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: aggregator contract", "address", handler.AggregatorAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.ChainSimulator.UpgradeSC(
+		ctx,
+		handler.WrapperAddress,
+		normalizePathToRelayersTests(fmt.Sprintf(wrapperContractPathTemplate, version)),
+		handler.OwnerKeys.MvxSk,
+		upgradeGasLimit,
+		make([]string, 0),
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: wrapper contract", "address", handler.WrapperAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(safeContractPathTemplate, ContractsVersion3p1)),
+		[]string{"01"},
+		[]string{"00"},
+		handler.SafeAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: safe contract", "address", handler.SafeAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(multiTransferContractPathTemplate, ContractsVersion3p1)),
+		make([]string, 0),
+		make([]string, 0),
+		handler.MultiTransferAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: multi-transfer contract", "address", handler.MultiTransferAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(bridgeProxyContractPathTemplate, ContractsVersion3p1)),
+		make([]string, 0),
+		make([]string, 0),
+		handler.ScProxyAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: bridge proxy contract", "address", handler.ScProxyAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.ChainSimulator.UpgradeSC(
+		ctx,
+		handler.MultisigAddress,
+		normalizePathToRelayersTests(fmt.Sprintf(multisigContractPathTemplate, version)),
+		handler.OwnerKeys.MvxSk,
+		upgradeGasLimit,
+		[]string{
+			handler.SafeAddress.Hex(),
+			handler.MultiTransferAddress.Hex(),
+			handler.ScProxyAddress.Hex(),
+			handler.WrapperAddress.Hex(),
+			handler.AggregatorAddress.Hex(),
+		},
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: multisig", "address", handler.MultisigAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) upgradeInTwoStepsThroughMultisig(
+	ctx context.Context,
+	path string,
+	dummyDeployParams []string,
+	upgradeParams []string,
+	targetAddress *MvxAddress,
+) (string, *data.TransactionOnNetwork) {
+	dummyAddress, hash, _ := handler.ChainSimulator.DeploySC(
+		ctx,
+		path,
+		handler.OwnerKeys.MvxSk,
+		deployGasLimit,
+		dummyDeployParams,
+	)
+	require.NotEqual(handler, emptyAddress, dummyAddress)
+	log.Info("Deploy: contract in dummy address", "address", dummyAddress, "transaction hash", hash)
+
+	upgradeParams = append([]string{
+		targetAddress.Hex(),
+		dummyAddress.Hex(),
+		"00",
+	}, upgradeParams...)
+
+	return handler.scCallAndCheckTx(
+		ctx,
+		handler.OwnerKeys,
+		handler.MultisigAddress,
+		"0",
+		upgradeGasLimit,
+		upgradeChildContractFromSourceFunction,
+		upgradeParams,
+	)
 }
