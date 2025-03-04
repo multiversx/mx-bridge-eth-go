@@ -45,7 +45,7 @@ const (
 	generalSCCallGasLimit    = 50000000  // 50 million
 	gasLimitPerDataByte      = 1500
 
-	aggregatorContractPathTemplate    = "slowTests/testdata/contracts/%s/multiversx-price-aggregator-sc.wasm"
+	aggregatorContractPath            = "slowTests/testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
 	wrapperContractPathTemplate       = "slowTests/testdata/contracts/%s/bridged-tokens-wrapper.wasm"
 	multiTransferContractPathTemplate = "slowTests/testdata/contracts/%s/multi-transfer-esdt.wasm"
 	safeContractPathTemplate          = "slowTests/testdata/contracts/%s/esdt-safe.wasm"
@@ -183,7 +183,7 @@ func (handler *MultiversxHandler) deployContractsV3p1(ctx context.Context) {
 	hash := ""
 	handler.AggregatorAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		normalizePathToRelayersTests(fmt.Sprintf(aggregatorContractPathTemplate, ContractsVersion3p1)),
+		normalizePathToRelayersTests(aggregatorContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		aggregatorDeployParams,
@@ -1527,17 +1527,6 @@ func getHexBool(input bool) string {
 // UpgradeContractsToVersion will attempt to upgrade the contracts to the provided version
 func (handler *MultiversxHandler) UpgradeContractsToVersion(ctx context.Context, version string) {
 	hash, txResult := handler.ChainSimulator.UpgradeSC(
-		ctx,
-		handler.AggregatorAddress,
-		normalizePathToRelayersTests(fmt.Sprintf(aggregatorContractPathTemplate, version)),
-		handler.OwnerKeys.MvxSk,
-		upgradeGasLimit,
-		make([]string, 0),
-	)
-	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: aggregator contract", "address", handler.AggregatorAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
-
-	hash, txResult = handler.ChainSimulator.UpgradeSC(
 		ctx,
 		handler.WrapperAddress,
 		normalizePathToRelayersTests(fmt.Sprintf(wrapperContractPathTemplate, version)),

@@ -34,6 +34,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  false,
 			IsNativeOnEth:                    true,
+			MultipleSpendings:                big.NewInt(100), // ensure enough tokens to Alice
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -160,6 +161,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  true,
 			IsNativeOnEth:                    false,
+			MultipleSpendings:                big.NewInt(100), // ensure enough tokens to Alice
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -281,6 +283,7 @@ func GenerateTestTADAToken() framework.TestTokenParams {
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  true,
 			IsNativeOnEth:                    false,
+			MultipleSpendings:                big.NewInt(100), // ensure enough tokens to Alice
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -402,6 +405,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  true,
 			IsNativeOnEth:                    true,
+			MultipleSpendings:                big.NewInt(100), // ensure enough tokens to Alice
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -523,6 +527,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  true,
 			IsNativeOnEth:                    false,
+			MultipleSpendings:                big.NewInt(100), // ensure enough tokens to Alice
 		},
 		TestOperations: []framework.TokenOperations{
 			{
