@@ -16,6 +16,11 @@ import (
 )
 
 const (
+	// ContractsVersion3p0 specify the contracts version v3.0
+	ContractsVersion3p0 = "mvx-v3.0"
+	// ContractsVersion3p1 specify the contracts version v3.1
+	ContractsVersion3p1 = "mvx-v3.1"
+
 	minRelayerStake          = "10000000000000000000" // 10 EGLD
 	esdtIssueCost            = "50000000000000000"    // 0.05 EGLD
 	emptyAddress             = "erd1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6gq4hu"
@@ -33,20 +38,21 @@ const (
 	gwei                     = "GWEI"
 	maxBridgedAmountForToken = "500000"
 	deployGasLimit           = 150000000 // 150 million
+	upgradeGasLimit          = 200000000 // 200 million
 	setCallsGasLimit         = 80000000  // 80 million
 	issueTokenGasLimit       = 70000000  // 70 million
 	createDepositGasLimit    = 20000000  // 20 million
 	generalSCCallGasLimit    = 50000000  // 50 million
 	gasLimitPerDataByte      = 1500
 
-	aggregatorContractPath    = "slowTests/testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
-	wrapperContractPath       = "slowTests/testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
-	multiTransferContractPath = "slowTests/testdata/contracts/mvx/multi-transfer-esdt.wasm"
-	safeContractPath          = "slowTests/testdata/contracts/mvx/esdt-safe.wasm"
-	multisigContractPath      = "slowTests/testdata/contracts/mvx/multisig.wasm"
-	bridgeProxyContractPath   = "slowTests/testdata/contracts/mvx/bridge-proxy.wasm"
-	testCallerContractPath    = "slowTests/testdata/contracts/mvx/test-caller.wasm"
-	testHelperContractPath    = "slowTests/testdata/contracts/mvx/helper-contract.wasm"
+	aggregatorContractPathTemplate    = "slowTests/testdata/contracts/%s/multiversx-price-aggregator-sc.wasm"
+	wrapperContractPathTemplate       = "slowTests/testdata/contracts/%s/bridged-tokens-wrapper.wasm"
+	multiTransferContractPathTemplate = "slowTests/testdata/contracts/%s/multi-transfer-esdt.wasm"
+	safeContractPathTemplate          = "slowTests/testdata/contracts/%s/esdt-safe.wasm"
+	multisigContractPathTemplate      = "slowTests/testdata/contracts/%s/multisig.wasm"
+	bridgeProxyContractPathTemplate   = "slowTests/testdata/contracts/%s/bridge-proxy.wasm"
+	testCallerContractPath            = "slowTests/testdata/contracts/mvx/test-caller.wasm"
+	testHelperContractPath            = "slowTests/testdata/contracts/mvx/helper-contract.wasm"
 
 	changeOwnerAddressFunction                           = "ChangeOwnerAddress"
 	moveRefundBatchToSafeFromChildContractFunction       = "moveRefundBatchToSafeFromChildContract"
@@ -57,6 +63,7 @@ const (
 	unpauseProxyFunction                                 = "unpauseProxy"
 	pauseEsdtSafeFunction                                = "pauseEsdtSafe"
 	pauseFunction                                        = "pause"
+	pauseProxyFunction                                   = "pauseProxy"
 	issueFunction                                        = "issue"
 	setSpecialRoleFunction                               = "setSpecialRole"
 	freezeFunction                                       = "freeze"
@@ -90,6 +97,7 @@ const (
 	removeBlacklistTokenFunction                         = "removeBlacklistToken"
 	refundTransactionForBlacklistTokensFunction          = "refundTransactionForBlacklistTokens"
 	getTransactionForBlacklistTokensFunction             = "getTransactionForBlacklistTokens"
+	upgradeChildContractFromSourceFunction               = "upgradeChildContractFromSource"
 )
 
 // MultiversxHandler will handle all the operations on the MultiversX side
@@ -139,14 +147,26 @@ func NewMultiversxHandler(
 }
 
 // DeployAndSetContracts will deploy all required contracts on MultiversX side and do the proper wiring
-func (handler *MultiversxHandler) DeployAndSetContracts(ctx context.Context) {
-	handler.deployContracts(ctx)
-
-	handler.changeOwners(ctx)
-	handler.finishSettings(ctx)
+func (handler *MultiversxHandler) DeployAndSetContracts(ctx context.Context, version string) {
+	switch version {
+	case ContractsVersion3p0:
+		handler.DeployAndSetContractsForV3p0(ctx)
+	case ContractsVersion3p1:
+		handler.DeployAndSetContractsForV3p1(ctx)
+	default:
+		require.Fail(handler.TB, fmt.Sprintf("unknown contracts version: %s", version))
+	}
 }
 
-func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
+// DeployAndSetContractsForV3p1 will deploy all required contracts (v3.1) on MultiversX side and do the proper wiring
+func (handler *MultiversxHandler) DeployAndSetContractsForV3p1(ctx context.Context) {
+	handler.deployContractsV3p1(ctx)
+
+	handler.changeOwnersV3p1(ctx)
+	handler.finishSettingsV3p1(ctx)
+}
+
+func (handler *MultiversxHandler) deployContractsV3p1(ctx context.Context) {
 	// deploy aggregator
 	stakeValue, _ := big.NewInt(0).SetString(minRelayerStake, 10)
 	aggregatorDeployParams := []string{
@@ -164,7 +184,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	hash := ""
 	handler.AggregatorAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		normalizePathToRelayersTests(aggregatorContractPath),
+		normalizePathToRelayersTests(fmt.Sprintf(aggregatorContractPathTemplate, ContractsVersion3p1)),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		aggregatorDeployParams,
@@ -175,7 +195,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy wrapper
 	handler.WrapperAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		normalizePathToRelayersTests(wrapperContractPath),
+		normalizePathToRelayersTests(fmt.Sprintf(wrapperContractPathTemplate, ContractsVersion3p1)),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
@@ -186,7 +206,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy multi-transfer
 	handler.MultiTransferAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		normalizePathToRelayersTests(multiTransferContractPath),
+		normalizePathToRelayersTests(fmt.Sprintf(multiTransferContractPathTemplate, ContractsVersion3p1)),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
@@ -197,7 +217,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy safe
 	handler.SafeAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		normalizePathToRelayersTests(safeContractPath),
+		normalizePathToRelayersTests(fmt.Sprintf(safeContractPathTemplate, ContractsVersion3p1)),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{
@@ -219,7 +239,7 @@ func (handler *MultiversxHandler) DeployBridgeProxy(ctx context.Context) {
 	hash := ""
 	handler.ScProxyAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		normalizePathToRelayersTests(bridgeProxyContractPath),
+		normalizePathToRelayersTests(fmt.Sprintf(bridgeProxyContractPathTemplate, ContractsVersion3p1)),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		make([]string, 0),
@@ -248,7 +268,7 @@ func (handler *MultiversxHandler) DeployMultisig(ctx context.Context) {
 	hash := ""
 	handler.MultisigAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		normalizePathToRelayersTests(multisigContractPath),
+		normalizePathToRelayersTests(fmt.Sprintf(multisigContractPathTemplate, ContractsVersion3p1)),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		params,
@@ -271,7 +291,7 @@ func (handler *MultiversxHandler) DeployTestCaller(ctx context.Context) {
 	log.Info("Deploy: test-caller contract", "address", handler.CalleeScAddress, "transaction hash", hash)
 }
 
-func (handler *MultiversxHandler) changeOwners(ctx context.Context) {
+func (handler *MultiversxHandler) changeOwnersV3p1(ctx context.Context) {
 	// ChangeOwnerAddress for safe
 	params := []string{
 		handler.MultisigAddress.Hex(),
@@ -323,7 +343,7 @@ func (handler *MultiversxHandler) ChangeOwnerForBridgeProxy(ctx context.Context)
 	log.Info("ChangeOwnerAddress for SC proxy contract", "transaction hash", hash, "status", txResult.Status)
 }
 
-func (handler *MultiversxHandler) finishSettings(ctx context.Context) {
+func (handler *MultiversxHandler) finishSettingsV3p1(ctx context.Context) {
 	// unpause sc proxy
 	handler.UnpauseBridgeProxy(ctx)
 
@@ -422,6 +442,16 @@ func (handler *MultiversxHandler) UnPauseContractsAfterTokenChanges(ctx context.
 	log.Info("unpaused aggregator executed", "hash", hash, "status", txResult.Status)
 }
 
+// UnPauseAllContracts will unpause all bridge contracts
+func (handler *MultiversxHandler) UnPauseAllContracts(ctx context.Context) {
+	// unpause multisig
+	hash, txResult := handler.callContractNoParams(ctx, handler.MultisigAddress, unpauseFunction)
+	log.Info("unpaused multisig executed", "hash", hash, "status", txResult.Status)
+
+	handler.UnPauseContractsAfterTokenChanges(ctx)
+	handler.UnpauseBridgeProxy(ctx)
+}
+
 // PauseContractsForTokenChanges can pause contracts for token changes
 func (handler *MultiversxHandler) PauseContractsForTokenChanges(ctx context.Context) {
 	// pause safe
@@ -435,6 +465,19 @@ func (handler *MultiversxHandler) PauseContractsForTokenChanges(ctx context.Cont
 	// pause wrapper
 	hash, txResult = handler.callContractNoParams(ctx, handler.WrapperAddress, pauseFunction)
 	log.Info("paused wrapper executed", "hash", hash, "status", txResult.Status)
+}
+
+// PauseAllContracts will pause all bridge contracts
+func (handler *MultiversxHandler) PauseAllContracts(ctx context.Context) {
+	// pause multisig
+	hash, txResult := handler.callContractNoParams(ctx, handler.MultisigAddress, pauseFunction)
+	log.Info("paused multisig executed", "hash", hash, "status", txResult.Status)
+
+	handler.PauseContractsForTokenChanges(ctx)
+
+	// pause bridge proxy
+	hash, txResult = handler.callContractNoParams(ctx, handler.MultisigAddress, pauseProxyFunction)
+	log.Info("paused bridge proxy executed", "hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) stakeAddressesOnContract(ctx context.Context, contract *MvxAddress, allKeys []KeysHolder) {
@@ -1524,4 +1567,110 @@ func getHexBool(input bool) string {
 	}
 
 	return hexFalse
+}
+
+// UpgradeContractsToVersion will attempt to upgrade the contracts to the provided version
+func (handler *MultiversxHandler) UpgradeContractsToVersion(ctx context.Context, version string) {
+	hash, txResult := handler.ChainSimulator.UpgradeSC(
+		ctx,
+		handler.AggregatorAddress,
+		normalizePathToRelayersTests(fmt.Sprintf(aggregatorContractPathTemplate, version)),
+		handler.OwnerKeys.MvxSk,
+		upgradeGasLimit,
+		make([]string, 0),
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: aggregator contract", "address", handler.AggregatorAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.ChainSimulator.UpgradeSC(
+		ctx,
+		handler.WrapperAddress,
+		normalizePathToRelayersTests(fmt.Sprintf(wrapperContractPathTemplate, version)),
+		handler.OwnerKeys.MvxSk,
+		upgradeGasLimit,
+		make([]string, 0),
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: wrapper contract", "address", handler.WrapperAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(safeContractPathTemplate, ContractsVersion3p1)),
+		[]string{"01"},
+		[]string{"00"},
+		handler.SafeAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: safe contract", "address", handler.SafeAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(multiTransferContractPathTemplate, ContractsVersion3p1)),
+		make([]string, 0),
+		make([]string, 0),
+		handler.MultiTransferAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: multi-transfer contract", "address", handler.MultiTransferAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(bridgeProxyContractPathTemplate, ContractsVersion3p1)),
+		make([]string, 0),
+		make([]string, 0),
+		handler.ScProxyAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: bridge proxy contract", "address", handler.ScProxyAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.ChainSimulator.UpgradeSC(
+		ctx,
+		handler.MultisigAddress,
+		normalizePathToRelayersTests(fmt.Sprintf(multisigContractPathTemplate, version)),
+		handler.OwnerKeys.MvxSk,
+		upgradeGasLimit,
+		[]string{
+			handler.SafeAddress.Hex(),
+			handler.MultiTransferAddress.Hex(),
+			handler.ScProxyAddress.Hex(),
+			handler.WrapperAddress.Hex(),
+			handler.AggregatorAddress.Hex(),
+		},
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: multisig", "address", handler.MultisigAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+}
+
+func (handler *MultiversxHandler) upgradeInTwoStepsThroughMultisig(
+	ctx context.Context,
+	path string,
+	dummyDeployParams []string,
+	upgradeParams []string,
+	targetAddress *MvxAddress,
+) (string, *data.TransactionOnNetwork) {
+	dummyAddress, hash, _ := handler.ChainSimulator.DeploySC(
+		ctx,
+		path,
+		handler.OwnerKeys.MvxSk,
+		deployGasLimit,
+		dummyDeployParams,
+	)
+	require.NotEqual(handler, emptyAddress, dummyAddress)
+	log.Info("Deploy: contract in dummy address", "address", dummyAddress, "transaction hash", hash)
+
+	upgradeParams = append([]string{
+		targetAddress.Hex(),
+		dummyAddress.Hex(),
+		"00",
+	}, upgradeParams...)
+
+	return handler.scCallAndCheckTx(
+		ctx,
+		handler.OwnerKeys,
+		handler.MultisigAddress,
+		"0",
+		upgradeGasLimit,
+		upgradeChildContractFromSourceFunction,
+		upgradeParams,
+	)
 }

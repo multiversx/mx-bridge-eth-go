@@ -575,10 +575,12 @@ func executeComplexScenario(
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, testFlow.Tokens...)
 	}
 
-	return slowTests.NewTestEnvironmentWithChainSimulator(tb,
+	return slowTests.NewTestEnvironmentWithChainSimulator(
+		tb,
 		setupFunc,
 		processFunc,
 		make(chan error),
+		framework.ContractsVersion3p1,
 	)
 }
 

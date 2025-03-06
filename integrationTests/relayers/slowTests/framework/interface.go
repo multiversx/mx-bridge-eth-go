@@ -33,6 +33,7 @@ type ChainSimulatorWrapper interface {
 	Proxy() multiversx.Proxy
 	GetNetworkAddress() string
 	DeploySC(ctx context.Context, path string, ownerSK []byte, gasLimit uint64, extraParams []string) (*MvxAddress, string, *data.TransactionOnNetwork)
+	UpgradeSC(ctx context.Context, scAddress *MvxAddress, wasmFilePath string, ownerSK []byte, gasLimit uint64, parameters []string) (string, *data.TransactionOnNetwork)
 	ScCall(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) (string, *data.TransactionOnNetwork, transaction.TxStatus)
 	ScCallWithoutGenerateBlocks(ctx context.Context, senderSK []byte, contract *MvxAddress, value string, gasLimit uint64, function string, parameters []string) string
 	SendTx(ctx context.Context, senderSK []byte, receiver *MvxAddress, value string, gasLimit uint64, dataField []byte) (string, *data.TransactionOnNetwork, transaction.TxStatus)
