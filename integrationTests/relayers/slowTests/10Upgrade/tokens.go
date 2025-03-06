@@ -5,11 +5,6 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
-	logger "github.com/multiversx/mx-chain-logger-go"
-)
-
-var (
-	log = logger.GetOrCreate("integrationTests/relayers/slowTests")
 )
 
 // GenerateTestUSDCToken will generate a test USDC token

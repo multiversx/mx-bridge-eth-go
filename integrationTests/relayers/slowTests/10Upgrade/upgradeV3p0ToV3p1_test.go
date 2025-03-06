@@ -9,9 +9,14 @@ import (
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
+	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
 const testMarker = "==================================== %s ===================================="
+
+var (
+	log = logger.GetOrCreate("integrationTests/relayers/slowTests")
+)
 
 func TestComplexScenarioWithUpgrade(t *testing.T) {
 	tokens := []framework.TestTokenParams{
