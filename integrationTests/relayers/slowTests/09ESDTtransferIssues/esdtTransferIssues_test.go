@@ -22,16 +22,23 @@ var log = logger.GetOrCreate("transferIssuesTestsLog")
 
 func TestComplexScenarioWithMissingTransferRole(t *testing.T) {
 	okToken := GenerateOKToken()
-	notOkToken := GenerateNotOKToken()
+	notOkTransferRoleToken := GenerateNotOKTransferRoleToken()
+	notOkFrozenSafeToken := GenerateNotOKFrozenSafeToken()
+	notOkFrozenMultiTransferToken := GenerateNotOKFrozenMultiTransferToken()
 	failedTransactionNotifier := framework.NewFailedTransactionsNotifier(
 		performActionFunction,
 		numAcceptedFailedPerformActionCalls,
 	)
 
 	testFlowEthToMvx := &slowTests.TestFlow{
-		TB:                           t,
-		FlowType:                     slowTests.StartFromEthereumFlow,
-		Tokens:                       []framework.TestTokenParams{okToken, notOkToken},
+		TB:       t,
+		FlowType: slowTests.StartFromEthereumFlow,
+		Tokens: []framework.TestTokenParams{
+			okToken,
+			notOkTransferRoleToken,
+			notOkFrozenSafeToken,
+			notOkFrozenMultiTransferToken,
+		},
 		MessageAfterFirstHalfBridge:  "Ethereum->MultiversX transfer finished, now sending back to Ethereum...",
 		MessageAfterSecondHalfBridge: "MultiversX<->Ethereum from Ethereum transfers done",
 	}
@@ -85,7 +92,7 @@ func setNextCompletionChecker(
 		step0PrepareInitialStep(testFlowEthToMvx)
 		return false
 	case 1:
-		step1PrepareMissingTransferRoleStep(testFlowEthToMvx, failedTransactionNotifier)
+		step1PrepareWrongTokensSetup(testFlowEthToMvx, failedTransactionNotifier)
 		return false
 	case 2:
 		step2ExecuteRefundForBlacklistedToken(testFlowEthToMvx, failedTransactionNotifier)
@@ -105,11 +112,11 @@ func step0PrepareInitialStep(testFlowEthToMvx *slowTests.TestFlow) {
 	// balance tests are the default ones (the ones defined when setting the token)
 }
 
-func step1PrepareMissingTransferRoleStep(
+func step1PrepareWrongTokensSetup(
 	testFlowEthToMvx *slowTests.TestFlow,
 	failedTransactionNotifier FailedTransactionNotifier,
 ) {
-	log.Info(fmt.Sprintf(testMarker, "Starting step 1 - swaps that do not work (bridge lock) because the bridge SCs do not have transfer role for a token"))
+	log.Info(fmt.Sprintf(testMarker, "Starting step 1 - swaps that do not work (bridge lock) because some tokens have wrong setup (frozen, no transfer role, etc.)"))
 
 	testFlowEthToMvx.Setup.SendFromEthereumToMultiversX(
 		testFlowEthToMvx.Setup.AliceKeys,
@@ -118,12 +125,28 @@ func step1PrepareMissingTransferRoleStep(
 		testFlowEthToMvx.Tokens...,
 	)
 
-	badToken := testFlowEthToMvx.Tokens[1]
+	badTransferRoleToken := testFlowEthToMvx.Tokens[1]
 	// we are setting the transfer role only for token[1] so all transfers of that token will fail
 	testFlowEthToMvx.Setup.MultiversxHandler.SetTransferRolesForToken(
 		testFlowEthToMvx.Setup.Ctx,
-		badToken.IssueTokenParams,
+		badTransferRoleToken.IssueTokenParams,
 		testFlowEthToMvx.Setup.MultiversxHandler.CalleeScAddress, // a random address, just to activate the transfer role feat
+	)
+
+	//we are freezing Safe contract for token[2]
+	badFrozenSafeToken := testFlowEthToMvx.Tokens[2]
+	testFlowEthToMvx.Setup.MultiversxHandler.FreezeTokenForAddresses(
+		testFlowEthToMvx.Setup.Ctx,
+		badFrozenSafeToken.IssueTokenParams,
+		testFlowEthToMvx.Setup.MultiversxHandler.SafeAddress,
+	)
+
+	//we are freezing Multi-transfer contract for token[3]
+	badFrozenMultiTransferToken := testFlowEthToMvx.Tokens[3]
+	testFlowEthToMvx.Setup.MultiversxHandler.FreezeTokenForAddresses(
+		testFlowEthToMvx.Setup.Ctx,
+		badFrozenMultiTransferToken.IssueTokenParams,
+		testFlowEthToMvx.Setup.MultiversxHandler.MultiTransferAddress,
 	)
 
 	failedTransactionNotifier.ClearNotifierHandlers()
@@ -134,9 +157,22 @@ func step1PrepareMissingTransferRoleStep(
 			"perform action call", txData,
 			"num calls", numCalls)
 
+		// blacklist the token with missing transfer role
 		testFlowEthToMvx.Setup.MultiversxHandler.BlacklistToken(
 			testFlowEthToMvx.Setup.Ctx,
-			badToken.IssueTokenParams,
+			badTransferRoleToken.IssueTokenParams,
+		)
+
+		// blacklist the token with frozen safe contract
+		testFlowEthToMvx.Setup.MultiversxHandler.BlacklistToken(
+			testFlowEthToMvx.Setup.Ctx,
+			badFrozenSafeToken.IssueTokenParams,
+		)
+
+		// blacklist the token with frozen multi transfer contract
+		testFlowEthToMvx.Setup.MultiversxHandler.BlacklistToken(
+			testFlowEthToMvx.Setup.Ctx,
+			badFrozenMultiTransferToken.IssueTokenParams,
 		)
 	})
 
@@ -190,13 +226,61 @@ func step1PrepareMissingTransferRoleStep(
 
 		testFlowEthToMvx.Tokens[1].SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(4000 - 1500)
 	}
+	{
+		testFlowEthToMvx.Tokens[2].TestOperations[0].ValueToSendFromMvX = nil //do not attempt sending to Ethereum, as the transaction will fail
+
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.Alice].OnEth = big.NewInt(-6000 - 6000)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.Bob].OnMvx = big.NewInt(6000 - 4500) // Bob does not receive tokens
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.Charlie].OnEth = big.NewInt(4500 - 50)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnEth = big.NewInt(6000 - 4450 + 6000)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50)
+
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-6000 - 6000)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnMvx = big.NewInt(6000 - 4500)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.Charlie].OnEth = big.NewInt(4500 - 50)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnEth = big.NewInt(6000 - 4450 + 6000)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50)
+
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalUniversalMint = big.NewInt(6000)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalChainSpecificMint = big.NewInt(6000)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(4500 - 50)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalChainSpecificBurn = big.NewInt(4500 - 50)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxSafeMintValue = big.NewInt(6000)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxSafeBurnValue = big.NewInt(4500 - 50)
+	}
+	{
+		testFlowEthToMvx.Tokens[3].TestOperations[0].ValueToSendFromMvX = nil //do not attempt sending to Ethereum, as the transaction will fail
+
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.Alice].OnEth = big.NewInt(-7000 - 7000)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.Bob].OnMvx = big.NewInt(7000 - 5500) // Bob does not receive tokens
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.Charlie].OnEth = big.NewInt(5500 - 50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnEth = big.NewInt(7000 - 5450 + 7000)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(7000 - 5500)
+
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-7000 - 7000)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnMvx = big.NewInt(7000 - 5500)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.Charlie].OnEth = big.NewInt(5500 - 50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnEth = big.NewInt(7000 - 5450 + 7000)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(7000 - 5500)
+
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalUniversalMint = big.NewInt(7000)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalChainSpecificMint = big.NewInt(7000)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(5500)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalChainSpecificBurn = big.NewInt(5500 - 50)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxSafeMintValue = big.NewInt(7000)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxSafeBurnValue = big.NewInt(5500 - 50)
+
+		testFlowEthToMvx.Tokens[3].SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(7000 - 5500)
+	}
 }
 
 func step2ExecuteRefundForBlacklistedToken(
 	testFlowEthToMvx *slowTests.TestFlow,
 	failedTransactionNotifier FailedTransactionNotifier,
 ) {
-	log.Info(fmt.Sprintf(testMarker, "Starting step 2 - execute the refund for the blacklisted token"))
+	log.Info(fmt.Sprintf(testMarker, "Starting step 2 - execute the refunds for the blacklisted tokens"))
 
 	failedTransactionNotifier.ClearNotifierHandlers()
 	failedTransactionNotifier.ClearInternalStateData()
@@ -204,24 +288,29 @@ func step2ExecuteRefundForBlacklistedToken(
 	buff := testFlowEthToMvx.Setup.MultiversxHandler.GetTransactionForBlacklistTokens(
 		testFlowEthToMvx.Setup.Ctx,
 	)
-	// 2 elements should be returned: the tuple (tx_id, eth_tx)
-	require.Equal(testFlowEthToMvx.TB, 2, len(buff))
+	// 6 elements should be returned:
+	//     the tuple (tx_id, eth_tx) for transfer role token
+	//     the tuple (tx_id, eth_tx) for frozen safe contract
+	//     the tuple (tx_id, eth_tx) for frozen multi transfer contract
+	require.Equal(testFlowEthToMvx.TB, 6, len(buff))
 
-	txID := big.NewInt(0).SetBytes(buff[0]).Uint64()
-	log.Info("Found a refundable transaction due to a blacklisted token", "tx ID", txID)
+	for i := 0; i < len(buff); i += 2 {
+		txID := big.NewInt(0).SetBytes(buff[i]).Uint64()
+		log.Info("Found a refundable transaction due to a blacklisted token", "tx ID", txID)
 
-	txStatus := testFlowEthToMvx.Setup.MultiversxHandler.RefundTransactionForBlacklistTokens(
-		testFlowEthToMvx.Setup.Ctx,
-		txID,
-	)
-	require.Equal(testFlowEthToMvx.TB, transaction.TxStatusSuccess, txStatus)
+		txStatus := testFlowEthToMvx.Setup.MultiversxHandler.RefundTransactionForBlacklistTokens(
+			testFlowEthToMvx.Setup.Ctx,
+			txID,
+		)
+		require.Equal(testFlowEthToMvx.TB, transaction.TxStatusSuccess, txStatus)
 
-	// making a call again will make the transaction fail
-	txStatus = testFlowEthToMvx.Setup.MultiversxHandler.RefundTransactionForBlacklistTokens(
-		testFlowEthToMvx.Setup.Ctx,
-		txID,
-	)
-	require.Equal(testFlowEthToMvx.TB, transaction.TxStatusFail, txStatus)
+		// making a call again will make the transaction fail
+		txStatus = testFlowEthToMvx.Setup.MultiversxHandler.RefundTransactionForBlacklistTokens(
+			testFlowEthToMvx.Setup.Ctx,
+			txID,
+		)
+		require.Equal(testFlowEthToMvx.TB, transaction.TxStatusFail, txStatus)
+	}
 
 	{
 		// no transfers
@@ -263,10 +352,62 @@ func step2ExecuteRefundForBlacklistedToken(
 
 		testFlowEthToMvx.Tokens[1].SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(4000 - 1500)
 	}
+	{
+		// no transfers
+		testFlowEthToMvx.Tokens[2].TestOperations[0].ValueToSendFromMvX = nil
+		testFlowEthToMvx.Tokens[2].TestOperations[0].ValueToTransferToMvx = nil
+
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.Alice].OnEth = big.NewInt(-6000 - 6000)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.Bob].OnMvx = big.NewInt(6000 - 4500)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.Charlie].OnEth = big.NewInt(4500 - 50)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnEth = big.NewInt(6000 - 4450 + 6000)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50)
+
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-6000 - 6000 + 6000) // refunded without fees
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnMvx = big.NewInt(6000 - 4500)           // Bob does not receive tokens
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.Charlie].OnEth = big.NewInt(4500 - 50)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnEth = big.NewInt(6000 - 4450)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50)
+
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalUniversalMint = big.NewInt(6000)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalChainSpecificMint = big.NewInt(6000)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(4500 - 50)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalChainSpecificBurn = big.NewInt(4500 - 50)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxSafeMintValue = big.NewInt(6000)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxSafeBurnValue = big.NewInt(4500 - 50)
+	}
+	{
+		// no transfers
+		testFlowEthToMvx.Tokens[3].TestOperations[0].ValueToSendFromMvX = nil
+		testFlowEthToMvx.Tokens[3].TestOperations[0].ValueToTransferToMvx = nil
+
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.Alice].OnEth = big.NewInt(-7000 - 7000)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.Bob].OnMvx = big.NewInt(7000 - 5500)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.Charlie].OnEth = big.NewInt(5500 - 50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnEth = big.NewInt(7000 - 5450 + 7000)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(7000 - 5500)
+
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-7000 - 7000 + 7000) // refunded without fees
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnMvx = big.NewInt(7000 - 5500)           // Bob does not receive tokens
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.Charlie].OnEth = big.NewInt(5500 - 50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnEth = big.NewInt(7000 - 5450 + 7000 - 7000)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(7000 - 5500)
+
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalUniversalMint = big.NewInt(7000)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalChainSpecificMint = big.NewInt(7000)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(5500)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalChainSpecificBurn = big.NewInt(5500 - 50)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxSafeMintValue = big.NewInt(7000)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxSafeBurnValue = big.NewInt(5500 - 50)
+
+		testFlowEthToMvx.Tokens[3].SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(7000 - 5500)
+	}
 }
 
 func step3RemoveBlacklistToken(testFlowEthToMvx *slowTests.TestFlow) {
-	log.Info(fmt.Sprintf(testMarker, "Starting step 3 - remove blacklisted token, grant transfer role & redo the swaps"))
+	log.Info(fmt.Sprintf(testMarker, "Starting step 3 - remove blacklisted tokens, grant transfer role, do un-freez, etc & redo the swaps"))
 
 	// grant transfer role
 	testFlowEthToMvx.Setup.MultiversxHandler.SetTransferRolesForToken(
@@ -278,10 +419,32 @@ func step3RemoveBlacklistToken(testFlowEthToMvx *slowTests.TestFlow) {
 		testFlowEthToMvx.Setup.MultiversxHandler.ScProxyAddress,
 	)
 
-	// remove blacklisted token
+	//unfreeze the Safe contract
+	testFlowEthToMvx.Setup.MultiversxHandler.UnFreezeTokenForAddresses(
+		testFlowEthToMvx.Setup.Ctx,
+		testFlowEthToMvx.Tokens[2].IssueTokenParams,
+		testFlowEthToMvx.Setup.MultiversxHandler.SafeAddress,
+	)
+
+	//unfreeze the Multi-transfer contract
+	testFlowEthToMvx.Setup.MultiversxHandler.UnFreezeTokenForAddresses(
+		testFlowEthToMvx.Setup.Ctx,
+		testFlowEthToMvx.Tokens[3].IssueTokenParams,
+		testFlowEthToMvx.Setup.MultiversxHandler.MultiTransferAddress,
+	)
+
+	// remove blacklisted tokens
 	testFlowEthToMvx.Setup.MultiversxHandler.RemoveBlacklistedToken(
 		testFlowEthToMvx.Setup.Ctx,
 		testFlowEthToMvx.Tokens[1].IssueTokenParams,
+	)
+	testFlowEthToMvx.Setup.MultiversxHandler.RemoveBlacklistedToken(
+		testFlowEthToMvx.Setup.Ctx,
+		testFlowEthToMvx.Tokens[2].IssueTokenParams,
+	)
+	testFlowEthToMvx.Setup.MultiversxHandler.RemoveBlacklistedToken(
+		testFlowEthToMvx.Setup.Ctx,
+		testFlowEthToMvx.Tokens[3].IssueTokenParams,
 	)
 
 	{
@@ -337,6 +500,56 @@ func step3RemoveBlacklistToken(testFlowEthToMvx *slowTests.TestFlow) {
 		testFlowEthToMvx.Tokens[1].MintBurnChecks.MvxSafeBurnValue = big.NewInt(1500 - 50 + 1900 - 50)
 
 		testFlowEthToMvx.Tokens[1].SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(4000 - 1500 + 3600 - 1900)
+	}
+	{
+		testFlowEthToMvx.Tokens[2].TestOperations[0].ValueToSendFromMvX = big.NewInt(2100)
+		testFlowEthToMvx.Tokens[2].TestOperations[0].ValueToTransferToMvx = big.NewInt(3800)
+
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.Alice].OnEth = big.NewInt(-6000 - 6000 + 6000 - 3800)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.Bob].OnMvx = big.NewInt(6000 - 4500 + 3800)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.Charlie].OnEth = big.NewInt(4500 - 50)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnEth = big.NewInt(6000 - 4450 + 6000 - 6000 + 3800)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50)
+
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-6000 - 6000 + 6000 - 3800)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnMvx = big.NewInt(6000 - 4500 + 3800 - 2100)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.Charlie].OnEth = big.NewInt(4500 - 50 + 2100 - 50)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnEth = big.NewInt(6000 - 4450 + 6000 - 6000 + 3800 - 2050)
+		testFlowEthToMvx.Tokens[2].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50)
+
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalUniversalMint = big.NewInt(6000 + 3800)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalChainSpecificMint = big.NewInt(6000 + 3800)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(4500 - 50 + 2100 - 50)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxTotalChainSpecificBurn = big.NewInt(4500 - 50 + 2100 - 50)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxSafeMintValue = big.NewInt(6000 + 3800)
+		testFlowEthToMvx.Tokens[2].MintBurnChecks.MvxSafeBurnValue = big.NewInt(4500 - 50 + 2100 - 50)
+	}
+	{
+		testFlowEthToMvx.Tokens[3].TestOperations[0].ValueToSendFromMvX = big.NewInt(3100)
+		testFlowEthToMvx.Tokens[3].TestOperations[0].ValueToTransferToMvx = big.NewInt(8800)
+
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.Alice].OnEth = big.NewInt(-7000 - 7000 + 7000 - 8800)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.Bob].OnMvx = big.NewInt(7000 - 5500 + 8800)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.Charlie].OnEth = big.NewInt(5500 - 50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnEth = big.NewInt(7000 - 5450 + 7000 - 7000 + 8800)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.FirstHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(7000 - 5500 + 8800)
+
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.Alice].OnEth = big.NewInt(-7000 - 7000 + 7000 - 8800)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.Bob].OnMvx = big.NewInt(7000 - 5500 + 8800 - 3100)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.Charlie].OnEth = big.NewInt(5500 - 50 + 3100 - 50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnEth = big.NewInt(7000 - 5450 + 7000 - 7000 + 8800 - 3050)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.SafeSC].OnMvx = big.NewInt(50 + 50)
+		testFlowEthToMvx.Tokens[3].DeltaBalances[framework.SecondHalfBridge][framework.WrapperSC].OnMvx = big.NewInt(7000 - 5500 + 8800 - 3100)
+
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalUniversalMint = big.NewInt(7000 + 8800)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalChainSpecificMint = big.NewInt(7000 + 8800)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalUniversalBurn = big.NewInt(5500 + 3100)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxTotalChainSpecificBurn = big.NewInt(5500 - 50 + 3100 - 50)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxSafeMintValue = big.NewInt(7000 + 8800)
+		testFlowEthToMvx.Tokens[3].MintBurnChecks.MvxSafeBurnValue = big.NewInt(5500 - 50 + 3100 - 50)
+
+		testFlowEthToMvx.Tokens[3].SpecialChecks.WrapperDeltaLiquidityCheck = big.NewInt(7000 - 5500 + 8800 - 3100)
 	}
 
 	testFlowEthToMvx.Setup.SendFromEthereumToMultiversX(
@@ -484,25 +697,25 @@ func GenerateOKToken() framework.TestTokenParams {
 	}
 }
 
-// GenerateNotOKToken will generate a test Not-OK token
-func GenerateNotOKToken() framework.TestTokenParams {
+// GenerateNotOKTransferRoleToken will generate a test Not-OK token for transfer role tests
+func GenerateNotOKTransferRoleToken() framework.TestTokenParams {
 	// OK is ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
-			AbstractTokenIdentifier:          "TKNOK",
+			AbstractTokenIdentifier:          "NOKTF",
 			NumOfDecimalsUniversal:           6,
 			NumOfDecimalsChainSpecific:       6,
-			MvxUniversalTokenTicker:          "TKNOK",
-			MvxChainSpecificTokenTicker:      "ETHTKNOK",
-			MvxUniversalTokenDisplayName:     "WrappedTKNOK",
-			MvxChainSpecificTokenDisplayName: "EthereumWrappedTKNOK",
+			MvxUniversalTokenTicker:          "NOKTF",
+			MvxChainSpecificTokenTicker:      "ETHNOKTF",
+			MvxUniversalTokenDisplayName:     "WrappedNOKTF",
+			MvxChainSpecificTokenDisplayName: "EthereumWrappedNOKTF",
 			MvxToEthFee:                      big.NewInt(50),
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
 			HasChainSpecificToken:            true,
-			EthTokenName:                     "EthTKNOK",
-			EthTokenSymbol:                   "TKNOK",
+			EthTokenName:                     "EthNOKTF",
+			EthTokenSymbol:                   "NOKTF",
 			ValueToMintOnEth:                 "10000000000",
 			IsMintBurnOnEth:                  false,
 			IsNativeOnEth:                    true,
@@ -593,6 +806,232 @@ func GenerateNotOKToken() framework.TestTokenParams {
 		},
 		SpecialChecks: &framework.SpecialBalanceChecks{
 			WrapperDeltaLiquidityCheck: big.NewInt(4000 - 1500),
+		},
+	}
+}
+
+// GenerateNotOKFrozenSafeToken will generate a test Not-OK token for Safe frozen tests
+func GenerateNotOKFrozenSafeToken() framework.TestTokenParams {
+	// OK is ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "NOKFS",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "NOKFS",
+			MvxChainSpecificTokenTicker:      "ETHNOKFS",
+			MvxUniversalTokenDisplayName:     "WrappedNOKFS",
+			MvxChainSpecificTokenDisplayName: "EthereumWrappedNOKFS",
+			MvxToEthFee:                      big.NewInt(50),
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            false,
+			EthTokenName:                     "EthNOKFS",
+			EthTokenSymbol:                   "NOKFS",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  false,
+			IsNativeOnEth:                    true,
+			MultipleSpendings:                big.NewInt(100), // ensure enough tokens to Alice
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(6000),
+				ValueToSendFromMvX:   big.NewInt(4500),
+			},
+		},
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-6000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(6000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(6000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-6000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(6000 - 4500),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(4500 - 50),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(6000 - 4450),
+					OnMvx:    big.NewInt(50),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		},
+		MintBurnChecks: &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(6000),
+			MvxTotalChainSpecificMint: big.NewInt(6000),
+			MvxTotalUniversalBurn:     big.NewInt(4500 - 50),
+			MvxTotalChainSpecificBurn: big.NewInt(4500 - 50),
+			MvxSafeMintValue:          big.NewInt(6000),
+			MvxSafeBurnValue:          big.NewInt(4500 - 50),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(0),
+		},
+	}
+}
+
+// GenerateNotOKFrozenMultiTransferToken will generate a test Not-OK token for frozen multi-transfer tests
+func GenerateNotOKFrozenMultiTransferToken() framework.TestTokenParams {
+	// OK is ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "NOKFMT",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "NOKFMT",
+			MvxChainSpecificTokenTicker:      "ENOKFMT",
+			MvxUniversalTokenDisplayName:     "WrappedNOKFMT",
+			MvxChainSpecificTokenDisplayName: "EthWrappedNOKFMT",
+			MvxToEthFee:                      big.NewInt(50),
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            true,
+			EthTokenName:                     "EthNOKFMT",
+			EthTokenSymbol:                   "NOKFMT",
+			ValueToMintOnEth:                 "10000000000",
+			IsMintBurnOnEth:                  false,
+			IsNativeOnEth:                    true,
+			MultipleSpendings:                big.NewInt(100), // ensure enough tokens to Alice
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(7000),
+				ValueToSendFromMvX:   big.NewInt(5500),
+			},
+		},
+		DeltaBalances: map[framework.HalfBridgeIdentifier]framework.DeltaBalancesOnKeys{
+			framework.FirstHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-7000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(7000),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(7000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(7000),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+			framework.SecondHalfBridge: map[string]*framework.DeltaBalanceHolder{
+				framework.Alice: {
+					OnEth:    big.NewInt(-7000),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Bob: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(7000 - 5500),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(5500 - 50),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.SafeSC: {
+					OnEth:    big.NewInt(7000 - 5450),
+					OnMvx:    big.NewInt(50),
+					MvxToken: framework.ChainSpecificToken,
+				},
+				framework.CalledTestSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.WrapperSC: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(7000 - 5500),
+					MvxToken: framework.ChainSpecificToken,
+				},
+			},
+		},
+		MintBurnChecks: &framework.MintBurnBalances{
+			MvxTotalUniversalMint:     big.NewInt(7000),
+			MvxTotalChainSpecificMint: big.NewInt(7000),
+			MvxTotalUniversalBurn:     big.NewInt(5500),
+			MvxTotalChainSpecificBurn: big.NewInt(5500 - 50),
+			MvxSafeMintValue:          big.NewInt(7000),
+			MvxSafeBurnValue:          big.NewInt(5500 - 50),
+
+			EthSafeMintValue: big.NewInt(0),
+			EthSafeBurnValue: big.NewInt(0),
+		},
+		SpecialChecks: &framework.SpecialBalanceChecks{
+			WrapperDeltaLiquidityCheck: big.NewInt(7000 - 5500),
 		},
 	}
 }
