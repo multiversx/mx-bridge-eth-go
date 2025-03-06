@@ -440,7 +440,7 @@ func (setup *TestSetup) transferTokensToMvxTestKey(params TestTokenParams, holde
 		setup.Ctx,
 		setup.OwnerKeys,
 		holder,
-		depositValue,
+		big.NewInt(0).Mul(depositValue, params.MultipleSpendings),
 		params.IssueTokenParams,
 	)
 }

@@ -1535,38 +1535,9 @@ func (handler *MultiversxHandler) UpgradeContractsToVersion(ctx context.Context,
 		make([]string, 0),
 	)
 	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: wrapper contract", "address", handler.WrapperAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+	log.Info("Upgrade: wrapper contract", "address", handler.WrapperAddress.Bech32(), "transaction hash", hash, "status", txResult.Status)
 
-	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
-		ctx,
-		normalizePathToRelayersTests(fmt.Sprintf(safeContractPathTemplate, ContractsVersion3p1)),
-		[]string{"01"},
-		[]string{"00"},
-		handler.SafeAddress,
-	)
-	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: safe contract", "address", handler.SafeAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
-
-	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
-		ctx,
-		normalizePathToRelayersTests(fmt.Sprintf(multiTransferContractPathTemplate, ContractsVersion3p1)),
-		make([]string, 0),
-		make([]string, 0),
-		handler.MultiTransferAddress,
-	)
-	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: multi-transfer contract", "address", handler.MultiTransferAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
-
-	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
-		ctx,
-		normalizePathToRelayersTests(fmt.Sprintf(bridgeProxyContractPathTemplate, ContractsVersion3p1)),
-		make([]string, 0),
-		make([]string, 0),
-		handler.ScProxyAddress,
-	)
-	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: bridge proxy contract", "address", handler.ScProxyAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
-
+	// upgrade the multisig first, so the upgradeChildContractFromSource will not require the extra bool parameter from v3.0
 	hash, txResult = handler.ChainSimulator.UpgradeSC(
 		ctx,
 		handler.MultisigAddress,
@@ -1582,7 +1553,37 @@ func (handler *MultiversxHandler) UpgradeContractsToVersion(ctx context.Context,
 		},
 	)
 	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: multisig", "address", handler.MultisigAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+	log.Info("Upgrade: multisig", "address", handler.MultisigAddress.Bech32(), "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(safeContractPathTemplate, ContractsVersion3p1)),
+		[]string{"01"},
+		[]string{"01"},
+		handler.SafeAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: safe contract", "address", handler.SafeAddress.Bech32(), "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(multiTransferContractPathTemplate, ContractsVersion3p1)),
+		make([]string, 0),
+		make([]string, 0),
+		handler.MultiTransferAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: multi-transfer contract", "address", handler.MultiTransferAddress.Bech32(), "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(bridgeProxyContractPathTemplate, ContractsVersion3p1)),
+		make([]string, 0),
+		make([]string, 0),
+		handler.ScProxyAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: bridge proxy contract", "address", handler.ScProxyAddress.Bech32(), "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) upgradeInTwoStepsThroughMultisig(
@@ -1605,7 +1606,6 @@ func (handler *MultiversxHandler) upgradeInTwoStepsThroughMultisig(
 	upgradeParams = append([]string{
 		targetAddress.Hex(),
 		dummyAddress.Hex(),
-		"00",
 	}, upgradeParams...)
 
 	return handler.scCallAndCheckTx(

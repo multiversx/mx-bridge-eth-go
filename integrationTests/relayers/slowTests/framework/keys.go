@@ -88,10 +88,23 @@ func NewKeysStore(
 	log.Info("generated owner",
 		"MvX address", keysStore.OwnerKeys.MvxAddress.Bech32(),
 		"Eth address", keysStore.OwnerKeys.EthAddress.String())
+
 	keysStore.DepositorKeys = keysStore.generateKey(ethDepositorSK, projectedShardForDepositor)
+
 	keysStore.AliceKeys = keysStore.generateKey(aliceSk, projectedShardForTestKeys)
+	log.Info("generated Alice's keys",
+		"MvX address", keysStore.AliceKeys.MvxAddress.Bech32(),
+		"Eth address", keysStore.AliceKeys.EthAddress.String())
+
 	keysStore.BobKeys = keysStore.generateKey(bobSk, projectedShardForTestKeys)
+	log.Info("generated Bob's keys",
+		"MvX address", keysStore.BobKeys.MvxAddress.Bech32(),
+		"Eth address", keysStore.BobKeys.EthAddress.String())
+
 	keysStore.CharlieKeys = keysStore.generateKey(charlieSk, projectedShardForTestKeys)
+	log.Info("generated Charlie's keys",
+		"MvX address", keysStore.CharlieKeys.MvxAddress.Bech32(),
+		"Eth address", keysStore.CharlieKeys.EthAddress.String())
 
 	keysStore.AddressToName[keysStore.AliceKeys.MvxAddress.String()] = Alice
 	keysStore.AddressToName[keysStore.BobKeys.MvxAddress.String()] = Bob

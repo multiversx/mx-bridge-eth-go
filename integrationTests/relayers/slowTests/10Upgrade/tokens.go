@@ -195,6 +195,11 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
 				framework.SafeSC: {
 					OnEth:    big.NewInt(0),
 					OnMvx:    big.NewInt(4000 + 6000 + 2000),
@@ -314,6 +319,11 @@ func GenerateTestTADAToken() framework.TestTokenParams {
 				},
 				framework.Bob: {
 					OnEth:    big.NewInt(5980 - 57 + 2300 - 57 + 4000 - 57),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
@@ -439,6 +449,11 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 					OnMvx:    big.NewInt(5010 + 7010),
 					MvxToken: framework.UniversalToken,
 				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
 				framework.SafeSC: {
 					OnEth:    big.NewInt(0),
 					OnMvx:    big.NewInt(0),
@@ -558,6 +573,11 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 				},
 				framework.Bob: {
 					OnEth:    big.NewInt(4010 - 53 + 6010 - 53 + 2010 - 53),
+					OnMvx:    big.NewInt(0),
+					MvxToken: framework.UniversalToken,
+				},
+				framework.Charlie: {
+					OnEth:    big.NewInt(0),
 					OnMvx:    big.NewInt(0),
 					MvxToken: framework.UniversalToken,
 				},
