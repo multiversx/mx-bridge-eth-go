@@ -45,7 +45,7 @@ const (
 	generalSCCallGasLimit    = 50000000  // 50 million
 	gasLimitPerDataByte      = 1500
 
-	aggregatorContractPathTemplate    = "slowTests/testdata/contracts/%s/multiversx-price-aggregator-sc.wasm"
+	aggregatorContractPath            = "slowTests/testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
 	wrapperContractPathTemplate       = "slowTests/testdata/contracts/%s/bridged-tokens-wrapper.wasm"
 	multiTransferContractPathTemplate = "slowTests/testdata/contracts/%s/multi-transfer-esdt.wasm"
 	safeContractPathTemplate          = "slowTests/testdata/contracts/%s/esdt-safe.wasm"
@@ -184,7 +184,7 @@ func (handler *MultiversxHandler) deployContractsV3p1(ctx context.Context) {
 	hash := ""
 	handler.AggregatorAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		normalizePathToRelayersTests(fmt.Sprintf(aggregatorContractPathTemplate, ContractsVersion3p1)),
+		normalizePathToRelayersTests(aggregatorContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		aggregatorDeployParams,
@@ -1573,17 +1573,6 @@ func getHexBool(input bool) string {
 func (handler *MultiversxHandler) UpgradeContractsToVersion(ctx context.Context, version string) {
 	hash, txResult := handler.ChainSimulator.UpgradeSC(
 		ctx,
-		handler.AggregatorAddress,
-		normalizePathToRelayersTests(fmt.Sprintf(aggregatorContractPathTemplate, version)),
-		handler.OwnerKeys.MvxSk,
-		upgradeGasLimit,
-		make([]string, 0),
-	)
-	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: aggregator contract", "address", handler.AggregatorAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
-
-	hash, txResult = handler.ChainSimulator.UpgradeSC(
-		ctx,
 		handler.WrapperAddress,
 		normalizePathToRelayersTests(fmt.Sprintf(wrapperContractPathTemplate, version)),
 		handler.OwnerKeys.MvxSk,
@@ -1591,38 +1580,9 @@ func (handler *MultiversxHandler) UpgradeContractsToVersion(ctx context.Context,
 		make([]string, 0),
 	)
 	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: wrapper contract", "address", handler.WrapperAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+	log.Info("Upgrade: wrapper contract", "address", handler.WrapperAddress.Bech32(), "transaction hash", hash, "status", txResult.Status)
 
-	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
-		ctx,
-		normalizePathToRelayersTests(fmt.Sprintf(safeContractPathTemplate, ContractsVersion3p1)),
-		[]string{"01"},
-		[]string{"00"},
-		handler.SafeAddress,
-	)
-	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: safe contract", "address", handler.SafeAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
-
-	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
-		ctx,
-		normalizePathToRelayersTests(fmt.Sprintf(multiTransferContractPathTemplate, ContractsVersion3p1)),
-		make([]string, 0),
-		make([]string, 0),
-		handler.MultiTransferAddress,
-	)
-	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: multi-transfer contract", "address", handler.MultiTransferAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
-
-	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
-		ctx,
-		normalizePathToRelayersTests(fmt.Sprintf(bridgeProxyContractPathTemplate, ContractsVersion3p1)),
-		make([]string, 0),
-		make([]string, 0),
-		handler.ScProxyAddress,
-	)
-	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: bridge proxy contract", "address", handler.ScProxyAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
-
+	// upgrade the multisig first, so the upgradeChildContractFromSource will not require the extra bool parameter from v3.0
 	hash, txResult = handler.ChainSimulator.UpgradeSC(
 		ctx,
 		handler.MultisigAddress,
@@ -1638,7 +1598,37 @@ func (handler *MultiversxHandler) UpgradeContractsToVersion(ctx context.Context,
 		},
 	)
 	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
-	log.Info("Upgrade: multisig", "address", handler.MultisigAddress.Bech32, "transaction hash", hash, "status", txResult.Status)
+	log.Info("Upgrade: multisig", "address", handler.MultisigAddress.Bech32(), "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(safeContractPathTemplate, ContractsVersion3p1)),
+		[]string{"01"},
+		[]string{"01"},
+		handler.SafeAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: safe contract", "address", handler.SafeAddress.Bech32(), "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(multiTransferContractPathTemplate, ContractsVersion3p1)),
+		make([]string, 0),
+		make([]string, 0),
+		handler.MultiTransferAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: multi-transfer contract", "address", handler.MultiTransferAddress.Bech32(), "transaction hash", hash, "status", txResult.Status)
+
+	hash, txResult = handler.upgradeInTwoStepsThroughMultisig(
+		ctx,
+		normalizePathToRelayersTests(fmt.Sprintf(bridgeProxyContractPathTemplate, ContractsVersion3p1)),
+		make([]string, 0),
+		make([]string, 0),
+		handler.ScProxyAddress,
+	)
+	require.NotEqual(handler, transaction.TxStatusSuccess, txResult.Status)
+	log.Info("Upgrade: bridge proxy contract", "address", handler.ScProxyAddress.Bech32(), "transaction hash", hash, "status", txResult.Status)
 }
 
 func (handler *MultiversxHandler) upgradeInTwoStepsThroughMultisig(
@@ -1661,7 +1651,6 @@ func (handler *MultiversxHandler) upgradeInTwoStepsThroughMultisig(
 	upgradeParams = append([]string{
 		targetAddress.Hex(),
 		dummyAddress.Hex(),
-		"00",
 	}, upgradeParams...)
 
 	return handler.scCallAndCheckTx(

@@ -48,7 +48,7 @@ func (handler *MultiversxHandler) deployContractsV3p0(ctx context.Context) {
 	hash := ""
 	handler.AggregatorAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		normalizePathToRelayersTests(fmt.Sprintf(aggregatorContractPathTemplate, ContractsVersion3p0)),
+		normalizePathToRelayersTests(aggregatorContractPath),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		aggregatorDeployParams,

@@ -436,6 +436,10 @@ func (setup *TestSetup) transferTokensToMvxTestKey(params TestTokenParams, holde
 		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
 	}
 
+	if params.MultipleSpendings != nil {
+		depositValue.Mul(depositValue, params.MultipleSpendings)
+	}
+
 	setup.MultiversxHandler.TransferToken(
 		setup.Ctx,
 		setup.OwnerKeys,
