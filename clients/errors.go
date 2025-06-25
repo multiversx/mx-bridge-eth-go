@@ -38,4 +38,25 @@ var (
 
 	// ErrNilCryptoHandler signals that a nil crypto handler was provided
 	ErrNilCryptoHandler = errors.New("nil crypto handler")
+
+	// ErrInvalidGasLimit signals that gas limit is invalid
+	ErrInvalidGasLimit = errors.New("invalid gas limit")
+
+	// ErrNilClientWrapper signals that a nil client wrapper was provided
+	ErrNilClientWrapper = errors.New("nil client wrapper")
+
+	// ErrDepositsAndBatchDepositsCountDiffer signals that the deposits count and batch deposits count differ
+	ErrDepositsAndBatchDepositsCountDiffer = errors.New("deposits and batch.DepositsCount differs")
+
+	// ErrStatusIsNotFinal signals that the status is not final
+	ErrStatusIsNotFinal = errors.New("status is not final")
+
+	// ErrQuorumNotReached signals that the quorum was not reached
+	ErrQuorumNotReached = errors.New("quorum not reached")
+
+	// ErrNilBroadcaster signals that a nil broadcaster was provided
+	ErrNilBroadcaster = errors.New("nil broadcaster")
+
+	// ErrNilSignaturesHolder signals that a nil signature holder was provided
+	ErrNilSignaturesHolder = errors.New("nil signatures holder")
 )

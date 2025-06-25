@@ -2,6 +2,8 @@ package testsCommon
 
 import (
 	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
@@ -32,4 +34,26 @@ func CreateRandomMultiversXSCAddress() sdkCore.AddressHandler {
 	firstPart := append(make([]byte, 8), []byte{5, 0}...)
 
 	return data.NewAddressFromBytes(append(firstPart, buff...))
+}
+
+// CreateRandomSuiAddressBytes will create a random Sui smart contract (object) or user address bytes
+func CreateRandomSuiAddressBytes() [32]byte {
+	buff := make([]byte, 32)
+	_, _ = rand.Read(buff)
+
+	return [32]byte(buff)
+}
+
+// CreateRandomSuiAddress will create a random Sui smart contract (object) or user address
+func CreateRandomSuiAddress() string {
+	buff := make([]byte, 32)
+	_, _ = rand.Read(buff)
+
+	return fmt.Sprintf("0x%s", hex.EncodeToString(buff))
+}
+
+// CreateRandomCoinId will create a random Sui coin ID
+func CreateRandomCoinId() string {
+	addrBytes := CreateRandomSuiAddressBytes()
+	return fmt.Sprintf("0x%s::coin::COIN", hex.EncodeToString(addrBytes[:]))
 }

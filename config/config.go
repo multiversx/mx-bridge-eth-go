@@ -17,6 +17,7 @@ type Configs struct {
 type Config struct {
 	Eth               EthereumConfig
 	MultiversX        MultiversXConfig
+	Sui               SuiConfig
 	P2P               ConfigP2P
 	StateMachine      map[string]ConfigStateMachine
 	Relayer           ConfigRelayer
@@ -41,6 +42,12 @@ type EthereumConfig struct {
 	ClientAvailabilityAllowDelta       uint64
 	EventsBlockRangeFrom               int64
 	EventsBlockRangeTo                 int64
+}
+
+// TODO: complete this
+type SuiConfig struct {
+	Chain          chain.Chain
+	NetworkAddress string
 }
 
 // GasStationConfig represents the configuration for the gas station handler

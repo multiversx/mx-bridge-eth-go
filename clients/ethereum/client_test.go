@@ -99,7 +99,7 @@ func TestNewEthereumClient(t *testing.T) {
 		args.ClientWrapper = nil
 		c, err := NewEthereumClient(args)
 
-		assert.Equal(t, errNilClientWrapper, err)
+		assert.Equal(t, clients.ErrNilClientWrapper, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("nil erc20 contracts handler", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestNewEthereumClient(t *testing.T) {
 		args.Broadcaster = nil
 		c, err := NewEthereumClient(args)
 
-		assert.Equal(t, errNilBroadcaster, err)
+		assert.Equal(t, clients.ErrNilBroadcaster, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("nil crypto handler", func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestNewEthereumClient(t *testing.T) {
 		args.SignatureHolder = nil
 		c, err := NewEthereumClient(args)
 
-		assert.Equal(t, errNilSignaturesHolder, err)
+		assert.Equal(t, clients.ErrNilSignaturesHolder, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("nil gas handler", func(t *testing.T) {
@@ -171,7 +171,7 @@ func TestNewEthereumClient(t *testing.T) {
 		args.TransferGasLimitBase = 0
 		c, err := NewEthereumClient(args)
 
-		assert.Equal(t, errInvalidGasLimit, err)
+		assert.Equal(t, clients.ErrInvalidGasLimit, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("0 transfer gas limit for each", func(t *testing.T) {
@@ -179,7 +179,7 @@ func TestNewEthereumClient(t *testing.T) {
 		args.TransferGasLimitForEach = 0
 		c, err := NewEthereumClient(args)
 
-		assert.Equal(t, errInvalidGasLimit, err)
+		assert.Equal(t, clients.ErrInvalidGasLimit, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("invalid ClientAvailabilityAllowDelta should error", func(t *testing.T) {
@@ -266,7 +266,7 @@ func TestClient_GetBatch(t *testing.T) {
 		}
 		batch, isFinal, err := c.GetBatch(context.Background(), 1)
 		assert.Nil(t, batch)
-		assert.True(t, errors.Is(err, errDepositsAndBatchDepositsCountDiffer))
+		assert.True(t, errors.Is(err, clients.ErrDepositsAndBatchDepositsCountDiffer))
 		assert.True(t, strings.Contains(err.Error(), "batch.DepositsCount: 2, fetched deposits len: 0"))
 		assert.False(t, isFinal)
 	})
@@ -288,7 +288,7 @@ func TestClient_GetBatch(t *testing.T) {
 		}
 		batch, isFinal, err := c.GetBatch(context.Background(), 1)
 		assert.Nil(t, batch)
-		assert.True(t, errors.Is(err, errDepositsAndBatchDepositsCountDiffer))
+		assert.True(t, errors.Is(err, clients.ErrDepositsAndBatchDepositsCountDiffer))
 		assert.True(t, strings.Contains(err.Error(), "batch.DepositsCount: 2, fetched deposits len: 1"))
 		assert.False(t, isFinal)
 	})
@@ -655,7 +655,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		}
 		hash, err := c.ExecuteTransfer(context.Background(), common.Hash{}, argLists, batch.ID, 10)
 		assert.Equal(t, "", hash)
-		assert.True(t, errors.Is(err, errQuorumNotReached))
+		assert.True(t, errors.Is(err, clients.ErrQuorumNotReached))
 		assert.True(t, strings.Contains(err.Error(), "num signatures: 9, quorum: 10"))
 	})
 	t.Run("not enough balance for fees", func(t *testing.T) {
@@ -1055,7 +1055,7 @@ func TestClient_GetTransactionsStatuses(t *testing.T) {
 		c, _ := NewEthereumClient(args)
 		statuses, err := c.GetTransactionsStatuses(context.Background(), expectedBatchID.Uint64())
 		assert.Nil(t, statuses)
-		assert.Equal(t, errStatusIsNotFinal, err)
+		assert.Equal(t, clients.ErrStatusIsNotFinal, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()

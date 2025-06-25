@@ -1,8 +1,11 @@
 module github.com/multiversx/mx-bridge-eth-go
 
-go 1.20
+go 1.21
+
+toolchain go1.22.12
 
 require (
+	github.com/block-vision/sui-go-sdk v1.0.8
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792
 	github.com/ethereum/go-ethereum v1.13.15
 	github.com/gin-contrib/cors v1.4.0
@@ -15,8 +18,9 @@ require (
 	github.com/multiversx/mx-chain-logger-go v1.0.14
 	github.com/multiversx/mx-sdk-go v1.4.1
 	github.com/pelletier/go-toml v1.9.3
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli v1.22.10
+	golang.org/x/crypto v0.23.0
 )
 
 require (
@@ -190,7 +194,7 @@ require (
 	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
-	github.com/tidwall/gjson v1.14.0 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
@@ -212,15 +216,14 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/net v0.21.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.15.0 // indirect
+	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
