@@ -30,12 +30,21 @@ type ArgListsBatch struct {
 
 // ArgListsBatchSui is a struct that contains the batch data in a format that is easy to use for Sui
 type ArgListsBatchSui struct {
-	SuiTokens     []string
+	SuiTokens     [][]byte
 	Recipients    []models.SuiAddress
 	MvxTokenBytes [][]byte
-	Amounts       []*big.Int
-	Nonces        []*big.Int
+	Amounts       []uint64
+	Nonces        []uint64
 	Direction     Direction
+}
+
+// SuiTransferData is a struct that contains the transfer data to be signed
+type SuiTransferData struct {
+	Recipients []models.SuiAddress
+	SuiTokens  [][]byte
+	Amounts    []uint64
+	Nonces     []uint64
+	BatchId    uint64
 }
 
 // ExtractListMvxToEth will extract the batch data into a format that is easy to use

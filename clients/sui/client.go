@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/block-vision/sui-go-sdk/common/keypair"
 	"github.com/block-vision/sui-go-sdk/models"
+	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	signer "github.com/block-vision/sui-go-sdk/signer"
 	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
@@ -252,12 +253,25 @@ func (c *client) BroadcastSignatureForMessageHash(msgHash []byte) {
 }
 
 // GenerateMessageHash will generate the message hash based on the provided batch
-func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatchSui, batchId uint64) (string, error) {
+func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatchSui, batchId uint64) ([]byte, error) {
 	if batch == nil {
-		return "", clients.ErrNilBatch
+		return nil, clients.ErrNilBatch
 	}
 
-	//args, err := generateTransferArgs()
+	transferData := batchProcessor.SuiTransferData{
+		Recipients: batch.Recipients,
+		SuiTokens:  batch.SuiTokens,
+		Amounts:    batch.Amounts,
+		Nonces:     batch.Nonces,
+		BatchId:    batchId,
+	}
+
+	transferDataBytes, err := mystenbcs.Marshal(transferData)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling transfer data: %v", err)
+	}
+	hash := blake2b.Sum256(transferDataBytes)
+	return hash[:], nil
 }
 
 // ExecuteTransfer will initiate and send the transaction from the transfer batch struct
