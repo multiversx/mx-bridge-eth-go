@@ -2,7 +2,6 @@ package sui
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
-	"github.com/block-vision/sui-go-sdk/signer"
 	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/block-vision/sui-go-sdk/transaction"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
@@ -20,13 +18,11 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
-const suiCoinType = "0x2::sui::SUI"
-
 // ArgsSuiClientDataGetter is the arguments DTO used in the NewSuiClientDataGetter constructor
 type ArgsSuiClientDataGetter struct {
 	SafeContractAddress   string
 	BridgeContractAddress string
-	Relayer               *signer.Signer
+	RelayerAddress        string
 	Client                sui.ISuiAPI
 	Log                   chainCore.Logger
 }
@@ -37,8 +33,8 @@ type suiClientDataGetter struct {
 
 	bridgeContractAddress         string
 	bridgeObjectIdBytes           models.SuiAddressBytes
-	relayer                       *signer.Signer
-	client                        *sui.Client
+	relayerAddress                string
+	client                        sui.ISuiAPI
 	initialSharedVersionForObject sync.Map // to cache the initial shared version for objects
 	log                           chainCore.Logger
 	mtx                           sync.Mutex
@@ -52,19 +48,14 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 	if args.Client == nil {
 		return nil, errNilClient
 	}
-	if args.Relayer == nil {
-		return nil, errNilRelayerSigner
+	if args.RelayerAddress == "" {
+		return nil, fmt.Errorf("%w for the signer address argument", errEmptyAddress)
 	}
 	if args.BridgeContractAddress == "" {
-		return nil, fmt.Errorf("%w for the BridgeContractAddress argument", errEmptyAddress)
+		return nil, fmt.Errorf("%w for the BridgePackageId argument", errEmptyAddress)
 	}
 	if args.SafeContractAddress == "" {
-		return nil, fmt.Errorf("%w for the SafeContractAddress argument", errEmptyAddress)
-	}
-
-	var suiClient, ok = args.Client.(*sui.Client)
-	if !ok {
-		panic("not sui client")
+		return nil, fmt.Errorf("%w for the SafePackageId argument", errEmptyAddress)
 	}
 
 	safeObjectIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(args.SafeContractAddress))
@@ -82,128 +73,19 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 		safeObjectIdBytes:     *safeObjectIdBytes,
 		bridgeContractAddress: args.BridgeContractAddress,
 		bridgeObjectIdBytes:   *bridgeObjectIdBytes,
-		relayer:               args.Relayer,
-		client:                suiClient,
+		relayerAddress:        args.RelayerAddress,
+		client:                args.Client,
 		log:                   args.Log,
 	}, nil
-
 }
 
-func (getter *suiClientDataGetter) getGasObject(ctx context.Context) (*transaction.SuiObjectRef, error) {
-	gasObjects, err := getter.client.SuiXGetCoins(ctx, models.SuiXGetCoinsRequest{
-		Owner:    getter.relayer.Address,
-		CoinType: suiCoinType,
-		Limit:    1,
-	})
-	if err != nil {
-		return nil, errGetCoinObjectsFailed
-	}
-
-	if len(gasObjects.Data) == 0 {
-		fmt.Println("NU ai obiecte de gas!")
-		return nil, fmt.Errorf("%w for address %s", errNoGasObjects, getter.relayer.Address)
-	}
-
-	gasCoin, err := transaction.NewSuiObjectRef(
-		models.SuiAddress(gasObjects.Data[0].CoinObjectId),
-		gasObjects.Data[0].Version,
-		models.ObjectDigest(gasObjects.Data[0].Digest),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create gas object ref: %w", err)
-	}
-
-	return gasCoin, nil
-}
-
-func (getter *suiClientDataGetter) getNewTransaction(ctx context.Context) (*transaction.Transaction, error) {
-	gasCoin, err := getter.getGasObject(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get gas object: %w", err)
-	}
-
+// GetBatchByNonce returns the batch of transactions by providing the batch nonce
+func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNonce uint64) (dtos.Batch, bool, error) {
 	tx := transaction.NewTransaction()
-	tx.SetSuiClient(getter.client).
-		SetSigner(getter.relayer).
-		SetSender(models.SuiAddress(getter.relayer.Address)).
-		SetGasPrice(1000).
-		SetGasBudget(50000000).
-		SetGasPayment([]transaction.SuiObjectRef{*gasCoin}).
-		SetGasOwner(models.SuiAddress(getter.relayer.Address))
-
-	return tx, nil
-}
-
-func (getter *suiClientDataGetter) getTxBytes(tx *transaction.Transaction) (string, error) {
-	bcsEncodedMsg, err := tx.Data.V1.Kind.Marshal()
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal transaction data: %w", err)
-	}
-	txBytes := mystenbcs.ToBase64(bcsEncodedMsg)
-
-	return txBytes, nil
-}
-
-func (getter *suiClientDataGetter) sendTxGetBlockResponse(ctx context.Context, tx *transaction.Transaction) (models.SuiTransactionBlockResponse, error) {
-	txBytes, err := getter.getTxBytes(tx)
-	if err != nil {
-		return models.SuiTransactionBlockResponse{}, err
-	}
-
-	return getter.client.SuiDevInspectTransactionBlock(ctx, models.SuiDevInspectTransactionBlockRequest{
-		Sender:  getter.relayer.Address,
-		TxBytes: txBytes,
-	})
-}
-
-func (getter *suiClientDataGetter) getInitialSharedVersionForObject(ctx context.Context, objectId string) (uint64, error) {
-	if value, exists := getter.initialSharedVersionForObject.Load(objectId); exists {
-		return value.(uint64), nil
-	}
-
-	// If not found, make the network call
-	rsp, err := getter.client.SuiGetObject(ctx, models.SuiGetObjectRequest{
-		ObjectId: objectId,
-		Options: models.SuiObjectDataOptions{
-			ShowOwner: true,
-		},
-	})
-
-	if err != nil {
-		return 0, fmt.Errorf("failed to get object %s: %w", objectId, err)
-	}
-
-	data := rsp.Data
-	ownerBytes, err := json.Marshal(data.Owner)
-	if err != nil {
-		return 0, fmt.Errorf("failed to marshal owner: %w", err)
-	}
-
-	var sharedOwner dtos.SharedOwner
-	if err = json.Unmarshal(ownerBytes, &sharedOwner); err != nil {
-		return 0, fmt.Errorf("failed to unmarshal to SharedOwner: %w", err)
-	}
-
-	initialSharedVersion := sharedOwner.Shared.InitialSharedVersion
-
-	if actualValue, loaded := getter.initialSharedVersionForObject.LoadOrStore(objectId, initialSharedVersion); loaded {
-		// if another goroutine stored it first, return that value
-		return actualValue.(uint64), nil
-	}
-
-	return initialSharedVersion, nil
-}
-
-// GetBatch returns the batch of transactions by providing the batch nonce
-func (getter *suiClientDataGetter) GetBatch(ctx context.Context, batchNonce uint64) (dtos.Batch, error) {
-	tx, err := getter.getNewTransaction(ctx)
-	if err != nil {
-		return dtos.Batch{}, fmt.Errorf("failed to create new transaction: %w", err)
-	}
 
 	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
 	if err != nil {
-		return dtos.Batch{}, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
+		return dtos.Batch{}, false, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
 	}
 
 	tx.MoveCall(
@@ -229,41 +111,30 @@ func (getter *suiClientDataGetter) GetBatch(ctx context.Context, batchNonce uint
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return dtos.Batch{}, fmt.Errorf("failed to get batch: %w", err)
+		return dtos.Batch{}, false, fmt.Errorf("failed to get batch: %w", err)
 	}
 
 	if txBlockResp.Effects.Status.Status != "success" {
-		return dtos.Batch{}, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
+		return dtos.Batch{}, false, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	var batch *dtos.Batch
-	result := txBlockResp.Results
-	returnValues, err := ExtractReturnValues(result)
+	var batch dtos.Batch
+	var isFinalBatch bool
+	err = DecodeReturnValues(txBlockResp.Results, &batch, &isFinalBatch)
 	if err != nil {
-		return dtos.Batch{}, fmt.Errorf("failed to extract return values: %w", err)
-	}
-	if len(returnValues) > 0 && strings.HasSuffix(returnValues[0].Type, "::Batch") {
-		batch, err = DecodeStructFromExtracted(returnValues[0], BatchDecoder)
-		if err != nil {
-			return dtos.Batch{}, fmt.Errorf("failed to decode batch: %w", err)
-		}
-	} else {
-		return dtos.Batch{}, fmt.Errorf("wrong expected return value, got %s", returnValues[0].Type)
+		return dtos.Batch{}, false, fmt.Errorf("failed to decode return value: %w", err)
 	}
 
-	return *batch, nil
+	return batch, isFinalBatch, nil
 }
 
 // GetBatchDeposits returns the transactions of a batch by providing the batch nonce
-func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNonce uint64) ([]dtos.Deposit, error) {
-	tx, err := getter.getNewTransaction(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new transaction: %w", err)
-	}
+func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNonce uint64) ([]dtos.Deposit, bool, error) {
+	tx := transaction.NewTransaction()
 
 	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
 	if err != nil {
-		return []dtos.Deposit{}, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
+		return nil, false, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
 	}
 
 	tx.MoveCall(
@@ -289,23 +160,26 @@ func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNo
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get batch deposits: %w", err)
+		return nil, false, fmt.Errorf("failed to get batch deposits: %w", err)
 	}
 
 	if txBlockResp.Effects.Status.Status != "success" {
-		return nil, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
+		return nil, false, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	// TODO: decode result
-	return []dtos.Deposit{}, nil
+	var depositsList []dtos.Deposit
+	var areFinalDeposits bool
+	err = DecodeReturnValues(txBlockResp.Results, &depositsList, &areFinalDeposits)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return depositsList, areFinalDeposits, nil
 }
 
 // GetRelayers returns all whitelisted sui addresses
 func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.SuiAddress, error) {
-	tx, err := getter.getNewTransaction(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new transaction: %w", err)
-	}
+	tx := transaction.NewTransaction()
 
 	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
 	if err != nil {
@@ -341,16 +215,18 @@ func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.Su
 		return nil, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	// TODO: decode result
-	return []models.SuiAddress{}, nil
+	var relayersAddresses []models.SuiAddress
+	err = DecodeReturnValues(txBlockResp.Results, &relayersAddresses)
+	if err != nil {
+		return []models.SuiAddress{}, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return relayersAddresses, nil
 }
 
 // WasBatchExecuted returns true if the batch was executed
 func (getter *suiClientDataGetter) WasBatchExecuted(ctx context.Context, batchNonce uint64) (bool, error) {
-	tx, err := getter.getNewTransaction(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to create new transaction: %w", err)
-	}
+	tx := transaction.NewTransaction()
 
 	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
 	if err != nil {
@@ -387,16 +263,18 @@ func (getter *suiClientDataGetter) WasBatchExecuted(ctx context.Context, batchNo
 		return false, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	// TODO: decode result
-	return false, nil
+	var wasBatchExecuted bool
+	err = DecodeReturnValues(txBlockResp.Results, &wasBatchExecuted)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return wasBatchExecuted, nil
 }
 
 // IsPaused returns true if the bridge contract is paused
 func (getter *suiClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
-	tx, err := getter.getNewTransaction(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to create new transaction: %w", err)
-	}
+	tx := transaction.NewTransaction()
 
 	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
 	if err != nil {
@@ -432,16 +310,18 @@ func (getter *suiClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("get_pause transaction failed: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	// TODO: decode result
-	return false, nil
+	var isPaused bool
+	err = DecodeReturnValues(txBlockResp.Results, &isPaused)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return isPaused, nil
 }
 
 // Quorum returns the current set quorum value
 func (getter *suiClientDataGetter) Quorum(ctx context.Context) (uint64, error) {
-	tx, err := getter.getNewTransaction(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create new transaction: %w", err)
-	}
+	tx := transaction.NewTransaction()
 
 	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
 	if err != nil {
@@ -477,20 +357,22 @@ func (getter *suiClientDataGetter) Quorum(ctx context.Context) (uint64, error) {
 		return 0, fmt.Errorf("get quorum transaction failed: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	// TODO: decode result
-	return 0, nil
+	var quorum uint64
+	err = DecodeReturnValues(txBlockResp.Results, &quorum)
+	if err != nil {
+		return 0, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return quorum, nil
 }
 
 // GetStatusesAfterExecution returns the statuses of the last executed transfer
-func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context, batchNonce uint64) (uint64, error) {
-	tx, err := getter.getNewTransaction(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create new transaction: %w", err)
-	}
+func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context, batchNonce uint64) ([]dtos.DepositStatus, bool, error) {
+	tx := transaction.NewTransaction()
 
 	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
+		return []dtos.DepositStatus{}, false, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
 	}
 
 	tx.MoveCall(
@@ -516,23 +398,26 @@ func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get quorum: %w", err)
+		return []dtos.DepositStatus{}, false, fmt.Errorf("failed to get quorum: %w", err)
 	}
 
 	if txBlockResp.Effects.Status.Status != "success" {
-		return 0, fmt.Errorf("get quorum transaction failed: %s", txBlockResp.Effects.Status.Error)
+		return []dtos.DepositStatus{}, false, fmt.Errorf("get quorum transaction failed: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	// TODO: decode result
-	return 0, nil
+	var depositStatuses []dtos.DepositStatus
+	var isFinal bool
+	err = DecodeReturnValues(txBlockResp.Results, &depositStatuses, &isFinal)
+	if err != nil {
+		return []dtos.DepositStatus{}, false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return depositStatuses, isFinal, nil
 }
 
-// TotalBalances returns the total balance of the given token
-func (getter *suiClientDataGetter) TotalBalances(ctx context.Context, coinType string) (uint64, error) {
-	tx, err := getter.getNewTransaction(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create new transaction: %w", err)
-	}
+// GetTotalBalanceFromSafe returns the total balance of the given token
+func (getter *suiClientDataGetter) GetTotalBalanceFromSafe(ctx context.Context, coinType string) (uint64, error) {
+	tx := transaction.NewTransaction()
 
 	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.safeContractAddress)
 	if err != nil {
@@ -586,16 +471,18 @@ func (getter *suiClientDataGetter) TotalBalances(ctx context.Context, coinType s
 		return 0, fmt.Errorf("get total balances transaction failed: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	// TODO: decode result
-	return 0, nil
+	var totalBalance uint64
+	err = DecodeReturnValues(txBlockResp.Results, &totalBalance)
+	if err != nil {
+		return 0, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return totalBalance, nil
 }
 
-// WhitelistedTokens returns true if the token is whitelisted
-func (getter *suiClientDataGetter) WhitelistedTokens(ctx context.Context, coinType string) (bool, error) {
-	tx, err := getter.getNewTransaction(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to create new transaction: %w", err)
-	}
+// IsTokenWhitelisted returns true if the token is whitelisted
+func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinType string) (bool, error) {
+	tx := transaction.NewTransaction()
 
 	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.safeContractAddress)
 	if err != nil {
@@ -649,8 +536,13 @@ func (getter *suiClientDataGetter) WhitelistedTokens(ctx context.Context, coinTy
 		return false, fmt.Errorf("get total balances transaction failed: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	// TODO: decode result
-	return false, nil
+	var isTokenWhitelisted bool
+	err = DecodeReturnValues(txBlockResp.Results, &isTokenWhitelisted)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return isTokenWhitelisted, nil
 }
 
 // GetLatestCheckpoint returns the latest checkpoint sequence number
@@ -686,95 +578,87 @@ func ParseCoinType(coinType string) ([3]string, error) {
 	return [3]string{packageAddr, module, structName}, nil
 }
 
-// ExtractReturnValues extracts and parses return values from json.RawMessage
-func ExtractReturnValues(rawResults json.RawMessage) ([]dtos.ReturnValue, error) {
-	var returnValues []dtos.ReturnValue
-
-	if len(rawResults) == 0 {
-		return returnValues, nil
-	}
-
+// DecodeReturnValues decodes the return value from a transaction block response.
+func DecodeReturnValues(data json.RawMessage, out ...interface{}) error {
 	var results []dtos.InspectResult
-	if err := json.Unmarshal(rawResults, &results); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal results: %w", err)
+	if err := json.Unmarshal(data, &results); err != nil {
+		return fmt.Errorf("decode dev inspect results: %w", err)
 	}
 
-	for _, result := range results {
-		for _, rv := range result.ReturnValues {
-			if len(rv) >= 2 {
-				returnValue := dtos.ReturnValue{
-					Value: rv[0],
-					Type:  fmt.Sprintf("%v", rv[1]),
-				}
-				returnValues = append(returnValues, returnValue)
-			}
+	if len(results) == 0 {
+		return fmt.Errorf("no dev inspect results")
+	}
+
+	returnValues := results[0].ReturnValues
+	if len(returnValues) < len(out) {
+		return fmt.Errorf("expected at least %d return values, got %d", len(out), len(returnValues))
+	}
+
+	for i := range out {
+		if _, err := mystenbcs.Unmarshal(returnValues[i].Bytes, out[i]); err != nil {
+			return fmt.Errorf("unmarshal return value %d: %w", i, err)
 		}
 	}
 
-	return returnValues, nil
+	return nil
 }
 
-// DecodeStructFromExtracted decodes a struct from the extracted return value.
-func DecodeStructFromExtracted[T any](rv dtos.ReturnValue, decoder func([]interface{}) (*T, error)) (*T, error) {
-	fields, ok := rv.Value.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("expected struct fields as []interface{}, got %T", rv.Value)
+func (getter *suiClientDataGetter) getTxBytes(tx *transaction.Transaction) (string, error) {
+	bcsEncodedMsg, err := tx.Data.V1.Kind.Marshal()
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal transaction data: %w", err)
 	}
-	return decoder(fields)
+	txBytes := mystenbcs.ToBase64(bcsEncodedMsg)
+
+	return txBytes, nil
 }
 
-func BatchDecoder(fields []interface{}) (*dtos.Batch, error) {
-	if len(fields) != 26 {
-		return nil, fmt.Errorf("expected 26 bytes for serialized Sword, got %d", len(fields))
-	}
-
-	bytes := make([]byte, 26)
-	for i, v := range fields {
-		f, ok := v.(float64)
-		if !ok {
-			return nil, fmt.Errorf("expected float64 byte at index %d, got %T", i, v)
-		}
-		bytes[i] = byte(f)
-	}
-
-	nonce, err := parseU64(bytes[0:8])
+func (getter *suiClientDataGetter) sendTxGetBlockResponse(ctx context.Context, tx *transaction.Transaction) (models.SuiTransactionBlockResponse, error) {
+	txBytes, err := getter.getTxBytes(tx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode nonce: %v", err)
+		return models.SuiTransactionBlockResponse{}, err
 	}
 
-	blockNumber, err := parseU64(bytes[8:16])
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode block_number: %v", err)
-	}
-
-	lastUpdatedBlock, err := parseU64(bytes[16:24])
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode last_updated_block: %v", err)
-	}
-
-	depositsCount, err := parseU16(bytes[24:26])
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode deposits_count: %v", err)
-	}
-
-	return &dtos.Batch{
-		Nonce:                  nonce,
-		BlockNumber:            blockNumber,
-		LastUpdatedBlockNumber: lastUpdatedBlock,
-		DepositsCount:          depositsCount,
-	}, nil
+	return getter.client.SuiDevInspectTransactionBlock(ctx, models.SuiDevInspectTransactionBlockRequest{
+		Sender:  getter.relayerAddress,
+		TxBytes: txBytes,
+	})
 }
 
-func parseU64(bytes []byte) (uint64, error) {
-	if len(bytes) != 8 {
-		return 0, fmt.Errorf("expected 8 bytes for u64, got %d", len(bytes))
+func (getter *suiClientDataGetter) getInitialSharedVersionForObject(ctx context.Context, objectId string) (uint64, error) {
+	if value, exists := getter.initialSharedVersionForObject.Load(objectId); exists {
+		return value.(uint64), nil
 	}
-	return binary.LittleEndian.Uint64(bytes), nil
-}
 
-func parseU16(bytes []byte) (uint16, error) {
-	if len(bytes) != 2 {
-		return 0, fmt.Errorf("expected 2 bytes for u16, got %d", len(bytes))
+	// If not found, make the network call
+	rsp, err := getter.client.SuiGetObject(ctx, models.SuiGetObjectRequest{
+		ObjectId: objectId,
+		Options: models.SuiObjectDataOptions{
+			ShowOwner: true,
+		},
+	})
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to get object %s: %w", objectId, err)
 	}
-	return binary.LittleEndian.Uint16(bytes), nil
+
+	data := rsp.Data
+	ownerBytes, err := json.Marshal(data.Owner)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal owner: %w", err)
+	}
+
+	var sharedOwner dtos.SharedOwner
+	if err = json.Unmarshal(ownerBytes, &sharedOwner); err != nil {
+		return 0, fmt.Errorf("failed to unmarshal to SharedOwner: %w", err)
+	}
+
+	initialSharedVersion := sharedOwner.Shared.InitialSharedVersion
+
+	if actualValue, loaded := getter.initialSharedVersionForObject.LoadOrStore(objectId, initialSharedVersion); loaded {
+		// if another goroutine stored it first, return that value
+		return actualValue.(uint64), nil
+	}
+
+	return initialSharedVersion, nil
 }

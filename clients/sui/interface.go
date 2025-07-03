@@ -36,12 +36,7 @@ type Broadcaster interface {
 	IsInterfaceNil() bool
 }
 
-// CryptoHandler defines the operations for a component that expose some crypto primitives
-type CryptoHandler interface {
-	Sign(msg []byte) ([]byte, error)
-	IsInterfaceNil() bool
-}
-
 type txHandler interface {
-	SendTransaction(ctx context.Context, moveCallRequest models.MoveCallRequest, gasLimit uint64) (string, error)
+	SendTransactionReturnHash(ctx context.Context, moveCallRequest models.MoveCallRequest) (string, error)
+	Sign(message []byte) ([]byte, error)
 }

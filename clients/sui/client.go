@@ -6,10 +6,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/block-vision/sui-go-sdk/common/keypair"
+	"github.com/block-vision/sui-go-sdk/models"
 	signer "github.com/block-vision/sui-go-sdk/signer"
 	"github.com/block-vision/sui-go-sdk/sui"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
@@ -26,32 +27,37 @@ const (
 )
 
 type ArgsSuiClient struct {
-	suiClient             sui.ISuiAPI
-	Log                   chainCore.Logger
-	RelayerPrivateKey     ed25519.PrivateKey
-	SafeContractAddress   string
-	BridgeContractAddress string
-	TokensMapper          TokensMapper
-	StatusHandler         bridgeCore.StatusHandler
-	Broadcaster           Broadcaster
-	SignatureHolder       SignaturesHolder
+	SuiClient         sui.ISuiAPI
+	Log               chainCore.Logger
+	RelayerPrivateKey ed25519.PrivateKey
+	SafePackageId     string
+	SafeObjectId      string
+	BridgePackageId   string
+	BridgeObjectId    string
+	RelayerCapacityId string
+	TokensMapper      TokensMapper
+	StatusHandler     bridgeCore.StatusHandler
+	Broadcaster       Broadcaster
+	SignatureHolder   SignaturesHolder
 
 	ClientAvailabilityAllowDelta uint64
 }
 
 type client struct {
 	*suiClientDataGetter
-	txHandler             txHandler
-	tokensMapper          TokensMapper
-	relayerPublicKey      ed25519.PublicKey
-	relayerAddress        string
-	safeContractAddress   string
-	bridgeContractAddress string
-	log                   chainCore.Logger
-	addressConverter      bridgeCore.AddressConverter
-	statusHandler         bridgeCore.StatusHandler
-	broadcaster           Broadcaster
-	signatureHolder       SignaturesHolder
+	txHandler        txHandler
+	tokensMapper     TokensMapper
+	relayerPublicKey ed25519.PublicKey
+	relayerAddress   string
+	safePackageId    string
+	safeObjectId     string
+	bridgePackageId  string
+	bridgeObjectId   string
+	log              chainCore.Logger
+	addressConverter bridgeCore.AddressConverter
+	statusHandler    bridgeCore.StatusHandler
+	broadcaster      Broadcaster
+	signatureHolder  SignaturesHolder
 
 	lastCheckpoint               uint64
 	retriesAvailabilityCheck     uint64
@@ -65,18 +71,18 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		return nil, err
 	}
 
-	relayerPubKey, relayerAddress := generateRelayerPubKeyAndAddress(args.RelayerPrivateKey)
-	signerRelayer := &signer.Signer{
+	relayerPubKey, relayerAddress := generatePubKeyAndAddressFromPriKey(args.RelayerPrivateKey)
+	relayerSigner := &signer.Signer{
 		PriKey:  args.RelayerPrivateKey,
 		PubKey:  relayerPubKey,
 		Address: relayerAddress,
 	}
 
 	argsSuiClientDataGetter := ArgsSuiClientDataGetter{
-		BridgeContractAddress: args.BridgeContractAddress,
-		SafeContractAddress:   args.SafeContractAddress,
-		RelayerAddress:        signerRelayer,
-		Client:                args.suiClient,
+		SafeContractAddress:   args.SafePackageId,
+		BridgeContractAddress: args.BridgePackageId,
+		RelayerAddress:        relayerAddress,
+		Client:                args.SuiClient,
 		Log:                   args.Log,
 	}
 	getter, err := NewSuiClientDataGetter(argsSuiClientDataGetter)
@@ -91,16 +97,16 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 
 	c := &client{
 		txHandler: &transactionHandler{
-			client:                args.suiClient,
-			relayerAddress:        relayerAddress,
-			relayerPrivateKey:     args.RelayerPrivateKey,
-			bridgeContractAddress: args.BridgeContractAddress,
+			client:        args.SuiClient,
+			relayerSigner: relayerSigner,
 		},
 		suiClientDataGetter:          getter,
 		relayerPublicKey:             relayerPubKey,
 		relayerAddress:               relayerAddress,
-		bridgeContractAddress:        args.BridgeContractAddress,
-		safeContractAddress:          args.SafeContractAddress,
+		safePackageId:                args.SafePackageId,
+		safeObjectId:                 args.SafeObjectId,
+		bridgePackageId:              args.BridgePackageId,
+		bridgeObjectId:               args.BridgeObjectId,
 		log:                          args.Log,
 		addressConverter:             addressConverter,
 		broadcaster:                  args.Broadcaster,
@@ -111,22 +117,32 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	c.log.Info("NewSuiClient")
+	c.log.Info("NewSuiClient",
+		"relayer address", relayerAddress,
+		"bridge contract address", c.bridgeContractAddress,
+		"safe contract address", c.safeContractAddress)
 
 	return c, err
 }
 
 func checkArgs(args ArgsSuiClient) error {
-	if check.IfNil(args.suiClient) {
+	if args.SuiClient == nil {
 		return errNilClient
 	}
 	if len(args.RelayerPrivateKey) == 0 {
 		return clients.ErrNilPrivateKey
 	}
-	if args.BridgeContractAddress == "" {
-		return fmt.Errorf("%w for the MultisigContractAddress argument", errNilBridgeContract)
+	if args.BridgePackageId == "" {
+		return fmt.Errorf("%w for the BridgePackageId argument", errNilPackageId)
 	}
-	if args.SafeContractAddress == "" {
-		return fmt.Errorf("%w for the SafeContractAddress argument", errNilSafeContract)
+	if args.BridgeObjectId == "" {
+		return fmt.Errorf("%w for the BridgeObjectId argument", errNilObjectId)
+	}
+	if args.SafePackageId == "" {
+		return fmt.Errorf("%w for the SafePackageId argument", errNilPackageId)
+	}
+	if args.SafeObjectId == "" {
+		return fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
 	}
 	if check.IfNil(args.Log) {
 		return clients.ErrNilLogger
@@ -151,7 +167,7 @@ func checkArgs(args ArgsSuiClient) error {
 	return nil
 }
 
-func generateRelayerPubKeyAndAddress(priKey ed25519.PrivateKey) (ed25519.PublicKey, string) {
+func generatePubKeyAndAddressFromPriKey(priKey ed25519.PrivateKey) (ed25519.PublicKey, string) {
 	pubKey := priKey.Public().(ed25519.PublicKey)
 
 	tmp := []byte{byte(keypair.Ed25519Flag)}
@@ -162,14 +178,14 @@ func generateRelayerPubKeyAndAddress(priKey ed25519.PrivateKey) (ed25519.PublicK
 	return pubKey, addr
 }
 
+// GetBatch returns the transfer batch by providing the nonce
 func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error) {
 	c.log.Info("Getting batch", "nonce", nonce)
-	nonceAsBigInt := big.NewInt(0).SetUint64(nonce)
-	batch, isFinalBatch, err := c.clientWrapper.GetBatch(ctx, nonceAsBigInt)
+	batch, isFinalBatch, err := c.GetBatchByNonce(ctx, nonce)
 	if err != nil {
 		return nil, false, err
 	}
-	deposits, areFinalDeposits, err := c.clientWrapper.GetBatchDeposits(ctx, nonceAsBigInt)
+	deposits, areFinalDeposits, err := c.GetBatchDeposits(ctx, nonce)
 	if err != nil {
 		return nil, false, err
 	}
@@ -179,7 +195,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 	}
 
 	transferBatch := &bridgeCore.TransferBatch{
-		ID:          batch.Nonce.Uint64(),
+		ID:          batch.Nonce,
 		BlockNumber: batch.BlockNumber,
 		Deposits:    make([]*bridgeCore.DepositTransfer, 0, batch.DepositsCount),
 	}
@@ -191,7 +207,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 		tokenId := deposit.TokenAddress
 
 		depositTransfer := &bridgeCore.DepositTransfer{
-			Nonce:            deposit.Nonce.Uint64(),
+			Nonce:            deposit.Nonce,
 			ToBytes:          toBytes,
 			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),
 			FromBytes:        fromBytes,
@@ -221,12 +237,12 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 
 // WasExecuted returns true if the MultiversX batch ID was executed
 func (c *client) WasExecuted(ctx context.Context, mvxBatchID uint64) (bool, error) {
-	return c.clientWrapper.WasBatchExecuted(ctx, big.NewInt(0).SetUint64(mvxBatchID))
+	return c.WasBatchExecuted(ctx, mvxBatchID)
 }
 
 // BroadcastSignatureForMessageHash will send the signature for the provided message hash
 func (c *client) BroadcastSignatureForMessageHash(msgHash []byte) {
-	signature, err := c.cryptoHandler.Sign(msgHash)
+	signature, err := c.txHandler.Sign(msgHash)
 	if err != nil {
 		c.log.Error("error generating signature", "msh hash", msgHash, "error", err)
 		return
@@ -236,8 +252,12 @@ func (c *client) BroadcastSignatureForMessageHash(msgHash []byte) {
 }
 
 // GenerateMessageHash will generate the message hash based on the provided batch
-func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error) {
-	panic("not implemented yet")
+func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatchSui, batchId uint64) (string, error) {
+	if batch == nil {
+		return "", clients.ErrNilBatch
+	}
+
+	//args, err := generateTransferArgs()
 }
 
 // ExecuteTransfer will initiate and send the transaction from the transfer batch struct
@@ -252,7 +272,7 @@ func (c *client) ExecuteTransfer(
 		return "", clients.ErrNilBatch
 	}
 
-	isPaused, err := c.clientWrapper.IsPaused(ctx)
+	isPaused, err := c.IsPaused(ctx)
 	if err != nil {
 		return "", fmt.Errorf("%w in client.ExecuteTransfer", err)
 	}
@@ -270,30 +290,40 @@ func (c *client) ExecuteTransfer(
 		signatures = signatures[:quorum]
 	}
 
-	//minimumForFee := big.NewInt(int64(auth.GasLimit))
-	//minimumForFee.Mul(minimumForFee, auth.GasPrice)
-	//err = c.checkRelayerFundsForFee(ctx, minimumForFee)
-	//if err != nil {
-	//	return "", err
-	//}
+	moveCallReq := models.MoveCallRequest{
+		Signer:          c.relayerAddress,
+		PackageObjectId: c.bridgeContractAddress,
+		Module:          "bridge",
+		Function:        "execute_transfer",
+		TypeArguments:   []interface{}{},
+		Arguments: []interface{}{
+			c.bridgeObjectId,
+			c.safeObjectId,
+			argLists.SuiTokens,
+			argLists.Recipients,
+			argLists.Amounts,
+			argLists.Nonces,
+			batchId,
+			signatures,
+		},
+		GasBudget: "100000000", // TODO
+	}
 
-	batchID := big.NewInt(0).SetUint64(batchId)
-	tx, err := c.clientWrapper.ExecuteTransfer(argLists.SuiTokens, argLists.Recipients, argLists.Amounts, argLists.Nonces, batchID, signatures)
+	hash, err := c.txHandler.SendTransactionReturnHash(ctx, moveCallReq)
 	if err != nil {
 		return "", err
 	}
 
-	txHash := tx.Hash().String()
-	c.log.Info("Executed transfer transaction", "batchID", batchID, "hash", txHash)
+	c.log.Info("Executed transfer transaction", "batchID", batchId, "hash", hash)
 
-	return txHash, err
+	return hash, err
 }
 
 func (c *client) CheckClientAvailability(ctx context.Context) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	currentCheckpoint, err := c.clientWrapper.GetLatestCheckpoint(ctx)
+	currentCheckpoint, err := c.GetLatestCheckpoint(ctx)
 	if err != nil {
 		c.setStatusForAvailabilityCheck(bridgeCore.Unavailable, err.Error(), currentCheckpoint)
 
@@ -321,9 +351,9 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 }
 
 func (c *client) setStatusForAvailabilityCheck(status bridgeCore.ClientStatus, message string, nonce uint64) {
-	c.clientWrapper.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, status.String())
-	c.clientWrapper.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, message)
-	c.clientWrapper.SetIntMetric(bridgeCore.MetricLastBlockNonce, int(nonce))
+	c.statusHandler.SetStringMetric(bridgeCore.MetricMultiversXClientStatus, status.String())
+	c.statusHandler.SetStringMetric(bridgeCore.MetricLastMultiversXClientError, message)
+	c.statusHandler.SetIntMetric(bridgeCore.MetricLastBlockNonce, int(nonce))
 }
 
 func (c *client) incrementRetriesAvailabilityCheck() {
@@ -332,17 +362,9 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 
 // CheckRequiredBalance will check if the safe has enough balance for the transfer
 func (c *client) CheckRequiredBalance(ctx context.Context, coinType string, value *big.Int) error {
-	isMintBurn, err := c.MintBurnTokens(ctx, coinType)
+	existingBalance, err := c.GetBalance(ctx, c.safeContractAddress, coinType)
 	if err != nil {
-		return err
-	}
-
-	if isMintBurn {
-		return nil
-	}
-	existingBalance, err := c.clientWrapper.GetBalance(ctx, c.safeContractId, coinType)
-	if err != nil {
-		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeContractId, coinType)
+		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeContractAddress, coinType)
 	}
 
 	totalExistingBalanceStr := existingBalance.TotalBalance
@@ -353,12 +375,12 @@ func (c *client) CheckRequiredBalance(ctx context.Context, coinType string, valu
 	}
 	if value.Cmp(totalExistingBalance) > 0 {
 		return fmt.Errorf("%w, existing: %s, required: %s for coin %s and owner %s",
-			errInsufficientCoinBalance, totalExistingBalanceStr, value.String(), coinType, c.safeContractId)
+			errInsufficientCoinBalance, totalExistingBalanceStr, value.String(), coinType, c.safeContractAddress)
 	}
 
 	c.log.Debug("checked coin balance",
 		"Coin type", coinType,
-		"owner address", c.safeContractId,
+		"owner address", c.safeContractAddress,
 		"existing balance", totalExistingBalanceStr,
 		"needed", value.String())
 
@@ -367,37 +389,26 @@ func (c *client) CheckRequiredBalance(ctx context.Context, coinType string, valu
 
 // TotalBalances returns the total balance of the given token
 func (c *client) TotalBalances(ctx context.Context, token string) (*big.Int, error) {
-	return c.clientWrapper.TotalBalances(ctx, token)
+	balance, err := c.GetTotalBalanceFromSafe(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	return big.NewInt(0).SetUint64(balance), nil
 }
 
-// MintBalances returns the mint balance of the given token
-func (c *client) MintBalances(ctx context.Context, token string) (*big.Int, error) {
-	return c.clientWrapper.MintBalances(ctx, token)
-}
-
-// BurnBalances returns the burn balance of the given token
-func (c *client) BurnBalances(ctx context.Context, token string) (*big.Int, error) {
-	return c.clientWrapper.BurnBalances(ctx, token)
-}
-
-// MintBurnTokens returns true if the token is mintBurn token
-func (c *client) MintBurnTokens(ctx context.Context, token string) (bool, error) {
-	return c.clientWrapper.MintBurnTokens(ctx, token)
-}
-
-// NativeTokens returns true if the token is native
-func (c *client) NativeTokens(ctx context.Context, token string) (bool, error) {
-	return c.clientWrapper.NativeTokens(ctx, token)
-}
+//// NativeTokens returns true if the token is native
+//func (c *client) NativeTokens(ctx context.Context, token string) (bool, error) {
+//	return c.NativeTokens(ctx, token)
+//}
 
 // WhitelistedTokens returns true if the token is whitelisted
 func (c *client) WhitelistedTokens(ctx context.Context, token string) (bool, error) {
-	return c.clientWrapper.WhitelistedTokens(ctx, token)
+	return c.IsTokenWhitelisted(ctx, token)
 }
 
 // GetTransactionsStatuses will return the transactions statuses from the batch
-func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error) {
-	buff, isFinal, err := c.clientWrapper.GetStatusesAfterExecution(ctx, big.NewInt(0).SetUint64(batchId))
+func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]dtos.DepositStatus, error) {
+	buff, isFinal, err := c.GetStatusesAfterExecution(ctx, batchId)
 	if err != nil {
 		return nil, err
 	}
@@ -410,21 +421,25 @@ func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([
 
 // GetQuorumSize returns the size of the quorum
 func (c *client) GetQuorumSize(ctx context.Context) (*big.Int, error) {
-	return c.clientWrapper.Quorum(ctx)
+	quorum, err := c.Quorum(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return big.NewInt(0).SetUint64(quorum), nil
 }
 
 // IsQuorumReached returns true if the number of signatures is at least the size of quorum
 func (c *client) IsQuorumReached(ctx context.Context, msg []byte) (bool, error) {
 	signatures := c.signatureHolder.Signatures(msg)
-	quorum, err := c.clientWrapper.Quorum(ctx)
+	quorum, err := c.Quorum(ctx)
 	if err != nil {
 		return false, fmt.Errorf("%w in IsQuorumReached, Quorum call", err)
 	}
-	if quorum.Uint64() < minQuorumValue {
-		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %s", clients.ErrInvalidValue, minQuorumValue, quorum.String())
+	if quorum < minQuorumValue {
+		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %s", clients.ErrInvalidValue, minQuorumValue, quorum)
 	}
 
-	return len(signatures) >= int(quorum.Int64()), nil
+	return len(signatures) >= int(quorum), nil
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
