@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -60,7 +59,7 @@ type Executor interface {
 
 	CheckMultiversXClientAvailability(ctx context.Context) error
 	CheckEthereumClientAvailability(ctx context.Context) error
-	CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error
+	CheckAvailableTokens(ctx context.Context, ethTokens [][]byte, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error
 
 	IsInterfaceNil() bool
 }

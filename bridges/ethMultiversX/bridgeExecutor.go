@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
@@ -28,7 +27,7 @@ type ArgsBridgeExecutor struct {
 	Log                          logger.Logger
 	TopologyProvider             TopologyProvider
 	MultiversXClient             MultiversXClient
-	EthereumClient               EthereumClient
+	PeerChainClient              PeerChainClient
 	TimeForWaitOnEthereum        time.Duration
 	StatusHandler                core.StatusHandler
 	SignaturesHolder             SignaturesHolder
@@ -42,7 +41,7 @@ type bridgeExecutor struct {
 	log                          logger.Logger
 	topologyProvider             TopologyProvider
 	multiversXClient             MultiversXClient
-	ethereumClient               EthereumClient
+	peerChainClient              PeerChainClient
 	timeForWaitOnEthereum        time.Duration
 	statusHandler                core.StatusHandler
 	sigsHolder                   SignaturesHolder
@@ -53,7 +52,7 @@ type bridgeExecutor struct {
 
 	batch                     *bridgeCore.TransferBatch
 	actionID                  uint64
-	msgHash                   common.Hash
+	msgHash                   []byte
 	quorumRetriesOnEthereum   uint64
 	quorumRetriesOnMultiversX uint64
 	retriesOnWasProposed      uint64
@@ -77,7 +76,7 @@ func checkArgs(args ArgsBridgeExecutor) error {
 	if check.IfNil(args.MultiversXClient) {
 		return ErrNilMultiversXClient
 	}
-	if check.IfNil(args.EthereumClient) {
+	if check.IfNil(args.PeerChainClient) {
 		return ErrNilEthereumClient
 	}
 	if check.IfNil(args.TopologyProvider) {
@@ -114,7 +113,7 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 	return &bridgeExecutor{
 		log:                          args.Log,
 		multiversXClient:             args.MultiversXClient,
-		ethereumClient:               args.EthereumClient,
+		peerChainClient:              args.PeerChainClient,
 		topologyProvider:             args.TopologyProvider,
 		statusHandler:                args.StatusHandler,
 		timeForWaitOnEthereum:        args.TimeForWaitOnEthereum,
@@ -389,7 +388,7 @@ func (executor *bridgeExecutor) GetBatchStatusesFromEthereum(ctx context.Context
 		return nil, ErrNilBatch
 	}
 
-	statuses, err := executor.ethereumClient.GetTransactionsStatuses(ctx, executor.batch.ID)
+	statuses, err := executor.peerChainClient.GetTransactionsStatuses(ctx, executor.batch.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +440,7 @@ func (executor *bridgeExecutor) ResetRetriesCountOnMultiversX() {
 
 // GetAndStoreBatchFromEthereum fetches and stores the batch from the ethereum client
 func (executor *bridgeExecutor) GetAndStoreBatchFromEthereum(ctx context.Context, nonce uint64) error {
-	batch, isFinal, err := executor.ethereumClient.GetBatch(ctx, nonce)
+	batch, isFinal, err := executor.peerChainClient.GetBatch(ctx, nonce)
 	if err != nil {
 		return err
 	}
@@ -467,7 +466,7 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 		return nil, ErrNilBatch
 	}
 
-	events, err := executor.ethereumClient.GetBatchSCMetadata(ctx, transfers.ID, int64(transfers.BlockNumber))
+	events, err := executor.peerChainClient.GetBatchSCMetadata(ctx, transfers.ID, int64(transfers.BlockNumber))
 	if err != nil {
 		return nil, err
 	}
@@ -522,7 +521,7 @@ func (executor *bridgeExecutor) WasTransferPerformedOnEthereum(ctx context.Conte
 		return false, ErrNilBatch
 	}
 
-	return executor.ethereumClient.WasExecuted(ctx, executor.batch.ID)
+	return executor.peerChainClient.WasExecuted(ctx, executor.batch.ID)
 }
 
 // SignTransferOnEthereum generates the message hash for batch and broadcast the signature
@@ -532,7 +531,7 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 	}
 
 	argLists := batchProcessor.ExtractListMvxToEth(executor.batch)
-	hash, err := executor.ethereumClient.GenerateMessageHash(argLists, executor.batch.ID)
+	hash, err := executor.peerChainClient.GenerateMessageHash(argLists, executor.batch.ID)
 	if err != nil {
 		return err
 	}
@@ -541,7 +540,7 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		"batch ID", executor.batch.ID)
 
 	executor.msgHash = hash
-	executor.ethereumClient.BroadcastSignatureForMessageHash(hash)
+	executor.peerChainClient.BroadcastSignatureForMessageHash(hash)
 	return nil
 }
 
@@ -551,7 +550,7 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 		return ErrNilBatch
 	}
 
-	quorumSize, err := executor.ethereumClient.GetQuorumSize(ctx)
+	quorumSize, err := executor.peerChainClient.GetQuorumSize(ctx)
 	if err != nil {
 		return err
 	}
@@ -562,7 +561,7 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 
 	executor.log.Info("executing transfer " + executor.batch.String())
 
-	hash, err := executor.ethereumClient.ExecuteTransfer(ctx, executor.msgHash, argLists, executor.batch.ID, int(quorumSize.Int64()))
+	hash, err := executor.peerChainClient.ExecuteTransfer(ctx, executor.msgHash, argLists, executor.batch.ID, int(quorumSize.Int64()))
 	if err != nil {
 		return err
 	}
@@ -573,7 +572,7 @@ func (executor *bridgeExecutor) PerformTransferOnEthereum(ctx context.Context) e
 	return nil
 }
 
-func (executor *bridgeExecutor) checkCumulatedTransfers(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
+func (executor *bridgeExecutor) checkCumulatedTransfers(ctx context.Context, ethTokens [][]byte, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
 	for i, ethToken := range ethTokens {
 		err := executor.balanceValidator.CheckToken(ctx, ethToken, mvxTokens[i], amounts[i], direction)
 		if err != nil {
@@ -584,32 +583,37 @@ func (executor *bridgeExecutor) checkCumulatedTransfers(ctx context.Context, eth
 }
 
 // CheckAvailableTokens checks the available balances
-func (executor *bridgeExecutor) CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
+func (executor *bridgeExecutor) CheckAvailableTokens(ctx context.Context, ethTokens [][]byte, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
 	ethTokens, mvxTokens, amounts = executor.getCumulatedTransfers(ethTokens, mvxTokens, amounts)
 
 	return executor.checkCumulatedTransfers(ctx, ethTokens, mvxTokens, amounts, direction)
 }
 
-func (executor *bridgeExecutor) getCumulatedTransfers(ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int) ([]common.Address, [][]byte, []*big.Int) {
-	cumulatedAmounts := make(map[common.Address]*big.Int)
-	uniqueTokens := make([]common.Address, 0)
+func (executor *bridgeExecutor) getCumulatedTransfers(ethTokens [][]byte, mvxTokens [][]byte, amounts []*big.Int) ([][]byte, [][]byte, []*big.Int) {
+	cumulatedAmounts := make(map[string]*big.Int)
+	tokenMap := make(map[string][]byte)
+	uniqueTokensStr := make([]string, 0)
 	uniqueConvertedTokens := make([][]byte, 0)
 
 	for i, token := range ethTokens {
-		existingValue, exists := cumulatedAmounts[token]
+		tokenStr := string(token)
+		existingValue, exists := cumulatedAmounts[tokenStr]
 		if exists {
 			existingValue.Add(existingValue, amounts[i])
 			continue
 		}
 
-		cumulatedAmounts[token] = big.NewInt(0).Set(amounts[i]) // work on a new pointer
-		uniqueTokens = append(uniqueTokens, token)
+		cumulatedAmounts[tokenStr] = big.NewInt(0).Set(amounts[i]) // work on a new pointer
+		tokenMap[tokenStr] = token
+		uniqueTokensStr = append(uniqueTokensStr, tokenStr)
 		uniqueConvertedTokens = append(uniqueConvertedTokens, mvxTokens[i])
 	}
 
-	finalAmounts := make([]*big.Int, len(uniqueTokens))
-	for i, token := range uniqueTokens {
-		finalAmounts[i] = cumulatedAmounts[token]
+	uniqueTokens := make([][]byte, len(uniqueTokensStr))
+	finalAmounts := make([]*big.Int, len(uniqueTokensStr))
+	for i, tokenStr := range uniqueTokensStr {
+		uniqueTokens[i] = tokenMap[tokenStr]
+		finalAmounts[i] = cumulatedAmounts[tokenStr]
 	}
 
 	return uniqueTokens, uniqueConvertedTokens, finalAmounts
@@ -617,7 +621,7 @@ func (executor *bridgeExecutor) getCumulatedTransfers(ethTokens []common.Address
 
 // ProcessQuorumReachedOnEthereum returns true if the proposed transfer reached the set quorum
 func (executor *bridgeExecutor) ProcessQuorumReachedOnEthereum(ctx context.Context) (bool, error) {
-	return executor.ethereumClient.IsQuorumReached(ctx, executor.msgHash)
+	return executor.peerChainClient.IsQuorumReached(ctx, executor.msgHash)
 }
 
 // ProcessMaxQuorumRetriesOnEthereum checks if the retries on Ethereum were reached and increments the counter
@@ -648,7 +652,7 @@ func (executor *bridgeExecutor) CheckMultiversXClientAvailability(ctx context.Co
 
 // CheckEthereumClientAvailability trigger a self availability check for the Ethereum client
 func (executor *bridgeExecutor) CheckEthereumClientAvailability(ctx context.Context) error {
-	return executor.ethereumClient.CheckClientAvailability(ctx)
+	return executor.peerChainClient.CheckClientAvailability(ctx)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

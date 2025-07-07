@@ -1,10 +1,8 @@
 package batchProcessor
 
 import (
-	"github.com/block-vision/sui-go-sdk/models"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 )
 
@@ -18,10 +16,10 @@ const (
 	ToMultiversX Direction = "ToMultiversX"
 )
 
-// ArgListsBatch is a struct that contains the batch data in a format that is easy to use for Eth
+// ArgListsBatch is a struct that contains the batch data in a format that is easy to use
 type ArgListsBatch struct {
-	EthTokens     []common.Address
-	Recipients    []common.Address
+	EthTokens     [][]byte
+	Recipients    [][]byte
 	MvxTokenBytes [][]byte
 	Amounts       []*big.Int
 	Nonces        []*big.Int
@@ -31,7 +29,7 @@ type ArgListsBatch struct {
 // ArgListsBatchSui is a struct that contains the batch data in a format that is easy to use for Sui
 type ArgListsBatchSui struct {
 	SuiTokens     [][]byte
-	Recipients    []models.SuiAddress
+	Recipients    []string
 	MvxTokenBytes [][]byte
 	Amounts       []uint64
 	Nonces        []uint64
@@ -40,7 +38,7 @@ type ArgListsBatchSui struct {
 
 // SuiTransferData is a struct that contains the transfer data to be signed
 type SuiTransferData struct {
-	Recipients []models.SuiAddress
+	Recipients [][]byte
 	SuiTokens  [][]byte
 	Amounts    []uint64
 	Nonces     []uint64
@@ -55,10 +53,10 @@ func ExtractListMvxToEth(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 	}
 
 	for _, dt := range batch.Deposits {
-		recipient := common.BytesToAddress(dt.ToBytes)
+		recipient := dt.ToBytes
 		arg.Recipients = append(arg.Recipients, recipient)
 
-		token := common.BytesToAddress(dt.DestinationTokenBytes)
+		token := dt.DestinationTokenBytes
 		arg.EthTokens = append(arg.EthTokens, token)
 
 		amount := big.NewInt(0).Set(dt.Amount)
@@ -81,10 +79,10 @@ func ExtractListEthToMvx(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 	}
 
 	for _, dt := range batch.Deposits {
-		recipient := common.BytesToAddress(dt.ToBytes)
+		recipient := dt.ToBytes
 		arg.Recipients = append(arg.Recipients, recipient)
 
-		token := common.BytesToAddress(dt.SourceTokenBytes)
+		token := dt.SourceTokenBytes
 		arg.EthTokens = append(arg.EthTokens, token)
 
 		amount := big.NewInt(0).Set(dt.Amount)

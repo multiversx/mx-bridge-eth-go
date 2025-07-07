@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
@@ -19,13 +18,13 @@ import (
 type ArgsBalanceValidator struct {
 	Log              logger.Logger
 	MultiversXClient MultiversXClient
-	EthereumClient   EthereumClient
+	PeerChainClient  EthereumClient
 }
 
 type balanceValidator struct {
 	log              logger.Logger
 	multiversXClient MultiversXClient
-	ethereumClient   EthereumClient
+	peerChainClient  EthereumClient
 }
 
 // NewBalanceValidator creates a new instance of type balanceValidator
@@ -38,7 +37,7 @@ func NewBalanceValidator(args ArgsBalanceValidator) (*balanceValidator, error) {
 	return &balanceValidator{
 		log:              args.Log,
 		multiversXClient: args.MultiversXClient,
-		ethereumClient:   args.EthereumClient,
+		peerChainClient:  args.PeerChainClient,
 	}, nil
 }
 
@@ -49,7 +48,7 @@ func checkArgs(args ArgsBalanceValidator) error {
 	if check.IfNil(args.MultiversXClient) {
 		return ErrNilMultiversXClient
 	}
-	if check.IfNil(args.EthereumClient) {
+	if check.IfNil(args.PeerChainClient) {
 		return ErrNilEthereumClient
 	}
 
@@ -57,13 +56,13 @@ func checkArgs(args ArgsBalanceValidator) error {
 }
 
 // CheckToken returns error if the bridge can not happen to the provided token due to faulty balance values in the contracts
-func (validator *balanceValidator) CheckToken(ctx context.Context, ethToken common.Address, mvxToken []byte, amount *big.Int, direction batchProcessor.Direction) error {
-	err := validator.checkRequiredBalance(ctx, ethToken, mvxToken, amount, direction)
+func (validator *balanceValidator) CheckToken(ctx context.Context, token []byte, mvxToken []byte, amount *big.Int, direction batchProcessor.Direction) error {
+	err := validator.checkRequiredBalance(ctx, token, mvxToken, amount, direction)
 	if err != nil {
 		return err
 	}
 
-	isMintBurnOnEthereum, err := validator.isMintBurnOnEthereum(ctx, ethToken)
+	isMintBurnOnEthereum, err := validator.isMintBurnOnEthereum(ctx, token)
 	if err != nil {
 		return err
 	}
@@ -73,7 +72,7 @@ func (validator *balanceValidator) CheckToken(ctx context.Context, ethToken comm
 		return err
 	}
 
-	isNativeOnEthereum, err := validator.isNativeOnEthereum(ctx, ethToken)
+	isNativeOnEthereum, err := validator.isNativeOnEthereum(ctx, token)
 	if err != nil {
 		return err
 	}
@@ -95,7 +94,7 @@ func (validator *balanceValidator) CheckToken(ctx context.Context, ethToken comm
 		return fmt.Errorf("%w isNativeOnEthereum = %v, isNativeOnMultiversX = %v", ErrInvalidSetup, isNativeOnEthereum, isNativeOnMultiversX)
 	}
 
-	ethAmount, err := validator.computeEthAmount(ctx, ethToken, isMintBurnOnEthereum, isNativeOnEthereum)
+	ethAmount, err := validator.computeEthAmount(ctx, token, isMintBurnOnEthereum, isNativeOnEthereum)
 	if err != nil {
 		return err
 	}
@@ -105,7 +104,7 @@ func (validator *balanceValidator) CheckToken(ctx context.Context, ethToken comm
 	}
 
 	validator.log.Debug("balanceValidator.CheckToken",
-		"ERC20 token", ethToken.String(),
+		"ERC20 token", token,
 		"ERC20 balance", ethAmount.String(),
 		"ESDT token", mvxToken,
 		"ESDT balance", mvxAmount.String(),
@@ -114,15 +113,15 @@ func (validator *balanceValidator) CheckToken(ctx context.Context, ethToken comm
 
 	if ethAmount.Cmp(mvxAmount) != 0 {
 		return fmt.Errorf("%w, balance for ERC20 token %s is %s and the balance for ESDT token %s is %s, direction %s",
-			ErrBalanceMismatch, ethToken.String(), ethAmount.String(), mvxToken, mvxAmount.String(), direction)
+			ErrBalanceMismatch, token, ethAmount.String(), mvxToken, mvxAmount.String(), direction)
 	}
 	return nil
 }
 
-func (validator *balanceValidator) checkRequiredBalance(ctx context.Context, ethToken common.Address, mvxToken []byte, amount *big.Int, direction batchProcessor.Direction) error {
+func (validator *balanceValidator) checkRequiredBalance(ctx context.Context, token []byte, mvxToken []byte, amount *big.Int, direction batchProcessor.Direction) error {
 	switch direction {
 	case batchProcessor.FromMultiversX:
-		return validator.ethereumClient.CheckRequiredBalance(ctx, ethToken, amount)
+		return validator.peerChainClient.CheckRequiredBalance(ctx, token, amount)
 	case batchProcessor.ToMultiversX:
 		return validator.multiversXClient.CheckRequiredBalance(ctx, mvxToken, amount)
 	default:
@@ -130,8 +129,8 @@ func (validator *balanceValidator) checkRequiredBalance(ctx context.Context, eth
 	}
 }
 
-func (validator *balanceValidator) isMintBurnOnEthereum(ctx context.Context, erc20Address common.Address) (bool, error) {
-	isMintBurn, err := validator.ethereumClient.MintBurnTokens(ctx, erc20Address)
+func (validator *balanceValidator) isMintBurnOnEthereum(ctx context.Context, erc20Address []byte) (bool, error) {
+	isMintBurn, err := validator.peerChainClient.MintBurnTokens(ctx, erc20Address)
 	if err != nil {
 		return false, err
 	}
@@ -139,8 +138,8 @@ func (validator *balanceValidator) isMintBurnOnEthereum(ctx context.Context, erc
 	return isMintBurn, nil
 }
 
-func (validator *balanceValidator) isNativeOnEthereum(ctx context.Context, erc20Address common.Address) (bool, error) {
-	isNative, err := validator.ethereumClient.NativeTokens(ctx, erc20Address)
+func (validator *balanceValidator) isNativeOnEthereum(ctx context.Context, token []byte) (bool, error) {
+	isNative, err := validator.peerChainClient.NativeTokens(ctx, token)
 	if err != nil {
 		return false, err
 	}
@@ -165,7 +164,7 @@ func (validator *balanceValidator) isNativeOnMultiversX(ctx context.Context, tok
 
 func (validator *balanceValidator) computeEthAmount(
 	ctx context.Context,
-	token common.Address,
+	token []byte,
 	isMintBurn bool,
 	isNative bool,
 ) (*big.Int, error) {
@@ -177,7 +176,7 @@ func (validator *balanceValidator) computeEthAmount(
 	if !isMintBurn {
 		// we need to subtract all locked balances on the Ethereum side (all pending, un-executed batches) so the balances
 		// with the minted MultiversX tokens will match
-		total, errTotal := validator.ethereumClient.TotalBalances(ctx, token)
+		total, errTotal := validator.peerChainClient.TotalBalances(ctx, token)
 		if errTotal != nil {
 			return nil, errTotal
 		}
@@ -185,11 +184,11 @@ func (validator *balanceValidator) computeEthAmount(
 		return total.Sub(total, ethAmountInPendingBatches), nil
 	}
 
-	burnBalances, err := validator.ethereumClient.BurnBalances(ctx, token)
+	burnBalances, err := validator.peerChainClient.BurnBalances(ctx, token)
 	if err != nil {
 		return nil, err
 	}
-	mintBalances, err := validator.ethereumClient.MintBalances(ctx, token)
+	mintBalances, err := validator.peerChainClient.MintBalances(ctx, token)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +284,7 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingMvxBatches(ctx
 			return nil, err
 		}
 
-		wasExecuted, errWasExecuted := validator.ethereumClient.WasExecuted(ctx, batch.ID)
+		wasExecuted, errWasExecuted := validator.peerChainClient.WasExecuted(ctx, batch.ID)
 		if errWasExecuted != nil {
 			return nil, errWasExecuted
 		}
@@ -299,7 +298,7 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingMvxBatches(ctx
 	}
 }
 
-func (validator *balanceValidator) getTotalTransferAmountInPendingEthBatches(ctx context.Context, ethToken common.Address) (*big.Int, error) {
+func (validator *balanceValidator) getTotalTransferAmountInPendingEthBatches(ctx context.Context, token []byte) (*big.Int, error) {
 	batchID, err := validator.multiversXClient.GetLastExecutedEthBatchID(ctx)
 	if err != nil {
 		return nil, err
@@ -308,7 +307,7 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingEthBatches(ctx
 	var batch *bridgeCore.TransferBatch
 	amount := big.NewInt(0)
 	for {
-		batch, _, err = validator.ethereumClient.GetBatch(ctx, batchID+1) // we take all batches, regardless if they are final or not
+		batch, _, err = validator.peerChainClient.GetBatch(ctx, batchID+1) // we take all batches, regardless if they are final or not
 		if err != nil {
 			return nil, err
 		}
@@ -318,7 +317,7 @@ func (validator *balanceValidator) getTotalTransferAmountInPendingEthBatches(ctx
 			return amount, nil
 		}
 
-		amountFromBatch := getTotalAmountFromBatch(batch, ethToken.Bytes())
+		amountFromBatch := getTotalAmountFromBatch(batch, token)
 		amount.Add(amount, amountFromBatch)
 		batchID++
 	}

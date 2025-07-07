@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -57,7 +56,7 @@ type BridgeExecutorStub struct {
 	ClearStoredP2PSignaturesForEthereumCalled                  func()
 	CheckMultiversXClientAvailabilityCalled                    func(ctx context.Context) error
 	CheckEthereumClientAvailabilityCalled                      func(ctx context.Context) error
-	CheckAvailableTokensCalled                                 func(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error
+	CheckAvailableTokensCalled                                 func(ctx context.Context, ethTokens []string, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error
 }
 
 // NewBridgeExecutorStub creates a new BridgeExecutorStub instance
@@ -418,7 +417,7 @@ func (stub *BridgeExecutorStub) GetFunctionCounter(function string) int {
 }
 
 // CheckAvailableTokens -
-func (stub *BridgeExecutorStub) CheckAvailableTokens(ctx context.Context, ethTokens []common.Address, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
+func (stub *BridgeExecutorStub) CheckAvailableTokens(ctx context.Context, ethTokens []string, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
 	if stub.CheckAvailableTokensCalled != nil {
 		return stub.CheckAvailableTokensCalled(ctx, ethTokens, mvxTokens, amounts, direction)
 	}

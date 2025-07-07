@@ -5,21 +5,22 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
+	"math/big"
+	"sync"
+
 	"github.com/block-vision/sui-go-sdk/common/keypair"
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
-	signer "github.com/block-vision/sui-go-sdk/signer"
+	"github.com/block-vision/sui-go-sdk/signer"
 	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
+	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"golang.org/x/crypto/blake2b"
-	"math/big"
-	"sync"
 )
 
 const (
@@ -253,16 +254,26 @@ func (c *client) BroadcastSignatureForMessageHash(msgHash []byte) {
 }
 
 // GenerateMessageHash will generate the message hash based on the provided batch
-func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatchSui, batchId uint64) ([]byte, error) {
+func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) ([]byte, error) {
 	if batch == nil {
 		return nil, clients.ErrNilBatch
 	}
 
+	uint64Amounts := make([]uint64, 0, len(batch.Amounts))
+	for _, amount := range batch.Amounts {
+		uint64Amounts = append(uint64Amounts, amount.Uint64())
+	}
+
+	uint64Nonces := make([]uint64, 0, len(batch.Nonces))
+	for _, nonce := range batch.Nonces {
+		uint64Nonces = append(uint64Nonces, nonce.Uint64())
+	}
+
 	transferData := batchProcessor.SuiTransferData{
 		Recipients: batch.Recipients,
-		SuiTokens:  batch.SuiTokens,
-		Amounts:    batch.Amounts,
-		Nonces:     batch.Nonces,
+		SuiTokens:  batch.EthTokens,
+		Amounts:    uint64Amounts,
+		Nonces:     uint64Nonces,
 		BatchId:    batchId,
 	}
 
@@ -278,7 +289,7 @@ func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatchSui, bat
 func (c *client) ExecuteTransfer(
 	ctx context.Context,
 	msgHash []byte,
-	argLists *batchProcessor.ArgListsBatchSui,
+	argLists *batchProcessor.ArgListsBatch,
 	batchId uint64,
 	quorum int,
 ) (string, error) {
@@ -313,7 +324,7 @@ func (c *client) ExecuteTransfer(
 		Arguments: []interface{}{
 			c.bridgeObjectId,
 			c.safeObjectId,
-			argLists.SuiTokens,
+			argLists.EthTokens,
 			argLists.Recipients,
 			argLists.Amounts,
 			argLists.Nonces,
@@ -375,10 +386,11 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 }
 
 // CheckRequiredBalance will check if the safe has enough balance for the transfer
-func (c *client) CheckRequiredBalance(ctx context.Context, coinType string, value *big.Int) error {
-	existingBalance, err := c.GetBalance(ctx, c.safeContractAddress, coinType)
+func (c *client) CheckRequiredBalance(ctx context.Context, coinType []byte, value *big.Int) error {
+	coinAddr := AddressBytesToString(coinType)
+	existingBalance, err := c.GetBalance(ctx, c.safeContractAddress, coinAddr)
 	if err != nil {
-		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeContractAddress, coinType)
+		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeContractAddress, coinAddr)
 	}
 
 	totalExistingBalanceStr := existingBalance.TotalBalance
@@ -389,11 +401,11 @@ func (c *client) CheckRequiredBalance(ctx context.Context, coinType string, valu
 	}
 	if value.Cmp(totalExistingBalance) > 0 {
 		return fmt.Errorf("%w, existing: %s, required: %s for coin %s and owner %s",
-			errInsufficientCoinBalance, totalExistingBalanceStr, value.String(), coinType, c.safeContractAddress)
+			errInsufficientCoinBalance, totalExistingBalanceStr, value.String(), coinAddr, c.safeContractAddress)
 	}
 
 	c.log.Debug("checked coin balance",
-		"Coin type", coinType,
+		"Coin type", coinAddr,
 		"owner address", c.safeContractAddress,
 		"existing balance", totalExistingBalanceStr,
 		"needed", value.String())
@@ -402,26 +414,43 @@ func (c *client) CheckRequiredBalance(ctx context.Context, coinType string, valu
 }
 
 // TotalBalances returns the total balance of the given token
-func (c *client) TotalBalances(ctx context.Context, token string) (*big.Int, error) {
-	balance, err := c.GetTotalBalanceFromSafe(ctx, token)
+func (c *client) TotalBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	tokenAddr := AddressBytesToString(token)
+	balance, err := c.GetTotalBalanceFromSafe(ctx, tokenAddr)
 	if err != nil {
 		return nil, err
 	}
 	return big.NewInt(0).SetUint64(balance), nil
 }
 
-//// NativeTokens returns true if the token is native
-//func (c *client) NativeTokens(ctx context.Context, token string) (bool, error) {
-//	return c.NativeTokens(ctx, token)
-//}
+// MintBalances returns nil every time
+func (c *client) MintBalances(_ context.Context, _ []byte) (*big.Int, error) {
+	return nil, nil
+}
+
+// BurnBalances returns the burn balance of the given token
+func (c *client) BurnBalances(_ context.Context, _ []byte) (*big.Int, error) {
+	return nil, nil
+}
+
+// MintBurnTokens returns false every time
+func (c *client) MintBurnTokens(_ context.Context, _ []byte) (bool, error) {
+	return false, nil
+}
+
+// NativeTokens returns true every time
+func (c *client) NativeTokens(_ context.Context, _ []byte) (bool, error) {
+	return true, nil
+}
 
 // WhitelistedTokens returns true if the token is whitelisted
-func (c *client) WhitelistedTokens(ctx context.Context, token string) (bool, error) {
-	return c.IsTokenWhitelisted(ctx, token)
+func (c *client) WhitelistedTokens(ctx context.Context, token []byte) (bool, error) {
+	tokenAddr := AddressBytesToString(token)
+	return c.IsTokenWhitelisted(ctx, tokenAddr)
 }
 
 // GetTransactionsStatuses will return the transactions statuses from the batch
-func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]dtos.DepositStatus, error) {
+func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error) {
 	buff, isFinal, err := c.GetStatusesAfterExecution(ctx, batchId)
 	if err != nil {
 		return nil, err
@@ -450,10 +479,15 @@ func (c *client) IsQuorumReached(ctx context.Context, msg []byte) (bool, error) 
 		return false, fmt.Errorf("%w in IsQuorumReached, Quorum call", err)
 	}
 	if quorum < minQuorumValue {
-		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %s", clients.ErrInvalidValue, minQuorumValue, quorum)
+		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %d", clients.ErrInvalidValue, minQuorumValue, quorum)
 	}
 
 	return len(signatures) >= int(quorum), nil
+}
+
+// GetBatchSCMetadata returns nil every time
+func (c *client) GetBatchSCMetadata(_ context.Context, _ uint64, _ int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+	return nil, nil
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

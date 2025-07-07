@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
@@ -43,26 +42,26 @@ type MultiversXClient interface {
 	IsInterfaceNil() bool
 }
 
-// EthereumClient defines the behavior of the Ethereum client able to communicate with the Ethereum chain
-type EthereumClient interface {
+// PeerChainClient defines the behavior of the Ethereum client able to communicate with the Ethereum chain
+type PeerChainClient interface {
 	GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error)
 	WasExecuted(ctx context.Context, batchID uint64) (bool, error)
-	GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error)
+	GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) ([]byte, error)
 
-	BroadcastSignatureForMessageHash(msgHash common.Hash)
-	ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error)
+	BroadcastSignatureForMessageHash(msgHash []byte)
+	ExecuteTransfer(ctx context.Context, msgHash []byte, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error)
 	GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error)
 	GetQuorumSize(ctx context.Context) (*big.Int, error)
-	IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error)
+	IsQuorumReached(ctx context.Context, msgHash []byte) (bool, error)
 	GetBatchSCMetadata(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error)
 	CheckClientAvailability(ctx context.Context) error
-	CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error
-	TotalBalances(ctx context.Context, token common.Address) (*big.Int, error)
-	MintBalances(ctx context.Context, token common.Address) (*big.Int, error)
-	BurnBalances(ctx context.Context, token common.Address) (*big.Int, error)
-	MintBurnTokens(ctx context.Context, token common.Address) (bool, error)
-	NativeTokens(ctx context.Context, token common.Address) (bool, error)
-	WhitelistedTokens(ctx context.Context, token common.Address) (bool, error)
+	CheckRequiredBalance(ctx context.Context, token []byte, value *big.Int) error
+	TotalBalances(ctx context.Context, token []byte) (*big.Int, error)
+	MintBalances(ctx context.Context, token []byte) (*big.Int, error)
+	BurnBalances(ctx context.Context, token []byte) (*big.Int, error)
+	MintBurnTokens(ctx context.Context, token []byte) (bool, error)
+	NativeTokens(ctx context.Context, token []byte) (bool, error)
+	WhitelistedTokens(ctx context.Context, token []byte) (bool, error)
 	IsInterfaceNil() bool
 }
 
@@ -81,6 +80,6 @@ type SignaturesHolder interface {
 
 // BalanceValidator defines the operations for a component that can validate the balances on both chains for a provided token
 type BalanceValidator interface {
-	CheckToken(ctx context.Context, ethToken common.Address, mvxToken []byte, amount *big.Int, direction batchProcessor.Direction) error
+	CheckToken(ctx context.Context, token []byte, mvxToken []byte, amount *big.Int, direction batchProcessor.Direction) error
 	IsInterfaceNil() bool
 }
