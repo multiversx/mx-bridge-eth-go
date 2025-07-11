@@ -5,11 +5,11 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/block-vision/sui-go-sdk/common/keypair"
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
-	signer "github.com/block-vision/sui-go-sdk/signer"
-	"github.com/block-vision/sui-go-sdk/sui"
+	"github.com/block-vision/sui-go-sdk/signer"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -28,37 +28,40 @@ const (
 )
 
 type ArgsSuiClient struct {
-	SuiClient         sui.ISuiAPI
-	Log               chainCore.Logger
-	RelayerPrivateKey ed25519.PrivateKey
-	SafePackageId     string
-	SafeObjectId      string
-	BridgePackageId   string
-	BridgeObjectId    string
-	RelayerCapacityId string
-	TokensMapper      TokensMapper
-	StatusHandler     bridgeCore.StatusHandler
-	Broadcaster       Broadcaster
-	SignatureHolder   SignaturesHolder
+	Proxy                      Proxy
+	Log                        chainCore.Logger
+	RelayerPrivateKey          ed25519.PrivateKey
+	SafePackageId              string
+	SafeObjectId               string
+	SafeInitialSharedVersion   uint64
+	BridgePackageId            string
+	BridgeObjectId             string
+	BridgeInitialSharedVersion uint64
+	RelayerCapacityId          string
+	TokensMapper               TokensMapper
+	StatusHandler              bridgeCore.StatusHandler
+	Broadcaster                Broadcaster
+	SignatureHolder            SignaturesHolder
 
 	ClientAvailabilityAllowDelta uint64
 }
 
 type client struct {
 	*suiClientDataGetter
-	txHandler        txHandler
-	tokensMapper     TokensMapper
-	relayerPublicKey ed25519.PublicKey
-	relayerAddress   string
-	safePackageId    string
-	safeObjectId     string
-	bridgePackageId  string
-	bridgeObjectId   string
-	log              chainCore.Logger
-	addressConverter bridgeCore.AddressConverter
-	statusHandler    bridgeCore.StatusHandler
-	broadcaster      Broadcaster
-	signatureHolder  SignaturesHolder
+	txHandler         txHandler
+	tokensMapper      TokensMapper
+	relayerPublicKey  ed25519.PublicKey
+	relayerAddress    string
+	safePackageId     string
+	safeObjectId      string
+	bridgePackageId   string
+	bridgeObjectId    string
+	relayerCapacityId uint64 // TODO: I think this can be removed
+	log               chainCore.Logger
+	addressConverter  bridgeCore.AddressConverter
+	statusHandler     bridgeCore.StatusHandler
+	broadcaster       Broadcaster
+	signatureHolder   SignaturesHolder
 
 	lastCheckpoint               uint64
 	retriesAvailabilityCheck     uint64
@@ -80,11 +83,15 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	argsSuiClientDataGetter := ArgsSuiClientDataGetter{
-		SafeContractAddress:   args.SafePackageId,
-		BridgeContractAddress: args.BridgePackageId,
-		RelayerAddress:        relayerAddress,
-		Client:                args.SuiClient,
-		Log:                   args.Log,
+		SafePackageId:              args.SafePackageId,
+		SafeObjectId:               args.SafeObjectId,
+		SafeInitialSharedVersion:   args.SafeInitialSharedVersion,
+		BridgePackageId:            args.BridgePackageId,
+		BridgeObjectId:             args.BridgeObjectId,
+		BridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
+		RelayerAddress:             relayerAddress,
+		Proxy:                      args.Proxy,
+		Log:                        args.Log,
 	}
 	getter, err := NewSuiClientDataGetter(argsSuiClientDataGetter)
 	if err != nil {
@@ -98,7 +105,7 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 
 	c := &client{
 		txHandler: &transactionHandler{
-			client:        args.SuiClient,
+			proxy:         args.Proxy,
 			relayerSigner: relayerSigner,
 		},
 		suiClientDataGetter:          getter,
@@ -120,30 +127,33 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	c.log.Info("NewSuiClient")
 	c.log.Info("NewSuiClient",
 		"relayer address", relayerAddress,
-		"bridge contract address", c.bridgeContractAddress,
-		"safe contract address", c.safeContractAddress)
+		"bridge package ID", c.bridgePackageId,
+		"safe package ID", c.safePackageId)
 
 	return c, err
 }
 
 func checkArgs(args ArgsSuiClient) error {
-	if args.SuiClient == nil {
-		return errNilClient
+	if args.Proxy == nil {
+		return errNilProxy
 	}
 	if len(args.RelayerPrivateKey) == 0 {
 		return clients.ErrNilPrivateKey
 	}
-	if args.BridgePackageId == "" {
+	if len(args.BridgePackageId) == 0 {
 		return fmt.Errorf("%w for the BridgePackageId argument", errNilPackageId)
 	}
-	if args.BridgeObjectId == "" {
+	if len(args.BridgeObjectId) == 0 {
 		return fmt.Errorf("%w for the BridgeObjectId argument", errNilObjectId)
 	}
-	if args.SafePackageId == "" {
+	if len(args.SafePackageId) == 0 {
 		return fmt.Errorf("%w for the SafePackageId argument", errNilPackageId)
 	}
-	if args.SafeObjectId == "" {
+	if len(args.SafeObjectId) == 0 {
 		return fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
+	}
+	if len(args.RelayerCapacityId) == 0 {
+		return fmt.Errorf("%w for the RelayerCapacityId argument", errNilObjectId)
 	}
 	if check.IfNil(args.Log) {
 		return clients.ErrNilLogger
@@ -306,19 +316,20 @@ func (c *client) ExecuteTransfer(
 
 	moveCallReq := models.MoveCallRequest{
 		Signer:          c.relayerAddress,
-		PackageObjectId: c.bridgeContractAddress,
+		PackageObjectId: c.bridgePackageId,
 		Module:          "bridge",
 		Function:        "execute_transfer",
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
 			c.bridgeObjectId,
 			c.safeObjectId,
-			argLists.SuiTokens,
+			argLists.SuiTokens, // TODO: in smart contract
 			argLists.Recipients,
 			argLists.Amounts,
 			argLists.Nonces,
 			batchId,
 			signatures,
+			// TODO: clock?
 		},
 		GasBudget: "100000000", // TODO
 	}
@@ -376,9 +387,9 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 
 // CheckRequiredBalance will check if the safe has enough balance for the transfer
 func (c *client) CheckRequiredBalance(ctx context.Context, coinType string, value *big.Int) error {
-	existingBalance, err := c.GetBalance(ctx, c.safeContractAddress, coinType)
+	existingBalance, err := c.GetBalance(ctx, c.safePackageId, coinType) // TODO: package or object id?
 	if err != nil {
-		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeContractAddress, coinType)
+		return fmt.Errorf("%w for owner %s for coin %s", err, c.safePackageId, coinType)
 	}
 
 	totalExistingBalanceStr := existingBalance.TotalBalance
@@ -389,12 +400,12 @@ func (c *client) CheckRequiredBalance(ctx context.Context, coinType string, valu
 	}
 	if value.Cmp(totalExistingBalance) > 0 {
 		return fmt.Errorf("%w, existing: %s, required: %s for coin %s and owner %s",
-			errInsufficientCoinBalance, totalExistingBalanceStr, value.String(), coinType, c.safeContractAddress)
+			errInsufficientCoinBalance, totalExistingBalanceStr, value.String(), coinType, c.safePackageId)
 	}
 
 	c.log.Debug("checked coin balance",
 		"Coin type", coinType,
-		"owner address", c.safeContractAddress,
+		"owner address", c.safePackageId,
 		"existing balance", totalExistingBalanceStr,
 		"needed", value.String())
 

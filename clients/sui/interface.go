@@ -5,16 +5,13 @@ import (
 	"github.com/block-vision/sui-go-sdk/models"
 )
 
-// SuiClient defines the operations for a component that can interact with the Sui blockchain
-type SuiClient interface {
+// Proxy defines the operations for a component that can act as a proxy to interact with the Sui blockchain
+type Proxy interface {
 	SuiGetLatestCheckpointSequenceNumber(ctx context.Context) (uint64, error)
-	SuiGetChainIdentifier(ctx context.Context) (string, error)
 	SuiXGetBalance(ctx context.Context, req models.SuiXGetBalanceRequest) (models.CoinBalanceResponse, error)
+	SuiDevInspectTransactionBlock(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
 	MoveCall(ctx context.Context, req models.MoveCallRequest) (models.TxnMetaData, error)
 	SignAndExecuteTransactionBlock(ctx context.Context, req models.SignAndExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
-	SuiDryRunTransactionBlock(ctx context.Context, req models.SuiDryRunTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
-	SuiXGetCoins(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error)
-	IsInterfaceNil() bool
 }
 
 // TokensMapper can convert a token bytes from one chain to another
