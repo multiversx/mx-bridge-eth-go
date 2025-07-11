@@ -4,6 +4,9 @@ const (
 	// GettingPendingBatchFromEthereum is the step identifier for fetching the pending batch from the Ethereum chain
 	GettingPendingBatchFromEthereum = "get pending batch from Ethereum"
 
+	// GettingPendingBatchFromSui is the step identifier for fetching the pending batch from the Sui chain
+	GettingPendingBatchFromSui = "get pending batch from Sui"
+
 	// ProposingTransferOnMultiversX is the step identifier for proposing transfer on MultiversX
 	ProposingTransferOnMultiversX = "propose transfer"
 

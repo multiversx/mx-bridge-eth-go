@@ -1,4 +1,4 @@
-package mappers
+package eth
 
 import (
 	"context"
@@ -6,15 +6,16 @@ import (
 	"fmt"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx/mappers"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 type multiversXToErc20 struct {
-	dg DataGetter
+	dg mappers.DataGetter
 }
 
 // NewMultiversXToErc20Mapper returns a new instance of multiversXToErc20
-func NewMultiversXToErc20Mapper(dg DataGetter) (*multiversXToErc20, error) {
+func NewMultiversXToErc20Mapper(dg mappers.DataGetter) (*multiversXToErc20, error) {
 	if check.IfNil(dg) {
 		return nil, clients.ErrNilDataGetter
 	}
@@ -33,7 +34,7 @@ func (mapper *multiversXToErc20) ConvertToken(ctx context.Context, sourceBytes [
 	}
 
 	if len(response) == 0 {
-		return nil, fmt.Errorf("%w for provided %s", errUnknownToken, hex.EncodeToString(sourceBytes))
+		return nil, fmt.Errorf("%w for provided %s", mappers.ErrUnknownToken, hex.EncodeToString(sourceBytes))
 	}
 
 	return response[0], nil

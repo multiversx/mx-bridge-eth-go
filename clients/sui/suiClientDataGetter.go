@@ -662,3 +662,7 @@ func (getter *suiClientDataGetter) getInitialSharedVersionForObject(ctx context.
 
 	return initialSharedVersion, nil
 }
+
+func (getter *suiClientDataGetter) IsInterfaceNil() bool {
+	return getter == nil
+}

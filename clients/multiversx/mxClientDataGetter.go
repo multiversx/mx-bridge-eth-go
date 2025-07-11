@@ -30,6 +30,8 @@ const (
 	getActionIdForSetCurrentTransactionBatchStatusFuncName    = "getActionIdForSetCurrentTransactionBatchStatus"
 	getTokenIdForErc20AddressFuncName                         = "getTokenIdForErc20Address"
 	getErc20AddressForTokenIdFuncName                         = "getErc20AddressForTokenId"
+	getTokenIdForSuiCoinFuncName                              = "getTokenIdForSuiCoin"
+	getSuiCoinForTokenIdFuncName                              = "getSuiCoinForTokenId"
 	quorumReachedFuncName                                     = "quorumReached"
 	getLastExecutedEthBatchIdFuncName                         = "getLastExecutedEthBatchId"
 	getLastExecutedEthTxId                                    = "getLastExecutedEthTxId"
@@ -323,6 +325,23 @@ func (dataGetter *mxClientDataGetter) GetTokenIdForErc20Address(ctx context.Cont
 func (dataGetter *mxClientDataGetter) GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
 	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
 	builder.Function(getErc20AddressForTokenIdFuncName)
+	builder.ArgBytes(tokenId)
+	return dataGetter.executeQueryFromBuilder(ctx, builder)
+}
+
+// GetTokenIdForSuiCoin will assemble a builder and query the proxy for a token id given a specific sui coin
+func (dataGetter *mxClientDataGetter) GetTokenIdForSuiCoin(ctx context.Context, suiCoin []byte) ([][]byte, error) {
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
+	builder.Function(getTokenIdForSuiCoinFuncName)
+	builder.ArgBytes(suiCoin)
+
+	return dataGetter.executeQueryFromBuilder(ctx, builder)
+}
+
+// GetSuiCoinForTokenId will assemble a builder and query the proxy for a sui coin given a specific token id
+func (dataGetter *mxClientDataGetter) GetSuiCoinForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
+	builder.Function(getSuiCoinForTokenIdFuncName)
 	builder.ArgBytes(tokenId)
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }

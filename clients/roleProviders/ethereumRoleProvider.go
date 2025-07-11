@@ -82,9 +82,9 @@ func (erp *ethereumRoleProvider) processResults(results []common.Address) {
 	erp.log.Debug("fetched Ethereum whitelisted addresses:\n" + strings.Join(currentList, "\n"))
 }
 
-// VerifyEthSignature will verify the provided signature against the message hash. It will also checks if the
+// VerifySignature will verify the provided signature against the message hash. It will also checks if the
 // resulting public key is whitelisted or not
-func (erp *ethereumRoleProvider) VerifyEthSignature(signature []byte, messageHash []byte) error {
+func (erp *ethereumRoleProvider) VerifySignature(signature []byte, messageHash []byte) error {
 	pkBytes, err := crypto.Ecrecover(messageHash, signature)
 	if err != nil {
 		return err

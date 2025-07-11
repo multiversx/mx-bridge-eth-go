@@ -194,7 +194,7 @@ func (b *broadcaster) getEthereumSignature(msg *core.SignedMessage) (*core.Ether
 		return nil, err
 	}
 
-	err = b.signatureProcessor.VerifyEthSignature(ethSignature.Signature, ethSignature.MessageHash)
+	err = b.signatureProcessor.VerifySignature(ethSignature.Signature, ethSignature.MessageHash) // todo
 	if err != nil {
 		return nil, err
 	}

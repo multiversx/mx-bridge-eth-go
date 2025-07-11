@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	errNilProxy                = errors.New("nil proxy")
+	errNilSuiApi               = errors.New("nil sui api client")
 	errNilEthClient            = errors.New("nil eth client")
 	errNilMessenger            = errors.New("nil network messenger")
 	errNilStatusStorer         = errors.New("nil status storer")

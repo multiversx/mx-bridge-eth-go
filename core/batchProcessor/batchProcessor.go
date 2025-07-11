@@ -26,16 +26,6 @@ type ArgListsBatch struct {
 	Direction     Direction
 }
 
-// ArgListsBatchSui is a struct that contains the batch data in a format that is easy to use for Sui
-type ArgListsBatchSui struct {
-	SuiTokens     [][]byte
-	Recipients    []string
-	MvxTokenBytes [][]byte
-	Amounts       []uint64
-	Nonces        []uint64
-	Direction     Direction
-}
-
 // SuiTransferData is a struct that contains the transfer data to be signed
 type SuiTransferData struct {
 	Recipients [][]byte

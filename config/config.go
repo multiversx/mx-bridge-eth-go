@@ -28,6 +28,7 @@ type Config struct {
 
 // EthereumConfig represents the Ethereum Config parameters
 type EthereumConfig struct {
+	Enabled                            bool
 	Chain                              chain.Chain
 	NetworkAddress                     string
 	MultisigContractAddress            string
@@ -44,10 +45,21 @@ type EthereumConfig struct {
 	EventsBlockRangeTo                 int64
 }
 
-// TODO: complete this
+// SuiConfig represents the Sui Config parameters
 type SuiConfig struct {
-	Chain          chain.Chain
-	NetworkAddress string
+	Enabled                            bool
+	Chain                              chain.Chain
+	NetworkAddress                     string
+	BridgePackageId                    string
+	BridgeObjectId                     string
+	SafePackageId                      string
+	SafeObjectId                       string
+	RelayerCapacityId                  string
+	PrivateKeyFile                     string
+	GasStation                         GasStationConfig
+	MaxRetriesOnQuorumReached          uint64
+	IntervalToWaitForTransferInSeconds uint64
+	ClientAvailabilityAllowDelta       uint64
 }
 
 // GasStationConfig represents the configuration for the gas station handler

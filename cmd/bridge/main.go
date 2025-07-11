@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/block-vision/sui-go-sdk/sui"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
@@ -136,14 +137,6 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	metricsHolder := status.NewMetricsHolder()
-	ethClientStatusHandler, err := status.NewStatusHandler(core.EthClientStatusHandlerName, statusStorer)
-	if err != nil {
-		return err
-	}
-	err = metricsHolder.AddStatusHandler(ethClientStatusHandler)
-	if err != nil {
-		return err
-	}
 
 	multiversXClientStatusHandler, err := status.NewStatusHandler(core.MultiversXClientStatusHandlerName, statusStorer)
 	if err != nil {
@@ -172,32 +165,6 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	ethClient, err := ethclient.Dial(cfg.Eth.NetworkAddress)
-	if err != nil {
-		return err
-	}
-
-	bridgeEthAddress := ethCommon.HexToAddress(cfg.Eth.MultisigContractAddress)
-	multiSigInstance, err := contract.NewBridge(bridgeEthAddress, ethClient)
-	if err != nil {
-		return err
-	}
-
-	safeEthAddress := ethCommon.HexToAddress(cfg.Eth.SafeContractAddress)
-	safeInstance, err := contract.NewERC20Safe(safeEthAddress, ethClient)
-	if err != nil {
-		return err
-	}
-
-	argsContractsHolder := ethereum.ArgsErc20SafeContractsHolder{
-		EthClient:              ethClient,
-		EthClientStatusHandler: ethClientStatusHandler,
-	}
-	erc20ContractsHolder, err := ethereum.NewErc20SafeContractsHolder(argsContractsHolder)
-	if err != nil {
-		return err
-	}
-
 	marshaller, err := factoryMarshaller.NewMarshalizer(cfg.Relayer.Marshalizer.Type)
 	if err != nil {
 		return err
@@ -214,18 +181,6 @@ func startRelay(ctx *cli.Context, version string) error {
 		FlagsConfig:     flagsConfig,
 	}
 
-	argsClientWrapper := wrappers.ArgsEthereumChainWrapper{
-		StatusHandler:    ethClientStatusHandler,
-		MultiSigContract: multiSigInstance,
-		SafeContract:     safeInstance,
-		BlockchainClient: ethClient,
-	}
-
-	clientWrapper, err := wrappers.NewEthereumChainWrapper(argsClientWrapper)
-	if err != nil {
-		return err
-	}
-
 	var appStatusHandlers []chainCore.AppStatusHandler
 	statusMetrics := statusHandler.NewStatusMetrics()
 	appStatusHandlers = append(appStatusHandlers, statusMetrics)
@@ -240,23 +195,31 @@ func startRelay(ctx *cli.Context, version string) error {
 		return err
 	}
 
-	args := factory.ArgsEthereumToMultiversXBridge{
+	argsCommonBridge := factory.ArgsBridgeCommon{
 		Configs:                       configs,
-		Messenger:                     messenger,
 		StatusStorer:                  statusStorer,
-		Proxy:                         proxy,
-		Erc20ContractsHolder:          erc20ContractsHolder,
-		ClientWrapper:                 clientWrapper,
-		TimeForBootstrap:              timeForBootstrap,
-		TimeBeforeRepeatJoin:          timeBeforeRepeatJoin,
 		MetricsHolder:                 metricsHolder,
+		Messenger:                     messenger,
+		Proxy:                         proxy,
 		AppStatusHandler:              appStatusHandler,
 		MultiversXClientStatusHandler: multiversXClientStatusHandler,
 	}
 
-	ethToMultiversXComponents, err := factory.NewEthMultiversXBridgeComponents(args)
+	var bridge factory.BridgeComponents
+	switch {
+	case cfg.Eth.Enabled && !cfg.Sui.Enabled:
+		bridge, err = setupEthComponents(argsCommonBridge)
+	case cfg.Sui.Enabled && !cfg.Eth.Enabled:
+		bridge, err = setupSuiComponents(argsCommonBridge)
+	default:
+		return fmt.Errorf(
+			"invalid configuration: Eth.Enabled=%v, Sui.Enabled=%v; exactly one must be true",
+			cfg.Eth.Enabled,
+			cfg.Sui.Enabled,
+		)
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to setup bridge: %w", err)
 	}
 
 	webServer, err := factory.StartWebServer(configs, metricsHolder)
@@ -266,7 +229,7 @@ func startRelay(ctx *cli.Context, version string) error {
 
 	log.Info("Starting relay")
 
-	err = ethToMultiversXComponents.Start()
+	err = bridge.Start()
 	if err != nil {
 		return err
 	}
@@ -279,7 +242,7 @@ func startRelay(ctx *cli.Context, version string) error {
 	log.Info("application closing, calling Close on all subcomponents...")
 
 	var lastErr error
-	err = ethToMultiversXComponents.Close()
+	err = bridge.Close()
 	if err != nil {
 		lastErr = err
 	}
@@ -290,6 +253,105 @@ func startRelay(ctx *cli.Context, version string) error {
 	}
 
 	return lastErr
+}
+
+func setupEthComponents(args factory.ArgsBridgeCommon) (factory.BridgeComponents, error) {
+	ethClientStatusHandler, err := status.NewStatusHandler(core.EthClientStatusHandlerName, args.StatusStorer)
+	if err != nil {
+		return nil, err
+	}
+	err = args.MetricsHolder.AddStatusHandler(ethClientStatusHandler)
+	if err != nil {
+		return nil, err
+	}
+
+	ethClient, err := ethclient.Dial(args.Configs.GeneralConfig.Eth.NetworkAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	bridgeEthAddress := ethCommon.HexToAddress(args.Configs.GeneralConfig.Eth.MultisigContractAddress)
+	multiSigInstance, err := contract.NewBridge(bridgeEthAddress, ethClient)
+	if err != nil {
+		return nil, err
+	}
+
+	safeEthAddress := ethCommon.HexToAddress(args.Configs.GeneralConfig.Eth.SafeContractAddress)
+	safeInstance, err := contract.NewERC20Safe(safeEthAddress, ethClient)
+	if err != nil {
+		return nil, err
+	}
+
+	argsContractsHolder := ethereum.ArgsErc20SafeContractsHolder{
+		EthClient:              ethClient,
+		EthClientStatusHandler: ethClientStatusHandler,
+	}
+	erc20ContractsHolder, err := ethereum.NewErc20SafeContractsHolder(argsContractsHolder)
+	if err != nil {
+		return nil, err
+	}
+
+	argsClientWrapper := wrappers.ArgsEthereumChainWrapper{
+		StatusHandler:    ethClientStatusHandler,
+		MultiSigContract: multiSigInstance,
+		SafeContract:     safeInstance,
+		BlockchainClient: ethClient,
+	}
+
+	clientWrapper, err := wrappers.NewEthereumChainWrapper(argsClientWrapper)
+	if err != nil {
+		return nil, err
+	}
+
+	ethMvxBridgeArgs := factory.ArgsEthereumToMultiversXBridge{
+		Configs:                       args.Configs,
+		Messenger:                     args.Messenger,
+		StatusStorer:                  args.StatusStorer,
+		Proxy:                         args.Proxy,
+		Erc20ContractsHolder:          erc20ContractsHolder,
+		ClientWrapper:                 clientWrapper,
+		TimeForBootstrap:              timeForBootstrap,
+		TimeBeforeRepeatJoin:          timeBeforeRepeatJoin,
+		MetricsHolder:                 args.MetricsHolder,
+		AppStatusHandler:              args.AppStatusHandler,
+		MultiversXClientStatusHandler: args.MultiversXClientStatusHandler,
+	}
+
+	return factory.NewEthMvxBridgeComponents(ethMvxBridgeArgs)
+}
+
+func setupSuiComponents(args factory.ArgsBridgeCommon) (factory.BridgeComponents, error) {
+	suiConfig := args.Configs.GeneralConfig.Sui
+
+	suiClientStatusHandler, err := status.NewStatusHandler(core.SuiClientStatusHandlerName, args.StatusStorer)
+	if err != nil {
+		return nil, err
+	}
+	err = args.MetricsHolder.AddStatusHandler(suiClientStatusHandler)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(suiConfig.NetworkAddress) == 0 {
+		return nil, fmt.Errorf("empty Sui.NetworkAddress in config file")
+	}
+	clientWithProxy := sui.NewSuiClient(suiConfig.NetworkAddress)
+
+	suiMvxBridgeArgs := factory.ArgsSuiToMultiversXBridge{
+		Configs:                       args.Configs,
+		Messenger:                     args.Messenger,
+		StatusStorer:                  args.StatusStorer,
+		Proxy:                         args.Proxy,
+		MultiversXClientStatusHandler: args.MultiversXClientStatusHandler,
+		SuiApi:                        clientWithProxy,
+		SuiClientStatusHandler:        suiClientStatusHandler,
+		TimeForBootstrap:              timeForBootstrap,
+		TimeBeforeRepeatJoin:          timeBeforeRepeatJoin,
+		MetricsHolder:                 args.MetricsHolder,
+		AppStatusHandler:              args.AppStatusHandler,
+	}
+
+	return factory.NewSuiMvxBridgeComponents(suiMvxBridgeArgs)
 }
 
 func loadConfig(filepath string) (config.Config, error) {
