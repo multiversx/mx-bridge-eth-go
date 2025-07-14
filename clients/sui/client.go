@@ -5,6 +5,8 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
+	"math/big"
+	"sync"
 
 	"github.com/block-vision/sui-go-sdk/common/keypair"
 	"github.com/block-vision/sui-go-sdk/models"
@@ -18,8 +20,6 @@ import (
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"golang.org/x/crypto/blake2b"
-	"math/big"
-	"sync"
 )
 
 const (
@@ -37,7 +37,6 @@ type ArgsSuiClient struct {
 	BridgePackageId            string
 	BridgeObjectId             string
 	BridgeInitialSharedVersion uint64
-	RelayerCapacityId          string
 	TokensMapper               TokensMapper
 	StatusHandler              bridgeCore.StatusHandler
 	Broadcaster                Broadcaster
@@ -48,20 +47,19 @@ type ArgsSuiClient struct {
 
 type client struct {
 	*suiClientDataGetter
-	txHandler         txHandler
-	tokensMapper      TokensMapper
-	relayerPublicKey  ed25519.PublicKey
-	relayerAddress    string
-	safePackageId     string
-	safeObjectId      string
-	bridgePackageId   string
-	bridgeObjectId    string
-	relayerCapacityId uint64 // TODO: I think this can be removed
-	log               chainCore.Logger
-	addressConverter  bridgeCore.AddressConverter
-	statusHandler     bridgeCore.StatusHandler
-	broadcaster       Broadcaster
-	signatureHolder   SignaturesHolder
+	txHandler        txHandler
+	tokensMapper     TokensMapper
+	relayerPublicKey ed25519.PublicKey
+	relayerAddress   string
+	safePackageId    string
+	safeObjectId     string
+	bridgePackageId  string
+	bridgeObjectId   string
+	log              chainCore.Logger
+	addressConverter bridgeCore.AddressConverter
+	statusHandler    bridgeCore.StatusHandler
+	broadcaster      Broadcaster
+	signatureHolder  SignaturesHolder
 
 	lastCheckpoint               uint64
 	retriesAvailabilityCheck     uint64
@@ -151,9 +149,6 @@ func checkArgs(args ArgsSuiClient) error {
 	}
 	if len(args.SafeObjectId) == 0 {
 		return fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
-	}
-	if len(args.RelayerCapacityId) == 0 {
-		return fmt.Errorf("%w for the RelayerCapacityId argument", errNilObjectId)
 	}
 	if check.IfNil(args.Log) {
 		return clients.ErrNilLogger
@@ -329,7 +324,6 @@ func (c *client) ExecuteTransfer(
 			argLists.Nonces,
 			batchId,
 			signatures,
-			// TODO: clock?
 		},
 		GasBudget: "100000000", // TODO
 	}
@@ -387,7 +381,7 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 
 // CheckRequiredBalance will check if the safe has enough balance for the transfer
 func (c *client) CheckRequiredBalance(ctx context.Context, coinType string, value *big.Int) error {
-	existingBalance, err := c.GetBalance(ctx, c.safePackageId, coinType) // TODO: package or object id?
+	existingBalance, err := c.GetBalance(ctx, c.safeObjectId, coinType)
 	if err != nil {
 		return fmt.Errorf("%w for owner %s for coin %s", err, c.safePackageId, coinType)
 	}

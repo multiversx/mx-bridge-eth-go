@@ -6,7 +6,7 @@ import "math/big"
 type Batch struct {
 	Nonce                  uint64
 	BlockNumber            uint64
-	LastUpdatedBlockNumber uint64
+	LastUpdatedTimestampMs uint64
 	DepositsCount          uint16
 }
 

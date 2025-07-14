@@ -118,7 +118,6 @@ func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNon
 				},
 			),
 			tx.Pure(batchNonce),
-			// TODO: clock?
 		},
 	)
 
@@ -163,7 +162,6 @@ func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNo
 				},
 			),
 			tx.Pure(batchNonce),
-			// TODO: clock?
 		},
 	)
 
@@ -377,7 +375,6 @@ func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context
 				},
 			),
 			tx.Pure(batchNonce),
-			// TODO: clock?
 		},
 	)
 
