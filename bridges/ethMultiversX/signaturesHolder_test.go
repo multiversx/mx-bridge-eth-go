@@ -20,8 +20,8 @@ func generateSignedMessage(index uint64) *core.SignedMessage {
 	}
 }
 
-func generateEthMessage(index uint64) *core.EthereumSignature {
-	return &core.EthereumSignature{
+func generateEthMessage(index uint64) *core.PeerChainSignature {
+	return &core.PeerChainSignature{
 		Signature:   []byte(fmt.Sprintf("sig %d", index)),
 		MessageHash: []byte("message hash"),
 	}
@@ -54,7 +54,7 @@ func TestSignatureHolder_ProcessNewMessage(t *testing.T) {
 		sh := NewSignatureHolder()
 		sh.ProcessNewMessage(msg, ethMsg)
 		assert.Equal(t, []*core.SignedMessage{msg}, sh.AllStoredSignatures())
-		assert.Equal(t, []*core.EthereumSignature{ethMsg}, sh.ethMessages)
+		assert.Equal(t, []*core.PeerChainSignature{ethMsg}, sh.ethMessages)
 	})
 	t.Run("two messages should add", func(t *testing.T) {
 		t.Parallel()
@@ -68,7 +68,7 @@ func TestSignatureHolder_ProcessNewMessage(t *testing.T) {
 		sh := NewSignatureHolder()
 		sh.ProcessNewMessage(msg, ethMsg)
 		sh.ProcessNewMessage(msg1, ethMsg1)
-		compareEthSignatureMessageLists(t, []*core.EthereumSignature{ethMsg, ethMsg1}, sh.ethMessages)
+		compareEthSignatureMessageLists(t, []*core.PeerChainSignature{ethMsg, ethMsg1}, sh.ethMessages)
 		compareSignedMessageLists(t, []*core.SignedMessage{msg, msg1}, sh.AllStoredSignatures())
 	})
 }
@@ -160,7 +160,7 @@ func compareSignedMessageLists(t *testing.T, list1 []*core.SignedMessage, list2 
 	}
 }
 
-func compareEthSignatureMessageLists(t *testing.T, list1 []*core.EthereumSignature, list2 []*core.EthereumSignature) {
+func compareEthSignatureMessageLists(t *testing.T, list1 []*core.PeerChainSignature, list2 []*core.PeerChainSignature) {
 	require.Equal(t, len(list1), len(list2))
 	for _, obj1 := range list1 {
 		found := false

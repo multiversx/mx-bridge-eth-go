@@ -42,7 +42,7 @@ type AddressConverter interface {
 // when new messages arrive. It also should be able to respond with any stored messages it might
 // have.
 type BroadcastClient interface {
-	ProcessNewMessage(msg *SignedMessage, ethMsg *EthereumSignature)
+	ProcessNewMessage(msg *SignedMessage, ethMsg *PeerChainSignature)
 	AllStoredSignatures() []*SignedMessage
 	IsInterfaceNil() bool
 }

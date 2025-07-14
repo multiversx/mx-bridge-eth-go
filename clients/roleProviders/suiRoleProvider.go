@@ -5,6 +5,8 @@ import (
 	"strings"
 	"sync"
 
+	"encoding/base64"
+	"github.com/block-vision/sui-go-sdk/constant"
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -81,7 +83,24 @@ func (srp *suiRoleProvider) processResults(results []models.SuiAddress) error {
 // VerifySignature will verify the provided signature against the message hash. It will also checks if the
 // public key is whitelisted or not
 func (srp *suiRoleProvider) VerifySignature(signature []byte, messageHash []byte) error {
-	panic("not implemented yet") // TODO: Implement this method
+	sigB64 := base64.StdEncoding.EncodeToString(signature)
+	msgB64 := base64.StdEncoding.EncodeToString(messageHash)
+	signer, pass, err := models.VerifyMessage(
+		msgB64,
+		sigB64,
+		constant.PersonalMessageIntentScope,
+	)
+	if err != nil {
+		return err
+	}
+	if !pass {
+		return ErrInvalidSignature
+	}
+	if !srp.isWhitelisted(signer) {
+		return ErrAddressIsNotWhitelisted
+	}
+
+	return nil
 }
 
 func (srp *suiRoleProvider) isWhitelisted(address string) bool {

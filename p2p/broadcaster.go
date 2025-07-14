@@ -187,23 +187,23 @@ func (b *broadcaster) processJoinMessage(message p2p.MessageP2P) {
 	}
 }
 
-func (b *broadcaster) getEthereumSignature(msg *core.SignedMessage) (*core.EthereumSignature, error) {
-	ethSignature := &core.EthereumSignature{}
-	err := b.marshalizer.Unmarshal(ethSignature, msg.Payload)
+func (b *broadcaster) getPeerChainSignature(msg *core.SignedMessage) (*core.PeerChainSignature, error) {
+	signature := &core.PeerChainSignature{}
+	err := b.marshalizer.Unmarshal(signature, msg.Payload)
 	if err != nil {
 		return nil, err
 	}
 
-	err = b.signatureProcessor.VerifySignature(ethSignature.Signature, ethSignature.MessageHash) // todo
+	err = b.signatureProcessor.VerifySignature(signature.Signature, signature.MessageHash)
 	if err != nil {
 		return nil, err
 	}
 
-	return ethSignature, nil
+	return signature, nil
 }
 
 func (b *broadcaster) processSignMessage(msg *core.SignedMessage) {
-	ethSignature, err := b.getEthereumSignature(msg)
+	ethSignature, err := b.getPeerChainSignature(msg)
 	if err != nil {
 		b.log.Debug("received message does not contain a valid signature", "error", err)
 		return
@@ -212,7 +212,7 @@ func (b *broadcaster) processSignMessage(msg *core.SignedMessage) {
 	b.notifyClients(msg, ethSignature)
 }
 
-func (b *broadcaster) notifyClients(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+func (b *broadcaster) notifyClients(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 	b.mutClients.RLock()
 	defer b.mutClients.RUnlock()
 
@@ -259,7 +259,7 @@ func (b *broadcaster) sendSignedMessageToPeer(msg *core.SignedMessage, peerId ch
 // BroadcastSignature will send the provided signature as payload in a wrapped signed message to the other peers.
 // It will broadcast the message to all available peers
 func (b *broadcaster) BroadcastSignature(signature []byte, messageHash []byte) {
-	ethSig := &core.EthereumSignature{
+	ethSig := &core.PeerChainSignature{
 		Signature:   signature,
 		MessageHash: messageHash,
 	}
