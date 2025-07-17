@@ -52,7 +52,7 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 		return nil, errNilProxy
 	}
 	if len(args.RelayerAddress) == 0 {
-		return nil, fmt.Errorf("%w for the signer address argument", errNilAddress)
+		return nil, fmt.Errorf("%w for the RelayerAddress argument", errNilAddress)
 	}
 	if len(args.BridgePackageId) == 0 {
 		return nil, fmt.Errorf("%w for the BridgePackageId argument", errNilPackageId)
@@ -60,7 +60,7 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 	if len(args.BridgeObjectId) == 0 {
 		return nil, fmt.Errorf("%w for the BridgeObjectId argument", errNilObjectId)
 	}
-	if args.BridgeInitialSharedVersion < 0 {
+	if args.BridgeInitialSharedVersion == 0 {
 		return nil, errInvalidInitialSharedVersion
 	}
 	if len(args.SafePackageId) == 0 {
@@ -69,7 +69,7 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 	if len(args.SafeObjectId) == 0 {
 		return nil, fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
 	}
-	if args.SafeInitialSharedVersion < 0 {
+	if args.SafeInitialSharedVersion == 0 {
 		return nil, errInvalidInitialSharedVersion
 	}
 
@@ -354,7 +354,7 @@ func (getter *suiClientDataGetter) Quorum(ctx context.Context) (uint64, error) {
 }
 
 // GetStatusesAfterExecution returns the statuses of the last executed transfer
-func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context, batchNonce uint64) ([]dtos.DepositStatus, bool, error) {
+func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context, batchNonce uint64) ([]byte, bool, error) {
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(
@@ -380,18 +380,18 @@ func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return []dtos.DepositStatus{}, false, fmt.Errorf("failed to get quorum: %w", err)
+		return nil, false, fmt.Errorf("failed to get quorum: %w", err)
 	}
 
 	if txBlockResp.Effects.Status.Status != "success" {
-		return []dtos.DepositStatus{}, false, fmt.Errorf("get quorum transaction failed: %s", txBlockResp.Effects.Status.Error)
+		return nil, false, fmt.Errorf("get quorum transaction failed: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	var depositStatuses []dtos.DepositStatus
+	var depositStatuses []byte
 	var isFinal bool
 	err = getter.decodeReturnValues(txBlockResp.Results, &depositStatuses, &isFinal)
 	if err != nil {
-		return []dtos.DepositStatus{}, false, fmt.Errorf("failed to decode return value: %w", err)
+		return nil, false, fmt.Errorf("failed to decode return value: %w", err)
 	}
 
 	return depositStatuses, isFinal, nil

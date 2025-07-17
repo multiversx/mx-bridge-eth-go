@@ -13,7 +13,6 @@ import (
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	"github.com/block-vision/sui-go-sdk/signer"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
@@ -202,7 +201,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 
 	transferBatch := &bridgeCore.TransferBatch{
 		ID:          batch.Nonce,
-		BlockNumber: batch.BlockNumber,
+		BlockNumber: batch.TimestampMs,
 		Deposits:    make([]*bridgeCore.DepositTransfer, 0, batch.DepositsCount),
 	}
 	cachedTokens := make(map[string][]byte)
@@ -220,7 +219,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 			DisplayableFrom:  c.addressConverter.ToHexString(fromBytes),
 			SourceTokenBytes: []byte(tokenId),
 			DisplayableToken: tokenId,
-			Amount:           big.NewInt(0).Set(deposit.Amount),
+			Amount:           big.NewInt(0).SetUint64(deposit.Amount),
 		}
 		storedConvertedTokenBytes, exists := cachedTokens[depositTransfer.DisplayableToken]
 		if !exists {
@@ -318,7 +317,7 @@ func (c *client) ExecuteTransfer(
 		Arguments: []interface{}{
 			c.bridgeObjectId,
 			c.safeObjectId,
-			argLists.SuiTokens, // TODO: in smart contract
+			argLists.SuiTokens,
 			argLists.Recipients,
 			argLists.Amounts,
 			argLists.Nonces,
@@ -415,18 +414,13 @@ func (c *client) TotalBalances(ctx context.Context, token string) (*big.Int, err
 	return big.NewInt(0).SetUint64(balance), nil
 }
 
-//// NativeTokens returns true if the token is native
-//func (c *client) NativeTokens(ctx context.Context, token string) (bool, error) {
-//	return c.NativeTokens(ctx, token)
-//}
-
 // WhitelistedTokens returns true if the token is whitelisted
 func (c *client) WhitelistedTokens(ctx context.Context, token string) (bool, error) {
 	return c.IsTokenWhitelisted(ctx, token)
 }
 
 // GetTransactionsStatuses will return the transactions statuses from the batch
-func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]dtos.DepositStatus, error) {
+func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error) {
 	buff, isFinal, err := c.GetStatusesAfterExecution(ctx, batchId)
 	if err != nil {
 		return nil, err
@@ -455,7 +449,7 @@ func (c *client) IsQuorumReached(ctx context.Context, msg []byte) (bool, error) 
 		return false, fmt.Errorf("%w in IsQuorumReached, Quorum call", err)
 	}
 	if quorum < minQuorumValue {
-		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %s", clients.ErrInvalidValue, minQuorumValue, quorum)
+		return false, fmt.Errorf("%w in IsQuorumReached, minQuorum %d, got: %d", clients.ErrInvalidValue, minQuorumValue, quorum)
 	}
 
 	return len(signatures) >= int(quorum), nil
