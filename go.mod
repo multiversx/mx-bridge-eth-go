@@ -2,7 +2,6 @@ module github.com/multiversx/mx-bridge-eth-go
 
 go 1.21
 
-toolchain go1.22.12
 
 require (
 	github.com/block-vision/sui-go-sdk v1.0.8
