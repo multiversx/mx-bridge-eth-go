@@ -2,7 +2,6 @@ module github.com/multiversx/mx-bridge-eth-go
 
 go 1.21
 
-
 require (
 	github.com/block-vision/sui-go-sdk v1.0.8
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792

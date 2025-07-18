@@ -51,37 +51,6 @@ func createMockSuiClientArgs() ArgsSuiClient {
 	}
 }
 
-func createMockTransferBatch() *core.TransferBatch {
-	return &core.TransferBatch{
-		ID: 332,
-		Deposits: []*core.DepositTransfer{
-			{
-				Nonce:                 10,
-				ToBytes:               []byte("to1"),
-				DisplayableTo:         "to1",
-				FromBytes:             []byte("from1"),
-				DisplayableFrom:       "from1",
-				SourceTokenBytes:      []byte("source token1"),
-				DisplayableToken:      "token1",
-				Amount:                big.NewInt(20),
-				DestinationTokenBytes: []byte("SUItoken1"),
-			},
-			{
-				Nonce:                 30,
-				ToBytes:               []byte("to2"),
-				DisplayableTo:         "to2",
-				FromBytes:             []byte("from2"),
-				DisplayableFrom:       "from2",
-				SourceTokenBytes:      []byte("source token2"),
-				DisplayableToken:      "token2",
-				Amount:                big.NewInt(40),
-				DestinationTokenBytes: []byte("SUItoken2"),
-			},
-		},
-		Statuses: make([]byte, 2),
-	}
-}
-
 func TestNewSuiClient(t *testing.T) {
 	t.Parallel()
 

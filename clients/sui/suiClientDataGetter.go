@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
@@ -40,7 +39,6 @@ type suiClientDataGetter struct {
 	relayerAddress             string
 	proxy                      Proxy
 	log                        chainCore.Logger
-	mtx                        sync.Mutex
 }
 
 // NewSuiClientDataGetter creates a new instance of type suiClientDataGetter
