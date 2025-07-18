@@ -6,23 +6,22 @@ import (
 	"errors"
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/signer"
-	"github.com/block-vision/sui-go-sdk/sui"
 )
 
 type transactionHandler struct {
-	client        sui.ISuiAPI
+	proxy         Proxy
 	relayerSigner *signer.Signer
 }
 
 func (txHandler *transactionHandler) SendTransactionReturnHash(ctx context.Context, moveCallRequest models.MoveCallRequest) (string, error) {
 	moveCallRequest.Signer = txHandler.relayerSigner.Address
 
-	txnMetaData, err := txHandler.client.MoveCall(ctx, moveCallRequest)
+	txnMetaData, err := txHandler.proxy.MoveCall(ctx, moveCallRequest)
 	if err != nil {
 		return "", err
 	}
 
-	txBlockResponse, err := txHandler.client.SignAndExecuteTransactionBlock(ctx, models.SignAndExecuteTransactionBlockRequest{
+	txBlockResponse, err := txHandler.proxy.SignAndExecuteTransactionBlock(ctx, models.SignAndExecuteTransactionBlockRequest{
 		TxnMetaData: txnMetaData,
 		PriKey:      txHandler.relayerSigner.PriKey,
 		Options: models.SuiTransactionBlockOptions{

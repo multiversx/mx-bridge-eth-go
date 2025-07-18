@@ -6,11 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
-	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/block-vision/sui-go-sdk/transaction"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
@@ -20,24 +18,27 @@ import (
 
 // ArgsSuiClientDataGetter is the arguments DTO used in the NewSuiClientDataGetter constructor
 type ArgsSuiClientDataGetter struct {
-	SafeContractAddress   string
-	BridgeContractAddress string
-	RelayerAddress        string
-	Client                sui.ISuiAPI
-	Log                   chainCore.Logger
+	SafePackageId              string
+	SafeObjectId               string
+	SafeInitialSharedVersion   uint64
+	BridgePackageId            string
+	BridgeObjectId             string
+	BridgeInitialSharedVersion uint64
+	RelayerAddress             string
+	Proxy                      Proxy
+	Log                        chainCore.Logger
 }
 
 type suiClientDataGetter struct {
-	safeContractAddress string
-	safeObjectIdBytes   models.SuiAddressBytes
-
-	bridgeContractAddress         string
-	bridgeObjectIdBytes           models.SuiAddressBytes
-	relayerAddress                string
-	client                        sui.ISuiAPI
-	initialSharedVersionForObject sync.Map // to cache the initial shared version for objects
-	log                           chainCore.Logger
-	mtx                           sync.Mutex
+	safePackageId              string
+	safeObjectIdBytes          models.SuiAddressBytes
+	safeInitialSharedVersion   uint64
+	bridgePackageId            string
+	bridgeObjectIdBytes        models.SuiAddressBytes
+	bridgeInitialSharedVersion uint64
+	relayerAddress             string
+	proxy                      Proxy
+	log                        chainCore.Logger
 }
 
 // NewSuiClientDataGetter creates a new instance of type suiClientDataGetter
@@ -45,37 +46,51 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 	if check.IfNil(args.Log) {
 		return nil, clients.ErrNilLogger
 	}
-	if args.Client == nil {
-		return nil, errNilClient
+	if args.Proxy == nil {
+		return nil, errNilProxy
 	}
-	if args.RelayerAddress == "" {
-		return nil, fmt.Errorf("%w for the signer address argument", errNilAddress)
+	if len(args.RelayerAddress) == 0 {
+		return nil, fmt.Errorf("%w for the RelayerAddress argument", errNilAddress)
 	}
-	if args.BridgeContractAddress == "" {
+	if len(args.BridgePackageId) == 0 {
 		return nil, fmt.Errorf("%w for the BridgePackageId argument", errNilPackageId)
 	}
-	if args.SafeContractAddress == "" {
+	if len(args.BridgeObjectId) == 0 {
+		return nil, fmt.Errorf("%w for the BridgeObjectId argument", errNilObjectId)
+	}
+	if args.BridgeInitialSharedVersion == 0 {
+		return nil, errInvalidInitialSharedVersion
+	}
+	if len(args.SafePackageId) == 0 {
 		return nil, fmt.Errorf("%w for the SafePackageId argument", errNilPackageId)
 	}
+	if len(args.SafeObjectId) == 0 {
+		return nil, fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
+	}
+	if args.SafeInitialSharedVersion == 0 {
+		return nil, errInvalidInitialSharedVersion
+	}
 
-	safeObjectIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(args.SafeContractAddress))
+	bridgeObjectIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(args.BridgeObjectId))
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert address: %w", err)
 	}
 
-	bridgeObjectIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(args.BridgeContractAddress))
+	safeObjectIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(args.SafeObjectId))
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert address: %w", err)
 	}
 
 	return &suiClientDataGetter{
-		safeContractAddress:   args.SafeContractAddress,
-		safeObjectIdBytes:     *safeObjectIdBytes,
-		bridgeContractAddress: args.BridgeContractAddress,
-		bridgeObjectIdBytes:   *bridgeObjectIdBytes,
-		relayerAddress:        args.RelayerAddress,
-		client:                args.Client,
-		log:                   args.Log,
+		safePackageId:              args.SafePackageId,
+		safeObjectIdBytes:          *safeObjectIdBytes,
+		safeInitialSharedVersion:   args.SafeInitialSharedVersion,
+		bridgePackageId:            args.BridgePackageId,
+		bridgeObjectIdBytes:        *bridgeObjectIdBytes,
+		bridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
+		relayerAddress:             args.RelayerAddress,
+		proxy:                      args.Proxy,
+		log:                        args.Log,
 	}, nil
 }
 
@@ -83,13 +98,8 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNonce uint64) (dtos.Batch, bool, error) {
 	tx := transaction.NewTransaction()
 
-	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
-	if err != nil {
-		return dtos.Batch{}, false, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
-	}
-
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgeContractAddress),
+		models.SuiAddress(getter.bridgePackageId),
 		"bridge",
 		"get_batch",
 		nil,
@@ -98,8 +108,8 @@ func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNon
 				transaction.CallArg{
 					Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
-							ObjectId:             getter.bridgeObjectIdBytes,
-							InitialSharedVersion: initialSharedVersion,
+							ObjectId:             getter.safeObjectIdBytes,
+							InitialSharedVersion: getter.safeInitialSharedVersion,
 							Mutable:              true,
 						},
 					},
@@ -120,7 +130,7 @@ func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNon
 
 	var batch dtos.Batch
 	var isFinalBatch bool
-	err = DecodeReturnValues(txBlockResp.Results, &batch, &isFinalBatch)
+	err = getter.decodeReturnValues(txBlockResp.Results, &batch, &isFinalBatch)
 	if err != nil {
 		return dtos.Batch{}, false, fmt.Errorf("failed to decode return value: %w", err)
 	}
@@ -132,13 +142,8 @@ func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNon
 func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNonce uint64) ([]dtos.Deposit, bool, error) {
 	tx := transaction.NewTransaction()
 
-	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
-	if err != nil {
-		return nil, false, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
-	}
-
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgeContractAddress),
+		models.SuiAddress(getter.bridgePackageId),
 		"bridge",
 		"get_batch_deposits",
 		nil,
@@ -147,8 +152,8 @@ func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNo
 				transaction.CallArg{
 					Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
-							ObjectId:             getter.bridgeObjectIdBytes,
-							InitialSharedVersion: initialSharedVersion,
+							ObjectId:             getter.safeObjectIdBytes,
+							InitialSharedVersion: getter.safeInitialSharedVersion,
 							Mutable:              true,
 						},
 					},
@@ -169,7 +174,7 @@ func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNo
 
 	var depositsList []dtos.Deposit
 	var areFinalDeposits bool
-	err = DecodeReturnValues(txBlockResp.Results, &depositsList, &areFinalDeposits)
+	err = getter.decodeReturnValues(txBlockResp.Results, &depositsList, &areFinalDeposits)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to decode return value: %w", err)
 	}
@@ -181,13 +186,8 @@ func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNo
 func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.SuiAddress, error) {
 	tx := transaction.NewTransaction()
 
-	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
-	if err != nil {
-		return []models.SuiAddress{}, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
-	}
-
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgeContractAddress),
+		models.SuiAddress(getter.bridgePackageId),
 		"bridge",
 		"get_relayers",
 		nil,
@@ -197,7 +197,7 @@ func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.Su
 					Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             getter.bridgeObjectIdBytes,
-							InitialSharedVersion: initialSharedVersion,
+							InitialSharedVersion: getter.bridgeInitialSharedVersion,
 							Mutable:              true,
 						},
 					},
@@ -216,7 +216,7 @@ func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.Su
 	}
 
 	var relayersAddresses []models.SuiAddress
-	err = DecodeReturnValues(txBlockResp.Results, &relayersAddresses)
+	err = getter.decodeReturnValues(txBlockResp.Results, &relayersAddresses)
 	if err != nil {
 		return []models.SuiAddress{}, fmt.Errorf("failed to decode return value: %w", err)
 	}
@@ -228,15 +228,10 @@ func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.Su
 func (getter *suiClientDataGetter) WasBatchExecuted(ctx context.Context, batchNonce uint64) (bool, error) {
 	tx := transaction.NewTransaction()
 
-	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
-	if err != nil {
-		return false, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
-	}
-
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgeContractAddress),
+		models.SuiAddress(getter.bridgePackageId),
 		"bridge",
-		"get_relayers",
+		"was_batch_executed",
 		nil,
 		[]transaction.Argument{
 			tx.Object(
@@ -244,7 +239,7 @@ func (getter *suiClientDataGetter) WasBatchExecuted(ctx context.Context, batchNo
 					Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             getter.bridgeObjectIdBytes,
-							InitialSharedVersion: initialSharedVersion,
+							InitialSharedVersion: getter.bridgeInitialSharedVersion,
 							Mutable:              true,
 						},
 					},
@@ -264,7 +259,7 @@ func (getter *suiClientDataGetter) WasBatchExecuted(ctx context.Context, batchNo
 	}
 
 	var wasBatchExecuted bool
-	err = DecodeReturnValues(txBlockResp.Results, &wasBatchExecuted)
+	err = getter.decodeReturnValues(txBlockResp.Results, &wasBatchExecuted)
 	if err != nil {
 		return false, fmt.Errorf("failed to decode return value: %w", err)
 	}
@@ -276,13 +271,8 @@ func (getter *suiClientDataGetter) WasBatchExecuted(ctx context.Context, batchNo
 func (getter *suiClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
 	tx := transaction.NewTransaction()
 
-	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
-	if err != nil {
-		return false, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
-	}
-
 	tx.MoveCall(
-		models.SuiAddress(getter.safeContractAddress),
+		models.SuiAddress(getter.bridgePackageId),
 		"bridge",
 		"get_pause",
 		nil,
@@ -292,7 +282,7 @@ func (getter *suiClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
 					Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             getter.bridgeObjectIdBytes,
-							InitialSharedVersion: initialSharedVersion,
+							InitialSharedVersion: getter.bridgeInitialSharedVersion,
 							Mutable:              true,
 						},
 					},
@@ -311,7 +301,7 @@ func (getter *suiClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
 	}
 
 	var isPaused bool
-	err = DecodeReturnValues(txBlockResp.Results, &isPaused)
+	err = getter.decodeReturnValues(txBlockResp.Results, &isPaused)
 	if err != nil {
 		return false, fmt.Errorf("failed to decode return value: %w", err)
 	}
@@ -323,13 +313,8 @@ func (getter *suiClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
 func (getter *suiClientDataGetter) Quorum(ctx context.Context) (uint64, error) {
 	tx := transaction.NewTransaction()
 
-	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
-	}
-
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgeContractAddress),
+		models.SuiAddress(getter.bridgePackageId),
 		"bridge",
 		"get_quorum",
 		nil,
@@ -339,7 +324,7 @@ func (getter *suiClientDataGetter) Quorum(ctx context.Context) (uint64, error) {
 					Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             getter.bridgeObjectIdBytes,
-							InitialSharedVersion: initialSharedVersion,
+							InitialSharedVersion: getter.bridgeInitialSharedVersion,
 							Mutable:              true,
 						},
 					},
@@ -358,7 +343,7 @@ func (getter *suiClientDataGetter) Quorum(ctx context.Context) (uint64, error) {
 	}
 
 	var quorum uint64
-	err = DecodeReturnValues(txBlockResp.Results, &quorum)
+	err = getter.decodeReturnValues(txBlockResp.Results, &quorum)
 	if err != nil {
 		return 0, fmt.Errorf("failed to decode return value: %w", err)
 	}
@@ -370,13 +355,8 @@ func (getter *suiClientDataGetter) Quorum(ctx context.Context) (uint64, error) {
 func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context, batchNonce uint64) ([]byte, bool, error) {
 	tx := transaction.NewTransaction()
 
-	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.bridgeContractAddress)
-	if err != nil {
-		return nil, false, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.bridgeContractAddress, err)
-	}
-
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgeContractAddress),
+		models.SuiAddress(getter.bridgePackageId),
 		"bridge",
 		"get_statuses_after_execution",
 		nil,
@@ -386,7 +366,7 @@ func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context
 					Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             getter.bridgeObjectIdBytes,
-							InitialSharedVersion: initialSharedVersion,
+							InitialSharedVersion: getter.bridgeInitialSharedVersion,
 							Mutable:              true,
 						},
 					},
@@ -407,7 +387,7 @@ func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context
 
 	var depositStatuses []byte
 	var isFinal bool
-	err = DecodeReturnValues(txBlockResp.Results, &depositStatuses, &isFinal)
+	err = getter.decodeReturnValues(txBlockResp.Results, &depositStatuses, &isFinal)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to decode return value: %w", err)
 	}
@@ -419,12 +399,7 @@ func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context
 func (getter *suiClientDataGetter) GetTotalBalanceFromSafe(ctx context.Context, coinType string) (uint64, error) {
 	tx := transaction.NewTransaction()
 
-	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.safeContractAddress)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.safeContractAddress, err)
-	}
-
-	coinParts, err := ParseCoinType(coinType)
+	coinParts, err := parseCoinType(coinType)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
 	}
@@ -435,7 +410,7 @@ func (getter *suiClientDataGetter) GetTotalBalanceFromSafe(ctx context.Context, 
 	}
 
 	tx.MoveCall(
-		models.SuiAddress(getter.safeContractAddress),
+		models.SuiAddress(getter.safePackageId),
 		"safe",
 		"get_stored_coin_balance",
 		[]transaction.TypeTag{
@@ -453,7 +428,7 @@ func (getter *suiClientDataGetter) GetTotalBalanceFromSafe(ctx context.Context, 
 					Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             getter.safeObjectIdBytes,
-							InitialSharedVersion: initialSharedVersion,
+							InitialSharedVersion: getter.safeInitialSharedVersion,
 							Mutable:              true,
 						},
 					},
@@ -472,7 +447,7 @@ func (getter *suiClientDataGetter) GetTotalBalanceFromSafe(ctx context.Context, 
 	}
 
 	var totalBalance uint64
-	err = DecodeReturnValues(txBlockResp.Results, &totalBalance)
+	err = getter.decodeReturnValues(txBlockResp.Results, &totalBalance)
 	if err != nil {
 		return 0, fmt.Errorf("failed to decode return value: %w", err)
 	}
@@ -484,12 +459,7 @@ func (getter *suiClientDataGetter) GetTotalBalanceFromSafe(ctx context.Context, 
 func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinType string) (bool, error) {
 	tx := transaction.NewTransaction()
 
-	initialSharedVersion, err := getter.getInitialSharedVersionForObject(ctx, getter.safeContractAddress)
-	if err != nil {
-		return false, fmt.Errorf("failed to get initial shared version for object %s: %w", getter.safeContractAddress, err)
-	}
-
-	coinParts, err := ParseCoinType(coinType)
+	coinParts, err := parseCoinType(coinType)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
 	}
@@ -500,7 +470,7 @@ func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinT
 	}
 
 	tx.MoveCall(
-		models.SuiAddress(getter.safeContractAddress),
+		models.SuiAddress(getter.safePackageId),
 		"safe",
 		"is_token_whitelisted",
 		[]transaction.TypeTag{
@@ -518,7 +488,7 @@ func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinT
 					Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             getter.safeObjectIdBytes,
-							InitialSharedVersion: initialSharedVersion,
+							InitialSharedVersion: getter.safeInitialSharedVersion,
 							Mutable:              true,
 						},
 					},
@@ -537,7 +507,7 @@ func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinT
 	}
 
 	var isTokenWhitelisted bool
-	err = DecodeReturnValues(txBlockResp.Results, &isTokenWhitelisted)
+	err = getter.decodeReturnValues(txBlockResp.Results, &isTokenWhitelisted)
 	if err != nil {
 		return false, fmt.Errorf("failed to decode return value: %w", err)
 	}
@@ -547,39 +517,18 @@ func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinT
 
 // GetLatestCheckpoint returns the latest checkpoint sequence number
 func (getter *suiClientDataGetter) GetLatestCheckpoint(ctx context.Context) (uint64, error) {
-	return getter.client.SuiGetLatestCheckpointSequenceNumber(ctx)
+	return getter.proxy.SuiGetLatestCheckpointSequenceNumber(ctx)
 }
 
 // GetBalance returns the sui balance of the given account
 func (getter *suiClientDataGetter) GetBalance(ctx context.Context, account string, coinType string) (models.CoinBalanceResponse, error) {
-	return getter.client.SuiXGetBalance(ctx, models.SuiXGetBalanceRequest{
+	return getter.proxy.SuiXGetBalance(ctx, models.SuiXGetBalanceRequest{
 		Owner:    account,
 		CoinType: coinType,
 	})
 }
 
-// ParseCoinType parses a coin type string in the format "package::module::struct" and returns its components.
-func ParseCoinType(coinType string) ([3]string, error) {
-	parts := strings.Split(coinType, "::")
-
-	if len(parts) != 3 {
-		return [3]string{}, errInvalidCoinType
-	}
-
-	packageAddr := strings.TrimSpace(parts[0])
-	module := strings.TrimSpace(parts[1])
-	structName := strings.TrimSpace(parts[2])
-
-	// Basic validation
-	if packageAddr == "" || module == "" || structName == "" {
-		return [3]string{}, errors.New("coin type parts cannot be empty")
-	}
-
-	return [3]string{packageAddr, module, structName}, nil
-}
-
-// DecodeReturnValues decodes the return value from a transaction block response.
-func DecodeReturnValues(data json.RawMessage, out ...interface{}) error {
+func (getter *suiClientDataGetter) decodeReturnValues(data json.RawMessage, out ...interface{}) error {
 	var results []dtos.InspectResult
 	if err := json.Unmarshal(data, &results); err != nil {
 		return fmt.Errorf("decode dev inspect results: %w", err)
@@ -619,46 +568,26 @@ func (getter *suiClientDataGetter) sendTxGetBlockResponse(ctx context.Context, t
 		return models.SuiTransactionBlockResponse{}, err
 	}
 
-	return getter.client.SuiDevInspectTransactionBlock(ctx, models.SuiDevInspectTransactionBlockRequest{
+	return getter.proxy.SuiDevInspectTransactionBlock(ctx, models.SuiDevInspectTransactionBlockRequest{
 		Sender:  getter.relayerAddress,
 		TxBytes: txBytes,
 	})
 }
 
-func (getter *suiClientDataGetter) getInitialSharedVersionForObject(ctx context.Context, objectId string) (uint64, error) {
-	if value, exists := getter.initialSharedVersionForObject.Load(objectId); exists {
-		return value.(uint64), nil
+func parseCoinType(coinType string) ([3]string, error) {
+	parts := strings.Split(coinType, "::")
+
+	if len(parts) != 3 {
+		return [3]string{}, errInvalidCoinType
 	}
 
-	// If not found, make the network call
-	rsp, err := getter.client.SuiGetObject(ctx, models.SuiGetObjectRequest{
-		ObjectId: objectId,
-		Options: models.SuiObjectDataOptions{
-			ShowOwner: true,
-		},
-	})
+	packageAddr := strings.TrimSpace(parts[0])
+	module := strings.TrimSpace(parts[1])
+	structName := strings.TrimSpace(parts[2])
 
-	if err != nil {
-		return 0, fmt.Errorf("failed to get object %s: %w", objectId, err)
+	if packageAddr == "" || module == "" || structName == "" {
+		return [3]string{}, errors.New("coin type parts cannot be empty")
 	}
 
-	data := rsp.Data
-	ownerBytes, err := json.Marshal(data.Owner)
-	if err != nil {
-		return 0, fmt.Errorf("failed to marshal owner: %w", err)
-	}
-
-	var sharedOwner dtos.SharedOwner
-	if err = json.Unmarshal(ownerBytes, &sharedOwner); err != nil {
-		return 0, fmt.Errorf("failed to unmarshal to SharedOwner: %w", err)
-	}
-
-	initialSharedVersion := sharedOwner.Shared.InitialSharedVersion
-
-	if actualValue, loaded := getter.initialSharedVersionForObject.LoadOrStore(objectId, initialSharedVersion); loaded {
-		// if another goroutine stored it first, return that value
-		return actualValue.(uint64), nil
-	}
-
-	return initialSharedVersion, nil
+	return [3]string{packageAddr, module, structName}, nil
 }
