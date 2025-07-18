@@ -18,7 +18,7 @@ const (
 
 // ArgListsBatch is a struct that contains the batch data in a format that is easy to use
 type ArgListsBatch struct {
-	EthTokens     [][]byte
+	PeerTokens    [][]byte
 	Recipients    [][]byte
 	MvxTokenBytes [][]byte
 	Amounts       []*big.Int
@@ -35,9 +35,9 @@ type SuiTransferData struct {
 	BatchId    uint64
 }
 
-// ExtractListMvxToEth will extract the batch data into a format that is easy to use
-// The transfer is from MultiversX to Ethereum
-func ExtractListMvxToEth(batch *bridgeCore.TransferBatch) *ArgListsBatch {
+// ExtractListFromMvx will extract the batch data into a format that is easy to use
+// The transfer is from MultiversX
+func ExtractListFromMvx(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 	arg := &ArgListsBatch{
 		Direction: FromMultiversX,
 	}
@@ -47,7 +47,7 @@ func ExtractListMvxToEth(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 		arg.Recipients = append(arg.Recipients, recipient)
 
 		token := dt.DestinationTokenBytes
-		arg.EthTokens = append(arg.EthTokens, token)
+		arg.PeerTokens = append(arg.PeerTokens, token)
 
 		amount := big.NewInt(0).Set(dt.Amount)
 		arg.Amounts = append(arg.Amounts, amount)
@@ -61,9 +61,9 @@ func ExtractListMvxToEth(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 	return arg
 }
 
-// ExtractListEthToMvx will extract the batch data into a format that is easy to use
-// The transfer is from Ehtereum to MultiversX
-func ExtractListEthToMvx(batch *bridgeCore.TransferBatch) *ArgListsBatch {
+// ExtractListToMvx will extract the batch data into a format that is easy to use
+// The transfer is to MultiversX
+func ExtractListToMvx(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 	arg := &ArgListsBatch{
 		Direction: ToMultiversX,
 	}
@@ -73,7 +73,7 @@ func ExtractListEthToMvx(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 		arg.Recipients = append(arg.Recipients, recipient)
 
 		token := dt.SourceTokenBytes
-		arg.EthTokens = append(arg.EthTokens, token)
+		arg.PeerTokens = append(arg.PeerTokens, token)
 
 		amount := big.NewInt(0).Set(dt.Amount)
 		arg.Amounts = append(arg.Amounts, amount)

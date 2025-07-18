@@ -12,7 +12,6 @@ import (
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	"github.com/block-vision/sui-go-sdk/signer"
-	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
@@ -29,18 +28,19 @@ const (
 )
 
 type ArgsSuiClient struct {
-	SuiClient         sui.ISuiAPI
-	Log               chainCore.Logger
-	RelayerPrivateKey ed25519.PrivateKey
-	SafePackageId     string
-	SafeObjectId      string
-	BridgePackageId   string
-	BridgeObjectId    string
-	RelayerCapacityId string
-	TokensMapper      TokensMapper
-	StatusHandler     bridgeCore.StatusHandler
-	Broadcaster       Broadcaster
-	SignatureHolder   SignaturesHolder
+	Proxy                      Proxy
+	Log                        chainCore.Logger
+	RelayerPrivateKey          ed25519.PrivateKey
+	SafePackageId              string
+	SafeObjectId               string
+	SafeInitialSharedVersion   uint64
+	BridgePackageId            string
+	BridgeObjectId             string
+	BridgeInitialSharedVersion uint64
+	TokensMapper               TokensMapper
+	StatusHandler              bridgeCore.StatusHandler
+	Broadcaster                Broadcaster
+	SignatureHolder            SignaturesHolder
 
 	ClientAvailabilityAllowDelta uint64
 }
@@ -81,11 +81,15 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	argsSuiClientDataGetter := ArgsSuiClientDataGetter{
-		SafeContractAddress:   args.SafePackageId,
-		BridgeContractAddress: args.BridgePackageId,
-		RelayerAddress:        relayerAddress,
-		Client:                args.SuiClient,
-		Log:                   args.Log,
+		SafePackageId:              args.SafePackageId,
+		SafeObjectId:               args.SafeObjectId,
+		SafeInitialSharedVersion:   args.SafeInitialSharedVersion,
+		BridgePackageId:            args.BridgePackageId,
+		BridgeObjectId:             args.BridgeObjectId,
+		BridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
+		RelayerAddress:             relayerAddress,
+		Proxy:                      args.Proxy,
+		Log:                        args.Log,
 	}
 	getter, err := NewSuiClientDataGetter(argsSuiClientDataGetter)
 	if err != nil {
@@ -99,7 +103,7 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 
 	c := &client{
 		txHandler: &transactionHandler{
-			client:        args.SuiClient,
+			proxy:         args.Proxy,
 			relayerSigner: relayerSigner,
 		},
 		suiClientDataGetter:          getter,
@@ -121,29 +125,29 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	c.log.Info("NewSuiClient")
 	c.log.Info("NewSuiClient",
 		"relayer address", relayerAddress,
-		"bridge contract address", c.bridgeContractAddress,
-		"safe contract address", c.safeContractAddress)
+		"bridge package ID", c.bridgePackageId,
+		"safe package ID", c.safePackageId)
 
 	return c, err
 }
 
 func checkArgs(args ArgsSuiClient) error {
-	if args.SuiClient == nil {
-		return errNilClient
+	if args.Proxy == nil {
+		return errNilProxy
 	}
 	if len(args.RelayerPrivateKey) == 0 {
 		return clients.ErrNilPrivateKey
 	}
-	if args.BridgePackageId == "" {
+	if len(args.BridgePackageId) == 0 {
 		return fmt.Errorf("%w for the BridgePackageId argument", errNilPackageId)
 	}
-	if args.BridgeObjectId == "" {
+	if len(args.BridgeObjectId) == 0 {
 		return fmt.Errorf("%w for the BridgeObjectId argument", errNilObjectId)
 	}
-	if args.SafePackageId == "" {
+	if len(args.SafePackageId) == 0 {
 		return fmt.Errorf("%w for the SafePackageId argument", errNilPackageId)
 	}
-	if args.SafeObjectId == "" {
+	if len(args.SafeObjectId) == 0 {
 		return fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
 	}
 	if check.IfNil(args.Log) {
@@ -198,7 +202,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 
 	transferBatch := &bridgeCore.TransferBatch{
 		ID:          batch.Nonce,
-		BlockNumber: batch.BlockNumber,
+		BlockNumber: batch.TimestampMs,
 		Deposits:    make([]*bridgeCore.DepositTransfer, 0, batch.DepositsCount),
 	}
 	cachedTokens := make(map[string][]byte)
@@ -216,7 +220,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 			DisplayableFrom:  c.addressConverter.ToHexString(fromBytes),
 			SourceTokenBytes: []byte(tokenId),
 			DisplayableToken: tokenId,
-			Amount:           big.NewInt(0).Set(deposit.Amount),
+			Amount:           big.NewInt(0).SetUint64(deposit.Amount),
 		}
 		storedConvertedTokenBytes, exists := cachedTokens[depositTransfer.DisplayableToken]
 		if !exists {
@@ -238,8 +242,8 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 }
 
 // WasExecuted returns true if the MultiversX batch ID was executed
-func (c *client) WasExecuted(ctx context.Context, mvxBatchID uint64) (bool, error) {
-	return c.WasBatchExecuted(ctx, mvxBatchID)
+func (c *client) WasExecuted(ctx context.Context, batchID uint64) (bool, error) {
+	return c.WasBatchExecuted(ctx, batchID)
 }
 
 // BroadcastSignatureForMessageHash will send the signature for the provided message hash
@@ -271,7 +275,7 @@ func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchI
 
 	transferData := batchProcessor.SuiTransferData{
 		Recipients: batch.Recipients,
-		SuiTokens:  batch.EthTokens,
+		SuiTokens:  batch.PeerTokens,
 		Amounts:    uint64Amounts,
 		Nonces:     uint64Nonces,
 		BatchId:    batchId,
@@ -317,14 +321,14 @@ func (c *client) ExecuteTransfer(
 
 	moveCallReq := models.MoveCallRequest{
 		Signer:          c.relayerAddress,
-		PackageObjectId: c.bridgeContractAddress,
+		PackageObjectId: c.bridgePackageId,
 		Module:          "bridge",
 		Function:        "execute_transfer",
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
 			c.bridgeObjectId,
 			c.safeObjectId,
-			argLists.EthTokens,
+			argLists.PeerTokens,
 			argLists.Recipients,
 			argLists.Amounts,
 			argLists.Nonces,
@@ -388,9 +392,9 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 // CheckRequiredBalance will check if the safe has enough balance for the transfer
 func (c *client) CheckRequiredBalance(ctx context.Context, coinType []byte, value *big.Int) error {
 	coinAddr := AddressBytesToString(coinType)
-	existingBalance, err := c.GetBalance(ctx, c.safeContractAddress, coinAddr)
+	existingBalance, err := c.GetBalance(ctx, c.safeObjectId, coinAddr)
 	if err != nil {
-		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeContractAddress, coinAddr)
+		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeObjectId, coinAddr)
 	}
 
 	totalExistingBalanceStr := existingBalance.TotalBalance
@@ -401,12 +405,12 @@ func (c *client) CheckRequiredBalance(ctx context.Context, coinType []byte, valu
 	}
 	if value.Cmp(totalExistingBalance) > 0 {
 		return fmt.Errorf("%w, existing: %s, required: %s for coin %s and owner %s",
-			errInsufficientCoinBalance, totalExistingBalanceStr, value.String(), coinAddr, c.safeContractAddress)
+			errInsufficientCoinBalance, totalExistingBalanceStr, value.String(), coinAddr, c.safeObjectId)
 	}
 
 	c.log.Debug("checked coin balance",
 		"Coin type", coinAddr,
-		"owner address", c.safeContractAddress,
+		"owner address", c.safeObjectId,
 		"existing balance", totalExistingBalanceStr,
 		"needed", value.String())
 
@@ -421,6 +425,12 @@ func (c *client) TotalBalances(ctx context.Context, token []byte) (*big.Int, err
 		return nil, err
 	}
 	return big.NewInt(0).SetUint64(balance), nil
+}
+
+// WhitelistedTokens returns true if the token is whitelisted
+func (c *client) WhitelistedTokens(ctx context.Context, token []byte) (bool, error) {
+	tokenAddr := AddressBytesToString(token)
+	return c.IsTokenWhitelisted(ctx, tokenAddr)
 }
 
 // MintBalances returns nil every time
@@ -441,12 +451,6 @@ func (c *client) MintBurnTokens(_ context.Context, _ []byte) (bool, error) {
 // NativeTokens returns true every time
 func (c *client) NativeTokens(_ context.Context, _ []byte) (bool, error) {
 	return true, nil
-}
-
-// WhitelistedTokens returns true if the token is whitelisted
-func (c *client) WhitelistedTokens(ctx context.Context, token []byte) (bool, error) {
-	tokenAddr := AddressBytesToString(token)
-	return c.IsTokenWhitelisted(ctx, tokenAddr)
 }
 
 // GetTransactionsStatuses will return the transactions statuses from the batch

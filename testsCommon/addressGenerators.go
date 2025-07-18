@@ -44,14 +44,6 @@ func CreateRandomSuiAddressBytes() [32]byte {
 	return [32]byte(buff)
 }
 
-// CreateRandomSuiAddress will create a random Sui smart contract (object) or user address
-func CreateRandomSuiAddress() string {
-	buff := make([]byte, 32)
-	_, _ = rand.Read(buff)
-
-	return fmt.Sprintf("0x%s", hex.EncodeToString(buff))
-}
-
 // CreateRandomCoinId will create a random Sui coin ID
 func CreateRandomCoinId() string {
 	addrBytes := CreateRandomSuiAddressBytes()

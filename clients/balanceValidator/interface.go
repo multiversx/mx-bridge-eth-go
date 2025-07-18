@@ -22,8 +22,8 @@ type MultiversXClient interface {
 	IsInterfaceNil() bool
 }
 
-// EthereumClient defines the behavior of the Ethereum client able to communicate with the Ethereum chain
-type EthereumClient interface {
+// PeerChainClient defines the behavior of the peer client able to communicate with the peer chain
+type PeerChainClient interface {
 	GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error)
 	TotalBalances(ctx context.Context, token []byte) (*big.Int, error)
 	MintBalances(ctx context.Context, token []byte) (*big.Int, error)

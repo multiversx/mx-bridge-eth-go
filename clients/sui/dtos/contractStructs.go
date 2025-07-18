@@ -1,12 +1,10 @@
 package dtos
 
-import "math/big"
-
 // Batch represents a batch of deposits from safe contract
 type Batch struct {
 	Nonce                  uint64
-	BlockNumber            uint64
-	LastUpdatedBlockNumber uint64
+	TimestampMs            uint64
+	LastUpdatedTimestampMs uint64
 	DepositsCount          uint16
 }
 
@@ -14,19 +12,8 @@ type Batch struct {
 type Deposit struct {
 	Nonce        uint64
 	TokenAddress string
-	Amount       *big.Int
-	Depositor    [32]byte
-	Recipient    [32]byte
+	Amount       uint64
+	Depositor    []byte
+	Recipient    []byte
 	Status       uint8
 }
-
-// DepositStatus represents the status of a deposit
-type DepositStatus byte
-
-const (
-	None DepositStatus = iota
-	Pending
-	InProgress
-	Executed
-	Rejected
-)
