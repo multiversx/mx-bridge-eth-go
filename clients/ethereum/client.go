@@ -277,8 +277,8 @@ func GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) ([
 		recipients = append(recipients, common.BytesToAddress(recipient))
 	}
 
-	tokens := make([]common.Address, 0, len(batch.EthTokens))
-	for _, token := range batch.EthTokens {
+	tokens := make([]common.Address, 0, len(batch.PeerTokens))
+	for _, token := range batch.PeerTokens {
 		tokens = append(tokens, common.BytesToAddress(token))
 	}
 
@@ -364,7 +364,7 @@ func (c *client) ExecuteTransfer(
 
 	auth.Nonce = big.NewInt(nonce)
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = c.transferGasLimitBase + uint64(len(argLists.EthTokens))*c.transferGasLimitForEach
+	auth.GasLimit = c.transferGasLimitBase + uint64(len(argLists.PeerTokens))*c.transferGasLimitForEach
 	auth.Context = ctx
 	auth.GasPrice = gasPrice
 
@@ -392,8 +392,8 @@ func (c *client) ExecuteTransfer(
 		recipients = append(recipients, common.BytesToAddress(recipient))
 	}
 
-	tokens := make([]common.Address, 0, len(argLists.EthTokens))
-	for _, token := range argLists.EthTokens {
+	tokens := make([]common.Address, 0, len(argLists.PeerTokens))
+	for _, token := range argLists.PeerTokens {
 		tokens = append(tokens, common.BytesToAddress(token))
 	}
 

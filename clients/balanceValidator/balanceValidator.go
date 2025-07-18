@@ -18,13 +18,13 @@ import (
 type ArgsBalanceValidator struct {
 	Log              logger.Logger
 	MultiversXClient MultiversXClient
-	PeerChainClient  EthereumClient
+	PeerChainClient  PeerChainClient
 }
 
 type balanceValidator struct {
 	log              logger.Logger
 	multiversXClient MultiversXClient
-	peerChainClient  EthereumClient
+	peerChainClient  PeerChainClient
 }
 
 // NewBalanceValidator creates a new instance of type balanceValidator

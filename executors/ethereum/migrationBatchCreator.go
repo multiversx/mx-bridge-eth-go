@@ -306,7 +306,7 @@ func (creator *migrationBatchCreator) computeMessageHash(batch *BatchInfo) (comm
 	}
 
 	args := &batchProcessor.ArgListsBatch{
-		EthTokens:  tokens,
+		PeerTokens: tokens,
 		Recipients: recipients,
 		Amounts:    amounts,
 		Nonces:     nonces,

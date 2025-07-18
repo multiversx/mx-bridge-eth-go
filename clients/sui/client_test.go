@@ -597,7 +597,7 @@ func TestClient_WasExecuted(t *testing.T) {
 func TestClient_CheckRequiredBalance(t *testing.T) {
 	t.Parallel()
 	args := createMockSuiClientArgs()
-	coinType := testsCommon.CreateRandomCoinId()
+	coinType := []byte(testsCommon.CreateRandomCoinId())
 	balance := big.NewInt(1000000)
 
 	t.Run("get balance fails should error", func(t *testing.T) {
@@ -617,7 +617,7 @@ func TestClient_CheckRequiredBalance(t *testing.T) {
 		c.proxy = &interactors.SuiProxyStub{
 			SuiXGetBalanceCalled: func(ctx context.Context, req models.SuiXGetBalanceRequest) (models.CoinBalanceResponse, error) {
 				return models.CoinBalanceResponse{
-					CoinType:     coinType,
+					CoinType:     string(coinType),
 					TotalBalance: balance.String(),
 				}, nil
 			},
@@ -631,7 +631,7 @@ func TestClient_CheckRequiredBalance(t *testing.T) {
 		c.proxy = &interactors.SuiProxyStub{
 			SuiXGetBalanceCalled: func(ctx context.Context, req models.SuiXGetBalanceRequest) (models.CoinBalanceResponse, error) {
 				return models.CoinBalanceResponse{
-					CoinType:     coinType,
+					CoinType:     string(coinType),
 					TotalBalance: balance.String(),
 				}, nil
 			},
@@ -645,6 +645,7 @@ func TestClient_CheckRequiredBalance(t *testing.T) {
 func TestClient_TotalBalances(t *testing.T) {
 	t.Parallel()
 	coinType := testsCommon.CreateRandomCoinId()
+	coinTypeBytes := []byte(coinType)
 
 	t.Run("error while getting total balances", func(t *testing.T) {
 		t.Parallel()
@@ -654,8 +655,9 @@ func TestClient_TotalBalances(t *testing.T) {
 		args.Proxy = createFailMockProxy(expectedErr)
 		c, _ := NewSuiClient(args)
 
-		balances, err := c.TotalBalances(context.Background(), coinType)
+		balances, err := c.TotalBalances(context.Background(), coinTypeBytes)
 		assert.Nil(t, balances)
+		fmt.Println(err)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
 	t.Run("should work", func(t *testing.T) {
@@ -667,7 +669,7 @@ func TestClient_TotalBalances(t *testing.T) {
 		args.Proxy = createMockProxy(values)
 		c, _ := NewSuiClient(args)
 
-		balances, err := c.TotalBalances(context.Background(), coinType)
+		balances, err := c.TotalBalances(context.Background(), coinTypeBytes)
 		assert.Nil(t, err)
 		assert.Equal(t, big.NewInt(0).SetUint64(providedBalance), balances)
 	})
@@ -733,24 +735,31 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 		args := createMockSuiClientArgs()
 		c, _ := NewSuiClient(args)
 
-		batch := &batchProcessor.ArgListsBatchSui{
-			SuiTokens: [][]byte{[]byte("token1"), []byte("token2")},
-			Recipients: []models.SuiAddress{
-				"recipient1",
-				"recipient2",
-			},
+		batch := &batchProcessor.ArgListsBatch{
+			PeerTokens:    [][]byte{[]byte("token1"), []byte("token2")},
+			Recipients:    [][]byte{[]byte("recipient1"), []byte("recipient2")},
 			MvxTokenBytes: [][]byte{[]byte("mvxToken1"), []byte("mvxToken2")},
-			Amounts:       []uint64{100, 200},
-			Nonces:        []uint64{1, 2},
+			Amounts:       []*big.Int{big.NewInt(100), big.NewInt(200)},
+			Nonces:        []*big.Int{big.NewInt(1), big.NewInt(2)},
 			Direction:     batchProcessor.FromMultiversX,
 		}
 		batchID := uint64(123)
 
+		uint64Amounts := make([]uint64, 0, len(batch.Amounts))
+		for _, amount := range batch.Amounts {
+			uint64Amounts = append(uint64Amounts, amount.Uint64())
+		}
+
+		uint64Nonces := make([]uint64, 0, len(batch.Nonces))
+		for _, nonce := range batch.Nonces {
+			uint64Nonces = append(uint64Nonces, nonce.Uint64())
+		}
+
 		expectedData := batchProcessor.SuiTransferData{
 			Recipients: batch.Recipients,
-			SuiTokens:  batch.SuiTokens,
-			Amounts:    batch.Amounts,
-			Nonces:     batch.Nonces,
+			SuiTokens:  batch.PeerTokens,
+			Amounts:    uint64Amounts,
+			Nonces:     uint64Nonces,
 			BatchId:    batchID,
 		}
 

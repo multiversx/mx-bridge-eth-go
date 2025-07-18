@@ -13,8 +13,8 @@ import (
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	"github.com/block-vision/sui-go-sdk/signer"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
@@ -242,8 +242,8 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 }
 
 // WasExecuted returns true if the MultiversX batch ID was executed
-func (c *client) WasExecuted(ctx context.Context, mvxBatchID uint64) (bool, error) {
-	return c.WasBatchExecuted(ctx, mvxBatchID)
+func (c *client) WasExecuted(ctx context.Context, batchID uint64) (bool, error) {
+	return c.WasBatchExecuted(ctx, batchID)
 }
 
 // BroadcastSignatureForMessageHash will send the signature for the provided message hash
@@ -275,7 +275,7 @@ func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchI
 
 	transferData := batchProcessor.SuiTransferData{
 		Recipients: batch.Recipients,
-		SuiTokens:  batch.EthTokens,
+		SuiTokens:  batch.PeerTokens,
 		Amounts:    uint64Amounts,
 		Nonces:     uint64Nonces,
 		BatchId:    batchId,
@@ -328,7 +328,7 @@ func (c *client) ExecuteTransfer(
 		Arguments: []interface{}{
 			c.bridgeObjectId,
 			c.safeObjectId,
-			argLists.EthTokens,
+			argLists.PeerTokens,
 			argLists.Recipients,
 			argLists.Amounts,
 			argLists.Nonces,
@@ -431,6 +431,26 @@ func (c *client) TotalBalances(ctx context.Context, token []byte) (*big.Int, err
 func (c *client) WhitelistedTokens(ctx context.Context, token []byte) (bool, error) {
 	tokenAddr := AddressBytesToString(token)
 	return c.IsTokenWhitelisted(ctx, tokenAddr)
+}
+
+// MintBalances returns nil every time
+func (c *client) MintBalances(_ context.Context, _ []byte) (*big.Int, error) {
+	return nil, nil
+}
+
+// BurnBalances returns the burn balance of the given token
+func (c *client) BurnBalances(_ context.Context, _ []byte) (*big.Int, error) {
+	return nil, nil
+}
+
+// MintBurnTokens returns false every time
+func (c *client) MintBurnTokens(_ context.Context, _ []byte) (bool, error) {
+	return false, nil
+}
+
+// NativeTokens returns true every time
+func (c *client) NativeTokens(_ context.Context, _ []byte) (bool, error) {
+	return true, nil
 }
 
 // GetTransactionsStatuses will return the transactions statuses from the batch
