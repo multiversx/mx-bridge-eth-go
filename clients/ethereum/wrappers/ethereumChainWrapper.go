@@ -171,7 +171,7 @@ func (wrapper *ethereumChainWrapper) NativeTokens(ctx context.Context, token com
 	return wrapper.safeContract.NativeTokens(&bind.CallOpts{Context: ctx}, token)
 }
 
-// WhitelistedTokens returns true if the token is a native token
+// WhitelistedTokens returns true if the token is a whitelisted
 func (wrapper *ethereumChainWrapper) WhitelistedTokens(ctx context.Context, token common.Address) (bool, error) {
 	wrapper.AddIntMetric(core.MetricNumEthClientRequests, 1)
 	return wrapper.safeContract.WhitelistedTokens(&bind.CallOpts{Context: ctx}, token)

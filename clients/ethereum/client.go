@@ -100,7 +100,7 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 
 func checkArgs(args ArgsEthereumClient) error {
 	if check.IfNil(args.ClientWrapper) {
-		return errNilClientWrapper
+		return clients.ErrNilClientWrapper
 	}
 	if check.IfNil(args.Erc20ContractsHandler) {
 		return errNilERC20ContractsHandler
@@ -112,7 +112,7 @@ func checkArgs(args ArgsEthereumClient) error {
 		return clients.ErrNilAddressConverter
 	}
 	if check.IfNil(args.Broadcaster) {
-		return errNilBroadcaster
+		return clients.ErrNilBroadcaster
 	}
 	if check.IfNil(args.CryptoHandler) {
 		return clients.ErrNilCryptoHandler
@@ -121,16 +121,16 @@ func checkArgs(args ArgsEthereumClient) error {
 		return clients.ErrNilTokensMapper
 	}
 	if check.IfNil(args.SignatureHolder) {
-		return errNilSignaturesHolder
+		return clients.ErrNilSignaturesHolder
 	}
 	if check.IfNil(args.GasHandler) {
 		return errNilGasHandler
 	}
 	if args.TransferGasLimitBase == 0 {
-		return errInvalidGasLimit
+		return clients.ErrInvalidGasLimit
 	}
 	if args.TransferGasLimitForEach == 0 {
-		return errInvalidGasLimit
+		return clients.ErrInvalidGasLimit
 	}
 	if args.ClientAvailabilityAllowDelta < minClientAvailabilityAllowDelta {
 		return fmt.Errorf("%w for args.AllowedDelta, got: %d, minimum: %d",
@@ -157,7 +157,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 	}
 	if int(batch.DepositsCount) != len(deposits) {
 		return nil, false, fmt.Errorf("%w, batch.DepositsCount: %d, fetched deposits len: %d",
-			errDepositsAndBatchDepositsCountDiffer, batch.DepositsCount, len(deposits))
+			clients.ErrDepositsAndBatchDepositsCountDiffer, batch.DepositsCount, len(deposits))
 	}
 
 	transferBatch := &bridgeCore.TransferBatch{
@@ -359,7 +359,7 @@ func (c *client) ExecuteTransfer(
 
 	signatures := c.signatureHolder.Signatures(msgHash.Bytes())
 	if len(signatures) < quorum {
-		return "", fmt.Errorf("%w num signatures: %d, quorum: %d", errQuorumNotReached, len(signatures), quorum)
+		return "", fmt.Errorf("%w num signatures: %d, quorum: %d", clients.ErrQuorumNotReached, len(signatures), quorum)
 	}
 	if len(signatures) > quorum {
 		c.log.Debug("reducing the size of the signatures set",
@@ -524,7 +524,7 @@ func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([
 		return nil, err
 	}
 	if !isFinal {
-		return nil, errStatusIsNotFinal
+		return nil, clients.ErrStatusIsNotFinal
 	}
 
 	return buff, nil

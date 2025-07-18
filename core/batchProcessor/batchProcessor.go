@@ -1,6 +1,7 @@
 package batchProcessor
 
 import (
+	"github.com/block-vision/sui-go-sdk/models"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -17,7 +18,7 @@ const (
 	ToMultiversX Direction = "ToMultiversX"
 )
 
-// ArgListsBatch is a struct that contains the batch data in a format that is easy to use
+// ArgListsBatch is a struct that contains the batch data in a format that is easy to use for Eth
 type ArgListsBatch struct {
 	EthTokens     []common.Address
 	Recipients    []common.Address
@@ -25,6 +26,25 @@ type ArgListsBatch struct {
 	Amounts       []*big.Int
 	Nonces        []*big.Int
 	Direction     Direction
+}
+
+// ArgListsBatchSui is a struct that contains the batch data in a format that is easy to use for Sui
+type ArgListsBatchSui struct {
+	SuiTokens     [][]byte
+	Recipients    []models.SuiAddress
+	MvxTokenBytes [][]byte
+	Amounts       []uint64
+	Nonces        []uint64
+	Direction     Direction
+}
+
+// SuiTransferData is a struct that contains the transfer data to be signed
+type SuiTransferData struct {
+	Recipients []models.SuiAddress
+	SuiTokens  [][]byte
+	Amounts    []uint64
+	Nonces     []uint64
+	BatchId    uint64
 }
 
 // ExtractListMvxToEth will extract the batch data into a format that is easy to use

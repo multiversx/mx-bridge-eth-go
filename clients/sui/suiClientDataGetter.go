@@ -1,0 +1,593 @@
+package sui
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/block-vision/sui-go-sdk/models"
+	"github.com/block-vision/sui-go-sdk/mystenbcs"
+	"github.com/block-vision/sui-go-sdk/transaction"
+	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
+	chainCore "github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+)
+
+// ArgsSuiClientDataGetter is the arguments DTO used in the NewSuiClientDataGetter constructor
+type ArgsSuiClientDataGetter struct {
+	SafePackageId              string
+	SafeObjectId               string
+	SafeInitialSharedVersion   uint64
+	BridgePackageId            string
+	BridgeObjectId             string
+	BridgeInitialSharedVersion uint64
+	RelayerAddress             string
+	Proxy                      Proxy
+	Log                        chainCore.Logger
+}
+
+type suiClientDataGetter struct {
+	safePackageId              string
+	safeObjectIdBytes          models.SuiAddressBytes
+	safeInitialSharedVersion   uint64
+	bridgePackageId            string
+	bridgeObjectIdBytes        models.SuiAddressBytes
+	bridgeInitialSharedVersion uint64
+	relayerAddress             string
+	proxy                      Proxy
+	log                        chainCore.Logger
+}
+
+// NewSuiClientDataGetter creates a new instance of type suiClientDataGetter
+func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter, error) {
+	if check.IfNil(args.Log) {
+		return nil, clients.ErrNilLogger
+	}
+	if args.Proxy == nil {
+		return nil, errNilProxy
+	}
+	if len(args.RelayerAddress) == 0 {
+		return nil, fmt.Errorf("%w for the RelayerAddress argument", errNilAddress)
+	}
+	if len(args.BridgePackageId) == 0 {
+		return nil, fmt.Errorf("%w for the BridgePackageId argument", errNilPackageId)
+	}
+	if len(args.BridgeObjectId) == 0 {
+		return nil, fmt.Errorf("%w for the BridgeObjectId argument", errNilObjectId)
+	}
+	if args.BridgeInitialSharedVersion == 0 {
+		return nil, errInvalidInitialSharedVersion
+	}
+	if len(args.SafePackageId) == 0 {
+		return nil, fmt.Errorf("%w for the SafePackageId argument", errNilPackageId)
+	}
+	if len(args.SafeObjectId) == 0 {
+		return nil, fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
+	}
+	if args.SafeInitialSharedVersion == 0 {
+		return nil, errInvalidInitialSharedVersion
+	}
+
+	bridgeObjectIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(args.BridgeObjectId))
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert address: %w", err)
+	}
+
+	safeObjectIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(args.SafeObjectId))
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert address: %w", err)
+	}
+
+	return &suiClientDataGetter{
+		safePackageId:              args.SafePackageId,
+		safeObjectIdBytes:          *safeObjectIdBytes,
+		safeInitialSharedVersion:   args.SafeInitialSharedVersion,
+		bridgePackageId:            args.BridgePackageId,
+		bridgeObjectIdBytes:        *bridgeObjectIdBytes,
+		bridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
+		relayerAddress:             args.RelayerAddress,
+		proxy:                      args.Proxy,
+		log:                        args.Log,
+	}, nil
+}
+
+// GetBatchByNonce returns the batch of transactions by providing the batch nonce
+func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNonce uint64) (dtos.Batch, bool, error) {
+	tx := transaction.NewTransaction()
+
+	tx.MoveCall(
+		models.SuiAddress(getter.bridgePackageId),
+		"bridge",
+		"get_batch",
+		nil,
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.safeObjectIdBytes,
+							InitialSharedVersion: getter.safeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+			tx.Pure(batchNonce),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return dtos.Batch{}, false, fmt.Errorf("failed to get batch: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return dtos.Batch{}, false, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var batch dtos.Batch
+	var isFinalBatch bool
+	err = getter.decodeReturnValues(txBlockResp.Results, &batch, &isFinalBatch)
+	if err != nil {
+		return dtos.Batch{}, false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return batch, isFinalBatch, nil
+}
+
+// GetBatchDeposits returns the transactions of a batch by providing the batch nonce
+func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNonce uint64) ([]dtos.Deposit, bool, error) {
+	tx := transaction.NewTransaction()
+
+	tx.MoveCall(
+		models.SuiAddress(getter.bridgePackageId),
+		"bridge",
+		"get_batch_deposits",
+		nil,
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.safeObjectIdBytes,
+							InitialSharedVersion: getter.safeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+			tx.Pure(batchNonce),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get batch deposits: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return nil, false, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var depositsList []dtos.Deposit
+	var areFinalDeposits bool
+	err = getter.decodeReturnValues(txBlockResp.Results, &depositsList, &areFinalDeposits)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return depositsList, areFinalDeposits, nil
+}
+
+// GetRelayers returns all whitelisted sui addresses
+func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.SuiAddress, error) {
+	tx := transaction.NewTransaction()
+
+	tx.MoveCall(
+		models.SuiAddress(getter.bridgePackageId),
+		"bridge",
+		"get_relayers",
+		nil,
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.bridgeObjectIdBytes,
+							InitialSharedVersion: getter.bridgeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get batch deposits: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return nil, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var relayersAddresses []models.SuiAddress
+	err = getter.decodeReturnValues(txBlockResp.Results, &relayersAddresses)
+	if err != nil {
+		return []models.SuiAddress{}, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return relayersAddresses, nil
+}
+
+// WasBatchExecuted returns true if the batch was executed
+func (getter *suiClientDataGetter) WasBatchExecuted(ctx context.Context, batchNonce uint64) (bool, error) {
+	tx := transaction.NewTransaction()
+
+	tx.MoveCall(
+		models.SuiAddress(getter.bridgePackageId),
+		"bridge",
+		"was_batch_executed",
+		nil,
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.bridgeObjectIdBytes,
+							InitialSharedVersion: getter.bridgeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+			tx.Pure(batchNonce),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get batch deposits: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return false, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var wasBatchExecuted bool
+	err = getter.decodeReturnValues(txBlockResp.Results, &wasBatchExecuted)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return wasBatchExecuted, nil
+}
+
+// IsPaused returns true if the bridge contract is paused
+func (getter *suiClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
+	tx := transaction.NewTransaction()
+
+	tx.MoveCall(
+		models.SuiAddress(getter.bridgePackageId),
+		"bridge",
+		"get_pause",
+		nil,
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.bridgeObjectIdBytes,
+							InitialSharedVersion: getter.bridgeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get get_pause: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return false, fmt.Errorf("get_pause transaction failed: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var isPaused bool
+	err = getter.decodeReturnValues(txBlockResp.Results, &isPaused)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return isPaused, nil
+}
+
+// Quorum returns the current set quorum value
+func (getter *suiClientDataGetter) Quorum(ctx context.Context) (uint64, error) {
+	tx := transaction.NewTransaction()
+
+	tx.MoveCall(
+		models.SuiAddress(getter.bridgePackageId),
+		"bridge",
+		"get_quorum",
+		nil,
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.bridgeObjectIdBytes,
+							InitialSharedVersion: getter.bridgeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get quorum: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return 0, fmt.Errorf("get quorum transaction failed: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var quorum uint64
+	err = getter.decodeReturnValues(txBlockResp.Results, &quorum)
+	if err != nil {
+		return 0, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return quorum, nil
+}
+
+// GetStatusesAfterExecution returns the statuses of the last executed transfer
+func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context, batchNonce uint64) ([]byte, bool, error) {
+	tx := transaction.NewTransaction()
+
+	tx.MoveCall(
+		models.SuiAddress(getter.bridgePackageId),
+		"bridge",
+		"get_statuses_after_execution",
+		nil,
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.bridgeObjectIdBytes,
+							InitialSharedVersion: getter.bridgeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+			tx.Pure(batchNonce),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get quorum: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return nil, false, fmt.Errorf("get quorum transaction failed: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var depositStatuses []byte
+	var isFinal bool
+	err = getter.decodeReturnValues(txBlockResp.Results, &depositStatuses, &isFinal)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return depositStatuses, isFinal, nil
+}
+
+// GetTotalBalanceFromSafe returns the total balance of the given token
+func (getter *suiClientDataGetter) GetTotalBalanceFromSafe(ctx context.Context, coinType string) (uint64, error) {
+	tx := transaction.NewTransaction()
+
+	coinParts, err := parseCoinType(coinType)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
+	}
+
+	coinIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(coinParts[0]))
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert coin type %s: %w", coinType, err)
+	}
+
+	tx.MoveCall(
+		models.SuiAddress(getter.safePackageId),
+		"safe",
+		"get_stored_coin_balance",
+		[]transaction.TypeTag{
+			{
+				Struct: &transaction.StructTag{
+					Address: *coinIdBytes,
+					Module:  coinParts[1],
+					Name:    coinParts[2],
+				},
+			},
+		},
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.safeObjectIdBytes,
+							InitialSharedVersion: getter.safeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total balances: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return 0, fmt.Errorf("get total balances transaction failed: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var totalBalance uint64
+	err = getter.decodeReturnValues(txBlockResp.Results, &totalBalance)
+	if err != nil {
+		return 0, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return totalBalance, nil
+}
+
+// IsTokenWhitelisted returns true if the token is whitelisted
+func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinType string) (bool, error) {
+	tx := transaction.NewTransaction()
+
+	coinParts, err := parseCoinType(coinType)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
+	}
+
+	coinIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(coinParts[0]))
+	if err != nil {
+		return false, fmt.Errorf("failed to convert coin type %s: %w", coinType, err)
+	}
+
+	tx.MoveCall(
+		models.SuiAddress(getter.safePackageId),
+		"safe",
+		"is_token_whitelisted",
+		[]transaction.TypeTag{
+			{
+				Struct: &transaction.StructTag{
+					Address: *coinIdBytes,
+					Module:  coinParts[1],
+					Name:    coinParts[2],
+				},
+			},
+		},
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.safeObjectIdBytes,
+							InitialSharedVersion: getter.safeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get total balances: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return false, fmt.Errorf("get total balances transaction failed: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var isTokenWhitelisted bool
+	err = getter.decodeReturnValues(txBlockResp.Results, &isTokenWhitelisted)
+	if err != nil {
+		return false, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return isTokenWhitelisted, nil
+}
+
+// GetLatestCheckpoint returns the latest checkpoint sequence number
+func (getter *suiClientDataGetter) GetLatestCheckpoint(ctx context.Context) (uint64, error) {
+	return getter.proxy.SuiGetLatestCheckpointSequenceNumber(ctx)
+}
+
+// GetBalance returns the sui balance of the given account
+func (getter *suiClientDataGetter) GetBalance(ctx context.Context, account string, coinType string) (models.CoinBalanceResponse, error) {
+	return getter.proxy.SuiXGetBalance(ctx, models.SuiXGetBalanceRequest{
+		Owner:    account,
+		CoinType: coinType,
+	})
+}
+
+func (getter *suiClientDataGetter) decodeReturnValues(data json.RawMessage, out ...interface{}) error {
+	var results []dtos.InspectResult
+	if err := json.Unmarshal(data, &results); err != nil {
+		return fmt.Errorf("decode dev inspect results: %w", err)
+	}
+
+	if len(results) == 0 {
+		return fmt.Errorf("no dev inspect results")
+	}
+
+	returnValues := results[0].ReturnValues
+	if len(returnValues) < len(out) {
+		return fmt.Errorf("expected at least %d return values, got %d", len(out), len(returnValues))
+	}
+
+	for i := range out {
+		if _, err := mystenbcs.Unmarshal(returnValues[i].Bytes, out[i]); err != nil {
+			return fmt.Errorf("unmarshal return value %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+func (getter *suiClientDataGetter) getTxBytes(tx *transaction.Transaction) (string, error) {
+	bcsEncodedMsg, err := tx.Data.V1.Kind.Marshal()
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal transaction data: %w", err)
+	}
+	txBytes := mystenbcs.ToBase64(bcsEncodedMsg)
+
+	return txBytes, nil
+}
+
+func (getter *suiClientDataGetter) sendTxGetBlockResponse(ctx context.Context, tx *transaction.Transaction) (models.SuiTransactionBlockResponse, error) {
+	txBytes, err := getter.getTxBytes(tx)
+	if err != nil {
+		return models.SuiTransactionBlockResponse{}, err
+	}
+
+	return getter.proxy.SuiDevInspectTransactionBlock(ctx, models.SuiDevInspectTransactionBlockRequest{
+		Sender:  getter.relayerAddress,
+		TxBytes: txBytes,
+	})
+}
+
+func parseCoinType(coinType string) ([3]string, error) {
+	parts := strings.Split(coinType, "::")
+
+	if len(parts) != 3 {
+		return [3]string{}, errInvalidCoinType
+	}
+
+	packageAddr := strings.TrimSpace(parts[0])
+	module := strings.TrimSpace(parts[1])
+	structName := strings.TrimSpace(parts[2])
+
+	if packageAddr == "" || module == "" || structName == "" {
+		return [3]string{}, errors.New("coin type parts cannot be empty")
+	}
+
+	return [3]string{packageAddr, module, structName}, nil
+}

@@ -32,6 +32,9 @@ const (
 
 	// Polygon is the string representation of the Polygon chain
 	Polygon Chain = "Polygon"
+
+	// Sui is the string representation of the Sui chain
+	Sui Chain = "Sui"
 )
 
 // ToLower returns the lowercase string of chain
