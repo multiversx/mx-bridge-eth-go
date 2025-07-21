@@ -343,7 +343,7 @@ func setupSuiComponents(args factory.ArgsBridgeCommon) (factory.BridgeComponents
 		StatusStorer:                  args.StatusStorer,
 		Proxy:                         args.Proxy,
 		MultiversXClientStatusHandler: args.MultiversXClientStatusHandler,
-		SuiApi:                        clientWithProxy,
+		SuiProxy:                      clientWithProxy,
 		SuiClientStatusHandler:        suiClientStatusHandler,
 		TimeForBootstrap:              timeForBootstrap,
 		TimeBeforeRepeatJoin:          timeBeforeRepeatJoin,

@@ -52,9 +52,10 @@ type SuiConfig struct {
 	NetworkAddress                     string
 	BridgePackageId                    string
 	BridgeObjectId                     string
+	BridgeObjectInitialSharedVersion   uint64
 	SafePackageId                      string
 	SafeObjectId                       string
-	RelayerCapacityId                  string
+	SafeObjectInitialSharedVersion     uint64
 	PrivateKeyFile                     string
 	GasStation                         GasStationConfig
 	MaxRetriesOnQuorumReached          uint64

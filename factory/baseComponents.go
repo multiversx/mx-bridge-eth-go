@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	ethmultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
+	"github.com/multiversx/mx-bridge-eth-go/bridges"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	balanceValidatorManagement "github.com/multiversx/mx-bridge-eth-go/clients/balanceValidator"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
@@ -58,7 +58,7 @@ type baseBridgeComponents struct {
 	baseLogger                        logger.Logger
 	messenger                         p2p.NetMessenger
 	statusStorer                      core.Storer
-	multiversXClient                  ethmultiversx.MultiversXClient
+	multiversXClient                  bridges.MultiversXClient
 	multiversXMultisigContractAddress sdkCore.AddressHandler
 	multiversXSafeContractAddress     sdkCore.AddressHandler
 	multiversXRelayerPrivateKey       crypto.PrivateKey
@@ -76,7 +76,7 @@ type baseBridgeComponents struct {
 	toMultiversXStepDuration     time.Duration
 	toMultiversXStatusHandler    core.StatusHandler
 	toMultiversXStateMachine     StateMachine
-	toMultiversXSignaturesHolder ethmultiversx.SignaturesHolder
+	toMultiversXSignaturesHolder bridges.SignaturesHolder
 
 	fromMultiversXMachineStates core.MachineStates
 	fromMultiversXStepDuration  time.Duration
@@ -130,7 +130,7 @@ func NewBaseComponents(args ArgsBridgeCommon) (*baseBridgeComponents, error) {
 
 func checkCommonArgs(args ArgsBridgeCommon) error {
 	if check.IfNil(args.Proxy) {
-		return errNilProxy
+		return fmt.Errorf("%w for MultiversX proxy", errNilProxy)
 	}
 	if check.IfNil(args.Messenger) {
 		return errNilMessenger
@@ -282,7 +282,7 @@ func (components *baseBridgeComponents) createAntifloodComponents(antifloodConfi
 	return antiFloodComponents, nil
 }
 
-func (components *baseBridgeComponents) createBalanceValidator(logger logger.Logger, client ethmultiversx.PeerChainClient) (ethmultiversx.BalanceValidator, error) {
+func (components *baseBridgeComponents) createBalanceValidator(logger logger.Logger, client bridges.PeerChainClient) (bridges.BalanceValidator, error) {
 	argsBalanceValidator := balanceValidatorManagement.ArgsBalanceValidator{
 		Log:              logger,
 		MultiversXClient: components.multiversXClient,
@@ -322,8 +322,7 @@ func (components *baseBridgeComponents) startBroadcastJoinRetriesLoop(ctx contex
 	}
 }
 
-// Start will start the bridge
-func (components *baseBridgeComponents) Start() error {
+func (components *baseBridgeComponents) start() error {
 	err := components.messenger.Bootstrap()
 	if err != nil {
 		return err
@@ -351,8 +350,7 @@ func (components *baseBridgeComponents) Start() error {
 	return nil
 }
 
-// Close will close any sub-components started
-func (components *baseBridgeComponents) Close() error {
+func (components *baseBridgeComponents) close() error {
 	components.mutClosableHandlers.RLock()
 	defer components.mutClosableHandlers.RUnlock()
 

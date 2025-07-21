@@ -2,10 +2,7 @@ package ethtomultiversx
 
 const (
 	// GettingPendingBatchFromPeerChain is the step identifier for fetching the pending batch from the PeerChain chain
-	GettingPendingBatchFromPeerChain = "get pending batch from PeerChain"
-
-	// GettingPendingBatchFromSui is the step identifier for fetching the pending batch from the Sui chain
-	GettingPendingBatchFromSui = "get pending batch from Sui"
+	GettingPendingBatchFromPeerChain = "get pending batch from peer chain"
 
 	// ProposingTransferOnMultiversX is the step identifier for proposing transfer on MultiversX
 	ProposingTransferOnMultiversX = "propose transfer"

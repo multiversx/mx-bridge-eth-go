@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	ethmultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX"
-	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/disabled"
-	ethtomultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps/ethToMultiversX"
-	multiversxtoeth "github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/steps/multiversxToEth"
-	"github.com/multiversx/mx-bridge-eth-go/bridges/ethMultiversX/topology"
+	"github.com/multiversx/mx-bridge-eth-go/bridges"
+	"github.com/multiversx/mx-bridge-eth-go/bridges/disabled"
+	"github.com/multiversx/mx-bridge-eth-go/bridges/steps/fromMultiversX"
+	"github.com/multiversx/mx-bridge-eth-go/bridges/steps/toMultiversX"
+	"github.com/multiversx/mx-bridge-eth-go/bridges/topology"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement"
@@ -46,7 +46,7 @@ type ArgsEthereumToMultiversXBridge struct {
 type ethMvxBridgeComponents struct {
 	*baseBridgeComponents
 	evmCompatibleChain     chain.Chain
-	ethClient              ethmultiversx.PeerChainClient
+	ethClient              bridges.PeerChainClient
 	ethereumRelayerAddress common.Address
 	ethereumRoleProvider   PeerChainRoleProvider
 }
@@ -257,7 +257,7 @@ func (components *ethMvxBridgeComponents) createEthereumClient(args ArgsEthereum
 		return err
 	}
 
-	signaturesHolder := ethmultiversx.NewSignatureHolder()
+	signaturesHolder := bridges.NewSignatureHolder()
 	components.toMultiversXSignaturesHolder = signaturesHolder
 	err = components.broadcaster.AddBroadcastClient(signaturesHolder)
 	if err != nil {
@@ -332,21 +332,21 @@ func (components *ethMvxBridgeComponents) createEthereumToMultiversXBridge(args 
 		return err
 	}
 
-	argsBridgeExecutor := ethmultiversx.ArgsBridgeExecutor{
+	argsBridgeExecutor := bridges.ArgsBridgeExecutor{
 		Log:                          log,
 		TopologyProvider:             topologyHandler,
 		MultiversXClient:             components.multiversXClient,
 		PeerChainClient:              components.ethClient,
 		StatusHandler:                components.toMultiversXStatusHandler,
-		TimeForWaitOnEthereum:        timeForTransferExecution,
+		TimeForWaitOnPeerClient:      timeForTransferExecution,
 		SignaturesHolder:             disabled.NewDisabledSignaturesHolder(),
 		BalanceValidator:             balanceValidator,
-		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
+		MaxQuorumRetriesOnPeerClient: args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:     args.Configs.GeneralConfig.MultiversX.MaxRetriesOnWasTransferProposed,
 	}
 
-	bridge, err := ethmultiversx.NewBridgeExecutor(argsBridgeExecutor)
+	bridge, err := bridges.NewBridgeExecutor(argsBridgeExecutor)
 	if err != nil {
 		return err
 	}
@@ -366,7 +366,7 @@ func (components *ethMvxBridgeComponents) createEthereumToMultiversXStateMachine
 	argsStateMachine := stateMachine.ArgsStateMachine{
 		StateMachineName:     ethToMultiversXName,
 		Steps:                components.toMultiversXMachineStates,
-		StartStateIdentifier: ethtomultiversx.GettingPendingBatchFromEthereum,
+		StartStateIdentifier: ethtomultiversx.GettingPendingBatchFromPeerChain,
 		Log:                  log,
 		StatusHandler:        components.toMultiversXStatusHandler,
 	}
@@ -437,21 +437,21 @@ func (components *ethMvxBridgeComponents) createMultiversXToEthereumBridge(args 
 		return err
 	}
 
-	argsBridgeExecutor := ethmultiversx.ArgsBridgeExecutor{
+	argsBridgeExecutor := bridges.ArgsBridgeExecutor{
 		Log:                          log,
 		TopologyProvider:             topologyHandler,
 		MultiversXClient:             components.multiversXClient,
 		PeerChainClient:              components.ethClient,
 		StatusHandler:                components.fromMultiversXStatusHandler,
-		TimeForWaitOnEthereum:        timeForWaitOnEthereum,
+		TimeForWaitOnPeerClient:      timeForWaitOnEthereum,
 		SignaturesHolder:             components.toMultiversXSignaturesHolder,
 		BalanceValidator:             balanceValidator,
-		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
+		MaxQuorumRetriesOnPeerClient: args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:     args.Configs.GeneralConfig.MultiversX.MaxRetriesOnWasTransferProposed,
 	}
 
-	bridge, err := ethmultiversx.NewBridgeExecutor(argsBridgeExecutor)
+	bridge, err := bridges.NewBridgeExecutor(argsBridgeExecutor)
 	if err != nil {
 		return err
 	}
@@ -499,6 +499,16 @@ func (components *ethMvxBridgeComponents) createMultiversXToEthereumStateMachine
 	components.pollingHandlers = append(components.pollingHandlers, pollingHandler)
 
 	return nil
+}
+
+// Start will start the bridge
+func (components *ethMvxBridgeComponents) Start() error {
+	return components.start()
+}
+
+// Close will close the bridge
+func (components *ethMvxBridgeComponents) Close() error {
+	return components.close()
 }
 
 // PeerChainRelayerAddress returns the Ethereum's address associated to this relayer
