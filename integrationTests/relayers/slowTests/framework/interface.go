@@ -61,6 +61,12 @@ type ERC20Contract interface {
 	Approve(opts *bind.TransactOpts, spender common.Address, value *big.Int) (*types.Transaction, error)
 }
 
+// MoveContract defines the operations of a Move contract
+type MoveContract interface {
+	BalanceOf(ctx context.Context, opts *bind.CallOpts, account common.Address) (*big.Int, error)
+	Mint(ctx context.Context, opts *bind.TransactOpts, recipientAddress common.Address, amount *big.Int) (*types.Transaction, error)
+}
+
 // TokensRegistry defines the registry used for the tokens in tests
 type TokensRegistry interface {
 	AddToken(params IssueTokenParams)

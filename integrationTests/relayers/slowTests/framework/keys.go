@@ -32,6 +32,8 @@ type KeysHolder struct {
 	MvxSk      []byte
 	EthSK      *ecdsa.PrivateKey
 	EthAddress common.Address
+	SuiAddress []byte
+	SuiSK      []byte
 }
 
 // KeysStore will hold all the keys used in the test
