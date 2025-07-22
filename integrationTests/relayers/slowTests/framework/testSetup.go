@@ -280,7 +280,7 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(params TestTokenPar
 	setup.mutBalances.Lock()
 	initialBalanceForSafe := setup.esdtBalanceForSafe[params.AbstractTokenIdentifier]
 	expectedReceiver := big.NewInt(0).Set(setup.ethBalanceTestAddress[params.AbstractTokenIdentifier])
-	expectedReceiver.Add(expectedReceiver, params.EthTestAddrExtraBalance)
+	expectedReceiver.Add(expectedReceiver, params.PeerChainTestAddrExtraBalance)
 	setup.mutBalances.Unlock()
 
 	ethTestBalance := setup.EthereumHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)

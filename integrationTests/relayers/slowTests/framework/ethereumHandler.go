@@ -212,9 +212,9 @@ func (handler *EthereumHandler) checkEthTxResult(ctx context.Context, hash commo
 func (handler *EthereumHandler) GetBalance(receiver common.Address, abstractTokenIdentifier string) *big.Int {
 	token := handler.TokensRegistry.GetTokenData(abstractTokenIdentifier)
 	require.NotNil(handler, token)
-	require.NotNil(handler, token.EthErc20Address)
+	require.NotNil(handler, token.PeerChainTokenAddress)
 
-	balance, err := token.EthErc20Contract.BalanceOf(nil, receiver)
+	balance, err := token.PeerChainTokenContract.BalanceOf(nil, receiver)
 	require.NoError(handler, err)
 
 	return balance
@@ -267,8 +267,8 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 		erc20Address,
 		big.NewInt(ethMinAmountAllowedToTransfer),
 		big.NewInt(ethMaxAmountAllowedToTransfer),
-		params.IsMintBurnOnEth,
-		params.IsNativeOnEth,
+		params.IsMintBurnOnPeerChain,
+		params.IsNativeOnPeerChain,
 		zeroValueBigInt,
 		zeroValueBigInt,
 		zeroValueBigInt,
@@ -278,7 +278,7 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 	handler.checkEthTxResult(ctx, tx.Hash())
 
 	if len(params.InitialSupplyValue) > 0 {
-		if params.IsMintBurnOnEth {
+		if params.IsMintBurnOnPeerChain {
 			mintAmount, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
 			require.True(handler, ok)
 
@@ -297,13 +297,13 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 }
 
 func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, params IssueTokenParams) (common.Address, ERC20Contract) {
-	if params.IsMintBurnOnEth {
+	if params.IsMintBurnOnPeerChain {
 		ethMintBurnAddress := handler.DeployUpgradeableContract(
 			ctx,
 			mintBurnERC20ABI,
 			mintBurnERC20Bytecode,
-			params.EthTokenName,
-			params.EthTokenSymbol,
+			params.PeerChainTokenName,
+			params.PeerChainTokenSymbol,
 			params.NumOfDecimalsChainSpecific,
 		)
 
@@ -328,7 +328,7 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 		// mint generic token on the behalf of the depositor
 		auth, _ := bind.NewKeyedTransactorWithChainID(handler.DepositorKeys.EthSK, handler.ChainID)
 
-		mintAmount, ok := big.NewInt(0).SetString(params.ValueToMintOnEth, 10)
+		mintAmount, ok := big.NewInt(0).SetString(params.ValueToMintOnPeerChain, 10)
 		require.True(handler, ok)
 		tx, err := ethMintBurnContract.Mint(auth, handler.DepositorKeys.EthAddress, mintAmount)
 		require.NoError(handler, err)
@@ -339,7 +339,7 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 		require.NoError(handler, err)
 		require.Equal(handler, mintAmount.String(), balance.String())
 
-		if params.IsNativeOnEth {
+		if params.IsNativeOnPeerChain {
 			tx, err = ethMintBurnContract.Mint(auth, handler.TestKeys.EthAddress, mintAmount)
 			require.NoError(handler, err)
 			handler.SimulatedChain.Commit()
@@ -354,8 +354,8 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 		ctx,
 		genericERC20ABI,
 		genericERC20Bytecode,
-		params.EthTokenName,
-		params.EthTokenSymbol,
+		params.PeerChainTokenName,
+		params.PeerChainTokenSymbol,
 		params.NumOfDecimalsChainSpecific,
 	)
 
@@ -363,7 +363,7 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 	require.NoError(handler, err)
 
 	// mint the address that will create the transfers
-	handler.mintTokens(ctx, ethGenericTokenContract, params.ValueToMintOnEth, handler.TestKeys.EthAddress)
+	handler.mintTokens(ctx, ethGenericTokenContract, params.ValueToMintOnPeerChain, handler.TestKeys.EthAddress)
 	if len(params.InitialSupplyValue) > 0 {
 		handler.mintTokens(ctx, ethGenericTokenContract, params.InitialSupplyValue, handler.SafeAddress)
 	}
@@ -420,7 +420,7 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 
 	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, token)
-	require.NotNil(handler, token.EthErc20Contract)
+	require.NotNil(handler, token.PeerChainTokenContract)
 
 	allowanceValue := big.NewInt(0)
 	for _, operation := range params.TestOperations {
@@ -432,7 +432,7 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 	}
 
 	if allowanceValue.Cmp(zeroValueBigInt) > 0 {
-		tx, err := token.EthErc20Contract.Approve(auth, handler.SafeAddress, allowanceValue)
+		tx, err := token.PeerChainTokenContract.Approve(auth, handler.SafeAddress, allowanceValue)
 		require.NoError(handler, err)
 		handler.SimulatedChain.Commit()
 		handler.checkEthTxResult(ctx, tx.Hash())
@@ -448,13 +448,13 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
 			tx, err = handler.SafeContract.DepositWithSCExecution(
 				auth,
-				token.EthErc20Address,
+				token.PeerChainTokenAddress,
 				operation.ValueToTransferToMvx,
 				mvxTestCallerAddress.AddressSlice(),
 				operation.MvxSCCallData,
 			)
 		} else {
-			tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
+			tx, err = handler.SafeContract.Deposit(auth, token.PeerChainTokenAddress, operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
 		}
 
 		require.NoError(handler, err)
@@ -478,11 +478,11 @@ func (handler *EthereumHandler) SendFromEthereumToMultiversX(
 func (handler *EthereumHandler) Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int) {
 	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, token)
-	require.NotNil(handler, token.EthErc20Contract)
+	require.NotNil(handler, token.PeerChainTokenContract)
 
 	// mint erc20 token into eth safe
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.DepositorKeys.EthSK, handler.ChainID)
-	tx, err := token.EthErc20Contract.Mint(auth, handler.SafeAddress, valueToMint)
+	tx, err := token.PeerChainTokenContract.Mint(auth, handler.SafeAddress, valueToMint)
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())

@@ -747,7 +747,7 @@ func (handler *MultiversxHandler) addMappingInMultisig(ctx context.Context, para
 		setCallsGasLimit,
 		addMappingFunction,
 		[]string{
-			hex.EncodeToString(tkData.EthErc20Address.Bytes()),
+			hex.EncodeToString(tkData.PeerChainTokenAddress),
 			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken))})
 	log.Info("add mapping tx executed", "hash", hash, "status", txResult.Status)
 }

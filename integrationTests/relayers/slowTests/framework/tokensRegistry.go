@@ -4,7 +4,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,8 +33,8 @@ func (registry *tokensRegistry) AddToken(params IssueTokenParams) {
 		AbstractTokenIdentifier:     params.AbstractTokenIdentifier,
 		MvxUniversalTokenTicker:     params.MvxUniversalTokenTicker,
 		MvxChainSpecificTokenTicker: params.MvxChainSpecificTokenDisplayName,
-		EthTokenName:                params.EthTokenName,
-		EthTokenSymbol:              params.EthTokenSymbol,
+		PeerChainTokenName:          params.PeerChainTokenName,
+		PeerChainTokenSymbol:        params.PeerChainTokenSymbol,
 	}
 
 	registry.tokens[params.AbstractTokenIdentifier] = newToken
@@ -63,11 +62,11 @@ func (registry *tokensRegistry) RegisterChainSpecificToken(abstractTokenIdentifi
 	data.MvxChainSpecificToken = mvxChainSpecificToken
 }
 
-// RegisterEthAddressAndContract will save under the mutex lock the provided Ethereum address and contract
-func (registry *tokensRegistry) RegisterEthAddressAndContract(
+// RegisterPeerChainAddressAndContract will save under the mutex lock the provided PeerChain address and contract
+func (registry *tokensRegistry) RegisterPeerChainAddressAndContract(
 	abstractTokenIdentifier string,
-	ethErc20Address common.Address,
-	ethErc20Contract ERC20Contract,
+	peerChainAddress []byte,
+	peerChainContract ERC20Contract,
 ) {
 	registry.mut.Lock()
 	defer registry.mut.Unlock()
@@ -75,8 +74,8 @@ func (registry *tokensRegistry) RegisterEthAddressAndContract(
 	data, found := registry.tokens[abstractTokenIdentifier]
 	require.True(registry, found, "abstract token identifier not registered %s", abstractTokenIdentifier)
 
-	data.EthErc20Address = ethErc20Address
-	data.EthErc20Contract = ethErc20Contract
+	data.PeerChainTokenAddress = peerChainAddress
+	data.PeerChainTokenContract = peerChainContract
 }
 
 // GetTokenData will return the token data based on the abstract identifier provided

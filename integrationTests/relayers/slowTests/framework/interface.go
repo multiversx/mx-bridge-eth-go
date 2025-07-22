@@ -63,8 +63,8 @@ type ERC20Contract interface {
 
 // MoveContract defines the operations of a Move contract
 type MoveContract interface {
-	BalanceOf(ctx context.Context, opts *bind.CallOpts, account common.Address) (*big.Int, error)
-	Mint(ctx context.Context, opts *bind.TransactOpts, recipientAddress common.Address, amount *big.Int) (*types.Transaction, error)
+	BalanceOf(ctx context.Context, account []byte) (*big.Int, error)
+	Mint(ctx context.Context, recipientAddress []byte, amount *big.Int) (string, error)
 }
 
 // TokensRegistry defines the registry used for the tokens in tests
@@ -72,7 +72,7 @@ type TokensRegistry interface {
 	AddToken(params IssueTokenParams)
 	RegisterEthAddressAndContract(
 		abstractTokenIdentifier string,
-		ethErc20Address common.Address,
+		PeerChainAddress common.Address,
 		ethErc20Contract ERC20Contract,
 	)
 	GetTokenData(abstractTokenIdentifier string) *TokenData
@@ -84,4 +84,29 @@ type TokensRegistry interface {
 type SCCallerModule interface {
 	GetNumSentTransaction() uint32
 	Close() error
+}
+
+// BlockchainHandler defines the common interface for blockchain handlers
+type BlockchainHandler interface {
+	DeployContracts(ctx context.Context)
+
+	GetBalance(receiver interface{}, abstractTokenIdentifier string) *big.Int
+	IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams)
+	Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int)
+
+	CreateBatchOnPeerChain(ctx context.Context, params CreateBatchParams)
+	SendFromPeerChainToMultiversX(ctx context.Context, params TestTransferParams)
+
+	PauseContractsForTokenChanges(ctx context.Context)
+	UnPauseContractsAfterTokenChanges(ctx context.Context)
+
+	Close() error
+
+	GetChainType() string
+}
+
+type SuiBlockchainClient interface {
+	GetBalance(ctx context.Context, address []byte, coinType string) (*big.Int, error)
+	ExecuteTransaction(ctx context.Context, txBytes []byte) (string, error)
+	GetTransactionBlock(ctx context.Context, digest string) (interface{}, error)
 }

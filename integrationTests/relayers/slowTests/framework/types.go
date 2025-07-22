@@ -2,8 +2,6 @@ package framework
 
 import (
 	"math/big"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // IssueTokenParams the parameters when issuing a new token
@@ -23,12 +21,12 @@ type IssueTokenParams struct {
 	IsNativeOnMvX                    bool
 	HasChainSpecificToken            bool
 
-	// Ethereum
-	EthTokenName     string
-	EthTokenSymbol   string
-	ValueToMintOnEth string
-	IsMintBurnOnEth  bool
-	IsNativeOnEth    bool
+	// Peer chain
+	PeerChainTokenName     string
+	PeerChainTokenSymbol   string
+	ValueToMintOnPeerChain string
+	IsMintBurnOnPeerChain  bool
+	IsNativeOnPeerChain    bool
 }
 
 // InitialSupplyParams represents the initial supply parameters
@@ -48,9 +46,9 @@ type TokenOperations struct {
 // TestTokenParams defines a token collection of operations in one or 2 batches
 type TestTokenParams struct {
 	IssueTokenParams
-	TestOperations          []TokenOperations
-	ESDTSafeExtraBalance    *big.Int
-	EthTestAddrExtraBalance *big.Int
+	TestOperations                []TokenOperations
+	ESDTSafeExtraBalance          *big.Int
+	PeerChainTestAddrExtraBalance *big.Int
 }
 
 // TokenData represents a test token data
@@ -59,11 +57,21 @@ type TokenData struct {
 
 	MvxUniversalTokenTicker     string
 	MvxChainSpecificTokenTicker string
-	EthTokenName                string
-	EthTokenSymbol              string
+	PeerChainTokenName          string
+	PeerChainTokenSymbol        string
 
-	MvxUniversalToken     string
-	MvxChainSpecificToken string
-	EthErc20Address       common.Address
-	EthErc20Contract      ERC20Contract
+	MvxUniversalToken      string
+	MvxChainSpecificToken  string
+	PeerChainTokenAddress  []byte
+	PeerChainTokenContract ERC20Contract // TODO: change this to a common interface
+}
+
+type CreateBatchParams struct {
+	TokensParams []TestTokenParams
+}
+
+type TestTransferParams struct {
+	FromAddress string
+	ToAddress   string
+	TokenParams TestTokenParams
 }
