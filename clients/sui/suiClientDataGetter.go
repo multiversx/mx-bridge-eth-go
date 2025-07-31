@@ -591,3 +591,7 @@ func parseCoinType(coinType string) ([3]string, error) {
 
 	return [3]string{packageAddr, module, structName}, nil
 }
+
+func (getter *suiClientDataGetter) IsInterfaceNil() bool {
+	return getter == nil
+}

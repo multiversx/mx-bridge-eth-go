@@ -14,8 +14,6 @@ type transactionHandler struct {
 }
 
 func (txHandler *transactionHandler) SendTransactionReturnHash(ctx context.Context, moveCallRequest models.MoveCallRequest) (string, error) {
-	moveCallRequest.Signer = txHandler.relayerSigner.Address
-
 	txnMetaData, err := txHandler.proxy.MoveCall(ctx, moveCallRequest)
 	if err != nil {
 		return "", err

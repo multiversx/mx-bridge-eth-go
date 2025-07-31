@@ -3,12 +3,13 @@ package sui
 import (
 	"context"
 	"errors"
+	"strings"
+	"testing"
+
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/signer"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/interactors"
 	"github.com/stretchr/testify/assert"
-	"strings"
-	"testing"
 )
 
 var (
@@ -22,7 +23,7 @@ var (
 func createTransactionHandlerWithMockComponents() *transactionHandler {
 	return &transactionHandler{
 		proxy:         &interactors.SuiProxyStub{},
-		relayerSigner: signer.NewSigner([]byte(seedBytes)),
+		relayerSigner: signer.NewSigner(seedBytes),
 	}
 }
 

@@ -110,7 +110,7 @@ func createMockEthMultiversXBridgeArgs() ArgsEthereumToMultiversXBridge {
 	}
 }
 
-func TestNewEthMultiversXBridgeComponents(t *testing.T) {
+func TestNewEthMvxBridgeComponents(t *testing.T) {
 	t.Parallel()
 
 	t.Run("nil Proxy", func(t *testing.T) {
@@ -118,8 +118,8 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.Proxy = nil
 
-		components, err := NewEthMultiversXBridgeComponents(args)
-		assert.Equal(t, errNilProxy, err)
+		components, err := NewEthMvxBridgeComponents(args)
+		assert.True(t, errors.Is(err, errNilProxy))
 		assert.Nil(t, components)
 	})
 	t.Run("nil Messenger", func(t *testing.T) {
@@ -127,7 +127,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.Messenger = nil
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.Equal(t, errNilMessenger, err)
 		assert.Nil(t, components)
 	})
@@ -136,7 +136,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.ClientWrapper = nil
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.Equal(t, errNilEthClient, err)
 		assert.Nil(t, components)
 	})
@@ -145,7 +145,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.StatusStorer = nil
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.Equal(t, errNilStatusStorer, err)
 		assert.Nil(t, components)
 	})
@@ -154,7 +154,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.Erc20ContractsHolder = nil
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.Equal(t, errNilErc20ContractsHolder, err)
 		assert.Nil(t, components)
 	})
@@ -163,7 +163,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.Configs.GeneralConfig.MultiversX.PrivateKeyFile = ""
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.NotNil(t, err)
 		assert.Nil(t, components)
 	})
@@ -172,7 +172,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.Configs.GeneralConfig.MultiversX.MultisigContractAddress = ""
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.NotNil(t, err)
 		assert.Nil(t, components)
 	})
@@ -181,7 +181,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.Configs.GeneralConfig.MultiversX.GasMap = config.MultiversXGasMapConfig{}
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.NotNil(t, err)
 		assert.Nil(t, components)
 	})
@@ -190,7 +190,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.Configs.GeneralConfig.Relayer.RoleProvider.PollingIntervalInMillis = 0
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.NotNil(t, err)
 		assert.Nil(t, components)
 	})
@@ -199,7 +199,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.Configs.GeneralConfig.Eth = config.EthereumConfig{}
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.NotNil(t, err)
 		assert.Nil(t, components)
 	})
@@ -208,7 +208,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.Configs.GeneralConfig.Eth.GasStation.GasPriceSelector = core.WebServerOffString
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.NotNil(t, err)
 		assert.Nil(t, components)
 	})
@@ -217,9 +217,9 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.Configs.GeneralConfig.StateMachine = make(map[string]config.ConfigStateMachine)
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.True(t, errors.Is(err, errMissingConfig))
-		assert.True(t, strings.Contains(err.Error(), args.Configs.GeneralConfig.Eth.Chain.EvmCompatibleChainToMultiversXName()))
+		assert.True(t, strings.Contains(err.Error(), args.Configs.GeneralConfig.Eth.Chain.PeerChainToMultiversXName()))
 		assert.Nil(t, components)
 	})
 	t.Run("invalid time for bootstrap", func(t *testing.T) {
@@ -227,7 +227,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.TimeForBootstrap = minTimeForBootstrap - 1
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.True(t, errors.Is(err, errInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "for TimeForBootstrap"))
 		assert.Nil(t, components)
@@ -237,7 +237,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.TimeBeforeRepeatJoin = minTimeBeforeRepeatJoin - 1
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.True(t, errors.Is(err, errInvalidValue))
 		assert.True(t, strings.Contains(err.Error(), "for TimeBeforeRepeatJoin"))
 		assert.Nil(t, components)
@@ -247,7 +247,7 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		args := createMockEthMultiversXBridgeArgs()
 		args.MetricsHolder = nil
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		assert.Equal(t, errNilMetricsHolder, err)
 		assert.Nil(t, components)
 	})
@@ -255,12 +255,12 @@ func TestNewEthMultiversXBridgeComponents(t *testing.T) {
 		t.Parallel()
 		args := createMockEthMultiversXBridgeArgs()
 
-		components, err := NewEthMultiversXBridgeComponents(args)
+		components, err := NewEthMvxBridgeComponents(args)
 		require.Nil(t, err)
 		require.NotNil(t, components)
 		require.Equal(t, 7, len(components.closableHandlers))
-		require.False(t, check.IfNil(components.ethToMultiversXStatusHandler))
-		require.False(t, check.IfNil(components.multiversXToEthStatusHandler))
+		require.False(t, check.IfNil(components.toMultiversXStatusHandler))
+		require.False(t, check.IfNil(components.fromMultiversXStatusHandler))
 	})
 }
 
@@ -268,7 +268,7 @@ func TestEthMultiversXBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
 	t.Parallel()
 
 	args := createMockEthMultiversXBridgeArgs()
-	components, err := NewEthMultiversXBridgeComponents(args)
+	components, err := NewEthMvxBridgeComponents(args)
 	assert.Nil(t, err)
 
 	err = components.Start()
@@ -294,7 +294,7 @@ func TestEthMultiversXBridgeComponents_Start(t *testing.T) {
 				return expectedErr
 			},
 		}
-		components, _ := NewEthMultiversXBridgeComponents(args)
+		components, _ := NewEthMvxBridgeComponents(args)
 
 		err := components.Start()
 		assert.Equal(t, expectedErr, err)
@@ -304,7 +304,7 @@ func TestEthMultiversXBridgeComponents_Start(t *testing.T) {
 
 		expectedErr := errors.New("expected error")
 		args := createMockEthMultiversXBridgeArgs()
-		components, _ := NewEthMultiversXBridgeComponents(args)
+		components, _ := NewEthMvxBridgeComponents(args)
 		components.broadcaster = &testsCommon.BroadcasterStub{
 			RegisterOnTopicsCalled: func() error {
 				return expectedErr
@@ -329,8 +329,10 @@ func TestEthMultiversXBridgeComponents_Close(t *testing.T) {
 			}
 		}()
 
-		components := &ethMultiversXBridgeComponents{
-			baseLogger: logger.GetOrCreate("test"),
+		components := &ethMvxBridgeComponents{
+			baseBridgeComponents: &baseBridgeComponents{
+				baseLogger: logger.GetOrCreate("test"),
+			},
 		}
 		components.addClosableComponent(nil)
 
@@ -340,8 +342,10 @@ func TestEthMultiversXBridgeComponents_Close(t *testing.T) {
 	t.Run("one component errors, should return error", func(t *testing.T) {
 		t.Parallel()
 
-		components := &ethMultiversXBridgeComponents{
-			baseLogger: logger.GetOrCreate("test"),
+		components := &ethMvxBridgeComponents{
+			baseBridgeComponents: &baseBridgeComponents{
+				baseLogger: logger.GetOrCreate("test"),
+			},
 		}
 
 		expectedErr := errors.New("expected error")
@@ -380,7 +384,7 @@ func TestEthMultiversXBridgeComponents_startBroadcastJoinRetriesLoop(t *testing.
 
 		numberOfCalls := uint32(0)
 		args := createMockEthMultiversXBridgeArgs()
-		components, _ := NewEthMultiversXBridgeComponents(args)
+		components, _ := NewEthMvxBridgeComponents(args)
 
 		components.broadcaster = &testsCommon.BroadcasterStub{
 			BroadcastJoinTopicCalled: func() {
@@ -401,7 +405,7 @@ func TestEthMultiversXBridgeComponents_startBroadcastJoinRetriesLoop(t *testing.
 
 		numberOfCalls := uint32(0)
 		args := createMockEthMultiversXBridgeArgs()
-		components, _ := NewEthMultiversXBridgeComponents(args)
+		components, _ := NewEthMvxBridgeComponents(args)
 		components.timeBeforeRepeatJoin = time.Second * 3
 		components.broadcaster = &testsCommon.BroadcasterStub{
 			BroadcastJoinTopicCalled: func() {
@@ -419,13 +423,11 @@ func TestEthMultiversXBridgeComponents_startBroadcastJoinRetriesLoop(t *testing.
 	})
 }
 
-func TestEthMultiversXBridgeComponents_RelayerAddresses(t *testing.T) {
+func TestEthMultiversXBridgeComponents_EthRelayerAddresses(t *testing.T) {
 	t.Parallel()
 
 	args := createMockEthMultiversXBridgeArgs()
-	components, _ := NewEthMultiversXBridgeComponents(args)
+	components, _ := NewEthMvxBridgeComponents(args)
 
-	bech32Address, _ := components.MultiversXRelayerAddress().AddressAsBech32String()
-	assert.Equal(t, "erd1r69gk66fmedhhcg24g2c5kn2f2a5k4kvpr6jfw67dn2lyydd8cfswy6ede", bech32Address)
-	assert.Equal(t, "0x3FE464Ac5aa562F7948322F92020F2b668D543d8", components.EthereumRelayerAddress().String())
+	assert.Equal(t, "0x3FE464Ac5aa562F7948322F92020F2b668D543d8", components.PeerChainRelayerAddress())
 }
