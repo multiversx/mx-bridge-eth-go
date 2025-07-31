@@ -62,11 +62,11 @@ func (registry *tokensRegistry) RegisterChainSpecificToken(abstractTokenIdentifi
 	data.MvxChainSpecificToken = mvxChainSpecificToken
 }
 
-// RegisterPeerChainAddressAndContract will save under the mutex lock the provided PeerChain address and contract
-func (registry *tokensRegistry) RegisterPeerChainAddressAndContract(
+// RegisterPeerChainAddressAndInfo will save under the mutex lock the provided peer chain token address and its info
+func (registry *tokensRegistry) RegisterPeerChainAddressAndInfo(
 	abstractTokenIdentifier string,
 	peerChainAddress []byte,
-	peerChainContract ERC20Contract,
+	chainTokenInfo interface{},
 ) {
 	registry.mut.Lock()
 	defer registry.mut.Unlock()
@@ -75,7 +75,7 @@ func (registry *tokensRegistry) RegisterPeerChainAddressAndContract(
 	require.True(registry, found, "abstract token identifier not registered %s", abstractTokenIdentifier)
 
 	data.PeerChainTokenAddress = peerChainAddress
-	data.PeerChainTokenContract = peerChainContract
+	data.PeerChainTokenInfo = chainTokenInfo
 }
 
 // GetTokenData will return the token data based on the abstract identifier provided

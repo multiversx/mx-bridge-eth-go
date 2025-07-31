@@ -214,7 +214,8 @@ func (handler *EthereumHandler) GetBalance(receiver common.Address, abstractToke
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenAddress)
 
-	balance, err := token.PeerChainTokenContract.BalanceOf(nil, receiver)
+	ethTokenInfo := token.PeerChainTokenInfo.(EthTokenInfo)
+	balance, err := ethTokenInfo.Contract.BalanceOf(nil, receiver)
 	require.NoError(handler, err)
 
 	return balance
@@ -257,8 +258,10 @@ func (handler *EthereumHandler) PauseContractsForTokenChanges(ctx context.Contex
 // IssueAndWhitelistToken will issue and whitelist the token on Ethereum
 func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams) {
 	erc20Address, erc20ContractInstance := handler.deployTestERC20Contract(ctx, params)
-
-	handler.TokensRegistry.RegisterEthAddressAndContract(params.AbstractTokenIdentifier, erc20Address, erc20ContractInstance)
+	ethTokenInfo := &EthTokenInfo{
+		Contract: erc20ContractInstance,
+	}
+	handler.TokensRegistry.RegisterPeerChainAddressAndInfo(params.AbstractTokenIdentifier, erc20Address.Bytes(), ethTokenInfo)
 
 	// whitelist eth token
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
@@ -420,7 +423,7 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 
 	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, token)
-	require.NotNil(handler, token.PeerChainTokenContract)
+	require.NotNil(handler, token.PeerChainTokenInfo)
 
 	allowanceValue := big.NewInt(0)
 	for _, operation := range params.TestOperations {
@@ -432,7 +435,8 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 	}
 
 	if allowanceValue.Cmp(zeroValueBigInt) > 0 {
-		tx, err := token.PeerChainTokenContract.Approve(auth, handler.SafeAddress, allowanceValue)
+		ethTokenInfo := token.PeerChainTokenInfo.(EthTokenInfo)
+		tx, err := ethTokenInfo.Contract.Approve(auth, handler.SafeAddress, allowanceValue)
 		require.NoError(handler, err)
 		handler.SimulatedChain.Commit()
 		handler.checkEthTxResult(ctx, tx.Hash())
@@ -448,13 +452,13 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
 			tx, err = handler.SafeContract.DepositWithSCExecution(
 				auth,
-				token.PeerChainTokenAddress,
+				common.BytesToAddress(token.PeerChainTokenAddress),
 				operation.ValueToTransferToMvx,
 				mvxTestCallerAddress.AddressSlice(),
 				operation.MvxSCCallData,
 			)
 		} else {
-			tx, err = handler.SafeContract.Deposit(auth, token.PeerChainTokenAddress, operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
+			tx, err = handler.SafeContract.Deposit(auth, common.BytesToAddress(token.PeerChainTokenAddress), operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
 		}
 
 		require.NoError(handler, err)
@@ -478,11 +482,12 @@ func (handler *EthereumHandler) SendFromEthereumToMultiversX(
 func (handler *EthereumHandler) Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int) {
 	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, token)
-	require.NotNil(handler, token.PeerChainTokenContract)
+	require.NotNil(handler, token.PeerChainTokenInfo)
 
 	// mint erc20 token into eth safe
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.DepositorKeys.EthSK, handler.ChainID)
-	tx, err := token.PeerChainTokenContract.Mint(auth, handler.SafeAddress, valueToMint)
+	ethTokenInfo := token.PeerChainTokenInfo.(EthTokenInfo)
+	tx, err := ethTokenInfo.Contract.Mint(auth, handler.SafeAddress, valueToMint)
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())

@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	relayerETHKeyPathFormat = "../testdata/ethereum%d.sk"
+	relayerETHKeyPathFormat  = "../testdata/ethereum%d.sk"
+	relayerSuiSeedPathFormat = "../testdata/sui%d.seed"
 )
 
 // BridgeComponents holds and manages the relayers components

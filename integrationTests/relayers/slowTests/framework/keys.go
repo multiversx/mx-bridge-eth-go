@@ -3,6 +3,7 @@ package framework
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/pem"
@@ -11,6 +12,7 @@ import (
 	"path"
 	"testing"
 
+	suiSigner "github.com/block-vision/sui-go-sdk/signer"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	mxCrypto "github.com/multiversx/mx-chain-crypto-go"
@@ -33,7 +35,14 @@ type KeysHolder struct {
 	EthSK      *ecdsa.PrivateKey
 	EthAddress common.Address
 	SuiAddress []byte
-	SuiSK      []byte
+	SuiSK      ed25519.PrivateKey
+}
+
+// KeygenOptions holds the options for generating keys
+type KeygenOptions struct {
+	EthSKHex       string
+	SuiSeedHex     string
+	ProjectedShard byte
 }
 
 // KeysStore will hold all the keys used in the test
@@ -52,6 +61,10 @@ const (
 	ethOwnerSK     = "b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291"
 	ethDepositorSK = "9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1"
 	ethTestSk      = "dafea2c94bfe5d25f1a508808c2bc2c2e6c6f18b6b010fc841d8eb80755ba27a"
+
+	suiSeedOwner     = "b40c3e32400a76c65694abc4f34c6178ef323b8c1a3596056eb2ecccb93e5b64"
+	suiSeedDepositor = "5d60a5705056d8fdac446b5e66aaff58748130b3167e2d3342ce275c2ed4d8fa"
+	suiSeedTest      = "f1fbd7a824cb2c2c5ecfb473c42b82ca8f299f80a0fdfa26b0e82e6c6ed358b1"
 )
 
 // NewKeysStore will create a KeysStore instance and generate all keys
@@ -70,13 +83,32 @@ func NewKeysStore(
 
 	keysStore.generateRelayersKeys(numRelayers)
 	keysStore.OraclesKeys = keysStore.generateKeys(numOracles, "generated oracle", projectedShardForBridgeSetup)
-	keysStore.SCExecutorKeys = keysStore.generateKey("", projectedShardForBridgeSetup)
-	keysStore.OwnerKeys = keysStore.generateKey(ethOwnerSK, projectedShardForBridgeSetup)
+
+	keysStore.SCExecutorKeys = keysStore.generateKey(KeygenOptions{
+		EthSKHex:       "",
+		SuiSeedHex:     "",
+		ProjectedShard: projectedShardForBridgeSetup,
+	})
+	keysStore.OwnerKeys = keysStore.generateKey(KeygenOptions{
+		EthSKHex:       ethOwnerSK,
+		SuiSeedHex:     suiSeedOwner,
+		ProjectedShard: projectedShardForBridgeSetup,
+	})
 	log.Info("generated owner",
 		"MvX address", keysStore.OwnerKeys.MvxAddress.Bech32(),
-		"Eth address", keysStore.OwnerKeys.EthAddress.String())
-	keysStore.DepositorKeys = keysStore.generateKey(ethDepositorSK, projectedShardForDepositor)
-	keysStore.TestKeys = keysStore.generateKey(ethTestSk, projectedShardForTestKeys)
+		"Eth address", keysStore.OwnerKeys.EthAddress.String(),
+		"Sui address", keysStore.OwnerKeys.SuiAddress,
+	)
+	keysStore.DepositorKeys = keysStore.generateKey(KeygenOptions{
+		EthSKHex:       ethDepositorSK,
+		SuiSeedHex:     suiSeedDepositor,
+		ProjectedShard: projectedShardForDepositor,
+	})
+	keysStore.TestKeys = keysStore.generateKey(KeygenOptions{
+		EthSKHex:       ethTestSk,
+		SuiSeedHex:     suiSeedTest,
+		ProjectedShard: projectedShardForTestKeys,
+	})
 
 	filename := path.Join(keysStore.workingDir, SCCallerFilename)
 	SaveMvxKey(keysStore, filename, keysStore.SCExecutorKeys)
@@ -89,10 +121,19 @@ func (keyStore *KeysStore) generateRelayersKeys(numKeys int) {
 		relayerETHSKBytes, err := os.ReadFile(fmt.Sprintf(relayerETHKeyPathFormat, i))
 		require.Nil(keyStore, err)
 
-		relayerKeys := keyStore.generateKey(string(relayerETHSKBytes), projectedShardForBridgeSetup)
+		suiRelayerSeedBytes, err := os.ReadFile(fmt.Sprintf(relayerSuiSeedPathFormat, i))
+		require.Nil(keyStore, err)
+
+		relayerKeys := keyStore.generateKey(KeygenOptions{
+			EthSKHex:       string(relayerETHSKBytes),
+			SuiSeedHex:     string(suiRelayerSeedBytes),
+			ProjectedShard: projectedShardForBridgeSetup,
+		})
 		log.Info("generated relayer", "index", i,
 			"MvX address", relayerKeys.MvxAddress.Bech32(),
-			"Eth address", relayerKeys.EthAddress.String())
+			"Eth address", relayerKeys.EthAddress.String(),
+			"Sui address", relayerKeys.SuiAddress,
+		)
 
 		keyStore.RelayersKeys = append(keyStore.RelayersKeys, relayerKeys)
 
@@ -109,10 +150,19 @@ func (keyStore *KeysStore) generateKeys(numKeys int, message string, projectedSh
 		ethPrivateKeyBytes := make([]byte, 32)
 		_, _ = rand.Read(ethPrivateKeyBytes)
 
-		key := keyStore.generateKey(hex.EncodeToString(ethPrivateKeyBytes), projectedShard)
+		suiSeedBytes := make([]byte, 32)
+		_, _ = rand.Read(suiSeedBytes)
+
+		key := keyStore.generateKey(KeygenOptions{
+			EthSKHex:       hex.EncodeToString(ethPrivateKeyBytes),
+			SuiSeedHex:     hex.EncodeToString(suiSeedBytes),
+			ProjectedShard: projectedShard,
+		})
 		log.Info(message, "index", i,
 			"MvX address", key.MvxAddress.Bech32(),
-			"Eth address", key.EthAddress.String())
+			"Eth address", key.EthAddress.String(),
+			"Sui address", key.SuiAddress,
+		)
 
 		keys = append(keys, key)
 	}
@@ -120,19 +170,25 @@ func (keyStore *KeysStore) generateKeys(numKeys int, message string, projectedSh
 	return keys
 }
 
-func (keyStore *KeysStore) generateKey(ethSkHex string, projectedShard byte) KeysHolder {
+func (keyStore *KeysStore) generateKey(opts KeygenOptions) KeysHolder {
 	var err error
-
-	keys := GenerateMvxPrivatePublicKey(keyStore, projectedShard)
-	if len(ethSkHex) == 0 {
-		// eth keys not required
+	keys := GenerateMvxPrivatePublicKey(keyStore, opts.ProjectedShard)
+	if len(opts.EthSKHex) == 0 && len(opts.SuiSeedHex) == 0 {
 		return keys
 	}
 
-	keys.EthSK, err = crypto.HexToECDSA(ethSkHex)
-	require.Nil(keyStore, err)
+	if len(opts.EthSKHex) > 0 {
+		keys.EthSK, err = crypto.HexToECDSA(opts.EthSKHex)
+		require.Nil(keyStore, err)
+		keys.EthAddress = crypto.PubkeyToAddress(keys.EthSK.PublicKey)
+	}
 
-	keys.EthAddress = crypto.PubkeyToAddress(keys.EthSK.PublicKey)
+	if len(opts.SuiSeedHex) > 0 {
+		suiSeedBytes, _ := hex.DecodeString(opts.SuiSeedHex)
+		relayer := suiSigner.NewSigner(suiSeedBytes)
+		keys.SuiSK = relayer.PriKey
+		keys.SuiAddress = []byte(relayer.Address)
+	}
 
 	return keys
 }
@@ -157,6 +213,22 @@ func (keyStore *KeysStore) WalletsToFundOnEthereum() []common.Address {
 		}
 
 		walletsToFund = append(walletsToFund, key.EthAddress)
+	}
+
+	return walletsToFund
+}
+
+// WalletsToFundOnSui will return the wallets to fund on Sui
+func (keyStore *KeysStore) WalletsToFundOnSui() [][]byte {
+	allKeys := keyStore.getAllKeys()
+	walletsToFund := make([][]byte, 0, len(allKeys))
+
+	for _, key := range allKeys {
+		if len(key.MvxSk) == 0 {
+			continue
+		}
+
+		walletsToFund = append(walletsToFund, key.SuiAddress)
 	}
 
 	return walletsToFund
