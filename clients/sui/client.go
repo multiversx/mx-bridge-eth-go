@@ -397,21 +397,19 @@ func (c *client) CheckRequiredBalance(ctx context.Context, coinType []byte, valu
 		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeObjectId, coinAddr)
 	}
 
-	totalExistingBalanceStr := existingBalance.TotalBalance
-	totalExistingBalance := new(big.Int)
-	_, ok := totalExistingBalance.SetString(totalExistingBalanceStr, 10)
+	totalExistingBalance, ok := big.NewInt(0).SetString(existingBalance.TotalBalance, 10)
 	if !ok {
-		return fmt.Errorf("invalid balance string: %s", totalExistingBalanceStr)
+		return fmt.Errorf("invalid balance string: %s", totalExistingBalance.String())
 	}
 	if value.Cmp(totalExistingBalance) > 0 {
 		return fmt.Errorf("%w, existing: %s, required: %s for coin %s and owner %s",
-			errInsufficientCoinBalance, totalExistingBalanceStr, value.String(), coinAddr, c.safeObjectId)
+			errInsufficientCoinBalance, totalExistingBalance.String(), value.String(), coinAddr, c.safeObjectId)
 	}
 
 	c.log.Debug("checked coin balance",
 		"Coin type", coinAddr,
 		"owner address", c.safeObjectId,
-		"existing balance", totalExistingBalanceStr,
+		"existing balance", totalExistingBalance.String(),
 		"needed", value.String())
 
 	return nil
