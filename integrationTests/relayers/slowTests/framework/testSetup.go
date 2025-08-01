@@ -102,19 +102,27 @@ func (setup *TestSetup) createChainSimulatorWrapper() {
 func (setup *TestSetup) StartRelayersAndScModule() {
 	log.Info(fmt.Sprintf(LogStepMarker, "starting relayers & sc execution module"))
 
-	// start relayers
-	setup.Bridge = NewBridgeComponents(
-		setup.TB,
-		setup.WorkingDir,
-		setup.ChainSimulator,
-		setup.EthereumHandler.EthChainWrapper,
-		setup.EthereumHandler.Erc20ContractsHolder,
-		setup.EthereumHandler.SimulatedChain,
-		NumRelayers,
-		setup.EthereumHandler.SafeAddress.Hex(),
-		setup.MultiversxHandler.SafeAddress,
-		setup.MultiversxHandler.MultisigAddress,
-	)
+	if ethHandler, ok := setup.PeerChainHandler.(*EthereumHandler); ok {
+		// start relayers for Ethereum
+		setup.Bridge = NewEthereumBridgeComponents(
+			setup.TB,
+			setup.WorkingDir,
+			setup.ChainSimulator,
+			ethHandler.EthChainWrapper,
+			ethHandler.Erc20ContractsHolder,
+			ethHandler.SimulatedChain,
+			NumRelayers,
+			ethHandler.SafeAddress.Hex(),
+			setup.MultiversxHandler.SafeAddress,
+			setup.MultiversxHandler.MultisigAddress,
+		)
+	} else if suiHandler, ok := setup.PeerChainHandler.(*SuiHandler); ok {
+		// start relayers for Sui
+
+	} else {
+		// Fallback or error case
+		require.Fail(setup, "Unsupported peer chain handler type")
+	}
 
 	setup.startScCallerModule()
 }
@@ -158,17 +166,17 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 
 	require.Greater(setup, len(tokens), 0)
 
-	setup.EthereumHandler.PauseContractsForTokenChanges(setup.Ctx)
+	setup.PeerChainHandler.PauseContractsForTokenChanges(setup.Ctx)
 	setup.MultiversxHandler.PauseContractsForTokenChanges(setup.Ctx)
 
 	for _, token := range tokens {
 		setup.processNumScCallsOperations(token)
 		setup.AddToken(token.IssueTokenParams)
-		setup.EthereumHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
+		setup.PeerChainHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 		setup.MultiversxHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 
 		esdtBalanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, token.AbstractTokenIdentifier)
-		ethBalanceForTestAddr := setup.EthereumHandler.GetBalance(setup.TestKeys.EthAddress, token.AbstractTokenIdentifier)
+		ethBalanceForTestAddr := setup.PeerChainHandler.GetBalance(setup.TestKeys.EthAddress, token.AbstractTokenIdentifier)
 
 		setup.mutBalances.Lock()
 		setup.esdtBalanceForSafe[token.AbstractTokenIdentifier] = esdtBalanceForSafe
@@ -179,7 +187,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		log.Info("recorded the ETH balance for test address", "token", token.AbstractTokenIdentifier, "balance", ethBalanceForTestAddr.String())
 	}
 
-	setup.EthereumHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
+	setup.PeerChainHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
 	setup.MultiversxHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
 
 	for _, token := range tokens {
@@ -271,7 +279,7 @@ func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params Test
 		}
 	}
 
-	receiverBalance := setup.EthereumHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
+	receiverBalance := setup.PeerChainHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
 	return receiverBalance.String() == expectedValueOnReceiver.String()
 }
 
@@ -292,7 +300,7 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(params TestTokenPar
 	expectedReceiver.Add(expectedReceiver, params.PeerChainTestAddrExtraBalance)
 	setup.mutBalances.Unlock()
 
-	ethTestBalance := setup.EthereumHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
+	ethTestBalance := setup.PeerChainHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
 	isTransferDoneFromMultiversX := ethTestBalance.String() == expectedReceiver.String()
 
 	expectedEsdtSafe := big.NewInt(0).Add(initialBalanceForSafe, params.ESDTSafeExtraBalance)
@@ -315,7 +323,7 @@ func (setup *TestSetup) createBatchOnMultiversXForToken(params TestTokenParams) 
 
 	setup.transferTokensToTestKey(params)
 	valueToMintOnEthereum := setup.sendFromMultiversxToEthereumForToken(params)
-	setup.EthereumHandler.Mint(setup.Ctx, params, valueToMintOnEthereum)
+	setup.PeerChainHandler.Mint(setup.Ctx, params, valueToMintOnEthereum)
 }
 
 func (setup *TestSetup) transferTokensToTestKey(params TestTokenParams) {
@@ -387,8 +395,18 @@ func (setup *TestSetup) Close() {
 	log.Info(fmt.Sprintf(LogStepMarker, "closing relayers & sc execution module"))
 
 	setup.Bridge.CloseRelayers()
-	require.NoError(setup, setup.EthereumHandler.Close())
+	require.NoError(setup, setup.PeerChainHandler.Close())
 
 	setup.ctxCancel()
 	_ = setup.ScCallerModuleInstance.Close()
+}
+
+// NewTestSetupWithEthereum creates a new e2e test setup with Ethereum as peer chain
+func NewTestSetupWithEthereum(tb testing.TB) *TestSetup {
+	return NewTestSetup(tb, ChainTypeEthereum)
+}
+
+// NewTestSetupWithSui creates a new e2e test setup with Sui as peer chain
+func NewTestSetupWithSui(tb testing.TB) *TestSetup {
+	return NewTestSetup(tb, ChainTypeSui)
 }
