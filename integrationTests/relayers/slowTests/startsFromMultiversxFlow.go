@@ -1,5 +1,3 @@
-//go:build slow
-
 package slowTests
 
 import (
@@ -30,7 +28,7 @@ func (flow *startsFromMultiversXFlow) process() (finished bool) {
 		flow.mvxToEthDone = true
 		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX->Ethereum transfer finished, now sending back to MultiversX..."))
 
-		flow.setup.EthereumHandler.SendFromEthereumToMultiversX(flow.setup.Ctx, flow.setup.MultiversxHandler.TestCallerAddress, flow.tokens...)
+		flow.setup.PeerChainHandler.SendFromPeerChainToMultiversX(flow.setup.Ctx, flow.setup.MultiversxHandler.TestCallerAddress, flow.tokens...)
 	}
 	if !flow.mvxToEthDone {
 		// return here, no reason to check downwards

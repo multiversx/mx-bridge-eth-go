@@ -27,6 +27,7 @@ type IssueTokenParams struct {
 	ValueToMintOnPeerChain string
 	IsMintBurnOnPeerChain  bool
 	IsNativeOnPeerChain    bool
+	ChainType              ChainType
 }
 
 // InitialSupplyParams represents the initial supply parameters
@@ -75,3 +76,10 @@ type SuiTokenInfo struct {
 	TreasuryId     string
 	CoinMetadataId string
 }
+
+type ChainType string
+
+const (
+	ChainTypeEthereum ChainType = "ethereum"
+	ChainTypeSui      ChainType = "sui"
+)

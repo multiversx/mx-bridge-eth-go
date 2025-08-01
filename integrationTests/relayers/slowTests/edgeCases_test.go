@@ -50,7 +50,7 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 		},
 	}
 	usdcToken.ESDTSafeExtraBalance = big.NewInt(50)
-	usdcToken.EthTestAddrExtraBalance = big.NewInt(-5000 - 5000 + 200 - 50)
+	usdcToken.PeerChainTestAddrExtraBalance = big.NewInt(-5000 - 5000 + 200 - 50)
 
 	_ = testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(
 		t,
@@ -70,7 +70,7 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 
 		setup.IssueAndConfigureTokens(tokens...)
 		setup.MultiversxHandler.CheckForZeroBalanceOnReceivers(setup.Ctx, tokens...)
-		setup.EthereumHandler.CreateBatchOnEthereum(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
+		setup.PeerChainHandler.CreateBatchOnPeerChain(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, startsFromEthFlow.tokens...)
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
@@ -80,16 +80,19 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 			return true
 		}
 
-		setup.EthereumHandler.SimulatedChain.Commit()
+		setup.PeerChainHandler.SimulatedChain.Commit()
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
 
 		return false
 	}
 
+	chainType := tokens[0].ChainType
+
 	return testRelayersWithChainSimulator(tb,
 		setupFunc,
 		processFunc,
 		manualStopChan,
+		chainType,
 	)
 }

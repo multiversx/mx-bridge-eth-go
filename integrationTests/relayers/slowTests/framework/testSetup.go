@@ -32,7 +32,7 @@ type TestSetup struct {
 	TokensRegistry
 	*KeysStore
 	Bridge                 *BridgeComponents
-	EthereumHandler        *EthereumHandler
+	PeerChainHandler       PeerChainHandler
 	MultiversxHandler      *MultiversxHandler
 	WorkingDir             string
 	ChainSimulator         ChainSimulatorWrapper
@@ -48,7 +48,7 @@ type TestSetup struct {
 }
 
 // NewTestSetup creates a new e2e test setup
-func NewTestSetup(tb testing.TB) *TestSetup {
+func NewTestSetup(tb testing.TB, chainType ChainType) *TestSetup {
 	log.Info(fmt.Sprintf(LogStepMarker, "starting setup"))
 
 	setup := &TestSetup{
@@ -63,8 +63,14 @@ func NewTestSetup(tb testing.TB) *TestSetup {
 	// create a test context
 	setup.Ctx, setup.ctxCancel = context.WithCancel(context.Background())
 
-	setup.EthereumHandler = NewEthereumHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, quorum)
-	setup.EthereumHandler.DeployContracts(setup.Ctx)
+	switch chainType {
+	case ChainTypeEthereum:
+		setup.PeerChainHandler = NewEthereumHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, quorum)
+	case ChainTypeSui:
+		setup.PeerChainHandler = NewSuiHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, quorum)
+	}
+
+	setup.PeerChainHandler.DeployContracts(setup.Ctx)
 
 	setup.createChainSimulatorWrapper()
 	setup.MultiversxHandler = NewMultiversxHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, setup.ChainSimulator, quorum)
@@ -94,15 +100,15 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 	log.Info(fmt.Sprintf(LogStepMarker, "starting relayers & sc execution module"))
 
 	// start relayers
-	setup.Bridge = NewBridgeComponents(
+	setup.Bridge = NewEthereumBridgeComponents(
 		setup.TB,
 		setup.WorkingDir,
 		setup.ChainSimulator,
-		setup.EthereumHandler.EthChainWrapper,
-		setup.EthereumHandler.Erc20ContractsHolder,
-		setup.EthereumHandler.SimulatedChain,
+		setup.PeerChainHandler.EthChainWrapper,
+		setup.PeerChainHandler.Erc20ContractsHolder,
+		setup.PeerChainHandler.SimulatedChain,
 		NumRelayers,
-		setup.EthereumHandler.SafeAddress.Hex(),
+		setup.PeerChainHandler.SafeAddress.Hex(),
 		setup.MultiversxHandler.SafeAddress,
 		setup.MultiversxHandler.MultisigAddress,
 	)
@@ -149,17 +155,17 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 
 	require.Greater(setup, len(tokens), 0)
 
-	setup.EthereumHandler.PauseContractsForTokenChanges(setup.Ctx)
+	setup.PeerChainHandler.PauseContractsForTokenChanges(setup.Ctx)
 	setup.MultiversxHandler.PauseContractsForTokenChanges(setup.Ctx)
 
 	for _, token := range tokens {
 		setup.processNumScCallsOperations(token)
 		setup.AddToken(token.IssueTokenParams)
-		setup.EthereumHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
+		setup.PeerChainHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 		setup.MultiversxHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 
 		esdtBalanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, token.AbstractTokenIdentifier)
-		ethBalanceForTestAddr := setup.EthereumHandler.GetBalance(setup.TestKeys.EthAddress, token.AbstractTokenIdentifier)
+		ethBalanceForTestAddr := setup.PeerChainHandler.GetBalance(setup.TestKeys.EthAddress, token.AbstractTokenIdentifier)
 
 		setup.mutBalances.Lock()
 		setup.esdtBalanceForSafe[token.AbstractTokenIdentifier] = esdtBalanceForSafe
@@ -170,7 +176,7 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		log.Info("recorded the ETH balance for test address", "token", token.AbstractTokenIdentifier, "balance", ethBalanceForTestAddr.String())
 	}
 
-	setup.EthereumHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
+	setup.PeerChainHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
 	setup.MultiversxHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
 
 	for _, token := range tokens {
@@ -262,7 +268,7 @@ func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params Test
 		}
 	}
 
-	receiverBalance := setup.EthereumHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
+	receiverBalance := setup.PeerChainHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
 	return receiverBalance.String() == expectedValueOnReceiver.String()
 }
 
@@ -283,7 +289,7 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(params TestTokenPar
 	expectedReceiver.Add(expectedReceiver, params.PeerChainTestAddrExtraBalance)
 	setup.mutBalances.Unlock()
 
-	ethTestBalance := setup.EthereumHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
+	ethTestBalance := setup.PeerChainHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
 	isTransferDoneFromMultiversX := ethTestBalance.String() == expectedReceiver.String()
 
 	expectedEsdtSafe := big.NewInt(0).Add(initialBalanceForSafe, params.ESDTSafeExtraBalance)
@@ -306,7 +312,7 @@ func (setup *TestSetup) createBatchOnMultiversXForToken(params TestTokenParams) 
 
 	setup.transferTokensToTestKey(params)
 	valueToMintOnEthereum := setup.sendFromMultiversxToEthereumForToken(params)
-	setup.EthereumHandler.Mint(setup.Ctx, params, valueToMintOnEthereum)
+	setup.PeerChainHandler.Mint(setup.Ctx, params, valueToMintOnEthereum)
 }
 
 func (setup *TestSetup) transferTokensToTestKey(params TestTokenParams) {
@@ -378,7 +384,7 @@ func (setup *TestSetup) Close() {
 	log.Info(fmt.Sprintf(LogStepMarker, "closing relayers & sc execution module"))
 
 	setup.Bridge.CloseRelayers()
-	require.NoError(setup, setup.EthereumHandler.Close())
+	require.NoError(setup, setup.PeerChainHandler.Close())
 
 	setup.ctxCancel()
 	_ = setup.ScCallerModuleInstance.Close()

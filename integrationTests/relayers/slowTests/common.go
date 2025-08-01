@@ -18,7 +18,7 @@ var (
 
 // GenerateTestUSDCToken will generate a test USDC token
 func GenerateTestUSDCToken() framework.TestTokenParams {
-	// USDC is ethNative = true, ethMintBurn = false, mvxNative = false, mvxMintBurn = true
+	// USDC is peerChainNative = true, peerChainMintBurn = false, mvxNative = false, mvxMintBurn = true
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
 			AbstractTokenIdentifier:          "USDC",
@@ -32,11 +32,11 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
 			HasChainSpecificToken:            true,
-			EthTokenName:                     "EthUSDC",
-			EthTokenSymbol:                   "USDC",
-			ValueToMintOnEth:                 "10000000000",
-			IsMintBurnOnEth:                  false,
-			IsNativeOnEth:                    true,
+			PeerChainTokenName:               "EthUSDC",
+			PeerChainTokenSymbol:             "USDC",
+			ValueToMintOnPeerChain:           "10000000000",
+			IsMintBurnOnPeerChain:            false,
+			IsNativeOnPeerChain:              true,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -53,14 +53,14 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
-		EthTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000), // -(eth->mvx) + (mvx->eth) - fees
+		ESDTSafeExtraBalance:          big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->peerChain
+		PeerChainTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000), // -(peerChain->mvx) + (mvx->peerChain) - fees
 	}
 }
 
 // GenerateTestMEMEToken will generate a test MEME token
 func GenerateTestMEMEToken() framework.TestTokenParams {
-	//MEME is ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = false
+	//MEME is peerChainNative = false, peerChainMintBurn = true, mvxNative = true, mvxMintBurn = false
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
 			AbstractTokenIdentifier:          "MEME",
@@ -74,11 +74,11 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			IsMintBurnOnMvX:                  false,
 			IsNativeOnMvX:                    true,
 			HasChainSpecificToken:            true,
-			EthTokenName:                     "EthMEME",
-			EthTokenSymbol:                   "MEME",
-			ValueToMintOnEth:                 "10000000000",
-			IsMintBurnOnEth:                  true,
-			IsNativeOnEth:                    false,
+			PeerChainTokenName:               "EthMEME",
+			PeerChainTokenSymbol:             "MEME",
+			ValueToMintOnPeerChain:           "10000000000",
+			IsMintBurnOnPeerChain:            true,
+			IsNativeOnPeerChain:              false,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -95,14 +95,14 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
-		EthTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
+		ESDTSafeExtraBalance:          big.NewInt(4000 + 6000 + 2000), // everything is locked in the safe esdt contract
+		PeerChainTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50 + 2000 - 50),
 	}
 }
 
 // GenerateTestEUROCToken will generate a test EUROC token
 func GenerateTestEUROCToken() framework.TestTokenParams {
-	//EUROC is ethNative = true, ethMintBurn = true, mvxNative = false, mvxMintBurn = true
+	//EUROC is peerChainNative = true, peerChainMintBurn = true, mvxNative = false, mvxMintBurn = true
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
 			AbstractTokenIdentifier:          "EUROC",
@@ -116,11 +116,11 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
 			HasChainSpecificToken:            false,
-			EthTokenName:                     "EthEuroC",
-			EthTokenSymbol:                   "EUROC",
-			ValueToMintOnEth:                 "10000000000",
-			IsMintBurnOnEth:                  true,
-			IsNativeOnEth:                    true,
+			PeerChainTokenName:               "EthEuroC",
+			PeerChainTokenSymbol:             "EUROC",
+			ValueToMintOnPeerChain:           "10000000000",
+			IsMintBurnOnPeerChain:            true,
+			IsNativeOnPeerChain:              true,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -137,14 +137,14 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->eth
-		EthTestAddrExtraBalance: big.NewInt(-5010 + 2510 - 50 - 7010 + 310 - 50 - 1010), // -(eth->mvx) + (mvx->eth) - fees
+		ESDTSafeExtraBalance:          big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->peerChain
+		PeerChainTestAddrExtraBalance: big.NewInt(-5010 + 2510 - 50 - 7010 + 310 - 50 - 1010), // -(peerChain->mvx) + (mvx->peerChain) - fees
 	}
 }
 
 // GenerateTestMEXToken will generate a test EUROC token
 func GenerateTestMEXToken() framework.TestTokenParams {
-	//MEX is ethNative = false, ethMintBurn = true, mvxNative = true, mvxMintBurn = true
+	//MEX is peerChainNative = false, peerChainMintBurn = true, mvxNative = true, mvxMintBurn = true
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
 			AbstractTokenIdentifier:          "MEX",
@@ -158,11 +158,11 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    true,
 			HasChainSpecificToken:            false,
-			EthTokenName:                     "EthMex",
-			EthTokenSymbol:                   "MEX",
-			ValueToMintOnEth:                 "10000000000",
-			IsMintBurnOnEth:                  true,
-			IsNativeOnEth:                    false,
+			PeerChainTokenName:               "EthMex",
+			PeerChainTokenSymbol:             "MEX",
+			ValueToMintOnPeerChain:           "10000000000",
+			IsMintBurnOnPeerChain:            true,
+			IsNativeOnPeerChain:              false,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -179,8 +179,49 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 				MvxSCCallData:        createScCallData("callPayable", 50000000),
 			},
 		},
-		ESDTSafeExtraBalance:    big.NewInt(150), // just the fees should be collected in ESDT safe
-		EthTestAddrExtraBalance: big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+		ESDTSafeExtraBalance:          big.NewInt(150), // just the fees should be collected in ESDT safe
+		PeerChainTestAddrExtraBalance: big.NewInt(4010 - 50 + 6010 - 50 + 2010 - 50),
+	}
+}
+
+func GenerateTestUSDCSuiToken() framework.TestTokenParams {
+	// USDC Sui is peerChainNative = true, peerChainMintBurn = false, mvxNative = false, mvxMintBurn = true
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "USDC_SUI",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "USDC_SUI",
+			MvxChainSpecificTokenTicker:      "SUIUSDC",
+			MvxUniversalTokenDisplayName:     "WrappedUSDC_Sui",
+			MvxChainSpecificTokenDisplayName: "SuiWrappedUSDC",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            true,
+			PeerChainTokenName:               "SuiUSDC",
+			PeerChainTokenSymbol:             "USDC_SUI",
+			ValueToMintOnPeerChain:           "10000000000",
+			IsMintBurnOnPeerChain:            false,
+			IsNativeOnPeerChain:              true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(5000),
+				ValueToSendFromMvX:   big.NewInt(2500),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(7000),
+				ValueToSendFromMvX:   big.NewInt(300),
+			},
+			{
+				ValueToTransferToMvx: big.NewInt(1000),
+				ValueToSendFromMvX:   nil,
+				MvxSCCallData:        createScCallData("callPayable", 50000000),
+			},
+		},
+		ESDTSafeExtraBalance:          big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->peerChain
+		PeerChainTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000), // -(peerChain->mvx) + (mvx->peerChain) - fees
 	}
 }
 
