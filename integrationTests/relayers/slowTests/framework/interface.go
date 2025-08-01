@@ -22,7 +22,7 @@ type httpClientWrapper interface {
 // Relayer defines the behavior a bridge relayer must implement
 type Relayer interface {
 	MultiversXRelayerAddress() sdkCore.AddressHandler
-	EthereumRelayerAddress() common.Address
+	PeerChainRelayerAddress() common.Address
 	Start() error
 	Close() error
 }
