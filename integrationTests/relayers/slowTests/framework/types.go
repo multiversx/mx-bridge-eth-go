@@ -60,18 +60,8 @@ type TokenData struct {
 	PeerChainTokenName          string
 	PeerChainTokenSymbol        string
 
-	MvxUniversalToken      string
-	MvxChainSpecificToken  string
-	PeerChainTokenAddress  interface{} // Can be common.Address for Ethereum or []byte for Sui
-	PeerChainTokenContract interface{} // Can be ERC20Contract for Ethereum or MoveContract for Sui
-}
-
-type CreateBatchParams struct {
-	TokensParams []TestTokenParams
-}
-
-type TestTransferParams struct {
-	FromAddress string
-	ToAddress   string
-	TokenParams TestTokenParams
+	MvxUniversalToken     string
+	MvxChainSpecificToken string
+	PeerChainTokenAddress []byte
+	PeerChainTokenInfo    interface{}
 }
