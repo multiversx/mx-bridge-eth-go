@@ -99,9 +99,14 @@ func NewEthereumBridgeComponents(
 		ethBC, err2 := factory.NewEthMvxBridgeComponents(argsBridgeComponents)
 		require.NoError(tb, err2)
 		relayer := NewEthRelayerAdapter(ethBC)
-		err3 := relayer.Start()
-		require.NoError(tb, err3)
-		wg.Done()
+
+		go func() {
+			err3 := relayer.Start()
+			require.NoError(tb, err3)
+			wg.Done()
+		}()
+
+		bridge.RelayerInstances = append(bridge.RelayerInstances, relayer)
 	}
 
 	wg.Wait()
