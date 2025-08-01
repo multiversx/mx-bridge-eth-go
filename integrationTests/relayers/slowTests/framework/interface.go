@@ -70,10 +70,10 @@ type MoveContract interface {
 // TokensRegistry defines the registry used for the tokens in tests
 type TokensRegistry interface {
 	AddToken(params IssueTokenParams)
-	RegisterEthAddressAndContract(
+	RegisterPeerChainAddressAndContract(
 		abstractTokenIdentifier string,
-		PeerChainAddress common.Address,
-		ethErc20Contract ERC20Contract,
+		peerChainAddress interface{}, // Can be common.Address for Ethereum or []byte for Sui
+		peerChainContract interface{}, // Can be ERC20Contract for Ethereum or MoveContract for Sui
 	)
 	GetTokenData(abstractTokenIdentifier string) *TokenData
 	RegisterUniversalToken(abstractTokenIdentifier string, mvxUniversalToken string)

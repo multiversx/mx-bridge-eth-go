@@ -94,15 +94,42 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 
 	handler.TokenContractsHolder[params.AbstractTokenIdentifier] = tokenContract
 
+	// Register the token contract with generic interface method
+	handler.TokensRegistry.RegisterPeerChainAddressAndContract(
+		params.AbstractTokenIdentifier,
+		handler.PublicKey, // Use PublicKey as address for Sui
+		tokenContract,
+	)
+
 	handler.whitelistToken(ctx, params.AbstractTokenIdentifier)
 }
 
-func (handler *SuiHandler) CreateBatch(ctx context.Context, params CreateBatchParams) {
-	handler.createBatchOnSui(ctx, params)
+// CreateBatch creates a batch on Sui
+func (handler *SuiHandler) CreateBatch(
+	ctx context.Context,
+	mvxTestCallerAddress sdkCore.AddressHandler,
+	tokensParams ...TestTokenParams,
+) {
+	for _, params := range tokensParams {
+		handler.createBatchOnSui(ctx, CreateBatchParams{
+			TestTokenParams:   params,
+			TestCallerAddress: mvxTestCallerAddress,
+		})
+	}
 }
 
-func (handler *SuiHandler) SendFromPeerChainToMultiversX(ctx context.Context, params TestTransferParams) {
-	handler.sendFromSuiToMultiversX(ctx, params)
+// SendFromPeerChainToMultiversX sends from Sui to MultiversX
+func (handler *SuiHandler) SendFromPeerChainToMultiversX(
+	ctx context.Context,
+	mvxTestCallerAddress sdkCore.AddressHandler,
+	tokensParams ...TestTokenParams,
+) {
+	for _, params := range tokensParams {
+		handler.sendFromSuiToMultiversX(ctx, TestTransferParams{
+			TestTokenParams:   params,
+			TestCallerAddress: mvxTestCallerAddress,
+		})
+	}
 }
 
 func (handler *SuiHandler) Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int) {
@@ -123,31 +150,33 @@ func (handler *SuiHandler) PauseContractsForTokenChanges(ctx context.Context) {
 }
 
 func (handler *SuiHandler) UnPauseContractsAfterTokenChanges(ctx context.Context) {
-	// Unpause bridge contract on Sui
 	handler.unpauseBridge(ctx)
 }
 
 func (handler *SuiHandler) Close() error {
-	// Clean up resources
 	return nil
 }
 
 func (handler *SuiHandler) GetChainType() string {
-	return "sui"
+	return string(ChainTypeSui)
 }
 
 // Private helper methods
 
 func (handler *SuiHandler) deployBridgePackage(_ context.Context) {
-
+	handler.BridgePackageID = []byte("mock_bridge_package_id")
+	handler.BridgeObjectID = []byte("mock_bridge_object_id")
 }
 
 func (handler *SuiHandler) initializeBridge(_ context.Context) {
-
+	// Mock implementation - initialize bridge with relayers and quorum
 }
 
 func (handler *SuiHandler) deployTokenContract(_ context.Context, params IssueTokenParams) MoveContract {
-	//TODO: implement actual deployment logic for Sui token contract
+	return &mockMoveContract{
+		tokenIdentifier: params.AbstractTokenIdentifier,
+		handler:         handler,
+	}
 }
 
 func (handler *SuiHandler) whitelistToken(_ context.Context, _ string) {
@@ -171,6 +200,5 @@ func (handler *SuiHandler) unpauseBridge(_ context.Context) {
 }
 
 func (handler *SuiHandler) getCoinType(_ string) string {
-	// Generate coin type for Sui
-	// Default to SUI coin type, customize as needed
+	return "0x2::sui::SUI" // Default SUI coin type
 }

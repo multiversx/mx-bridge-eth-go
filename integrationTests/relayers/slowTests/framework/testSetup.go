@@ -32,7 +32,7 @@ type TestSetup struct {
 	TokensRegistry
 	*KeysStore
 	Bridge                 *BridgeComponents
-	EthereumHandler        *EthereumHandler
+	PeerChainHandler       PeerChainHandler // Changed from EthereumHandler to generic interface
 	MultiversxHandler      *MultiversxHandler
 	WorkingDir             string
 	ChainSimulator         ChainSimulatorWrapper
@@ -48,7 +48,7 @@ type TestSetup struct {
 }
 
 // NewTestSetup creates a new e2e test setup
-func NewTestSetup(tb testing.TB) *TestSetup {
+func NewTestSetup(tb testing.TB, chainType ChainType) *TestSetup {
 	log.Info(fmt.Sprintf(LogStepMarker, "starting setup"))
 
 	setup := &TestSetup{
@@ -63,8 +63,17 @@ func NewTestSetup(tb testing.TB) *TestSetup {
 	// create a test context
 	setup.Ctx, setup.ctxCancel = context.WithCancel(context.Background())
 
-	setup.EthereumHandler = NewEthereumHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, quorum)
-	setup.EthereumHandler.DeployContracts(setup.Ctx)
+	// Create peer chain handler based on chain type
+	config := PeerChainConfig{
+		ChainType:      chainType,
+		TestingTB:      tb,
+		Context:        setup.Ctx,
+		KeysStore:      setup.KeysStore,
+		TokensRegistry: setup.TokensRegistry,
+		Quorum:         quorum,
+	}
+	setup.PeerChainHandler = NewPeerChainHandler(config)
+	setup.PeerChainHandler.DeployContracts(setup.Ctx)
 
 	setup.createChainSimulatorWrapper()
 	setup.MultiversxHandler = NewMultiversxHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, setup.ChainSimulator, quorum)

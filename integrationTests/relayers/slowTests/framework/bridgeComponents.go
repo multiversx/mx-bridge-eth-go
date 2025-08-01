@@ -17,6 +17,9 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
 	"github.com/multiversx/mx-chain-go/testscommon/statusHandler"
 	"github.com/stretchr/testify/require"
+
+	"github.com/block-vision/sui-go-sdk/sui"
+	core "github.com/multiversx/mx-bridge-eth-go/core"
 )
 
 const (
@@ -30,8 +33,7 @@ type BridgeComponents struct {
 	gasStationInstance *gasStation
 }
 
-// NewBridgeComponents will create the bridge components (relayers)
-func NewBridgeComponents(
+func NewEthereumBridgeComponents(
 	tb testing.TB,
 	workingDir string,
 	chainSimulator ChainSimulatorWrapper,
@@ -94,23 +96,35 @@ func NewBridgeComponents(
 			ScCallPerByte:          100000,
 			ScCallPerformForEach:   10000000,
 		}
-		relayer, err := factory.NewEthMultiversXBridgeComponents(argsBridgeComponents)
-		require.Nil(bridge, err)
+		ethBC, err2 := factory.NewEthMvxBridgeComponents(argsBridgeComponents)
+		require.NoError(tb, err2)
+		relayer := NewEthRelayerAdapter(ethBC)
 
 		go func() {
-			err = relayer.Start()
-			log.LogIfError(err)
-			require.Nil(bridge, err)
+			err3 := relayer.Start()
+			require.NoError(tb, err3)
 			wg.Done()
 		}()
 
 		bridge.RelayerInstances = append(bridge.RelayerInstances, relayer)
 	}
 
-	// ensure all relayers are successfully started before returning the bridge components instance
 	wg.Wait()
 
 	return bridge
+}
+
+func NewSuiBridgeComponents(
+	tb testing.TB,
+	workingDir string,
+	chainSimulator ChainSimulatorWrapper,
+	suiProxy sui.ISuiAPI,
+	suiClientStatusHandler core.StatusHandler,
+	numRelayers int,
+	mvxSafeAddress *MvxAddress,
+	mvxMultisigAddress *MvxAddress,
+) *BridgeComponents {
+	// TODO: Implement Sui bridge components initialization
 }
 
 // CloseRelayers will call close on all created relayers

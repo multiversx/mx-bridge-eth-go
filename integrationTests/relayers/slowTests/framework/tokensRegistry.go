@@ -65,8 +65,8 @@ func (registry *tokensRegistry) RegisterChainSpecificToken(abstractTokenIdentifi
 // RegisterPeerChainAddressAndContract will save under the mutex lock the provided PeerChain address and contract
 func (registry *tokensRegistry) RegisterPeerChainAddressAndContract(
 	abstractTokenIdentifier string,
-	peerChainAddress []byte,
-	peerChainContract ERC20Contract,
+	peerChainAddress interface{}, // Can be common.Address for Ethereum or []byte for Sui
+	peerChainContract interface{}, // Can be ERC20Contract for Ethereum or MoveContract for Sui
 ) {
 	registry.mut.Lock()
 	defer registry.mut.Unlock()

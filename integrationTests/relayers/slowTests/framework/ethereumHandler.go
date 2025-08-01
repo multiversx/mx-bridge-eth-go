@@ -209,12 +209,29 @@ func (handler *EthereumHandler) checkEthTxResult(ctx context.Context, hash commo
 }
 
 // GetBalance returns the receiver's balance
-func (handler *EthereumHandler) GetBalance(receiver common.Address, abstractTokenIdentifier string) *big.Int {
+func (handler *EthereumHandler) GetBalance(receiver interface{}, abstractTokenIdentifier string) *big.Int {
+	var receiverAddr common.Address
+
+	switch addr := receiver.(type) {
+	case common.Address:
+		receiverAddr = addr
+	case string:
+		receiverAddr = common.HexToAddress(addr)
+	case []byte:
+		receiverAddr = common.BytesToAddress(addr)
+	default:
+		handler.Fatalf("Unsupported receiver type for Ethereum: %T", receiver)
+		return big.NewInt(0)
+	}
+
 	token := handler.TokensRegistry.GetTokenData(abstractTokenIdentifier)
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenAddress)
 
-	balance, err := token.PeerChainTokenContract.BalanceOf(nil, receiver)
+	erc20Contract, ok := token.PeerChainTokenContract.(ERC20Contract)
+	require.True(handler, ok, "Expected ERC20Contract for Ethereum token")
+
+	balance, err := erc20Contract.BalanceOf(nil, receiverAddr)
 	require.NoError(handler, err)
 
 	return balance
@@ -258,7 +275,7 @@ func (handler *EthereumHandler) PauseContractsForTokenChanges(ctx context.Contex
 func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams) {
 	erc20Address, erc20ContractInstance := handler.deployTestERC20Contract(ctx, params)
 
-	handler.TokensRegistry.RegisterEthAddressAndContract(params.AbstractTokenIdentifier, erc20Address, erc20ContractInstance)
+	handler.TokensRegistry.RegisterPeerChainAddressAndContract(params.AbstractTokenIdentifier, erc20Address, erc20ContractInstance)
 
 	// whitelist eth token
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
@@ -409,6 +426,15 @@ func (handler *EthereumHandler) CreateBatchOnEthereum(
 	}
 }
 
+// CreateBatch creates a batch on Ethereum (alias for CreateBatchOnEthereum)
+func (handler *EthereumHandler) CreateBatch(
+	ctx context.Context,
+	mvxTestCallerAddress core.AddressHandler,
+	tokensParams ...TestTokenParams,
+) {
+	handler.CreateBatchOnEthereum(ctx, mvxTestCallerAddress, tokensParams...)
+}
+
 func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 	ctx context.Context,
 	params TestTokenParams,
@@ -422,6 +448,14 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenContract)
 
+	// Type assert the contract to ERC20Contract for Ethereum
+	erc20Contract, ok := token.PeerChainTokenContract.(ERC20Contract)
+	require.True(handler, ok, "Expected ERC20Contract for Ethereum token")
+
+	// Type assert the address to common.Address for Ethereum
+	tokenAddress, ok := token.PeerChainTokenAddress.(common.Address)
+	require.True(handler, ok, "Expected common.Address for Ethereum token address")
+
 	allowanceValue := big.NewInt(0)
 	for _, operation := range params.TestOperations {
 		if operation.ValueToTransferToMvx == nil {
@@ -432,7 +466,7 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 	}
 
 	if allowanceValue.Cmp(zeroValueBigInt) > 0 {
-		tx, err := token.PeerChainTokenContract.Approve(auth, handler.SafeAddress, allowanceValue)
+		tx, err := erc20Contract.Approve(auth, handler.SafeAddress, allowanceValue)
 		require.NoError(handler, err)
 		handler.SimulatedChain.Commit()
 		handler.checkEthTxResult(ctx, tx.Hash())
@@ -448,13 +482,13 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
 			tx, err = handler.SafeContract.DepositWithSCExecution(
 				auth,
-				token.PeerChainTokenAddress,
+				tokenAddress,
 				operation.ValueToTransferToMvx,
 				mvxTestCallerAddress.AddressSlice(),
 				operation.MvxSCCallData,
 			)
 		} else {
-			tx, err = handler.SafeContract.Deposit(auth, token.PeerChainTokenAddress, operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
+			tx, err = handler.SafeContract.Deposit(auth, tokenAddress, operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
 		}
 
 		require.NoError(handler, err)
@@ -474,18 +508,36 @@ func (handler *EthereumHandler) SendFromEthereumToMultiversX(
 	}
 }
 
+// SendFromPeerChainToMultiversX sends from Ethereum to MultiversX (alias for SendFromEthereumToMultiversX)
+func (handler *EthereumHandler) SendFromPeerChainToMultiversX(
+	ctx context.Context,
+	mvxTestCallerAddress core.AddressHandler,
+	tokensParams ...TestTokenParams,
+) {
+	handler.SendFromEthereumToMultiversX(ctx, mvxTestCallerAddress, tokensParams...)
+}
+
 // Mint will mint the provided token on Ethereum with the provided value on the behalf of the Depositor address
 func (handler *EthereumHandler) Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int) {
 	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenContract)
 
+	// Type assert the contract to ERC20Contract for Ethereum
+	erc20Contract, ok := token.PeerChainTokenContract.(ERC20Contract)
+	require.True(handler, ok, "Expected ERC20Contract for Ethereum token")
+
 	// mint erc20 token into eth safe
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.DepositorKeys.EthSK, handler.ChainID)
-	tx, err := token.PeerChainTokenContract.Mint(auth, handler.SafeAddress, valueToMint)
+	tx, err := erc20Contract.Mint(auth, handler.SafeAddress, valueToMint)
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())
+}
+
+// GetChainType returns the chain type identifier
+func (handler *EthereumHandler) GetChainType() string {
+	return string(ChainTypeEthereum)
 }
 
 // Close will close the resources allocated

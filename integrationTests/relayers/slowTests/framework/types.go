@@ -62,8 +62,8 @@ type TokenData struct {
 
 	MvxUniversalToken      string
 	MvxChainSpecificToken  string
-	PeerChainTokenAddress  []byte
-	PeerChainTokenContract ERC20Contract // TODO: change this to a common interface
+	PeerChainTokenAddress  interface{} // Can be common.Address for Ethereum or []byte for Sui
+	PeerChainTokenContract interface{} // Can be ERC20Contract for Ethereum or MoveContract for Sui
 }
 
 type CreateBatchParams struct {
