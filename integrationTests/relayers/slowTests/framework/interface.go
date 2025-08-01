@@ -85,3 +85,16 @@ type SCCallerModule interface {
 	GetNumSentTransaction() uint32
 	Close() error
 }
+
+type PeerChainHandler interface {
+	DeployContracts(ctx context.Context)
+	DeployContract(ctx context.Context, params ...interface{}) []byte
+	DeployUpgradeableContract(ctx context.Context, params ...interface{}) []byte
+	IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams)
+	GetBalance(ctx context.Context, receiver []byte, abstractTokenIdentifier string) *big.Int
+	Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int)
+	SendFromPeerChainToMultiversX(ctx context.Context, mvxTestCallerAddress sdkCore.AddressHandler, tokensParams ...TestTokenParams)
+	CreateBatchOnPeerChain(ctx context.Context, mvxTestCallerAddress sdkCore.AddressHandler, tokensParams ...TestTokenParams)
+	PauseContractsForTokenChanges(ctx context.Context)
+	UnPauseContractsAfterTokenChanges(ctx context.Context)
+}

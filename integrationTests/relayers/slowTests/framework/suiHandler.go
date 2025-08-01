@@ -36,14 +36,12 @@ type SuiHandler struct {
 	Quorum               string
 	MvxTestCallerAddress core.AddressHandler
 	// TODO: chain simulator
-	SuiProxy                   suiSdk.ISuiAPI
-	PackageID                  string
-	BridgeObjectID             string
-	BridgeInitialSharedVersion uint64
-	BridgeCap                  string
-	AdminCap                   string
-	SafeObjectID               string
-	SafeInitialSharedVersion   uint64
+	SuiProxy       suiSdk.ISuiAPI
+	PackageID      string
+	BridgeObjectID string
+	BridgeCap      string
+	AdminCap       string
+	SafeObjectID   string
 }
 
 // NewSuiHandler will create the handler that will adapt all test operations on Sui
@@ -90,7 +88,6 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 			}
 			if strings.Contains(obj.ObjectType, "::safe::BridgeSafe") {
 				handler.SafeObjectID = obj.ObjectId
-				handler.SafeInitialSharedVersion = handler.extractInitialSharedVersionForObject(obj)
 			}
 
 		} else if obj.Type == "published" {
@@ -105,7 +102,7 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 		suiRelayersPubKeys = append(suiRelayersPubKeys, relayerKeys.SuiSK.Public())
 	}
 
-	bridgeObj := handler.DeployContract(
+	bridgeIdBytes := handler.DeployContract(
 		ctx,
 		"bridge",
 		"initialize",
@@ -115,14 +112,7 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 		handler.SafeObjectID,
 		handler.BridgeCap,
 	)
-	for _, obj := range bridgeObj {
-		if obj.Type == "created" {
-			if strings.Contains(obj.ObjectType, "::bridge::Bridge") {
-				handler.BridgeObjectID = obj.ObjectId
-				handler.BridgeInitialSharedVersion = handler.extractInitialSharedVersionForObject(obj)
-			}
-		}
-	}
+	handler.BridgeObjectID = string(bridgeIdBytes)
 }
 
 func (handler *SuiHandler) getEncodedModules() []string {
@@ -158,23 +148,10 @@ func (handler *SuiHandler) readModuleBytes(path string) []byte {
 	return b
 }
 
-func (handler *SuiHandler) extractInitialSharedVersionForObject(object models.ObjectChange) uint64 {
-	if ownerMap, ok := object.Owner.(map[string]interface{}); ok {
-		if sharedData, hasShared := ownerMap["Shared"]; hasShared {
-			if sharedMap, ok := sharedData.(map[string]interface{}); ok {
-				if version, ok := sharedMap["initial_shared_version"].(float64); ok {
-					return uint64(version)
-				}
-			}
-		}
-	}
-	return 0
-}
-
 func (handler *SuiHandler) DeployContract(
 	ctx context.Context,
 	params ...interface{},
-) []models.ObjectChange {
+) []byte {
 	module := params[0].(string)
 	function := params[1].(string)
 	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
@@ -189,15 +166,19 @@ func (handler *SuiHandler) DeployContract(
 	require.Nil(handler, err)
 
 	resp := handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
-	return resp.ObjectChanges
+	for _, obj := range resp.ObjectChanges {
+		if obj.Type == "created" {
+			if strings.Contains(obj.ObjectType, "::bridge::Bridge") {
+				return []byte(obj.ObjectId)
+			}
+		}
+	}
+	return nil
 }
 
-// DeployUpgradeableContract can deploy an upgradeable Ethereum contract
-func (handler *SuiHandler) DeployUpgradeableContract(
-	ctx context.Context,
-	params ...interface{},
-) []byte {
-	panic("Not implemented for Sui yet")
+// DeployUpgradeableContract not implemented on Sui chain
+func (handler *SuiHandler) DeployUpgradeableContract(_ context.Context, _ ...interface{}) []byte {
+	panic("Not implemented for Sui")
 }
 
 // GetBalance returns the receiver's balance
@@ -464,8 +445,8 @@ func (handler *SuiHandler) createDepositsOnSuiForToken(
 	}
 }
 
-// SendFromSuiToMultiversX will create the deposit transactions on the Sui side
-func (handler *SuiHandler) SendFromSuiToMultiversX(
+// SendFromPeerChainToMultiversX will create the deposit transactions on the Sui side
+func (handler *SuiHandler) SendFromPeerChainToMultiversX(
 	ctx context.Context,
 	mvxTestCallerAddress core.AddressHandler,
 	tokensParams ...TestTokenParams,
