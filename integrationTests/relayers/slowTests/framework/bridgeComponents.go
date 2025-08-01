@@ -99,14 +99,9 @@ func NewEthereumBridgeComponents(
 		ethBC, err2 := factory.NewEthMvxBridgeComponents(argsBridgeComponents)
 		require.NoError(tb, err2)
 		relayer := NewEthRelayerAdapter(ethBC)
-
-		go func() {
-			err3 := relayer.Start()
-			require.NoError(tb, err3)
-			wg.Done()
-		}()
-
-		bridge.RelayerInstances = append(bridge.RelayerInstances, relayer)
+		err3 := relayer.Start()
+		require.NoError(tb, err3)
+		wg.Done()
 	}
 
 	wg.Wait()
@@ -124,7 +119,48 @@ func NewSuiBridgeComponents(
 	mvxSafeAddress *MvxAddress,
 	mvxMultisigAddress *MvxAddress,
 ) *BridgeComponents {
-	// TODO: Implement Sui bridge components initialization
+	bridge := &BridgeComponents{
+		TB:               tb,
+		RelayerInstances: make([]Relayer, 0, numRelayers),
+	}
+
+	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
+
+	wg := sync.WaitGroup{}
+	wg.Add(numRelayers)
+
+	for i := 0; i < numRelayers; i++ {
+		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir, "")
+
+		args := factory.ArgsSuiToMultiversXBridge{
+			Configs:                       config.Configs{GeneralConfig: generalConfigs},
+			Messenger:                     messengers[i],
+			StatusStorer:                  testsCommon.NewStorerMock(),
+			Proxy:                         chainSimulator.Proxy(),
+			MultiversXClientStatusHandler: &testsCommon.StatusHandlerStub{},
+			SuiProxy:                      suiProxy,
+			SuiClientStatusHandler:        suiClientStatusHandler,
+			TimeForBootstrap:              time.Second * 5,
+			TimeBeforeRepeatJoin:          time.Second * 30,
+			MetricsHolder:                 status.NewMetricsHolder(),
+			AppStatusHandler:              &statusHandler.AppStatusHandlerStub{},
+		}
+
+		suiBC, err4 := factory.NewSuiMvxBridgeComponents(args)
+		require.NoError(tb, err4)
+		suiRelayer := NewSuiRelayerAdapter(suiBC)
+
+		go func() {
+			err5 := suiRelayer.Start()
+			require.NoError(tb, err5)
+			wg.Done()
+		}()
+
+		bridge.RelayerInstances = append(bridge.RelayerInstances, suiRelayer)
+	}
+
+	wg.Wait()
+	return bridge
 }
 
 // CloseRelayers will call close on all created relayers
