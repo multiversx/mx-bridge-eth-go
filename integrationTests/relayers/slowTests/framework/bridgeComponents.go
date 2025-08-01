@@ -32,8 +32,8 @@ type BridgeComponents struct {
 	gasStationInstance *gasStation
 }
 
-// NewBridgeComponents will create the bridge components (relayers)
-func NewBridgeComponents(
+// NewEthereumBridgeComponents will create the bridge components (relayers) for Ethereum
+func NewEthereumBridgeComponents(
 	tb testing.TB,
 	workingDir string,
 	chainSimulator ChainSimulatorWrapper,
