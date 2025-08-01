@@ -75,7 +75,7 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
 		if startsFromEthFlow.process() {
-			setup.TestWithdrawTotalFeesOnEthereumForTokens(startsFromEthFlow.tokens...)
+			setup.TestWithdrawTotalFeesOnPeerChainForTokens(startsFromEthFlow.tokens...)
 
 			return true
 		}

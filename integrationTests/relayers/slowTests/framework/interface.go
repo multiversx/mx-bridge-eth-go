@@ -97,4 +97,5 @@ type PeerChainHandler interface {
 	CreateBatchOnPeerChain(ctx context.Context, mvxTestCallerAddress sdkCore.AddressHandler, tokensParams ...TestTokenParams)
 	PauseContractsForTokenChanges(ctx context.Context)
 	UnPauseContractsAfterTokenChanges(ctx context.Context)
+	Close() error
 }

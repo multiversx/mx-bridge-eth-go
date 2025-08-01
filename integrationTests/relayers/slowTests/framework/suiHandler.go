@@ -36,12 +36,14 @@ type SuiHandler struct {
 	Quorum               string
 	MvxTestCallerAddress core.AddressHandler
 	// TODO: chain simulator
-	SuiProxy       suiSdk.ISuiAPI
-	PackageID      string
-	BridgeObjectID string
-	BridgeCap      string
-	AdminCap       string
-	SafeObjectID   string
+	SuiProxy                   suiSdk.ISuiAPI
+	PackageID                  string
+	BridgeObjectID             string
+	BridgeCap                  string
+	AdminCap                   string
+	SafeObjectID               string
+	BridgeInitialSharedVersion uint64
+	SafeInitialSharedVersion   uint64
 }
 
 // NewSuiHandler will create the handler that will adapt all test operations on Sui
@@ -500,4 +502,8 @@ func (handler *SuiHandler) signAndExecuteTxReturnResult(
 	require.Equal(handler, "success", exec.Effects.Status.Status, fmt.Sprintf("Error: %s", exec.Effects.Status.Error))
 
 	return exec
+}
+
+func (handler *SuiHandler) Close() error {
+	panic("Close not implemented for SuiHandler")
 }

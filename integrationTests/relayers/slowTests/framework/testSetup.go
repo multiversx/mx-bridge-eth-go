@@ -38,13 +38,14 @@ type TestSetup struct {
 	ChainSimulator         ChainSimulatorWrapper
 	ScCallerKeys           KeysHolder
 	ScCallerModuleInstance SCCallerModule
+	peerChainType          ChainType
 
-	ctxCancel             func()
-	Ctx                   context.Context
-	mutBalances           sync.RWMutex
-	esdtBalanceForSafe    map[string]*big.Int
-	ethBalanceTestAddress map[string]*big.Int
-	numScCallsInTest      uint32
+	ctxCancel                   func()
+	Ctx                         context.Context
+	mutBalances                 sync.RWMutex
+	esdtBalanceForSafe          map[string]*big.Int
+	peerChainBalanceTestAddress map[string]*big.Int
+	numScCallsInTest            uint32
 }
 
 // NewTestSetup creates a new e2e test setup
@@ -52,11 +53,12 @@ func NewTestSetup(tb testing.TB, chainType ChainType) *TestSetup {
 	log.Info(fmt.Sprintf(LogStepMarker, "starting setup"))
 
 	setup := &TestSetup{
-		TB:                    tb,
-		TokensRegistry:        NewTokenRegistry(tb),
-		WorkingDir:            tb.TempDir(),
-		esdtBalanceForSafe:    make(map[string]*big.Int),
-		ethBalanceTestAddress: make(map[string]*big.Int),
+		TB:                          tb,
+		TokensRegistry:              NewTokenRegistry(tb),
+		WorkingDir:                  tb.TempDir(),
+		peerChainType:               chainType,
+		esdtBalanceForSafe:          make(map[string]*big.Int),
+		peerChainBalanceTestAddress: make(map[string]*big.Int),
 	}
 	setup.KeysStore = NewKeysStore(tb, setup.WorkingDir, NumRelayers, NumOracles)
 
@@ -100,18 +102,39 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 	log.Info(fmt.Sprintf(LogStepMarker, "starting relayers & sc execution module"))
 
 	// start relayers
-	setup.Bridge = NewEthereumBridgeComponents(
-		setup.TB,
-		setup.WorkingDir,
-		setup.ChainSimulator,
-		setup.PeerChainHandler.EthChainWrapper,
-		setup.PeerChainHandler.Erc20ContractsHolder,
-		setup.PeerChainHandler.SimulatedChain,
-		NumRelayers,
-		setup.PeerChainHandler.SafeAddress.Hex(),
-		setup.MultiversxHandler.SafeAddress,
-		setup.MultiversxHandler.MultisigAddress,
-	)
+	switch handler := setup.PeerChainHandler.(type) {
+	case *EthereumHandler:
+		setup.Bridge = NewEthereumBridgeComponents(
+			setup.TB,
+			setup.WorkingDir,
+			setup.ChainSimulator,
+			handler.EthChainWrapper, // acces direct la câmpuri
+			handler.Erc20ContractsHolder,
+			handler.SimulatedChain,
+			NumRelayers,
+			handler.SafeAddress.Hex(),
+			setup.MultiversxHandler.SafeAddress,
+			setup.MultiversxHandler.MultisigAddress,
+		)
+	case *SuiHandler:
+		setup.Bridge = NewSuiBridgeComponents(
+			setup.TB,
+			setup.WorkingDir,
+			setup.ChainSimulator,
+			handler.SuiProxy,
+			nil,
+			NumRelayers,
+			handler.PackageID,
+			setup.MultiversxHandler.SafeAddress,
+			setup.MultiversxHandler.MultisigAddress,
+			handler.BridgeObjectID,
+			handler.SafeObjectID,
+			handler.BridgeInitialSharedVersion,
+			handler.SafeInitialSharedVersion,
+		)
+	default:
+		panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
+	}
 
 	setup.startScCallerModule()
 }
@@ -165,15 +188,21 @@ func (setup *TestSetup) IssueAndConfigureTokens(tokens ...TestTokenParams) {
 		setup.MultiversxHandler.IssueAndWhitelistToken(setup.Ctx, token.IssueTokenParams)
 
 		esdtBalanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, token.AbstractTokenIdentifier)
-		ethBalanceForTestAddr := setup.PeerChainHandler.GetBalance(setup.TestKeys.EthAddress, token.AbstractTokenIdentifier)
+		var peerChainBalanceForTestAddr *big.Int
+		switch setup.peerChainType {
+		case ChainTypeEthereum:
+			peerChainBalanceForTestAddr = setup.PeerChainHandler.GetBalance(setup.Ctx, setup.TestKeys.EthAddress.Bytes(), token.AbstractTokenIdentifier)
+		case ChainTypeSui:
+			peerChainBalanceForTestAddr = setup.PeerChainHandler.GetBalance(setup.Ctx, setup.TestKeys.SuiAddress, token.AbstractTokenIdentifier)
+		}
 
 		setup.mutBalances.Lock()
 		setup.esdtBalanceForSafe[token.AbstractTokenIdentifier] = esdtBalanceForSafe
-		setup.ethBalanceTestAddress[token.AbstractTokenIdentifier] = ethBalanceForTestAddr
+		setup.peerChainBalanceTestAddress[token.AbstractTokenIdentifier] = peerChainBalanceForTestAddr
 		setup.mutBalances.Unlock()
 
 		log.Info("recorded the ESDT balance for safe contract", "token", token.AbstractTokenIdentifier, "balance", esdtBalanceForSafe.String())
-		log.Info("recorded the ETH balance for test address", "token", token.AbstractTokenIdentifier, "balance", ethBalanceForTestAddr.String())
+		log.Info("recorded the peer chain balance for test address", "token", token.AbstractTokenIdentifier, "balance", peerChainBalanceForTestAddr.String())
 	}
 
 	setup.PeerChainHandler.UnPauseContractsAfterTokenChanges(setup.Ctx)
@@ -197,17 +226,17 @@ func (setup *TestSetup) GetNumScCallsOperations() uint32 {
 	return atomic.LoadUint32(&setup.numScCallsInTest)
 }
 
-// IsTransferDoneFromEthereum returns true if all provided tokens are bridged from Ethereum towards MultiversX
-func (setup *TestSetup) IsTransferDoneFromEthereum(tokens ...TestTokenParams) bool {
+// IsTransferDoneFromPeerChain returns true if all provided tokens are bridged from peer chain towards MultiversX
+func (setup *TestSetup) IsTransferDoneFromPeerChain(tokens ...TestTokenParams) bool {
 	isDone := true
 	for _, params := range tokens {
-		isDone = isDone && setup.isTransferDoneFromEthereumForToken(params)
+		isDone = isDone && setup.isTransferDoneFromPeerChainForToken(params)
 	}
 
 	return isDone
 }
 
-func (setup *TestSetup) isTransferDoneFromEthereumForToken(params TestTokenParams) bool {
+func (setup *TestSetup) isTransferDoneFromPeerChainForToken(params TestTokenParams) bool {
 	expectedValueOnReceiver := big.NewInt(0)
 	expectedValueOnContract := big.NewInt(0)
 	for _, operation := range params.TestOperations {
@@ -233,17 +262,17 @@ func (setup *TestSetup) isTransferDoneFromEthereumForToken(params TestTokenParam
 	return contractBalance.String() == expectedValueOnContract.String()
 }
 
-// IsTransferDoneFromEthereumWithRefund returns true if all provided tokens are bridged from Ethereum towards MultiversX including refunds
-func (setup *TestSetup) IsTransferDoneFromEthereumWithRefund(tokens ...TestTokenParams) bool {
+// IsTransferDoneFromPeerChainWithRefund returns true if all provided tokens are bridged from peer chain towards MultiversX including refunds
+func (setup *TestSetup) IsTransferDoneFromPeerChainWithRefund(tokens ...TestTokenParams) bool {
 	isDone := true
 	for _, params := range tokens {
-		isDone = isDone && setup.isTransferDoneFromEthereumWithRefundForToken(params)
+		isDone = isDone && setup.isTransferDoneFromPeerChainWithRefundForToken(params)
 	}
 
 	return isDone
 }
 
-func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params TestTokenParams) bool {
+func (setup *TestSetup) isTransferDoneFromPeerChainWithRefundForToken(params TestTokenParams) bool {
 	expectedValueOnReceiver := big.NewInt(0)
 	for _, operation := range params.TestOperations {
 		valueToTransferToMvx := big.NewInt(0)
@@ -261,18 +290,25 @@ func (setup *TestSetup) isTransferDoneFromEthereumWithRefundForToken(params Test
 		expectedValueOnReceiver.Add(expectedValueOnReceiver, big.NewInt(0).Sub(valueToSendFromMvX, valueToTransferToMvx))
 		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
 			if operation.MvxFaultySCCall {
-				// the balance should be bridged back to the receiver on Ethereum - fee
+				// the balance should be bridged back to the receiver on peer chain - fee
 				expectedValueOnReceiver.Add(expectedValueOnReceiver, valueToTransferToMvx)
 				expectedValueOnReceiver.Sub(expectedValueOnReceiver, feeInt)
 			}
 		}
 	}
 
-	receiverBalance := setup.PeerChainHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
+	var receiverBalance *big.Int
+	switch setup.peerChainType {
+	case ChainTypeEthereum:
+		receiverBalance = setup.PeerChainHandler.GetBalance(setup.Ctx, setup.TestKeys.EthAddress.Bytes(), params.AbstractTokenIdentifier)
+	case ChainTypeSui:
+		receiverBalance = setup.PeerChainHandler.GetBalance(setup.Ctx, setup.TestKeys.SuiAddress, params.AbstractTokenIdentifier)
+	}
+
 	return receiverBalance.String() == expectedValueOnReceiver.String()
 }
 
-// IsTransferDoneFromMultiversX returns true if all provided tokens are bridged from MultiversX towards Ethereum
+// IsTransferDoneFromMultiversX returns true if all provided tokens are bridged from MultiversX towards peer chain
 func (setup *TestSetup) IsTransferDoneFromMultiversX(tokens ...TestTokenParams) bool {
 	isDone := true
 	for _, params := range tokens {
@@ -285,12 +321,18 @@ func (setup *TestSetup) IsTransferDoneFromMultiversX(tokens ...TestTokenParams) 
 func (setup *TestSetup) isTransferDoneFromMultiversXForToken(params TestTokenParams) bool {
 	setup.mutBalances.Lock()
 	initialBalanceForSafe := setup.esdtBalanceForSafe[params.AbstractTokenIdentifier]
-	expectedReceiver := big.NewInt(0).Set(setup.ethBalanceTestAddress[params.AbstractTokenIdentifier])
+	expectedReceiver := big.NewInt(0).Set(setup.peerChainBalanceTestAddress[params.AbstractTokenIdentifier])
 	expectedReceiver.Add(expectedReceiver, params.PeerChainTestAddrExtraBalance)
 	setup.mutBalances.Unlock()
 
-	ethTestBalance := setup.PeerChainHandler.GetBalance(setup.TestKeys.EthAddress, params.AbstractTokenIdentifier)
-	isTransferDoneFromMultiversX := ethTestBalance.String() == expectedReceiver.String()
+	var peerChainTestBalance *big.Int
+	switch setup.peerChainType {
+	case ChainTypeEthereum:
+		peerChainTestBalance = setup.PeerChainHandler.GetBalance(setup.Ctx, setup.TestKeys.EthAddress.Bytes(), params.AbstractTokenIdentifier)
+	case ChainTypeSui:
+		peerChainTestBalance = setup.PeerChainHandler.GetBalance(setup.Ctx, setup.TestKeys.SuiAddress, params.AbstractTokenIdentifier)
+	}
+	isTransferDoneFromMultiversX := peerChainTestBalance.String() == expectedReceiver.String()
 
 	expectedEsdtSafe := big.NewInt(0).Add(initialBalanceForSafe, params.ESDTSafeExtraBalance)
 	balanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, params.AbstractTokenIdentifier)
@@ -311,8 +353,8 @@ func (setup *TestSetup) createBatchOnMultiversXForToken(params TestTokenParams) 
 	require.NotNil(setup, token)
 
 	setup.transferTokensToTestKey(params)
-	valueToMintOnEthereum := setup.sendFromMultiversxToEthereumForToken(params)
-	setup.PeerChainHandler.Mint(setup.Ctx, params, valueToMintOnEthereum)
+	valueToMintOnPeerChain := setup.sendFromMultiversxToPeerChainForToken(params)
+	setup.PeerChainHandler.Mint(setup.Ctx, params, valueToMintOnPeerChain)
 }
 
 func (setup *TestSetup) transferTokensToTestKey(params TestTokenParams) {
@@ -334,14 +376,14 @@ func (setup *TestSetup) transferTokensToTestKey(params TestTokenParams) {
 	)
 }
 
-// SendFromMultiversxToEthereum will create the deposits that will be gathered in a batch on MultiversX (without mint on Ethereum)
-func (setup *TestSetup) SendFromMultiversxToEthereum(tokensParams ...TestTokenParams) {
+// SendFromMultiversxToPeerChain will create the deposits that will be gathered in a batch on MultiversX (without mint on peer chain)
+func (setup *TestSetup) SendFromMultiversxToPeerChain(tokensParams ...TestTokenParams) {
 	for _, params := range tokensParams {
-		_ = setup.sendFromMultiversxToEthereumForToken(params)
+		_ = setup.sendFromMultiversxToPeerChainForToken(params)
 	}
 }
 
-func (setup *TestSetup) sendFromMultiversxToEthereumForToken(params TestTokenParams) *big.Int {
+func (setup *TestSetup) sendFromMultiversxToPeerChainForToken(params TestTokenParams) *big.Int {
 	token := setup.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(setup, token)
 
@@ -358,8 +400,8 @@ func (setup *TestSetup) sendFromMultiversxToEthereumForToken(params TestTokenPar
 	return depositValue
 }
 
-// TestWithdrawTotalFeesOnEthereumForTokens will test the withdrawal functionality for the provided test tokens
-func (setup *TestSetup) TestWithdrawTotalFeesOnEthereumForTokens(tokensParams ...TestTokenParams) {
+// TestWithdrawTotalFeesOnPeerChainForTokens will test the withdrawal functionality for the provided test tokens
+func (setup *TestSetup) TestWithdrawTotalFeesOnPeerChainForTokens(tokensParams ...TestTokenParams) {
 	for _, param := range tokensParams {
 		token := setup.TokensRegistry.GetTokenData(param.AbstractTokenIdentifier)
 
