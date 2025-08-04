@@ -29,23 +29,34 @@ import (
 const (
 	timeout                   = time.Minute * 15
 	projectedShardForTestKeys = byte(2)
+	currentChainType          = framework.ChainTypeEthereum
 )
 
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
+	USDCToken := GenerateTestUSDCToken()
+	MEMEToken := GenerateTestMEMEToken()
+	USDCToken.ChainType = currentChainType
+	MEMEToken.ChainType = currentChainType
+
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		GenerateTestUSDCToken(),
-		GenerateTestMEMEToken(),
+		USDCToken,
+		MEMEToken,
 	)
 }
 
 func TestRelayersShouldExecuteTransfersWithMintBurnTokens(t *testing.T) {
+	USDCToken := GenerateTestUSDCToken()
+	MEXToken := GenerateTestMEXToken()
+	USDCToken.ChainType = currentChainType
+	MEXToken.ChainType = currentChainType
+
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		GenerateTestEUROCToken(),
-		GenerateTestMEXToken(),
+		USDCToken,
+		MEXToken,
 	)
 }
 
@@ -57,9 +68,11 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArguments(t *testing.T) {
 
 	usdcToken := GenerateTestUSDCToken()
 	usdcToken.TestOperations[2].MvxSCCallData = callData
+	usdcToken.ChainType = currentChainType
 
 	memeToken := GenerateTestMEMEToken()
 	memeToken.TestOperations[2].MvxSCCallData = callData
+	memeToken.ChainType = currentChainType
 
 	testSetup := testRelayersWithChainSimulatorAndTokens(
 		t,
@@ -84,9 +97,11 @@ func TestRelayersShouldExecuteTransfersWithSCCallsWithArgumentsWithMintBurnToken
 
 	eurocToken := GenerateTestEUROCToken()
 	eurocToken.TestOperations[2].MvxSCCallData = callData
+	eurocToken.ChainType = currentChainType
 
 	mexToken := GenerateTestMEXToken()
 	mexToken.TestOperations[2].MvxSCCallData = callData
+	mexToken.ChainType = currentChainType
 
 	testSetup := testRelayersWithChainSimulatorAndTokens(
 		t,
@@ -128,19 +143,24 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrors(t *testing.T) {
 		}
 	}()
 
+	memeToken := GenerateTestMEMEToken()
+	memeToken.ChainType = currentChainType
+
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		stopChan,
-		GenerateTestMEMEToken(),
+		memeToken,
 	)
 }
 
 func TestRelayersShouldExecuteTransfersWithInitSupply(t *testing.T) {
 	usdcToken := GenerateTestUSDCToken()
 	usdcToken.InitialSupplyValue = "100000"
+	usdcToken.ChainType = currentChainType
 
 	memeToken := GenerateTestMEMEToken()
 	memeToken.InitialSupplyValue = "200000"
+	memeToken.ChainType = currentChainType
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
@@ -312,6 +332,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = false
 		badToken.HasChainSpecificToken = true
+		badToken.ChainType = currentChainType
 
 		expectedStringInLogs := "error = invalid setup IsNativeOnPeerChainereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
@@ -323,6 +344,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = true
 		badToken.HasChainSpecificToken = false
+		badToken.ChainType = currentChainType
 
 		expectedStringInLogs := "error = invalid setup IsNativeOnPeerChainereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
@@ -334,6 +356,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = false
 		badToken.HasChainSpecificToken = true
+		badToken.ChainType = currentChainType
 
 		testEthContractsShouldError(t, badToken)
 	})
@@ -344,6 +367,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.IsNativeOnMvX = false
 		badToken.IsMintBurnOnMvX = true
 		badToken.HasChainSpecificToken = true
+		badToken.ChainType = currentChainType
 
 		testEthContractsShouldError(t, badToken)
 	})

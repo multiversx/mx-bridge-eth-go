@@ -276,7 +276,7 @@ func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopC
 		case *framework.EthereumHandler:
 			handler.SimulatedChain.Commit()
 		case *framework.SuiHandler:
-			panic(fmt.Sprintf("sui chain simulator not yet implemented", handler))
+			panic("sui chain simulator not yet implemented")
 		default:
 			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
 		}
