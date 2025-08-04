@@ -43,6 +43,7 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		mexToken := GenerateTestMEXToken()
 		mexToken.TestOperations[2].MvxSCCallData = callData
 		mexToken.TestOperations[2].MvxFaultySCCall = true
+		mexToken.ChainType = currentChainType
 
 		testRelayersWithChainSimulatorAndTokensAndRefund(
 			t,
@@ -56,8 +57,8 @@ func TestRelayersShouldExecuteTransfersWithRefund(t *testing.T) {
 		usdcToken.TestOperations[2].MvxSCCallData = callData
 		usdcToken.TestOperations[2].MvxFaultySCCall = true
 		usdcToken.PeerChainTestAddrExtraBalance = big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000 + 950) // -(eth->mvx) + (mvx->eth) - fees + revert after bad SC call
-		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)
-		usdcToken.ChainType = currentChainType // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		usdcToken.ESDTSafeExtraBalance = big.NewInt(150)                                                       // extra is just for the fees for the 2 transfers mvx->eth and the failed eth->mvx that needed refund
+		usdcToken.ChainType = currentChainType
 
 		memeToken := GenerateTestMEMEToken()
 		memeToken.TestOperations[2].MvxSCCallData = callData
