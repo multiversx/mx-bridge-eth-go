@@ -52,6 +52,7 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 	}
 	usdcToken.ESDTSafeExtraBalance = big.NewInt(50)
 	usdcToken.PeerChainTestAddrExtraBalance = big.NewInt(-5000 - 5000 + 200 - 50)
+	usdcToken.ChainType = currentChainType
 
 	_ = testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(
 		t,
