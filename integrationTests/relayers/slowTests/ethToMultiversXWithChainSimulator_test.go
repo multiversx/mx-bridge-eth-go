@@ -334,7 +334,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.HasChainSpecificToken = true
 		badToken.ChainType = currentChainType
 
-		expectedStringInLogs := "error = invalid setup IsNativeOnPeerChainereum = true, isNativeOnMultiversX = true"
+		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
 	})
 	t.Run("IsNativeOnPeerChain = true, IsMintBurnOnPeerChain = false, isNativeOnMvX = true, isMintBurnOnMvX = true", func(t *testing.T) {
@@ -346,7 +346,7 @@ func TestRelayersShouldNotExecuteTransfers(t *testing.T) {
 		badToken.HasChainSpecificToken = false
 		badToken.ChainType = currentChainType
 
-		expectedStringInLogs := "error = invalid setup IsNativeOnPeerChainereum = true, isNativeOnMultiversX = true"
+		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
 	})
 	t.Run("IsNativeOnPeerChain = true, IsMintBurnOnPeerChain = true, isNativeOnMvX = true, isMintBurnOnMvX = false", func(t *testing.T) {
@@ -413,6 +413,8 @@ func testRelayersShouldNotExecuteTransfers(
 		return false
 	}
 
+	chainType := tokens[0].ChainType
+
 	// start a mocked log observer that is looking for a specific relayer error
 	chanCnt := 0
 	mockLogObserver := mock.NewMockLogObserver(expectedStringInLogs)
@@ -445,8 +447,6 @@ func testRelayersShouldNotExecuteTransfers(
 			}
 		}
 	}()
-
-	chainType := tokens[0].ChainType
 
 	_ = testRelayersWithChainSimulator(tb, setupFunc, processFunc, stopChan, chainType)
 }
