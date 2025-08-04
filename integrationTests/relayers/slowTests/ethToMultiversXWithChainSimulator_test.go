@@ -180,7 +180,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 		case *framework.EthereumHandler:
 			handler.SimulatedChain.Commit()
 		case *framework.SuiHandler:
-			panic(fmt.Sprintf("sui chain simulator not yet implemented", handler))
+			panic("sui chain simulator not yet implemented")
 		default:
 			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
 		}
@@ -380,7 +380,7 @@ func testRelayersShouldNotExecuteTransfers(
 		case *framework.EthereumHandler:
 			handler.SimulatedChain.Commit()
 		case *framework.SuiHandler:
-			panic(fmt.Sprintf("sui chain simulator not yet implemented", handler))
+			panic("sui chain simulator not yet implemented")
 		default:
 			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
 		}
@@ -445,7 +445,7 @@ func testEthContractsShouldError(tb testing.TB, testToken framework.TestTokenPar
 			require.Error(tb, err)
 
 		case *framework.SuiHandler:
-			panic(fmt.Sprintf("sui side not yet implemented", handler))
+			panic("sui side not yet implemented")
 		default:
 			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
 		}
