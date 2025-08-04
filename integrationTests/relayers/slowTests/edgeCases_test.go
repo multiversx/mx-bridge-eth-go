@@ -5,6 +5,7 @@ package slowTests
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -80,7 +81,14 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 			return true
 		}
 
-		setup.PeerChainHandler.SimulatedChain.Commit()
+		switch handler := setup.PeerChainHandler.(type) {
+		case *framework.EthereumHandler:
+			handler.SimulatedChain.Commit()
+		case *framework.SuiHandler:
+			panic(fmt.Sprintf("sui chain simulator not yet implemented", handler))
+		default:
+			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
+		}
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
 

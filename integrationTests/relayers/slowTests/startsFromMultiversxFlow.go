@@ -1,7 +1,10 @@
+//go:build slow
+
 package slowTests
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
@@ -26,7 +29,7 @@ func (flow *startsFromMultiversXFlow) process() (finished bool) {
 	isTransferDoneFromMultiversX := flow.setup.IsTransferDoneFromMultiversX(flow.tokens...)
 	if !flow.mvxToEthDone && isTransferDoneFromMultiversX {
 		flow.mvxToEthDone = true
-		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX->Ethereum transfer finished, now sending back to MultiversX..."))
+		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX->PeerChain transfer finished, now sending back to MultiversX..."))
 
 		flow.setup.PeerChainHandler.SendFromPeerChainToMultiversX(flow.setup.Ctx, flow.setup.MultiversxHandler.TestCallerAddress, flow.tokens...)
 	}
@@ -35,10 +38,10 @@ func (flow *startsFromMultiversXFlow) process() (finished bool) {
 		return false
 	}
 
-	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.tokens...)
-	if !flow.ethToMvxDone && isTransferDoneFromEthereum {
+	isTransferDoneFromPeerChain := flow.setup.IsTransferDoneFromPeerChain(flow.tokens...)
+	if !flow.ethToMvxDone && isTransferDoneFromPeerChain {
 		flow.ethToMvxDone = true
-		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX<->Ethereum from MultiversX transfers done"))
+		log.Info(fmt.Sprintf(framework.LogStepMarker, "MultiversX<->PeerChain from MultiversX transfers done"))
 		return true
 	}
 
@@ -53,5 +56,5 @@ func (flow *startsFromMultiversXFlow) areTokensFullyRefunded() bool {
 		return false // regular flow is not completed
 	}
 
-	return flow.setup.IsTransferDoneFromEthereumWithRefund(flow.tokens...)
+	return flow.setup.IsTransferDoneFromPeerChainWithRefund(flow.tokens...)
 }

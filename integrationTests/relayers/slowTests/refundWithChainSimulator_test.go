@@ -6,6 +6,7 @@
 package slowTests
 
 import (
+	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -271,7 +272,14 @@ func testRelayersWithChainSimulatorAndTokensAndRefund(tb testing.TB, manualStopC
 		}
 
 		// commit blocks in order to execute incoming txs from relayers
-		setup.PeerChainHandler.SimulatedChain.Commit()
+		switch handler := setup.PeerChainHandler.(type) {
+		case *framework.EthereumHandler:
+			handler.SimulatedChain.Commit()
+		case *framework.SuiHandler:
+			panic(fmt.Sprintf("sui chain simulator not yet implemented", handler))
+		default:
+			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
+		}
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
 

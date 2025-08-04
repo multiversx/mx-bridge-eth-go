@@ -10,6 +10,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"os"
 	"strings"
@@ -175,7 +176,14 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 		}
 
 		// commit blocks in order to execute incoming txs from relayers
-		setup.PeerChainHandler.SimulatedChain.Commit()
+		switch handler := setup.PeerChainHandler.(type) {
+		case *framework.EthereumHandler:
+			handler.SimulatedChain.Commit()
+		case *framework.SuiHandler:
+			panic(fmt.Sprintf("sui chain simulator not yet implemented", handler))
+		default:
+			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
+		}
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 		require.LessOrEqual(tb, setup.ScCallerModuleInstance.GetNumSentTransaction(), setup.GetNumScCallsOperations())
 
@@ -368,7 +376,14 @@ func testRelayersShouldNotExecuteTransfers(
 		}
 
 		// commit blocks in order to execute incoming txs from relayers
-		setup.PeerChainHandler.SimulatedChain.Commit()
+		switch handler := setup.PeerChainHandler.(type) {
+		case *framework.EthereumHandler:
+			handler.SimulatedChain.Commit()
+		case *framework.SuiHandler:
+			panic(fmt.Sprintf("sui chain simulator not yet implemented", handler))
+		default:
+			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
+		}
 		setup.ChainSimulator.GenerateBlocks(setup.Ctx, 1)
 
 		return false
@@ -423,9 +438,17 @@ func testEthContractsShouldError(tb testing.TB, testToken framework.TestTokenPar
 		require.True(tb, ok)
 
 		receiverKeys := framework.GenerateMvxPrivatePublicKey(tb, projectedShardForTestKeys)
-		auth, _ := bind.NewKeyedTransactorWithChainID(setup.DepositorKeys.EthSK, setup.PeerChainHandler.ChainID)
-		_, err := setup.PeerChainHandler.SafeContract.Deposit(auth, token.PeerChainTokenAddress, valueToMintOnEth, receiverKeys.MvxAddress.AddressSlice())
-		require.Error(tb, err)
+		switch handler := setup.PeerChainHandler.(type) {
+		case *framework.EthereumHandler:
+			auth, _ := bind.NewKeyedTransactorWithChainID(setup.DepositorKeys.EthSK, handler.ChainID)
+			_, err := handler.SafeContract.Deposit(auth, common.Address(token.PeerChainTokenAddress), valueToMintOnEth, receiverKeys.MvxAddress.AddressSlice())
+			require.Error(tb, err)
+
+		case *framework.SuiHandler:
+			panic(fmt.Sprintf("sui side not yet implemented", handler))
+		default:
+			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
+		}
 	}
 
 	processFunc := func(tb testing.TB, setup *framework.TestSetup) bool {
