@@ -91,11 +91,11 @@ func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
 		argsBridgeComponents := createMockBridgeComponentsArgs(i, messengers[i], multiversXChainMock, ethereumChainMock)
 		argsBridgeComponents.Configs.GeneralConfig.Eth.SafeContractAddress = safeContractEthAddress.Hex()
 		argsBridgeComponents.Erc20ContractsHolder = erc20ContractsHolder
-		relayer, err := factory.NewEthMultiversXBridgeComponents(argsBridgeComponents)
+		relayer, err := factory.NewEthMvxBridgeComponents(argsBridgeComponents)
 		require.Nil(t, err)
 
 		multiversXChainMock.AddRelayer(relayer.MultiversXRelayerAddress())
-		ethereumChainMock.AddRelayer(relayer.EthereumRelayerAddress())
+		ethereumChainMock.AddRelayer(common.HexToAddress(relayer.PeerChainRelayerAddress()))
 
 		go func() {
 			err = relayer.Start()
@@ -203,11 +203,11 @@ func testRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearIn
 		argsBridgeComponents := createMockBridgeComponentsArgs(i, messengers[i], multiversXChainMock, ethereumChainMock)
 		argsBridgeComponents.Configs.GeneralConfig.Eth.SafeContractAddress = safeContractEthAddress.Hex()
 		argsBridgeComponents.Erc20ContractsHolder = erc20ContractsHolder
-		relayer, err := factory.NewEthMultiversXBridgeComponents(argsBridgeComponents)
+		relayer, err := factory.NewEthMvxBridgeComponents(argsBridgeComponents)
 		require.Nil(t, err)
 
 		multiversXChainMock.AddRelayer(relayer.MultiversXRelayerAddress())
-		ethereumChainMock.AddRelayer(relayer.EthereumRelayerAddress())
+		ethereumChainMock.AddRelayer(common.HexToAddress(relayer.PeerChainRelayerAddress()))
 
 		go func() {
 			err = relayer.Start()

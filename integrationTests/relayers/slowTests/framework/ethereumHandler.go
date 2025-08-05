@@ -262,7 +262,7 @@ func (handler *EthereumHandler) PauseContractsForTokenChanges(ctx context.Contex
 // IssueAndWhitelistToken will issue and whitelist the token on Ethereum
 func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams) {
 	erc20Address, erc20ContractInstance := handler.deployTestERC20Contract(ctx, params)
-	ethTokenInfo := &EthTokenInfo{
+	ethTokenInfo := EthTokenInfo{
 		Contract: erc20ContractInstance,
 	}
 	handler.TokensRegistry.RegisterPeerChainAddressAndInfo(params.AbstractTokenIdentifier, erc20Address.Bytes(), ethTokenInfo)

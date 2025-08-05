@@ -22,7 +22,7 @@ type httpClientWrapper interface {
 // Relayer defines the behavior a bridge relayer must implement
 type Relayer interface {
 	MultiversXRelayerAddress() sdkCore.AddressHandler
-	EthereumRelayerAddress() common.Address
+	PeerChainRelayerAddress() string
 	Start() error
 	Close() error
 }
@@ -97,4 +97,5 @@ type PeerChainHandler interface {
 	CreateBatchOnPeerChain(ctx context.Context, mvxTestCallerAddress sdkCore.AddressHandler, tokensParams ...TestTokenParams)
 	PauseContractsForTokenChanges(ctx context.Context)
 	UnPauseContractsAfterTokenChanges(ctx context.Context)
+	Close() error
 }
