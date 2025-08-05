@@ -103,7 +103,8 @@ func NewEthereumHandler(
 // DeployContracts will deploy all required contracts on Ethereum side
 func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 	// deploy safe
-	handler.SafeAddress = handler.DeployUpgradeableContract(ctx, erc20SafeABI, erc20SafeBytecode)
+	safeAddressBytes := handler.DeployUpgradeableContract(ctx, erc20SafeABI, erc20SafeBytecode)
+	handler.SafeAddress = common.BytesToAddress(safeAddressBytes)
 	ethSafeContract, err := contract.NewERC20Safe(handler.SafeAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 	handler.SafeContract = ethSafeContract
@@ -114,7 +115,8 @@ func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 		ethRelayersAddresses = append(ethRelayersAddresses, relayerKeys.EthAddress)
 	}
 	quorumInt, _ := big.NewInt(0).SetString(handler.Quorum, 10)
-	handler.BridgeAddress = handler.DeployUpgradeableContract(ctx, bridgeABI, bridgeBytecode, ethRelayersAddresses, quorumInt, handler.SafeAddress)
+	bridgeAddressBytes := handler.DeployUpgradeableContract(ctx, bridgeABI, bridgeBytecode, ethRelayersAddresses, quorumInt, handler.SafeAddress)
+	handler.BridgeAddress = common.BytesToAddress(bridgeAddressBytes)
 	handler.BridgeContract, err = contract.NewBridge(handler.BridgeAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 
@@ -140,10 +142,11 @@ func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 // DeployContract can deploy an Ethereum contract
 func (handler *EthereumHandler) DeployContract(
 	ctx context.Context,
-	abiFile string,
-	bytecodeFile string,
 	params ...interface{},
-) common.Address {
+) []byte {
+	abiFile := params[0].(string)
+	bytecodeFile := params[1].(string)
+
 	abiBytes, err := os.ReadFile(abiFile)
 	require.NoError(handler, err)
 	parsed, err := abi.JSON(bytes.NewReader(abiBytes))
@@ -153,7 +156,7 @@ func (handler *EthereumHandler) DeployContract(
 	require.NoError(handler, err)
 
 	contractAuth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
-	contractAddress, tx, _, err := bind.DeployContract(contractAuth, parsed, common.FromHex(converters.TrimWhiteSpaceCharacters(string(contractBytes))), handler.SimulatedChain.Client(), params...)
+	contractAddress, tx, _, err := bind.DeployContract(contractAuth, parsed, common.FromHex(converters.TrimWhiteSpaceCharacters(string(contractBytes))), handler.SimulatedChain.Client(), params[2:]...)
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 
@@ -161,16 +164,14 @@ func (handler *EthereumHandler) DeployContract(
 
 	log.Info("deployed eth contract", "from file", bytecodeFile, "address", contractAddress.Hex())
 
-	return contractAddress
+	return contractAddress.Bytes()
 }
 
 // DeployUpgradeableContract can deploy an upgradeable Ethereum contract
-func (handler *EthereumHandler) DeployUpgradeableContract(
-	ctx context.Context,
-	abiFile string,
-	bytecodeFile string,
-	params ...interface{},
-) common.Address {
+func (handler *EthereumHandler) DeployUpgradeableContract(ctx context.Context, params ...interface{}) []byte {
+	abiFile := params[0].(string)
+	bytecodeFile := params[1].(string)
+
 	abiBytes, err := os.ReadFile(abiFile)
 	require.NoError(handler, err)
 	parsed, err := abi.JSON(bytes.NewReader(abiBytes))
@@ -188,18 +189,21 @@ func (handler *EthereumHandler) DeployUpgradeableContract(
 
 	log.Info("deployed eth logic contract", "from file", bytecodeFile, "address", contractAddress.Hex())
 
-	packedParams, err := parsed.Pack(proxyInitializeFunction, params...)
+	packedParams, err := parsed.Pack(proxyInitializeFunction, params[2:]...)
 	require.NoError(handler, err)
 	proxyParams := []interface{}{
+		proxyABI,
+		proxyBytecode,
 		contractAddress,
 		handler.OwnerKeys.EthAddress, // make the owner of the logic contract the admin for the proxy
 		packedParams,
 	}
-	proxyAddress := handler.DeployContract(ctx, proxyABI, proxyBytecode, proxyParams...)
+	proxyAddressBytes := handler.DeployContract(ctx, proxyParams...)
+	proxyAddress := common.BytesToAddress(proxyAddressBytes)
 
 	log.Info("deployed proxy contract", "address", proxyAddress.Hex())
 
-	return proxyAddress // return the proxy to test that it behaves just the same as the logic contract
+	return proxyAddress.Bytes() // return the proxy to test that it behaves just the same as the logic contract
 }
 
 func (handler *EthereumHandler) checkEthTxResult(ctx context.Context, hash common.Hash) {
@@ -209,12 +213,13 @@ func (handler *EthereumHandler) checkEthTxResult(ctx context.Context, hash commo
 }
 
 // GetBalance returns the receiver's balance
-func (handler *EthereumHandler) GetBalance(receiver common.Address, abstractTokenIdentifier string) *big.Int {
+func (handler *EthereumHandler) GetBalance(_ context.Context, receiver []byte, abstractTokenIdentifier string) *big.Int {
 	token := handler.TokensRegistry.GetTokenData(abstractTokenIdentifier)
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenAddress)
 
-	balance, err := token.PeerChainTokenContract.BalanceOf(nil, receiver)
+	ethTokenInfo := token.PeerChainTokenInfo.(EthTokenInfo)
+	balance, err := ethTokenInfo.Contract.BalanceOf(nil, common.BytesToAddress(receiver))
 	require.NoError(handler, err)
 
 	return balance
@@ -257,8 +262,10 @@ func (handler *EthereumHandler) PauseContractsForTokenChanges(ctx context.Contex
 // IssueAndWhitelistToken will issue and whitelist the token on Ethereum
 func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams) {
 	erc20Address, erc20ContractInstance := handler.deployTestERC20Contract(ctx, params)
-
-	handler.TokensRegistry.RegisterEthAddressAndContract(params.AbstractTokenIdentifier, erc20Address, erc20ContractInstance)
+	ethTokenInfo := EthTokenInfo{
+		Contract: erc20ContractInstance,
+	}
+	handler.TokensRegistry.RegisterPeerChainAddressAndInfo(params.AbstractTokenIdentifier, erc20Address.Bytes(), ethTokenInfo)
 
 	// whitelist eth token
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
@@ -307,7 +314,7 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 			params.NumOfDecimalsChainSpecific,
 		)
 
-		ethMintBurnContract, err := contract.NewMintBurnERC20(ethMintBurnAddress, handler.SimulatedChain.Client())
+		ethMintBurnContract, err := contract.NewMintBurnERC20(common.BytesToAddress(ethMintBurnAddress), handler.SimulatedChain.Client())
 		require.NoError(handler, err)
 
 		ownerAuth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
@@ -346,11 +353,11 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 			handler.checkEthTxResult(ctx, tx.Hash())
 		}
 
-		return ethMintBurnAddress, ethMintBurnContract
+		return common.BytesToAddress(ethMintBurnAddress), ethMintBurnContract
 	}
 
 	// deploy generic eth token
-	ethGenericTokenAddress := handler.DeployContract(
+	ethGenericTokenAddressBytes := handler.DeployContract(
 		ctx,
 		genericERC20ABI,
 		genericERC20Bytecode,
@@ -358,6 +365,7 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 		params.PeerChainTokenSymbol,
 		params.NumOfDecimalsChainSpecific,
 	)
+	ethGenericTokenAddress := common.BytesToAddress(ethGenericTokenAddressBytes)
 
 	ethGenericTokenContract, err := contract.NewGenericERC20(ethGenericTokenAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
@@ -392,8 +400,8 @@ func (handler *EthereumHandler) mintTokens(
 	require.Equal(handler, mintAmount.String(), balance.String())
 }
 
-// CreateBatchOnEthereum will create a batch on Ethereum using the provided tokens parameters list
-func (handler *EthereumHandler) CreateBatchOnEthereum(
+// CreateBatchOnPeerChain will create a batch on Ethereum using the provided tokens parameters list
+func (handler *EthereumHandler) CreateBatchOnPeerChain(
 	ctx context.Context,
 	mvxTestCallerAddress core.AddressHandler,
 	tokensParams ...TestTokenParams,
@@ -420,7 +428,7 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 
 	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, token)
-	require.NotNil(handler, token.PeerChainTokenContract)
+	require.NotNil(handler, token.PeerChainTokenInfo)
 
 	allowanceValue := big.NewInt(0)
 	for _, operation := range params.TestOperations {
@@ -432,7 +440,8 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 	}
 
 	if allowanceValue.Cmp(zeroValueBigInt) > 0 {
-		tx, err := token.PeerChainTokenContract.Approve(auth, handler.SafeAddress, allowanceValue)
+		ethTokenInfo := token.PeerChainTokenInfo.(EthTokenInfo)
+		tx, err := ethTokenInfo.Contract.Approve(auth, handler.SafeAddress, allowanceValue)
 		require.NoError(handler, err)
 		handler.SimulatedChain.Commit()
 		handler.checkEthTxResult(ctx, tx.Hash())
@@ -448,13 +457,13 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
 			tx, err = handler.SafeContract.DepositWithSCExecution(
 				auth,
-				token.PeerChainTokenAddress,
+				common.BytesToAddress(token.PeerChainTokenAddress),
 				operation.ValueToTransferToMvx,
 				mvxTestCallerAddress.AddressSlice(),
 				operation.MvxSCCallData,
 			)
 		} else {
-			tx, err = handler.SafeContract.Deposit(auth, token.PeerChainTokenAddress, operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
+			tx, err = handler.SafeContract.Deposit(auth, common.BytesToAddress(token.PeerChainTokenAddress), operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
 		}
 
 		require.NoError(handler, err)
@@ -463,8 +472,8 @@ func (handler *EthereumHandler) createDepositsOnEthereumForToken(
 	}
 }
 
-// SendFromEthereumToMultiversX will create the deposit transactions on the Ethereum side
-func (handler *EthereumHandler) SendFromEthereumToMultiversX(
+// SendFromPeerChainToMultiversX will create the deposit transactions on the Ethereum side
+func (handler *EthereumHandler) SendFromPeerChainToMultiversX(
 	ctx context.Context,
 	mvxTestCallerAddress core.AddressHandler,
 	tokensParams ...TestTokenParams,
@@ -478,11 +487,12 @@ func (handler *EthereumHandler) SendFromEthereumToMultiversX(
 func (handler *EthereumHandler) Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int) {
 	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, token)
-	require.NotNil(handler, token.PeerChainTokenContract)
+	require.NotNil(handler, token.PeerChainTokenInfo)
 
 	// mint erc20 token into eth safe
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.DepositorKeys.EthSK, handler.ChainID)
-	tx, err := token.PeerChainTokenContract.Mint(auth, handler.SafeAddress, valueToMint)
+	ethTokenInfo := token.PeerChainTokenInfo.(EthTokenInfo)
+	tx, err := ethTokenInfo.Contract.Mint(auth, handler.SafeAddress, valueToMint)
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())

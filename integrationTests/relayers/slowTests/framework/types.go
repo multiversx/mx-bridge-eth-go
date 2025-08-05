@@ -27,6 +27,7 @@ type IssueTokenParams struct {
 	ValueToMintOnPeerChain string
 	IsMintBurnOnPeerChain  bool
 	IsNativeOnPeerChain    bool
+	ChainType              ChainType
 }
 
 // InitialSupplyParams represents the initial supply parameters
@@ -60,18 +61,25 @@ type TokenData struct {
 	PeerChainTokenName          string
 	PeerChainTokenSymbol        string
 
-	MvxUniversalToken      string
-	MvxChainSpecificToken  string
-	PeerChainTokenAddress  []byte
-	PeerChainTokenContract ERC20Contract // TODO: change this to a common interface
+	MvxUniversalToken     string
+	MvxChainSpecificToken string
+	PeerChainTokenAddress []byte
+	PeerChainTokenInfo    interface{}
 }
 
-type CreateBatchParams struct {
-	TokensParams []TestTokenParams
+type EthTokenInfo struct {
+	Contract ERC20Contract
 }
 
-type TestTransferParams struct {
-	FromAddress string
-	ToAddress   string
-	TokenParams TestTokenParams
+type SuiTokenInfo struct {
+	CoinPackageId  string
+	TreasuryId     string
+	CoinMetadataId string
 }
+
+type ChainType string
+
+const (
+	ChainTypeEthereum ChainType = "ethereum"
+	ChainTypeSui      ChainType = "sui"
+)

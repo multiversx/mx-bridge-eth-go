@@ -25,13 +25,13 @@ func (flow *startsFromEthereumEdgecaseFlow) process() (finished bool) {
 		return true
 	}
 
-	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.tokens...)
+	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromPeerChain(flow.tokens...)
 	if !flow.ethToMvxDone && isTransferDoneFromEthereum {
 		flow.ethToMvxDone = true
 		log.Info(fmt.Sprintf(framework.LogStepMarker, "Ethereum->MultiversX transfer finished, now sending back to Ethereum & another round from Ethereum..."))
 
-		flow.setup.SendFromMultiversxToEthereum(flow.tokens...)
-		flow.setup.EthereumHandler.SendFromEthereumToMultiversX(flow.setup.Ctx, flow.setup.MultiversxHandler.TestCallerAddress, flow.tokens...)
+		flow.setup.SendFromMultiversxToPeerChain(flow.tokens...)
+		flow.setup.PeerChainHandler.SendFromPeerChainToMultiversX(flow.setup.Ctx, flow.setup.MultiversxHandler.TestCallerAddress, flow.tokens...)
 	}
 	if !flow.ethToMvxDone {
 		// return here, no reason to check downwards

@@ -62,6 +62,7 @@ const (
 	depositLiquidityFunction                             = "depositLiquidity"
 	whitelistTokenFunction                               = "whitelistToken"
 	addMappingFunction                                   = "addMapping"
+	addMappingSuiFunction                                = "addMappingSui"
 	esdtSafeAddTokenToWhitelistFunction                  = "esdtSafeAddTokenToWhitelist"
 	esdtSafeSetMaxBridgedAmountForTokenFunction          = "esdtSafeSetMaxBridgedAmountForToken"
 	multiTransferEsdtSetMaxBridgedAmountForTokenFunction = "multiTransferEsdtSetMaxBridgedAmountForToken"
@@ -738,6 +739,14 @@ func (handler *MultiversxHandler) setRolesForSpecificTokenOnSafe(ctx context.Con
 func (handler *MultiversxHandler) addMappingInMultisig(ctx context.Context, params IssueTokenParams) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
+	var addMappingFunc string
+	switch params.ChainType {
+	case ChainTypeEthereum:
+		addMappingFunc = addMappingFunction
+	case ChainTypeSui:
+		addMappingFunc = addMappingSuiFunction
+	}
+
 	// add mapping
 	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
@@ -745,7 +754,7 @@ func (handler *MultiversxHandler) addMappingInMultisig(ctx context.Context, para
 		handler.MultisigAddress,
 		zeroStringValue,
 		setCallsGasLimit,
-		addMappingFunction,
+		addMappingFunc,
 		[]string{
 			hex.EncodeToString(tkData.PeerChainTokenAddress),
 			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken))})

@@ -22,7 +22,7 @@ type httpClientWrapper interface {
 // Relayer defines the behavior a bridge relayer must implement
 type Relayer interface {
 	MultiversXRelayerAddress() sdkCore.AddressHandler
-	EthereumRelayerAddress() common.Address
+	PeerChainRelayerAddress() string
 	Start() error
 	Close() error
 }
@@ -70,10 +70,10 @@ type MoveContract interface {
 // TokensRegistry defines the registry used for the tokens in tests
 type TokensRegistry interface {
 	AddToken(params IssueTokenParams)
-	RegisterEthAddressAndContract(
+	RegisterPeerChainAddressAndInfo(
 		abstractTokenIdentifier string,
-		PeerChainAddress common.Address,
-		ethErc20Contract ERC20Contract,
+		peerChainAddress []byte,
+		chainTokenInfo interface{},
 	)
 	GetTokenData(abstractTokenIdentifier string) *TokenData
 	RegisterUniversalToken(abstractTokenIdentifier string, mvxUniversalToken string)
@@ -86,27 +86,16 @@ type SCCallerModule interface {
 	Close() error
 }
 
-// BlockchainHandler defines the common interface for blockchain handlers
-type BlockchainHandler interface {
+type PeerChainHandler interface {
 	DeployContracts(ctx context.Context)
-
-	GetBalance(receiver interface{}, abstractTokenIdentifier string) *big.Int
+	DeployContract(ctx context.Context, params ...interface{}) []byte
+	DeployUpgradeableContract(ctx context.Context, params ...interface{}) []byte
 	IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams)
+	GetBalance(ctx context.Context, receiver []byte, abstractTokenIdentifier string) *big.Int
 	Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int)
-
-	CreateBatchOnPeerChain(ctx context.Context, params CreateBatchParams)
-	SendFromPeerChainToMultiversX(ctx context.Context, params TestTransferParams)
-
+	SendFromPeerChainToMultiversX(ctx context.Context, mvxTestCallerAddress sdkCore.AddressHandler, tokensParams ...TestTokenParams)
+	CreateBatchOnPeerChain(ctx context.Context, mvxTestCallerAddress sdkCore.AddressHandler, tokensParams ...TestTokenParams)
 	PauseContractsForTokenChanges(ctx context.Context)
 	UnPauseContractsAfterTokenChanges(ctx context.Context)
-
 	Close() error
-
-	GetChainType() string
-}
-
-type SuiBlockchainClient interface {
-	GetBalance(ctx context.Context, address []byte, coinType string) (*big.Int, error)
-	ExecuteTransaction(ctx context.Context, txBytes []byte) (string, error)
-	GetTransactionBlock(ctx context.Context, digest string) (interface{}, error)
 }
