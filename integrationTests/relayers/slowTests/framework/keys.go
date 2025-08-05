@@ -97,7 +97,7 @@ func NewKeysStore(
 	log.Info("generated owner",
 		"MvX address", keysStore.OwnerKeys.MvxAddress.Bech32(),
 		"Eth address", keysStore.OwnerKeys.EthAddress.String(),
-		"Sui address", keysStore.OwnerKeys.SuiAddress,
+		"Sui address", string(keysStore.OwnerKeys.SuiAddress),
 	)
 	keysStore.DepositorKeys = keysStore.generateKey(KeygenOptions{
 		EthSKHex:       ethDepositorSK,
@@ -132,7 +132,7 @@ func (keyStore *KeysStore) generateRelayersKeys(numKeys int) {
 		log.Info("generated relayer", "index", i,
 			"MvX address", relayerKeys.MvxAddress.Bech32(),
 			"Eth address", relayerKeys.EthAddress.String(),
-			"Sui address", relayerKeys.SuiAddress,
+			"Sui address", string(relayerKeys.SuiAddress),
 		)
 
 		keyStore.RelayersKeys = append(keyStore.RelayersKeys, relayerKeys)
@@ -161,7 +161,7 @@ func (keyStore *KeysStore) generateKeys(numKeys int, message string, projectedSh
 		log.Info(message, "index", i,
 			"MvX address", key.MvxAddress.Bech32(),
 			"Eth address", key.EthAddress.String(),
-			"Sui address", key.SuiAddress,
+			"Sui address", string(key.SuiAddress),
 		)
 
 		keys = append(keys, key)
