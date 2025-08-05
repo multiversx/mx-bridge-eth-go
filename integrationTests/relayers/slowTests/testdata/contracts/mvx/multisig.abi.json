@@ -1,11 +1,11 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.78.0",
-            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
-            "commitDate": "2024-04-29",
+            "version": "1.87.0",
+            "commitHash": "17067e9ac6d7ecb70e50f92c1944e545188d2359",
+            "commitDate": "2025-05-09",
             "channel": "Stable",
-            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
+            "short": "rustc 1.87.0 (17067e9ac 2025-05-09)"
         },
         "contractCrate": {
             "name": "multisig",
@@ -377,6 +377,22 @@
             "outputs": []
         },
         {
+            "name": "addMappingSui",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "sui_address",
+                    "type": "array32<u8>"
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
             "name": "clearMapping",
             "onlyOwner": true,
             "mutability": "mutable",
@@ -384,6 +400,22 @@
                 {
                     "name": "erc20_address",
                     "type": "EthAddress"
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": []
+        },
+        {
+            "name": "clearMappingSui",
+            "onlyOwner": true,
+            "mutability": "mutable",
+            "inputs": [
+                {
+                    "name": "sui_address",
+                    "type": "array32<u8>"
                 },
                 {
                     "name": "token_id",
@@ -862,6 +894,39 @@
             ]
         },
         {
+            "docs": [
+                "Mapping between SUI address (32 bytes) and MultiversX ESDT Token Identifiers"
+            ],
+            "name": "getSuiAddressForTokenId",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "array32<u8>"
+                }
+            ]
+        },
+        {
+            "name": "getTokenIdForSuiAddress",
+            "mutability": "readonly",
+            "inputs": [
+                {
+                    "name": "sui_address",
+                    "type": "array32<u8>"
+                }
+            ],
+            "outputs": [
+                {
+                    "type": "TokenIdentifier"
+                }
+            ]
+        },
+        {
             "name": "getEsdtSafeAddress",
             "mutability": "readonly",
             "inputs": [],
@@ -1277,6 +1342,36 @@
                 {
                     "name": "erc20_address",
                     "type": "EthAddress",
+                    "indexed": true
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "addMappingSui",
+            "inputs": [
+                {
+                    "name": "sui_address",
+                    "type": "array32<u8>",
+                    "indexed": true
+                },
+                {
+                    "name": "token_id",
+                    "type": "TokenIdentifier",
+                    "indexed": true
+                }
+            ]
+        },
+        {
+            "identifier": "clearMappingSui",
+            "inputs": [
+                {
+                    "name": "sui_address",
+                    "type": "array32<u8>",
                     "indexed": true
                 },
                 {
