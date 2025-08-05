@@ -5,8 +5,8 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"math/big"
+	"os"
 	"strings"
 	"testing"
 
@@ -144,7 +144,7 @@ func (handler *SuiHandler) getEncodedModules() []string {
 }
 
 func (handler *SuiHandler) readModuleBytes(path string) []byte {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	require.NoError(handler, err)
 	return b
 }
