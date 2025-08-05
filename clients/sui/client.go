@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
+	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
 	"math/big"
 	"sync"
 
@@ -319,33 +320,74 @@ func (c *client) ExecuteTransfer(
 		signatures = signatures[:quorum]
 	}
 
+	var hash string
+	var allErrors []error
+	tokenGroups := c.groupTransfersByTokenType(argLists)
+
+	for tokenType, group := range tokenGroups {
+		hash, err = c.executeTransferForTokenType(ctx, tokenType, group, batchId, signatures)
+		if err != nil {
+			allErrors = append(allErrors, fmt.Errorf("failed to execute transfer for token type %s: %w", tokenType, err))
+			continue
+		}
+		c.log.Info("Executed transfer transaction", "tokenType", tokenType, "batchID", batchId, "hash", hash)
+	}
+
+	if len(allErrors) > 0 {
+		return hash, fmt.Errorf("some transfers failed: %v", allErrors)
+	}
+
+	return hash, err
+}
+
+func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatch) map[string]*dtos.TokenTransferGroup {
+	groups := make(map[string]*dtos.TokenTransferGroup)
+
+	for i := 0; i < len(argLists.PeerTokens); i++ {
+		tokenTypeStr := string(argLists.PeerTokens[i])
+
+		if groups[tokenTypeStr] == nil {
+			groups[tokenTypeStr] = &dtos.TokenTransferGroup{
+				Recipients: make([][]byte, 0),
+				Amounts:    make([]uint64, 0),
+				Nonces:     make([]uint64, 0),
+			}
+		}
+
+		groups[tokenTypeStr].Recipients = append(groups[tokenTypeStr].Recipients, argLists.Recipients[i])
+		groups[tokenTypeStr].Amounts = append(groups[tokenTypeStr].Amounts, argLists.Amounts[i].Uint64())
+		groups[tokenTypeStr].Nonces = append(groups[tokenTypeStr].Nonces, argLists.Nonces[i].Uint64())
+	}
+
+	return groups
+}
+
+func (c *client) executeTransferForTokenType(
+	ctx context.Context,
+	tokenType string,
+	group *dtos.TokenTransferGroup,
+	batchId uint64,
+	signatures [][]byte,
+) (string, error) {
 	moveCallReq := models.MoveCallRequest{
 		Signer:          c.relayerAddress,
 		PackageObjectId: c.bridgePackageId,
 		Module:          "bridge",
 		Function:        "execute_transfer",
-		TypeArguments:   []interface{}{},
+		TypeArguments:   []interface{}{tokenType},
 		Arguments: []interface{}{
 			c.bridgeObjectId,
 			c.safeObjectId,
-			argLists.PeerTokens,
-			argLists.Recipients,
-			argLists.Amounts,
-			argLists.Nonces,
+			group.Recipients,
+			group.Amounts,
+			group.Nonces,
 			batchId,
 			signatures,
 		},
-		GasBudget: "100000000", // TODO
+		GasBudget: "100000000",
 	}
 
-	hash, err := c.txHandler.SendTransactionReturnHash(ctx, moveCallReq)
-	if err != nil {
-		return "", err
-	}
-
-	c.log.Info("Executed transfer transaction", "batchID", batchId, "hash", hash)
-
-	return hash, err
+	return c.txHandler.SendTransactionReturnHash(ctx, moveCallReq)
 }
 
 func (c *client) CheckClientAvailability(ctx context.Context) error {
