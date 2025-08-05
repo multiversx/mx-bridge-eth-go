@@ -2,7 +2,6 @@ package framework
 
 import (
 	"context"
-	"crypto"
 	"crypto/ed25519"
 	"encoding/base64"
 	"fmt"
@@ -93,15 +92,15 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 			}
 
 		} else if obj.Type == "published" {
-			handler.PackageID = obj.ObjectId
+			handler.PackageID = obj.PackageId
 		}
 	}
 
-	suiRelayersAddresses := make([][]byte, 0, len(handler.RelayersKeys))
-	suiRelayersPubKeys := make([]crypto.PublicKey, 0, len(handler.RelayersKeys))
+	suiRelayersAddresses := make([]string, 0, len(handler.RelayersKeys))
+	suiRelayersPubKeys := make([]ed25519.PublicKey, 0, len(handler.RelayersKeys))
 	for _, relayerKeys := range handler.RelayersKeys {
-		suiRelayersAddresses = append(suiRelayersAddresses, relayerKeys.SuiAddress)
-		suiRelayersPubKeys = append(suiRelayersPubKeys, relayerKeys.SuiSK.Public())
+		suiRelayersAddresses = append(suiRelayersAddresses, string(relayerKeys.SuiAddress))
+		suiRelayersPubKeys = append(suiRelayersPubKeys, relayerKeys.SuiSK.Public().(ed25519.PublicKey))
 	}
 
 	bridgeIdBytes := handler.DeployContract(
@@ -156,14 +155,26 @@ func (handler *SuiHandler) DeployContract(
 ) []byte {
 	module := params[0].(string)
 	function := params[1].(string)
+	suiRelayerAddresses := params[2].([]string)
+	suiRelayersPubKeys := params[3].([]ed25519.PublicKey)
+	quorumStr := params[4].(string)
+	safeObjectID := params[5].(string)
+	adminCap := params[6].(string)
+
 	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: handler.PackageID,
 		Module:          module,
 		Function:        function,
 		TypeArguments:   []interface{}{},
-		Arguments:       params[2:],
-		GasBudget:       "100000000",
+		Arguments: []interface{}{
+			suiRelayerAddresses,
+			suiRelayersPubKeys,
+			quorumStr,
+			safeObjectID,
+			adminCap,
+		},
+		GasBudget: "100000000",
 	})
 	require.Nil(handler, err)
 
@@ -211,7 +222,7 @@ func (handler *SuiHandler) UnPauseContractsAfterTokenChanges(ctx context.Context
 		Function:        "unpause_contract",
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
-			handler.SafeObjectID,
+			handler.BridgeObjectID,
 			handler.AdminCap,
 		},
 		GasBudget: "10000000",
@@ -248,7 +259,7 @@ func (handler *SuiHandler) PauseContractsForTokenChanges(ctx context.Context) {
 		Function:        "pause_contract",
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
-			handler.SafeObjectID,
+			handler.BridgeObjectID,
 			handler.AdminCap,
 		},
 		GasBudget: "10000000",
@@ -337,7 +348,7 @@ func (handler *SuiHandler) deployCoinContract(ctx context.Context) (string, stri
 				metadataId = obj.ObjectId
 			}
 		} else if obj.Type == "published" {
-			coinPackageId = obj.ObjectId
+			coinPackageId = obj.PackageId
 		}
 	}
 
