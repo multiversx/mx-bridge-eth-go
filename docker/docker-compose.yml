@@ -7,25 +7,10 @@ services:
     - "../scripts:/docker/scripts"
   entrypoint: "./chainsimulator -log-level *:INFO"
 
- sui-localnet:
-   image: mysten/sui-tools:mainnet
-   container_name: sui-localnet
-   platform: linux/amd64
-   ports:
-     - "9000:9000"
-     - "9184:9184"
-   volumes:
-     - "sui_data:/opt/sui/db"
-   environment:
-     - RUST_LOG=info,sui=debug
-   command: >
-     sui start --with-faucet --force-regenesis
-   restart: unless-stopped
-   healthcheck:
-     test: ["CMD", "curl", "-f", "http://localhost:9000"]
-     interval: 30s
-     timeout: 10s
-     retries: 3
-
-volumes:
-  sui_data:
+ sui:
+  image: mysten/sui-tools:testnet-v1.53.1-arm64
+  ports:
+    - "9000:9000"  # Sui RPC port
+    - "9123:9123"  # Sui faucet port
+  command: >
+   sui start --with-faucet --force-regenesis
