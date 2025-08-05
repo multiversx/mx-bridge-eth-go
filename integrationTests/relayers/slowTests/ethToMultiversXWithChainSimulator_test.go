@@ -29,7 +29,7 @@ import (
 const (
 	timeout                   = time.Minute * 15
 	projectedShardForTestKeys = byte(2)
-	currentChainType          = framework.ChainTypeEthereum
+	currentChainType          = framework.ChainTypeSui
 )
 
 func TestRelayersShouldExecuteTransfers(t *testing.T) {

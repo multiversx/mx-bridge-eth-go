@@ -32,10 +32,10 @@ const (
 type SuiHandler struct {
 	testing.TB
 	*KeysStore
-	TokensRegistry       TokensRegistry
-	Quorum               string
-	MvxTestCallerAddress core.AddressHandler
-	// TODO: chain simulator
+	TokensRegistry             TokensRegistry
+	Quorum                     string
+	MvxTestCallerAddress       core.AddressHandler
+	SuiChainSimulator          *suiChainSimulatorWrapper
 	SuiProxy                   suiSdk.ISuiAPI
 	PackageID                  string
 	BridgeObjectID             string
@@ -62,6 +62,9 @@ func NewSuiHandler(
 	}
 
 	// TODO: chain simulator
+	walletsToFundOnSui := handler.WalletsToFundOnSui()
+	handler.FundWallets(walletsToFundOnSui)
+	handler.SuiProxy = suiSdk.NewSuiClient("http://localhost:9000")
 
 	return handler
 }
@@ -506,4 +509,40 @@ func (handler *SuiHandler) signAndExecuteTxReturnResult(
 
 func (handler *SuiHandler) Close() error {
 	panic("Close not implemented for SuiHandler")
+}
+
+func (handler *SuiHandler) FundWallets(wallets [][]byte) {
+	for _, wallet := range wallets {
+		//faucetHost, err := suiSdk.GetFaucetHost(constant.SuiLocalnet)
+		//if err != nil {
+		//	fmt.Println("GetFaucetHost err:", err)
+		//	return
+		//}
+
+		header := map[string]string{}
+		err := suiSdk.RequestSuiFromFaucet("http://127.0.0.1:9123", string(wallet), header)
+		if err != nil {
+			log.Error("error in suiChainSimulatorWrapper.FundWallets", "error", err.Error())
+			continue
+		}
+		log.Info("Funded wallet: " + string(wallet))
+	}
+}
+
+func (handler *SuiHandler) GenerateBlocks(ctx context.Context, numBlocks int) {
+	for i := 0; i < numBlocks; i++ {
+		_, err := handler.SuiProxy.SignAndExecuteTransactionBlock(
+			ctx,
+			models.SignAndExecuteTransactionBlockRequest{
+				TxnMetaData: models.TxnMetaData{},
+				PriKey:      handler.OwnerKeys.SuiSK,
+				Options:     models.SuiTransactionBlockOptions{},
+				RequestType: "WaitForLocalExecution",
+			},
+		)
+		if err != nil {
+			log.Error("Failed to generate block", "error", err)
+			continue
+		}
+	}
 }

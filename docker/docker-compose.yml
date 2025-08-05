@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
  chain-simulator:
   image: multiversx/chainsimulator:v1.7.13-patch2
@@ -8,3 +6,26 @@ services:
   volumes:
     - "../scripts:/docker/scripts"
   entrypoint: "./chainsimulator -log-level *:INFO"
+
+ sui-localnet:
+   image: mysten/sui-tools:mainnet
+   container_name: sui-localnet
+   platform: linux/amd64
+   ports:
+     - "9000:9000"
+     - "9184:9184"
+   volumes:
+     - "sui_data:/opt/sui/db"
+   environment:
+     - RUST_LOG=info,sui=debug
+   command: >
+     sui start --with-faucet --force-regenesis
+   restart: unless-stopped
+   healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:9000"]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+
+volumes:
+  sui_data:
