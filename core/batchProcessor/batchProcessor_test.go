@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/stretchr/testify/assert"
 )
@@ -35,17 +34,17 @@ func TestExtractListEthToMvx(t *testing.T) {
 		Statuses: nil,
 	}
 
-	args := ExtractListEthToMvx(testBatch)
+	args := ExtractListToMvx(testBatch)
 
-	expectedEthTokens := []common.Address{
-		common.BytesToAddress([]byte("source token 1")),
-		common.BytesToAddress([]byte("source token 2")),
+	expectedEthTokens := [][]byte{
+		[]byte("source token 1"),
+		[]byte("source token 2"),
 	}
-	assert.Equal(t, expectedEthTokens, args.EthTokens)
+	assert.Equal(t, expectedEthTokens, args.PeerTokens)
 
-	expectedRecipients := []common.Address{
-		common.BytesToAddress([]byte("to 1")),
-		common.BytesToAddress([]byte("to 2")),
+	expectedRecipients := [][]byte{
+		[]byte("to 1"),
+		[]byte("to 2"),
 	}
 	assert.Equal(t, expectedRecipients, args.Recipients)
 
@@ -94,17 +93,17 @@ func TestExtractListMvxToEth(t *testing.T) {
 		Statuses: nil,
 	}
 
-	args := ExtractListMvxToEth(testBatch)
+	args := ExtractListFromMvx(testBatch)
 
-	expectedEthTokens := []common.Address{
-		common.BytesToAddress([]byte("destination token 1")),
-		common.BytesToAddress([]byte("destination token 2")),
+	expectedEthTokens := [][]byte{
+		[]byte("destination token 1"),
+		[]byte("destination token 2"),
 	}
-	assert.Equal(t, expectedEthTokens, args.EthTokens)
+	assert.Equal(t, expectedEthTokens, args.PeerTokens)
 
-	expectedRecipients := []common.Address{
-		common.BytesToAddress([]byte("to 1")),
-		common.BytesToAddress([]byte("to 2")),
+	expectedRecipients := [][]byte{
+		[]byte("to 1"),
+		[]byte("to 2"),
 	}
 	assert.Equal(t, expectedRecipients, args.Recipients)
 
