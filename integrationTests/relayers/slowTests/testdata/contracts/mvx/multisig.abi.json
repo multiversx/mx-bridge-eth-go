@@ -1,11 +1,11 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.87.0",
-            "commitHash": "17067e9ac6d7ecb70e50f92c1944e545188d2359",
-            "commitDate": "2025-05-09",
+            "version": "1.86.0",
+            "commitHash": "05f9846f893b09a1be1fc8560e33fc3c815cfecb",
+            "commitDate": "2025-03-31",
             "channel": "Stable",
-            "short": "rustc 1.87.0 (17067e9ac 2025-05-09)"
+            "short": "rustc 1.86.0 (05f9846f8 2025-03-31)"
         },
         "contractCrate": {
             "name": "multisig",
@@ -377,22 +377,6 @@
             "outputs": []
         },
         {
-            "name": "addMappingSui",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "sui_address",
-                    "type": "array32<u8>"
-                },
-                {
-                    "name": "token_id",
-                    "type": "TokenIdentifier"
-                }
-            ],
-            "outputs": []
-        },
-        {
             "name": "clearMapping",
             "onlyOwner": true,
             "mutability": "mutable",
@@ -400,22 +384,6 @@
                 {
                     "name": "erc20_address",
                     "type": "EthAddress"
-                },
-                {
-                    "name": "token_id",
-                    "type": "TokenIdentifier"
-                }
-            ],
-            "outputs": []
-        },
-        {
-            "name": "clearMappingSui",
-            "onlyOwner": true,
-            "mutability": "mutable",
-            "inputs": [
-                {
-                    "name": "sui_address",
-                    "type": "array32<u8>"
                 },
                 {
                     "name": "token_id",
@@ -894,39 +862,6 @@
             ]
         },
         {
-            "docs": [
-                "Mapping between SUI address (32 bytes) and MultiversX ESDT Token Identifiers"
-            ],
-            "name": "getSuiAddressForTokenId",
-            "mutability": "readonly",
-            "inputs": [
-                {
-                    "name": "token_id",
-                    "type": "TokenIdentifier"
-                }
-            ],
-            "outputs": [
-                {
-                    "type": "array32<u8>"
-                }
-            ]
-        },
-        {
-            "name": "getTokenIdForSuiAddress",
-            "mutability": "readonly",
-            "inputs": [
-                {
-                    "name": "sui_address",
-                    "type": "array32<u8>"
-                }
-            ],
-            "outputs": [
-                {
-                    "type": "TokenIdentifier"
-                }
-            ]
-        },
-        {
             "name": "getEsdtSafeAddress",
             "mutability": "readonly",
             "inputs": [],
@@ -1352,36 +1287,6 @@
             ]
         },
         {
-            "identifier": "addMappingSui",
-            "inputs": [
-                {
-                    "name": "sui_address",
-                    "type": "array32<u8>",
-                    "indexed": true
-                },
-                {
-                    "name": "token_id",
-                    "type": "TokenIdentifier",
-                    "indexed": true
-                }
-            ]
-        },
-        {
-            "identifier": "clearMappingSui",
-            "inputs": [
-                {
-                    "name": "sui_address",
-                    "type": "array32<u8>",
-                    "indexed": true
-                },
-                {
-                    "name": "token_id",
-                    "type": "TokenIdentifier",
-                    "indexed": true
-                }
-            ]
-        },
-        {
             "identifier": "moveRefundBatchToSafeEvent",
             "inputs": []
         },
@@ -1455,12 +1360,12 @@
         "EthAddress": {
             "type": "struct",
             "docs": [
-                "Wrapper over a 20-byte array"
+                "Wrapper over a 32-byte array"
             ],
             "fields": [
                 {
                     "name": "raw_addr",
-                    "type": "array20<u8>"
+                    "type": "array32<u8>"
                 }
             ]
         },
