@@ -121,7 +121,6 @@ func NewSuiBridgeComponents(
 	workingDir string,
 	chainSimulator ChainSimulatorWrapper,
 	suiProxy sui.ISuiAPI,
-	suiChainSimulator *simulated.Backend,
 	numRelayers int,
 	packageId string,
 	mvxSafeAddress *MvxAddress,
@@ -139,15 +138,15 @@ func NewSuiBridgeComponents(
 
 	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
 
-	gasStationURL := bridge.gasStationInstance.URL()
-	log.Info("started gas station server", "URL", gasStationURL)
+	//gasStationURL := bridge.gasStationInstance.URL()
+	//log.Info("started gas station server", "URL", gasStationURL)
 
 	wg := sync.WaitGroup{}
 	wg.Add(numRelayers)
 
 	for i := 0; i < numRelayers; i++ {
-		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir, gasStationURL)
-		generalConfigs.Eth.PrivateKeyFile = fmt.Sprintf(relayerSuiSeedPathFormat, i)
+		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir, "")
+		generalConfigs.Sui.PrivateKeyFile = fmt.Sprintf(relayerSuiSeedPathFormat, i)
 		argsBridgeComponents := factory.ArgsSuiToMultiversXBridge{
 			Configs: config.Configs{
 				GeneralConfig:   generalConfigs,

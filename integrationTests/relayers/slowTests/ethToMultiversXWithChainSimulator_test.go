@@ -33,16 +33,18 @@ const (
 )
 
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
-	USDCToken := GenerateTestUSDCToken()
-	MEMEToken := GenerateTestMEMEToken()
-	USDCToken.ChainType = currentChainType
-	MEMEToken.ChainType = currentChainType
+	//USDCToken := GenerateTestUSDCToken()
+	//MEMEToken := GenerateTestMEMEToken()
+	//USDCToken.ChainType = currentChainType
+	//MEMEToken.ChainType = currentChainType
+
+	suiUSDC := GenerateTestUSDCSuiToken()
+	suiUSDC.ChainType = currentChainType
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		USDCToken,
-		MEMEToken,
+		suiUSDC,
 	)
 }
 

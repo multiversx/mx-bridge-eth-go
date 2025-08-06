@@ -62,7 +62,6 @@ const (
 	depositLiquidityFunction                             = "depositLiquidity"
 	whitelistTokenFunction                               = "whitelistToken"
 	addMappingFunction                                   = "addMapping"
-	addMappingSuiFunction                                = "addMappingSui"
 	esdtSafeAddTokenToWhitelistFunction                  = "esdtSafeAddTokenToWhitelist"
 	esdtSafeSetMaxBridgedAmountForTokenFunction          = "esdtSafeSetMaxBridgedAmountForToken"
 	multiTransferEsdtSetMaxBridgedAmountForTokenFunction = "multiTransferEsdtSetMaxBridgedAmountForToken"
@@ -217,6 +216,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	log.Info("Deploy: SC proxy contract", "address", handler.ScProxyAddress, "transaction hash", hash)
 
 	// deploy multisig
+	// TODO: switch
 	minRelayerStakeInt, _ := big.NewInt(0).SetString(minRelayerStake, 10)
 	minRelayerStakeHex := hex.EncodeToString(minRelayerStakeInt.Bytes())
 	params := []string{
@@ -739,14 +739,6 @@ func (handler *MultiversxHandler) setRolesForSpecificTokenOnSafe(ctx context.Con
 func (handler *MultiversxHandler) addMappingInMultisig(ctx context.Context, params IssueTokenParams) {
 	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
-	var addMappingFunc string
-	switch params.ChainType {
-	case ChainTypeEthereum:
-		addMappingFunc = addMappingFunction
-	case ChainTypeSui:
-		addMappingFunc = addMappingSuiFunction
-	}
-
 	// add mapping
 	hash, txResult := handler.ChainSimulator.ScCall(
 		ctx,
@@ -754,7 +746,7 @@ func (handler *MultiversxHandler) addMappingInMultisig(ctx context.Context, para
 		handler.MultisigAddress,
 		zeroStringValue,
 		setCallsGasLimit,
-		addMappingFunc,
+		addMappingFunction,
 		[]string{
 			hex.EncodeToString(tkData.PeerChainTokenAddress),
 			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken))})

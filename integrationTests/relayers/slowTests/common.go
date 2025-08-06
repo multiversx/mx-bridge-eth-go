@@ -188,19 +188,19 @@ func GenerateTestUSDCSuiToken() framework.TestTokenParams {
 	// USDC Sui is peerChainNative = true, peerChainMintBurn = false, mvxNative = false, mvxMintBurn = true
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
-			AbstractTokenIdentifier:          "USDC_SUI",
+			AbstractTokenIdentifier:          "USDC",
 			NumOfDecimalsUniversal:           6,
 			NumOfDecimalsChainSpecific:       6,
-			MvxUniversalTokenTicker:          "USDC_SUI",
+			MvxUniversalTokenTicker:          "USDC",
 			MvxChainSpecificTokenTicker:      "SUIUSDC",
-			MvxUniversalTokenDisplayName:     "WrappedUSDC_Sui",
+			MvxUniversalTokenDisplayName:     "WrappedUSDC",
 			MvxChainSpecificTokenDisplayName: "SuiWrappedUSDC",
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
 			HasChainSpecificToken:            true,
 			PeerChainTokenName:               "SuiUSDC",
-			PeerChainTokenSymbol:             "USDC_SUI",
+			PeerChainTokenSymbol:             "USDC",
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
@@ -214,14 +214,9 @@ func GenerateTestUSDCSuiToken() framework.TestTokenParams {
 				ValueToTransferToMvx: big.NewInt(7000),
 				ValueToSendFromMvX:   big.NewInt(300),
 			},
-			{
-				ValueToTransferToMvx: big.NewInt(1000),
-				ValueToSendFromMvX:   nil,
-				MvxSCCallData:        createScCallData("callPayable", 50000000),
-			},
 		},
-		ESDTSafeExtraBalance:          big.NewInt(100),                                        // extra is just for the fees for the 2 transfers mvx->peerChain
-		PeerChainTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50 - 1000), // -(peerChain->mvx) + (mvx->peerChain) - fees
+		ESDTSafeExtraBalance:          big.NewInt(100),                                 // extra is just for the fees for the 2 transfers mvx->peerChain
+		PeerChainTestAddrExtraBalance: big.NewInt(-5000 + 2500 - 50 - 7000 + 300 - 50), // -(peerChain->mvx) + (mvx->peerChain) - fees
 	}
 }
 

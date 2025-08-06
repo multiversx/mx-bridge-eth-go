@@ -122,7 +122,6 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 			setup.WorkingDir,
 			setup.ChainSimulator,
 			handler.SuiProxy,
-			nil,
 			NumRelayers,
 			handler.PackageID,
 			setup.MultiversxHandler.SafeAddress,
