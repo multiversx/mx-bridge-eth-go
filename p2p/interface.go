@@ -32,7 +32,7 @@ type MultiversXRoleProvider interface {
 
 // SignatureProcessor defines the operations needed to process signatures
 type SignatureProcessor interface {
-	VerifyEthSignature(signature []byte, messageHash []byte) error
+	VerifySignature(signature []byte, messageHash []byte) error
 	IsInterfaceNil() bool
 }
 

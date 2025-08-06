@@ -10,19 +10,19 @@ import (
 type signaturesHolder struct {
 	mut            sync.RWMutex
 	signedMessages map[string]*core.SignedMessage
-	ethMessages    []*core.EthereumSignature
+	ethMessages    []*core.PeerChainSignature
 }
 
 // NewSignatureHolder creates a new signatureHolder
 func NewSignatureHolder() *signaturesHolder {
 	return &signaturesHolder{
 		signedMessages: make(map[string]*core.SignedMessage),
-		ethMessages:    make([]*core.EthereumSignature, 0),
+		ethMessages:    make([]*core.PeerChainSignature, 0),
 	}
 }
 
 // ProcessNewMessage will store the new messages
-func (sh *signaturesHolder) ProcessNewMessage(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+func (sh *signaturesHolder) ProcessNewMessage(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 	if msg == nil || ethMsg == nil {
 		return
 	}
@@ -73,7 +73,7 @@ func (sh *signaturesHolder) ClearStoredSignatures() {
 	defer sh.mut.Unlock()
 
 	sh.signedMessages = make(map[string]*core.SignedMessage)
-	sh.ethMessages = make([]*core.EthereumSignature, 0)
+	sh.ethMessages = make([]*core.PeerChainSignature, 0)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

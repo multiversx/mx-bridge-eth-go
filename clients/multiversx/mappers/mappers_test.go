@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx/mappers/eth"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/stretchr/testify/assert"
@@ -15,24 +16,24 @@ func TestNewMapper(t *testing.T) {
 	t.Parallel()
 	{
 		t.Run("Erc20ToMultiversX: nil dataGetter", func(t *testing.T) {
-			mapper, err := NewErc20ToMultiversXMapper(nil)
+			mapper, err := eth.NewErc20ToMultiversXMapper(nil)
 			assert.Equal(t, clients.ErrNilDataGetter, err)
 			assert.True(t, check.IfNil(mapper))
 		})
 		t.Run("Erc20ToMultiversX: should work", func(t *testing.T) {
-			mapper, err := NewErc20ToMultiversXMapper(&bridgeTests.DataGetterStub{})
+			mapper, err := eth.NewErc20ToMultiversXMapper(&bridgeTests.DataGetterStub{})
 			assert.Nil(t, err)
 			assert.False(t, check.IfNil(mapper))
 		})
 	}
 	{
 		t.Run("MultiversXToErc20: nil dataGetter", func(t *testing.T) {
-			mapper, err := NewMultiversXToErc20Mapper(nil)
+			mapper, err := eth.NewMultiversXToErc20Mapper(nil)
 			assert.Equal(t, clients.ErrNilDataGetter, err)
 			assert.True(t, check.IfNil(mapper))
 		})
 		t.Run("MultiversXToErc20: should work", func(t *testing.T) {
-			mapper, err := NewMultiversXToErc20Mapper(&bridgeTests.DataGetterStub{})
+			mapper, err := eth.NewMultiversXToErc20Mapper(&bridgeTests.DataGetterStub{})
 			assert.Nil(t, err)
 			assert.False(t, check.IfNil(mapper))
 		})
@@ -49,7 +50,7 @@ func TestConvertToken(t *testing.T) {
 				GetERC20AddressForTokenIdCalled: func(ctx context.Context, tokenId []byte) ([][]byte, error) {
 					return nil, expectedError
 				}}
-			mapper, err := NewMultiversXToErc20Mapper(dg)
+			mapper, err := eth.NewMultiversXToErc20Mapper(dg)
 			assert.Nil(t, err)
 			assert.False(t, check.IfNil(mapper))
 
@@ -62,7 +63,7 @@ func TestConvertToken(t *testing.T) {
 				GetERC20AddressForTokenIdCalled: func(ctx context.Context, tokenId []byte) ([][]byte, error) {
 					return [][]byte{expectedErc20Address}, nil
 				}}
-			mapper, err := NewMultiversXToErc20Mapper(dg)
+			mapper, err := eth.NewMultiversXToErc20Mapper(dg)
 			assert.Nil(t, err)
 			assert.False(t, check.IfNil(mapper))
 			erc20AddressReturned, err := mapper.ConvertToken(context.Background(), []byte("erdAddress"))
@@ -77,7 +78,7 @@ func TestConvertToken(t *testing.T) {
 				GetTokenIdForErc20AddressCalled: func(ctx context.Context, erc20Address []byte) ([][]byte, error) {
 					return nil, expectedError
 				}}
-			mapper, err := NewErc20ToMultiversXMapper(dg)
+			mapper, err := eth.NewErc20ToMultiversXMapper(dg)
 			assert.Nil(t, err)
 			assert.False(t, check.IfNil(mapper))
 
@@ -90,7 +91,7 @@ func TestConvertToken(t *testing.T) {
 				GetTokenIdForErc20AddressCalled: func(ctx context.Context, erc20Address []byte) ([][]byte, error) {
 					return [][]byte{expectedErdAddress}, nil
 				}}
-			mapper, err := NewErc20ToMultiversXMapper(dg)
+			mapper, err := eth.NewErc20ToMultiversXMapper(dg)
 			assert.Nil(t, err)
 			assert.False(t, check.IfNil(mapper))
 			erdAddressReturned, err := mapper.ConvertToken(context.Background(), []byte("erc20Address"))

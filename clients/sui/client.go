@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
+	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
 	"math/big"
 	"sync"
 
@@ -31,10 +32,9 @@ type ArgsSuiClient struct {
 	Proxy                      Proxy
 	Log                        chainCore.Logger
 	RelayerPrivateKey          ed25519.PrivateKey
-	SafePackageId              string
+	PackageId                  string
 	SafeObjectId               string
 	SafeInitialSharedVersion   uint64
-	BridgePackageId            string
 	BridgeObjectId             string
 	BridgeInitialSharedVersion uint64
 	TokensMapper               TokensMapper
@@ -51,9 +51,8 @@ type client struct {
 	tokensMapper     TokensMapper
 	relayerPublicKey ed25519.PublicKey
 	relayerAddress   string
-	safePackageId    string
+	packageId        string
 	safeObjectId     string
-	bridgePackageId  string
 	bridgeObjectId   string
 	log              chainCore.Logger
 	addressConverter bridgeCore.AddressConverter
@@ -81,10 +80,9 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	argsSuiClientDataGetter := ArgsSuiClientDataGetter{
-		SafePackageId:              args.SafePackageId,
+		PackageId:                  args.PackageId,
 		SafeObjectId:               args.SafeObjectId,
 		SafeInitialSharedVersion:   args.SafeInitialSharedVersion,
-		BridgePackageId:            args.BridgePackageId,
 		BridgeObjectId:             args.BridgeObjectId,
 		BridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
 		RelayerAddress:             relayerAddress,
@@ -109,9 +107,8 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		suiClientDataGetter:          getter,
 		relayerPublicKey:             relayerPubKey,
 		relayerAddress:               relayerAddress,
-		safePackageId:                args.SafePackageId,
+		packageId:                    args.PackageId,
 		safeObjectId:                 args.SafeObjectId,
-		bridgePackageId:              args.BridgePackageId,
 		bridgeObjectId:               args.BridgeObjectId,
 		log:                          args.Log,
 		addressConverter:             addressConverter,
@@ -125,8 +122,9 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	c.log.Info("NewSuiClient")
 	c.log.Info("NewSuiClient",
 		"relayer address", relayerAddress,
-		"bridge package ID", c.bridgePackageId,
-		"safe package ID", c.safePackageId)
+		"package ID", c.packageId,
+		"bridge object ID", c.bridgeObjectId,
+		"safe object ID", c.safeObjectId)
 
 	return c, err
 }
@@ -138,14 +136,11 @@ func checkArgs(args ArgsSuiClient) error {
 	if len(args.RelayerPrivateKey) == 0 {
 		return clients.ErrNilPrivateKey
 	}
-	if len(args.BridgePackageId) == 0 {
-		return fmt.Errorf("%w for the BridgePackageId argument", errNilPackageId)
+	if len(args.PackageId) == 0 {
+		return fmt.Errorf("%w for the PackageId argument", errNilPackageId)
 	}
 	if len(args.BridgeObjectId) == 0 {
 		return fmt.Errorf("%w for the BridgeObjectId argument", errNilObjectId)
-	}
-	if len(args.SafePackageId) == 0 {
-		return fmt.Errorf("%w for the SafePackageId argument", errNilPackageId)
 	}
 	if len(args.SafeObjectId) == 0 {
 		return fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
@@ -319,33 +314,74 @@ func (c *client) ExecuteTransfer(
 		signatures = signatures[:quorum]
 	}
 
+	var hash string
+	var allErrors []error
+	tokenGroups := c.groupTransfersByTokenType(argLists)
+
+	for tokenType, group := range tokenGroups {
+		hash, err = c.executeTransferForTokenType(ctx, tokenType, group, batchId, signatures)
+		if err != nil {
+			allErrors = append(allErrors, fmt.Errorf("failed to execute transfer for token type %s: %w", tokenType, err))
+			continue
+		}
+		c.log.Info("Executed transfer transaction", "tokenType", tokenType, "batchID", batchId, "hash", hash)
+	}
+
+	if len(allErrors) > 0 {
+		return hash, fmt.Errorf("some transfers failed: %v", allErrors)
+	}
+
+	return hash, err
+}
+
+func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatch) map[string]*dtos.TokenTransferGroup {
+	groups := make(map[string]*dtos.TokenTransferGroup)
+
+	for i := 0; i < len(argLists.PeerTokens); i++ {
+		tokenTypeStr := string(argLists.PeerTokens[i])
+
+		if groups[tokenTypeStr] == nil {
+			groups[tokenTypeStr] = &dtos.TokenTransferGroup{
+				Recipients: make([][]byte, 0),
+				Amounts:    make([]uint64, 0),
+				Nonces:     make([]uint64, 0),
+			}
+		}
+
+		groups[tokenTypeStr].Recipients = append(groups[tokenTypeStr].Recipients, argLists.Recipients[i])
+		groups[tokenTypeStr].Amounts = append(groups[tokenTypeStr].Amounts, argLists.Amounts[i].Uint64())
+		groups[tokenTypeStr].Nonces = append(groups[tokenTypeStr].Nonces, argLists.Nonces[i].Uint64())
+	}
+
+	return groups
+}
+
+func (c *client) executeTransferForTokenType(
+	ctx context.Context,
+	tokenType string,
+	group *dtos.TokenTransferGroup,
+	batchId uint64,
+	signatures [][]byte,
+) (string, error) {
 	moveCallReq := models.MoveCallRequest{
 		Signer:          c.relayerAddress,
-		PackageObjectId: c.bridgePackageId,
+		PackageObjectId: c.packageId,
 		Module:          "bridge",
 		Function:        "execute_transfer",
-		TypeArguments:   []interface{}{},
+		TypeArguments:   []interface{}{tokenType},
 		Arguments: []interface{}{
 			c.bridgeObjectId,
 			c.safeObjectId,
-			argLists.PeerTokens,
-			argLists.Recipients,
-			argLists.Amounts,
-			argLists.Nonces,
+			group.Recipients,
+			group.Amounts,
+			group.Nonces,
 			batchId,
 			signatures,
 		},
-		GasBudget: "100000000", // TODO
+		GasBudget: "100000000",
 	}
 
-	hash, err := c.txHandler.SendTransactionReturnHash(ctx, moveCallReq)
-	if err != nil {
-		return "", err
-	}
-
-	c.log.Info("Executed transfer transaction", "batchID", batchId, "hash", hash)
-
-	return hash, err
+	return c.txHandler.SendTransactionReturnHash(ctx, moveCallReq)
 }
 
 func (c *client) CheckClientAvailability(ctx context.Context) error {
@@ -397,21 +433,19 @@ func (c *client) CheckRequiredBalance(ctx context.Context, coinType []byte, valu
 		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeObjectId, coinAddr)
 	}
 
-	totalExistingBalanceStr := existingBalance.TotalBalance
-	totalExistingBalance := new(big.Int)
-	_, ok := totalExistingBalance.SetString(totalExistingBalanceStr, 10)
+	totalExistingBalance, ok := big.NewInt(0).SetString(existingBalance.TotalBalance, 10)
 	if !ok {
-		return fmt.Errorf("invalid balance string: %s", totalExistingBalanceStr)
+		return fmt.Errorf("invalid balance string: %s", totalExistingBalance.String())
 	}
 	if value.Cmp(totalExistingBalance) > 0 {
 		return fmt.Errorf("%w, existing: %s, required: %s for coin %s and owner %s",
-			errInsufficientCoinBalance, totalExistingBalanceStr, value.String(), coinAddr, c.safeObjectId)
+			errInsufficientCoinBalance, totalExistingBalance.String(), value.String(), coinAddr, c.safeObjectId)
 	}
 
 	c.log.Debug("checked coin balance",
 		"Coin type", coinAddr,
 		"owner address", c.safeObjectId,
-		"existing balance", totalExistingBalanceStr,
+		"existing balance", totalExistingBalance.String(),
 		"needed", value.String())
 
 	return nil

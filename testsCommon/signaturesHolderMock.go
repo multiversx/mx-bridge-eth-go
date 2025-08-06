@@ -11,19 +11,19 @@ import (
 type SignaturesHolderMock struct {
 	mut            sync.RWMutex
 	signedMessages map[string]*core.SignedMessage
-	ethMessages    []*core.EthereumSignature
+	ethMessages    []*core.PeerChainSignature
 }
 
 // NewSignaturesHolderMock -
 func NewSignaturesHolderMock() *SignaturesHolderMock {
 	return &SignaturesHolderMock{
 		signedMessages: make(map[string]*core.SignedMessage),
-		ethMessages:    make([]*core.EthereumSignature, 0),
+		ethMessages:    make([]*core.PeerChainSignature, 0),
 	}
 }
 
 // ProcessNewMessage will store the new messages
-func (mock *SignaturesHolderMock) ProcessNewMessage(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+func (mock *SignaturesHolderMock) ProcessNewMessage(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 	mock.mut.Lock()
 	defer mock.mut.Unlock()
 
@@ -70,7 +70,7 @@ func (mock *SignaturesHolderMock) ClearStoredSignatures() {
 	defer mock.mut.Unlock()
 
 	mock.signedMessages = make(map[string]*core.SignedMessage)
-	mock.ethMessages = make([]*core.EthereumSignature, 0)
+	mock.ethMessages = make([]*core.PeerChainSignature, 0)
 }
 
 // IsInterfaceNil -

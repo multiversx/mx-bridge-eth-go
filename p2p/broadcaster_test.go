@@ -340,7 +340,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 
 		b, _ := NewBroadcaster(args)
 		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
-			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 				require.Fail(t, "should have not called process")
 			},
 		})
@@ -374,7 +374,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 
 		b, _ := NewBroadcaster(args)
 		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
-			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 				require.Fail(t, "should have not called process")
 			},
 		})
@@ -413,7 +413,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		require.Nil(t, err)
 
 		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
-			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 				processedMessages = append(processedMessages, msg)
 			},
 		})
@@ -442,7 +442,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		processedMessages := make([]*core.SignedMessage, 0)
 		b, _ := NewBroadcaster(args)
 		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
-			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 				processedMessages = append(processedMessages, msg)
 			},
 		})
@@ -519,7 +519,7 @@ func TestBroadcaster_BroadcastSignature(t *testing.T) {
 			require.Nil(t, err)
 			assert.Equal(t, sig, msg.Signature)
 
-			ethMsgInstance := &core.EthereumSignature{}
+			ethMsgInstance := &core.PeerChainSignature{}
 			err = marshalizer.Unmarshal(ethMsgInstance, msg.Payload)
 			require.Nil(t, err)
 
