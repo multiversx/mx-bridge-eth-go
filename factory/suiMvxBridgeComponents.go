@@ -1,12 +1,11 @@
 package factory
 
 import (
+	"crypto/ed25519"
 	"fmt"
-	"github.com/multiversx/mx-chain-core-go/core/check"
 	"os"
 	"time"
 
-	"crypto/ed25519"
 	"github.com/block-vision/sui-go-sdk/signer"
 	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/multiversx/mx-bridge-eth-go/bridges"
@@ -27,6 +26,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/stateMachine"
 	"github.com/multiversx/mx-bridge-eth-go/status"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/core/polling"
 )
@@ -48,15 +48,14 @@ type ArgsSuiToMultiversXBridge struct {
 
 type suiMvxBridgeComponents struct {
 	*baseBridgeComponents
-	chain              chain.Chain
-	suiApi             sui.ISuiAPI
-	suiClient          bridges.PeerChainClient
-	suiDataGetter      suiDataGetter
-	suiRelayerAddress  string
-	suiRelayerPriKey   ed25519.PrivateKey
-	suiRoleProvider    PeerChainRoleProvider
-	suiBridgePackageId string
-	suiSafePackageId   string
+	chain             chain.Chain
+	suiApi            sui.ISuiAPI
+	suiClient         bridges.PeerChainClient
+	suiDataGetter     suiDataGetter
+	suiRelayerAddress string
+	suiRelayerPriKey  ed25519.PrivateKey
+	suiRoleProvider   PeerChainRoleProvider
+	suiPackageId      string
 }
 
 func NewSuiMvxBridgeComponents(args ArgsSuiToMultiversXBridge) (*suiMvxBridgeComponents, error) {
@@ -185,9 +184,7 @@ func (components *suiMvxBridgeComponents) createSuiKeysAndAddresses(suiConfigs c
 	relayer := signer.NewSigner(pemBytes)
 	components.suiRelayerPriKey = relayer.PriKey
 	components.suiRelayerAddress = relayer.Address
-
-	components.suiSafePackageId = suiConfigs.SafePackageId
-	components.suiBridgePackageId = suiConfigs.BridgePackageId
+	components.suiPackageId = suiConfigs.PackageId
 
 	return nil
 }
@@ -196,10 +193,9 @@ func (components *suiMvxBridgeComponents) createSuiDataGetter(args ArgsSuiToMult
 	suiConfig := args.Configs.GeneralConfig.Sui
 	suiDataGetterLogId := components.chain.PeerChainDataGetterLogId()
 	argsSuiDataGetter := suiClient.ArgsSuiClientDataGetter{
-		SafePackageId:              components.suiSafePackageId,
+		PackageId:                  components.suiPackageId,
 		SafeObjectId:               suiConfig.SafeObjectId,
 		SafeInitialSharedVersion:   suiConfig.SafeObjectInitialSharedVersion,
-		BridgePackageId:            components.suiBridgePackageId,
 		BridgeObjectId:             suiConfig.BridgeObjectId,
 		BridgeInitialSharedVersion: suiConfig.BridgeObjectInitialSharedVersion,
 		RelayerAddress:             components.suiRelayerAddress,
@@ -319,10 +315,9 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 		Proxy:                        components.suiApi,
 		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(suiClientLogId), suiClientLogId),
 		RelayerPrivateKey:            components.suiRelayerPriKey,
-		SafePackageId:                components.suiSafePackageId,
+		PackageId:                    components.suiPackageId,
 		SafeObjectId:                 suiConfig.SafeObjectId,
 		SafeInitialSharedVersion:     suiConfig.SafeObjectInitialSharedVersion,
-		BridgePackageId:              components.suiBridgePackageId,
 		BridgeObjectId:               suiConfig.BridgeObjectId,
 		BridgeInitialSharedVersion:   suiConfig.BridgeObjectInitialSharedVersion,
 		Broadcaster:                  components.broadcaster,

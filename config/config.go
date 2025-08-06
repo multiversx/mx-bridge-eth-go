@@ -50,10 +50,9 @@ type SuiConfig struct {
 	Enabled                            bool
 	Chain                              chain.Chain
 	NetworkAddress                     string
-	BridgePackageId                    string
+	PackageId                          string
 	BridgeObjectId                     string
 	BridgeObjectInitialSharedVersion   uint64
-	SafePackageId                      string
 	SafeObjectId                       string
 	SafeObjectInitialSharedVersion     uint64
 	PrivateKeyFile                     string
