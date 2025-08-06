@@ -4,185 +4,149 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 )
 
-// EthereumClientStub -
-type EthereumClientStub struct {
+type PeerChainClientStub struct {
 	GetBatchCalled                         func(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error)
 	WasExecutedCalled                      func(ctx context.Context, batchID uint64) (bool, error)
-	GenerateMessageHashCalled              func(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error)
-	BroadcastSignatureForMessageHashCalled func(msgHash common.Hash)
-	ExecuteTransferCalled                  func(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error)
+	GenerateMessageHashCalled              func(batch *batchProcessor.ArgListsBatch, batchID uint64) ([]byte, error)
+	BroadcastSignatureForMessageHashCalled func(msgHash []byte)
+	ExecuteTransferCalled                  func(ctx context.Context, msgHash []byte, batch *batchProcessor.ArgListsBatch, batchID uint64, quorum int) (string, error)
 	CheckClientAvailabilityCalled          func(ctx context.Context) error
-	GetTransactionsStatusesCalled          func(ctx context.Context, batchId uint64) ([]byte, error)
+	GetTransactionsStatusesCalled          func(ctx context.Context, batchID uint64) ([]byte, error)
 	GetQuorumSizeCalled                    func(ctx context.Context) (*big.Int, error)
-	IsQuorumReachedCalled                  func(ctx context.Context, msgHash common.Hash) (bool, error)
+	IsQuorumReachedCalled                  func(ctx context.Context, msgHash []byte) (bool, error)
 	GetBatchSCMetadataCalled               func(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error)
-	CheckRequiredBalanceCalled             func(ctx context.Context, erc20Address common.Address, value *big.Int) error
-	TotalBalancesCalled                    func(ctx context.Context, account common.Address) (*big.Int, error)
-	MintBalancesCalled                     func(ctx context.Context, account common.Address) (*big.Int, error)
-	BurnBalancesCalled                     func(ctx context.Context, account common.Address) (*big.Int, error)
-	MintBurnTokensCalled                   func(ctx context.Context, account common.Address) (bool, error)
-	NativeTokensCalled                     func(ctx context.Context, account common.Address) (bool, error)
-	WhitelistedTokensCalled                func(ctx context.Context, account common.Address) (bool, error)
+	CheckRequiredBalanceCalled             func(ctx context.Context, token []byte, value *big.Int) error
+	TotalBalancesCalled                    func(ctx context.Context, token []byte) (*big.Int, error)
+	MintBalancesCalled                     func(ctx context.Context, token []byte) (*big.Int, error)
+	BurnBalancesCalled                     func(ctx context.Context, token []byte) (*big.Int, error)
+	MintBurnTokensCalled                   func(ctx context.Context, token []byte) (bool, error)
+	NativeTokensCalled                     func(ctx context.Context, token []byte) (bool, error)
+	WhitelistedTokensCalled                func(ctx context.Context, token []byte) (bool, error)
 }
 
-// GetBatch -
-func (stub *EthereumClientStub) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error) {
+func (stub *PeerChainClientStub) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchCalled(ctx, nonce)
 	}
-
 	return nil, false, errNotImplemented
 }
 
-// WasExecuted -
-func (stub *EthereumClientStub) WasExecuted(ctx context.Context, batchID uint64) (bool, error) {
+func (stub *PeerChainClientStub) WasExecuted(ctx context.Context, batchID uint64) (bool, error) {
 	if stub.WasExecutedCalled != nil {
 		return stub.WasExecutedCalled(ctx, batchID)
 	}
-
 	return false, errNotImplemented
 }
 
-// GenerateMessageHash -
-func (stub *EthereumClientStub) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchID uint64) (common.Hash, error) {
+func (stub *PeerChainClientStub) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchID uint64) ([]byte, error) {
 	if stub.GenerateMessageHashCalled != nil {
 		return stub.GenerateMessageHashCalled(batch, batchID)
 	}
-
-	return common.Hash{}, errNotImplemented
+	return nil, errNotImplemented
 }
 
-// BroadcastSignatureForMessageHash -
-func (stub *EthereumClientStub) BroadcastSignatureForMessageHash(msgHash common.Hash) {
+func (stub *PeerChainClientStub) BroadcastSignatureForMessageHash(msgHash []byte) {
 	if stub.BroadcastSignatureForMessageHashCalled != nil {
 		stub.BroadcastSignatureForMessageHashCalled(msgHash)
 	}
 }
 
-// ExecuteTransfer -
-func (stub *EthereumClientStub) ExecuteTransfer(ctx context.Context, msgHash common.Hash, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error) {
+func (stub *PeerChainClientStub) ExecuteTransfer(ctx context.Context, msgHash []byte, batch *batchProcessor.ArgListsBatch, batchID uint64, quorum int) (string, error) {
 	if stub.ExecuteTransferCalled != nil {
-		return stub.ExecuteTransferCalled(ctx, msgHash, batch, batchId, quorum)
+		return stub.ExecuteTransferCalled(ctx, msgHash, batch, batchID, quorum)
 	}
-
 	return "", errNotImplemented
 }
 
-// CheckClientAvailability -
-func (stub *EthereumClientStub) CheckClientAvailability(ctx context.Context) error {
+func (stub *PeerChainClientStub) CheckClientAvailability(ctx context.Context) error {
 	if stub.CheckClientAvailabilityCalled != nil {
 		return stub.CheckClientAvailabilityCalled(ctx)
 	}
-
 	return errNotImplemented
 }
 
-// GetTransactionsStatuses -
-func (stub *EthereumClientStub) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([]byte, error) {
+func (stub *PeerChainClientStub) GetTransactionsStatuses(ctx context.Context, batchID uint64) ([]byte, error) {
 	if stub.GetTransactionsStatusesCalled != nil {
-		return stub.GetTransactionsStatusesCalled(ctx, batchId)
+		return stub.GetTransactionsStatusesCalled(ctx, batchID)
 	}
-
 	return nil, errNotImplemented
 }
 
-// GetQuorumSize -
-func (stub *EthereumClientStub) GetQuorumSize(ctx context.Context) (*big.Int, error) {
+func (stub *PeerChainClientStub) GetQuorumSize(ctx context.Context) (*big.Int, error) {
 	if stub.GetQuorumSizeCalled != nil {
 		return stub.GetQuorumSizeCalled(ctx)
 	}
-
 	return nil, errNotImplemented
 }
 
-// IsQuorumReached -
-func (stub *EthereumClientStub) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error) {
+func (stub *PeerChainClientStub) IsQuorumReached(ctx context.Context, msgHash []byte) (bool, error) {
 	if stub.IsQuorumReachedCalled != nil {
 		return stub.IsQuorumReachedCalled(ctx, msgHash)
 	}
-
 	return false, errNotImplemented
 }
 
-// GetBatchSCMetadata -
-func (stub *EthereumClientStub) GetBatchSCMetadata(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
+func (stub *PeerChainClientStub) GetBatchSCMetadata(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
 	if stub.GetBatchSCMetadataCalled != nil {
 		return stub.GetBatchSCMetadataCalled(ctx, nonce, blockNumber)
 	}
-
-	return []*contract.ERC20SafeERC20SCDeposit{}, errNotImplemented
+	return nil, errNotImplemented
 }
 
-// CheckRequiredBalance -
-func (stub *EthereumClientStub) CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error {
+func (stub *PeerChainClientStub) CheckRequiredBalance(ctx context.Context, token []byte, value *big.Int) error {
 	if stub.CheckRequiredBalanceCalled != nil {
-		return stub.CheckRequiredBalanceCalled(ctx, erc20Address, value)
+		return stub.CheckRequiredBalanceCalled(ctx, token, value)
 	}
-
 	return errNotImplemented
 }
 
-// TotalBalances -
-func (stub *EthereumClientStub) TotalBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+func (stub *PeerChainClientStub) TotalBalances(ctx context.Context, token []byte) (*big.Int, error) {
 	if stub.TotalBalancesCalled != nil {
-		return stub.TotalBalancesCalled(ctx, account)
+		return stub.TotalBalancesCalled(ctx, token)
 	}
-
 	return nil, errNotImplemented
 }
 
-// MintBalances -
-func (stub *EthereumClientStub) MintBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+func (stub *PeerChainClientStub) MintBalances(ctx context.Context, token []byte) (*big.Int, error) {
 	if stub.MintBalancesCalled != nil {
-		return stub.MintBalancesCalled(ctx, account)
+		return stub.MintBalancesCalled(ctx, token)
 	}
-
 	return nil, errNotImplemented
 }
 
-// BurnBalances -
-func (stub *EthereumClientStub) BurnBalances(ctx context.Context, account common.Address) (*big.Int, error) {
+func (stub *PeerChainClientStub) BurnBalances(ctx context.Context, token []byte) (*big.Int, error) {
 	if stub.BurnBalancesCalled != nil {
-		return stub.BurnBalancesCalled(ctx, account)
+		return stub.BurnBalancesCalled(ctx, token)
 	}
-
 	return nil, errNotImplemented
 }
 
-// MintBurnTokens -
-func (stub *EthereumClientStub) MintBurnTokens(ctx context.Context, account common.Address) (bool, error) {
+func (stub *PeerChainClientStub) MintBurnTokens(ctx context.Context, token []byte) (bool, error) {
 	if stub.MintBurnTokensCalled != nil {
-		return stub.MintBurnTokensCalled(ctx, account)
+		return stub.MintBurnTokensCalled(ctx, token)
 	}
-
 	return false, errNotImplemented
 }
 
-// NativeTokens -
-func (stub *EthereumClientStub) NativeTokens(ctx context.Context, account common.Address) (bool, error) {
+func (stub *PeerChainClientStub) NativeTokens(ctx context.Context, token []byte) (bool, error) {
 	if stub.NativeTokensCalled != nil {
-		return stub.NativeTokensCalled(ctx, account)
+		return stub.NativeTokensCalled(ctx, token)
 	}
-
 	return false, errNotImplemented
 }
 
-// WhitelistedTokens -
-func (stub *EthereumClientStub) WhitelistedTokens(ctx context.Context, account common.Address) (bool, error) {
+func (stub *PeerChainClientStub) WhitelistedTokens(ctx context.Context, token []byte) (bool, error) {
 	if stub.WhitelistedTokensCalled != nil {
-		return stub.WhitelistedTokensCalled(ctx, account)
+		return stub.WhitelistedTokensCalled(ctx, token)
 	}
-
 	return false, errNotImplemented
 }
 
-// IsInterfaceNil -
-func (stub *EthereumClientStub) IsInterfaceNil() bool {
+func (stub *PeerChainClientStub) IsInterfaceNil() bool {
 	return stub == nil
 }
