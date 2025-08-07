@@ -32,10 +32,9 @@ type ArgsSuiClient struct {
 	Proxy                      Proxy
 	Log                        chainCore.Logger
 	RelayerPrivateKey          ed25519.PrivateKey
-	SafePackageId              string
+	PackageId                  string
 	SafeObjectId               string
 	SafeInitialSharedVersion   uint64
-	BridgePackageId            string
 	BridgeObjectId             string
 	BridgeInitialSharedVersion uint64
 	TokensMapper               TokensMapper
@@ -52,9 +51,8 @@ type client struct {
 	tokensMapper     TokensMapper
 	relayerPublicKey ed25519.PublicKey
 	relayerAddress   string
-	safePackageId    string
+	packageId        string
 	safeObjectId     string
-	bridgePackageId  string
 	bridgeObjectId   string
 	log              chainCore.Logger
 	addressConverter bridgeCore.AddressConverter
@@ -82,10 +80,9 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	argsSuiClientDataGetter := ArgsSuiClientDataGetter{
-		SafePackageId:              args.SafePackageId,
+		PackageId:                  args.PackageId,
 		SafeObjectId:               args.SafeObjectId,
 		SafeInitialSharedVersion:   args.SafeInitialSharedVersion,
-		BridgePackageId:            args.BridgePackageId,
 		BridgeObjectId:             args.BridgeObjectId,
 		BridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
 		RelayerAddress:             relayerAddress,
@@ -110,9 +107,8 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		suiClientDataGetter:          getter,
 		relayerPublicKey:             relayerPubKey,
 		relayerAddress:               relayerAddress,
-		safePackageId:                args.SafePackageId,
+		packageId:                    args.PackageId,
 		safeObjectId:                 args.SafeObjectId,
-		bridgePackageId:              args.BridgePackageId,
 		bridgeObjectId:               args.BridgeObjectId,
 		log:                          args.Log,
 		addressConverter:             addressConverter,
@@ -126,8 +122,9 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	c.log.Info("NewSuiClient")
 	c.log.Info("NewSuiClient",
 		"relayer address", relayerAddress,
-		"bridge package ID", c.bridgePackageId,
-		"safe package ID", c.safePackageId)
+		"package ID", c.packageId,
+		"bridge object ID", c.bridgeObjectId,
+		"safe object ID", c.safeObjectId)
 
 	return c, err
 }
@@ -139,14 +136,11 @@ func checkArgs(args ArgsSuiClient) error {
 	if len(args.RelayerPrivateKey) == 0 {
 		return clients.ErrNilPrivateKey
 	}
-	if len(args.BridgePackageId) == 0 {
-		return fmt.Errorf("%w for the BridgePackageId argument", errNilPackageId)
+	if len(args.PackageId) == 0 {
+		return fmt.Errorf("%w for the PackageId argument", errNilPackageId)
 	}
 	if len(args.BridgeObjectId) == 0 {
 		return fmt.Errorf("%w for the BridgeObjectId argument", errNilObjectId)
-	}
-	if len(args.SafePackageId) == 0 {
-		return fmt.Errorf("%w for the SafePackageId argument", errNilPackageId)
 	}
 	if len(args.SafeObjectId) == 0 {
 		return fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
@@ -371,7 +365,7 @@ func (c *client) executeTransferForTokenType(
 ) (string, error) {
 	moveCallReq := models.MoveCallRequest{
 		Signer:          c.relayerAddress,
-		PackageObjectId: c.bridgePackageId,
+		PackageObjectId: c.packageId,
 		Module:          "bridge",
 		Function:        "execute_transfer",
 		TypeArguments:   []interface{}{tokenType},
