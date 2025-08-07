@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
@@ -60,10 +61,9 @@ func NewSuiHandler(
 		Quorum:         quorum,
 	}
 
-	// TODO: chain simulator
 	walletsToFundOnSui := handler.WalletsToFundOnSui()
 	handler.FundWallets(walletsToFundOnSui)
-	handler.SuiProxy = suiSdk.NewSuiClient("http://localhost:9000")
+	handler.SuiProxy = suiSdk.NewSuiClient("http://127.0.0.1:9000")
 
 	return handler
 }
@@ -92,6 +92,17 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 			}
 			if strings.Contains(obj.ObjectType, "::safe::BridgeSafe") {
 				handler.SafeObjectID = obj.ObjectId
+				if ownerMap, ok := obj.Owner.(map[string]interface{}); ok {
+					if shared, exists := ownerMap["Shared"]; exists {
+						if sharedMap, ok := shared.(map[string]interface{}); ok {
+							if version, exists := sharedMap["initial_shared_version"]; exists {
+								if versionFloat, ok := version.(float64); ok {
+									handler.SafeInitialSharedVersion = uint64(versionFloat)
+								}
+							}
+						}
+					}
+				}
 			}
 
 		} else if obj.Type == "published" {
@@ -185,6 +196,18 @@ func (handler *SuiHandler) DeployContract(
 	for _, obj := range resp.ObjectChanges {
 		if obj.Type == "created" {
 			if strings.Contains(obj.ObjectType, "::bridge::Bridge") {
+				if ownerMap, ok := obj.Owner.(map[string]interface{}); ok {
+					if shared, exists := ownerMap["Shared"]; exists {
+						if sharedMap, ok := shared.(map[string]interface{}); ok {
+							if version, exists := sharedMap["initial_shared_version"]; exists {
+								if versionFloat, ok := version.(float64); ok {
+									handler.BridgeInitialSharedVersion = uint64(versionFloat)
+								}
+							}
+						}
+					}
+				}
+
 				return []byte(obj.ObjectId)
 			}
 		}
@@ -203,9 +226,11 @@ func (handler *SuiHandler) GetBalance(ctx context.Context, receiver []byte, abst
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenAddress)
 
+	coinType := fmt.Sprintf("0x%s::test_coin::TEST_COIN", hex.EncodeToString(token.PeerChainTokenAddress))
+
 	balance, err := handler.SuiProxy.SuiXGetBalance(ctx, models.SuiXGetBalanceRequest{
 		Owner:    string(receiver),
-		CoinType: string(token.PeerChainTokenAddress),
+		CoinType: coinType,
 	})
 	require.NoError(handler, err)
 
@@ -297,8 +322,15 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 		TreasuryId:     treasuryId,
 		CoinMetadataId: metadataId,
 	}
-	handler.TokensRegistry.RegisterPeerChainAddressAndInfo(params.AbstractTokenIdentifier, []byte(coinPackageId), suiTokenInfo)
+	coinAddr := strings.TrimPrefix(coinPackageId, "0x")
+	coinAddrBytes, _ := hex.DecodeString(coinAddr)
+	handler.TokensRegistry.RegisterPeerChainAddressAndInfo(params.AbstractTokenIdentifier, coinAddrBytes, suiTokenInfo)
 	handler.updateMetadata(ctx, params)
+
+	// mint token
+	mintAmount, ok := big.NewInt(0).SetString(params.ValueToMintOnPeerChain, 10)
+	require.True(handler, ok)
+	handler.mint(ctx, params, string(handler.TestKeys.SuiAddress), mintAmount)
 
 	// whitelist token
 	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
@@ -356,6 +388,7 @@ func (handler *SuiHandler) deployCoinContract(ctx context.Context) (string, stri
 	}
 
 	return coinPackageId, treasuryId, metadataId
+
 }
 
 func (handler *SuiHandler) updateMetadata(ctx context.Context, params IssueTokenParams) {
@@ -406,11 +439,11 @@ func (handler *SuiHandler) updateMetadata(ctx context.Context, params IssueToken
 // CreateBatchOnPeerChain will create a batch on Sui using the provided tokens parameters list
 func (handler *SuiHandler) CreateBatchOnPeerChain(
 	ctx context.Context,
-	mvxTestCallerAddress core.AddressHandler,
+	_ core.AddressHandler,
 	tokensParams ...TestTokenParams,
 ) {
 	for _, params := range tokensParams {
-		handler.createDepositsOnSuiForToken(ctx, params, handler.TestKeys.SuiSK, mvxTestCallerAddress)
+		handler.createDepositsOnSuiForToken(ctx, params, handler.TestKeys.SuiSK, handler.TestKeys.SuiAddress)
 	}
 
 	// TODO: wait until batch is settled
@@ -419,61 +452,93 @@ func (handler *SuiHandler) CreateBatchOnPeerChain(
 func (handler *SuiHandler) createDepositsOnSuiForToken(
 	ctx context.Context,
 	params TestTokenParams,
-	from ed25519.PrivateKey,
-	_ core.AddressHandler,
+	fromPriKey ed25519.PrivateKey,
+	fromAddress []byte,
 ) {
 	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenAddress)
 
-	allowanceValue := big.NewInt(0)
 	for _, operation := range params.TestOperations {
 		if operation.ValueToTransferToMvx == nil {
 			continue
 		}
 
-		allowanceValue.Add(allowanceValue, operation.ValueToTransferToMvx)
-	}
-
-	for _, operation := range params.TestOperations {
-		if operation.ValueToTransferToMvx == nil {
-			continue
-		}
+		coinObjId := handler.getCoinObjectIdForToken(ctx, token.PeerChainTokenAddress, operation.ValueToTransferToMvx)
+		coinType := fmt.Sprintf("0x%s::test_coin::TEST_COIN", hex.EncodeToString(token.PeerChainTokenAddress))
 
 		// No sc call data only
 		txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
-			Signer:          string(from),
+			Signer:          string(fromAddress),
 			PackageObjectId: handler.PackageID,
 			Module:          "safe",
 			Function:        "deposit",
-			TypeArguments:   []interface{}{},
+			TypeArguments: []interface{}{
+				coinType,
+			},
 			Arguments: []interface{}{
 				handler.SafeObjectID,
-				token.PeerChainTokenAddress, // TODO: contract changes?
-				operation.ValueToTransferToMvx,
+				coinObjId,
 				handler.TestKeys.MvxAddress.AddressSlice(),
+				"0x6",
 			},
 			GasBudget: "10000000",
 		})
 		require.NoError(handler, err)
 
-		handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+		handler.signAndExecuteTxReturnResult(ctx, txMeta, fromPriKey)
 	}
+}
+
+func (handler *SuiHandler) getCoinObjectIdForToken(ctx context.Context, coinAddress []byte, targetValue *big.Int) string {
+	coins, err := handler.SuiProxy.SuiXGetCoins(ctx, models.SuiXGetCoinsRequest{
+		Owner:    string(handler.TestKeys.SuiAddress),
+		CoinType: fmt.Sprintf("0x%s::test_coin::TEST_COIN", hex.EncodeToString(coinAddress)),
+	})
+	require.NoError(handler, err)
+
+	srcCoin := coins.Data[0]
+	coinBalance, _ := big.NewInt(0).SetString(srcCoin.Balance, 10)
+	var coinToSendId string
+	if coinBalance.Cmp(targetValue) > 0 {
+		txMeta, err := handler.SuiProxy.SplitCoin(ctx, models.SplitCoinRequest{
+			Signer:       string(handler.TestKeys.SuiAddress),
+			CoinObjectId: srcCoin.CoinObjectId,
+			SplitAmounts: []string{targetValue.String()},
+			GasBudget:    "10000000",
+		})
+		require.NoError(handler, err)
+
+		resp := handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.TestKeys.SuiSK)
+		for _, obj := range resp.ObjectChanges {
+			if obj.Type == "created" && strings.Contains(obj.ObjectType, "test_coin::TEST_COIN") {
+				coinToSendId = obj.ObjectId
+				break
+			}
+		}
+	}
+	// TODO: maybe merge
+
+	return coinToSendId
 }
 
 // SendFromPeerChainToMultiversX will create the deposit transactions on the Sui side
 func (handler *SuiHandler) SendFromPeerChainToMultiversX(
 	ctx context.Context,
-	mvxTestCallerAddress core.AddressHandler,
+	_ core.AddressHandler,
 	tokensParams ...TestTokenParams,
 ) {
 	for _, params := range tokensParams {
-		handler.createDepositsOnSuiForToken(ctx, params, handler.TestKeys.SuiSK, mvxTestCallerAddress)
+		handler.createDepositsOnSuiForToken(ctx, params, handler.TestKeys.SuiSK, handler.TestKeys.SuiAddress)
 	}
 }
 
 // Mint will mint the provided token on Sui with the provided value on the behalf of the Depositor address
 func (handler *SuiHandler) Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int) {
+	handler.mint(ctx, params.IssueTokenParams, handler.SafeObjectID, valueToMint)
+}
+
+func (handler *SuiHandler) mint(ctx context.Context, params IssueTokenParams, receiver string, valueToMint *big.Int) {
 	tokenData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, tokenData)
 	require.NotNil(handler, tokenData.PeerChainTokenInfo)
@@ -488,7 +553,7 @@ func (handler *SuiHandler) Mint(ctx context.Context, params TestTokenParams, val
 		Arguments: []interface{}{
 			suiTokenInfo.TreasuryId,
 			valueToMint.String(),
-			handler.SafeObjectID,
+			receiver,
 		},
 		GasBudget: "100000000",
 	})

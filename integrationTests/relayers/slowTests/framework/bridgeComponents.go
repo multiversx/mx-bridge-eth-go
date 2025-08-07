@@ -60,7 +60,7 @@ func NewEthereumBridgeComponents(
 	wg.Add(numRelayers)
 
 	for i := 0; i < numRelayers; i++ {
-		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir, gasStationURL)
+		generalConfigs := testsRelayers.CreateEthMvxBridgeComponentsConfig(i, workingDir, gasStationURL)
 		generalConfigs.Eth.PrivateKeyFile = fmt.Sprintf(relayerETHKeyPathFormat, i)
 		argsBridgeComponents := factory.ArgsEthereumToMultiversXBridge{
 			Configs: config.Configs{
@@ -121,7 +121,6 @@ func NewSuiBridgeComponents(
 	workingDir string,
 	chainSimulator ChainSimulatorWrapper,
 	suiProxy sui.ISuiAPI,
-	suiChainSimulator *simulated.Backend,
 	numRelayers int,
 	packageId string,
 	mvxSafeAddress *MvxAddress,
@@ -139,15 +138,15 @@ func NewSuiBridgeComponents(
 
 	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
 
-	gasStationURL := bridge.gasStationInstance.URL()
-	log.Info("started gas station server", "URL", gasStationURL)
+	//gasStationURL := bridge.gasStationInstance.URL()
+	//log.Info("started gas station server", "URL", gasStationURL)
 
 	wg := sync.WaitGroup{}
 	wg.Add(numRelayers)
 
 	for i := 0; i < numRelayers; i++ {
-		generalConfigs := testsRelayers.CreateBridgeComponentsConfig(i, workingDir, gasStationURL)
-		generalConfigs.Eth.PrivateKeyFile = fmt.Sprintf(relayerSuiSeedPathFormat, i)
+		generalConfigs := testsRelayers.CreateSuiMvxBridgeComponentsConfig(i, workingDir)
+		generalConfigs.Sui.PrivateKeyFile = fmt.Sprintf(relayerSuiSeedPathFormat, i)
 		argsBridgeComponents := factory.ArgsSuiToMultiversXBridge{
 			Configs: config.Configs{
 				GeneralConfig:   generalConfigs,
@@ -167,7 +166,7 @@ func NewSuiBridgeComponents(
 			MultiversXClientStatusHandler: &testsCommon.StatusHandlerStub{},
 			SuiClientStatusHandler:        &testsCommon.StatusHandlerStub{},
 		}
-		argsBridgeComponents.Configs.GeneralConfig.Sui.SafePackageId = packageId
+		argsBridgeComponents.Configs.GeneralConfig.Sui.PackageId = packageId
 		argsBridgeComponents.Configs.GeneralConfig.Sui.BridgeObjectId = bridgeObjectId
 		argsBridgeComponents.Configs.GeneralConfig.Sui.BridgeObjectInitialSharedVersion = bridgeInitialSharedVersion
 		argsBridgeComponents.Configs.GeneralConfig.Sui.SafeObjectId = safeObjectId
@@ -208,7 +207,7 @@ func NewSuiBridgeComponents(
 
 // CloseRelayers will call close on all created relayers
 func (bridge *BridgeComponents) CloseRelayers() {
-	bridge.gasStationInstance.Close()
+	//bridge.gasStationInstance.Close()
 
 	for _, r := range bridge.RelayerInstances {
 		_ = r.Close()

@@ -76,7 +76,7 @@ func NewTestSetup(tb testing.TB, chainType ChainType) *TestSetup {
 
 	setup.createChainSimulatorWrapper()
 	setup.MultiversxHandler = NewMultiversxHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, setup.ChainSimulator, quorum)
-	setup.MultiversxHandler.DeployAndSetContracts(setup.Ctx)
+	setup.MultiversxHandler.DeployAndSetContracts(setup.Ctx, chainType)
 
 	return setup
 }
@@ -122,7 +122,6 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 			setup.WorkingDir,
 			setup.ChainSimulator,
 			handler.SuiProxy,
-			nil,
 			NumRelayers,
 			handler.PackageID,
 			setup.MultiversxHandler.SafeAddress,
@@ -230,6 +229,7 @@ func (setup *TestSetup) GetNumScCallsOperations() uint32 {
 func (setup *TestSetup) IsTransferDoneFromPeerChain(tokens ...TestTokenParams) bool {
 	isDone := true
 	for _, params := range tokens {
+		fmt.Println("===PEER CHAIN===")
 		isDone = isDone && setup.isTransferDoneFromPeerChainForToken(params)
 	}
 
@@ -237,6 +237,7 @@ func (setup *TestSetup) IsTransferDoneFromPeerChain(tokens ...TestTokenParams) b
 }
 
 func (setup *TestSetup) isTransferDoneFromPeerChainForToken(params TestTokenParams) bool {
+	fmt.Println("===PEER CHAIN2===")
 	expectedValueOnReceiver := big.NewInt(0)
 	expectedValueOnContract := big.NewInt(0)
 	for _, operation := range params.TestOperations {
@@ -259,6 +260,8 @@ func (setup *TestSetup) isTransferDoneFromPeerChainForToken(params TestTokenPara
 	}
 
 	contractBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, params.AbstractTokenIdentifier)
+	fmt.Println("===SUI===")
+	fmt.Println("contract balance", contractBalance.String(), "expected", expectedValueOnContract.String())
 	return contractBalance.String() == expectedValueOnContract.String()
 }
 
@@ -338,6 +341,8 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(params TestTokenPar
 	balanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, params.AbstractTokenIdentifier)
 	isSafeContractOnCorrectBalance := expectedEsdtSafe.String() == balanceForSafe.String()
 
+	fmt.Println("===MVX===")
+	fmt.Println("expected receiver balance", expectedReceiver.String(), "actual", peerChainTestBalance.String())
 	return isTransferDoneFromMultiversX && isSafeContractOnCorrectBalance
 }
 

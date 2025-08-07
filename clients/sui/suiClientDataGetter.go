@@ -18,10 +18,9 @@ import (
 
 // ArgsSuiClientDataGetter is the arguments DTO used in the NewSuiClientDataGetter constructor
 type ArgsSuiClientDataGetter struct {
-	SafePackageId              string
+	PackageId                  string
 	SafeObjectId               string
 	SafeInitialSharedVersion   uint64
-	BridgePackageId            string
 	BridgeObjectId             string
 	BridgeInitialSharedVersion uint64
 	RelayerAddress             string
@@ -30,10 +29,9 @@ type ArgsSuiClientDataGetter struct {
 }
 
 type suiClientDataGetter struct {
-	safePackageId              string
+	packageId                  string
 	safeObjectIdBytes          models.SuiAddressBytes
 	safeInitialSharedVersion   uint64
-	bridgePackageId            string
 	bridgeObjectIdBytes        models.SuiAddressBytes
 	bridgeInitialSharedVersion uint64
 	relayerAddress             string
@@ -52,17 +50,14 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 	if len(args.RelayerAddress) == 0 {
 		return nil, fmt.Errorf("%w for the RelayerAddress argument", errNilAddress)
 	}
-	if len(args.BridgePackageId) == 0 {
-		return nil, fmt.Errorf("%w for the BridgePackageId argument", errNilPackageId)
+	if len(args.PackageId) == 0 {
+		return nil, fmt.Errorf("%w for the PackageId argument", errNilPackageId)
 	}
 	if len(args.BridgeObjectId) == 0 {
 		return nil, fmt.Errorf("%w for the BridgeObjectId argument", errNilObjectId)
 	}
 	if args.BridgeInitialSharedVersion == 0 {
 		return nil, errInvalidInitialSharedVersion
-	}
-	if len(args.SafePackageId) == 0 {
-		return nil, fmt.Errorf("%w for the SafePackageId argument", errNilPackageId)
 	}
 	if len(args.SafeObjectId) == 0 {
 		return nil, fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
@@ -82,10 +77,9 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 	}
 
 	return &suiClientDataGetter{
-		safePackageId:              args.SafePackageId,
+		packageId:                  args.PackageId,
 		safeObjectIdBytes:          *safeObjectIdBytes,
 		safeInitialSharedVersion:   args.SafeInitialSharedVersion,
-		bridgePackageId:            args.BridgePackageId,
 		bridgeObjectIdBytes:        *bridgeObjectIdBytes,
 		bridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
 		relayerAddress:             args.RelayerAddress,
@@ -99,7 +93,7 @@ func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNon
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgePackageId),
+		models.SuiAddress(getter.packageId),
 		"bridge",
 		"get_batch",
 		nil,
@@ -143,7 +137,7 @@ func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNo
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgePackageId),
+		models.SuiAddress(getter.packageId),
 		"bridge",
 		"get_batch_deposits",
 		nil,
@@ -187,7 +181,7 @@ func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.Su
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgePackageId),
+		models.SuiAddress(getter.packageId),
 		"bridge",
 		"get_relayers",
 		nil,
@@ -215,12 +209,16 @@ func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.Su
 		return nil, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	var relayersAddresses []models.SuiAddress
-	err = getter.decodeReturnValues(txBlockResp.Results, &relayersAddresses)
+	var relayersAddressesBytes []models.SuiAddressBytes
+	err = getter.decodeReturnValues(txBlockResp.Results, &relayersAddressesBytes)
 	if err != nil {
-		return []models.SuiAddress{}, fmt.Errorf("failed to decode return value: %w", err)
+		return []models.SuiAddress{}, fmt.Errorf("failed to decode return value ###: %w", err)
 	}
 
+	var relayersAddresses []models.SuiAddress
+	for _, address := range relayersAddressesBytes {
+		relayersAddresses = append(relayersAddresses, transaction.ConvertSuiAddressBytesToString(address))
+	}
 	return relayersAddresses, nil
 }
 
@@ -229,7 +227,7 @@ func (getter *suiClientDataGetter) WasBatchExecuted(ctx context.Context, batchNo
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgePackageId),
+		models.SuiAddress(getter.packageId),
 		"bridge",
 		"was_batch_executed",
 		nil,
@@ -272,7 +270,7 @@ func (getter *suiClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgePackageId),
+		models.SuiAddress(getter.packageId),
 		"bridge",
 		"get_pause",
 		nil,
@@ -314,7 +312,7 @@ func (getter *suiClientDataGetter) Quorum(ctx context.Context) (uint64, error) {
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgePackageId),
+		models.SuiAddress(getter.packageId),
 		"bridge",
 		"get_quorum",
 		nil,
@@ -356,7 +354,7 @@ func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(
-		models.SuiAddress(getter.bridgePackageId),
+		models.SuiAddress(getter.packageId),
 		"bridge",
 		"get_statuses_after_execution",
 		nil,
@@ -410,7 +408,7 @@ func (getter *suiClientDataGetter) GetTotalBalanceFromSafe(ctx context.Context, 
 	}
 
 	tx.MoveCall(
-		models.SuiAddress(getter.safePackageId),
+		models.SuiAddress(getter.packageId),
 		"safe",
 		"get_stored_coin_balance",
 		[]transaction.TypeTag{
@@ -470,7 +468,7 @@ func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinT
 	}
 
 	tx.MoveCall(
-		models.SuiAddress(getter.safePackageId),
+		models.SuiAddress(getter.packageId),
 		"safe",
 		"is_token_whitelisted",
 		[]transaction.TypeTag{

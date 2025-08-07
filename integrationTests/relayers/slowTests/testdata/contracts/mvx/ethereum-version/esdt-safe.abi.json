@@ -1,11 +1,11 @@
 {
     "buildInfo": {
         "rustc": {
-            "version": "1.87.0",
-            "commitHash": "17067e9ac6d7ecb70e50f92c1944e545188d2359",
-            "commitDate": "2025-05-09",
+            "version": "1.78.0",
+            "commitHash": "9b00956e56009bab2aa15d7bff10916599e3d6d6",
+            "commitDate": "2024-04-29",
             "channel": "Stable",
-            "short": "rustc 1.87.0 (17067e9ac 2025-05-09)"
+            "short": "rustc 1.78.0 (9b00956e5 2024-04-29)"
         },
         "contractCrate": {
             "name": "esdt-safe",
