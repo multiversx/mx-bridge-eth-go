@@ -13,7 +13,6 @@ import (
 
 	"github.com/block-vision/sui-go-sdk/models"
 	suiSdk "github.com/block-vision/sui-go-sdk/sui"
-	"github.com/block-vision/sui-go-sdk/utils"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/require"
 )
@@ -62,10 +61,9 @@ func NewSuiHandler(
 		Quorum:         quorum,
 	}
 
-	// TODO: chain simulator
 	walletsToFundOnSui := handler.WalletsToFundOnSui()
 	handler.FundWallets(walletsToFundOnSui)
-	handler.SuiProxy = suiSdk.NewSuiClient("http://localhost:9000")
+	handler.SuiProxy = suiSdk.NewSuiClient("http://127.0.0.1:9000")
 
 	return handler
 }
@@ -94,6 +92,17 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 			}
 			if strings.Contains(obj.ObjectType, "::safe::BridgeSafe") {
 				handler.SafeObjectID = obj.ObjectId
+				if ownerMap, ok := obj.Owner.(map[string]interface{}); ok {
+					if shared, exists := ownerMap["Shared"]; exists {
+						if sharedMap, ok := shared.(map[string]interface{}); ok {
+							if version, exists := sharedMap["initial_shared_version"]; exists {
+								if versionFloat, ok := version.(float64); ok {
+									handler.SafeInitialSharedVersion = uint64(versionFloat)
+								}
+							}
+						}
+					}
+				}
 			}
 
 		} else if obj.Type == "published" {
@@ -187,6 +196,18 @@ func (handler *SuiHandler) DeployContract(
 	for _, obj := range resp.ObjectChanges {
 		if obj.Type == "created" {
 			if strings.Contains(obj.ObjectType, "::bridge::Bridge") {
+				if ownerMap, ok := obj.Owner.(map[string]interface{}); ok {
+					if shared, exists := ownerMap["Shared"]; exists {
+						if sharedMap, ok := shared.(map[string]interface{}); ok {
+							if version, exists := sharedMap["initial_shared_version"]; exists {
+								if versionFloat, ok := version.(float64); ok {
+									handler.BridgeInitialSharedVersion = uint64(versionFloat)
+								}
+							}
+						}
+					}
+				}
+
 				return []byte(obj.ObjectId)
 			}
 		}
@@ -475,8 +496,6 @@ func (handler *SuiHandler) getCoinObjectIdForToken(ctx context.Context, coinAddr
 		CoinType: fmt.Sprintf("0x%s::test_coin::TEST_COIN", hex.EncodeToString(coinAddress)),
 	})
 	require.NoError(handler, err)
-
-	utils.PrettyPrint(coins)
 
 	srcCoin := coins.Data[0]
 	coinBalance, _ := big.NewInt(0).SetString(srcCoin.Balance, 10)

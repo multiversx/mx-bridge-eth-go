@@ -209,12 +209,16 @@ func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.Su
 		return nil, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
 	}
 
-	var relayersAddresses []models.SuiAddress
-	err = getter.decodeReturnValues(txBlockResp.Results, &relayersAddresses)
+	var relayersAddressesBytes []models.SuiAddressBytes
+	err = getter.decodeReturnValues(txBlockResp.Results, &relayersAddressesBytes)
 	if err != nil {
-		return []models.SuiAddress{}, fmt.Errorf("failed to decode return value: %w", err)
+		return []models.SuiAddress{}, fmt.Errorf("failed to decode return value ###: %w", err)
 	}
 
+	var relayersAddresses []models.SuiAddress
+	for _, address := range relayersAddressesBytes {
+		relayersAddresses = append(relayersAddresses, transaction.ConvertSuiAddressBytesToString(address))
+	}
 	return relayersAddresses, nil
 }
 

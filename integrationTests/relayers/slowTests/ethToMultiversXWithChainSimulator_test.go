@@ -32,12 +32,7 @@ const (
 	currentChainType          = framework.ChainTypeSui
 )
 
-func TestRelayersShouldExecuteTransfers(t *testing.T) {
-	//USDCToken := GenerateTestUSDCToken()
-	//MEMEToken := GenerateTestMEMEToken()
-	//USDCToken.ChainType = currentChainType
-	//MEMEToken.ChainType = currentChainType
-
+func TestRelayersShouldExecuteTransfersSui(t *testing.T) {
 	suiUSDC := GenerateTestUSDCSuiToken()
 	suiUSDC.ChainType = currentChainType
 
@@ -45,6 +40,20 @@ func TestRelayersShouldExecuteTransfers(t *testing.T) {
 		t,
 		make(chan error),
 		suiUSDC,
+	)
+}
+
+func TestRelayersShouldExecuteTransfers(t *testing.T) {
+	USDCToken := GenerateTestUSDCToken()
+	MEMEToken := GenerateTestMEMEToken()
+	USDCToken.ChainType = currentChainType
+	MEMEToken.ChainType = currentChainType
+
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		USDCToken,
+		//MEMEToken,
 	)
 }
 
@@ -202,7 +211,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 		case *framework.EthereumHandler:
 			handler.SimulatedChain.Commit()
 		case *framework.SuiHandler:
-			panic("sui chain simulator not yet implemented")
+			handler.SuiChainSimulator.GenerateBlocks(setup.Ctx, 1)
 		default:
 			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
 		}

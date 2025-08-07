@@ -2,8 +2,10 @@ package factory
 
 import (
 	"crypto/ed25519"
+	"encoding/hex"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/block-vision/sui-go-sdk/signer"
@@ -176,12 +178,12 @@ func (components *suiMvxBridgeComponents) initBaseComponents(args ArgsBridgeComm
 }
 
 func (components *suiMvxBridgeComponents) createSuiKeysAndAddresses(suiConfigs config.SuiConfig) error {
-	pemBytes, err := os.ReadFile(suiConfigs.PrivateKeyFile)
+	seed, err := loadSeedFromFile(suiConfigs.PrivateKeyFile)
 	if err != nil {
 		return err
 	}
 
-	relayer := signer.NewSigner(pemBytes)
+	relayer := signer.NewSigner(seed)
 	components.suiRelayerPriKey = relayer.PriKey
 	components.suiRelayerAddress = relayer.Address
 	components.suiPackageId = suiConfigs.PackageId
@@ -556,4 +558,23 @@ func (components *suiMvxBridgeComponents) Close() error {
 // PeerChainRelayerAddress returns the Sui address associated to this relayer
 func (components *suiMvxBridgeComponents) PeerChainRelayerAddress() string {
 	return components.suiRelayerAddress
+}
+
+func loadSeedFromFile(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	seedHex := strings.TrimSpace(string(data))
+	seedBytes, err := hex.DecodeString(seedHex)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(seedBytes) != 32 {
+		return nil, fmt.Errorf("seed should be 32 bytes, got %d", len(seedBytes))
+	}
+
+	return seedBytes, nil
 }
