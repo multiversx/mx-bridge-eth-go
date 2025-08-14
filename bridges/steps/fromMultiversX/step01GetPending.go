@@ -2,6 +2,7 @@ package multiversxtoeth
 
 import (
 	"context"
+	"fmt"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/steps"
 
 	"github.com/multiversx/mx-bridge-eth-go/core"
@@ -49,6 +50,7 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 		step.bridge.PrintInfo(logger.LogError, "error determining if transfer was performed or not", "error", err)
 		return step.Identifier()
 	}
+	fmt.Println("WAS PERFORMED", wasPerformed)
 	if wasPerformed {
 		step.bridge.PrintInfo(logger.LogInfo, "transfer performed")
 		return ResolvingSetStatusOnMultiversX

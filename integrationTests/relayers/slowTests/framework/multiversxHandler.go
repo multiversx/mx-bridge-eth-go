@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/multiversx/mx-bridge-eth-go/clients/sui"
 	"math/big"
 	"strings"
 	"testing"
@@ -747,7 +748,7 @@ func (handler *MultiversxHandler) addMappingInMultisig(ctx context.Context, para
 		setCallsGasLimit,
 		addMappingFunction,
 		[]string{
-			hex.EncodeToString(tkData.PeerChainTokenAddress),
+			sui.EncodeManagedBufferTokenType(tkData.PeerChainTokenAddress),
 			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken))})
 	log.Info("add mapping tx executed", "hash", hash, "status", txResult.Status)
 }
@@ -926,22 +927,27 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 }
 
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
-func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, token *TokenData, params TestTokenParams, value *big.Int) {
+func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(
+	ctx context.Context,
+	token *TokenData,
+	params TestTokenParams,
+	value *big.Int, receiver []byte,
+) {
 	if params.HasChainSpecificToken {
-		handler.unwrapCreateTransaction(ctx, token, value)
+		handler.unwrapCreateTransaction(ctx, token, value, receiver)
 		return
 	}
 
-	handler.createTransactionWithoutUnwrap(ctx, token, value)
+	handler.createTransactionWithoutUnwrap(ctx, token, value, receiver)
 }
 
-func (handler *MultiversxHandler) createTransactionWithoutUnwrap(ctx context.Context, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) createTransactionWithoutUnwrap(ctx context.Context, token *TokenData, value *big.Int, receiver []byte) {
 	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(createTransactionFunction)),
-		hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
+		sui.EncodeManagedBufferTokenType(receiver),
 	}
 	dataField := strings.Join(params, "@")
 
@@ -954,10 +960,10 @@ func (handler *MultiversxHandler) createTransactionWithoutUnwrap(ctx context.Con
 		esdtTransferFunction,
 		params,
 	)
-	log.Info("MultiversX->Ethereum createTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+	log.Info("MultiversX -> peer chain createTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
 }
 
-func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, token *TokenData, value *big.Int, receiver []byte) {
 	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
@@ -965,7 +971,7 @@ func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, t
 		hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
 		hex.EncodeToString(handler.SafeAddress.Bytes()),
-		hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
+		sui.EncodeManagedBufferTokenType(receiver),
 	}
 	dataField := strings.Join(params, "@")
 
@@ -978,7 +984,7 @@ func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, t
 		esdtTransferFunction,
 		params,
 	)
-	log.Info("MultiversX->Ethereum unwrapCreateTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+	log.Info("MultiversX -> peer chain unwrapCreateTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
 }
 
 // TestWithdrawFees will try to withdraw the fees for the provided token from the safe contract to the owner

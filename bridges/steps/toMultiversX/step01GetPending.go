@@ -32,21 +32,21 @@ func (step *getPendingStep) Execute(ctx context.Context) core.StepIdentifier {
 
 	err = step.bridge.GetAndStoreBatchFromPeerChain(ctx, lastEthBatchExecuted+1)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogDebug, "cannot fetch eth batch", "batch ID", lastEthBatchExecuted+1, "message", err)
+		step.bridge.PrintInfo(logger.LogDebug, "cannot fetch peer chain batch", "batch ID", lastEthBatchExecuted+1, "message", err)
 		return step.Identifier()
 	}
 
 	batch := step.bridge.GetStoredBatch()
 	if batch == nil {
-		step.bridge.PrintInfo(logger.LogDebug, "no new batch found on eth", "last executed on MultiversX", lastEthBatchExecuted)
+		step.bridge.PrintInfo(logger.LogDebug, "no new batch found on peer chain", "last executed on MultiversX", lastEthBatchExecuted)
 		return step.Identifier()
 	}
 
-	step.bridge.PrintInfo(logger.LogInfo, "fetched new batch from PeerChain "+batch.String())
+	step.bridge.PrintInfo(logger.LogInfo, "fetched new batch from peer chain "+batch.String())
 
 	err = step.bridge.VerifyLastDepositNonceExecutedOnPeerBatch(ctx)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogError, "verification failed on the new batch from PeerChain", "batch ID", lastEthBatchExecuted+1, "error", err)
+		step.bridge.PrintInfo(logger.LogError, "verification failed on the new batch from peer chain", "batch ID", lastEthBatchExecuted+1, "error", err)
 		return step.Identifier()
 	}
 

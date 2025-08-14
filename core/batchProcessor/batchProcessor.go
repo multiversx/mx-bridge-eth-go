@@ -28,11 +28,11 @@ type ArgListsBatch struct {
 
 // SuiTransferData is a struct that contains the transfer data to be signed
 type SuiTransferData struct {
-	Recipients [][]byte
+	BatchId    uint64
 	SuiTokens  [][]byte
+	Recipients [][]byte
 	Amounts    []uint64
 	Nonces     []uint64
-	BatchId    uint64
 }
 
 // ExtractListFromMvx will extract the batch data into a format that is easy to use

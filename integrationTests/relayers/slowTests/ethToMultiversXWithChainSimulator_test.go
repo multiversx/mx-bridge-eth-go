@@ -1,5 +1,3 @@
-//go:build slow
-
 // To run these slow tests, simply add the slow tag on the go test command. Also, provide a chain simulator instance on the 8085 port
 // example: go test -tags slow
 
@@ -10,7 +8,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"os"
 	"strings"
@@ -18,6 +15,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	logger "github.com/multiversx/mx-chain-logger-go"

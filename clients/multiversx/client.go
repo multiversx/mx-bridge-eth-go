@@ -3,7 +3,9 @@ package multiversx
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+	"github.com/block-vision/sui-go-sdk/utils"
 	"math/big"
 	"reflect"
 	"sync"
@@ -267,7 +269,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			Nonce:            depositNonce,
 			FromBytes:        responseData[i+2],
 			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
-			ToBytes:          responseData[i+3],
+			ToBytes:          getDataWithAppendedLength(responseData[i+3]),
 			DisplayableTo:    c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
 			SourceTokenBytes: responseData[i+4],
 			DisplayableToken: string(responseData[i+4]),
@@ -276,10 +278,11 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 
 		storedConvertedTokenBytes, exists := cachedTokens[deposit.DisplayableToken]
 		if !exists {
-			deposit.DestinationTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.SourceTokenBytes)
+			coinTypeWithPrefix, err := c.tokensMapper.ConvertToken(ctx, deposit.SourceTokenBytes)
 			if err != nil {
-				return nil, fmt.Errorf("%w while converting token bytes, transfer index %d", err, transferIndex)
+				return nil, err
 			}
+			deposit.DestinationTokenBytes = coinTypeWithPrefix[4:]
 			cachedTokens[deposit.DisplayableToken] = deposit.DestinationTokenBytes
 		} else {
 			deposit.DestinationTokenBytes = storedConvertedTokenBytes
@@ -291,9 +294,25 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 
 	batch.Statuses = make([]byte, len(batch.Deposits))
 
+	fmt.Println("=======FINAL CHECKS========")
+	utils.PrettyPrint(batch)
+	fmt.Println("=====================")
+
 	c.log.Debug("created batch " + batch.String())
 
 	return batch, nil
+}
+
+func getDataWithAppendedLength(data []byte) []byte {
+	if len(data) == 0 {
+		return data
+	}
+
+	lenBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(lenBytes, uint32(len(data)))
+	encoded := append(lenBytes, data...)
+
+	return encoded
 }
 
 func (c *client) createCommonTxDataBuilder(funcName string, id int64) builders.TxDataBuilder {

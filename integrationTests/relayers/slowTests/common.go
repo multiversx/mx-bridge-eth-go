@@ -1,5 +1,3 @@
-//go:build slow
-
 package slowTests
 
 import (
@@ -198,7 +196,7 @@ func GenerateTestUSDCSuiToken() framework.TestTokenParams {
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
-			HasChainSpecificToken:            true,
+			HasChainSpecificToken:            false,
 			PeerChainTokenName:               "SuiUSDC",
 			PeerChainTokenSymbol:             "USDC",
 			ValueToMintOnPeerChain:           "10000000000",

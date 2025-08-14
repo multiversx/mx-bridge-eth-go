@@ -28,7 +28,7 @@ func (step *performTransferStep) Execute(ctx context.Context) core.StepIdentifie
 	if step.bridge.MyTurnAsLeader() {
 		err = step.bridge.PerformTransferOnPeerChain(ctx)
 		if err != nil {
-			step.bridge.PrintInfo(logger.LogError, "error performing transfer on PeerChain", "error", err)
+			step.bridge.PrintInfo(logger.LogError, "error performing transfer on peer chain", "error", err)
 			return GettingPendingBatchFromMultiversX
 		}
 	} else {

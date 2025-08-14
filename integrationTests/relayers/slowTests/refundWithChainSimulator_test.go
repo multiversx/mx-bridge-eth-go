@@ -1,5 +1,3 @@
-//go:build slow
-
 // To run these slow tests, simply add the slow tag on the go test command. Also, provide a chain simulator instance on the 8085 port
 // example: go test -tags slow
 

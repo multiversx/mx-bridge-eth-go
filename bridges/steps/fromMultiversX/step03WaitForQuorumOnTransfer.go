@@ -21,7 +21,7 @@ func (step *waitForQuorumOnTransferStep) Execute(ctx context.Context) core.StepI
 
 	isQuorumReached, err := step.bridge.ProcessQuorumReachedOnPeerChain(ctx)
 	if err != nil {
-		step.bridge.PrintInfo(logger.LogError, "error while checking the quorum on PeerChain", "error", err)
+		step.bridge.PrintInfo(logger.LogError, "error while checking the quorum on peer chain", "error", err)
 		return GettingPendingBatchFromMultiversX
 	}
 

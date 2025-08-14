@@ -1,7 +1,7 @@
 package dtos
 
 type TokenTransferGroup struct {
-	Recipients [][]byte
-	Amounts    []uint64
-	Nonces     []uint64
+	Recipients []string
+	Amounts    []string
+	Nonces     []string
 }

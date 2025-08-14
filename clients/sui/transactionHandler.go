@@ -2,7 +2,6 @@ package sui
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/signer"
@@ -40,10 +39,6 @@ func (txHandler *transactionHandler) SendTransactionReturnHash(ctx context.Conte
 	return txBlockResponse.Digest, nil
 }
 
-func (txHandler *transactionHandler) Sign(message []byte) ([]byte, error) {
-	signedMessageSerializedSig, err := txHandler.relayerSigner.SignPersonalMessage(string(message))
-	if err != nil {
-		return nil, err
-	}
-	return base64.StdEncoding.DecodeString(signedMessageSerializedSig.Signature)
+func (txHandler *transactionHandler) Sign(message []byte) (*signer.SignedMessageSerializedSig, error) {
+	return txHandler.relayerSigner.SignPersonalMessageV1(string(message))
 }

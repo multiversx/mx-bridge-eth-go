@@ -1,8 +1,10 @@
 package sui
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
@@ -204,22 +206,26 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 	for i := range deposits {
 		deposit := deposits[i]
 		toBytes := deposit.Recipient[:]
-		fromBytes := deposit.Depositor[:]
-		tokenId := deposit.TokenAddress
+		fromBytes := deposit.Sender
+		tokenId := deposit.TokenTypeBytes
 
 		depositTransfer := &bridgeCore.DepositTransfer{
 			Nonce:            deposit.Nonce,
 			ToBytes:          toBytes,
 			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),
-			FromBytes:        fromBytes,
-			DisplayableFrom:  c.addressConverter.ToHexString(fromBytes),
-			SourceTokenBytes: []byte(tokenId),
-			DisplayableToken: tokenId,
+			FromBytes:        getDataWithAppendedLength(fromBytes[:]),
+			DisplayableFrom:  AddressFromBytes(fromBytes),
+			SourceTokenBytes: tokenId,
+			DisplayableToken: "0x" + string(tokenId),
 			Amount:           big.NewInt(0).SetUint64(deposit.Amount),
 		}
 		storedConvertedTokenBytes, exists := cachedTokens[depositTransfer.DisplayableToken]
 		if !exists {
-			depositTransfer.DestinationTokenBytes, err = c.tokensMapper.ConvertToken(ctx, depositTransfer.SourceTokenBytes)
+			coinTypeBytes := []byte(depositTransfer.DisplayableToken)
+			lenBytes := make([]byte, 4)
+			binary.BigEndian.PutUint32(lenBytes, uint32(len(coinTypeBytes)))
+			encoded := append(lenBytes, coinTypeBytes...)
+			depositTransfer.DestinationTokenBytes, err = c.tokensMapper.ConvertToken(ctx, encoded)
 			if err != nil {
 				return nil, false, err
 			}
@@ -236,6 +242,18 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 	return transferBatch, isFinalBatch && areFinalDeposits, nil
 }
 
+func getDataWithAppendedLength(data []byte) []byte {
+	if len(data) == 0 {
+		return data
+	}
+
+	lenBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(lenBytes, uint32(len(data)))
+	encoded := append(lenBytes, data...)
+
+	return encoded
+}
+
 // WasExecuted returns true if the MultiversX batch ID was executed
 func (c *client) WasExecuted(ctx context.Context, batchID uint64) (bool, error) {
 	return c.WasBatchExecuted(ctx, batchID)
@@ -243,19 +261,24 @@ func (c *client) WasExecuted(ctx context.Context, batchID uint64) (bool, error) 
 
 // BroadcastSignatureForMessageHash will send the signature for the provided message hash
 func (c *client) BroadcastSignatureForMessageHash(msgHash []byte) {
-	signature, err := c.txHandler.Sign(msgHash)
+	resp, err := c.txHandler.Sign(msgHash)
 	if err != nil {
 		c.log.Error("error generating signature", "msh hash", msgHash, "error", err)
 		return
 	}
 
-	c.broadcaster.BroadcastSignature(signature, msgHash)
+	c.broadcaster.BroadcastSignature([]byte(resp.Signature), msgHash)
 }
 
 // GenerateMessageHash will generate the message hash based on the provided batch
 func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) ([]byte, error) {
 	if batch == nil {
 		return nil, clients.ErrNilBatch
+	}
+
+	formattedRecipients := make([]models.SuiAddressBytes, 0, len(batch.Recipients))
+	for _, recipient := range batch.Recipients {
+		formattedRecipients = append(formattedRecipients, models.SuiAddressBytes(recipient[4:]))
 	}
 
 	uint64Amounts := make([]uint64, 0, len(batch.Amounts))
@@ -267,21 +290,66 @@ func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchI
 	for _, nonce := range batch.Nonces {
 		uint64Nonces = append(uint64Nonces, nonce.Uint64())
 	}
-
-	transferData := batchProcessor.SuiTransferData{
-		Recipients: batch.Recipients,
-		SuiTokens:  batch.PeerTokens,
-		Amounts:    uint64Amounts,
-		Nonces:     uint64Nonces,
-		BatchId:    batchId,
-	}
-
-	transferDataBytes, err := mystenbcs.Marshal(transferData)
+	message, err := c.ConstructBatchMessage(batchId, batch.PeerTokens, formattedRecipients, uint64Amounts, uint64Nonces)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling transfer data: %v", err)
+		return nil, fmt.Errorf("error constructing batch message: %v", err)
 	}
-	hash := blake2b.Sum256(transferDataBytes)
+
+	hash := blake2b.Sum256(message)
+
 	return hash[:], nil
+}
+
+func (c *client) ConstructBatchMessage(
+	batchId uint64,
+	tokens [][]byte,
+	recipients []models.SuiAddressBytes,
+	amounts []uint64,
+	depositNonces []uint64,
+) ([]byte, error) {
+	var message bytes.Buffer
+
+	bcsEncoder := mystenbcs.NewEncoder(&message)
+	err := bcsEncoder.Encode(batchId)
+	if err != nil {
+		return nil, fmt.Errorf("error encoding batch_id: %v", err)
+	}
+
+	for i := 0; i < len(tokens); i++ {
+		tokenBuf := bytes.Buffer{}
+		tokenEncoder := mystenbcs.NewEncoder(&tokenBuf)
+		err := tokenEncoder.Encode(tokens[i])
+		if err != nil {
+			return nil, fmt.Errorf("error encoding token: %v", err)
+		}
+		message.Write(tokenBuf.Bytes())
+
+		recipientBuf := bytes.Buffer{}
+		recipientEncoder := mystenbcs.NewEncoder(&recipientBuf)
+		err = recipientEncoder.Encode(recipients[i])
+		if err != nil {
+			return nil, fmt.Errorf("error encoding recipient: %v", err)
+		}
+		message.Write(recipientBuf.Bytes())
+
+		amountBuf := bytes.Buffer{}
+		amountEncoder := mystenbcs.NewEncoder(&amountBuf)
+		err = amountEncoder.Encode(amounts[i])
+		if err != nil {
+			return nil, fmt.Errorf("error encoding amount: %v", err)
+		}
+		message.Write(amountBuf.Bytes())
+
+		nonceBuf := bytes.Buffer{}
+		nonceEncoder := mystenbcs.NewEncoder(&nonceBuf)
+		err = nonceEncoder.Encode(depositNonces[i])
+		if err != nil {
+			return nil, fmt.Errorf("error encoding nonce: %v", err)
+		}
+		message.Write(nonceBuf.Bytes())
+	}
+
+	return message.Bytes(), nil
 }
 
 // ExecuteTransfer will initiate and send the transaction from the transfer batch struct
@@ -304,14 +372,23 @@ func (c *client) ExecuteTransfer(
 		return "", fmt.Errorf("%w in client.ExecuteTransfer", clients.ErrMultisigContractPaused)
 	}
 
-	signatures := c.signatureHolder.Signatures(msgHash)
-	if len(signatures) < quorum {
-		return "", fmt.Errorf("%w num signatures: %d, quorum: %d", clients.ErrQuorumNotReached, len(signatures), quorum)
+	serializedSignatures := c.signatureHolder.Signatures(msgHash)
+	if len(serializedSignatures) < quorum {
+		return "", fmt.Errorf("%w num signatures: %d, quorum: %d", clients.ErrQuorumNotReached, len(serializedSignatures), quorum)
 	}
-	if len(signatures) > quorum {
+	if len(serializedSignatures) > quorum {
 		c.log.Debug("reducing the size of the signatures set",
-			"quorum", quorum, "total signatures", len(signatures))
-		signatures = signatures[:quorum]
+			"quorum", quorum, "total signatures", len(serializedSignatures))
+		serializedSignatures = serializedSignatures[:quorum]
+	}
+
+	var signatures [][]byte
+	for _, sig := range serializedSignatures {
+		sigComponents, err := models.FromSerializedSignature(string(sig))
+		if err != nil {
+			return "", fmt.Errorf("error deserializing signature %s: %w", sig, err)
+		}
+		signatures = append(signatures, sigComponents.Signature)
 	}
 
 	var hash string
@@ -342,15 +419,18 @@ func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatc
 
 		if groups[tokenTypeStr] == nil {
 			groups[tokenTypeStr] = &dtos.TokenTransferGroup{
-				Recipients: make([][]byte, 0),
-				Amounts:    make([]uint64, 0),
-				Nonces:     make([]uint64, 0),
+				Recipients: make([]string, 0),
+				Amounts:    make([]string, 0),
+				Nonces:     make([]string, 0),
 			}
 		}
 
-		groups[tokenTypeStr].Recipients = append(groups[tokenTypeStr].Recipients, argLists.Recipients[i])
-		groups[tokenTypeStr].Amounts = append(groups[tokenTypeStr].Amounts, argLists.Amounts[i].Uint64())
-		groups[tokenTypeStr].Nonces = append(groups[tokenTypeStr].Nonces, argLists.Nonces[i].Uint64())
+		hexStr := hex.EncodeToString(argLists.Recipients[i][4:])
+		suiAddress := "0x" + hexStr
+
+		groups[tokenTypeStr].Recipients = append(groups[tokenTypeStr].Recipients, suiAddress)
+		groups[tokenTypeStr].Amounts = append(groups[tokenTypeStr].Amounts, argLists.Amounts[i].String())
+		groups[tokenTypeStr].Nonces = append(groups[tokenTypeStr].Nonces, argLists.Nonces[i].String())
 	}
 
 	return groups
@@ -375,8 +455,9 @@ func (c *client) executeTransferForTokenType(
 			group.Recipients,
 			group.Amounts,
 			group.Nonces,
-			batchId,
+			big.NewInt(0).SetUint64(batchId).String(),
 			signatures,
+			clockId,
 		},
 		GasBudget: "100000000",
 	}
@@ -427,23 +508,20 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 
 // CheckRequiredBalance will check if the safe has enough balance for the transfer
 func (c *client) CheckRequiredBalance(ctx context.Context, coinType []byte, value *big.Int) error {
-	coinAddr := AddressBytesToString(coinType)
-	existingBalance, err := c.GetBalance(ctx, c.safeObjectId, coinAddr)
+	coinTypeStr := string(coinType)
+	existingBalance, err := c.GetBalance(ctx, c.safeObjectId, coinTypeStr)
 	if err != nil {
-		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeObjectId, coinAddr)
+		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeObjectId, coinTypeStr)
 	}
 
-	totalExistingBalance, ok := big.NewInt(0).SetString(existingBalance.TotalBalance, 10)
-	if !ok {
-		return fmt.Errorf("invalid balance string: %s", totalExistingBalance.String())
-	}
+	totalExistingBalance := big.NewInt(0).SetUint64(existingBalance)
 	if value.Cmp(totalExistingBalance) > 0 {
 		return fmt.Errorf("%w, existing: %s, required: %s for coin %s and owner %s",
-			errInsufficientCoinBalance, totalExistingBalance.String(), value.String(), coinAddr, c.safeObjectId)
+			errInsufficientCoinBalance, totalExistingBalance.String(), value.String(), coinTypeStr, c.safeObjectId)
 	}
 
 	c.log.Debug("checked coin balance",
-		"Coin type", coinAddr,
+		"Coin type", coinTypeStr,
 		"owner address", c.safeObjectId,
 		"existing balance", totalExistingBalance.String(),
 		"needed", value.String())

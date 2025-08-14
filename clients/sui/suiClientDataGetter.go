@@ -16,6 +16,11 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
+const (
+	clockId                   = "0x6"
+	clockInitialSharedVersion = 1
+)
+
 // ArgsSuiClientDataGetter is the arguments DTO used in the NewSuiClientDataGetter constructor
 type ArgsSuiClientDataGetter struct {
 	PackageId                  string
@@ -34,6 +39,7 @@ type suiClientDataGetter struct {
 	safeInitialSharedVersion   uint64
 	bridgeObjectIdBytes        models.SuiAddressBytes
 	bridgeInitialSharedVersion uint64
+	clockIdBytes               models.SuiAddressBytes
 	relayerAddress             string
 	proxy                      Proxy
 	log                        chainCore.Logger
@@ -76,12 +82,18 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 		return nil, fmt.Errorf("failed to convert address: %w", err)
 	}
 
+	clockIdBytes, err := transaction.ConvertSuiAddressStringToBytes(clockId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert clock address: %w", err)
+	}
+
 	return &suiClientDataGetter{
 		packageId:                  args.PackageId,
 		safeObjectIdBytes:          *safeObjectIdBytes,
 		safeInitialSharedVersion:   args.SafeInitialSharedVersion,
 		bridgeObjectIdBytes:        *bridgeObjectIdBytes,
 		bridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
+		clockIdBytes:               *clockIdBytes,
 		relayerAddress:             args.RelayerAddress,
 		proxy:                      args.Proxy,
 		log:                        args.Log,
@@ -110,6 +122,17 @@ func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNon
 				},
 			),
 			tx.Pure(batchNonce),
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.clockIdBytes,
+							InitialSharedVersion: clockInitialSharedVersion,
+							Mutable:              false,
+						},
+					},
+				},
+			),
 		},
 	)
 
@@ -154,6 +177,17 @@ func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNo
 				},
 			),
 			tx.Pure(batchNonce),
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.clockIdBytes,
+							InitialSharedVersion: clockInitialSharedVersion,
+							Mutable:              false,
+						},
+					},
+				},
+			),
 		},
 	)
 
@@ -371,6 +405,17 @@ func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context
 				},
 			),
 			tx.Pure(batchNonce),
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.clockIdBytes,
+							InitialSharedVersion: clockInitialSharedVersion,
+							Mutable:              false,
+						},
+					},
+				},
+			),
 		},
 	)
 
@@ -519,11 +564,63 @@ func (getter *suiClientDataGetter) GetLatestCheckpoint(ctx context.Context) (uin
 }
 
 // GetBalance returns the sui balance of the given account
-func (getter *suiClientDataGetter) GetBalance(ctx context.Context, account string, coinType string) (models.CoinBalanceResponse, error) {
-	return getter.proxy.SuiXGetBalance(ctx, models.SuiXGetBalanceRequest{
-		Owner:    account,
-		CoinType: coinType,
-	})
+func (getter *suiClientDataGetter) GetBalance(ctx context.Context, objectId string, coinType string) (uint64, error) {
+	tx := transaction.NewTransaction()
+
+	coinParts, err := parseCoinType(coinType)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
+	}
+
+	coinIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(coinParts[0]))
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert coin type %s: %w", coinType, err)
+	}
+
+	tx.MoveCall(
+		models.SuiAddress(getter.packageId),
+		"safe",
+		"get_stored_coin_balance",
+		[]transaction.TypeTag{
+			{
+				Struct: &transaction.StructTag{
+					Address: *coinIdBytes,
+					Module:  coinParts[1],
+					Name:    coinParts[2],
+				},
+			},
+		},
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.safeObjectIdBytes,
+							InitialSharedVersion: getter.safeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total balances: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return 0, fmt.Errorf("get total balances transaction failed: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var tokenBalance uint64
+	err = getter.decodeReturnValues(txBlockResp.Results, &tokenBalance)
+	if err != nil {
+		return 0, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return tokenBalance, nil
 }
 
 func (getter *suiClientDataGetter) decodeReturnValues(data json.RawMessage, out ...interface{}) error {
