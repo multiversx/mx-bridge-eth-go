@@ -109,10 +109,14 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 	}
 
 	suiRelayersAddresses := make([]string, 0, len(handler.RelayersKeys))
-	suiRelayersPubKeys := make([]ed25519.PublicKey, 0, len(handler.RelayersKeys))
+	suiRelayersPubKeys := make([][32]byte, 0, len(handler.RelayersKeys))
 	for _, relayerKeys := range handler.RelayersKeys {
 		suiRelayersAddresses = append(suiRelayersAddresses, string(relayerKeys.SuiAddress))
-		suiRelayersPubKeys = append(suiRelayersPubKeys, relayerKeys.SuiSK.Public().(ed25519.PublicKey))
+
+		pubKeyBytes := relayerKeys.SuiSK.Public().(ed25519.PublicKey)
+		var arr [32]byte
+		copy(arr[:], pubKeyBytes)
+		suiRelayersPubKeys = append(suiRelayersPubKeys, arr)
 	}
 
 	bridgeIdBytes := handler.DeployContract(
@@ -168,7 +172,7 @@ func (handler *SuiHandler) DeployContract(
 	module := params[0].(string)
 	function := params[1].(string)
 	suiRelayerAddresses := params[2].([]string)
-	suiRelayersPubKeys := params[3].([]ed25519.PublicKey)
+	suiRelayersPubKeys := params[3].([][32]byte)
 	quorumStr := params[4].(string)
 	safeObjectID := params[5].(string)
 	adminCap := params[6].(string)
@@ -582,7 +586,7 @@ func (handler *SuiHandler) signAndExecuteTxReturnResult(
 }
 
 func (handler *SuiHandler) Close() error {
-	panic("Close not implemented for SuiHandler")
+	return nil
 }
 
 func (handler *SuiHandler) FundWallets(wallets [][]byte) {

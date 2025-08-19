@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -382,13 +383,15 @@ func (c *client) ExecuteTransfer(
 		serializedSignatures = serializedSignatures[:quorum]
 	}
 
-	var signatures [][]byte
-	for _, sig := range serializedSignatures {
-		sigComponents, err := models.FromSerializedSignature(string(sig))
+	var signatures [][96]byte
+	for _, serializedSig := range serializedSignatures {
+		_bytes, err := base64.StdEncoding.DecodeString(string(serializedSig))
 		if err != nil {
-			return "", fmt.Errorf("error deserializing signature %s: %w", sig, err)
+			return "", fmt.Errorf("error decoding signature: %w", err)
 		}
-		signatures = append(signatures, sigComponents.Signature)
+		var sig [96]byte
+		copy(sig[:], _bytes[1:]) // remove the first byte which is the signature scheme
+		signatures = append(signatures, sig)
 	}
 
 	var hash string
@@ -441,7 +444,7 @@ func (c *client) executeTransferForTokenType(
 	tokenType string,
 	group *dtos.TokenTransferGroup,
 	batchId uint64,
-	signatures [][]byte,
+	signatures [][96]byte,
 ) (string, error) {
 	moveCallReq := models.MoveCallRequest{
 		Signer:          c.relayerAddress,
