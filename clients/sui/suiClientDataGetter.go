@@ -533,7 +533,7 @@ func (getter *suiClientDataGetter) GetCoinsForAddress(ctx context.Context) (mode
 }
 
 // GetBalance returns the sui balance of the given account
-func (getter *suiClientDataGetter) GetBalance(ctx context.Context, objectId string, coinType string) (uint64, error) {
+func (getter *suiClientDataGetter) GetBalance(ctx context.Context, coinType string) (uint64, error) {
 	tx := transaction.NewTransaction()
 
 	coinParts, err := parseCoinType(coinType)

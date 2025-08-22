@@ -601,7 +601,7 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 // CheckRequiredBalance will check if the safe has enough balance for the transfer
 func (c *client) CheckRequiredBalance(ctx context.Context, coinType []byte, value *big.Int) error {
 	coinTypeStr := string(coinType)
-	existingBalance, err := c.GetBalance(ctx, c.safeObjectId, coinTypeStr)
+	existingBalance, err := c.GetBalance(ctx, coinTypeStr)
 	if err != nil {
 		return fmt.Errorf("%w for owner %s for coin %s", err, c.safeObjectId, coinTypeStr)
 	}
