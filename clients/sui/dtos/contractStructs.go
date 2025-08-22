@@ -10,10 +10,9 @@ type Batch struct {
 
 // Deposit represents a single deposit in the batch
 type Deposit struct {
-	Nonce        uint64
-	TokenAddress string
-	Amount       uint64
-	Depositor    []byte
-	Recipient    []byte
-	Status       uint8
+	Nonce          uint64
+	TokenTypeBytes []byte
+	Amount         uint64
+	Sender         [32]byte
+	Recipient      []byte
 }

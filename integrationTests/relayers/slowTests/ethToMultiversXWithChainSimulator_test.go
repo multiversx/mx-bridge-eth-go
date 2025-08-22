@@ -10,7 +10,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"os"
 	"strings"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -32,42 +32,31 @@ const (
 	currentChainType          = framework.ChainTypeSui
 )
 
-func TestRelayersShouldExecuteTransfersSui(t *testing.T) {
-	suiUSDC := GenerateTestUSDCSuiToken()
-	suiUSDC.ChainType = currentChainType
-
-	_ = testRelayersWithChainSimulatorAndTokens(
-		t,
-		make(chan error),
-		suiUSDC,
-	)
-}
-
 func TestRelayersShouldExecuteTransfers(t *testing.T) {
-	USDCToken := GenerateTestUSDCToken()
-	MEMEToken := GenerateTestMEMEToken()
-	USDCToken.ChainType = currentChainType
-	MEMEToken.ChainType = currentChainType
+	usdcToken := GenerateTestUSDCToken()
+	usdcToken.ChainType = currentChainType
+	memeToken := GenerateTestMEMEToken()
+	memeToken.ChainType = currentChainType
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		USDCToken,
-		//MEMEToken,
+		usdcToken,
+		memeToken,
 	)
 }
 
 func TestRelayersShouldExecuteTransfersWithMintBurnTokens(t *testing.T) {
-	USDCToken := GenerateTestUSDCToken()
-	MEXToken := GenerateTestMEXToken()
-	USDCToken.ChainType = currentChainType
-	MEXToken.ChainType = currentChainType
+	eurocToken := GenerateTestEUROCToken()
+	eurocToken.ChainType = currentChainType
+	mexToken := GenerateTestMEXToken()
+	mexToken.ChainType = currentChainType
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		USDCToken,
-		MEXToken,
+		eurocToken,
+		mexToken,
 	)
 }
 

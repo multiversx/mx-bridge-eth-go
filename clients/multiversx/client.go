@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/sui"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
@@ -267,7 +268,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			Nonce:            depositNonce,
 			FromBytes:        responseData[i+2],
 			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
-			ToBytes:          responseData[i+3],
+			ToBytes:          sui.AppendLengthToData(responseData[i+3]),
 			DisplayableTo:    c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
 			SourceTokenBytes: responseData[i+4],
 			DisplayableToken: string(responseData[i+4]),
@@ -276,10 +277,11 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 
 		storedConvertedTokenBytes, exists := cachedTokens[deposit.DisplayableToken]
 		if !exists {
-			deposit.DestinationTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.SourceTokenBytes)
+			coinTypeWithPrefix, err := c.tokensMapper.ConvertToken(ctx, deposit.SourceTokenBytes)
 			if err != nil {
-				return nil, fmt.Errorf("%w while converting token bytes, transfer index %d", err, transferIndex)
+				return nil, err
 			}
+			deposit.DestinationTokenBytes = coinTypeWithPrefix[4:]
 			cachedTokens[deposit.DisplayableToken] = deposit.DestinationTokenBytes
 		} else {
 			deposit.DestinationTokenBytes = storedConvertedTokenBytes

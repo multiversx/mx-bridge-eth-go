@@ -10,6 +10,7 @@ type Proxy interface {
 	SuiGetLatestCheckpointSequenceNumber(ctx context.Context) (uint64, error)
 	SuiXGetBalance(ctx context.Context, req models.SuiXGetBalanceRequest) (models.CoinBalanceResponse, error)
 	SuiDevInspectTransactionBlock(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
+	SuiXGetCoins(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error)
 	MoveCall(ctx context.Context, req models.MoveCallRequest) (models.TxnMetaData, error)
 	SignAndExecuteTransactionBlock(ctx context.Context, req models.SignAndExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
 }
@@ -31,9 +32,4 @@ type SignaturesHolder interface {
 type Broadcaster interface {
 	BroadcastSignature(signature []byte, messageHash []byte)
 	IsInterfaceNil() bool
-}
-
-type txHandler interface {
-	SendTransactionReturnHash(ctx context.Context, moveCallRequest models.MoveCallRequest) (string, error)
-	Sign(message []byte) ([]byte, error)
 }

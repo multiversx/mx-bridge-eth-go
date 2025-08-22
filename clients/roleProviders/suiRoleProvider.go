@@ -2,15 +2,20 @@ package roleproviders
 
 import (
 	"context"
+	"encoding/hex"
+	"fmt"
 	"strings"
 	"sync"
 
-	"encoding/base64"
-	"github.com/block-vision/sui-go-sdk/constant"
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
+)
+
+const (
+	signatureSize = 132 // size of the ed25519 signature
+	messageSize   = 32  // size of the blake2b hash used for the message
 )
 
 // ArgsSuiRoleProvider is the argument for the Sui role provider constructor
@@ -83,20 +88,42 @@ func (srp *suiRoleProvider) processResults(results []models.SuiAddress) error {
 // VerifySignature will verify the provided signature against the message hash. It will also checks if the
 // public key is whitelisted or not
 func (srp *suiRoleProvider) VerifySignature(signature []byte, messageHash []byte) error {
-	sigB64 := base64.StdEncoding.EncodeToString(signature)
-	msgB64 := base64.StdEncoding.EncodeToString(messageHash)
-	signer, pass, err := models.VerifyMessage(
-		msgB64,
-		sigB64,
-		constant.PersonalMessageIntentScope,
-	)
-	if err != nil {
-		return err
+	fmt.Println("Verifying signature:", string(signature), "for message hash:", hex.EncodeToString(messageHash))
+	if len(signature)%signatureSize != 0 {
+		return fmt.Errorf("invalid array of signatures: expected a multiple of %d, got %d", signatureSize, len(signature))
 	}
+	if len(messageHash)%messageSize != 0 {
+		return fmt.Errorf("invalid array of message hashes: expected a multiple of %d, got %d", messageSize, len(messageHash))
+	}
+	if len(signature)%signatureSize != len(messageHash)%messageSize {
+		return fmt.Errorf("number of signatures (%d) does not match number of message hashes (%d)", len(signature)/signatureSize, len(messageHash)/messageSize)
+	}
+
+	n := len(signature) / signatureSize
+	var relayer string
+	pass := true
+	for i := 0; i < n; i++ {
+		start := i * signatureSize
+		end := start + signatureSize
+		sig := signature[start:end]
+
+		startHash := i * messageSize
+		endHash := startHash + messageSize
+		msgHash := messageHash[startHash:endHash]
+
+		signer, ok, err := models.VerifyPersonalMessage(string(msgHash), string(sig))
+		if err != nil {
+			return err
+		}
+		relayer = signer
+
+		pass = pass && ok
+	}
+
 	if !pass {
 		return ErrInvalidSignature
 	}
-	if !srp.isWhitelisted(signer) {
+	if !srp.isWhitelisted(relayer) {
 		return ErrAddressIsNotWhitelisted
 	}
 

@@ -2,10 +2,12 @@ package framework
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -229,7 +231,6 @@ func (setup *TestSetup) GetNumScCallsOperations() uint32 {
 func (setup *TestSetup) IsTransferDoneFromPeerChain(tokens ...TestTokenParams) bool {
 	isDone := true
 	for _, params := range tokens {
-		fmt.Println("===PEER CHAIN===")
 		isDone = isDone && setup.isTransferDoneFromPeerChainForToken(params)
 	}
 
@@ -237,7 +238,6 @@ func (setup *TestSetup) IsTransferDoneFromPeerChain(tokens ...TestTokenParams) b
 }
 
 func (setup *TestSetup) isTransferDoneFromPeerChainForToken(params TestTokenParams) bool {
-	fmt.Println("===PEER CHAIN2===")
 	expectedValueOnReceiver := big.NewInt(0)
 	expectedValueOnContract := big.NewInt(0)
 	for _, operation := range params.TestOperations {
@@ -255,13 +255,13 @@ func (setup *TestSetup) isTransferDoneFromPeerChainForToken(params TestTokenPara
 	}
 
 	receiverBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.TestKeys.MvxAddress, params.AbstractTokenIdentifier)
+	fmt.Println("===SUI===")
+	fmt.Println("receiverBalance", receiverBalance.String(), "expected", expectedValueOnReceiver.String())
 	if receiverBalance.String() != expectedValueOnReceiver.String() {
 		return false
 	}
 
 	contractBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.MultiversxHandler.TestCallerAddress, params.AbstractTokenIdentifier)
-	fmt.Println("===SUI===")
-	fmt.Println("contract balance", contractBalance.String(), "expected", expectedValueOnContract.String())
 	return contractBalance.String() == expectedValueOnContract.String()
 }
 
@@ -335,14 +335,14 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(params TestTokenPar
 	case ChainTypeSui:
 		peerChainTestBalance = setup.PeerChainHandler.GetBalance(setup.Ctx, setup.TestKeys.SuiAddress, params.AbstractTokenIdentifier)
 	}
+	fmt.Println("===MVX===")
+	fmt.Println("expectedReceiver ", expectedReceiver.String(), "actual", peerChainTestBalance.String())
 	isTransferDoneFromMultiversX := peerChainTestBalance.String() == expectedReceiver.String()
 
 	expectedEsdtSafe := big.NewInt(0).Add(initialBalanceForSafe, params.ESDTSafeExtraBalance)
 	balanceForSafe := setup.MultiversxHandler.GetESDTChainSpecificTokenBalance(setup.Ctx, setup.MultiversxHandler.SafeAddress, params.AbstractTokenIdentifier)
 	isSafeContractOnCorrectBalance := expectedEsdtSafe.String() == balanceForSafe.String()
 
-	fmt.Println("===MVX===")
-	fmt.Println("expected receiver balance", expectedReceiver.String(), "actual", peerChainTestBalance.String())
 	return isTransferDoneFromMultiversX && isSafeContractOnCorrectBalance
 }
 
@@ -399,7 +399,15 @@ func (setup *TestSetup) sendFromMultiversxToPeerChainForToken(params TestTokenPa
 		}
 
 		depositValue.Add(depositValue, operation.ValueToSendFromMvX)
-		setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, token, params, operation.ValueToSendFromMvX)
+
+		var receiverAddress []byte
+		switch setup.peerChainType {
+		case ChainTypeEthereum:
+			receiverAddress = setup.TestKeys.EthAddress.Bytes()
+		case ChainTypeSui:
+			receiverAddress, _ = hex.DecodeString(strings.TrimPrefix(string(setup.TestKeys.SuiAddress), "0x"))
+		}
+		setup.MultiversxHandler.SendDepositTransactionFromMultiversx(setup.Ctx, token, params, operation.ValueToSendFromMvX, receiverAddress)
 	}
 
 	return depositValue

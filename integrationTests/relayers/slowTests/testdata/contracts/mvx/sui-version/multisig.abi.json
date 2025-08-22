@@ -1360,12 +1360,12 @@
         "EthAddress": {
             "type": "struct",
             "docs": [
-                "Wrapper over a 32-byte array"
+                "Wrapper over a buffer"
             ],
             "fields": [
                 {
                     "name": "raw_addr",
-                    "type": "array32<u8>"
+                    "type": "bytes"
                 }
             ]
         },

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
@@ -111,10 +110,14 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 	}
 
 	suiRelayersAddresses := make([]string, 0, len(handler.RelayersKeys))
-	suiRelayersPubKeys := make([]ed25519.PublicKey, 0, len(handler.RelayersKeys))
+	suiRelayersPubKeys := make([][32]byte, 0, len(handler.RelayersKeys))
 	for _, relayerKeys := range handler.RelayersKeys {
 		suiRelayersAddresses = append(suiRelayersAddresses, string(relayerKeys.SuiAddress))
-		suiRelayersPubKeys = append(suiRelayersPubKeys, relayerKeys.SuiSK.Public().(ed25519.PublicKey))
+
+		pubKeyBytes := relayerKeys.SuiSK.Public().(ed25519.PublicKey)
+		var arr [32]byte
+		copy(arr[:], pubKeyBytes)
+		suiRelayersPubKeys = append(suiRelayersPubKeys, arr)
 	}
 
 	bridgeIdBytes := handler.DeployContract(
@@ -170,7 +173,7 @@ func (handler *SuiHandler) DeployContract(
 	module := params[0].(string)
 	function := params[1].(string)
 	suiRelayerAddresses := params[2].([]string)
-	suiRelayersPubKeys := params[3].([]ed25519.PublicKey)
+	suiRelayersPubKeys := params[3].([][32]byte)
 	quorumStr := params[4].(string)
 	safeObjectID := params[5].(string)
 	adminCap := params[6].(string)
@@ -226,11 +229,9 @@ func (handler *SuiHandler) GetBalance(ctx context.Context, receiver []byte, abst
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenAddress)
 
-	coinType := fmt.Sprintf("0x%s::test_coin::TEST_COIN", hex.EncodeToString(token.PeerChainTokenAddress))
-
 	balance, err := handler.SuiProxy.SuiXGetBalance(ctx, models.SuiXGetBalanceRequest{
 		Owner:    string(receiver),
-		CoinType: coinType,
+		CoinType: string(token.PeerChainTokenAddress),
 	})
 	require.NoError(handler, err)
 
@@ -322,9 +323,9 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 		TreasuryId:     treasuryId,
 		CoinMetadataId: metadataId,
 	}
-	coinAddr := strings.TrimPrefix(coinPackageId, "0x")
-	coinAddrBytes, _ := hex.DecodeString(coinAddr)
-	handler.TokensRegistry.RegisterPeerChainAddressAndInfo(params.AbstractTokenIdentifier, coinAddrBytes, suiTokenInfo)
+
+	coinType := fmt.Sprintf("%s::test_coin::TEST_COIN", coinPackageId)
+	handler.TokensRegistry.RegisterPeerChainAddressAndInfo(params.AbstractTokenIdentifier, []byte(coinType), suiTokenInfo)
 	handler.updateMetadata(ctx, params)
 
 	// mint token
@@ -339,7 +340,7 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 		Module:          "safe",
 		Function:        "whitelist_token",
 		TypeArguments: []interface{}{
-			fmt.Sprintf("%s::test_coin::TEST_COIN", coinPackageId),
+			coinType,
 		},
 		Arguments: []interface{}{
 			handler.SafeObjectID,
@@ -402,7 +403,7 @@ func (handler *SuiHandler) updateMetadata(ctx context.Context, params IssueToken
 		Module:          "coin",
 		Function:        "update_name",
 		TypeArguments: []interface{}{
-			fmt.Sprintf("%s::test_coin::TEST_COIN", suiTokenInfo.CoinPackageId),
+			string(tokenData.PeerChainTokenAddress),
 		},
 		Arguments: []interface{}{
 			suiTokenInfo.TreasuryId,
@@ -422,7 +423,7 @@ func (handler *SuiHandler) updateMetadata(ctx context.Context, params IssueToken
 		Module:          "coin",
 		Function:        "update_symbol",
 		TypeArguments: []interface{}{
-			fmt.Sprintf("%s::test_coin::TEST_COIN", suiTokenInfo.CoinPackageId),
+			string(tokenData.PeerChainTokenAddress),
 		},
 		Arguments: []interface{}{
 			suiTokenInfo.TreasuryId,
@@ -446,7 +447,8 @@ func (handler *SuiHandler) CreateBatchOnPeerChain(
 		handler.createDepositsOnSuiForToken(ctx, params, handler.TestKeys.SuiSK, handler.TestKeys.SuiAddress)
 	}
 
-	// TODO: wait until batch is settled
+	// Wait until the batch is processed
+	handler.GenerateBlocks(ctx, 50)
 }
 
 func (handler *SuiHandler) createDepositsOnSuiForToken(
@@ -465,14 +467,15 @@ func (handler *SuiHandler) createDepositsOnSuiForToken(
 		}
 
 		coinObjId := handler.getCoinObjectIdForToken(ctx, token.PeerChainTokenAddress, operation.ValueToTransferToMvx)
-		coinType := fmt.Sprintf("0x%s::test_coin::TEST_COIN", hex.EncodeToString(token.PeerChainTokenAddress))
+		coinType := string(token.PeerChainTokenAddress)
 
 		// No sc call data only
 		txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
 			Signer:          string(fromAddress),
 			PackageObjectId: handler.PackageID,
 			Module:          "safe",
-			Function:        "deposit",
+
+			Function: "deposit",
 			TypeArguments: []interface{}{
 				coinType,
 			},
@@ -493,7 +496,7 @@ func (handler *SuiHandler) createDepositsOnSuiForToken(
 func (handler *SuiHandler) getCoinObjectIdForToken(ctx context.Context, coinAddress []byte, targetValue *big.Int) string {
 	coins, err := handler.SuiProxy.SuiXGetCoins(ctx, models.SuiXGetCoinsRequest{
 		Owner:    string(handler.TestKeys.SuiAddress),
-		CoinType: fmt.Sprintf("0x%s::test_coin::TEST_COIN", hex.EncodeToString(coinAddress)),
+		CoinType: string(coinAddress),
 	})
 	require.NoError(handler, err)
 
@@ -584,12 +587,12 @@ func (handler *SuiHandler) signAndExecuteTxReturnResult(
 }
 
 func (handler *SuiHandler) Close() error {
-	panic("Close not implemented for SuiHandler")
+	return nil
 }
 
 func (handler *SuiHandler) FundWallets(wallets [][]byte) {
 	for _, wallet := range wallets {
-		//faucetHost, err := suiSdk.GetFaucetHost(constant.SuiLocalnet)
+		//faucetHost, err := suiSdk.GetFaucetHost(constant.SuiTestnet)
 		//if err != nil {
 		//	fmt.Println("GetFaucetHost err:", err)
 		//	return
@@ -607,18 +610,35 @@ func (handler *SuiHandler) FundWallets(wallets [][]byte) {
 
 func (handler *SuiHandler) GenerateBlocks(ctx context.Context, numBlocks int) {
 	for i := 0; i < numBlocks; i++ {
-		_, err := handler.SuiProxy.SignAndExecuteTransactionBlock(
+		address := string(handler.OwnerKeys.SuiAddress)
+
+		coins, err := handler.SuiProxy.SuiXGetCoins(ctx, models.SuiXGetCoinsRequest{
+			Owner:    address,
+			CoinType: "0x2::sui::SUI",
+			Limit:    5,
+		})
+		require.NoError(handler, err)
+		require.True(handler, len(coins.Data) > 0, "No coins found for address: "+address)
+
+		pay, err := handler.SuiProxy.Pay(ctx, models.PayRequest{
+			Signer:      address,
+			SuiObjectId: []string{coins.Data[0].CoinObjectId},
+			Recipient:   []string{address},
+			Amount:      []string{"100"},
+			GasBudget:   "10000000",
+		})
+		require.NoError(handler, err)
+
+		resp, err := handler.SuiProxy.SignAndExecuteTransactionBlock(
 			ctx,
 			models.SignAndExecuteTransactionBlockRequest{
-				TxnMetaData: models.TxnMetaData{},
+				TxnMetaData: pay,
 				PriKey:      handler.OwnerKeys.SuiSK,
-				Options:     models.SuiTransactionBlockOptions{},
+				Options:     models.SuiTransactionBlockOptions{ShowEffects: true},
 				RequestType: "WaitForLocalExecution",
 			},
 		)
-		if err != nil {
-			log.Error("Failed to generate block", "error", err)
-			continue
-		}
+		require.NoError(handler, err)
+		require.Equal(handler, "success", resp.Effects.Status.Status)
 	}
 }

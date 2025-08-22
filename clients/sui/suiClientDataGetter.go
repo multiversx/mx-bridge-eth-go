@@ -16,6 +16,13 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
+const (
+	suiCoinAddress            = "0x2::sui::SUI"
+	clockId                   = "0x6"
+	clockInitialSharedVersion = 1
+	successCodeAfterExecution = "success"
+)
+
 // ArgsSuiClientDataGetter is the arguments DTO used in the NewSuiClientDataGetter constructor
 type ArgsSuiClientDataGetter struct {
 	PackageId                  string
@@ -34,6 +41,7 @@ type suiClientDataGetter struct {
 	safeInitialSharedVersion   uint64
 	bridgeObjectIdBytes        models.SuiAddressBytes
 	bridgeInitialSharedVersion uint64
+	clockIdBytes               models.SuiAddressBytes
 	relayerAddress             string
 	proxy                      Proxy
 	log                        chainCore.Logger
@@ -76,12 +84,18 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 		return nil, fmt.Errorf("failed to convert address: %w", err)
 	}
 
+	clockIdBytes, err := transaction.ConvertSuiAddressStringToBytes(clockId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert clock address: %w", err)
+	}
+
 	return &suiClientDataGetter{
 		packageId:                  args.PackageId,
 		safeObjectIdBytes:          *safeObjectIdBytes,
 		safeInitialSharedVersion:   args.SafeInitialSharedVersion,
 		bridgeObjectIdBytes:        *bridgeObjectIdBytes,
 		bridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
+		clockIdBytes:               *clockIdBytes,
 		relayerAddress:             args.RelayerAddress,
 		proxy:                      args.Proxy,
 		log:                        args.Log,
@@ -110,16 +124,23 @@ func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNon
 				},
 			),
 			tx.Pure(batchNonce),
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.clockIdBytes,
+							InitialSharedVersion: clockInitialSharedVersion,
+							Mutable:              false,
+						},
+					},
+				},
+			),
 		},
 	)
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
 		return dtos.Batch{}, false, fmt.Errorf("failed to get batch: %w", err)
-	}
-
-	if txBlockResp.Effects.Status.Status != "success" {
-		return dtos.Batch{}, false, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
 	}
 
 	var batch dtos.Batch
@@ -154,16 +175,23 @@ func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNo
 				},
 			),
 			tx.Pure(batchNonce),
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.clockIdBytes,
+							InitialSharedVersion: clockInitialSharedVersion,
+							Mutable:              false,
+						},
+					},
+				},
+			),
 		},
 	)
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to get batch deposits: %w", err)
-	}
-
-	if txBlockResp.Effects.Status.Status != "success" {
-		return nil, false, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
 	}
 
 	var depositsList []dtos.Deposit
@@ -202,17 +230,13 @@ func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.Su
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get batch deposits: %w", err)
-	}
-
-	if txBlockResp.Effects.Status.Status != "success" {
-		return nil, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
+		return nil, fmt.Errorf("failed to get relayers: %w", err)
 	}
 
 	var relayersAddressesBytes []models.SuiAddressBytes
 	err = getter.decodeReturnValues(txBlockResp.Results, &relayersAddressesBytes)
 	if err != nil {
-		return []models.SuiAddress{}, fmt.Errorf("failed to decode return value ###: %w", err)
+		return []models.SuiAddress{}, fmt.Errorf("failed to decode return value: %w", err)
 	}
 
 	var relayersAddresses []models.SuiAddress
@@ -249,11 +273,7 @@ func (getter *suiClientDataGetter) WasBatchExecuted(ctx context.Context, batchNo
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return false, fmt.Errorf("failed to get batch deposits: %w", err)
-	}
-
-	if txBlockResp.Effects.Status.Status != "success" {
-		return false, fmt.Errorf("failed to get batch: %s", txBlockResp.Effects.Status.Error)
+		return false, fmt.Errorf("failed check if batch was executed: %w", err)
 	}
 
 	var wasBatchExecuted bool
@@ -291,11 +311,7 @@ func (getter *suiClientDataGetter) IsPaused(ctx context.Context) (bool, error) {
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return false, fmt.Errorf("failed to get get_pause: %w", err)
-	}
-
-	if txBlockResp.Effects.Status.Status != "success" {
-		return false, fmt.Errorf("get_pause transaction failed: %s", txBlockResp.Effects.Status.Error)
+		return false, fmt.Errorf("failed to check if contract is paused: %w", err)
 	}
 
 	var isPaused bool
@@ -336,10 +352,6 @@ func (getter *suiClientDataGetter) Quorum(ctx context.Context) (uint64, error) {
 		return 0, fmt.Errorf("failed to get quorum: %w", err)
 	}
 
-	if txBlockResp.Effects.Status.Status != "success" {
-		return 0, fmt.Errorf("get quorum transaction failed: %s", txBlockResp.Effects.Status.Error)
-	}
-
 	var quorum uint64
 	err = getter.decodeReturnValues(txBlockResp.Results, &quorum)
 	if err != nil {
@@ -371,16 +383,23 @@ func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context
 				},
 			),
 			tx.Pure(batchNonce),
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.clockIdBytes,
+							InitialSharedVersion: clockInitialSharedVersion,
+							Mutable:              false,
+						},
+					},
+				},
+			),
 		},
 	)
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to get quorum: %w", err)
-	}
-
-	if txBlockResp.Effects.Status.Status != "success" {
-		return nil, false, fmt.Errorf("get quorum transaction failed: %s", txBlockResp.Effects.Status.Error)
+		return nil, false, fmt.Errorf("failed to get statuses after execution: %w", err)
 	}
 
 	var depositStatuses []byte
@@ -393,7 +412,7 @@ func (getter *suiClientDataGetter) GetStatusesAfterExecution(ctx context.Context
 	return depositStatuses, isFinal, nil
 }
 
-// GetTotalBalanceFromSafe returns the total balance of the given token
+// GetTotalBalanceFromSafe returns the total balance of the given token from the safe contract
 func (getter *suiClientDataGetter) GetTotalBalanceFromSafe(ctx context.Context, coinType string) (uint64, error) {
 	tx := transaction.NewTransaction()
 
@@ -437,11 +456,7 @@ func (getter *suiClientDataGetter) GetTotalBalanceFromSafe(ctx context.Context, 
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get total balances: %w", err)
-	}
-
-	if txBlockResp.Effects.Status.Status != "success" {
-		return 0, fmt.Errorf("get total balances transaction failed: %s", txBlockResp.Effects.Status.Error)
+		return 0, fmt.Errorf("failed to get total balance for token from safe: %w", err)
 	}
 
 	var totalBalance uint64
@@ -497,11 +512,7 @@ func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinT
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return false, fmt.Errorf("failed to get total balances: %w", err)
-	}
-
-	if txBlockResp.Effects.Status.Status != "success" {
-		return false, fmt.Errorf("get total balances transaction failed: %s", txBlockResp.Effects.Status.Error)
+		return false, fmt.Errorf("failed to check if token is whitelisted: %w", err)
 	}
 
 	var isTokenWhitelisted bool
@@ -513,17 +524,77 @@ func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinT
 	return isTokenWhitelisted, nil
 }
 
-// GetLatestCheckpoint returns the latest checkpoint sequence number
-func (getter *suiClientDataGetter) GetLatestCheckpoint(ctx context.Context) (uint64, error) {
-	return getter.proxy.SuiGetLatestCheckpointSequenceNumber(ctx)
+// GetCoinsForAddress returns the coin objects for an address
+func (getter *suiClientDataGetter) GetCoinsForAddress(ctx context.Context) (models.PaginatedCoinsResponse, error) {
+	return getter.proxy.SuiXGetCoins(ctx, models.SuiXGetCoinsRequest{
+		Owner:    getter.relayerAddress,
+		CoinType: suiCoinAddress,
+	})
 }
 
 // GetBalance returns the sui balance of the given account
-func (getter *suiClientDataGetter) GetBalance(ctx context.Context, account string, coinType string) (models.CoinBalanceResponse, error) {
-	return getter.proxy.SuiXGetBalance(ctx, models.SuiXGetBalanceRequest{
-		Owner:    account,
-		CoinType: coinType,
-	})
+func (getter *suiClientDataGetter) GetBalance(ctx context.Context, objectId string, coinType string) (uint64, error) {
+	tx := transaction.NewTransaction()
+
+	coinParts, err := parseCoinType(coinType)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
+	}
+
+	coinIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(coinParts[0]))
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert coin type %s: %w", coinType, err)
+	}
+
+	tx.MoveCall(
+		models.SuiAddress(getter.packageId),
+		"safe",
+		"get_stored_coin_balance",
+		[]transaction.TypeTag{
+			{
+				Struct: &transaction.StructTag{
+					Address: *coinIdBytes,
+					Module:  coinParts[1],
+					Name:    coinParts[2],
+				},
+			},
+		},
+		[]transaction.Argument{
+			tx.Object(
+				transaction.CallArg{
+					Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             getter.safeObjectIdBytes,
+							InitialSharedVersion: getter.safeInitialSharedVersion,
+							Mutable:              true,
+						},
+					},
+				},
+			),
+		},
+	)
+
+	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total balances: %w", err)
+	}
+
+	if txBlockResp.Effects.Status.Status != "success" {
+		return 0, fmt.Errorf("get total balances transaction failed: %s", txBlockResp.Effects.Status.Error)
+	}
+
+	var tokenBalance uint64
+	err = getter.decodeReturnValues(txBlockResp.Results, &tokenBalance)
+	if err != nil {
+		return 0, fmt.Errorf("failed to decode return value: %w", err)
+	}
+
+	return tokenBalance, nil
+}
+
+// GetLatestCheckpoint returns the latest checkpoint sequence number
+func (getter *suiClientDataGetter) GetLatestCheckpoint(ctx context.Context) (uint64, error) {
+	return getter.proxy.SuiGetLatestCheckpointSequenceNumber(ctx)
 }
 
 func (getter *suiClientDataGetter) decodeReturnValues(data json.RawMessage, out ...interface{}) error {
@@ -566,10 +637,30 @@ func (getter *suiClientDataGetter) sendTxGetBlockResponse(ctx context.Context, t
 		return models.SuiTransactionBlockResponse{}, err
 	}
 
-	return getter.proxy.SuiDevInspectTransactionBlock(ctx, models.SuiDevInspectTransactionBlockRequest{
+	txBlockResp, err := getter.proxy.SuiDevInspectTransactionBlock(ctx, models.SuiDevInspectTransactionBlockRequest{
 		Sender:  getter.relayerAddress,
 		TxBytes: txBytes,
 	})
+	if err != nil {
+		getter.log.Error("got error on SuiDevInspectTransactionBlock",
+			"Sender", getter.relayerAddress,
+			"TxBytes", fmt.Sprintf("%x", txBytes),
+			"error", err)
+		return models.SuiTransactionBlockResponse{}, fmt.Errorf("dev inspect transaction block: %w", err)
+	}
+
+	getter.log.Debug("executed SuiDevInspectTransactionBlock",
+		"Sender", getter.relayerAddress,
+		"PackageId", getter.packageId,
+		"TxBytes", fmt.Sprintf("%x", txBytes),
+		"Status", txBlockResp.Effects.Status.Status)
+	if txBlockResp.Effects.Status.Status != successCodeAfterExecution {
+		return txBlockResp, fmt.Errorf("transaction execution failed with status '%s': %s",
+			txBlockResp.Effects.Status.Status,
+			txBlockResp.Effects.Status.Error)
+	}
+
+	return txBlockResp, nil
 }
 
 func parseCoinType(coinType string) ([3]string, error) {
