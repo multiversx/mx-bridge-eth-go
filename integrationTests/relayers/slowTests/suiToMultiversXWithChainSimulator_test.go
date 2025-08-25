@@ -15,14 +15,15 @@ func TestRelayersShouldExecuteTransfersSui(t *testing.T) {
 	suiUSDC := GenerateTestUSDCSuiToken()
 	suiUSDC.ChainType = currentChainType
 
-	walToken := GenerateTestWALToken()
-	walToken.ChainType = currentChainType
+	xmnToken := GenerateTestXMNToken()
+	xmnToken.ChainType = currentChainType
+	xmnToken.InitialSupplyValue = "1000000000"
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
 		suiUSDC,
-		walToken,
+		xmnToken,
 	)
 }
 
@@ -54,31 +55,14 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrorsSui(t *testing.T) {
 	usdcToken := GenerateTestUSDCSuiToken()
 	usdcToken.ChainType = currentChainType
 
-	walToken := GenerateTestWALToken()
-	walToken.ChainType = currentChainType
+	xmnToken := GenerateTestXMNToken()
+	xmnToken.ChainType = currentChainType
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		stopChan,
 		usdcToken,
-		walToken,
-	)
-}
-
-func TestRelayersShouldExecuteTransfersWithInitSupplySui(t *testing.T) {
-	usdcToken := GenerateTestUSDCSuiToken()
-	usdcToken.InitialSupplyValue = "100000"
-	usdcToken.ChainType = currentChainType
-
-	memeToken := GenerateTestSuiMEMEToken()
-	memeToken.InitialSupplyValue = "200000"
-	memeToken.ChainType = currentChainType
-
-	_ = testRelayersWithChainSimulatorAndTokens(
-		t,
-		make(chan error),
-		usdcToken,
-		memeToken,
+		xmnToken,
 	)
 }
 

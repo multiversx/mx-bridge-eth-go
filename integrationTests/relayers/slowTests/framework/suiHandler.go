@@ -352,10 +352,15 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 		GasBudget: "100000000",
 	})
 	require.Nil(handler, err)
-
 	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
 
-	//TODO: Initial supply value?
+	if len(params.InitialSupplyValue) > 0 {
+		initialSupplyValue, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
+		require.True(handler, ok)
+		handler.mint(ctx, params, string(handler.OwnerKeys.SuiAddress), initialSupplyValue)
+
+		handler.initSupplyForToken(ctx, params)
+	}
 }
 
 func (handler *SuiHandler) deployCoinContract(ctx context.Context) (string, string, string) {
@@ -389,7 +394,6 @@ func (handler *SuiHandler) deployCoinContract(ctx context.Context) (string, stri
 	}
 
 	return coinPackageId, treasuryId, metadataId
-
 }
 
 func (handler *SuiHandler) updateMetadata(ctx context.Context, params IssueTokenParams) {
@@ -437,6 +441,33 @@ func (handler *SuiHandler) updateMetadata(ctx context.Context, params IssueToken
 	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
 }
 
+func (handler *SuiHandler) initSupplyForToken(ctx context.Context, params IssueTokenParams) {
+	tokenData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+	initSupplyValue, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
+	require.True(handler, ok)
+
+	coinObjId := handler.getCoinObjectIdForToken(ctx, tokenData.PeerChainTokenAddress, initSupplyValue, handler.OwnerKeys)
+
+	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "safe",
+		Function:        "init_supply",
+		TypeArguments: []interface{}{
+			string(tokenData.PeerChainTokenAddress),
+		},
+		Arguments: []interface{}{
+			handler.AdminCap,
+			handler.SafeObjectID,
+			coinObjId,
+		},
+		GasBudget: "100000000",
+	})
+	require.Nil(handler, err)
+
+	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+}
+
 // CreateBatchOnPeerChain will create a batch on Sui using the provided tokens parameters list
 func (handler *SuiHandler) CreateBatchOnPeerChain(
 	ctx context.Context,
@@ -466,7 +497,7 @@ func (handler *SuiHandler) createDepositsOnSuiForToken(
 			continue
 		}
 
-		coinObjId := handler.getCoinObjectIdForToken(ctx, token.PeerChainTokenAddress, operation.ValueToTransferToMvx)
+		coinObjId := handler.getCoinObjectIdForToken(ctx, token.PeerChainTokenAddress, operation.ValueToTransferToMvx, handler.TestKeys)
 		coinType := string(token.PeerChainTokenAddress)
 
 		// No sc call data only
@@ -493,9 +524,9 @@ func (handler *SuiHandler) createDepositsOnSuiForToken(
 	}
 }
 
-func (handler *SuiHandler) getCoinObjectIdForToken(ctx context.Context, coinAddress []byte, targetValue *big.Int) string {
+func (handler *SuiHandler) getCoinObjectIdForToken(ctx context.Context, coinAddress []byte, targetValue *big.Int, signer KeysHolder) string {
 	coins, err := handler.SuiProxy.SuiXGetCoins(ctx, models.SuiXGetCoinsRequest{
-		Owner:    string(handler.TestKeys.SuiAddress),
+		Owner:    string(signer.SuiAddress),
 		CoinType: string(coinAddress),
 	})
 	require.NoError(handler, err)
@@ -503,20 +534,24 @@ func (handler *SuiHandler) getCoinObjectIdForToken(ctx context.Context, coinAddr
 	srcCoin := coins.Data[0]
 	coinBalance, _ := big.NewInt(0).SetString(srcCoin.Balance, 10)
 	var coinToSendId string
-	if coinBalance.Cmp(targetValue) > 0 {
-		txMeta, err := handler.SuiProxy.SplitCoin(ctx, models.SplitCoinRequest{
-			Signer:       string(handler.TestKeys.SuiAddress),
-			CoinObjectId: srcCoin.CoinObjectId,
-			SplitAmounts: []string{targetValue.String()},
-			GasBudget:    "10000000",
-		})
-		require.NoError(handler, err)
+	if coinBalance.Cmp(targetValue) == 0 {
+		coinToSendId = srcCoin.CoinObjectId
+	} else {
+		if coinBalance.Cmp(targetValue) > 0 {
+			txMeta, err := handler.SuiProxy.SplitCoin(ctx, models.SplitCoinRequest{
+				Signer:       string(signer.SuiAddress),
+				CoinObjectId: srcCoin.CoinObjectId,
+				SplitAmounts: []string{targetValue.String()},
+				GasBudget:    "10000000",
+			})
+			require.NoError(handler, err)
 
-		resp := handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.TestKeys.SuiSK)
-		for _, obj := range resp.ObjectChanges {
-			if obj.Type == "created" && strings.Contains(obj.ObjectType, "test_coin::TEST_COIN") {
-				coinToSendId = obj.ObjectId
-				break
+			resp := handler.signAndExecuteTxReturnResult(ctx, txMeta, signer.SuiSK)
+			for _, obj := range resp.ObjectChanges {
+				if obj.Type == "created" && strings.Contains(obj.ObjectType, "test_coin::TEST_COIN") {
+					coinToSendId = obj.ObjectId
+					break
+				}
 			}
 		}
 	}
@@ -592,12 +627,6 @@ func (handler *SuiHandler) Close() error {
 
 func (handler *SuiHandler) FundWallets(wallets [][]byte) {
 	for _, wallet := range wallets {
-		//faucetHost, err := suiSdk.GetFaucetHost(constant.SuiTestnet)
-		//if err != nil {
-		//	fmt.Println("GetFaucetHost err:", err)
-		//	return
-		//}
-
 		header := map[string]string{}
 		err := suiSdk.RequestSuiFromFaucet("http://127.0.0.1:9123", string(wallet), header)
 		if err != nil {

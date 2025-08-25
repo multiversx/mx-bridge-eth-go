@@ -218,23 +218,23 @@ func GenerateTestUSDCSuiToken() framework.TestTokenParams {
 	}
 }
 
-func GenerateTestWALToken() framework.TestTokenParams {
-	// WAL Sui is peerChainNative = true, peerChainMintBurn = false, mvxNative = false, mvxMintBurn = true
+func GenerateTestXMNToken() framework.TestTokenParams {
+	// XMN Sui is peerChainNative = true, peerChainMintBurn = false, mvxNative = false, mvxMintBurn = true
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
-			AbstractTokenIdentifier:          "WAL",
+			AbstractTokenIdentifier:          "XMN",
 			NumOfDecimalsUniversal:           6,
 			NumOfDecimalsChainSpecific:       6,
-			MvxUniversalTokenTicker:          "WAL",
-			MvxChainSpecificTokenTicker:      "WAL",
-			MvxUniversalTokenDisplayName:     "WrappedWAL",
-			MvxChainSpecificTokenDisplayName: "SuiWrappedWAL",
+			MvxUniversalTokenTicker:          "XMN",
+			MvxChainSpecificTokenTicker:      "SUIXMN",
+			MvxUniversalTokenDisplayName:     "WrappedXMN",
+			MvxChainSpecificTokenDisplayName: "SuiWrappedXMN",
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
 			HasChainSpecificToken:            false,
-			PeerChainTokenName:               "SuiWAL",
-			PeerChainTokenSymbol:             "WAL",
+			PeerChainTokenName:               "xMoney",
+			PeerChainTokenSymbol:             "XMN",
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
@@ -251,43 +251,6 @@ func GenerateTestWALToken() framework.TestTokenParams {
 		},
 		ESDTSafeExtraBalance:          big.NewInt(100),                                  // extra is just for the fees for the 2 transfers mvx->peerChain
 		PeerChainTestAddrExtraBalance: big.NewInt(-7300 + 6150 - 50 - 1900 + 1280 - 50), // -(peerChain->mvx) + (mvx->peerChain) - fees
-	}
-}
-
-// GenerateTestSuiMEMEToken will generate a test MEME token
-func GenerateTestSuiMEMEToken() framework.TestTokenParams {
-	//MEME is peerChainNative = false, peerChainMintBurn = true, mvxNative = true, mvxMintBurn = false
-	return framework.TestTokenParams{
-		IssueTokenParams: framework.IssueTokenParams{
-			AbstractTokenIdentifier:          "MEME",
-			NumOfDecimalsUniversal:           1,
-			NumOfDecimalsChainSpecific:       1,
-			MvxUniversalTokenTicker:          "MEME",
-			MvxChainSpecificTokenTicker:      "ETHMEME",
-			MvxUniversalTokenDisplayName:     "WrappedMEME",
-			MvxChainSpecificTokenDisplayName: "EthereumWrappedMEME",
-			ValueToMintOnMvx:                 "10000000000",
-			IsMintBurnOnMvX:                  false,
-			IsNativeOnMvX:                    true,
-			HasChainSpecificToken:            true,
-			PeerChainTokenName:               "EthMEME",
-			PeerChainTokenSymbol:             "MEME",
-			ValueToMintOnPeerChain:           "10000000000",
-			IsMintBurnOnPeerChain:            false,
-			IsNativeOnPeerChain:              false,
-		},
-		TestOperations: []framework.TokenOperations{
-			{
-				ValueToTransferToMvx: big.NewInt(2400),
-				ValueToSendFromMvX:   big.NewInt(4000),
-			},
-			{
-				ValueToTransferToMvx: big.NewInt(200),
-				ValueToSendFromMvX:   big.NewInt(6000),
-			},
-		},
-		ESDTSafeExtraBalance:          big.NewInt(4000 + 6000), // everything is locked in the safe esdt contract
-		PeerChainTestAddrExtraBalance: big.NewInt(4000 - 50 + 6000 - 50),
 	}
 }
 
