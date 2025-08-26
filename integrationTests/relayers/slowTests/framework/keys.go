@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	suiSigner "github.com/block-vision/sui-go-sdk/signer"
+	"github.com/btcsuite/btcd/btcutil/bech32"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	mxCrypto "github.com/multiversx/mx-chain-crypto-go"
@@ -41,7 +42,7 @@ type KeysHolder struct {
 // KeygenOptions holds the options for generating keys
 type KeygenOptions struct {
 	EthSKHex       string
-	SuiSeedHex     string
+	SuiSKBech32    string
 	ProjectedShard byte
 }
 
@@ -62,9 +63,9 @@ const (
 	ethDepositorSK = "9bb971db41e3815a669a71c3f1bcb24e0b81f21e04bf11faa7a34b9b40e7cfb1"
 	ethTestSk      = "dafea2c94bfe5d25f1a508808c2bc2c2e6c6f18b6b010fc841d8eb80755ba27a"
 
-	suiSeedOwner     = "b40c3e32400a76c65694abc4f34c6178ef323b8c1a3596056eb2ecccb93e5b64"
-	suiSeedDepositor = "5d60a5705056d8fdac446b5e66aaff58748130b3167e2d3342ce275c2ed4d8fa"
-	suiSeedTest      = "f1fbd7a824cb2c2c5ecfb473c42b82ca8f299f80a0fdfa26b0e82e6c6ed358b1"
+	suiOwnerSK     = "suiprivkey1qzsvu7s22havwsntacwl4el876lkp55e7s4pcaqfr9rw7crdgfh5wnrk4vc"
+	suiDepositorSK = "suiprivkey1qrq8lz7dk76vk38llfra65gdkr2eua67r8rg4k2dfyjn5lcck7caqe9y0yl"
+	suiTestSK      = "suiprivkey1qpvkm9mptnqp6yt2ndm4gfvd4rg5697lmspldeu483evparlyujzxjh4rxq"
 )
 
 // NewKeysStore will create a KeysStore instance and generate all keys
@@ -86,12 +87,12 @@ func NewKeysStore(
 
 	keysStore.SCExecutorKeys = keysStore.generateKey(KeygenOptions{
 		EthSKHex:       "",
-		SuiSeedHex:     "",
+		SuiSKBech32:    "",
 		ProjectedShard: projectedShardForBridgeSetup,
 	})
 	keysStore.OwnerKeys = keysStore.generateKey(KeygenOptions{
 		EthSKHex:       ethOwnerSK,
-		SuiSeedHex:     suiSeedOwner,
+		SuiSKBech32:    suiOwnerSK,
 		ProjectedShard: projectedShardForBridgeSetup,
 	})
 	log.Info("generated owner",
@@ -101,12 +102,12 @@ func NewKeysStore(
 	)
 	keysStore.DepositorKeys = keysStore.generateKey(KeygenOptions{
 		EthSKHex:       ethDepositorSK,
-		SuiSeedHex:     suiSeedDepositor,
+		SuiSKBech32:    suiDepositorSK,
 		ProjectedShard: projectedShardForDepositor,
 	})
 	keysStore.TestKeys = keysStore.generateKey(KeygenOptions{
 		EthSKHex:       ethTestSk,
-		SuiSeedHex:     suiSeedTest,
+		SuiSKBech32:    suiTestSK,
 		ProjectedShard: projectedShardForTestKeys,
 	})
 
@@ -121,12 +122,12 @@ func (keyStore *KeysStore) generateRelayersKeys(numKeys int) {
 		relayerETHSKBytes, err := os.ReadFile(fmt.Sprintf(relayerETHKeyPathFormat, i))
 		require.Nil(keyStore, err)
 
-		suiRelayerSeedBytes, err := os.ReadFile(fmt.Sprintf(relayerSuiSeedPathFormat, i))
+		relayerSuiSKBytes, err := os.ReadFile(fmt.Sprintf(relayerSuiSeedPathFormat, i))
 		require.Nil(keyStore, err)
 
 		relayerKeys := keyStore.generateKey(KeygenOptions{
 			EthSKHex:       string(relayerETHSKBytes),
-			SuiSeedHex:     string(suiRelayerSeedBytes),
+			SuiSKBech32:    string(relayerSuiSKBytes),
 			ProjectedShard: projectedShardForBridgeSetup,
 		})
 		log.Info("generated relayer", "index", i,
@@ -155,7 +156,7 @@ func (keyStore *KeysStore) generateKeys(numKeys int, message string, projectedSh
 
 		key := keyStore.generateKey(KeygenOptions{
 			EthSKHex:       hex.EncodeToString(ethPrivateKeyBytes),
-			SuiSeedHex:     hex.EncodeToString(suiSeedBytes),
+			SuiSKBech32:    encodePrivateKeyToBech32(suiSeedBytes),
 			ProjectedShard: projectedShard,
 		})
 		log.Info(message, "index", i,
@@ -173,7 +174,7 @@ func (keyStore *KeysStore) generateKeys(numKeys int, message string, projectedSh
 func (keyStore *KeysStore) generateKey(opts KeygenOptions) KeysHolder {
 	var err error
 	keys := GenerateMvxPrivatePublicKey(keyStore, opts.ProjectedShard)
-	if len(opts.EthSKHex) == 0 && len(opts.SuiSeedHex) == 0 {
+	if len(opts.EthSKHex) == 0 && len(opts.SuiSKBech32) == 0 {
 		return keys
 	}
 
@@ -183,8 +184,8 @@ func (keyStore *KeysStore) generateKey(opts KeygenOptions) KeysHolder {
 		keys.EthAddress = crypto.PubkeyToAddress(keys.EthSK.PublicKey)
 	}
 
-	if len(opts.SuiSeedHex) > 0 {
-		suiSeedBytes, _ := hex.DecodeString(opts.SuiSeedHex)
+	if len(opts.SuiSKBech32) > 0 {
+		suiSeedBytes, _ := getSeedFromPrivateKey(opts.SuiSKBech32)
 		relayer := suiSigner.NewSigner(suiSeedBytes)
 		keys.SuiSK = relayer.PriKey
 		keys.SuiAddress = []byte(relayer.Address)
@@ -224,7 +225,7 @@ func (keyStore *KeysStore) WalletsToFundOnSui() [][]byte {
 	walletsToFund := make([][]byte, 0, len(allKeys))
 
 	for _, key := range allKeys {
-		if len(key.MvxSk) == 0 {
+		if len(key.SuiAddress) == 0 {
 			continue
 		}
 
@@ -288,4 +289,29 @@ func SaveMvxKey(tb testing.TB, filename string, key KeysHolder) {
 
 	err = os.WriteFile(filename, buff.Bytes(), os.ModePerm)
 	require.Nil(tb, err)
+}
+
+func getSeedFromPrivateKey(privKey string) ([]byte, error) {
+	_, data, err := bech32.Decode(privKey)
+	if err != nil {
+		return nil, err
+	}
+	decoded, err := bech32.ConvertBits(data, 5, 8, false)
+	if err != nil {
+		return nil, err
+	}
+	if len(decoded) < 33 {
+		return nil, err
+	}
+
+	seed := decoded[1:33]
+	return seed, nil
+}
+
+func encodePrivateKeyToBech32(seed []byte) string {
+	data := append([]byte{0x00}, seed...)
+	converted, _ := bech32.ConvertBits(data, 8, 5, true)
+	encoded, _ := bech32.Encode("suiprivkey", converted)
+
+	return encoded
 }

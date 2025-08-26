@@ -2,14 +2,13 @@ package factory
 
 import (
 	"crypto/ed25519"
-	"encoding/hex"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/block-vision/sui-go-sdk/signer"
 	"github.com/block-vision/sui-go-sdk/sui"
+	"github.com/btcsuite/btcd/btcutil/bech32"
 	"github.com/multiversx/mx-bridge-eth-go/bridges"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/disabled"
 	multiversxtoeth "github.com/multiversx/mx-bridge-eth-go/bridges/steps/fromMultiversX"
@@ -178,7 +177,11 @@ func (components *suiMvxBridgeComponents) initBaseComponents(args ArgsBridgeComm
 }
 
 func (components *suiMvxBridgeComponents) createSuiKeysAndAddresses(suiConfigs config.SuiConfig) error {
-	seed, err := loadSeedFromFile(suiConfigs.PrivateKeyFile)
+	privKey, err := loadPrivateKeyFromFile(suiConfigs.PrivateKeyFile)
+	if err != nil {
+		return err
+	}
+	seed, err := getSeedFromPrivateKey(privKey)
 	if err != nil {
 		return err
 	}
@@ -560,21 +563,27 @@ func (components *suiMvxBridgeComponents) PeerChainRelayerAddress() string {
 	return components.suiRelayerAddress
 }
 
-func loadSeedFromFile(path string) ([]byte, error) {
+func loadPrivateKeyFromFile(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
+	return string(data), nil
+}
 
-	seedHex := strings.TrimSpace(string(data))
-	seedBytes, err := hex.DecodeString(seedHex)
+func getSeedFromPrivateKey(privKey string) ([]byte, error) {
+	_, data, err := bech32.Decode(privKey)
 	if err != nil {
 		return nil, err
 	}
-
-	if len(seedBytes) != 32 {
-		return nil, fmt.Errorf("seed should be 32 bytes, got %d", len(seedBytes))
+	decoded, err := bech32.ConvertBits(data, 5, 8, false)
+	if err != nil {
+		return nil, err
+	}
+	if len(decoded) < 33 {
+		return nil, err
 	}
 
-	return seedBytes, nil
+	seed := decoded[1:33]
+	return seed, nil
 }

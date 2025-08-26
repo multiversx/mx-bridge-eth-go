@@ -404,7 +404,7 @@ func testRelayersShouldNotExecuteTransfers(
 		case *framework.EthereumHandler:
 			handler.SimulatedChain.Commit()
 		case *framework.SuiHandler:
-			panic("sui chain simulator not yet implemented")
+			handler.GenerateBlocks(setup.Ctx, 1)
 		default:
 			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
 		}

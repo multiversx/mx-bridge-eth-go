@@ -14,6 +14,7 @@ type SuiProxyStub struct {
 	SuiDevInspectTransactionBlockCalled        func(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
 	MoveCallCalled                             func(ctx context.Context, req models.MoveCallRequest) (models.TxnMetaData, error)
 	SignAndExecuteTransactionBlockCalled       func(ctx context.Context, req models.SignAndExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
+	SuiGetObjectBlockCalled                    func(ctx context.Context, req models.SuiGetObjectRequest) (models.SuiObjectResponse, error) //TODO
 }
 
 // SuiGetLatestCheckpointSequenceNumber -
