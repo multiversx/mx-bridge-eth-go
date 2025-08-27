@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/clients/sui"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
@@ -268,7 +267,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 			Nonce:            depositNonce,
 			FromBytes:        responseData[i+2],
 			DisplayableFrom:  c.addressPublicKeyConverter.ToBech32StringSilent(responseData[i+2]),
-			ToBytes:          sui.AppendLengthToData(responseData[i+3]),
+			ToBytes:          responseData[i+3],
 			DisplayableTo:    c.addressPublicKeyConverter.ToHexStringWithPrefix(responseData[i+3]),
 			SourceTokenBytes: responseData[i+4],
 			DisplayableToken: string(responseData[i+4]),

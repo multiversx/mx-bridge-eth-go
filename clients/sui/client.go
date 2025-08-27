@@ -213,7 +213,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 			Nonce:            deposit.Nonce,
 			ToBytes:          toBytes,
 			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),
-			FromBytes:        AppendLengthToData(fromBytes[:]),
+			FromBytes:        fromBytes[:],
 			DisplayableFrom:  suiAddressFromBytes(fromBytes[:]),
 			SourceTokenBytes: tokenId,
 			DisplayableToken: "0x" + string(tokenId),
@@ -434,7 +434,7 @@ func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatc
 			}
 		}
 
-		suiAddress := suiAddressFromBytes(argLists.Recipients[i][4:])
+		suiAddress := suiAddressFromBytes(argLists.Recipients[i])
 		suiAddressBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress))
 		if err != nil {
 			return nil

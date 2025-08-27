@@ -930,7 +930,8 @@ func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(
 	ctx context.Context,
 	token *TokenData,
 	params TestTokenParams,
-	value *big.Int, receiver []byte,
+	value *big.Int,
+	receiver []byte,
 ) {
 	if params.HasChainSpecificToken {
 		handler.unwrapCreateTransaction(ctx, token, value, receiver)
@@ -946,7 +947,7 @@ func (handler *MultiversxHandler) createTransactionWithoutUnwrap(ctx context.Con
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(createTransactionFunction)),
-		hex.EncodeToString(sui.AppendLengthToData(receiver)),
+		hex.EncodeToString(receiver),
 	}
 	dataField := strings.Join(params, "@")
 
@@ -970,7 +971,7 @@ func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, t
 		hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
 		hex.EncodeToString(handler.SafeAddress.Bytes()),
-		hex.EncodeToString(sui.AppendLengthToData(receiver)),
+		hex.EncodeToString(receiver),
 	}
 	dataField := strings.Join(params, "@")
 

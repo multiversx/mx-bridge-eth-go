@@ -569,7 +569,7 @@ func (executor *bridgeExecutor) GroupTransfersByTokenType(argLists *batchProcess
 			}
 		}
 
-		hexStr := hex.EncodeToString(argLists.Recipients[i][4:])
+		hexStr := hex.EncodeToString(argLists.Recipients[i])
 		suiAddress := "0x" + hexStr
 		suiAddressBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress))
 		if err != nil {
