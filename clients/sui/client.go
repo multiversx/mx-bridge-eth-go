@@ -481,6 +481,9 @@ func (c *client) getGasCoinOfRelayer(ctx context.Context) (*transaction.SuiObjec
 		return nil, fmt.Errorf("error getting gas coin for relayer %s: %w", c.relayerAddress, err)
 	}
 
+	if len(coins.Data) == 0 {
+		return nil, fmt.Errorf("no coins found for relayer %s to pay gas", c.relayerAddress)
+	}
 	coinObj := coins.Data[0]
 
 	return transaction.NewSuiObjectRef(
