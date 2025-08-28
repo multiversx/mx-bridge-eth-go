@@ -1,29 +1,32 @@
+//go:build slow
+
 package slowTests
 
 import (
 	"context"
 	"errors"
+	"math/big"
+	"testing"
+
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/mock"
 	"github.com/multiversx/mx-bridge-eth-go/integrationTests/relayers/slowTests/framework"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
 )
 
 func TestRelayersShouldExecuteTransfersSui(t *testing.T) {
-	suiUSDC := GenerateTestUSDCSuiToken()
-	suiUSDC.ChainType = currentChainType
+	walToken := GenerateTestWALToken()
+	walToken.ChainType = currentChainType
+	walToken.InitialSupplyValue = "1000000000"
 
-	xmnToken := GenerateTestXMNToken()
-	xmnToken.ChainType = currentChainType
-	xmnToken.InitialSupplyValue = "1000000000"
+	suiUsdcToken := GenerateTestSuiUSDCToken()
+	suiUsdcToken.ChainType = currentChainType
+	suiUsdcToken.InitialSupplyValue = "1000000000"
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
-		suiUSDC,
-		xmnToken,
+		walToken,
 	)
 }
 
@@ -52,17 +55,19 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrorsSui(t *testing.T) {
 		}
 	}()
 
-	usdcToken := GenerateTestUSDCSuiToken()
-	usdcToken.ChainType = currentChainType
+	walToken := GenerateTestWALToken()
+	walToken.ChainType = currentChainType
+	walToken.InitialSupplyValue = "1000000000"
 
-	xmnToken := GenerateTestXMNToken()
-	xmnToken.ChainType = currentChainType
+	suiUsdcToken := GenerateTestSuiUSDCToken()
+	suiUsdcToken.ChainType = currentChainType
+	suiUsdcToken.InitialSupplyValue = "1000000000"
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		stopChan,
-		usdcToken,
-		xmnToken,
+		walToken,
+		suiUsdcToken,
 	)
 }
 

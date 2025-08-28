@@ -200,7 +200,7 @@ func testRelayersWithChainSimulatorAndTokens(tb testing.TB, manualStopChan chan 
 		case *framework.EthereumHandler:
 			handler.SimulatedChain.Commit()
 		case *framework.SuiHandler:
-			handler.SuiChainSimulator.GenerateBlocks(setup.Ctx, 1)
+			handler.GenerateBlocks(setup.Ctx, 1)
 		default:
 			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
 		}

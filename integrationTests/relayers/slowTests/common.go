@@ -1,3 +1,5 @@
+//go:build slow
+
 package slowTests
 
 import (
@@ -182,8 +184,8 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 	}
 }
 
-func GenerateTestUSDCSuiToken() framework.TestTokenParams {
-	// USDC Sui is peerChainNative = true, peerChainMintBurn = false, mvxNative = false, mvxMintBurn = true
+func GenerateTestSuiUSDCToken() framework.TestTokenParams {
+	// SuiUSDC Sui is peerChainNative = true, peerChainMintBurn = false, mvxNative = false, mvxMintBurn = true
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
 			AbstractTokenIdentifier:          "USDC",
@@ -218,23 +220,23 @@ func GenerateTestUSDCSuiToken() framework.TestTokenParams {
 	}
 }
 
-func GenerateTestXMNToken() framework.TestTokenParams {
-	// XMN Sui is peerChainNative = true, peerChainMintBurn = false, mvxNative = false, mvxMintBurn = true
+func GenerateTestWALToken() framework.TestTokenParams {
+	// WAL Sui is peerChainNative = true, peerChainMintBurn = false, mvxNative = false, mvxMintBurn = true
 	return framework.TestTokenParams{
 		IssueTokenParams: framework.IssueTokenParams{
-			AbstractTokenIdentifier:          "XMN",
+			AbstractTokenIdentifier:          "WAL",
 			NumOfDecimalsUniversal:           6,
 			NumOfDecimalsChainSpecific:       6,
-			MvxUniversalTokenTicker:          "XMN",
-			MvxChainSpecificTokenTicker:      "SUIXMN",
-			MvxUniversalTokenDisplayName:     "WrappedXMN",
-			MvxChainSpecificTokenDisplayName: "SuiWrappedXMN",
+			MvxUniversalTokenTicker:          "WAL",
+			MvxChainSpecificTokenTicker:      "SUIWAL",
+			MvxUniversalTokenDisplayName:     "WrappedWAL",
+			MvxChainSpecificTokenDisplayName: "SuiWrappedWAL",
 			ValueToMintOnMvx:                 "10000000000",
 			IsMintBurnOnMvX:                  true,
 			IsNativeOnMvX:                    false,
 			HasChainSpecificToken:            false,
-			PeerChainTokenName:               "xMoney",
-			PeerChainTokenSymbol:             "XMN",
+			PeerChainTokenName:               "Walrus",
+			PeerChainTokenSymbol:             "WAL",
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
