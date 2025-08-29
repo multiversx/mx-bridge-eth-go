@@ -179,10 +179,13 @@ func (components *suiMvxBridgeComponents) initBaseComponents(args ArgsBridgeComm
 func (components *suiMvxBridgeComponents) createSuiKeysAndAddresses(suiConfigs config.SuiConfig) error {
 	privKey, err := loadPrivateKeyFromFile(suiConfigs.PrivateKeyFile)
 	if err != nil {
+		fmt.Println("Error loading private key from file:", err)
 		return err
 	}
+
 	seed, err := getSeedFromPrivateKey(privKey)
 	if err != nil {
+		fmt.Println("Error decoding private key:", err)
 		return err
 	}
 
