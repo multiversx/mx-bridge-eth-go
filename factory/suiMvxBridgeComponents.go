@@ -2,6 +2,7 @@ package factory
 
 import (
 	"crypto/ed25519"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"time"
@@ -194,13 +195,7 @@ func (components *suiMvxBridgeComponents) createSuiKeysAndAddresses(suiConfigs c
 		return err
 	}
 
-	seed, err := getSeedFromPrivateKey(privKey)
-	if err != nil {
-		fmt.Println("Error decoding private key:", err)
-		return err
-	}
-
-	relayer := signer.NewSigner(seed)
+	relayer := signer.NewSigner(privKey)
 	components.suiRelayerPriKey = relayer.PriKey
 	components.suiRelayerAddress = relayer.Address
 	components.suiPackageId = suiConfigs.PackageId
@@ -577,12 +572,12 @@ func (components *suiMvxBridgeComponents) PeerChainRelayerAddress() string {
 	return components.suiRelayerAddress
 }
 
-func loadPrivateKeyFromFile(path string) (string, error) {
+func loadPrivateKeyFromFile(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(data), nil
+	return hex.DecodeString(string(data))
 }
 
 func getSeedFromPrivateKey(privKey string) ([]byte, error) {
