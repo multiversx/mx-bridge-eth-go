@@ -89,46 +89,55 @@ func NewSuiMvxBridgeComponents(args ArgsSuiToMultiversXBridge) (*suiMvxBridgeCom
 
 	err = components.initBaseComponents(commonBridgeArgs)
 	if err != nil {
+		fmt.Println("Error initializing base components:", err)
 		return nil, err
 	}
 
 	err = components.createSuiKeysAndAddresses(args.Configs.GeneralConfig.Sui)
 	if err != nil {
+		fmt.Println("Error creating Sui keys and addresses:", err)
 		return nil, err
 	}
 
 	err = components.createSuiDataGetter(args)
 	if err != nil {
+		fmt.Println("Error creating Sui data getter:", err)
 		return nil, err
 	}
 
 	err = components.createSuiRoleProvider(args)
 	if err != nil {
+		fmt.Println("Error creating Sui role provider:", err)
 		return nil, err
 	}
 
 	err = components.createSuiClient(args)
 	if err != nil {
+		fmt.Println("Error creating Sui client:", err)
 		return nil, err
 	}
 
 	err = components.createSuiToMultiversXBridge(args)
 	if err != nil {
+		fmt.Println("Error creating Sui to MultiversX bridge:", err)
 		return nil, err
 	}
 
 	err = components.createSuiToMultiversXStateMachine()
 	if err != nil {
+		fmt.Println("Error creating Sui to MultiversX state machine:", err)
 		return nil, err
 	}
 
 	err = components.createMultiversXToSuiBridge(args)
 	if err != nil {
+		fmt.Println("Error creating MultiversX to Sui bridge:", err)
 		return nil, err
 	}
 
 	err = components.createMultiversXToSuiStateMachine()
 	if err != nil {
+		fmt.Println("Error creating MultiversX to Sui state machine:", err)
 		return nil, err
 	}
 
