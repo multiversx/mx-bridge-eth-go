@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"os"
 	"time"
 
@@ -577,7 +578,9 @@ func loadPrivateKeyFromFile(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return hex.DecodeString(string(data))
+
+	privKey := converters.TrimWhiteSpaceCharacters(string(data))
+	return hex.DecodeString(privKey)
 }
 
 func getSeedFromPrivateKey(privKey string) ([]byte, error) {
