@@ -1,7 +1,6 @@
 package factory
 
 import (
-	"crypto/ed25519"
 	"fmt"
 	"os"
 	"time"
@@ -49,14 +48,13 @@ type ArgsSuiToMultiversXBridge struct {
 
 type suiMvxBridgeComponents struct {
 	*baseBridgeComponents
-	chain             chain.Chain
-	suiApi            sui.ISuiAPI
-	suiClient         bridges.PeerChainClient
-	suiDataGetter     suiDataGetter
-	suiRelayerAddress string
-	suiRelayerPriKey  ed25519.PrivateKey
-	suiRoleProvider   PeerChainRoleProvider
-	suiPackageId      string
+	chain           chain.Chain
+	suiApi          sui.ISuiAPI
+	suiClient       bridges.PeerChainClient
+	suiDataGetter   suiDataGetter
+	suiSigner       *signer.Signer
+	suiRoleProvider PeerChainRoleProvider
+	suiPackageId    string
 }
 
 func NewSuiMvxBridgeComponents(args ArgsSuiToMultiversXBridge) (*suiMvxBridgeComponents, error) {
@@ -186,9 +184,7 @@ func (components *suiMvxBridgeComponents) createSuiKeysAndAddresses(suiConfigs c
 		return err
 	}
 
-	relayer := signer.NewSigner(seed)
-	components.suiRelayerPriKey = relayer.PriKey
-	components.suiRelayerAddress = relayer.Address
+	components.suiSigner = signer.NewSigner(seed)
 	components.suiPackageId = suiConfigs.PackageId
 
 	return nil
@@ -203,7 +199,7 @@ func (components *suiMvxBridgeComponents) createSuiDataGetter(args ArgsSuiToMult
 		SafeInitialSharedVersion:   suiConfig.SafeObjectInitialSharedVersion,
 		BridgeObjectId:             suiConfig.BridgeObjectId,
 		BridgeInitialSharedVersion: suiConfig.BridgeObjectInitialSharedVersion,
-		RelayerAddress:             components.suiRelayerAddress,
+		RelayerAddress:             components.suiSigner.Address,
 		Proxy:                      components.suiApi,
 		Log:                        core.NewLoggerWithIdentifier(logger.GetOrCreate(suiDataGetterLogId), suiDataGetterLogId),
 	}
@@ -319,7 +315,7 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 	argsSuiClient := suiClient.ArgsSuiClient{
 		Proxy:                        components.suiApi,
 		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(suiClientLogId), suiClientLogId),
-		RelayerPrivateKey:            components.suiRelayerPriKey,
+		Signer:                       components.suiSigner,
 		PackageId:                    components.suiPackageId,
 		SafeObjectId:                 suiConfig.SafeObjectId,
 		SafeInitialSharedVersion:     suiConfig.SafeObjectInitialSharedVersion,
@@ -560,7 +556,7 @@ func (components *suiMvxBridgeComponents) Close() error {
 
 // PeerChainRelayerAddress returns the Sui address associated to this relayer
 func (components *suiMvxBridgeComponents) PeerChainRelayerAddress() string {
-	return components.suiRelayerAddress
+	return components.suiSigner.Address
 }
 
 func loadPrivateKeyFromFile(path string) (string, error) {

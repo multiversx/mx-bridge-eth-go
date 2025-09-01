@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	errInsufficientCoinBalance     = errors.New("insufficient coin balance")
+	errNilSigner                   = errors.New("nil signer")
 	errNilObjectId                 = errors.New("nil object id")
 	errNilPackageId                = errors.New("nil package id")
 	errNilAddress                  = errors.New("nil address")

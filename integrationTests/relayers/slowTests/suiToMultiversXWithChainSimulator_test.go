@@ -27,6 +27,7 @@ func TestRelayersShouldExecuteTransfersSui(t *testing.T) {
 		t,
 		make(chan error),
 		walToken,
+		suiUsdcToken,
 	)
 }
 

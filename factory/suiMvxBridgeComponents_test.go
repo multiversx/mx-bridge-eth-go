@@ -3,12 +3,12 @@ package factory
 import (
 	"errors"
 	"fmt"
-	"github.com/block-vision/sui-go-sdk/sui"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/core"
@@ -35,10 +35,9 @@ func createMockSuiMultiversXBridgeArgs() ArgsSuiToMultiversXBridge {
 			Chain:                            chain.Sui,
 			NetworkAddress:                   "http://127.0.0.1:8545",
 			PrivateKeyFile:                   "testdata/grace.seed",
-			BridgePackageId:                  "0xd85d37d10bb925c9e598169478c518f3da1090fbb8e027362e1c9c227f6fc4e0",
+			PackageId:                        "0xd85d37d10bb925c9e598169478c518f3da1090fbb8e027362e1c9c227f6fc4e0",
 			BridgeObjectId:                   "0x8e3dc49b158d7cd7a72720160b7e7aa0859cda4a7ebbcb4391dd4d7190777db1",
 			BridgeObjectInitialSharedVersion: 123456,
-			SafePackageId:                    "0x5ea6aafe995ce6506f07335a40942024106a57f6311cb341239abf2c3ac7b82f",
 			SafeObjectId:                     "0x80d7de9c4a56194087e0ba0bf59492aa8e6a5ee881606226930827085ddf2332",
 			SafeObjectInitialSharedVersion:   654321,
 			GasStation: config.GasStationConfig{

@@ -3,14 +3,11 @@ package sui
 import (
 	"bytes"
 	"context"
-	"crypto/ed25519"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sync"
 
-	"github.com/block-vision/sui-go-sdk/common/keypair"
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	"github.com/block-vision/sui-go-sdk/signer"
@@ -18,7 +15,6 @@ import (
 	"github.com/block-vision/sui-go-sdk/transaction"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
@@ -35,7 +31,7 @@ const (
 type ArgsSuiClient struct {
 	Proxy                      Proxy
 	Log                        chainCore.Logger
-	RelayerPrivateKey          ed25519.PrivateKey
+	Signer                     *signer.Signer
 	PackageId                  string
 	SafeObjectId               string
 	SafeInitialSharedVersion   uint64
@@ -51,15 +47,13 @@ type ArgsSuiClient struct {
 
 type client struct {
 	*suiClientDataGetter
-	client           *sui.Client
+	proxy            *sui.Client
 	signer           *signer.Signer
-	tokensMapper     TokensMapper
-	relayerPublicKey ed25519.PublicKey
-	relayerAddress   string
 	packageId        string
 	safeObjectId     string
 	bridgeObjectId   string
 	log              chainCore.Logger
+	tokensMapper     TokensMapper
 	addressConverter bridgeCore.AddressConverter
 	statusHandler    bridgeCore.StatusHandler
 	broadcaster      Broadcaster
@@ -77,20 +71,13 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		return nil, err
 	}
 
-	relayerPubKey, relayerAddress := generatePubKeyAndAddressFromPriKey(args.RelayerPrivateKey)
-	relayerSigner := &signer.Signer{
-		PriKey:  args.RelayerPrivateKey,
-		PubKey:  relayerPubKey,
-		Address: relayerAddress,
-	}
-
 	argsSuiClientDataGetter := ArgsSuiClientDataGetter{
 		PackageId:                  args.PackageId,
 		SafeObjectId:               args.SafeObjectId,
 		SafeInitialSharedVersion:   args.SafeInitialSharedVersion,
 		BridgeObjectId:             args.BridgeObjectId,
 		BridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
-		RelayerAddress:             relayerAddress,
+		RelayerAddress:             args.Signer.Address,
 		Proxy:                      args.Proxy,
 		Log:                        args.Log,
 	}
@@ -105,11 +92,9 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	c := &client{
-		client:                       args.Proxy.(*sui.Client),
-		signer:                       relayerSigner,
+		proxy:                        args.Proxy.(*sui.Client),
+		signer:                       args.Signer,
 		suiClientDataGetter:          getter,
-		relayerPublicKey:             relayerPubKey,
-		relayerAddress:               relayerAddress,
 		packageId:                    args.PackageId,
 		safeObjectId:                 args.SafeObjectId,
 		bridgeObjectId:               args.BridgeObjectId,
@@ -123,7 +108,7 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	c.log.Info("NewSuiClient",
-		"relayer address", relayerAddress,
+		"relayer address", c.signer.Address,
 		"package ID", c.packageId,
 		"bridge object ID", c.bridgeObjectId,
 		"safe object ID", c.safeObjectId)
@@ -135,8 +120,8 @@ func checkArgs(args ArgsSuiClient) error {
 	if args.Proxy == nil {
 		return errNilProxy
 	}
-	if len(args.RelayerPrivateKey) == 0 {
-		return clients.ErrNilPrivateKey
+	if args.Signer == nil {
+		return errNilSigner
 	}
 	if len(args.PackageId) == 0 {
 		return fmt.Errorf("%w for the PackageId argument", errNilPackageId)
@@ -168,17 +153,6 @@ func checkArgs(args ArgsSuiClient) error {
 	}
 
 	return nil
-}
-
-func generatePubKeyAndAddressFromPriKey(priKey ed25519.PrivateKey) (ed25519.PublicKey, string) {
-	pubKey := priKey.Public().(ed25519.PublicKey)
-
-	tmp := []byte{byte(keypair.Ed25519Flag)}
-	tmp = append(tmp, pubKey...)
-	addrBytes := blake2b.Sum256(tmp)
-	addr := "0x" + hex.EncodeToString(addrBytes[:])[:64]
-
-	return pubKey, addr
 }
 
 // GetBatch returns the transfer batch by providing the nonce
@@ -276,19 +250,32 @@ func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchI
 		return nil, clients.ErrNilBatch
 	}
 
+	var hash []byte
+	groups := c.groupTransfersByTokenType(batch)
+	for _, group := range groups {
+		groupHash, err := c.getHashForTokenGroupData(group, batchId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting hash for token group data: %v", err)
+		}
+		hash = append(hash, groupHash...)
+	}
+
+	return hash, nil
+}
+
+func (c *client) getHashForTokenGroupData(batch *TokenTransferGroup, batchId uint64) ([]byte, error) {
 	message, err := c.constructBatchMessage(batchId, batch)
 	if err != nil {
 		return nil, fmt.Errorf("error constructing batch message: %v", err)
 	}
 
 	hash := blake2b.Sum256(message)
-
 	return hash[:], nil
 }
 
 func (c *client) constructBatchMessage(
 	batchId uint64,
-	batch *batchProcessor.ArgListsBatch,
+	batch *TokenTransferGroup,
 ) ([]byte, error) {
 	var message bytes.Buffer
 
@@ -298,10 +285,10 @@ func (c *client) constructBatchMessage(
 		return nil, fmt.Errorf("error encoding batch_id: %v", err)
 	}
 
-	for i := 0; i < len(batch.PeerTokens); i++ {
+	for i := 0; i < len(batch.Tokens); i++ {
 		tokenBuf := bytes.Buffer{}
 		tokenEncoder := mystenbcs.NewEncoder(&tokenBuf)
-		err = tokenEncoder.Encode(batch.PeerTokens[i])
+		err = tokenEncoder.Encode(batch.Tokens[i])
 		if err != nil {
 			return nil, fmt.Errorf("error encoding token: %v", err)
 		}
@@ -309,7 +296,7 @@ func (c *client) constructBatchMessage(
 
 		recipientBuf := bytes.Buffer{}
 		recipientEncoder := mystenbcs.NewEncoder(&recipientBuf)
-		err = recipientEncoder.Encode(models.SuiAddressBytes(batch.Recipients[i][:]))
+		err = recipientEncoder.Encode(batch.Recipients[i])
 		if err != nil {
 			return nil, fmt.Errorf("error encoding recipient: %v", err)
 		}
@@ -317,7 +304,7 @@ func (c *client) constructBatchMessage(
 
 		amountBuf := bytes.Buffer{}
 		amountEncoder := mystenbcs.NewEncoder(&amountBuf)
-		err = amountEncoder.Encode(batch.Amounts[i].Uint64())
+		err = amountEncoder.Encode(batch.Amounts[i])
 		if err != nil {
 			return nil, fmt.Errorf("error encoding amount: %v", err)
 		}
@@ -325,7 +312,7 @@ func (c *client) constructBatchMessage(
 
 		nonceBuf := bytes.Buffer{}
 		nonceEncoder := mystenbcs.NewEncoder(&nonceBuf)
-		err = nonceEncoder.Encode(batch.Nonces[i].Uint64())
+		err = nonceEncoder.Encode(batch.Nonces[i])
 		if err != nil {
 			return nil, fmt.Errorf("error encoding nonce: %v", err)
 		}
@@ -377,7 +364,7 @@ func (c *client) ExecuteTransfer(
 	}
 
 	tx := transaction.NewTransaction()
-	tx.SetSuiClient(c.client).
+	tx.SetSuiClient(c.proxy).
 		SetSigner(c.signer).
 		SetSender(models.SuiAddress(c.relayerAddress)).
 		SetGasPrice(1000).
@@ -419,14 +406,14 @@ func (c *client) ExecuteTransfer(
 	return resp.Digest, nil
 }
 
-func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatch) map[string]*dtos.TokenTransferGroup {
-	groups := make(map[string]*dtos.TokenTransferGroup)
+func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatch) map[string]*TokenTransferGroup {
+	groups := make(map[string]*TokenTransferGroup)
 
 	for i := 0; i < len(argLists.PeerTokens); i++ {
 		tokenTypeStr := string(argLists.PeerTokens[i])
 
 		if groups[tokenTypeStr] == nil {
-			groups[tokenTypeStr] = &dtos.TokenTransferGroup{
+			groups[tokenTypeStr] = &TokenTransferGroup{
 				Recipients: make([]models.SuiAddressBytes, 0),
 				Amounts:    make([]uint64, 0),
 				Tokens:     make([][]byte, 0),
@@ -449,7 +436,7 @@ func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatc
 	return groups
 }
 
-func (c *client) processSignaturesOfRelayers(tokenGroups map[string]*dtos.TokenTransferGroup, serializedSignatures [][]byte) error {
+func (c *client) processSignaturesOfRelayers(tokenGroups map[string]*TokenTransferGroup, serializedSignatures [][]byte) error {
 	var tokenTypes []string
 	for key := range tokenGroups {
 		tokenTypes = append(tokenTypes, key)
@@ -498,7 +485,7 @@ func (c *client) appendMoveCallForToken(
 	coinIdBytes *models.SuiAddressBytes,
 	coinModule string,
 	coinName string,
-	group *dtos.TokenTransferGroup,
+	group *TokenTransferGroup,
 	batchId uint64,
 	isBatchComplete bool,
 ) {

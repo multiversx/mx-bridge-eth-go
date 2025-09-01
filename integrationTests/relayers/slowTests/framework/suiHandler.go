@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	networkUrl               = "http://localhost:9000"
 	suiSafeBytecode          = "testdata/contracts/sui/safe.mv"
 	suiBridgeBytecode        = "testdata/contracts/sui/bridge.mv"
 	suiEventsBytecode        = "testdata/contracts/sui/events.mv"
@@ -62,7 +63,7 @@ func NewSuiHandler(
 
 	walletsToFundOnSui := handler.WalletsToFundOnSui()
 	handler.FundWallets(walletsToFundOnSui)
-	handler.SuiProxy = suiSdk.NewSuiClient("http://127.0.0.1:9000")
+	handler.SuiProxy = suiSdk.NewSuiClient(networkUrl)
 
 	return handler
 }

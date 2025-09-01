@@ -11,13 +11,12 @@ import (
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	"github.com/block-vision/sui-go-sdk/transaction"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 )
 
 const (
-	suiCoinAddress            = "0x2::sui::SUI"
+	suiCoinType               = "0x2::sui::SUI"
 	clockId                   = "0x6"
 	clockInitialSharedVersion = 1
 	successCodeAfterExecution = "success"
@@ -103,7 +102,7 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 }
 
 // GetBatchByNonce returns the batch of transactions by providing the batch nonce
-func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNonce uint64) (dtos.Batch, bool, error) {
+func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNonce uint64) (Batch, bool, error) {
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(
@@ -140,21 +139,21 @@ func (getter *suiClientDataGetter) GetBatchByNonce(ctx context.Context, batchNon
 
 	txBlockResp, err := getter.sendTxGetBlockResponse(ctx, tx)
 	if err != nil {
-		return dtos.Batch{}, false, fmt.Errorf("failed to get batch: %w", err)
+		return Batch{}, false, fmt.Errorf("failed to get batch: %w", err)
 	}
 
-	var batch dtos.Batch
+	var batch Batch
 	var isFinalBatch bool
 	err = getter.decodeReturnValues(txBlockResp.Results, &batch, &isFinalBatch)
 	if err != nil {
-		return dtos.Batch{}, false, fmt.Errorf("failed to decode return value: %w", err)
+		return Batch{}, false, fmt.Errorf("failed to decode return value: %w", err)
 	}
 
 	return batch, isFinalBatch, nil
 }
 
 // GetBatchDeposits returns the transactions of a batch by providing the batch nonce
-func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNonce uint64) ([]dtos.Deposit, bool, error) {
+func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNonce uint64) ([]Deposit, bool, error) {
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(
@@ -194,7 +193,7 @@ func (getter *suiClientDataGetter) GetBatchDeposits(ctx context.Context, batchNo
 		return nil, false, fmt.Errorf("failed to get batch deposits: %w", err)
 	}
 
-	var depositsList []dtos.Deposit
+	var depositsList []Deposit
 	var areFinalDeposits bool
 	err = getter.decodeReturnValues(txBlockResp.Results, &depositsList, &areFinalDeposits)
 	if err != nil {
@@ -528,7 +527,7 @@ func (getter *suiClientDataGetter) IsTokenWhitelisted(ctx context.Context, coinT
 func (getter *suiClientDataGetter) GetCoinsForAddress(ctx context.Context) (models.PaginatedCoinsResponse, error) {
 	return getter.proxy.SuiXGetCoins(ctx, models.SuiXGetCoinsRequest{
 		Owner:    getter.relayerAddress,
-		CoinType: suiCoinAddress,
+		CoinType: suiCoinType,
 	})
 }
 
@@ -598,7 +597,7 @@ func (getter *suiClientDataGetter) GetLatestCheckpoint(ctx context.Context) (uin
 }
 
 func (getter *suiClientDataGetter) decodeReturnValues(data json.RawMessage, out ...interface{}) error {
-	var results []dtos.InspectResult
+	var results []InspectResult
 	if err := json.Unmarshal(data, &results); err != nil {
 		return fmt.Errorf("decode dev inspect results: %w", err)
 	}
