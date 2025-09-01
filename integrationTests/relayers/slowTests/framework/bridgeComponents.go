@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/ethereum/go-ethereum/ethclient/simulated"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/config"
@@ -120,7 +119,7 @@ func NewSuiBridgeComponents(
 	tb testing.TB,
 	workingDir string,
 	chainSimulator ChainSimulatorWrapper,
-	suiProxy sui.ISuiAPI,
+	suiChainSimulator *suiChainSimulatorWrapper,
 	numRelayers int,
 	packageId string,
 	mvxSafeAddress *MvxAddress,
@@ -138,9 +137,6 @@ func NewSuiBridgeComponents(
 
 	messengers := integrationTests.CreateLinkedMessengers(numRelayers)
 
-	//gasStationURL := bridge.gasStationInstance.URL()
-	//log.Info("started gas station server", "URL", gasStationURL)
-
 	wg := sync.WaitGroup{}
 	wg.Add(numRelayers)
 
@@ -156,7 +152,7 @@ func NewSuiBridgeComponents(
 				},
 			},
 			Proxy:                         chainSimulator.Proxy(),
-			SuiProxy:                      suiProxy,
+			SuiProxy:                      suiChainSimulator.proxy,
 			Messenger:                     messengers[i],
 			StatusStorer:                  testsCommon.NewStorerMock(),
 			TimeForBootstrap:              time.Second * 5,

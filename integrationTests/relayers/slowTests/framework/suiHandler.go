@@ -11,13 +11,11 @@ import (
 	"testing"
 
 	"github.com/block-vision/sui-go-sdk/models"
-	suiSdk "github.com/block-vision/sui-go-sdk/sui"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	networkUrl               = "http://localhost:9000"
 	suiSafeBytecode          = "testdata/contracts/sui/safe.mv"
 	suiBridgeBytecode        = "testdata/contracts/sui/bridge.mv"
 	suiEventsBytecode        = "testdata/contracts/sui/events.mv"
@@ -26,6 +24,8 @@ const (
 	suiSharedStructsBytecode = "testdata/contracts/sui/shared_structs.mv"
 	suiUtilsBytecode         = "testdata/contracts/sui/utils.mv"
 	suiTestCoinBytecode      = "testdata/contracts/sui/test_coin.mv"
+
+	clockId = "0x6"
 )
 
 // SuiHandler will handle all the operations on the Sui side
@@ -36,7 +36,6 @@ type SuiHandler struct {
 	Quorum                     string
 	MvxTestCallerAddress       core.AddressHandler
 	SuiChainSimulator          *suiChainSimulatorWrapper
-	SuiProxy                   suiSdk.ISuiAPI
 	PackageID                  string
 	BridgeObjectID             string
 	BridgeCap                  string
@@ -49,27 +48,27 @@ type SuiHandler struct {
 // NewSuiHandler will create the handler that will adapt all test operations on Sui
 func NewSuiHandler(
 	tb testing.TB,
-	_ context.Context, // ctx is unused
 	keysStore *KeysStore,
 	tokensRegistry TokensRegistry,
+	chainSimulator *suiChainSimulatorWrapper,
 	quorum string,
 ) *SuiHandler {
 	handler := &SuiHandler{
-		TB:             tb,
-		KeysStore:      keysStore,
-		TokensRegistry: tokensRegistry,
-		Quorum:         quorum,
+		TB:                tb,
+		KeysStore:         keysStore,
+		TokensRegistry:    tokensRegistry,
+		Quorum:            quorum,
+		SuiChainSimulator: chainSimulator,
 	}
 
 	walletsToFundOnSui := handler.WalletsToFundOnSui()
-	handler.FundWallets(walletsToFundOnSui)
-	handler.SuiProxy = suiSdk.NewSuiClient(networkUrl)
+	handler.SuiChainSimulator.FundWallets(walletsToFundOnSui)
 
 	return handler
 }
 
 func (handler *SuiHandler) DeployContracts(ctx context.Context) {
-	txMeta, err := handler.SuiProxy.Publish(ctx, models.PublishRequest{
+	resp := handler.SuiChainSimulator.PublishPackage(ctx, models.PublishRequest{
 		Sender:          string(handler.OwnerKeys.SuiAddress),
 		CompiledModules: handler.getEncodedModules(),
 		Dependencies: []string{
@@ -77,10 +76,7 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 			"0x2", // Move Standard Library
 		},
 		GasBudget: "500000000",
-	})
-	require.NoError(handler, err)
-
-	resp := handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+	}, handler.OwnerKeys)
 
 	for _, obj := range resp.ObjectChanges {
 		if obj.Type == "created" {
@@ -116,7 +112,7 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 		suiRelayersAddresses = append(suiRelayersAddresses, string(relayerKeys.SuiAddress))
 
 		pubKeyBytes := relayerKeys.SuiSK.Public().(ed25519.PublicKey)
-		var arr [32]byte
+		var arr [32]byte //TODO
 		copy(arr[:], pubKeyBytes)
 		suiRelayersPubKeys = append(suiRelayersPubKeys, arr)
 	}
@@ -179,7 +175,7 @@ func (handler *SuiHandler) DeployContract(
 	safeObjectID := params[5].(string)
 	adminCap := params[6].(string)
 
-	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+	resp := handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: handler.PackageID,
 		Module:          module,
@@ -193,10 +189,8 @@ func (handler *SuiHandler) DeployContract(
 			adminCap,
 		},
 		GasBudget: "100000000",
-	})
-	require.Nil(handler, err)
+	}, handler.OwnerKeys)
 
-	resp := handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
 	for _, obj := range resp.ObjectChanges {
 		if obj.Type == "created" {
 			if strings.Contains(obj.ObjectType, "::bridge::Bridge") {
@@ -230,22 +224,13 @@ func (handler *SuiHandler) GetBalance(ctx context.Context, receiver []byte, abst
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenAddress)
 
-	balance, err := handler.SuiProxy.SuiXGetBalance(ctx, models.SuiXGetBalanceRequest{
-		Owner:    string(receiver),
-		CoinType: string(token.PeerChainTokenAddress),
-	})
-	require.NoError(handler, err)
-
-	bigIntBalance, ok := big.NewInt(0).SetString(balance.TotalBalance, 10)
-	require.True(handler, ok)
-
-	return bigIntBalance
+	return handler.SuiChainSimulator.GetCoinBalance(ctx, string(receiver), string(token.PeerChainTokenAddress))
 }
 
 // UnPauseContractsAfterTokenChanges can unpause contracts after token changes
 func (handler *SuiHandler) UnPauseContractsAfterTokenChanges(ctx context.Context) {
 	// unpause bridge contract
-	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: handler.PackageID,
 		Module:          "bridge",
@@ -256,13 +241,10 @@ func (handler *SuiHandler) UnPauseContractsAfterTokenChanges(ctx context.Context
 			handler.AdminCap,
 		},
 		GasBudget: "10000000",
-	})
-	require.NoError(handler, err)
-
-	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+	}, handler.OwnerKeys)
 
 	// unpause safe contract
-	txMeta, err = handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: handler.PackageID,
 		Module:          "safe",
@@ -273,16 +255,13 @@ func (handler *SuiHandler) UnPauseContractsAfterTokenChanges(ctx context.Context
 			handler.AdminCap,
 		},
 		GasBudget: "10000000",
-	})
-	require.NoError(handler, err)
-
-	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+	}, handler.OwnerKeys)
 }
 
 // PauseContractsForTokenChanges can pause contracts for token changes
 func (handler *SuiHandler) PauseContractsForTokenChanges(ctx context.Context) {
 	// unpause bridge contract
-	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: handler.PackageID,
 		Module:          "bridge",
@@ -293,13 +272,10 @@ func (handler *SuiHandler) PauseContractsForTokenChanges(ctx context.Context) {
 			handler.AdminCap,
 		},
 		GasBudget: "10000000",
-	})
-	require.NoError(handler, err)
-
-	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+	}, handler.OwnerKeys)
 
 	// unpause safe contract
-	txMeta, err = handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: handler.PackageID,
 		Module:          "safe",
@@ -310,16 +286,13 @@ func (handler *SuiHandler) PauseContractsForTokenChanges(ctx context.Context) {
 			handler.AdminCap,
 		},
 		GasBudget: "10000000",
-	})
-	require.NoError(handler, err)
-
-	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+	}, handler.OwnerKeys)
 }
 
 // IssueAndWhitelistToken will issue and whitelist the token on Sui
 func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams) {
 	coinPackageId, treasuryId, metadataId := handler.deployCoinContract(ctx)
-	suiTokenInfo := SuiTokenInfo{
+	suiTokenInfo := SuiTokenInfo{ //TODO
 		CoinPackageId:  coinPackageId,
 		TreasuryId:     treasuryId,
 		CoinMetadataId: metadataId,
@@ -335,7 +308,7 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 	handler.mint(ctx, params, string(handler.TestKeys.SuiAddress), mintAmount)
 
 	// whitelist token
-	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: handler.PackageID,
 		Module:          "safe",
@@ -351,9 +324,7 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 			params.IsNativeOnPeerChain,
 		},
 		GasBudget: "100000000",
-	})
-	require.Nil(handler, err)
-	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+	}, handler.OwnerKeys)
 
 	if len(params.InitialSupplyValue) > 0 {
 		initialSupplyValue, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
@@ -367,7 +338,7 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 func (handler *SuiHandler) deployCoinContract(ctx context.Context) (string, string, string) {
 	mv := handler.readModuleBytes(suiTestCoinBytecode)
 
-	txMeta, err := handler.SuiProxy.Publish(ctx, models.PublishRequest{
+	resp := handler.SuiChainSimulator.PublishPackage(ctx, models.PublishRequest{
 		Sender:          string(handler.OwnerKeys.SuiAddress),
 		CompiledModules: []string{base64.StdEncoding.EncodeToString(mv)},
 		Dependencies: []string{
@@ -375,10 +346,7 @@ func (handler *SuiHandler) deployCoinContract(ctx context.Context) (string, stri
 			"0x2", // Move Standard Library
 		},
 		GasBudget: "100000000",
-	})
-	require.NoError(handler, err)
-
-	resp := handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+	}, handler.OwnerKeys)
 
 	var coinPackageId, treasuryId, metadataId string
 	for _, obj := range resp.ObjectChanges {
@@ -402,7 +370,7 @@ func (handler *SuiHandler) updateMetadata(ctx context.Context, params IssueToken
 	suiTokenInfo := tokenData.PeerChainTokenInfo.(SuiTokenInfo)
 
 	// update name
-	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: "0x2",
 		Module:          "coin",
@@ -416,13 +384,10 @@ func (handler *SuiHandler) updateMetadata(ctx context.Context, params IssueToken
 			params.PeerChainTokenName,
 		},
 		GasBudget: "100000000",
-	})
-	require.Nil(handler, err)
-
-	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+	}, handler.OwnerKeys)
 
 	// update symbol
-	txMeta, err = handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: "0x2",
 		Module:          "coin",
@@ -436,10 +401,7 @@ func (handler *SuiHandler) updateMetadata(ctx context.Context, params IssueToken
 			params.PeerChainTokenSymbol,
 		},
 		GasBudget: "100000000",
-	})
-	require.Nil(handler, err)
-
-	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+	}, handler.OwnerKeys)
 }
 
 func (handler *SuiHandler) initSupplyForToken(ctx context.Context, params IssueTokenParams) {
@@ -449,7 +411,7 @@ func (handler *SuiHandler) initSupplyForToken(ctx context.Context, params IssueT
 
 	coinObjId := handler.getCoinObjectIdForToken(ctx, tokenData.PeerChainTokenAddress, initSupplyValue, handler.OwnerKeys)
 
-	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: handler.PackageID,
 		Module:          "safe",
@@ -463,10 +425,7 @@ func (handler *SuiHandler) initSupplyForToken(ctx context.Context, params IssueT
 			coinObjId,
 		},
 		GasBudget: "100000000",
-	})
-	require.Nil(handler, err)
-
-	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
+	}, handler.OwnerKeys)
 }
 
 // CreateBatchOnPeerChain will create a batch on Sui using the provided tokens parameters list
@@ -476,18 +435,17 @@ func (handler *SuiHandler) CreateBatchOnPeerChain(
 	tokensParams ...TestTokenParams,
 ) {
 	for _, params := range tokensParams {
-		handler.createDepositsOnSuiForToken(ctx, params, handler.TestKeys.SuiSK, handler.TestKeys.SuiAddress)
+		handler.createDepositsOnSuiForToken(ctx, params, handler.TestKeys)
 	}
 
 	// Wait until the batch is processed
-	handler.GenerateBlocks(ctx, 50)
+	handler.SuiChainSimulator.GenerateBlocks(ctx, 50)
 }
 
 func (handler *SuiHandler) createDepositsOnSuiForToken(
 	ctx context.Context,
 	params TestTokenParams,
-	fromPriKey ed25519.PrivateKey,
-	fromAddress []byte,
+	from KeysHolder,
 ) {
 	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	require.NotNil(handler, token)
@@ -502,8 +460,8 @@ func (handler *SuiHandler) createDepositsOnSuiForToken(
 		coinType := string(token.PeerChainTokenAddress)
 
 		// No sc call data only
-		txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
-			Signer:          string(fromAddress),
+		handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+			Signer:          string(from.SuiAddress),
 			PackageObjectId: handler.PackageID,
 			Module:          "safe",
 
@@ -515,39 +473,30 @@ func (handler *SuiHandler) createDepositsOnSuiForToken(
 				handler.SafeObjectID,
 				coinObjId,
 				handler.TestKeys.MvxAddress.AddressSlice(),
-				"0x6",
+				clockId,
 			},
 			GasBudget: "10000000",
-		})
-		require.NoError(handler, err)
-
-		handler.signAndExecuteTxReturnResult(ctx, txMeta, fromPriKey)
+		}, from)
 	}
 }
 
 func (handler *SuiHandler) getCoinObjectIdForToken(ctx context.Context, coinAddress []byte, targetValue *big.Int, signer KeysHolder) string {
-	coins, err := handler.SuiProxy.SuiXGetCoins(ctx, models.SuiXGetCoinsRequest{
-		Owner:    string(signer.SuiAddress),
-		CoinType: string(coinAddress),
-	})
-	require.NoError(handler, err)
-
-	srcCoin := coins.Data[0]
+	coins := handler.SuiChainSimulator.GetCoins(ctx, string(signer.SuiAddress), string(coinAddress))
+	srcCoin := coins[0]
 	coinBalance, _ := big.NewInt(0).SetString(srcCoin.Balance, 10)
+
 	var coinToSendId string
 	if coinBalance.Cmp(targetValue) == 0 {
 		coinToSendId = srcCoin.CoinObjectId
 	} else {
 		if coinBalance.Cmp(targetValue) > 0 {
-			txMeta, err := handler.SuiProxy.SplitCoin(ctx, models.SplitCoinRequest{
+			resp := handler.SuiChainSimulator.SplitCoin(ctx, models.SplitCoinRequest{
 				Signer:       string(signer.SuiAddress),
 				CoinObjectId: srcCoin.CoinObjectId,
 				SplitAmounts: []string{targetValue.String()},
 				GasBudget:    "10000000",
-			})
-			require.NoError(handler, err)
+			}, signer)
 
-			resp := handler.signAndExecuteTxReturnResult(ctx, txMeta, signer.SuiSK)
 			for _, obj := range resp.ObjectChanges {
 				if obj.Type == "created" && strings.Contains(obj.ObjectType, "test_coin::TEST_COIN") {
 					coinToSendId = obj.ObjectId
@@ -556,7 +505,6 @@ func (handler *SuiHandler) getCoinObjectIdForToken(ctx context.Context, coinAddr
 			}
 		}
 	}
-	// TODO: maybe merge
 
 	return coinToSendId
 }
@@ -568,7 +516,7 @@ func (handler *SuiHandler) SendFromPeerChainToMultiversX(
 	tokensParams ...TestTokenParams,
 ) {
 	for _, params := range tokensParams {
-		handler.createDepositsOnSuiForToken(ctx, params, handler.TestKeys.SuiSK, handler.TestKeys.SuiAddress)
+		handler.createDepositsOnSuiForToken(ctx, params, handler.TestKeys)
 	}
 }
 
@@ -583,7 +531,7 @@ func (handler *SuiHandler) mint(ctx context.Context, params IssueTokenParams, re
 	require.NotNil(handler, tokenData.PeerChainTokenInfo)
 	suiTokenInfo := tokenData.PeerChainTokenInfo.(SuiTokenInfo)
 
-	txMeta, err := handler.SuiProxy.MoveCall(ctx, models.MoveCallRequest{
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
 		PackageObjectId: suiTokenInfo.CoinPackageId,
 		Module:          "test_coin",
@@ -595,80 +543,9 @@ func (handler *SuiHandler) mint(ctx context.Context, params IssueTokenParams, re
 			receiver,
 		},
 		GasBudget: "100000000",
-	})
-	require.Nil(handler, err)
-
-	handler.signAndExecuteTxReturnResult(ctx, txMeta, handler.OwnerKeys.SuiSK)
-}
-
-func (handler *SuiHandler) signAndExecuteTxReturnResult(
-	ctx context.Context,
-	txMeta models.TxnMetaData,
-	signerPriKey ed25519.PrivateKey,
-) models.SuiTransactionBlockResponse {
-	exec, err := handler.SuiProxy.SignAndExecuteTransactionBlock(ctx, models.SignAndExecuteTransactionBlockRequest{
-		TxnMetaData: txMeta,
-		PriKey:      signerPriKey,
-		Options: models.SuiTransactionBlockOptions{
-			ShowEffects:       true,
-			ShowObjectChanges: true,
-		},
-		RequestType: "WaitForLocalExecution",
-	})
-
-	require.Nil(handler, err)
-	require.Equal(handler, "success", exec.Effects.Status.Status, fmt.Sprintf("Error: %s", exec.Effects.Status.Error))
-
-	return exec
+	}, handler.OwnerKeys)
 }
 
 func (handler *SuiHandler) Close() error {
 	return nil
-}
-
-func (handler *SuiHandler) FundWallets(wallets [][]byte) {
-	for _, wallet := range wallets {
-		header := map[string]string{}
-		err := suiSdk.RequestSuiFromFaucet("http://127.0.0.1:9123", string(wallet), header)
-		if err != nil {
-			log.Error("error in suiChainSimulatorWrapper.FundWallets", "error", err.Error())
-			continue
-		}
-		log.Info("Funded wallet: " + string(wallet))
-	}
-}
-
-func (handler *SuiHandler) GenerateBlocks(ctx context.Context, numBlocks int) {
-	for i := 0; i < numBlocks; i++ {
-		address := string(handler.OwnerKeys.SuiAddress)
-
-		coins, err := handler.SuiProxy.SuiXGetCoins(ctx, models.SuiXGetCoinsRequest{
-			Owner:    address,
-			CoinType: "0x2::sui::SUI",
-			Limit:    5,
-		})
-		require.NoError(handler, err)
-		require.True(handler, len(coins.Data) > 0, "No coins found for address: "+address)
-
-		pay, err := handler.SuiProxy.Pay(ctx, models.PayRequest{
-			Signer:      address,
-			SuiObjectId: []string{coins.Data[0].CoinObjectId},
-			Recipient:   []string{address},
-			Amount:      []string{"100"},
-			GasBudget:   "10000000",
-		})
-		require.NoError(handler, err)
-
-		resp, err := handler.SuiProxy.SignAndExecuteTransactionBlock(
-			ctx,
-			models.SignAndExecuteTransactionBlockRequest{
-				TxnMetaData: pay,
-				PriKey:      handler.OwnerKeys.SuiSK,
-				Options:     models.SuiTransactionBlockOptions{ShowEffects: true},
-				RequestType: "WaitForLocalExecution",
-			},
-		)
-		require.NoError(handler, err)
-		require.Equal(handler, "success", resp.Effects.Status.Status)
-	}
 }

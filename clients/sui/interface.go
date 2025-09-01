@@ -8,10 +8,12 @@ import (
 // Proxy defines the operations for a component that can act as a proxy to interact with the Sui blockchain
 type Proxy interface {
 	Pay(ctx context.Context, req models.PayRequest) (models.TxnMetaData, error)
+	Publish(ctx context.Context, req models.PublishRequest) (models.TxnMetaData, error)
 	SuiGetLatestCheckpointSequenceNumber(ctx context.Context) (uint64, error)
 	SuiXGetBalance(ctx context.Context, req models.SuiXGetBalanceRequest) (models.CoinBalanceResponse, error)
 	SuiDevInspectTransactionBlock(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
 	SuiXGetCoins(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error)
+	SplitCoin(ctx context.Context, req models.SplitCoinRequest) (models.TxnMetaData, error)
 	MoveCall(ctx context.Context, req models.MoveCallRequest) (models.TxnMetaData, error)
 	SignAndExecuteTransactionBlock(ctx context.Context, req models.SignAndExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
 }

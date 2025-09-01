@@ -71,7 +71,12 @@ func NewTestSetup(tb testing.TB, chainType ChainType) *TestSetup {
 	case ChainTypeEthereum:
 		setup.PeerChainHandler = NewEthereumHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, quorum)
 	case ChainTypeSui:
-		setup.PeerChainHandler = NewSuiHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, quorum)
+		argsSuiChainSimulatorWrapper := ArgsSuiChainSimulatorWrapper{
+			TB:    tb,
+			Owner: setup.OwnerKeys,
+		}
+		suiChainSimulator := CreateSuiChainSimulatorWrapper(argsSuiChainSimulatorWrapper)
+		setup.PeerChainHandler = NewSuiHandler(tb, setup.KeysStore, setup.TokensRegistry, suiChainSimulator, quorum)
 	}
 
 	setup.PeerChainHandler.DeployContracts(setup.Ctx)
@@ -110,7 +115,7 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 			setup.TB,
 			setup.WorkingDir,
 			setup.ChainSimulator,
-			handler.EthChainWrapper, // acces direct la câmpuri
+			handler.EthChainWrapper,
 			handler.Erc20ContractsHolder,
 			handler.SimulatedChain,
 			NumRelayers,
@@ -123,7 +128,7 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 			setup.TB,
 			setup.WorkingDir,
 			setup.ChainSimulator,
-			handler.SuiProxy,
+			handler.SuiChainSimulator,
 			NumRelayers,
 			handler.PackageID,
 			setup.MultiversxHandler.SafeAddress,

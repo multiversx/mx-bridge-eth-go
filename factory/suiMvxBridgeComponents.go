@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/block-vision/sui-go-sdk/signer"
-	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/btcsuite/btcd/btcutil/bech32"
 	"github.com/multiversx/mx-bridge-eth-go/bridges"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/disabled"
@@ -14,8 +13,6 @@ import (
 	ethtomultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/steps/toMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/topology"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
-	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement"
-	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement/factory"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	mapper "github.com/multiversx/mx-bridge-eth-go/clients/multiversx/mappers/sui"
 	roleproviders "github.com/multiversx/mx-bridge-eth-go/clients/roleProviders"
@@ -38,7 +35,7 @@ type ArgsSuiToMultiversXBridge struct {
 	StatusStorer                  core.Storer
 	Proxy                         multiversx.Proxy
 	MultiversXClientStatusHandler core.StatusHandler
-	SuiProxy                      sui.ISuiAPI
+	SuiProxy                      suiClient.Proxy
 	SuiClientStatusHandler        core.StatusHandler
 	TimeForBootstrap              time.Duration
 	TimeBeforeRepeatJoin          time.Duration
@@ -49,7 +46,7 @@ type ArgsSuiToMultiversXBridge struct {
 type suiMvxBridgeComponents struct {
 	*baseBridgeComponents
 	chain           chain.Chain
-	suiApi          sui.ISuiAPI
+	suiApi          suiClient.Proxy
 	suiClient       bridges.PeerChainClient
 	suiDataGetter   suiDataGetter
 	suiSigner       *signer.Signer
@@ -246,25 +243,6 @@ func (components *suiMvxBridgeComponents) createSuiRoleProvider(args ArgsSuiToMu
 
 func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiversXBridge) error {
 	suiConfig := args.Configs.GeneralConfig.Sui
-
-	gasStationConfig := suiConfig.GasStation
-	argsGasStation := gasManagement.ArgsGasStation{
-		RequestURL:             gasStationConfig.URL,
-		RequestPollingInterval: time.Duration(gasStationConfig.PollingIntervalInSeconds) * time.Second,
-		RequestRetryDelay:      time.Duration(gasStationConfig.RequestRetryDelayInSeconds) * time.Second,
-		MaximumFetchRetries:    gasStationConfig.MaxFetchRetries,
-		RequestTime:            time.Duration(gasStationConfig.RequestTimeInSeconds) * time.Second,
-		MaximumGasPrice:        gasStationConfig.MaximumAllowedGasPrice,
-		GasPriceSelector:       core.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
-		GasPriceMultiplier:     gasStationConfig.GasPriceMultiplier,
-	}
-
-	gs, err := factory.CreateGasStation(argsGasStation, gasStationConfig.Enabled)
-	if err != nil {
-		return err
-	}
-
-	components.addClosableComponent(gs)
 
 	antifloodComponents, err := components.createAntifloodComponents(args.Configs.GeneralConfig.P2P.AntifloodConfig)
 	if err != nil {

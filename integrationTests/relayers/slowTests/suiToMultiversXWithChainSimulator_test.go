@@ -62,7 +62,7 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrorsSui(t *testing.T) {
 
 	suiUsdcToken := GenerateTestSuiUSDCToken()
 	suiUsdcToken.ChainType = currentChainType
-	suiUsdcToken.InitialSupplyValue = "1000000000"
+	suiUsdcToken.InitialSupplyValue = "2000000000"
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
