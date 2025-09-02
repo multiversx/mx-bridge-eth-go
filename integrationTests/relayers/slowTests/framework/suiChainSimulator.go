@@ -88,7 +88,7 @@ func (s *suiChainSimulatorWrapper) FundWallets(wallets [][]byte) {
 		if err != nil {
 			log.Error("error in suiChainSimulatorWrapper.FundWallets", "error", err)
 		}
-		log.Info("Funded wallet: ", string(wallet))
+		log.Info("Funded wallet: " + string(wallet))
 	}
 }
 
