@@ -1,7 +1,9 @@
 package factory
 
 import (
+	"encoding/hex"
 	"fmt"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"os"
 	"time"
 
@@ -174,14 +176,11 @@ func (components *suiMvxBridgeComponents) initBaseComponents(args ArgsBridgeComm
 func (components *suiMvxBridgeComponents) createSuiKeysAndAddresses(suiConfigs config.SuiConfig) error {
 	privKey, err := loadPrivateKeyFromFile(suiConfigs.PrivateKeyFile)
 	if err != nil {
-		return err
-	}
-	seed, err := getSeedFromPrivateKey(privKey)
-	if err != nil {
+		fmt.Println("Error loading private key from file:", err)
 		return err
 	}
 
-	components.suiSigner = signer.NewSigner(seed)
+	components.suiSigner = signer.NewSigner(privKey)
 	components.suiPackageId = suiConfigs.PackageId
 
 	return nil
@@ -537,12 +536,14 @@ func (components *suiMvxBridgeComponents) PeerChainRelayerAddress() string {
 	return components.suiSigner.Address
 }
 
-func loadPrivateKeyFromFile(path string) (string, error) {
+func loadPrivateKeyFromFile(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(data), nil
+
+	privKey := converters.TrimWhiteSpaceCharacters(string(data))
+	return hex.DecodeString(privKey)
 }
 
 func getSeedFromPrivateKey(privKey string) ([]byte, error) {
