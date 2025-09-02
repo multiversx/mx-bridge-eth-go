@@ -112,9 +112,9 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 		suiRelayersAddresses = append(suiRelayersAddresses, string(relayerKeys.SuiAddress))
 
 		pubKeyBytes := relayerKeys.SuiSK.Public().(ed25519.PublicKey)
-		var arr [32]byte //TODO
-		copy(arr[:], pubKeyBytes)
-		suiRelayersPubKeys = append(suiRelayersPubKeys, arr)
+		var pk [32]byte
+		copy(pk[:], pubKeyBytes)
+		suiRelayersPubKeys = append(suiRelayersPubKeys, pk)
 	}
 
 	bridgeIdBytes := handler.DeployContract(
@@ -292,7 +292,7 @@ func (handler *SuiHandler) PauseContractsForTokenChanges(ctx context.Context) {
 // IssueAndWhitelistToken will issue and whitelist the token on Sui
 func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams) {
 	coinPackageId, treasuryId, metadataId := handler.deployCoinContract(ctx)
-	suiTokenInfo := SuiTokenInfo{ //TODO
+	suiTokenInfo := SuiTokenInfo{
 		CoinPackageId:  coinPackageId,
 		TreasuryId:     treasuryId,
 		CoinMetadataId: metadataId,

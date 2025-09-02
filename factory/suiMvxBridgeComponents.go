@@ -264,7 +264,7 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 		Messenger:              args.Messenger,
 		Log:                    core.NewLoggerWithIdentifier(logger.GetOrCreate(broadcasterLogId), broadcasterLogId),
 		MultiversXRoleProvider: components.multiversXRoleProvider,
-		SignatureProcessor:     components.suiRoleProvider, // TODO
+		SignatureProcessor:     components.suiRoleProvider,
 		KeyGen:                 keyGen,
 		SingleSigner:           singleSigner,
 		PrivateKey:             components.multiversXRelayerPrivateKey,
@@ -277,7 +277,7 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 		return err
 	}
 
-	tokensMapper, err := mapper.NewSuiToMultiversXMapper(components.mxDataGetter) // TODO
+	tokensMapper, err := mapper.NewSuiToMultiversXMapper(components.mxDataGetter)
 	if err != nil {
 		return err
 	}
