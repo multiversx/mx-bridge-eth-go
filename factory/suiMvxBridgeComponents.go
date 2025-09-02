@@ -3,12 +3,10 @@ package factory
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"os"
 	"time"
 
 	"github.com/block-vision/sui-go-sdk/signer"
-	"github.com/btcsuite/btcd/btcutil/bech32"
 	"github.com/multiversx/mx-bridge-eth-go/bridges"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/disabled"
 	multiversxtoeth "github.com/multiversx/mx-bridge-eth-go/bridges/steps/fromMultiversX"
@@ -21,6 +19,7 @@ import (
 	suiClient "github.com/multiversx/mx-bridge-eth-go/clients/sui"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/p2p"
 	"github.com/multiversx/mx-bridge-eth-go/stateMachine"
 	"github.com/multiversx/mx-bridge-eth-go/status"
@@ -544,21 +543,4 @@ func loadPrivateKeyFromFile(path string) ([]byte, error) {
 
 	privKey := converters.TrimWhiteSpaceCharacters(string(data))
 	return hex.DecodeString(privKey)
-}
-
-func getSeedFromPrivateKey(privKey string) ([]byte, error) {
-	_, data, err := bech32.Decode(privKey)
-	if err != nil {
-		return nil, err
-	}
-	decoded, err := bech32.ConvertBits(data, 5, 8, false)
-	if err != nil {
-		return nil, err
-	}
-	if len(decoded) < 33 {
-		return nil, err
-	}
-
-	seed := decoded[1:33]
-	return seed, nil
 }
