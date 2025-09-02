@@ -10,20 +10,20 @@ import (
 type signaturesHolder struct {
 	mut            sync.RWMutex
 	signedMessages map[string]*core.SignedMessage
-	ethMessages    []*core.PeerChainSignature
+	peerMessages   []*core.PeerChainSignature
 }
 
 // NewSignatureHolder creates a new signatureHolder
 func NewSignatureHolder() *signaturesHolder {
 	return &signaturesHolder{
 		signedMessages: make(map[string]*core.SignedMessage),
-		ethMessages:    make([]*core.PeerChainSignature, 0),
+		peerMessages:   make([]*core.PeerChainSignature, 0),
 	}
 }
 
 // ProcessNewMessage will store the new messages
-func (sh *signaturesHolder) ProcessNewMessage(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
-	if msg == nil || ethMsg == nil {
+func (sh *signaturesHolder) ProcessNewMessage(msg *core.SignedMessage, peerMsg *core.PeerChainSignature) {
+	if msg == nil || peerMsg == nil {
 		return
 	}
 
@@ -31,7 +31,7 @@ func (sh *signaturesHolder) ProcessNewMessage(msg *core.SignedMessage, ethMsg *c
 	defer sh.mut.Unlock()
 
 	sh.signedMessages[msg.UniqueID()] = msg
-	sh.ethMessages = append(sh.ethMessages, ethMsg)
+	sh.peerMessages = append(sh.peerMessages, peerMsg)
 }
 
 // AllStoredSignatures will return the stored signatures
@@ -52,15 +52,15 @@ func (sh *signaturesHolder) Signatures(msgHash []byte) [][]byte {
 	sh.mut.RLock()
 	defer sh.mut.RUnlock()
 
-	uniqueEthSigs := make(map[string]struct{})
-	for _, ethMsg := range sh.ethMessages {
-		if bytes.Equal(ethMsg.MessageHash, msgHash) {
-			uniqueEthSigs[string(ethMsg.Signature)] = struct{}{}
+	uniquePeerSigs := make(map[string]struct{})
+	for _, peerMsg := range sh.peerMessages {
+		if bytes.Equal(peerMsg.MessageHash, msgHash) {
+			uniquePeerSigs[string(peerMsg.Signature)] = struct{}{}
 		}
 	}
 
 	result := make([][]byte, 0, len(sh.signedMessages))
-	for sig := range uniqueEthSigs {
+	for sig := range uniquePeerSigs {
 		result = append(result, []byte(sig))
 	}
 
@@ -73,7 +73,7 @@ func (sh *signaturesHolder) ClearStoredSignatures() {
 	defer sh.mut.Unlock()
 
 	sh.signedMessages = make(map[string]*core.SignedMessage)
-	sh.ethMessages = make([]*core.PeerChainSignature, 0)
+	sh.peerMessages = make([]*core.PeerChainSignature, 0)
 }
 
 // IsInterfaceNil returns true if there is no value under the interface
