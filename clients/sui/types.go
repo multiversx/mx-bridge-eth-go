@@ -19,7 +19,7 @@ type Deposit struct {
 	Nonce          uint64
 	TokenTypeBytes []byte
 	Amount         uint64
-	Sender         [32]byte
+	Sender         models.SuiAddressBytes
 	Recipient      []byte
 }
 

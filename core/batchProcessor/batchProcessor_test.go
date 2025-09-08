@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestExtractListEthToMvx(t *testing.T) {
+func TestExtractListToMvx(t *testing.T) {
 	t.Parallel()
 
 	testBatch := &bridgeCore.TransferBatch{
@@ -36,11 +36,11 @@ func TestExtractListEthToMvx(t *testing.T) {
 
 	args := ExtractListToMvx(testBatch)
 
-	expectedEthTokens := [][]byte{
+	expectedPeerTokens := [][]byte{
 		[]byte("source token 1"),
 		[]byte("source token 2"),
 	}
-	assert.Equal(t, expectedEthTokens, args.PeerTokens)
+	assert.Equal(t, expectedPeerTokens, args.PeerTokens)
 
 	expectedRecipients := [][]byte{
 		[]byte("to 1"),
@@ -67,7 +67,7 @@ func TestExtractListEthToMvx(t *testing.T) {
 	assert.Equal(t, expectedNonces, args.Nonces)
 }
 
-func TestExtractListMvxToEth(t *testing.T) {
+func TestExtractListFromMvx(t *testing.T) {
 	t.Parallel()
 
 	testBatch := &bridgeCore.TransferBatch{
@@ -95,11 +95,11 @@ func TestExtractListMvxToEth(t *testing.T) {
 
 	args := ExtractListFromMvx(testBatch)
 
-	expectedEthTokens := [][]byte{
+	expectedPeerTokens := [][]byte{
 		[]byte("destination token 1"),
 		[]byte("destination token 2"),
 	}
-	assert.Equal(t, expectedEthTokens, args.PeerTokens)
+	assert.Equal(t, expectedPeerTokens, args.PeerTokens)
 
 	expectedRecipients := [][]byte{
 		[]byte("to 1"),

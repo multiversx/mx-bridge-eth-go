@@ -36,7 +36,7 @@ func CreateRandomMultiversXSCAddress() sdkCore.AddressHandler {
 	return data.NewAddressFromBytes(append(firstPart, buff...))
 }
 
-// CreateRandomSuiAddressBytes will create a random Sui smart contract (object) or user address bytes
+// CreateRandomSuiAddressBytes will create a random Sui address bytes
 func CreateRandomSuiAddressBytes() [32]byte {
 	buff := make([]byte, 32)
 	_, _ = rand.Read(buff)

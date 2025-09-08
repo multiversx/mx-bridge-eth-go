@@ -32,25 +32,14 @@ func createMockSuiMultiversXBridgeArgs() ArgsSuiToMultiversXBridge {
 
 	cfg := config.Config{
 		Sui: config.SuiConfig{
-			Chain:                            chain.Sui,
-			NetworkAddress:                   "http://127.0.0.1:8545",
-			PrivateKeyFile:                   "testdata/grace.seed",
-			PackageId:                        "0xd85d37d10bb925c9e598169478c518f3da1090fbb8e027362e1c9c227f6fc4e0",
-			BridgeObjectId:                   "0x8e3dc49b158d7cd7a72720160b7e7aa0859cda4a7ebbcb4391dd4d7190777db1",
-			BridgeObjectInitialSharedVersion: 123456,
-			SafeObjectId:                     "0x80d7de9c4a56194087e0ba0bf59492aa8e6a5ee881606226930827085ddf2332",
-			SafeObjectInitialSharedVersion:   654321,
-			GasStation: config.GasStationConfig{
-				Enabled:                    true,
-				URL:                        "",
-				PollingIntervalInSeconds:   1,
-				RequestRetryDelayInSeconds: 1,
-				MaxFetchRetries:            3,
-				RequestTimeInSeconds:       1,
-				MaximumAllowedGasPrice:     100,
-				GasPriceSelector:           "FastGasPrice",
-				GasPriceMultiplier:         1,
-			},
+			Chain:                              chain.Sui,
+			NetworkAddress:                     "http://127.0.0.1:8545",
+			PrivateKeyFile:                     "testdata/grace.seed",
+			PackageId:                          "0xd85d37d10bb925c9e598169478c518f3da1090fbb8e027362e1c9c227f6fc4e0",
+			BridgeObjectId:                     "0x8e3dc49b158d7cd7a72720160b7e7aa0859cda4a7ebbcb4391dd4d7190777db1",
+			BridgeObjectInitialSharedVersion:   123456,
+			SafeObjectId:                       "0x80d7de9c4a56194087e0ba0bf59492aa8e6a5ee881606226930827085ddf2332",
+			SafeObjectInitialSharedVersion:     654321,
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,
 			ClientAvailabilityAllowDelta:       10,
@@ -196,15 +185,6 @@ func TestNewSuiMvxBridgeComponents(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, components)
 	})
-	t.Run("err on createSuiClient, invalid gas price selector", func(t *testing.T) {
-		t.Parallel()
-		args := createMockSuiMultiversXBridgeArgs()
-		args.Configs.GeneralConfig.Sui.GasStation.GasPriceSelector = core.WebServerOffString
-
-		components, err := NewSuiMvxBridgeComponents(args)
-		assert.NotNil(t, err)
-		assert.Nil(t, components)
-	})
 	t.Run("err missing state machine config", func(t *testing.T) {
 		t.Parallel()
 		args := createMockSuiMultiversXBridgeArgs()
@@ -251,7 +231,7 @@ func TestNewSuiMvxBridgeComponents(t *testing.T) {
 		components, err := NewSuiMvxBridgeComponents(args)
 		require.Nil(t, err)
 		require.NotNil(t, components)
-		require.Equal(t, 7, len(components.closableHandlers))
+		require.Equal(t, 6, len(components.closableHandlers))
 		require.False(t, check.IfNil(components.toMultiversXStatusHandler))
 		require.False(t, check.IfNil(components.fromMultiversXStatusHandler))
 	})
@@ -266,7 +246,7 @@ func TestSuiMultiversXBridgeComponents_StartAndCloseShouldWork(t *testing.T) {
 
 	err = components.Start()
 	assert.Nil(t, err)
-	assert.Equal(t, 7, len(components.closableHandlers))
+	assert.Equal(t, 6, len(components.closableHandlers))
 
 	time.Sleep(time.Second * 2) // allow go routines to start
 
@@ -422,5 +402,5 @@ func TestSuiMultiversXBridgeComponents_SuiRelayerAddresses(t *testing.T) {
 	args := createMockSuiMultiversXBridgeArgs()
 	components, _ := NewSuiMvxBridgeComponents(args)
 
-	assert.Equal(t, "0x6519752d8a59e2fe533dee6657ec96703a3886b99c372410baf89e89377eaf47", components.PeerChainRelayerAddress())
+	assert.Equal(t, "0xde91225b70964422bbaea44f2b77bf76e962eb7b1607039783bd2af31e96ce74", components.PeerChainRelayerAddress())
 }

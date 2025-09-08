@@ -127,34 +127,6 @@ func TestNewBaseComponents(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, components)
 	})
-	//t.Run("err on createMultiversXClient", func(t *testing.T) {
-	//	t.Parallel()
-	//	args := createMockBridgeCommonArgs()
-	//	args.Configs.GeneralConfig.MultiversX.GasMap = config.MultiversXGasMapConfig{}
-	//
-	//	components, err := NewBaseComponents(args)
-	//	assert.NotNil(t, err)
-	//	assert.Nil(t, components)
-	//})
-	//t.Run("err on createMultiversXRoleProvider", func(t *testing.T) {
-	//	t.Parallel()
-	//	args := createMockBridgeCommonArgs()
-	//	args.Configs.GeneralConfig.Relayer.RoleProvider.PollingIntervalInMillis = 0
-	//
-	//	components, err := NewBaseComponents(args)
-	//	assert.NotNil(t, err)
-	//	assert.Nil(t, components)
-	//})
-	//t.Run("err missing state machine config", func(t *testing.T) {
-	//	t.Parallel()
-	//	args := createMockBridgeCommonArgs()
-	//	args.Configs.GeneralConfig.StateMachine = make(map[string]config.ConfigStateMachine)
-	//
-	//	components, err := NewBaseComponents(args)
-	//	assert.True(t, errors.Is(err, errMissingConfig))
-	//	assert.True(t, strings.Contains(err.Error(), args.Configs.GeneralConfig.Eth.Chain.PeerChainToMultiversXName()))
-	//	assert.Nil(t, components)
-	//})
 	t.Run("invalid time for bootstrap", func(t *testing.T) {
 		t.Parallel()
 		args := createMockBridgeCommonArgs()

@@ -47,7 +47,7 @@ type ArgsSuiClient struct {
 
 type client struct {
 	*suiClientDataGetter
-	proxy            *sui.Client
+	proxy            Proxy
 	signer           *signer.Signer
 	packageId        string
 	safeObjectId     string
@@ -92,7 +92,7 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	c := &client{
-		proxy:                        args.Proxy.(*sui.Client),
+		proxy:                        args.Proxy,
 		signer:                       args.Signer,
 		suiClientDataGetter:          getter,
 		packageId:                    args.PackageId,
@@ -155,6 +155,11 @@ func checkArgs(args ArgsSuiClient) error {
 	return nil
 }
 
+func (c *client) getSuiClient() (*sui.Client, bool) {
+	suiClient, ok := c.proxy.(*sui.Client)
+	return suiClient, ok
+}
+
 // GetBatch returns the transfer batch by providing the nonce
 func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error) {
 	c.log.Info("Getting batch", "nonce", nonce)
@@ -179,16 +184,16 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 	cachedTokens := make(map[string][]byte)
 	for i := range deposits {
 		deposit := deposits[i]
-		toBytes := deposit.Recipient[:]
-		fromBytes := deposit.Sender
+		toBytes := deposit.Recipient
+		fromBytes := deposit.Sender[:]
 		tokenId := deposit.TokenTypeBytes
 
 		depositTransfer := &bridgeCore.DepositTransfer{
 			Nonce:            deposit.Nonce,
 			ToBytes:          toBytes,
 			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),
-			FromBytes:        fromBytes[:],
-			DisplayableFrom:  suiAddressFromBytes(fromBytes[:]),
+			FromBytes:        fromBytes,
+			DisplayableFrom:  suiAddressFromBytes(fromBytes),
 			SourceTokenBytes: tokenId,
 			DisplayableToken: "0x" + string(tokenId),
 			Amount:           big.NewInt(0).SetUint64(deposit.Amount),
@@ -363,8 +368,13 @@ func (c *client) ExecuteTransfer(
 		return "", err
 	}
 
+	suiClient, ok := c.getSuiClient()
+	if !ok {
+		return "", fmt.Errorf("proxy is not a concrete sui client")
+	}
+
 	tx := transaction.NewTransaction()
-	tx.SetSuiClient(c.proxy).
+	tx.SetSuiClient(suiClient).
 		SetSigner(c.signer).
 		SetSender(models.SuiAddress(c.relayerAddress)).
 		SetGasPrice(1000).

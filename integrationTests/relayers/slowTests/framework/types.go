@@ -27,7 +27,7 @@ type IssueTokenParams struct {
 	ValueToMintOnPeerChain string
 	IsMintBurnOnPeerChain  bool
 	IsNativeOnPeerChain    bool
-	ChainType              ChainType
+	PeerChainType          ChainType
 }
 
 // InitialSupplyParams represents the initial supply parameters

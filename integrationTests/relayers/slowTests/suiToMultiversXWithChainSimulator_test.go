@@ -16,11 +16,9 @@ import (
 
 func TestRelayersShouldExecuteTransfersSui(t *testing.T) {
 	walToken := GenerateTestWALToken()
-	walToken.ChainType = currentChainType
 	walToken.InitialSupplyValue = "1000000000"
 
 	suiUsdcToken := GenerateTestSuiUSDCToken()
-	suiUsdcToken.ChainType = currentChainType
 	suiUsdcToken.InitialSupplyValue = "1000000000"
 
 	_ = testRelayersWithChainSimulatorAndTokens(
@@ -57,11 +55,9 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrorsSui(t *testing.T) {
 	}()
 
 	walToken := GenerateTestWALToken()
-	walToken.ChainType = currentChainType
 	walToken.InitialSupplyValue = "1000000000"
 
 	suiUsdcToken := GenerateTestSuiUSDCToken()
-	suiUsdcToken.ChainType = currentChainType
 	suiUsdcToken.InitialSupplyValue = "2000000000"
 
 	_ = testRelayersWithChainSimulatorAndTokens(
@@ -110,7 +106,6 @@ func TestRelayersShouldNotExecuteTransfersSui(t *testing.T) {
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = false
 		badToken.HasChainSpecificToken = true
-		badToken.ChainType = currentChainType
 
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
@@ -122,7 +117,6 @@ func TestRelayersShouldNotExecuteTransfersSui(t *testing.T) {
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = true
 		badToken.HasChainSpecificToken = false
-		badToken.ChainType = currentChainType
 
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)

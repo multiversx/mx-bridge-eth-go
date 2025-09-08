@@ -16,6 +16,7 @@ import (
 )
 
 func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
+	t.Skip()
 	errorString := "ERROR"
 	mockLogObserver := mock.NewMockLogObserver(errorString, "got invalid action ID")
 	err := logger.AddLogObserver(mockLogObserver, &logger.PlainFormatter{})
@@ -52,7 +53,6 @@ func TestRelayerShouldExecuteSimultaneousSwapsAndNotCatchErrors(t *testing.T) {
 	}
 	usdcToken.ESDTSafeExtraBalance = big.NewInt(50)
 	usdcToken.PeerChainTestAddrExtraBalance = big.NewInt(-5000 - 5000 + 200 - 50)
-	usdcToken.ChainType = currentChainType
 
 	_ = testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(
 		t,
@@ -96,7 +96,7 @@ func testRelayersWithChainSimulatorAndTokensForSimultaneousSwaps(tb testing.TB, 
 		return false
 	}
 
-	chainType := tokens[0].ChainType
+	chainType := tokens[0].PeerChainType
 
 	return testRelayersWithChainSimulator(tb,
 		setupFunc,

@@ -37,6 +37,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeEthereum,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -79,6 +80,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            true,
 			IsNativeOnPeerChain:              false,
+			PeerChainType:                    framework.ChainTypeEthereum,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -121,6 +123,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            true,
 			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeEthereum,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -163,6 +166,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            true,
 			IsNativeOnPeerChain:              false,
+			PeerChainType:                    framework.ChainTypeEthereum,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -204,6 +208,7 @@ func GenerateTestSuiUSDCToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeSui,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -240,6 +245,7 @@ func GenerateTestWALToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeSui,
 		},
 		TestOperations: []framework.TokenOperations{
 			{

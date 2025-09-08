@@ -3,7 +3,6 @@ package sui
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -13,8 +12,8 @@ import (
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	"github.com/block-vision/sui-go-sdk/signer"
+	"github.com/block-vision/sui-go-sdk/transaction"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
-	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
@@ -27,16 +26,15 @@ import (
 )
 
 func createMockSuiClientArgs() ArgsSuiClient {
-	relayer := signer.NewSigner(seedBytes)
+	relayer := signer.NewSigner(bytes.Repeat([]byte{0x1}, 32))
 
 	return ArgsSuiClient{
 		Proxy:                      &interactors.SuiProxyStub{},
 		Log:                        logger.GetOrCreate("test"),
-		RelayerPrivateKey:          relayer.PriKey,
-		SafePackageId:              "0x674a8fc0a6b48c8efea86ad7ed962107c5c132a78e7cc79c9c5b9391ba8b6d83",
+		Signer:                     relayer,
+		PackageId:                  "0x674a8fc0a6b48c8efea86ad7ed962107c5c132a78e7cc79c9c5b9391ba8b6d83",
 		SafeObjectId:               "0x32c8ebf5853163472964ce226b194af05aa5f2e4cc47678924ebe538a1c88416",
 		SafeInitialSharedVersion:   425322,
-		BridgePackageId:            "0x19ecc8df0b93999f87b5e2e531bb80a49d1ab2f4644032cd31f2c53ed624c94a",
 		BridgeObjectId:             "0xe15513cc93d6efbfbdc7844df141b312bb677ee564a5838b7b22a891f9f05c65",
 		BridgeInitialSharedVersion: 982471,
 		TokensMapper: &bridgeTests.TokensMapperStub{
@@ -49,6 +47,31 @@ func createMockSuiClientArgs() ArgsSuiClient {
 		SignatureHolder:              &testsCommon.SignaturesHolderStub{},
 		ClientAvailabilityAllowDelta: 5,
 	}
+}
+
+func generateHashForTokenGroup(t *testing.T, batchID uint64, group *TokenTransferGroup) []byte {
+	var msg bytes.Buffer
+	enc := mystenbcs.NewEncoder(&msg)
+
+	err := enc.Encode(batchID)
+	assert.NoError(t, err)
+
+	for i := 0; i < len(group.Tokens); i++ {
+		err = enc.Encode(group.Tokens[i])
+		assert.NoError(t, err)
+
+		err = enc.Encode(group.Recipients[i])
+		assert.NoError(t, err)
+
+		err = enc.Encode(group.Amounts[i])
+		assert.NoError(t, err)
+
+		err = enc.Encode(group.Nonces[i])
+		assert.NoError(t, err)
+	}
+
+	expectedHash := blake2b.Sum256(msg.Bytes())
+	return expectedHash[:]
 }
 
 func TestNewSuiClient(t *testing.T) {
@@ -162,7 +185,7 @@ func TestClient_GetBatch(t *testing.T) {
 				if getBatchCalled == false {
 					getBatchCalled = true
 
-					res, _ := createResultsRawFromValues(dtos.Batch{
+					res, _ := createResultsRawFromValues(Batch{
 						Nonce:         batchNonce,
 						DepositsCount: 2,
 						TimestampMs:   100,
@@ -205,7 +228,7 @@ func TestClient_GetBatch(t *testing.T) {
 				if getBatchCalled == false {
 					getBatchCalled = true
 
-					res, _ := createResultsRawFromValues(dtos.Batch{
+					res, _ := createResultsRawFromValues(Batch{
 						Nonce:         batchNonce,
 						DepositsCount: 2,
 						TimestampMs:   100,
@@ -221,7 +244,7 @@ func TestClient_GetBatch(t *testing.T) {
 				}
 
 				// Simulate a call to get batch deposits
-				res, _ := createResultsRawFromValues(make([]dtos.Deposit, 4), true)
+				res, _ := createResultsRawFromValues(make([]Deposit, 4), true)
 				return models.SuiTransactionBlockResponse{
 					Effects: models.SuiEffects{
 						Status: models.ExecutionStatus{
@@ -255,10 +278,11 @@ func TestClient_GetBatch(t *testing.T) {
 				if wasGetBatchCalled == false {
 					wasGetBatchCalled = true
 
-					res, _ := createResultsRawFromValues(dtos.Batch{
-						Nonce:         batchNonce,
-						DepositsCount: 1,
-						TimestampMs:   100,
+					res, _ := createResultsRawFromValues(Batch{
+						Nonce:                  batchNonce,
+						DepositsCount:          1,
+						LastUpdatedTimestampMs: 90,
+						TimestampMs:            100,
 					}, true)
 					return models.SuiTransactionBlockResponse{
 						Effects: models.SuiEffects{
@@ -271,14 +295,13 @@ func TestClient_GetBatch(t *testing.T) {
 				}
 
 				// Second call for get_batch_deposits
-				deposits := []dtos.Deposit{
+				deposits := []Deposit{
 					{
-						Nonce:        42,
-						TokenAddress: "coin::Coin::0x1",
-						Amount:       1000,
-						Depositor:    bytes.Repeat([]byte{0x1}, 32),
-						Recipient:    bytes.Repeat([]byte{0x2}, 32),
-						Status:       uint8(1),
+						Nonce:          42,
+						TokenTypeBytes: []byte("1::coin::Coin"),
+						Amount:         1000,
+						Sender:         testsCommon.CreateRandomSuiAddressBytes(),
+						Recipient:      bytes.Repeat([]byte{0x2}, 32),
 					},
 				}
 				res, _ := createResultsRawFromValues(deposits, true)
@@ -319,7 +342,7 @@ func TestClient_GetBatch(t *testing.T) {
 				if wasGetBatchCalled == false {
 					wasGetBatchCalled = true
 
-					res, _ := createResultsRawFromValues(dtos.Batch{
+					res, _ := createResultsRawFromValues(Batch{
 						Nonce:                  batchNonce,
 						DepositsCount:          2,
 						LastUpdatedTimestampMs: 100,
@@ -336,33 +359,32 @@ func TestClient_GetBatch(t *testing.T) {
 				}
 
 				// Second call for get_batch_deposits
-				deposits := []dtos.Deposit{
+				deposits := []Deposit{
 					{
-						Nonce:        42,
-						TokenAddress: token1,
-						Amount:       20,
-						Depositor:    from1[:],
-						Recipient:    recipient1.AddressBytes(),
-						Status:       uint8(1),
+						Nonce:          42,
+						TokenTypeBytes: []byte(token1),
+						Amount:         20,
+						Sender:         from1,
+						Recipient:      recipient1.AddressBytes(),
 					},
 					{
-						Nonce:        43,
-						TokenAddress: token2,
-						Amount:       40,
-						Depositor:    from2[:],
-						Recipient:    recipient2.AddressBytes(),
-						Status:       uint8(2),
+						Nonce:          43,
+						TokenTypeBytes: []byte(token2),
+						Amount:         40,
+						Sender:         from2,
+						Recipient:      recipient2.AddressBytes(),
 					},
 				}
 				res, _ := createResultsRawFromValues(deposits, true)
-				return models.SuiTransactionBlockResponse{
+				x := models.SuiTransactionBlockResponse{
 					Effects: models.SuiEffects{
 						Status: models.ExecutionStatus{
 							Status: "success",
 						},
 					},
 					Results: res,
-				}, nil
+				}
+				return x, nil
 			},
 		}
 
@@ -377,22 +399,22 @@ func TestClient_GetBatch(t *testing.T) {
 					ToBytes:               recipient1.AddressBytes(),
 					DisplayableTo:         bech32Recipient1Address,
 					FromBytes:             from1[:],
-					DisplayableFrom:       hex.EncodeToString(from1[:]),
+					DisplayableFrom:       suiAddressFromBytes(from1[:]),
 					SourceTokenBytes:      []byte(token1),
-					DisplayableToken:      token1,
+					DisplayableToken:      "0x" + token1,
 					Amount:                big.NewInt(20),
-					DestinationTokenBytes: append([]byte("SUI"), token1[:]...),
+					DestinationTokenBytes: append([]byte("SUI"), AppendLengthToData([]byte("0x"+token1))...),
 				},
 				{
 					Nonce:                 43,
 					ToBytes:               recipient2.AddressBytes(),
 					DisplayableTo:         bech32Recipient2Address,
 					FromBytes:             from2[:],
-					DisplayableFrom:       hex.EncodeToString(from2[:]),
+					DisplayableFrom:       suiAddressFromBytes(from2[:]),
 					SourceTokenBytes:      []byte(token2),
-					DisplayableToken:      token2,
+					DisplayableToken:      "0x" + token2,
 					Amount:                big.NewInt(40),
-					DestinationTokenBytes: append([]byte("SUI"), token2[:]...),
+					DestinationTokenBytes: append([]byte("SUI"), AppendLengthToData([]byte("0x"+token2))...),
 				},
 			},
 			Statuses: make([]byte, 2),
@@ -424,7 +446,7 @@ func TestClient_GetBatch(t *testing.T) {
 				if wasGetBatchCalled == false {
 					wasGetBatchCalled = true
 
-					res, _ := createResultsRawFromValues(dtos.Batch{
+					res, _ := createResultsRawFromValues(Batch{
 						Nonce:                  batchNonce,
 						DepositsCount:          2,
 						LastUpdatedTimestampMs: 100,
@@ -441,22 +463,20 @@ func TestClient_GetBatch(t *testing.T) {
 				}
 
 				// Second call for get_batch_deposits
-				deposits := []dtos.Deposit{
+				deposits := []Deposit{
 					{
-						Nonce:        42,
-						TokenAddress: token1,
-						Amount:       20,
-						Depositor:    from1[:],
-						Recipient:    recipient1.AddressBytes(),
-						Status:       uint8(1),
+						Nonce:          42,
+						TokenTypeBytes: []byte(token1),
+						Amount:         20,
+						Sender:         from1,
+						Recipient:      recipient1.AddressBytes(),
 					},
 					{
-						Nonce:        43,
-						TokenAddress: token2,
-						Amount:       40,
-						Depositor:    from2[:],
-						Recipient:    recipient2.AddressBytes(),
-						Status:       uint8(2),
+						Nonce:          43,
+						TokenTypeBytes: []byte(token2),
+						Amount:         40,
+						Sender:         from2,
+						Recipient:      recipient2.AddressBytes(),
 					},
 				}
 				res, _ := createResultsRawFromValues(deposits, true)
@@ -482,22 +502,22 @@ func TestClient_GetBatch(t *testing.T) {
 					ToBytes:               recipient1.AddressBytes(),
 					DisplayableTo:         bech32Recipient1Address,
 					FromBytes:             from1[:],
-					DisplayableFrom:       hex.EncodeToString(from1[:]),
+					DisplayableFrom:       suiAddressFromBytes(from1[:]),
 					SourceTokenBytes:      []byte(token1),
-					DisplayableToken:      token1,
+					DisplayableToken:      "0x" + token1,
 					Amount:                big.NewInt(20),
-					DestinationTokenBytes: append([]byte("SUI"), token1[:]...),
+					DestinationTokenBytes: append([]byte("SUI"), AppendLengthToData([]byte("0x"+token1))...),
 				},
 				{
 					Nonce:                 43,
 					ToBytes:               recipient2.AddressBytes(),
 					DisplayableTo:         bech32Recipient2Address,
 					FromBytes:             from2[:],
-					DisplayableFrom:       hex.EncodeToString(from2[:]),
+					DisplayableFrom:       suiAddressFromBytes(from2[:]),
 					SourceTokenBytes:      []byte(token2),
-					DisplayableToken:      token2,
+					DisplayableToken:      "0x" + token2,
 					Amount:                big.NewInt(40),
-					DestinationTokenBytes: append([]byte("SUI"), token2[:]...),
+					DestinationTokenBytes: append([]byte("SUI"), AppendLengthToData([]byte("0x"+token2))...),
 				},
 			},
 			Statuses: make([]byte, 2),
@@ -514,44 +534,15 @@ func TestClient_GetBatch(t *testing.T) {
 func TestClient_BroadcastSignatureForMessageHash(t *testing.T) {
 	t.Parallel()
 
-	t.Run("sign failed should not broadcast", func(t *testing.T) {
-		t.Parallel()
-
-		expectedError := errors.New("expected error")
-		msgToSign := []byte("message to sign")
-		args := createMockSuiClientArgs()
-		c, _ := NewSuiClient(args)
-
-		c.txHandler = &bridgeTests.SuiTxHandlerStub{
-			SignCalled: func(msg []byte) ([]byte, error) {
-				assert.Equal(t, msgToSign, msg)
-				return nil, expectedError
-			},
-		}
-		c.broadcaster = &testsCommon.BroadcasterStub{
-			BroadcastSignatureCalled: func(signature []byte, messageHash []byte) {
-				assert.Fail(t, "should have not called broadcast")
-			},
-		}
-
-		c.BroadcastSignatureForMessageHash(msgToSign)
-	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
-		expectedSig := "expected sig"
+		expectedSig := "ACPnde90uco6f/ISc8tgB5luaNU+bONOvDeLBh7vMhtpJT2ebziR+1U5YetJA1vKzrFbok24CcGAbt/xOJQvEAGKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXA=="
+		msgToSign := bytes.Repeat([]byte{'a'}, 32)
 		broadcastCalled := false
-
-		msgToSign := []byte("message to sign")
 		args := createMockSuiClientArgs()
 		c, _ := NewSuiClient(args)
 
-		c.txHandler = &bridgeTests.SuiTxHandlerStub{
-			SignCalled: func(msg []byte) ([]byte, error) {
-				assert.Equal(t, msgToSign, msg)
-				return []byte(expectedSig), nil
-			},
-		}
 		c.broadcaster = &testsCommon.BroadcasterStub{
 			BroadcastSignatureCalled: func(signature []byte, message []byte) {
 				assert.Equal(t, msgToSign, message)
@@ -602,40 +593,50 @@ func TestClient_CheckRequiredBalance(t *testing.T) {
 
 	t.Run("get balance fails should error", func(t *testing.T) {
 		expectedErr := errors.New("expected error GetBalance")
-		c, _ := NewSuiClient(args)
-		c.proxy = &interactors.SuiProxyStub{
-			SuiXGetBalanceCalled: func(ctx context.Context, req models.SuiXGetBalanceRequest) (models.CoinBalanceResponse, error) {
-				return models.CoinBalanceResponse{}, expectedErr
+		args.Proxy = &interactors.SuiProxyStub{
+			SuiDevInspectTransactionBlockCalled: func(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
+				return models.SuiTransactionBlockResponse{}, expectedErr
 			},
 		}
+		c, _ := NewSuiClient(args)
 
 		err := c.CheckRequiredBalance(context.Background(), coinType, balance)
 		assert.True(t, errors.Is(err, expectedErr))
 	})
 	t.Run("not enough coins", func(t *testing.T) {
-		c, _ := NewSuiClient(args)
-		c.proxy = &interactors.SuiProxyStub{
-			SuiXGetBalanceCalled: func(ctx context.Context, req models.SuiXGetBalanceRequest) (models.CoinBalanceResponse, error) {
-				return models.CoinBalanceResponse{
-					CoinType:     string(coinType),
-					TotalBalance: balance.String(),
+		args.Proxy = &interactors.SuiProxyStub{
+			SuiDevInspectTransactionBlockCalled: func(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
+				res, _ := createResultsRawFromValues(balance.Uint64())
+				return models.SuiTransactionBlockResponse{
+					Effects: models.SuiEffects{
+						Status: models.ExecutionStatus{
+							Status: "success",
+						},
+					},
+					Results: res,
 				}, nil
 			},
 		}
+		c, _ := NewSuiClient(args)
 
 		err := c.CheckRequiredBalance(context.Background(), coinType, big.NewInt(0).Add(balance, big.NewInt(1)))
 		assert.True(t, errors.Is(err, errInsufficientCoinBalance))
 	})
 	t.Run("should work", func(t *testing.T) {
-		c, _ := NewSuiClient(args)
-		c.proxy = &interactors.SuiProxyStub{
-			SuiXGetBalanceCalled: func(ctx context.Context, req models.SuiXGetBalanceRequest) (models.CoinBalanceResponse, error) {
-				return models.CoinBalanceResponse{
-					CoinType:     string(coinType),
-					TotalBalance: balance.String(),
+		args.Proxy = &interactors.SuiProxyStub{
+			SuiDevInspectTransactionBlockCalled: func(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
+				res, _ := createResultsRawFromValues(balance.Uint64())
+				return models.SuiTransactionBlockResponse{
+					Effects: models.SuiEffects{
+						Status: models.ExecutionStatus{
+							Status: "success",
+						},
+					},
+					Results: res,
 				}, nil
 			},
 		}
+		c, _ := NewSuiClient(args)
 
 		err := c.CheckRequiredBalance(context.Background(), coinType, balance)
 		assert.Nil(t, err)
@@ -731,7 +732,38 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 		assert.True(t, errors.Is(err, clients.ErrNilBatch))
 	})
 
-	t.Run("should return correct hash for valid input", func(t *testing.T) {
+	t.Run("should return correct hash for batch with same token deposits", func(t *testing.T) {
+		args := createMockSuiClientArgs()
+		c, _ := NewSuiClient(args)
+
+		batch := &batchProcessor.ArgListsBatch{
+			PeerTokens:    [][]byte{[]byte("token1"), []byte("token1")},
+			Recipients:    [][]byte{[]byte("recipient1"), []byte("recipient2")},
+			MvxTokenBytes: [][]byte{[]byte("mvxToken1"), []byte("mvxToken1")},
+			Amounts:       []*big.Int{big.NewInt(100), big.NewInt(200)},
+			Nonces:        []*big.Int{big.NewInt(1), big.NewInt(2)},
+			Direction:     batchProcessor.FromMultiversX,
+		}
+		batchID := uint64(123)
+
+		suiAddress1 := suiAddressFromBytes(batch.Recipients[0])
+		suiAddressBytes1, _ := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress1))
+
+		suiAddress2 := suiAddressFromBytes(batch.Recipients[1])
+		suiAddressBytes2, _ := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress2))
+
+		expectedHash := generateHashForTokenGroup(t, batchID, &TokenTransferGroup{
+			Tokens:     [][]byte{batch.PeerTokens[0], batch.PeerTokens[1]},
+			Recipients: []models.SuiAddressBytes{*suiAddressBytes1, *suiAddressBytes2},
+			Amounts:    []uint64{batch.Amounts[0].Uint64(), batch.Amounts[1].Uint64()},
+			Nonces:     []uint64{batch.Nonces[0].Uint64(), batch.Nonces[1].Uint64()},
+		})
+
+		hash, err := c.GenerateMessageHash(batch, batchID)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedHash, hash)
+	})
+	t.Run("should return correct hash for batch with deposits with different tokens", func(t *testing.T) {
 		args := createMockSuiClientArgs()
 		c, _ := NewSuiClient(args)
 
@@ -739,38 +771,323 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 			PeerTokens:    [][]byte{[]byte("token1"), []byte("token2")},
 			Recipients:    [][]byte{[]byte("recipient1"), []byte("recipient2")},
 			MvxTokenBytes: [][]byte{[]byte("mvxToken1"), []byte("mvxToken2")},
-			Amounts:       []*big.Int{big.NewInt(100), big.NewInt(200)},
-			Nonces:        []*big.Int{big.NewInt(1), big.NewInt(2)},
+			Amounts:       []*big.Int{big.NewInt(900), big.NewInt(560)},
+			Nonces:        []*big.Int{big.NewInt(640), big.NewInt(310)},
 			Direction:     batchProcessor.FromMultiversX,
 		}
-		batchID := uint64(123)
+		batchID := uint64(456)
 
-		uint64Amounts := make([]uint64, 0, len(batch.Amounts))
-		for _, amount := range batch.Amounts {
-			uint64Amounts = append(uint64Amounts, amount.Uint64())
-		}
+		suiAddress1 := suiAddressFromBytes(batch.Recipients[0])
+		suiAddressBytes1, _ := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress1))
 
-		uint64Nonces := make([]uint64, 0, len(batch.Nonces))
-		for _, nonce := range batch.Nonces {
-			uint64Nonces = append(uint64Nonces, nonce.Uint64())
-		}
+		suiAddress2 := suiAddressFromBytes(batch.Recipients[1])
+		suiAddressBytes2, _ := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress2))
 
-		expectedData := batchProcessor.SuiTransferData{
-			Recipients: batch.Recipients,
-			SuiTokens:  batch.PeerTokens,
-			Amounts:    uint64Amounts,
-			Nonces:     uint64Nonces,
-			BatchId:    batchID,
-		}
+		var expectedHash []byte
+		expectedHashForToken1 := generateHashForTokenGroup(t, batchID, &TokenTransferGroup{
+			Tokens:     [][]byte{batch.PeerTokens[0]},
+			Recipients: []models.SuiAddressBytes{*suiAddressBytes1},
+			Amounts:    []uint64{batch.Amounts[0].Uint64()},
+			Nonces:     []uint64{batch.Nonces[0].Uint64()},
+		})
+		expectedHash = append(expectedHash, expectedHashForToken1...)
 
-		expectedBytes, err := mystenbcs.Marshal(expectedData)
-		assert.NoError(t, err)
-
-		expectedHash := blake2b.Sum256(expectedBytes)
+		expectedHashForToken2 := generateHashForTokenGroup(t, batchID, &TokenTransferGroup{
+			Tokens:     [][]byte{batch.PeerTokens[1]},
+			Recipients: []models.SuiAddressBytes{*suiAddressBytes2},
+			Amounts:    []uint64{batch.Amounts[1].Uint64()},
+			Nonces:     []uint64{batch.Nonces[1].Uint64()},
+		})
+		expectedHash = append(expectedHash, expectedHashForToken2...)
 
 		hash, err := c.GenerateMessageHash(batch, batchID)
 		assert.NoError(t, err)
-		assert.Equal(t, expectedHash[:], hash)
+		assert.True(t, bytes.Contains(hash, expectedHashForToken1))
+		assert.True(t, bytes.Contains(hash, expectedHashForToken2))
+		assert.Equal(t, len(expectedHashForToken1)+len(expectedHashForToken2), len(hash))
+	})
+}
+
+func TestClient_ExecuteTransfer(t *testing.T) {
+	t.Parallel()
+
+	args := createMockSuiClientArgs()
+	batch := &core.TransferBatch{
+		ID: 332,
+		Deposits: []*core.DepositTransfer{
+			{
+				Nonce:                 10,
+				ToBytes:               []byte("to1"),
+				DisplayableTo:         "to1",
+				FromBytes:             []byte("from1"),
+				DisplayableFrom:       "from1",
+				SourceTokenBytes:      []byte("source token1"),
+				DisplayableToken:      "token1",
+				Amount:                big.NewInt(20),
+				DestinationTokenBytes: []byte("SUItoken1"),
+			},
+			{
+				Nonce:                 30,
+				ToBytes:               []byte("to2"),
+				DisplayableTo:         "to2",
+				FromBytes:             []byte("from2"),
+				DisplayableFrom:       "from2",
+				SourceTokenBytes:      []byte("source token2"),
+				DisplayableToken:      "token2",
+				Amount:                big.NewInt(40),
+				DestinationTokenBytes: []byte("SUItoken2"),
+			},
+		},
+		Statuses: make([]byte, 2),
+	}
+	argLists := batchProcessor.ExtractListFromMvx(batch)
+	signatures := make([][]byte, 10)
+	for i := range signatures {
+		signatures[i] = []byte(fmt.Sprintf("sig %d", i))
+	}
+
+	t.Run("nil batch", func(t *testing.T) {
+		c, _ := NewSuiClient(args)
+		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, nil, 0, 10)
+		assert.Equal(t, "", hash)
+		assert.True(t, errors.Is(err, clients.ErrNilBatch))
+	})
+	t.Run("check if the contract is paused fails", func(t *testing.T) {
+		expectedErr := errors.New("expected error is paused")
+		c, _ := NewSuiClient(args)
+		c.suiClientDataGetter.proxy = createFailMockProxy(expectedErr)
+		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, argLists, batch.ID, 10)
+		assert.Equal(t, "", hash)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("contract is paused should error", func(t *testing.T) {
+		c, _ := NewSuiClient(args)
+		values, err := createResultsRawFromValues(true)
+		assert.NoError(t, err)
+		c.suiClientDataGetter.proxy = createMockProxy(values)
+		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, argLists, batch.ID, 10)
+		assert.Equal(t, "", hash)
+		assert.True(t, errors.Is(err, clients.ErrMultisigContractPaused))
+	})
+	t.Run("not enough quorum", func(t *testing.T) {
+		c, _ := NewSuiClient(args)
+
+		values, err := createResultsRawFromValues(false)
+		assert.NoError(t, err)
+
+		c.suiClientDataGetter.proxy = createMockProxy(values)
+		c.signatureHolder = &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return signatures[:9]
+			},
+		}
+		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, argLists, batch.ID, 10)
+		assert.Equal(t, "", hash)
+		assert.True(t, errors.Is(err, clients.ErrQuorumNotReached))
+		assert.True(t, strings.Contains(err.Error(), "num signatures: 9, quorum: 10"))
+	})
+	t.Run("error getting gas coin", func(t *testing.T) {
+		expectedErr := errors.New("expected error")
+		c, _ := NewSuiClient(args)
+
+		values, err := createResultsRawFromValues(false)
+		assert.NoError(t, err)
+
+		c.signatureHolder = &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return signatures
+			},
+		}
+		c.suiClientDataGetter.proxy = &interactors.SuiProxyStub{
+			SuiDevInspectTransactionBlockCalled: func(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
+				return models.SuiTransactionBlockResponse{
+					Effects: models.SuiEffects{
+						Status: models.ExecutionStatus{
+							Status: "success",
+						},
+					},
+					Results: values,
+				}, nil
+			},
+			SuiXGetCoinsCalled: func(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error) {
+				return models.PaginatedCoinsResponse{}, expectedErr
+			},
+		}
+		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, argLists, batch.ID, 10)
+		assert.Equal(t, "", hash)
+		assert.True(t, errors.Is(err, expectedErr))
+	})
+	t.Run("relayer has no coins for gas", func(t *testing.T) {
+		c, _ := NewSuiClient(args)
+
+		values, err := createResultsRawFromValues(false)
+		assert.NoError(t, err)
+
+		c.signatureHolder = &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return signatures
+			},
+		}
+		c.suiClientDataGetter.proxy = &interactors.SuiProxyStub{
+			SuiDevInspectTransactionBlockCalled: func(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
+				return models.SuiTransactionBlockResponse{
+					Effects: models.SuiEffects{
+						Status: models.ExecutionStatus{
+							Status: "success",
+						},
+					},
+					Results: values,
+				}, nil
+			},
+			SuiXGetCoinsCalled: func(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error) {
+				return models.PaginatedCoinsResponse{
+					Data: []models.CoinData{},
+				}, nil
+			},
+		}
+		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, argLists, batch.ID, 10)
+		assert.Equal(t, "", hash)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), c.relayerAddress)
+	})
+	t.Run("execute transfer errors", func(t *testing.T) {
+		expectedErr := errors.New("expected error execute transfer")
+
+		values, err := createResultsRawFromValues(false)
+		assert.NoError(t, err)
+
+		c, _ := NewSuiClient(args)
+		c.signatureHolder = &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return signatures[:9]
+			},
+		}
+		c.suiClientDataGetter.proxy = &interactors.SuiProxyStub{
+			SuiDevInspectTransactionBlockCalled: func(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
+				return models.SuiTransactionBlockResponse{
+					Effects: models.SuiEffects{
+						Status: models.ExecutionStatus{
+							Status: "success",
+						},
+					},
+					Results: values,
+				}, nil
+			},
+			SuiXGetCoinsCalled: func(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error) {
+				return models.PaginatedCoinsResponse{
+					Data: []models.CoinData{
+						{
+							CoinObjectId:        "0x0e82989b575d6ebb4e7f6062f5463bdd1cce9db77b9f34ac923b90031765fddf",
+							Version:             "1",
+							Digest:              "4Nd1mHZtwVaFgqsSVBz3tH6KvXZcG1oMqezLh8u6BbhE",
+							Balance:             "100000",
+							CoinType:            "0x2::sui::SUI",
+							PreviousTransaction: "9rS8PZyT1QK5qLgN",
+						},
+					},
+					NextCursor:  "",
+					HasNextPage: false,
+				}, nil
+			},
+			SuiExecuteTransactionBlockCalled: func(ctx context.Context, req models.SuiExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
+				return models.SuiTransactionBlockResponse{
+					Effects: models.SuiEffects{
+						Status: models.ExecutionStatus{
+							Status: "failed",
+							Error:  expectedErr.Error(),
+						},
+					},
+				}, expectedErr
+			},
+		}
+
+		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, argLists, batch.ID, 9)
+		assert.Equal(t, "", hash)
+		assert.Equal(t, expectedErr, err)
+	})
+	t.Run("should work - same number of signatures as quorum", func(t *testing.T) {
+		c, _ := NewSuiClient(args)
+		c.signatureHolder = &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return signatures[:9]
+			},
+		}
+		wasCalled := false
+		c.proxy = &interactors.SuiProxyStub{
+			SuiXGetCoinsCalled: func(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error) {
+				return models.PaginatedCoinsResponse{
+					Data: []models.CoinData{
+						{
+							CoinObjectId:        "0x123",
+							Version:             "1",
+							Digest:              "0x456",
+							Balance:             "100000",
+							CoinType:            "0x2::sui::SUI",
+							PreviousTransaction: "0x789",
+						},
+					},
+					NextCursor:  "",
+					HasNextPage: false,
+				}, nil
+			},
+			SuiExecuteTransactionBlockCalled: func(ctx context.Context, req models.SuiExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
+				wasCalled = true
+				return models.SuiTransactionBlockResponse{
+					Effects: models.SuiEffects{
+						Status: models.ExecutionStatus{
+							Status: "success",
+						},
+					},
+				}, nil
+			},
+		}
+
+		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, argLists, batch.ID, 9)
+		assert.Equal(t, "0xc5b2c658f5fa236c598a6e7fbf7f21413dc42e2a41dd982eb772b30707cba2eb", hash)
+		assert.Nil(t, err)
+		assert.True(t, wasCalled)
+	})
+	t.Run("should work - more signatures should trim", func(t *testing.T) {
+		c, _ := NewSuiClient(args)
+		c.signatureHolder = &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return signatures[:9]
+			},
+		}
+		wasCalled := false
+		c.proxy = &interactors.SuiProxyStub{
+			SuiXGetCoinsCalled: func(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error) {
+				return models.PaginatedCoinsResponse{
+					Data: []models.CoinData{
+						{
+							CoinObjectId:        "0x123",
+							Version:             "1",
+							Digest:              "0x456",
+							Balance:             "100000",
+							CoinType:            "0x2::sui::SUI",
+							PreviousTransaction: "0x789",
+						},
+					},
+					NextCursor:  "",
+					HasNextPage: false,
+				}, nil
+			},
+			SuiExecuteTransactionBlockCalled: func(ctx context.Context, req models.SuiExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
+				wasCalled = true
+				return models.SuiTransactionBlockResponse{
+					Effects: models.SuiEffects{
+						Status: models.ExecutionStatus{
+							Status: "success",
+						},
+					},
+				}, nil
+			},
+		}
+
+		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, argLists, batch.ID, 5)
+		assert.Equal(t, "0xc5b2c658f5fa236c598a6e7fbf7f21413dc42e2a41dd982eb772b30707cba2eb", hash)
+		assert.Nil(t, err)
+		assert.True(t, wasCalled)
 	})
 }
 
@@ -932,7 +1249,7 @@ func TestClient_CheckClientAvailability(t *testing.T) {
 	})
 	t.Run("get current checkpoint errors", func(t *testing.T) {
 		resetClient(c)
-		c.proxy = &interactors.SuiProxyStub{
+		c.suiClientDataGetter.proxy = &interactors.SuiProxyStub{
 			SuiGetLatestCheckpointSequenceNumberCalled: func(ctx context.Context) (uint64, error) {
 				return 0, expectedErr
 			},

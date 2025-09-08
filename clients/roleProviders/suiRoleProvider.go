@@ -71,7 +71,11 @@ func (srp *suiRoleProvider) processResults(results []models.SuiAddress) error {
 	currentList := make([]string, 0, len(results))
 	temporaryMap := make(map[string]struct{})
 
-	for _, result := range results {
+	for i, result := range results {
+		isValid := srp.isValidSuiAddress(result)
+		if !isValid {
+			return fmt.Errorf("%w for index %d, malformed address: %s", ErrInvalidSuiAddress, i, result)
+		}
 		currentList = append(currentList, string(result))
 		temporaryMap[string(result)] = struct{}{}
 	}
@@ -85,18 +89,22 @@ func (srp *suiRoleProvider) processResults(results []models.SuiAddress) error {
 	return nil
 }
 
+func (srp *suiRoleProvider) isValidSuiAddress(address models.SuiAddress) bool {
+	return len(address) == 66 && strings.HasPrefix(string(address), "0x")
+}
+
 // VerifySignature will verify the provided signature against the message hash. It will also checks if the
 // public key is whitelisted or not
 func (srp *suiRoleProvider) VerifySignature(signature []byte, messageHash []byte) error {
-	fmt.Println("Verifying signature:", string(signature), "for message hash:", hex.EncodeToString(messageHash))
+	srp.log.Debug("Verifying:", "signature", string(signature), "for message hash:", hex.EncodeToString(messageHash))
 	if len(signature)%signatureSize != 0 {
-		return fmt.Errorf("invalid array of signatures: expected a multiple of %d, got %d", signatureSize, len(signature))
+		return fmt.Errorf("%w: expected a multiple of %d, got %d", ErrInvalidSignaturesArray, signatureSize, len(signature))
 	}
 	if len(messageHash)%messageSize != 0 {
-		return fmt.Errorf("invalid array of message hashes: expected a multiple of %d, got %d", messageSize, len(messageHash))
+		return fmt.Errorf("%w: expected a multiple of %d, got %d", ErrInvalidMessagesArray, messageSize, len(messageHash))
 	}
-	if len(signature)%signatureSize != len(messageHash)%messageSize {
-		return fmt.Errorf("number of signatures (%d) does not match number of message hashes (%d)", len(signature)/signatureSize, len(messageHash)/messageSize)
+	if len(signature)/signatureSize != len(messageHash)/messageSize {
+		return fmt.Errorf("%w: number of signatures (%d), number of message hashes (%d)", ErrInvalidSignaturesCount, len(signature)/signatureSize, len(messageHash)/messageSize)
 	}
 
 	n := len(signature) / signatureSize
