@@ -3,6 +3,8 @@ package sui
 import (
 	"context"
 	"github.com/block-vision/sui-go-sdk/models"
+	"github.com/block-vision/sui-go-sdk/transaction"
+	"github.com/multiversx/mx-bridge-eth-go/core"
 )
 
 // Proxy defines the operations for a component that can act as a proxy to interact with the Sui blockchain
@@ -11,11 +13,17 @@ type Proxy interface {
 	Publish(ctx context.Context, req models.PublishRequest) (models.TxnMetaData, error)
 	SuiGetLatestCheckpointSequenceNumber(ctx context.Context) (uint64, error)
 	SuiXGetBalance(ctx context.Context, req models.SuiXGetBalanceRequest) (models.CoinBalanceResponse, error)
+	SuiXGetOwnedObjects(ctx context.Context, req models.SuiXGetOwnedObjectsRequest) (models.PaginatedObjectsResponse, error)
 	SuiDevInspectTransactionBlock(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
 	SuiXGetCoins(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error)
 	SplitCoin(ctx context.Context, req models.SplitCoinRequest) (models.TxnMetaData, error)
 	MoveCall(ctx context.Context, req models.MoveCallRequest) (models.TxnMetaData, error)
 	SignAndExecuteTransactionBlock(ctx context.Context, req models.SignAndExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
+	TransferObject(ctx context.Context, req models.TransferObjectRequest) (models.TxnMetaData, error)
+}
+
+type txHandler interface {
+	SendTransactionReturnHash(ctx context.Context, gasCoin *transaction.SuiObjectRef, calls []core.SuiPTBOperation) (string, error)
 }
 
 // TokensMapper can convert a token bytes from one chain to another

@@ -262,6 +262,44 @@ func GenerateTestWALToken() framework.TestTokenParams {
 	}
 }
 
+func GenerateTestLKXMNToken() framework.TestTokenParams {
+	// LKXMN is peerChainNative = true, peerChainMintBurn = true, mvxNative = false, mvxMintBurn = true
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "LKXMN",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "LKXMN",
+			MvxChainSpecificTokenTicker:      "SUILKXMN",
+			MvxUniversalTokenDisplayName:     "WrappedLKXMN",
+			MvxChainSpecificTokenDisplayName: "SuiWrappedLKXMN",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            false,
+			PeerChainTokenName:               "xMoney",
+			PeerChainTokenSymbol:             "LKXMN",
+			ValueToMintOnPeerChain:           "0",
+			IsMintBurnOnPeerChain:            true,
+			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeSui,
+			IsLocked:                         true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(1550),
+			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(4650),
+			},
+		},
+		ESDTSafeExtraBalance:          big.NewInt(100),                   // extra is just for the fees for the 2 transfers mvx->peerChain
+		PeerChainTestAddrExtraBalance: big.NewInt(1550 - 50 + 4650 - 50), // -(peerChain->mvx) + (mvx->peerChain) - fees
+	}
+}
+
 func createScCallData(function string, gasLimit uint64, args ...string) []byte {
 	codec := testsCommon.TestMultiversXCodec{}
 	callData := parsers.CallData{

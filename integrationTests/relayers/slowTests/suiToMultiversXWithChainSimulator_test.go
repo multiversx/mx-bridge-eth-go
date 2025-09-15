@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRelayersShouldExecuteTransfersSui(t *testing.T) {
+func TestRelayersShouldExecuteTransfersWithCoins(t *testing.T) {
 	walToken := GenerateTestWALToken()
 	walToken.InitialSupplyValue = "1000000000"
 
@@ -26,6 +26,17 @@ func TestRelayersShouldExecuteTransfersSui(t *testing.T) {
 		make(chan error),
 		walToken,
 		suiUsdcToken,
+	)
+}
+
+func TestRelayersShouldExecuteTransfersWithTokens(t *testing.T) {
+	xmnToken := GenerateTestLKXMNToken()
+	xmnToken.InitialSupplyValue = "1000000000"
+
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		xmnToken,
 	)
 }
 
@@ -82,6 +93,7 @@ func createSuiBadToken() framework.TestTokenParams {
 			PeerChainTokenName:               "SUITOKEN",
 			PeerChainTokenSymbol:             "SUIT",
 			ValueToMintOnPeerChain:           "10000000000",
+			PeerChainType:                    framework.ChainTypeSui,
 		},
 		TestOperations: []framework.TokenOperations{
 			{

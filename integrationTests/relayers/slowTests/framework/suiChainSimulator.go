@@ -65,6 +65,44 @@ func (s *suiChainSimulatorWrapper) GetCoinBalance(ctx context.Context, owner str
 	return bigIntBalance
 }
 
+func (s *suiChainSimulatorWrapper) GetTokenBalance(ctx context.Context, owner string, tokenType string) *big.Int {
+	resp, err := s.proxy.SuiXGetOwnedObjects(ctx, models.SuiXGetOwnedObjectsRequest{
+		Address: owner,
+		Limit:   50,
+		Query: models.SuiObjectResponseQuery{
+			Filter: models.SuiObjectDataFilter{
+				"StructType": fmt.Sprintf("0x2::token::Token<%s>", tokenType),
+			},
+			Options: models.SuiObjectDataOptions{
+				ShowContent:       true,
+				ShowBcs:           true,
+				ShowOwner:         true,
+				ShowType:          true,
+				ShowDisplay:       true,
+				ShowStorageRebate: true,
+			},
+		},
+	})
+	require.NoError(s, err)
+
+	totalBalance := big.NewInt(0)
+
+	for _, obj := range resp.Data {
+		if obj.Data == nil || obj.Data.Content == nil {
+			continue
+		}
+		balanceStr, ok := obj.Data.Content.Fields["balance"].(string)
+		if !ok {
+			continue
+		}
+		bigIntBalance, ok := big.NewInt(0).SetString(balanceStr, 10)
+		require.True(s, ok)
+		totalBalance.Add(totalBalance, bigIntBalance)
+	}
+
+	return totalBalance
+}
+
 func (s *suiChainSimulatorWrapper) GetCoins(ctx context.Context, owner string, coinType string) []models.CoinData {
 	coins, err := s.proxy.SuiXGetCoins(ctx, models.SuiXGetCoinsRequest{
 		Owner:    owner,
@@ -79,6 +117,13 @@ func (s *suiChainSimulatorWrapper) SplitCoin(ctx context.Context, request models
 	require.NoError(s, err)
 
 	return s.signAndExecuteTxReturnResult(ctx, txMeta, signer.SuiSK)
+}
+
+func (s *suiChainSimulatorWrapper) TransferObject(ctx context.Context, request models.TransferObjectRequest) models.SuiTransactionBlockResponse {
+	txMeta, err := s.proxy.TransferObject(ctx, request)
+	require.NoError(s, err)
+
+	return s.signAndExecuteTxReturnResult(ctx, txMeta, s.owner.SuiSK)
 }
 
 func (s *suiChainSimulatorWrapper) FundWallets(wallets [][]byte) {

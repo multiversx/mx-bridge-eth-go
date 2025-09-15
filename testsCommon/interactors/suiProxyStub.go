@@ -19,6 +19,8 @@ type SuiProxyStub struct {
 	SignAndExecuteTransactionBlockCalled       func(ctx context.Context, req models.SignAndExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
 	SuiGetObjectBlockCalled                    func(ctx context.Context, req models.SuiGetObjectRequest) (models.SuiObjectResponse, error)
 	SuiExecuteTransactionBlockCalled           func(ctx context.Context, req models.SuiExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
+	SuiXGetOwnedObjectsCalled                  func(ctx context.Context, req models.SuiXGetOwnedObjectsRequest) (models.PaginatedObjectsResponse, error)
+	TransferObjectCalled                       func(ctx context.Context, req models.TransferObjectRequest) (models.TxnMetaData, error)
 }
 
 // Pay -
@@ -93,9 +95,26 @@ func (sps *SuiProxyStub) SignAndExecuteTransactionBlock(ctx context.Context, req
 	return models.SuiTransactionBlockResponse{}, nil
 }
 
+// SuiExecuteTransactionBlock -
 func (sps *SuiProxyStub) SuiExecuteTransactionBlock(ctx context.Context, req models.SuiExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
 	if sps.SuiExecuteTransactionBlockCalled != nil {
 		return sps.SuiExecuteTransactionBlockCalled(ctx, req)
 	}
 	return models.SuiTransactionBlockResponse{}, nil
+}
+
+// SuiXGetOwnedObjects -
+func (sps *SuiProxyStub) SuiXGetOwnedObjects(ctx context.Context, req models.SuiXGetOwnedObjectsRequest) (models.PaginatedObjectsResponse, error) {
+	if sps.SuiXGetOwnedObjectsCalled != nil {
+		return sps.SuiXGetOwnedObjectsCalled(ctx, req)
+	}
+	return models.PaginatedObjectsResponse{}, nil
+}
+
+// TransferObject -
+func (sps *SuiProxyStub) TransferObject(ctx context.Context, req models.TransferObjectRequest) (models.TxnMetaData, error) {
+	if sps.TransferObjectCalled != nil {
+		return sps.TransferObjectCalled(ctx, req)
+	}
+	return models.TxnMetaData{}, nil
 }

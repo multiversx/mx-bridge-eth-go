@@ -24,6 +24,8 @@ const (
 	suiSharedStructsBytecode = "testdata/contracts/sui/shared_structs.mv"
 	suiUtilsBytecode         = "testdata/contracts/sui/utils.mv"
 	suiTestCoinBytecode      = "testdata/contracts/sui/test_coin.mv"
+	suiBridgeTokenBytecode   = "testdata/contracts/sui/bridge_token.mv"
+	suiTransferRuleBytecode  = "testdata/contracts/sui/transfer_rule.mv"
 
 	clockId = "0x6"
 )
@@ -43,6 +45,9 @@ type SuiHandler struct {
 	SafeObjectID               string
 	BridgeInitialSharedVersion uint64
 	SafeInitialSharedVersion   uint64
+	TokenType                  string
+	TokenTreasuryCapId         string
+	TokenPolicyCapId           string
 }
 
 // NewSuiHandler will create the handler that will adapt all test operations on Sui
@@ -100,6 +105,13 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 					}
 				}
 			}
+			if strings.Contains(obj.ObjectType, "0x2::coin::TreasuryCap") {
+				handler.TokenType = extractInnerType(obj.ObjectType)
+				handler.TokenTreasuryCapId = obj.ObjectId
+			}
+			if strings.Contains(obj.ObjectType, "0x2::token::TokenPolicyCap") {
+				handler.TokenPolicyCapId = obj.ObjectId
+			}
 
 		} else if obj.Type == "published" {
 			handler.PackageID = obj.PackageId
@@ -154,6 +166,12 @@ func (handler *SuiHandler) getEncodedModules() []string {
 	mv = handler.readModuleBytes(suiUtilsBytecode)
 	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
 
+	mv = handler.readModuleBytes(suiBridgeTokenBytecode)
+	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+
+	mv = handler.readModuleBytes(suiTransferRuleBytecode)
+	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+
 	return modules
 }
 
@@ -161,6 +179,15 @@ func (handler *SuiHandler) readModuleBytes(path string) []byte {
 	b, err := os.ReadFile(path)
 	require.NoError(handler, err)
 	return b
+}
+
+func extractInnerType(s string) string {
+	start := strings.Index(s, "<")
+	end := strings.LastIndex(s, ">")
+	if start == -1 || end == -1 || start >= end {
+		return ""
+	}
+	return s[start+1 : end]
 }
 
 func (handler *SuiHandler) DeployContract(
@@ -223,8 +250,14 @@ func (handler *SuiHandler) GetBalance(ctx context.Context, receiver []byte, abst
 	token := handler.TokensRegistry.GetTokenData(abstractTokenIdentifier)
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenAddress)
+	suiTokenInfo := token.PeerChainTokenInfo.(SuiTokenInfo)
+	require.NotNil(handler, suiTokenInfo)
 
-	return handler.SuiChainSimulator.GetCoinBalance(ctx, string(receiver), string(token.PeerChainTokenAddress))
+	if suiTokenInfo.IsLocked {
+		return handler.SuiChainSimulator.GetTokenBalance(ctx, string(receiver), handler.TokenType)
+	} else {
+		return handler.SuiChainSimulator.GetCoinBalance(ctx, string(receiver), string(token.PeerChainTokenAddress))
+	}
 }
 
 // UnPauseContractsAfterTokenChanges can unpause contracts after token changes
@@ -296,11 +329,17 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 		CoinPackageId:  coinPackageId,
 		TreasuryId:     treasuryId,
 		CoinMetadataId: metadataId,
+		IsLocked:       params.IsLocked,
 	}
 
 	coinType := fmt.Sprintf("%s::test_coin::TEST_COIN", coinPackageId)
 	handler.TokensRegistry.RegisterPeerChainAddressAndInfo(params.AbstractTokenIdentifier, []byte(coinType), suiTokenInfo)
+
 	handler.updateMetadata(ctx, params)
+	if params.IsLocked {
+		handler.setTreasuryCapOnSafe(ctx)
+		handler.setPolicyCapOnSafe(ctx)
+	}
 
 	// mint token
 	mintAmount, ok := big.NewInt(0).SetString(params.ValueToMintOnPeerChain, 10)
@@ -322,6 +361,7 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 			"25",
 			"500000",
 			params.IsNativeOnPeerChain,
+			params.IsLocked,
 		},
 		GasBudget: "100000000",
 	}, handler.OwnerKeys)
@@ -423,6 +463,47 @@ func (handler *SuiHandler) initSupplyForToken(ctx context.Context, params IssueT
 			handler.AdminCap,
 			handler.SafeObjectID,
 			coinObjId,
+		},
+		GasBudget: "100000000",
+	}, handler.OwnerKeys)
+}
+
+func (handler *SuiHandler) sendTreasuryCapToSafe(ctx context.Context, treasuryCapId string) {
+	handler.SuiChainSimulator.TransferObject(ctx, models.TransferObjectRequest{
+		Signer:    string(handler.OwnerKeys.SuiAddress),
+		ObjectId:  treasuryCapId,
+		GasBudget: "100000000",
+		Recipient: handler.SafeObjectID,
+	})
+}
+
+func (handler *SuiHandler) setTreasuryCapOnSafe(ctx context.Context) {
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "safe",
+		Function:        "set_treasury_cap",
+		TypeArguments:   []interface{}{},
+		Arguments: []interface{}{
+			handler.AdminCap,
+			handler.SafeObjectID,
+			handler.TokenTreasuryCapId,
+		},
+		GasBudget: "100000000",
+	}, handler.OwnerKeys)
+}
+
+func (handler *SuiHandler) setPolicyCapOnSafe(ctx context.Context) {
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "safe",
+		Function:        "set_policy_cap",
+		TypeArguments:   []interface{}{},
+		Arguments: []interface{}{
+			handler.AdminCap,
+			handler.SafeObjectID,
+			handler.TokenPolicyCapId,
 		},
 		GasBudget: "100000000",
 	}, handler.OwnerKeys)

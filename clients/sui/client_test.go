@@ -12,6 +12,7 @@ import (
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	"github.com/block-vision/sui-go-sdk/signer"
+	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/block-vision/sui-go-sdk/transaction"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/core"
@@ -824,7 +825,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				SourceTokenBytes:      []byte("source token1"),
 				DisplayableToken:      "token1",
 				Amount:                big.NewInt(20),
-				DestinationTokenBytes: []byte("SUItoken1"),
+				DestinationTokenBytes: []byte("0x123::suitoken::SUItoken1"),
 			},
 			{
 				Nonce:                 30,
@@ -835,7 +836,7 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 				SourceTokenBytes:      []byte("source token2"),
 				DisplayableToken:      "token2",
 				Amount:                big.NewInt(40),
-				DestinationTokenBytes: []byte("SUItoken2"),
+				DestinationTokenBytes: []byte("0x123::suitoken::SUItoken2"),
 			},
 		},
 		Statuses: make([]byte, 2),
@@ -956,7 +957,10 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		values, err := createResultsRawFromValues(false)
 		assert.NoError(t, err)
 
-		c, _ := NewSuiClient(args)
+		args.Proxy = &sui.Client{}
+		c, err := NewSuiClient(args)
+		assert.NoError(t, err)
+
 		c.signatureHolder = &testsCommon.SignaturesHolderStub{
 			SignaturesCalled: func(messageHash []byte) [][]byte {
 				return signatures[:9]
@@ -989,15 +993,10 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 					HasNextPage: false,
 				}, nil
 			},
-			SuiExecuteTransactionBlockCalled: func(ctx context.Context, req models.SuiExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
-				return models.SuiTransactionBlockResponse{
-					Effects: models.SuiEffects{
-						Status: models.ExecutionStatus{
-							Status: "failed",
-							Error:  expectedErr.Error(),
-						},
-					},
-				}, expectedErr
+		}
+		c.txHandler = &bridgeTests.SuiTxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, gasCoin *transaction.SuiObjectRef, calls []core.SuiPTBOperation) (string, error) {
+				return "", expectedErr
 			},
 		}
 
@@ -1006,39 +1005,52 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		assert.Equal(t, expectedErr, err)
 	})
 	t.Run("should work - same number of signatures as quorum", func(t *testing.T) {
-		c, _ := NewSuiClient(args)
+		args.Proxy = &sui.Client{}
+		c, err := NewSuiClient(args)
+		assert.NoError(t, err)
+
+		values, err := createResultsRawFromValues(false)
+		assert.NoError(t, err)
+		wasCalled := false
+
 		c.signatureHolder = &testsCommon.SignaturesHolderStub{
 			SignaturesCalled: func(messageHash []byte) [][]byte {
 				return signatures[:9]
 			},
 		}
-		wasCalled := false
-		c.proxy = &interactors.SuiProxyStub{
-			SuiXGetCoinsCalled: func(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error) {
-				return models.PaginatedCoinsResponse{
-					Data: []models.CoinData{
-						{
-							CoinObjectId:        "0x123",
-							Version:             "1",
-							Digest:              "0x456",
-							Balance:             "100000",
-							CoinType:            "0x2::sui::SUI",
-							PreviousTransaction: "0x789",
-						},
-					},
-					NextCursor:  "",
-					HasNextPage: false,
-				}, nil
-			},
-			SuiExecuteTransactionBlockCalled: func(ctx context.Context, req models.SuiExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
-				wasCalled = true
+
+		c.suiClientDataGetter.proxy = &interactors.SuiProxyStub{
+			SuiDevInspectTransactionBlockCalled: func(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
 				return models.SuiTransactionBlockResponse{
 					Effects: models.SuiEffects{
 						Status: models.ExecutionStatus{
 							Status: "success",
 						},
 					},
+					Results: values,
 				}, nil
+			},
+			SuiXGetCoinsCalled: func(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error) {
+				return models.PaginatedCoinsResponse{
+					Data: []models.CoinData{
+						{
+							CoinObjectId:        "0x0e82989b575d6ebb4e7f6062f5463bdd1cce9db77b9f34ac923b90031765fddf",
+							Version:             "1",
+							Digest:              "4Nd1mHZtwVaFgqsSVBz3tH6KvXZcG1oMqezLh8u6BbhE",
+							Balance:             "100000",
+							CoinType:            "0x2::sui::SUI",
+							PreviousTransaction: "9rS8PZyT1QK5qLgN",
+						},
+					},
+					NextCursor:  "",
+					HasNextPage: false,
+				}, nil
+			},
+		}
+		c.txHandler = &bridgeTests.SuiTxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, gasCoin *transaction.SuiObjectRef, calls []core.SuiPTBOperation) (string, error) {
+				wasCalled = true
+				return "0xc5b2c658f5fa236c598a6e7fbf7f21413dc42e2a41dd982eb772b30707cba2eb", nil
 			},
 		}
 
@@ -1048,39 +1060,52 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		assert.True(t, wasCalled)
 	})
 	t.Run("should work - more signatures should trim", func(t *testing.T) {
-		c, _ := NewSuiClient(args)
+		args.Proxy = &sui.Client{}
+		c, err := NewSuiClient(args)
+		assert.NoError(t, err)
+
+		values, err := createResultsRawFromValues(false)
+		assert.NoError(t, err)
+		wasCalled := false
+
 		c.signatureHolder = &testsCommon.SignaturesHolderStub{
 			SignaturesCalled: func(messageHash []byte) [][]byte {
 				return signatures[:9]
 			},
 		}
-		wasCalled := false
-		c.proxy = &interactors.SuiProxyStub{
-			SuiXGetCoinsCalled: func(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error) {
-				return models.PaginatedCoinsResponse{
-					Data: []models.CoinData{
-						{
-							CoinObjectId:        "0x123",
-							Version:             "1",
-							Digest:              "0x456",
-							Balance:             "100000",
-							CoinType:            "0x2::sui::SUI",
-							PreviousTransaction: "0x789",
-						},
-					},
-					NextCursor:  "",
-					HasNextPage: false,
-				}, nil
-			},
-			SuiExecuteTransactionBlockCalled: func(ctx context.Context, req models.SuiExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
-				wasCalled = true
+
+		c.suiClientDataGetter.proxy = &interactors.SuiProxyStub{
+			SuiDevInspectTransactionBlockCalled: func(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
 				return models.SuiTransactionBlockResponse{
 					Effects: models.SuiEffects{
 						Status: models.ExecutionStatus{
 							Status: "success",
 						},
 					},
+					Results: values,
 				}, nil
+			},
+			SuiXGetCoinsCalled: func(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error) {
+				return models.PaginatedCoinsResponse{
+					Data: []models.CoinData{
+						{
+							CoinObjectId:        "0x0e82989b575d6ebb4e7f6062f5463bdd1cce9db77b9f34ac923b90031765fddf",
+							Version:             "1",
+							Digest:              "4Nd1mHZtwVaFgqsSVBz3tH6KvXZcG1oMqezLh8u6BbhE",
+							Balance:             "100000",
+							CoinType:            "0x2::sui::SUI",
+							PreviousTransaction: "9rS8PZyT1QK5qLgN",
+						},
+					},
+					NextCursor:  "",
+					HasNextPage: false,
+				}, nil
+			},
+		}
+		c.txHandler = &bridgeTests.SuiTxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, gasCoin *transaction.SuiObjectRef, calls []core.SuiPTBOperation) (string, error) {
+				wasCalled = true
+				return "0xc5b2c658f5fa236c598a6e7fbf7f21413dc42e2a41dd982eb772b30707cba2eb", nil
 			},
 		}
 

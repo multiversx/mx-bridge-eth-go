@@ -48,6 +48,7 @@ type ArgsSuiClient struct {
 type client struct {
 	*suiClientDataGetter
 	proxy            Proxy
+	txHandler        txHandler
 	signer           *signer.Signer
 	packageId        string
 	safeObjectId     string
@@ -86,6 +87,18 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		return nil, err
 	}
 
+	argsTxHandler := ArgsTxHandler{
+		Proxy:     args.Proxy,
+		Signer:    args.Signer,
+		GasPrice:  1000,
+		GasBudget: 50000000,
+		Logger:    args.Log,
+	}
+	suiTxHandler, err := NewTransactionHandler(argsTxHandler)
+	if err != nil {
+		return nil, err
+	}
+
 	addressConverter, err := converters.NewAddressConverter()
 	if err != nil {
 		return nil, clients.ErrNilAddressConverter
@@ -94,6 +107,7 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	c := &client{
 		proxy:                        args.Proxy,
 		signer:                       args.Signer,
+		txHandler:                    suiTxHandler,
 		suiClientDataGetter:          getter,
 		packageId:                    args.PackageId,
 		safeObjectId:                 args.SafeObjectId,
@@ -332,7 +346,7 @@ func (c *client) ExecuteTransfer(
 	ctx context.Context,
 	msgHash []byte,
 	argLists *batchProcessor.ArgListsBatch,
-	batchId uint64,
+	batchID uint64,
 	quorum int,
 ) (string, error) {
 	if argLists == nil {
@@ -358,6 +372,7 @@ func (c *client) ExecuteTransfer(
 	}
 
 	tokenGroups := c.groupTransfersByTokenType(argLists)
+
 	err = c.processSignaturesOfRelayers(tokenGroups, serializedSignatures)
 	if err != nil {
 		return "", err
@@ -368,52 +383,12 @@ func (c *client) ExecuteTransfer(
 		return "", err
 	}
 
-	suiClient, ok := c.getSuiClient()
-	if !ok {
-		return "", fmt.Errorf("proxy is not a concrete sui client")
-	}
-
-	tx := transaction.NewTransaction()
-	tx.SetSuiClient(suiClient).
-		SetSigner(c.signer).
-		SetSender(models.SuiAddress(c.relayerAddress)).
-		SetGasPrice(1000).
-		SetGasBudget(50000000).
-		SetGasPayment([]transaction.SuiObjectRef{*gasCoin}).
-		SetGasOwner(models.SuiAddress(c.relayerAddress))
-
-	i := 0
-	n := len(tokenGroups)
-	for coinType, group := range tokenGroups {
-		i++
-		coinParts, err := parseCoinType(coinType)
-		if err != nil {
-			return "", fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
-		}
-
-		coinIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(coinParts[0]))
-		if err != nil {
-			return "", fmt.Errorf("failed to convert coin type %s: %w", coinType, err)
-		}
-
-		isBatchComplete := i == n
-		c.appendMoveCallForToken(tx, coinIdBytes, coinParts[1], coinParts[2], group, batchId, isBatchComplete)
-	}
-
-	resp, err := tx.Execute(
-		ctx,
-		models.SuiTransactionBlockOptions{ShowEffects: true},
-		"WaitForLocalExecution",
-	)
-
+	calls, err := c.prepareExecuteTransferCallArgs(batchID, tokenGroups)
 	if err != nil {
 		return "", err
 	}
-	if resp.Effects.Status.Status != "success" {
-		return "", fmt.Errorf("execute trasfer failed: %s", resp.Effects.Status.Error)
-	}
 
-	return resp.Digest, nil
+	return c.txHandler.SendTransactionReturnHash(ctx, gasCoin, calls)
 }
 
 func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatch) map[string]*TokenTransferGroup {
@@ -490,71 +465,81 @@ func (c *client) getGasCoinOfRelayer(ctx context.Context) (*transaction.SuiObjec
 	)
 }
 
-func (c *client) appendMoveCallForToken(
-	tx *transaction.Transaction,
-	coinIdBytes *models.SuiAddressBytes,
-	coinModule string,
-	coinName string,
-	group *TokenTransferGroup,
-	batchId uint64,
-	isBatchComplete bool,
-) {
-	tx.MoveCall(
-		models.SuiAddress(c.packageId),
-		"bridge",
-		"execute_transfer",
-		[]transaction.TypeTag{
-			{
-				Struct: &transaction.StructTag{
-					Address: *coinIdBytes,
-					Module:  coinModule,
-					Name:    coinName,
+func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[string]*TokenTransferGroup) ([]bridgeCore.SuiPTBOperation, error) {
+	i := 0
+	n := len(tokenGroups)
+	calls := make([]bridgeCore.SuiPTBOperation, 0, n)
+	for coinType, group := range tokenGroups {
+		i++
+		isBatchComplete := i == n
+
+		// COPY loop vars to local variables to avoid closure-capture bug
+		localGroup := group
+		localIsBatchComplete := isBatchComplete
+
+		coinParts, err := parseCoinType(coinType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
+		}
+
+		coinIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(coinParts[0]))
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert coin type %s: %w", coinType, err)
+		}
+
+		// copy dereferenced address value if you'll use inside TypeTags/ArgsFn
+		coinIdBytesVal := *coinIdBytes
+
+		calls = append(calls, bridgeCore.SuiPTBOperation{
+			Package:  models.SuiAddress(c.packageId),
+			Module:   "bridge",
+			Function: "execute_transfer",
+			TypeTags: []transaction.TypeTag{
+				{
+					Struct: &transaction.StructTag{
+						Address: coinIdBytesVal,
+						Module:  coinParts[1],
+						Name:    coinParts[2],
+					},
 				},
 			},
-		},
-		[]transaction.Argument{
-			tx.Object(
-				transaction.CallArg{
-					Object: &transaction.ObjectArg{
+			ArgsFn: func(tx *transaction.Transaction) []transaction.Argument {
+				// use localGroup, localIsBatchComplete, coinIdBytesVal (if needed) – not the loop vars
+				return []transaction.Argument{
+					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             c.bridgeObjectIdBytes,
 							InitialSharedVersion: c.bridgeInitialSharedVersion,
 							Mutable:              true,
 						},
-					},
-				},
-			),
-			tx.Object(
-				transaction.CallArg{
-					Object: &transaction.ObjectArg{
+					}}),
+					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             c.safeObjectIdBytes,
 							InitialSharedVersion: c.safeInitialSharedVersion,
 							Mutable:              true,
 						},
-					},
-				},
-			),
-			tx.Pure(group.Recipients),
-			tx.Pure(group.Amounts),
-			tx.Pure(group.Tokens),
-			tx.Pure(group.Nonces),
-			tx.Pure(batchId),
-			tx.Pure(group.Signatures),
-			tx.Pure(isBatchComplete),
-			tx.Object(
-				transaction.CallArg{
-					Object: &transaction.ObjectArg{
+					}}),
+					tx.Pure(localGroup.Recipients),
+					tx.Pure(localGroup.Amounts),
+					tx.Pure(localGroup.Tokens),
+					tx.Pure(localGroup.Nonces),
+					tx.Pure(batchID),
+					tx.Pure(localGroup.Signatures),
+					tx.Pure(localIsBatchComplete),
+					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             c.clockIdBytes,
 							InitialSharedVersion: clockInitialSharedVersion,
 							Mutable:              false,
 						},
-					},
-				},
-			),
-		},
-	)
+					}}),
+				}
+			},
+		})
+	}
+
+	return calls, nil
 }
 
 func (c *client) CheckClientAvailability(ctx context.Context) error {

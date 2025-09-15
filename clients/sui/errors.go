@@ -11,4 +11,5 @@ var (
 	errNilProxy                    = errors.New("nil proxy")
 	errInvalidCoinType             = errors.New("invalid coin type format")
 	errInvalidInitialSharedVersion = errors.New("invalid initial shared version")
+	errInvalidProxyType            = errors.New("invalid proxy type")
 )

@@ -3,6 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
+
+	"github.com/block-vision/sui-go-sdk/models"
+	"github.com/block-vision/sui-go-sdk/transaction"
 )
 
 // StepIdentifier defines a step name
@@ -100,4 +103,13 @@ func (cs ClientStatus) String() string {
 	default:
 		return fmt.Sprintf("Invalid status %d", cs)
 	}
+}
+
+// SuiPTBOperation represents a single operation within a PTB transaction
+type SuiPTBOperation struct {
+	Package  models.SuiAddress
+	Module   string
+	Function string
+	TypeTags []transaction.TypeTag
+	ArgsFn   func(tx *transaction.Transaction) []transaction.Argument
 }
