@@ -2,29 +2,26 @@ package bridge
 
 import (
 	"context"
-	"github.com/block-vision/sui-go-sdk/models"
+
+	"github.com/block-vision/sui-go-sdk/transaction"
+	"github.com/multiversx/mx-bridge-eth-go/core"
 )
 
 // SuiTxHandlerStub -
 type SuiTxHandlerStub struct {
-	SendTransactionReturnHashCalled func(ctx context.Context, moveCallRequest models.MoveCallRequest) (string, error)
-	SignCalled                      func(message []byte) ([]byte, error)
+	SendTransactionReturnHashCalled func(ctx context.Context, gasCoin *transaction.SuiObjectRef, calls []core.SuiPTBOperation) (string, error)
 }
 
 // SendTransactionReturnHash -
-func (t *SuiTxHandlerStub) SendTransactionReturnHash(ctx context.Context, moveCallRequest models.MoveCallRequest) (string, error) {
-	if t.SendTransactionReturnHashCalled != nil {
-		return t.SendTransactionReturnHashCalled(ctx, moveCallRequest)
+func (stub *SuiTxHandlerStub) SendTransactionReturnHash(ctx context.Context, gasCoin *transaction.SuiObjectRef, calls []core.SuiPTBOperation) (string, error) {
+	if stub.SendTransactionReturnHashCalled != nil {
+		return stub.SendTransactionReturnHashCalled(ctx, gasCoin, calls)
 	}
 
 	return "", nil
 }
 
-// Sign -
-func (t *SuiTxHandlerStub) Sign(message []byte) ([]byte, error) {
-	if t.SignCalled != nil {
-		return t.SignCalled(message)
-	}
-
-	return nil, nil
+// IsInterfaceNil -
+func (stub *SuiTxHandlerStub) IsInterfaceNil() bool {
+	return stub == nil
 }

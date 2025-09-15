@@ -126,7 +126,6 @@ func CreateSuiMvxBridgeComponentsConfig(index int, workingDir string) config.Con
 			BridgeObjectId:                     "bridgeObjectId",
 			BridgeObjectInitialSharedVersion:   1,
 			PrivateKeyFile:                     fmt.Sprintf("testdata/sui%d.seed", index),
-			GasStation:                         config.GasStationConfig{},
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,
 			ClientAvailabilityAllowDelta:       5,

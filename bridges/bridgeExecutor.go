@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/block-vision/sui-go-sdk/models"
-	"github.com/block-vision/sui-go-sdk/transaction"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
@@ -533,57 +531,17 @@ func (executor *bridgeExecutor) SignTransferOnPeerChain() error {
 	}
 
 	argLists := batchProcessor.ExtractListFromMvx(executor.batch)
-	groups := executor.GroupTransfersByTokenType(argLists)
-
-	var finalHash []byte
-	for _, group := range groups {
-		hash, err := executor.peerChainClient.GenerateMessageHash(group, executor.batch.ID)
-		if err != nil {
-			return err
-		}
-		finalHash = append(finalHash, hash...)
+	hash, err := executor.peerChainClient.GenerateMessageHash(argLists, executor.batch.ID)
+	if err != nil {
+		return err
 	}
 
-	executor.log.Info("generated message hash on peer chain", "hash", finalHash,
+	executor.log.Info("generated message hash on peer chain", "hash", hash,
 		"batch ID", executor.batch.ID)
 
-	executor.msgHash = finalHash
-	executor.peerChainClient.BroadcastSignatureForMessageHash(finalHash)
+	executor.msgHash = hash
+	executor.peerChainClient.BroadcastSignatureForMessageHash(hash)
 	return nil
-}
-
-func (executor *bridgeExecutor) GroupTransfersByTokenType(argLists *batchProcessor.ArgListsBatch) map[string]*batchProcessor.ArgListsBatch {
-	groups := make(map[string]*batchProcessor.ArgListsBatch)
-
-	for i := 0; i < len(argLists.PeerTokens); i++ {
-		tokenTypeStr := string(argLists.PeerTokens[i])
-
-		if groups[tokenTypeStr] == nil {
-			groups[tokenTypeStr] = &batchProcessor.ArgListsBatch{
-				Recipients:    make([][]byte, 0),
-				Amounts:       make([]*big.Int, 0),
-				PeerTokens:    make([][]byte, 0),
-				MvxTokenBytes: make([][]byte, 0),
-				Nonces:        make([]*big.Int, 0),
-				Direction:     argLists.Direction,
-			}
-		}
-
-		hexStr := hex.EncodeToString(argLists.Recipients[i])
-		suiAddress := "0x" + hexStr
-		suiAddressBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress))
-		if err != nil {
-			return nil
-		}
-
-		groups[tokenTypeStr].Recipients = append(groups[tokenTypeStr].Recipients, suiAddressBytes[:])
-		groups[tokenTypeStr].Amounts = append(groups[tokenTypeStr].Amounts, argLists.Amounts[i])
-		groups[tokenTypeStr].PeerTokens = append(groups[tokenTypeStr].PeerTokens, argLists.PeerTokens[i])
-		groups[tokenTypeStr].MvxTokenBytes = append(groups[tokenTypeStr].MvxTokenBytes, argLists.MvxTokenBytes[i])
-		groups[tokenTypeStr].Nonces = append(groups[tokenTypeStr].Nonces, argLists.Nonces[i])
-	}
-
-	return groups
 }
 
 // PerformTransferOnPeerChain transfers a batch to peer chain

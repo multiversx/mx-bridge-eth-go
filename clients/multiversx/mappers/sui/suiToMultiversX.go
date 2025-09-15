@@ -14,7 +14,7 @@ type suiToMultiversX struct {
 	dg mappers.DataGetter
 }
 
-// NewSuiToMultiversXMapper returns a new instance of erc20ToMultiversX
+// NewSuiToMultiversXMapper returns a new instance of suiToMultiversX
 func NewSuiToMultiversXMapper(dg mappers.DataGetter) (*suiToMultiversX, error) {
 	if check.IfNil(dg) {
 		return nil, clients.ErrNilDataGetter

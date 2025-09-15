@@ -3,14 +3,11 @@ package sui
 import (
 	"bytes"
 	"context"
-	"crypto/ed25519"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sync"
 
-	"github.com/block-vision/sui-go-sdk/common/keypair"
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	"github.com/block-vision/sui-go-sdk/signer"
@@ -18,7 +15,6 @@ import (
 	"github.com/block-vision/sui-go-sdk/transaction"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
-	"github.com/multiversx/mx-bridge-eth-go/clients/sui/dtos"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
@@ -34,8 +30,9 @@ const (
 
 type ArgsSuiClient struct {
 	Proxy                      Proxy
+	TxHandler                  txHandler
 	Log                        chainCore.Logger
-	RelayerPrivateKey          ed25519.PrivateKey
+	Signer                     *signer.Signer
 	PackageId                  string
 	SafeObjectId               string
 	SafeInitialSharedVersion   uint64
@@ -51,15 +48,14 @@ type ArgsSuiClient struct {
 
 type client struct {
 	*suiClientDataGetter
-	client           *sui.Client
+	proxy            Proxy
+	txHandler        txHandler
 	signer           *signer.Signer
-	tokensMapper     TokensMapper
-	relayerPublicKey ed25519.PublicKey
-	relayerAddress   string
 	packageId        string
 	safeObjectId     string
 	bridgeObjectId   string
 	log              chainCore.Logger
+	tokensMapper     TokensMapper
 	addressConverter bridgeCore.AddressConverter
 	statusHandler    bridgeCore.StatusHandler
 	broadcaster      Broadcaster
@@ -77,20 +73,13 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		return nil, err
 	}
 
-	relayerPubKey, relayerAddress := generatePubKeyAndAddressFromPriKey(args.RelayerPrivateKey)
-	relayerSigner := &signer.Signer{
-		PriKey:  args.RelayerPrivateKey,
-		PubKey:  relayerPubKey,
-		Address: relayerAddress,
-	}
-
 	argsSuiClientDataGetter := ArgsSuiClientDataGetter{
 		PackageId:                  args.PackageId,
 		SafeObjectId:               args.SafeObjectId,
 		SafeInitialSharedVersion:   args.SafeInitialSharedVersion,
 		BridgeObjectId:             args.BridgeObjectId,
 		BridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
-		RelayerAddress:             relayerAddress,
+		RelayerAddress:             args.Signer.Address,
 		Proxy:                      args.Proxy,
 		Log:                        args.Log,
 	}
@@ -105,11 +94,10 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	c := &client{
-		client:                       args.Proxy.(*sui.Client),
-		signer:                       relayerSigner,
+		proxy:                        args.Proxy,
+		signer:                       args.Signer,
+		txHandler:                    args.TxHandler,
 		suiClientDataGetter:          getter,
-		relayerPublicKey:             relayerPubKey,
-		relayerAddress:               relayerAddress,
 		packageId:                    args.PackageId,
 		safeObjectId:                 args.SafeObjectId,
 		bridgeObjectId:               args.BridgeObjectId,
@@ -123,7 +111,7 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	c.log.Info("NewSuiClient",
-		"relayer address", relayerAddress,
+		"relayer address", c.signer.Address,
 		"package ID", c.packageId,
 		"bridge object ID", c.bridgeObjectId,
 		"safe object ID", c.safeObjectId)
@@ -135,8 +123,11 @@ func checkArgs(args ArgsSuiClient) error {
 	if args.Proxy == nil {
 		return errNilProxy
 	}
-	if len(args.RelayerPrivateKey) == 0 {
-		return clients.ErrNilPrivateKey
+	if check.IfNil(args.TxHandler) {
+		return errNilTxHandler
+	}
+	if args.Signer == nil {
+		return errNilSigner
 	}
 	if len(args.PackageId) == 0 {
 		return fmt.Errorf("%w for the PackageId argument", errNilPackageId)
@@ -170,15 +161,9 @@ func checkArgs(args ArgsSuiClient) error {
 	return nil
 }
 
-func generatePubKeyAndAddressFromPriKey(priKey ed25519.PrivateKey) (ed25519.PublicKey, string) {
-	pubKey := priKey.Public().(ed25519.PublicKey)
-
-	tmp := []byte{byte(keypair.Ed25519Flag)}
-	tmp = append(tmp, pubKey...)
-	addrBytes := blake2b.Sum256(tmp)
-	addr := "0x" + hex.EncodeToString(addrBytes[:])[:64]
-
-	return pubKey, addr
+func (c *client) getSuiClient() (*sui.Client, bool) {
+	suiClient, ok := c.proxy.(*sui.Client)
+	return suiClient, ok
 }
 
 // GetBatch returns the transfer batch by providing the nonce
@@ -205,16 +190,16 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 	cachedTokens := make(map[string][]byte)
 	for i := range deposits {
 		deposit := deposits[i]
-		toBytes := deposit.Recipient[:]
-		fromBytes := deposit.Sender
+		toBytes := deposit.Recipient
+		fromBytes := deposit.Sender[:]
 		tokenId := deposit.TokenTypeBytes
 
 		depositTransfer := &bridgeCore.DepositTransfer{
 			Nonce:            deposit.Nonce,
 			ToBytes:          toBytes,
 			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),
-			FromBytes:        fromBytes[:],
-			DisplayableFrom:  suiAddressFromBytes(fromBytes[:]),
+			FromBytes:        fromBytes,
+			DisplayableFrom:  suiAddressFromBytes(fromBytes),
 			SourceTokenBytes: tokenId,
 			DisplayableToken: "0x" + string(tokenId),
 			Amount:           big.NewInt(0).SetUint64(deposit.Amount),
@@ -276,19 +261,32 @@ func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchI
 		return nil, clients.ErrNilBatch
 	}
 
+	var hash []byte
+	groups := c.groupTransfersByTokenType(batch)
+	for _, group := range groups {
+		groupHash, err := c.getHashForTokenGroupData(group, batchId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting hash for token group data: %v", err)
+		}
+		hash = append(hash, groupHash...)
+	}
+
+	return hash, nil
+}
+
+func (c *client) getHashForTokenGroupData(batch *TokenTransferGroup, batchId uint64) ([]byte, error) {
 	message, err := c.constructBatchMessage(batchId, batch)
 	if err != nil {
 		return nil, fmt.Errorf("error constructing batch message: %v", err)
 	}
 
 	hash := blake2b.Sum256(message)
-
 	return hash[:], nil
 }
 
 func (c *client) constructBatchMessage(
 	batchId uint64,
-	batch *batchProcessor.ArgListsBatch,
+	batch *TokenTransferGroup,
 ) ([]byte, error) {
 	var message bytes.Buffer
 
@@ -298,10 +296,10 @@ func (c *client) constructBatchMessage(
 		return nil, fmt.Errorf("error encoding batch_id: %v", err)
 	}
 
-	for i := 0; i < len(batch.PeerTokens); i++ {
+	for i := 0; i < len(batch.Tokens); i++ {
 		tokenBuf := bytes.Buffer{}
 		tokenEncoder := mystenbcs.NewEncoder(&tokenBuf)
-		err = tokenEncoder.Encode(batch.PeerTokens[i])
+		err = tokenEncoder.Encode(batch.Tokens[i])
 		if err != nil {
 			return nil, fmt.Errorf("error encoding token: %v", err)
 		}
@@ -309,7 +307,7 @@ func (c *client) constructBatchMessage(
 
 		recipientBuf := bytes.Buffer{}
 		recipientEncoder := mystenbcs.NewEncoder(&recipientBuf)
-		err = recipientEncoder.Encode(models.SuiAddressBytes(batch.Recipients[i][:]))
+		err = recipientEncoder.Encode(batch.Recipients[i])
 		if err != nil {
 			return nil, fmt.Errorf("error encoding recipient: %v", err)
 		}
@@ -317,7 +315,7 @@ func (c *client) constructBatchMessage(
 
 		amountBuf := bytes.Buffer{}
 		amountEncoder := mystenbcs.NewEncoder(&amountBuf)
-		err = amountEncoder.Encode(batch.Amounts[i].Uint64())
+		err = amountEncoder.Encode(batch.Amounts[i])
 		if err != nil {
 			return nil, fmt.Errorf("error encoding amount: %v", err)
 		}
@@ -325,7 +323,7 @@ func (c *client) constructBatchMessage(
 
 		nonceBuf := bytes.Buffer{}
 		nonceEncoder := mystenbcs.NewEncoder(&nonceBuf)
-		err = nonceEncoder.Encode(batch.Nonces[i].Uint64())
+		err = nonceEncoder.Encode(batch.Nonces[i])
 		if err != nil {
 			return nil, fmt.Errorf("error encoding nonce: %v", err)
 		}
@@ -340,7 +338,7 @@ func (c *client) ExecuteTransfer(
 	ctx context.Context,
 	msgHash []byte,
 	argLists *batchProcessor.ArgListsBatch,
-	batchId uint64,
+	batchID uint64,
 	quorum int,
 ) (string, error) {
 	if argLists == nil {
@@ -366,6 +364,7 @@ func (c *client) ExecuteTransfer(
 	}
 
 	tokenGroups := c.groupTransfersByTokenType(argLists)
+
 	err = c.processSignaturesOfRelayers(tokenGroups, serializedSignatures)
 	if err != nil {
 		return "", err
@@ -376,57 +375,22 @@ func (c *client) ExecuteTransfer(
 		return "", err
 	}
 
-	tx := transaction.NewTransaction()
-	tx.SetSuiClient(c.client).
-		SetSigner(c.signer).
-		SetSender(models.SuiAddress(c.relayerAddress)).
-		SetGasPrice(1000).
-		SetGasBudget(50000000).
-		SetGasPayment([]transaction.SuiObjectRef{*gasCoin}).
-		SetGasOwner(models.SuiAddress(c.relayerAddress))
-
-	i := 0
-	n := len(tokenGroups)
-	for coinType, group := range tokenGroups {
-		i++
-		coinParts, err := parseCoinType(coinType)
-		if err != nil {
-			return "", fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
-		}
-
-		coinIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(coinParts[0]))
-		if err != nil {
-			return "", fmt.Errorf("failed to convert coin type %s: %w", coinType, err)
-		}
-
-		isBatchComplete := i == n
-		c.appendMoveCallForToken(tx, coinIdBytes, coinParts[1], coinParts[2], group, batchId, isBatchComplete)
-	}
-
-	resp, err := tx.Execute(
-		ctx,
-		models.SuiTransactionBlockOptions{ShowEffects: true},
-		"WaitForLocalExecution",
-	)
-
+	calls, err := c.prepareExecuteTransferCallArgs(batchID, tokenGroups)
 	if err != nil {
 		return "", err
 	}
-	if resp.Effects.Status.Status != "success" {
-		return "", fmt.Errorf("execute trasfer failed: %s", resp.Effects.Status.Error)
-	}
 
-	return resp.Digest, nil
+	return c.txHandler.SendTransactionReturnHash(ctx, gasCoin, calls)
 }
 
-func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatch) map[string]*dtos.TokenTransferGroup {
-	groups := make(map[string]*dtos.TokenTransferGroup)
+func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatch) map[string]*TokenTransferGroup {
+	groups := make(map[string]*TokenTransferGroup)
 
 	for i := 0; i < len(argLists.PeerTokens); i++ {
 		tokenTypeStr := string(argLists.PeerTokens[i])
 
 		if groups[tokenTypeStr] == nil {
-			groups[tokenTypeStr] = &dtos.TokenTransferGroup{
+			groups[tokenTypeStr] = &TokenTransferGroup{
 				Recipients: make([]models.SuiAddressBytes, 0),
 				Amounts:    make([]uint64, 0),
 				Tokens:     make([][]byte, 0),
@@ -449,7 +413,7 @@ func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatc
 	return groups
 }
 
-func (c *client) processSignaturesOfRelayers(tokenGroups map[string]*dtos.TokenTransferGroup, serializedSignatures [][]byte) error {
+func (c *client) processSignaturesOfRelayers(tokenGroups map[string]*TokenTransferGroup, serializedSignatures [][]byte) error {
 	var tokenTypes []string
 	for key := range tokenGroups {
 		tokenTypes = append(tokenTypes, key)
@@ -493,71 +457,81 @@ func (c *client) getGasCoinOfRelayer(ctx context.Context) (*transaction.SuiObjec
 	)
 }
 
-func (c *client) appendMoveCallForToken(
-	tx *transaction.Transaction,
-	coinIdBytes *models.SuiAddressBytes,
-	coinModule string,
-	coinName string,
-	group *dtos.TokenTransferGroup,
-	batchId uint64,
-	isBatchComplete bool,
-) {
-	tx.MoveCall(
-		models.SuiAddress(c.packageId),
-		"bridge",
-		"execute_transfer",
-		[]transaction.TypeTag{
-			{
-				Struct: &transaction.StructTag{
-					Address: *coinIdBytes,
-					Module:  coinModule,
-					Name:    coinName,
+func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[string]*TokenTransferGroup) ([]bridgeCore.SuiPTBOperation, error) {
+	i := 0
+	n := len(tokenGroups)
+	calls := make([]bridgeCore.SuiPTBOperation, 0, n)
+	for coinType, group := range tokenGroups {
+		i++
+		isBatchComplete := i == n
+
+		// COPY loop vars to local variables to avoid closure-capture bug
+		localGroup := group
+		localIsBatchComplete := isBatchComplete
+
+		coinParts, err := parseCoinType(coinType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
+		}
+
+		coinIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(coinParts[0]))
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert coin type %s: %w", coinType, err)
+		}
+
+		// copy dereferenced address value if you'll use inside TypeTags/ArgsFn
+		coinIdBytesVal := *coinIdBytes
+
+		calls = append(calls, bridgeCore.SuiPTBOperation{
+			Package:  models.SuiAddress(c.packageId),
+			Module:   "bridge",
+			Function: "execute_transfer",
+			TypeTags: []transaction.TypeTag{
+				{
+					Struct: &transaction.StructTag{
+						Address: coinIdBytesVal,
+						Module:  coinParts[1],
+						Name:    coinParts[2],
+					},
 				},
 			},
-		},
-		[]transaction.Argument{
-			tx.Object(
-				transaction.CallArg{
-					Object: &transaction.ObjectArg{
+			ArgsFn: func(tx *transaction.Transaction) []transaction.Argument {
+				// use localGroup, localIsBatchComplete, coinIdBytesVal (if needed) – not the loop vars
+				return []transaction.Argument{
+					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             c.bridgeObjectIdBytes,
 							InitialSharedVersion: c.bridgeInitialSharedVersion,
 							Mutable:              true,
 						},
-					},
-				},
-			),
-			tx.Object(
-				transaction.CallArg{
-					Object: &transaction.ObjectArg{
+					}}),
+					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             c.safeObjectIdBytes,
 							InitialSharedVersion: c.safeInitialSharedVersion,
 							Mutable:              true,
 						},
-					},
-				},
-			),
-			tx.Pure(group.Recipients),
-			tx.Pure(group.Amounts),
-			tx.Pure(group.Tokens),
-			tx.Pure(group.Nonces),
-			tx.Pure(batchId),
-			tx.Pure(group.Signatures),
-			tx.Pure(isBatchComplete),
-			tx.Object(
-				transaction.CallArg{
-					Object: &transaction.ObjectArg{
+					}}),
+					tx.Pure(localGroup.Recipients),
+					tx.Pure(localGroup.Amounts),
+					tx.Pure(localGroup.Tokens),
+					tx.Pure(localGroup.Nonces),
+					tx.Pure(batchID),
+					tx.Pure(localGroup.Signatures),
+					tx.Pure(localIsBatchComplete),
+					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             c.clockIdBytes,
 							InitialSharedVersion: clockInitialSharedVersion,
 							Mutable:              false,
 						},
-					},
-				},
-			),
-		},
-	)
+					}}),
+				}
+			},
+		})
+	}
+
+	return calls, nil
 }
 
 func (c *client) CheckClientAvailability(ctx context.Context) error {

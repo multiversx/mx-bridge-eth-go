@@ -14,19 +14,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRelayersShouldExecuteTransfersSui(t *testing.T) {
+func TestRelayersShouldExecuteTransfersWithCoins(t *testing.T) {
 	walToken := GenerateTestWALToken()
-	walToken.ChainType = currentChainType
 	walToken.InitialSupplyValue = "1000000000"
 
 	suiUsdcToken := GenerateTestSuiUSDCToken()
-	suiUsdcToken.ChainType = currentChainType
 	suiUsdcToken.InitialSupplyValue = "1000000000"
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
 		make(chan error),
 		walToken,
+		suiUsdcToken,
+	)
+}
+
+func TestRelayersShouldExecuteTransfersWithTokens(t *testing.T) {
+	xmnToken := GenerateTestLKXMNToken()
+	xmnToken.InitialSupplyValue = "1000000000"
+
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		xmnToken,
 	)
 }
 
@@ -56,12 +66,10 @@ func TestRelayerShouldExecuteTransfersAndNotCatchErrorsSui(t *testing.T) {
 	}()
 
 	walToken := GenerateTestWALToken()
-	walToken.ChainType = currentChainType
 	walToken.InitialSupplyValue = "1000000000"
 
 	suiUsdcToken := GenerateTestSuiUSDCToken()
-	suiUsdcToken.ChainType = currentChainType
-	suiUsdcToken.InitialSupplyValue = "1000000000"
+	suiUsdcToken.InitialSupplyValue = "2000000000"
 
 	_ = testRelayersWithChainSimulatorAndTokens(
 		t,
@@ -85,6 +93,7 @@ func createSuiBadToken() framework.TestTokenParams {
 			PeerChainTokenName:               "SUITOKEN",
 			PeerChainTokenSymbol:             "SUIT",
 			ValueToMintOnPeerChain:           "10000000000",
+			PeerChainType:                    framework.ChainTypeSui,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -109,7 +118,6 @@ func TestRelayersShouldNotExecuteTransfersSui(t *testing.T) {
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = false
 		badToken.HasChainSpecificToken = true
-		badToken.ChainType = currentChainType
 
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)
@@ -121,7 +129,6 @@ func TestRelayersShouldNotExecuteTransfersSui(t *testing.T) {
 		badToken.IsNativeOnMvX = true
 		badToken.IsMintBurnOnMvX = true
 		badToken.HasChainSpecificToken = false
-		badToken.ChainType = currentChainType
 
 		expectedStringInLogs := "error = invalid setup isNativeOnEthereum = true, isNativeOnMultiversX = true"
 		testRelayersShouldNotExecuteTransfers(t, expectedStringInLogs, badToken)

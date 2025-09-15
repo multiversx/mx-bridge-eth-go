@@ -1,30 +1,25 @@
 package factory
 
 import (
-	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
-	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"os"
 	"time"
 
 	"github.com/block-vision/sui-go-sdk/signer"
-	"github.com/block-vision/sui-go-sdk/sui"
-	"github.com/btcsuite/btcd/btcutil/bech32"
 	"github.com/multiversx/mx-bridge-eth-go/bridges"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/disabled"
 	multiversxtoeth "github.com/multiversx/mx-bridge-eth-go/bridges/steps/fromMultiversX"
 	ethtomultiversx "github.com/multiversx/mx-bridge-eth-go/bridges/steps/toMultiversX"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/topology"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
-	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement"
-	"github.com/multiversx/mx-bridge-eth-go/clients/gasManagement/factory"
 	"github.com/multiversx/mx-bridge-eth-go/clients/multiversx"
 	mapper "github.com/multiversx/mx-bridge-eth-go/clients/multiversx/mappers/sui"
 	roleproviders "github.com/multiversx/mx-bridge-eth-go/clients/roleProviders"
 	suiClient "github.com/multiversx/mx-bridge-eth-go/clients/sui"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/p2p"
 	"github.com/multiversx/mx-bridge-eth-go/stateMachine"
 	"github.com/multiversx/mx-bridge-eth-go/status"
@@ -41,7 +36,7 @@ type ArgsSuiToMultiversXBridge struct {
 	StatusStorer                  core.Storer
 	Proxy                         multiversx.Proxy
 	MultiversXClientStatusHandler core.StatusHandler
-	SuiProxy                      sui.ISuiAPI
+	SuiProxy                      suiClient.Proxy
 	SuiClientStatusHandler        core.StatusHandler
 	TimeForBootstrap              time.Duration
 	TimeBeforeRepeatJoin          time.Duration
@@ -51,14 +46,13 @@ type ArgsSuiToMultiversXBridge struct {
 
 type suiMvxBridgeComponents struct {
 	*baseBridgeComponents
-	chain             chain.Chain
-	suiApi            sui.ISuiAPI
-	suiClient         bridges.PeerChainClient
-	suiDataGetter     suiDataGetter
-	suiRelayerAddress string
-	suiRelayerPriKey  ed25519.PrivateKey
-	suiRoleProvider   PeerChainRoleProvider
-	suiPackageId      string
+	chain           chain.Chain
+	suiApi          suiClient.Proxy
+	suiClient       bridges.PeerChainClient
+	suiDataGetter   suiDataGetter
+	suiSigner       *signer.Signer
+	suiRoleProvider PeerChainRoleProvider
+	suiPackageId    string
 }
 
 func NewSuiMvxBridgeComponents(args ArgsSuiToMultiversXBridge) (*suiMvxBridgeComponents, error) {
@@ -89,59 +83,48 @@ func NewSuiMvxBridgeComponents(args ArgsSuiToMultiversXBridge) (*suiMvxBridgeCom
 		suiApi:               args.SuiProxy,
 	}
 
-	log := logger.GetOrCreate("debug")
-
 	err = components.initBaseComponents(commonBridgeArgs)
 	if err != nil {
-		log.Debug("Error initializing base components:", err)
 		return nil, err
 	}
 
 	err = components.createSuiKeysAndAddresses(args.Configs.GeneralConfig.Sui)
 	if err != nil {
-		log.Debug("Error creating Sui keys and addresses:", err)
 		return nil, err
 	}
 
 	err = components.createSuiDataGetter(args)
 	if err != nil {
-		log.Debug("Error creating Sui data getter:", err)
 		return nil, err
 	}
 
 	err = components.createSuiRoleProvider(args)
 	if err != nil {
-		log.Debug("Error creating Sui role provider:", err)
 		return nil, err
 	}
 
 	err = components.createSuiClient(args)
 	if err != nil {
-		log.Debug("Error creating Sui client:", err)
 		return nil, err
 	}
 
 	err = components.createSuiToMultiversXBridge(args)
 	if err != nil {
-		log.Debug("Error creating Sui to MultiversX bridge:", err)
 		return nil, err
 	}
 
 	err = components.createSuiToMultiversXStateMachine()
 	if err != nil {
-		log.Debug("Error creating Sui to MultiversX state machine:", err)
 		return nil, err
 	}
 
 	err = components.createMultiversXToSuiBridge(args)
 	if err != nil {
-		log.Debug("Error creating MultiversX to Sui bridge:", err)
 		return nil, err
 	}
 
 	err = components.createMultiversXToSuiStateMachine()
 	if err != nil {
-		log.Debug("Error creating MultiversX to Sui state machine:", err)
 		return nil, err
 	}
 
@@ -196,9 +179,7 @@ func (components *suiMvxBridgeComponents) createSuiKeysAndAddresses(suiConfigs c
 		return err
 	}
 
-	relayer := signer.NewSigner(privKey)
-	components.suiRelayerPriKey = relayer.PriKey
-	components.suiRelayerAddress = relayer.Address
+	components.suiSigner = signer.NewSigner(privKey)
 	components.suiPackageId = suiConfigs.PackageId
 
 	return nil
@@ -213,7 +194,7 @@ func (components *suiMvxBridgeComponents) createSuiDataGetter(args ArgsSuiToMult
 		SafeInitialSharedVersion:   suiConfig.SafeObjectInitialSharedVersion,
 		BridgeObjectId:             suiConfig.BridgeObjectId,
 		BridgeInitialSharedVersion: suiConfig.BridgeObjectInitialSharedVersion,
-		RelayerAddress:             components.suiRelayerAddress,
+		RelayerAddress:             components.suiSigner.Address,
 		Proxy:                      components.suiApi,
 		Log:                        core.NewLoggerWithIdentifier(logger.GetOrCreate(suiDataGetterLogId), suiDataGetterLogId),
 	}
@@ -261,25 +242,6 @@ func (components *suiMvxBridgeComponents) createSuiRoleProvider(args ArgsSuiToMu
 func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiversXBridge) error {
 	suiConfig := args.Configs.GeneralConfig.Sui
 
-	gasStationConfig := suiConfig.GasStation
-	argsGasStation := gasManagement.ArgsGasStation{
-		RequestURL:             gasStationConfig.URL,
-		RequestPollingInterval: time.Duration(gasStationConfig.PollingIntervalInSeconds) * time.Second,
-		RequestRetryDelay:      time.Duration(gasStationConfig.RequestRetryDelayInSeconds) * time.Second,
-		MaximumFetchRetries:    gasStationConfig.MaxFetchRetries,
-		RequestTime:            time.Duration(gasStationConfig.RequestTimeInSeconds) * time.Second,
-		MaximumGasPrice:        gasStationConfig.MaximumAllowedGasPrice,
-		GasPriceSelector:       core.EthGasPriceSelector(gasStationConfig.GasPriceSelector),
-		GasPriceMultiplier:     gasStationConfig.GasPriceMultiplier,
-	}
-
-	gs, err := factory.CreateGasStation(argsGasStation, gasStationConfig.Enabled)
-	if err != nil {
-		return err
-	}
-
-	components.addClosableComponent(gs)
-
 	antifloodComponents, err := components.createAntifloodComponents(args.Configs.GeneralConfig.P2P.AntifloodConfig)
 	if err != nil {
 		return err
@@ -300,7 +262,7 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 		Messenger:              args.Messenger,
 		Log:                    core.NewLoggerWithIdentifier(logger.GetOrCreate(broadcasterLogId), broadcasterLogId),
 		MultiversXRoleProvider: components.multiversXRoleProvider,
-		SignatureProcessor:     components.suiRoleProvider, // TODO
+		SignatureProcessor:     components.suiRoleProvider,
 		KeyGen:                 keyGen,
 		SingleSigner:           singleSigner,
 		PrivateKey:             components.multiversXRelayerPrivateKey,
@@ -313,7 +275,7 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 		return err
 	}
 
-	tokensMapper, err := mapper.NewSuiToMultiversXMapper(components.mxDataGetter) // TODO
+	tokensMapper, err := mapper.NewSuiToMultiversXMapper(components.mxDataGetter)
 	if err != nil {
 		return err
 	}
@@ -326,10 +288,25 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 	}
 
 	suiClientLogId := components.chain.PeerChainClientLogId()
+	suiClientLogger := core.NewLoggerWithIdentifier(logger.GetOrCreate(suiClientLogId), suiClientLogId)
+
+	argsTxHandler := suiClient.ArgsTxHandler{
+		Proxy:     components.suiApi,
+		Signer:    components.suiSigner,
+		GasPrice:  1000, // TODO
+		GasBudget: 50000000,
+		Logger:    suiClientLogger,
+	}
+	suiTxHandler, err := suiClient.NewTransactionHandler(argsTxHandler)
+	if err != nil {
+		return err
+	}
+
 	argsSuiClient := suiClient.ArgsSuiClient{
 		Proxy:                        components.suiApi,
-		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(suiClientLogId), suiClientLogId),
-		RelayerPrivateKey:            components.suiRelayerPriKey,
+		TxHandler:                    suiTxHandler,
+		Log:                          suiClientLogger,
+		Signer:                       components.suiSigner,
 		PackageId:                    components.suiPackageId,
 		SafeObjectId:                 suiConfig.SafeObjectId,
 		SafeInitialSharedVersion:     suiConfig.SafeObjectInitialSharedVersion,
@@ -570,7 +547,7 @@ func (components *suiMvxBridgeComponents) Close() error {
 
 // PeerChainRelayerAddress returns the Sui address associated to this relayer
 func (components *suiMvxBridgeComponents) PeerChainRelayerAddress() string {
-	return components.suiRelayerAddress
+	return components.suiSigner.Address
 }
 
 func loadPrivateKeyFromFile(path string) ([]byte, error) {
@@ -581,21 +558,4 @@ func loadPrivateKeyFromFile(path string) ([]byte, error) {
 
 	privKey := converters.TrimWhiteSpaceCharacters(string(data))
 	return hex.DecodeString(privKey)
-}
-
-func getSeedFromPrivateKey(privKey string) ([]byte, error) {
-	_, data, err := bech32.Decode(privKey)
-	if err != nil {
-		return nil, err
-	}
-	decoded, err := bech32.ConvertBits(data, 5, 8, false)
-	if err != nil {
-		return nil, err
-	}
-	if len(decoded) < 33 {
-		return nil, err
-	}
-
-	seed := decoded[1:33]
-	return seed, nil
 }

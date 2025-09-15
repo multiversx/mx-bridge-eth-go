@@ -56,7 +56,6 @@ type SuiConfig struct {
 	SafeObjectId                       string
 	SafeObjectInitialSharedVersion     uint64
 	PrivateKeyFile                     string
-	GasStation                         GasStationConfig
 	MaxRetriesOnQuorumReached          uint64
 	IntervalToWaitForTransferInSeconds uint64
 	ClientAvailabilityAllowDelta       uint64

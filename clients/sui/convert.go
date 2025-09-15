@@ -6,7 +6,7 @@ import (
 )
 
 func suiAddressFromBytes(bytes []byte) string {
-	hexAddress := hex.EncodeToString(bytes[:])
+	hexAddress := hex.EncodeToString(bytes)
 	return "0x" + hexAddress
 }
 

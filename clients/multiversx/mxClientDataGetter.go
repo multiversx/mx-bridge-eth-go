@@ -330,7 +330,7 @@ func (dataGetter *mxClientDataGetter) GetERC20AddressForTokenId(ctx context.Cont
 // GetTokenIdForSuiCoin will assemble a builder and query the proxy for a token id given a specific sui coin
 func (dataGetter *mxClientDataGetter) GetTokenIdForSuiCoin(ctx context.Context, suiCoin []byte) ([][]byte, error) {
 	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
-	builder.Function(getTokenIdForErc20AddressFuncName) // TODO
+	builder.Function(getTokenIdForErc20AddressFuncName)
 	builder.ArgBytes(suiCoin)
 
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
@@ -339,7 +339,7 @@ func (dataGetter *mxClientDataGetter) GetTokenIdForSuiCoin(ctx context.Context, 
 // GetSuiCoinForTokenId will assemble a builder and query the proxy for a sui coin given a specific token id
 func (dataGetter *mxClientDataGetter) GetSuiCoinForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
 	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
-	builder.Function(getErc20AddressForTokenIdFuncName) // TODO
+	builder.Function(getErc20AddressForTokenIdFuncName)
 	builder.ArgBytes(tokenId)
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }

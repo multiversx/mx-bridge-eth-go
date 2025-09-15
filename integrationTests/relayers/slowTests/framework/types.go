@@ -27,7 +27,8 @@ type IssueTokenParams struct {
 	ValueToMintOnPeerChain string
 	IsMintBurnOnPeerChain  bool
 	IsNativeOnPeerChain    bool
-	ChainType              ChainType
+	PeerChainType          ChainType
+	IsLocked               bool
 }
 
 // InitialSupplyParams represents the initial supply parameters
@@ -75,6 +76,7 @@ type SuiTokenInfo struct {
 	CoinPackageId  string
 	TreasuryId     string
 	CoinMetadataId string
+	IsLocked       bool
 }
 
 type ChainType string

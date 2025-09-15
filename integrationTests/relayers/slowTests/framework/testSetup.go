@@ -71,7 +71,12 @@ func NewTestSetup(tb testing.TB, chainType ChainType) *TestSetup {
 	case ChainTypeEthereum:
 		setup.PeerChainHandler = NewEthereumHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, quorum)
 	case ChainTypeSui:
-		setup.PeerChainHandler = NewSuiHandler(tb, setup.Ctx, setup.KeysStore, setup.TokensRegistry, quorum)
+		argsSuiChainSimulatorWrapper := ArgsSuiChainSimulatorWrapper{
+			TB:    tb,
+			Owner: setup.OwnerKeys,
+		}
+		suiChainSimulator := CreateSuiChainSimulatorWrapper(argsSuiChainSimulatorWrapper)
+		setup.PeerChainHandler = NewSuiHandler(tb, setup.KeysStore, setup.TokensRegistry, suiChainSimulator, quorum)
 	}
 
 	setup.PeerChainHandler.DeployContracts(setup.Ctx)
@@ -110,7 +115,7 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 			setup.TB,
 			setup.WorkingDir,
 			setup.ChainSimulator,
-			handler.EthChainWrapper, // acces direct la câmpuri
+			handler.EthChainWrapper,
 			handler.Erc20ContractsHolder,
 			handler.SimulatedChain,
 			NumRelayers,
@@ -123,7 +128,7 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 			setup.TB,
 			setup.WorkingDir,
 			setup.ChainSimulator,
-			handler.SuiProxy,
+			handler.SuiChainSimulator,
 			NumRelayers,
 			handler.PackageID,
 			setup.MultiversxHandler.SafeAddress,
@@ -255,8 +260,6 @@ func (setup *TestSetup) isTransferDoneFromPeerChainForToken(params TestTokenPara
 	}
 
 	receiverBalance := setup.MultiversxHandler.GetESDTUniversalTokenBalance(setup.Ctx, setup.TestKeys.MvxAddress, params.AbstractTokenIdentifier)
-	fmt.Println("===SUI===")
-	fmt.Println("receiverBalance", receiverBalance.String(), "expected", expectedValueOnReceiver.String())
 	if receiverBalance.String() != expectedValueOnReceiver.String() {
 		return false
 	}
@@ -335,8 +338,6 @@ func (setup *TestSetup) isTransferDoneFromMultiversXForToken(params TestTokenPar
 	case ChainTypeSui:
 		peerChainTestBalance = setup.PeerChainHandler.GetBalance(setup.Ctx, setup.TestKeys.SuiAddress, params.AbstractTokenIdentifier)
 	}
-	fmt.Println("===MVX===")
-	fmt.Println("expectedReceiver ", expectedReceiver.String(), "actual", peerChainTestBalance.String())
 	isTransferDoneFromMultiversX := peerChainTestBalance.String() == expectedReceiver.String()
 
 	expectedEsdtSafe := big.NewInt(0).Add(initialBalanceForSafe, params.ESDTSafeExtraBalance)
@@ -384,6 +385,9 @@ func (setup *TestSetup) transferTokensToTestKey(params TestTokenParams) {
 // SendFromMultiversxToPeerChain will create the deposits that will be gathered in a batch on MultiversX (without mint on peer chain)
 func (setup *TestSetup) SendFromMultiversxToPeerChain(tokensParams ...TestTokenParams) {
 	for _, params := range tokensParams {
+		if params.IsLocked {
+			setup.transferTokensToTestKey(params)
+		}
 		_ = setup.sendFromMultiversxToPeerChainForToken(params)
 	}
 }

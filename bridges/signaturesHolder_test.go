@@ -39,11 +39,11 @@ func TestSignatureHolder_ProcessNewMessage(t *testing.T) {
 		sh := NewSignatureHolder()
 		sh.ProcessNewMessage(nil, ethMsg)
 		assert.Equal(t, 0, len(sh.signedMessages))
-		assert.Equal(t, 0, len(sh.ethMessages))
+		assert.Equal(t, 0, len(sh.peerMessages))
 
 		sh.ProcessNewMessage(msg, nil)
 		assert.Equal(t, 0, len(sh.signedMessages))
-		assert.Equal(t, 0, len(sh.ethMessages))
+		assert.Equal(t, 0, len(sh.peerMessages))
 	})
 	t.Run("first message should add", func(t *testing.T) {
 		t.Parallel()
@@ -54,7 +54,7 @@ func TestSignatureHolder_ProcessNewMessage(t *testing.T) {
 		sh := NewSignatureHolder()
 		sh.ProcessNewMessage(msg, ethMsg)
 		assert.Equal(t, []*core.SignedMessage{msg}, sh.AllStoredSignatures())
-		assert.Equal(t, []*core.PeerChainSignature{ethMsg}, sh.ethMessages)
+		assert.Equal(t, []*core.PeerChainSignature{ethMsg}, sh.peerMessages)
 	})
 	t.Run("two messages should add", func(t *testing.T) {
 		t.Parallel()
@@ -68,7 +68,7 @@ func TestSignatureHolder_ProcessNewMessage(t *testing.T) {
 		sh := NewSignatureHolder()
 		sh.ProcessNewMessage(msg, ethMsg)
 		sh.ProcessNewMessage(msg1, ethMsg1)
-		compareEthSignatureMessageLists(t, []*core.PeerChainSignature{ethMsg, ethMsg1}, sh.ethMessages)
+		compareEthSignatureMessageLists(t, []*core.PeerChainSignature{ethMsg, ethMsg1}, sh.peerMessages)
 		compareSignedMessageLists(t, []*core.SignedMessage{msg, msg1}, sh.AllStoredSignatures())
 	})
 }

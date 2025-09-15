@@ -37,6 +37,7 @@ func GenerateTestUSDCToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeEthereum,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -79,6 +80,7 @@ func GenerateTestMEMEToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            true,
 			IsNativeOnPeerChain:              false,
+			PeerChainType:                    framework.ChainTypeEthereum,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -121,6 +123,7 @@ func GenerateTestEUROCToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            true,
 			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeEthereum,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -163,6 +166,7 @@ func GenerateTestMEXToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            true,
 			IsNativeOnPeerChain:              false,
+			PeerChainType:                    framework.ChainTypeEthereum,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -204,6 +208,7 @@ func GenerateTestSuiUSDCToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeSui,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -240,6 +245,7 @@ func GenerateTestWALToken() framework.TestTokenParams {
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeSui,
 		},
 		TestOperations: []framework.TokenOperations{
 			{
@@ -253,6 +259,44 @@ func GenerateTestWALToken() framework.TestTokenParams {
 		},
 		ESDTSafeExtraBalance:          big.NewInt(100),                                  // extra is just for the fees for the 2 transfers mvx->peerChain
 		PeerChainTestAddrExtraBalance: big.NewInt(-7300 + 6150 - 50 - 1900 + 1280 - 50), // -(peerChain->mvx) + (mvx->peerChain) - fees
+	}
+}
+
+func GenerateTestLKXMNToken() framework.TestTokenParams {
+	// LKXMN is peerChainNative = true, peerChainMintBurn = true, mvxNative = false, mvxMintBurn = true
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "LKXMN",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "LKXMN",
+			MvxChainSpecificTokenTicker:      "SUILKXMN",
+			MvxUniversalTokenDisplayName:     "WrappedLKXMN",
+			MvxChainSpecificTokenDisplayName: "SuiWrappedLKXMN",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            false,
+			PeerChainTokenName:               "xMoney",
+			PeerChainTokenSymbol:             "LKXMN",
+			ValueToMintOnPeerChain:           "0",
+			IsMintBurnOnPeerChain:            true,
+			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeSui,
+			IsLocked:                         true,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(1550),
+			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(4650),
+			},
+		},
+		ESDTSafeExtraBalance:          big.NewInt(100),                   // extra is just for the fees for the 2 transfers mvx->peerChain
+		PeerChainTestAddrExtraBalance: big.NewInt(1550 - 50 + 4650 - 50), // -(peerChain->mvx) + (mvx->peerChain) - fees
 	}
 }
 
