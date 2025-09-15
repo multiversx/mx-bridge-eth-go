@@ -30,6 +30,7 @@ const (
 
 type ArgsSuiClient struct {
 	Proxy                      Proxy
+	TxHandler                  txHandler
 	Log                        chainCore.Logger
 	Signer                     *signer.Signer
 	PackageId                  string
@@ -87,18 +88,6 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		return nil, err
 	}
 
-	argsTxHandler := ArgsTxHandler{
-		Proxy:     args.Proxy,
-		Signer:    args.Signer,
-		GasPrice:  1000,
-		GasBudget: 50000000,
-		Logger:    args.Log,
-	}
-	suiTxHandler, err := NewTransactionHandler(argsTxHandler)
-	if err != nil {
-		return nil, err
-	}
-
 	addressConverter, err := converters.NewAddressConverter()
 	if err != nil {
 		return nil, clients.ErrNilAddressConverter
@@ -107,7 +96,7 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	c := &client{
 		proxy:                        args.Proxy,
 		signer:                       args.Signer,
-		txHandler:                    suiTxHandler,
+		txHandler:                    args.TxHandler,
 		suiClientDataGetter:          getter,
 		packageId:                    args.PackageId,
 		safeObjectId:                 args.SafeObjectId,
@@ -133,6 +122,9 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 func checkArgs(args ArgsSuiClient) error {
 	if args.Proxy == nil {
 		return errNilProxy
+	}
+	if check.IfNil(args.TxHandler) {
+		return errNilTxHandler
 	}
 	if args.Signer == nil {
 		return errNilSigner

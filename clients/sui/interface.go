@@ -24,6 +24,7 @@ type Proxy interface {
 
 type txHandler interface {
 	SendTransactionReturnHash(ctx context.Context, gasCoin *transaction.SuiObjectRef, calls []core.SuiPTBOperation) (string, error)
+	IsInterfaceNil() bool
 }
 
 // TokensMapper can convert a token bytes from one chain to another

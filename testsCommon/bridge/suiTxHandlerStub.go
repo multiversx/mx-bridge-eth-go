@@ -20,3 +20,8 @@ func (stub *SuiTxHandlerStub) SendTransactionReturnHash(ctx context.Context, gas
 
 	return "", nil
 }
+
+// IsInterfaceNil -
+func (stub *SuiTxHandlerStub) IsInterfaceNil() bool {
+	return stub == nil
+}

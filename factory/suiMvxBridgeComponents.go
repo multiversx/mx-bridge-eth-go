@@ -288,9 +288,24 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 	}
 
 	suiClientLogId := components.chain.PeerChainClientLogId()
+	suiClientLogger := core.NewLoggerWithIdentifier(logger.GetOrCreate(suiClientLogId), suiClientLogId)
+
+	argsTxHandler := suiClient.ArgsTxHandler{
+		Proxy:     components.suiApi,
+		Signer:    components.suiSigner,
+		GasPrice:  1000, // TODO
+		GasBudget: 50000000,
+		Logger:    suiClientLogger,
+	}
+	suiTxHandler, err := suiClient.NewTransactionHandler(argsTxHandler)
+	if err != nil {
+		return err
+	}
+
 	argsSuiClient := suiClient.ArgsSuiClient{
 		Proxy:                        components.suiApi,
-		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(suiClientLogId), suiClientLogId),
+		TxHandler:                    suiTxHandler,
+		Log:                          suiClientLogger,
 		Signer:                       components.suiSigner,
 		PackageId:                    components.suiPackageId,
 		SafeObjectId:                 suiConfig.SafeObjectId,

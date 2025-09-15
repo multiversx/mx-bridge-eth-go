@@ -31,6 +31,7 @@ func createMockSuiClientArgs() ArgsSuiClient {
 
 	return ArgsSuiClient{
 		Proxy:                      &interactors.SuiProxyStub{},
+		TxHandler:                  &bridgeTests.SuiTxHandlerStub{},
 		Log:                        logger.GetOrCreate("test"),
 		Signer:                     relayer,
 		PackageId:                  "0x674a8fc0a6b48c8efea86ad7ed962107c5c132a78e7cc79c9c5b9391ba8b6d83",
@@ -84,6 +85,14 @@ func TestNewSuiClient(t *testing.T) {
 		c, err := NewSuiClient(args)
 
 		assert.Equal(t, errNilProxy, err)
+		assert.True(t, check.IfNil(c))
+	})
+	t.Run("nil transaction handler", func(t *testing.T) {
+		args := createMockSuiClientArgs()
+		args.TxHandler = nil
+		c, err := NewSuiClient(args)
+
+		assert.Equal(t, errNilTxHandler, err)
 		assert.True(t, check.IfNil(c))
 	})
 	t.Run("nil logger", func(t *testing.T) {

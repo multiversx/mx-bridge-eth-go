@@ -9,6 +9,7 @@ var (
 	errNilPackageId                = errors.New("nil package id")
 	errNilAddress                  = errors.New("nil address")
 	errNilProxy                    = errors.New("nil proxy")
+	errNilTxHandler                = errors.New("nil transaction handler")
 	errInvalidCoinType             = errors.New("invalid coin type format")
 	errInvalidInitialSharedVersion = errors.New("invalid initial shared version")
 	errInvalidProxyType            = errors.New("invalid proxy type")

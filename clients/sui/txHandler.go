@@ -78,3 +78,8 @@ func (txHandler *transactionHandler) SendTransactionReturnHash(
 
 	return resp.Digest, nil
 }
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (txHandler *transactionHandler) IsInterfaceNil() bool {
+	return txHandler == nil
+}
