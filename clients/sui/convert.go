@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 )
 
+const prefixBytesLength = 4
+
 func suiAddressFromBytes(bytes []byte) string {
 	hexAddress := hex.EncodeToString(bytes)
 	return "0x" + hexAddress
@@ -15,7 +17,7 @@ func AppendLengthToData(data []byte) []byte {
 		return data
 	}
 
-	lenBytes := make([]byte, 4)
+	lenBytes := make([]byte, prefixBytesLength)
 	binary.BigEndian.PutUint32(lenBytes, uint32(len(data)))
 	encoded := append(lenBytes, data...)
 

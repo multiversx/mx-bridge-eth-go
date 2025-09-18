@@ -458,9 +458,6 @@ func testEthContractsShouldError(tb testing.TB, testToken framework.TestTokenPar
 			auth, _ := bind.NewKeyedTransactorWithChainID(setup.DepositorKeys.EthSK, handler.ChainID)
 			_, err := handler.SafeContract.Deposit(auth, common.Address(token.PeerChainTokenAddress), valueToMintOnEth, receiverKeys.MvxAddress.AddressSlice())
 			require.Error(tb, err)
-
-		case *framework.SuiHandler:
-			panic("sui side not yet implemented")
 		default:
 			panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
 		}

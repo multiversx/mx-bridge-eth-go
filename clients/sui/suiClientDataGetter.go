@@ -245,8 +245,8 @@ func (getter *suiClientDataGetter) GetRelayers(ctx context.Context) ([]models.Su
 	return relayersAddresses, nil
 }
 
-// WasBatchExecuted returns true if the batch was executed
-func (getter *suiClientDataGetter) WasBatchExecuted(ctx context.Context, batchNonce uint64) (bool, error) {
+// WasExecuted returns true if the batch was executed
+func (getter *suiClientDataGetter) WasExecuted(ctx context.Context, batchNonce uint64) (bool, error) {
 	tx := transaction.NewTransaction()
 
 	tx.MoveCall(

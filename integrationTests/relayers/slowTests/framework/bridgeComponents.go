@@ -203,7 +203,9 @@ func NewSuiBridgeComponents(
 
 // CloseRelayers will call close on all created relayers
 func (bridge *BridgeComponents) CloseRelayers() {
-	//bridge.gasStationInstance.Close()
+	if bridge.gasStationInstance != nil {
+		bridge.gasStationInstance.Close()
+	}
 
 	for _, r := range bridge.RelayerInstances {
 		_ = r.Close()

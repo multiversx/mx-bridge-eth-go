@@ -27,7 +27,11 @@ const (
 	suiBridgeTokenBytecode   = "testdata/contracts/sui/bridge_token.mv"
 	suiTransferRuleBytecode  = "testdata/contracts/sui/transfer_rule.mv"
 
-	clockId = "0x6"
+	suiFrameworkId = "0x1"
+	moveStdLibId   = "0x2"
+	clockId        = "0x6"
+
+	suiPubKeyLength = 32
 )
 
 // SuiHandler will handle all the operations on the Sui side
@@ -77,8 +81,8 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 		Sender:          string(handler.OwnerKeys.SuiAddress),
 		CompiledModules: handler.getEncodedModules(),
 		Dependencies: []string{
-			"0x1", // Sui Framework
-			"0x2", // Move Standard Library
+			suiFrameworkId,
+			moveStdLibId,
 		},
 		GasBudget: "500000000",
 	}, handler.OwnerKeys)
@@ -119,12 +123,12 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 	}
 
 	suiRelayersAddresses := make([]string, 0, len(handler.RelayersKeys))
-	suiRelayersPubKeys := make([][32]byte, 0, len(handler.RelayersKeys))
+	suiRelayersPubKeys := make([][suiPubKeyLength]byte, 0, len(handler.RelayersKeys))
 	for _, relayerKeys := range handler.RelayersKeys {
 		suiRelayersAddresses = append(suiRelayersAddresses, string(relayerKeys.SuiAddress))
 
 		pubKeyBytes := relayerKeys.SuiSK.Public().(ed25519.PublicKey)
-		var pk [32]byte
+		var pk [suiPubKeyLength]byte
 		copy(pk[:], pubKeyBytes)
 		suiRelayersPubKeys = append(suiRelayersPubKeys, pk)
 	}
@@ -197,7 +201,7 @@ func (handler *SuiHandler) DeployContract(
 	module := params[0].(string)
 	function := params[1].(string)
 	suiRelayerAddresses := params[2].([]string)
-	suiRelayersPubKeys := params[3].([][32]byte)
+	suiRelayersPubKeys := params[3].([][suiPubKeyLength]byte)
 	quorumStr := params[4].(string)
 	safeObjectID := params[5].(string)
 	adminCap := params[6].(string)
@@ -382,8 +386,8 @@ func (handler *SuiHandler) deployCoinContract(ctx context.Context) (string, stri
 		Sender:          string(handler.OwnerKeys.SuiAddress),
 		CompiledModules: []string{base64.StdEncoding.EncodeToString(mv)},
 		Dependencies: []string{
-			"0x1", // Sui Framework
-			"0x2", // Move Standard Library
+			suiFrameworkId,
+			moveStdLibId,
 		},
 		GasBudget: "100000000",
 	}, handler.OwnerKeys)
@@ -466,15 +470,6 @@ func (handler *SuiHandler) initSupplyForToken(ctx context.Context, params IssueT
 		},
 		GasBudget: "100000000",
 	}, handler.OwnerKeys)
-}
-
-func (handler *SuiHandler) sendTreasuryCapToSafe(ctx context.Context, treasuryCapId string) {
-	handler.SuiChainSimulator.TransferObject(ctx, models.TransferObjectRequest{
-		Signer:    string(handler.OwnerKeys.SuiAddress),
-		ObjectId:  treasuryCapId,
-		GasBudget: "100000000",
-		Recipient: handler.SafeObjectID,
-	})
 }
 
 func (handler *SuiHandler) setTreasuryCapOnSafe(ctx context.Context) {

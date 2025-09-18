@@ -10,6 +10,8 @@ import (
 	"github.com/multiversx/mx-sdk-go/data"
 )
 
+const suiAddressBytesLength = 32
+
 // CreateRandomEthereumAddress will create a random Ethereum address
 func CreateRandomEthereumAddress() common.Address {
 	buff := make([]byte, len(common.Address{}))
@@ -37,11 +39,11 @@ func CreateRandomMultiversXSCAddress() sdkCore.AddressHandler {
 }
 
 // CreateRandomSuiAddressBytes will create a random Sui address bytes
-func CreateRandomSuiAddressBytes() [32]byte {
-	buff := make([]byte, 32)
+func CreateRandomSuiAddressBytes() [suiAddressBytesLength]byte {
+	buff := make([]byte, suiAddressBytesLength)
 	_, _ = rand.Read(buff)
 
-	return [32]byte(buff)
+	return [suiAddressBytesLength]byte(buff)
 }
 
 // CreateRandomCoinId will create a random Sui coin ID

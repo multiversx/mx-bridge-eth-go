@@ -8,14 +8,11 @@ import (
 	"sync"
 
 	"github.com/block-vision/sui-go-sdk/models"
+	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	suiClient "github.com/multiversx/mx-bridge-eth-go/clients/sui"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
-)
-
-const (
-	signatureSize = 132 // size of the ed25519 signature
-	messageSize   = 32  // size of the blake2b hash used for the message
 )
 
 // ArgsSuiRoleProvider is the argument for the Sui role provider constructor
@@ -90,33 +87,33 @@ func (srp *suiRoleProvider) processResults(results []models.SuiAddress) error {
 }
 
 func (srp *suiRoleProvider) isValidSuiAddress(address models.SuiAddress) bool {
-	return len(address) == 66 && strings.HasPrefix(string(address), "0x")
+	return len(address) == sui.ValidSuiAddressLength && strings.HasPrefix(string(address), "0x")
 }
 
 // VerifySignature will verify the provided signature against the message hash. It will also checks if the
 // public key is whitelisted or not
 func (srp *suiRoleProvider) VerifySignature(signature []byte, messageHash []byte) error {
 	srp.log.Debug("Verifying:", "signature", string(signature), "for message hash:", hex.EncodeToString(messageHash))
-	if len(signature)%signatureSize != 0 {
-		return fmt.Errorf("%w: expected a multiple of %d, got %d", ErrInvalidSignaturesArray, signatureSize, len(signature))
+	if len(signature)%suiClient.EncodedSignatureLength != 0 {
+		return fmt.Errorf("%w: expected a multiple of %d, got %d", ErrInvalidSignaturesArray, suiClient.EncodedSignatureLength, len(signature))
 	}
-	if len(messageHash)%messageSize != 0 {
-		return fmt.Errorf("%w: expected a multiple of %d, got %d", ErrInvalidMessagesArray, messageSize, len(messageHash))
+	if len(messageHash)%suiClient.MessageLength != 0 {
+		return fmt.Errorf("%w: expected a multiple of %d, got %d", ErrInvalidMessagesArray, suiClient.MessageLength, len(messageHash))
 	}
-	if len(signature)/signatureSize != len(messageHash)/messageSize {
-		return fmt.Errorf("%w: number of signatures (%d), number of message hashes (%d)", ErrInvalidSignaturesCount, len(signature)/signatureSize, len(messageHash)/messageSize)
+	if len(signature)/suiClient.EncodedSignatureLength != len(messageHash)/suiClient.MessageLength {
+		return fmt.Errorf("%w: number of signatures (%d), number of message hashes (%d)", ErrInvalidSignaturesCount, len(signature)/suiClient.EncodedSignatureLength, len(messageHash)/suiClient.MessageLength)
 	}
 
-	n := len(signature) / signatureSize
+	n := len(signature) / suiClient.EncodedSignatureLength
 	var relayer string
 	pass := true
 	for i := 0; i < n; i++ {
-		start := i * signatureSize
-		end := start + signatureSize
+		start := i * suiClient.EncodedSignatureLength
+		end := start + suiClient.EncodedSignatureLength
 		sig := signature[start:end]
 
-		startHash := i * messageSize
-		endHash := startHash + messageSize
+		startHash := i * suiClient.MessageLength
+		endHash := startHash + suiClient.MessageLength
 		msgHash := messageHash[startHash:endHash]
 
 		signer, ok, err := models.VerifyPersonalMessage(string(msgHash), string(sig))

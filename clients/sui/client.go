@@ -26,6 +26,10 @@ import (
 const (
 	minQuorumValue                  = uint64(1)
 	minClientAvailabilityAllowDelta = 1
+	EncodedSignatureLength          = 132
+	MessageLength                   = 32
+	signatureSchemePrefixSize       = 1
+	signatureLength                 = 96
 )
 
 type ArgsSuiClient struct {
@@ -225,23 +229,18 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 	return transferBatch, isFinalBatch && areFinalDeposits, nil
 }
 
-// WasExecuted returns true if the MultiversX batch ID was executed
-func (c *client) WasExecuted(ctx context.Context, batchID uint64) (bool, error) {
-	return c.WasBatchExecuted(ctx, batchID)
-}
-
 // BroadcastSignatureForMessageHash will send the signature for the provided message hash
 func (c *client) BroadcastSignatureForMessageHash(msgHash []byte) {
-	if len(msgHash)%32 != 0 {
+	if len(msgHash)%MessageLength != 0 {
 		c.log.Error("invalid message hash length", "msg hash", msgHash, "length", len(msgHash))
 		return
 	}
 
 	var signatures []byte
-	numberOfHashes := len(msgHash) / 32
+	numberOfHashes := len(msgHash) / MessageLength
 	for i := 0; i < numberOfHashes; i++ {
-		start := i * 32
-		end := start + 32
+		start := i * MessageLength
+		end := start + MessageLength
 		currentHash := msgHash[start:end]
 		resp, err := c.signer.SignPersonalMessageV1(string(currentHash))
 		if err != nil {
@@ -420,10 +419,10 @@ func (c *client) processSignaturesOfRelayers(tokenGroups map[string]*TokenTransf
 	}
 
 	for _, serializedSigsOfRelayer := range serializedSignatures {
-		n := len(serializedSigsOfRelayer) / 132
+		n := len(serializedSigsOfRelayer) / EncodedSignatureLength
 		for i := 0; i < n; i++ {
-			start := i * 132
-			end := start + 132
+			start := i * EncodedSignatureLength
+			end := start + EncodedSignatureLength
 			signature := serializedSigsOfRelayer[start:end]
 
 			_bytes, err := base64.StdEncoding.DecodeString(string(signature))
@@ -431,7 +430,7 @@ func (c *client) processSignaturesOfRelayers(tokenGroups map[string]*TokenTransf
 				return fmt.Errorf("error decoding signature: %w", err)
 			}
 
-			sig := [96]byte(_bytes[1:]) // remove the signature scheme byte
+			sig := [signatureLength]byte(_bytes[signatureSchemePrefixSize:]) // remove the signature scheme byte
 			tokenGroups[tokenTypes[i]].Signatures = append(tokenGroups[tokenTypes[i]].Signatures, sig)
 		}
 	}
@@ -465,7 +464,6 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 		i++
 		isBatchComplete := i == n
 
-		// COPY loop vars to local variables to avoid closure-capture bug
 		localGroup := group
 		localIsBatchComplete := isBatchComplete
 
@@ -479,7 +477,6 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 			return nil, fmt.Errorf("failed to convert coin type %s: %w", coinType, err)
 		}
 
-		// copy dereferenced address value if you'll use inside TypeTags/ArgsFn
 		coinIdBytesVal := *coinIdBytes
 
 		calls = append(calls, bridgeCore.SuiPTBOperation{
@@ -496,7 +493,6 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 				},
 			},
 			ArgsFn: func(tx *transaction.Transaction) []transaction.Argument {
-				// use localGroup, localIsBatchComplete, coinIdBytesVal (if needed) – not the loop vars
 				return []transaction.Argument{
 					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{

@@ -9,6 +9,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 )
 
+// PeerChainClientStub -
 type PeerChainClientStub struct {
 	GetBatchCalled                         func(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error)
 	WasExecutedCalled                      func(ctx context.Context, batchID uint64) (bool, error)
@@ -29,6 +30,7 @@ type PeerChainClientStub struct {
 	WhitelistedTokensCalled                func(ctx context.Context, token []byte) (bool, error)
 }
 
+// GetBatch -
 func (stub *PeerChainClientStub) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error) {
 	if stub.GetBatchCalled != nil {
 		return stub.GetBatchCalled(ctx, nonce)
@@ -36,6 +38,7 @@ func (stub *PeerChainClientStub) GetBatch(ctx context.Context, nonce uint64) (*b
 	return nil, false, errNotImplemented
 }
 
+// WasExecuted -
 func (stub *PeerChainClientStub) WasExecuted(ctx context.Context, batchID uint64) (bool, error) {
 	if stub.WasExecutedCalled != nil {
 		return stub.WasExecutedCalled(ctx, batchID)
@@ -43,6 +46,7 @@ func (stub *PeerChainClientStub) WasExecuted(ctx context.Context, batchID uint64
 	return false, errNotImplemented
 }
 
+// GenerateMessageHash -
 func (stub *PeerChainClientStub) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchID uint64) ([]byte, error) {
 	if stub.GenerateMessageHashCalled != nil {
 		return stub.GenerateMessageHashCalled(batch, batchID)
@@ -50,12 +54,14 @@ func (stub *PeerChainClientStub) GenerateMessageHash(batch *batchProcessor.ArgLi
 	return nil, errNotImplemented
 }
 
+// BroadcastSignatureForMessageHash -
 func (stub *PeerChainClientStub) BroadcastSignatureForMessageHash(msgHash []byte) {
 	if stub.BroadcastSignatureForMessageHashCalled != nil {
 		stub.BroadcastSignatureForMessageHashCalled(msgHash)
 	}
 }
 
+// ExecuteTransfer -
 func (stub *PeerChainClientStub) ExecuteTransfer(ctx context.Context, msgHash []byte, batch *batchProcessor.ArgListsBatch, batchID uint64, quorum int) (string, error) {
 	if stub.ExecuteTransferCalled != nil {
 		return stub.ExecuteTransferCalled(ctx, msgHash, batch, batchID, quorum)
@@ -63,6 +69,7 @@ func (stub *PeerChainClientStub) ExecuteTransfer(ctx context.Context, msgHash []
 	return "", errNotImplemented
 }
 
+// CheckClientAvailability -
 func (stub *PeerChainClientStub) CheckClientAvailability(ctx context.Context) error {
 	if stub.CheckClientAvailabilityCalled != nil {
 		return stub.CheckClientAvailabilityCalled(ctx)
@@ -70,6 +77,7 @@ func (stub *PeerChainClientStub) CheckClientAvailability(ctx context.Context) er
 	return errNotImplemented
 }
 
+// GetTransactionsStatuses -
 func (stub *PeerChainClientStub) GetTransactionsStatuses(ctx context.Context, batchID uint64) ([]byte, error) {
 	if stub.GetTransactionsStatusesCalled != nil {
 		return stub.GetTransactionsStatusesCalled(ctx, batchID)
@@ -77,6 +85,7 @@ func (stub *PeerChainClientStub) GetTransactionsStatuses(ctx context.Context, ba
 	return nil, errNotImplemented
 }
 
+// GetQuorumSize -
 func (stub *PeerChainClientStub) GetQuorumSize(ctx context.Context) (*big.Int, error) {
 	if stub.GetQuorumSizeCalled != nil {
 		return stub.GetQuorumSizeCalled(ctx)
@@ -84,6 +93,7 @@ func (stub *PeerChainClientStub) GetQuorumSize(ctx context.Context) (*big.Int, e
 	return nil, errNotImplemented
 }
 
+// IsQuorumReached -
 func (stub *PeerChainClientStub) IsQuorumReached(ctx context.Context, msgHash []byte) (bool, error) {
 	if stub.IsQuorumReachedCalled != nil {
 		return stub.IsQuorumReachedCalled(ctx, msgHash)
@@ -91,6 +101,7 @@ func (stub *PeerChainClientStub) IsQuorumReached(ctx context.Context, msgHash []
 	return false, errNotImplemented
 }
 
+// GetBatchSCMetadata -
 func (stub *PeerChainClientStub) GetBatchSCMetadata(ctx context.Context, nonce uint64, blockNumber int64) ([]*contract.ERC20SafeERC20SCDeposit, error) {
 	if stub.GetBatchSCMetadataCalled != nil {
 		return stub.GetBatchSCMetadataCalled(ctx, nonce, blockNumber)
@@ -98,6 +109,7 @@ func (stub *PeerChainClientStub) GetBatchSCMetadata(ctx context.Context, nonce u
 	return nil, errNotImplemented
 }
 
+// CheckRequiredBalance -
 func (stub *PeerChainClientStub) CheckRequiredBalance(ctx context.Context, token []byte, value *big.Int) error {
 	if stub.CheckRequiredBalanceCalled != nil {
 		return stub.CheckRequiredBalanceCalled(ctx, token, value)
@@ -105,6 +117,7 @@ func (stub *PeerChainClientStub) CheckRequiredBalance(ctx context.Context, token
 	return errNotImplemented
 }
 
+// TotalBalances -
 func (stub *PeerChainClientStub) TotalBalances(ctx context.Context, token []byte) (*big.Int, error) {
 	if stub.TotalBalancesCalled != nil {
 		return stub.TotalBalancesCalled(ctx, token)
@@ -112,6 +125,7 @@ func (stub *PeerChainClientStub) TotalBalances(ctx context.Context, token []byte
 	return nil, errNotImplemented
 }
 
+// MintBalances -
 func (stub *PeerChainClientStub) MintBalances(ctx context.Context, token []byte) (*big.Int, error) {
 	if stub.MintBalancesCalled != nil {
 		return stub.MintBalancesCalled(ctx, token)
@@ -119,6 +133,7 @@ func (stub *PeerChainClientStub) MintBalances(ctx context.Context, token []byte)
 	return nil, errNotImplemented
 }
 
+// BurnBalances -
 func (stub *PeerChainClientStub) BurnBalances(ctx context.Context, token []byte) (*big.Int, error) {
 	if stub.BurnBalancesCalled != nil {
 		return stub.BurnBalancesCalled(ctx, token)
@@ -126,6 +141,7 @@ func (stub *PeerChainClientStub) BurnBalances(ctx context.Context, token []byte)
 	return nil, errNotImplemented
 }
 
+// MintBurnTokens -
 func (stub *PeerChainClientStub) MintBurnTokens(ctx context.Context, token []byte) (bool, error) {
 	if stub.MintBurnTokensCalled != nil {
 		return stub.MintBurnTokensCalled(ctx, token)
@@ -133,6 +149,7 @@ func (stub *PeerChainClientStub) MintBurnTokens(ctx context.Context, token []byt
 	return false, errNotImplemented
 }
 
+// NativeTokens -
 func (stub *PeerChainClientStub) NativeTokens(ctx context.Context, token []byte) (bool, error) {
 	if stub.NativeTokensCalled != nil {
 		return stub.NativeTokensCalled(ctx, token)
@@ -140,6 +157,7 @@ func (stub *PeerChainClientStub) NativeTokens(ctx context.Context, token []byte)
 	return false, errNotImplemented
 }
 
+// WhitelistedTokens -
 func (stub *PeerChainClientStub) WhitelistedTokens(ctx context.Context, token []byte) (bool, error) {
 	if stub.WhitelistedTokensCalled != nil {
 		return stub.WhitelistedTokensCalled(ctx, token)
@@ -147,6 +165,7 @@ func (stub *PeerChainClientStub) WhitelistedTokens(ctx context.Context, token []
 	return false, errNotImplemented
 }
 
+// IsInterfaceNil -
 func (stub *PeerChainClientStub) IsInterfaceNil() bool {
 	return stub == nil
 }
