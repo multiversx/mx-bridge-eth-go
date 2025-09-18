@@ -3,11 +3,10 @@ package ethtomultiversx
 import (
 	"context"
 	"errors"
-	"github.com/multiversx/mx-bridge-eth-go/bridges"
 	"testing"
 
+	"github.com/multiversx/mx-bridge-eth-go/bridges"
 	"github.com/multiversx/mx-bridge-eth-go/core"
-	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +16,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 	t.Run("nil batch", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return nil
 		}
 
@@ -33,7 +32,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 	t.Run("error on WasProposedTransferSigned", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasActionSignedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -52,7 +51,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 	t.Run("error on SignProposedTransfer", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasActionSignedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -75,7 +74,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 		t.Parallel()
 		expectedErr := errors.New("expected error")
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasActionSignedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -97,7 +96,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 	t.Run("invalid action ID", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasActionSignedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -119,7 +118,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 	t.Run("error on WasActionSignedOnMultiversX", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasActionSignedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -141,7 +140,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 	t.Run("should work - transfer was already signed", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasActionSignedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
@@ -163,7 +162,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.WasActionSignedOnMultiversXCalled = func(ctx context.Context) (bool, error) {

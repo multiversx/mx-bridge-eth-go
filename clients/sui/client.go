@@ -11,7 +11,6 @@ import (
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/mystenbcs"
 	"github.com/block-vision/sui-go-sdk/signer"
-	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/block-vision/sui-go-sdk/transaction"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
@@ -163,11 +162,6 @@ func checkArgs(args ArgsSuiClient) error {
 	}
 
 	return nil
-}
-
-func (c *client) getSuiClient() (*sui.Client, bool) {
-	suiClient, ok := c.proxy.(*sui.Client)
-	return suiClient, ok
 }
 
 // GetBatch returns the transfer batch by providing the nonce

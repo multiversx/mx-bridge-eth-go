@@ -11,7 +11,6 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
-	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -50,7 +49,7 @@ type bridgeExecutor struct {
 	maxQuorumRetriesOnMultiversX uint64
 	maxRetriesOnWasProposed      uint64
 
-	batch                     *bridgeCore.TransferBatch
+	batch                     *core.TransferBatch
 	actionID                  uint64
 	msgHash                   []byte
 	quorumRetriesOnPeerClient uint64
@@ -150,7 +149,7 @@ func (executor *bridgeExecutor) MyTurnAsLeader() bool {
 }
 
 // GetBatchFromMultiversX fetches the pending batch from MultiversX
-func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*bridgeCore.TransferBatch, error) {
+func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*core.TransferBatch, error) {
 	batch, err := executor.multiversXClient.GetPendingBatch(ctx)
 	if err == nil {
 		executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
@@ -159,7 +158,7 @@ func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*br
 }
 
 // StoreBatchFromMultiversX saves the pending batch from MultiversX
-func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *bridgeCore.TransferBatch) error {
+func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *core.TransferBatch) error {
 	if batch == nil {
 		return ErrNilBatch
 	}
@@ -169,7 +168,7 @@ func (executor *bridgeExecutor) StoreBatchFromMultiversX(batch *bridgeCore.Trans
 }
 
 // GetStoredBatch returns the stored batch
-func (executor *bridgeExecutor) GetStoredBatch() *bridgeCore.TransferBatch {
+func (executor *bridgeExecutor) GetStoredBatch() *core.TransferBatch {
 	return executor.batch
 }
 
@@ -461,7 +460,7 @@ func (executor *bridgeExecutor) GetAndStoreBatchFromPeerChain(ctx context.Contex
 }
 
 // addBatchSCMetadata fetches the logs containing sc calls metadata for the current batch
-func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfers *bridgeCore.TransferBatch) (*bridgeCore.TransferBatch, error) {
+func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfers *core.TransferBatch) (*core.TransferBatch, error) {
 	if transfers == nil {
 		return nil, ErrNilBatch
 	}
@@ -478,7 +477,7 @@ func (executor *bridgeExecutor) addBatchSCMetadata(ctx context.Context, transfer
 	return transfers, nil
 }
 
-func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCore.DepositTransfer, events []*contract.ERC20SafeERC20SCDeposit) *bridgeCore.DepositTransfer {
+func (executor *bridgeExecutor) addMetadataToTransfer(transfer *core.DepositTransfer, events []*contract.ERC20SafeERC20SCDeposit) *core.DepositTransfer {
 	for _, event := range events {
 		if event.DepositNonce.Uint64() == transfer.Nonce {
 			processData(transfer, event.CallData)
@@ -486,31 +485,31 @@ func (executor *bridgeExecutor) addMetadataToTransfer(transfer *bridgeCore.Depos
 		}
 	}
 
-	transfer.Data = []byte{bridgeCore.MissingDataProtocolMarker}
+	transfer.Data = []byte{core.MissingDataProtocolMarker}
 	transfer.DisplayableData = ""
 
 	return transfer
 }
 
-func processData(transfer *bridgeCore.DepositTransfer, buff []byte) {
+func processData(transfer *core.DepositTransfer, buff []byte) {
 	transfer.Data = buff
 	dataLen := len(transfer.Data)
 	if dataLen == 0 {
-		transfer.Data = []byte{bridgeCore.MissingDataProtocolMarker}
+		transfer.Data = []byte{core.MissingDataProtocolMarker}
 		transfer.DisplayableData = ""
 		return
 	}
 	// this check is optional, but brings an optimisation to reduce the gas used in case of a bad callData
-	if dataLen == 1 && buff[0] == bridgeCore.MissingDataProtocolMarker {
+	if dataLen == 1 && buff[0] == core.MissingDataProtocolMarker {
 		return
 	}
 
 	// we have a data field, add the marker & the correct length
 	transfer.DisplayableData = hex.EncodeToString(transfer.Data)
-	buff32 := make([]byte, bridgeCore.Uint32ArgBytes)
+	buff32 := make([]byte, core.Uint32ArgBytes)
 	binary.BigEndian.PutUint32(buff32, uint32(dataLen))
 
-	prefix := append([]byte{bridgeCore.DataPresentProtocolMarker}, buff32...)
+	prefix := append([]byte{core.DataPresentProtocolMarker}, buff32...)
 
 	transfer.Data = append(prefix, transfer.Data...)
 }

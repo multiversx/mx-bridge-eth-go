@@ -346,51 +346,6 @@ func TestSuiClientDataGetter_GetRelayers(t *testing.T) {
 	})
 }
 
-func TestSuiClientDataGetter_WasBatchExecuted(t *testing.T) {
-	t.Parallel()
-
-	args := createMockArgsSuiClientDataGetter()
-
-	t.Run("proxy errors", func(t *testing.T) {
-		t.Parallel()
-
-		dg, _ := NewSuiClientDataGetter(args)
-		expectedErr := errors.New("expected error")
-		dg.proxy = createFailMockProxy(expectedErr)
-
-		wasBatchExecuted, err := dg.WasBatchExecuted(context.Background(), batchNonce)
-		assert.NotNil(t, err)
-		assert.True(t, strings.Contains(err.Error(), expectedErr.Error()))
-		assert.False(t, wasBatchExecuted)
-	})
-	t.Run("failed tx status", func(t *testing.T) {
-		t.Parallel()
-
-		dg, _ := NewSuiClientDataGetter(args)
-		dg.proxy = createFailMockProxy(nil)
-
-		wasBatchExecuted, err := dg.WasBatchExecuted(context.Background(), batchNonce)
-		assert.NotNil(t, err)
-		assert.False(t, wasBatchExecuted)
-	})
-	t.Run("should work", func(t *testing.T) {
-		t.Parallel()
-
-		dg, _ := NewSuiClientDataGetter(args)
-
-		expectedBool := true
-
-		resultsRaw, err := createResultsRawFromValues(expectedBool)
-		assert.NoError(t, err)
-
-		dg.proxy = createMockProxy(resultsRaw)
-
-		wasBatchExecuted, err := dg.WasBatchExecuted(context.Background(), batchNonce)
-		assert.Nil(t, err)
-		assert.Equal(t, expectedBool, wasBatchExecuted)
-	})
-}
-
 func TestSuiClientDataGetter_IsPaused(t *testing.T) {
 	t.Parallel()
 

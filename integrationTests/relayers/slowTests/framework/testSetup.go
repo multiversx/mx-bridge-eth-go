@@ -420,7 +420,7 @@ func (setup *TestSetup) sendFromMultiversxToPeerChainForToken(params TestTokenPa
 // TestWithdrawTotalFeesOnPeerChainForTokens will test the withdrawal functionality for the provided test tokens
 func (setup *TestSetup) TestWithdrawTotalFeesOnPeerChainForTokens(tokensParams ...TestTokenParams) {
 	for _, param := range tokensParams {
-		token := setup.TokensRegistry.GetTokenData(param.AbstractTokenIdentifier)
+		token := setup.GetTokenData(param.AbstractTokenIdentifier)
 
 		expectedAccumulated := big.NewInt(0)
 		for _, operation := range param.TestOperations {

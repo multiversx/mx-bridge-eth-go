@@ -10,6 +10,7 @@ import (
 
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
+	"github.com/multiversx/mx-bridge-eth-go/clients/sui"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -166,8 +167,8 @@ func TestSuiRoleProvider_VerifySuiSignature(t *testing.T) {
 			whitelistedAddresses: []models.SuiAddress{
 				models.SuiAddress("0x" + strings.Repeat("1", 64)),
 			},
-			sig:         strings.Repeat("01", signatureSize+1),
-			hexMsg:      strings.Repeat("02", messageSize),
+			sig:         strings.Repeat("01", sui.EncodedSignatureLength+1),
+			hexMsg:      strings.Repeat("02", sui.MessageLength),
 			expectedErr: ErrInvalidSignaturesArray,
 		},
 		{
@@ -175,8 +176,8 @@ func TestSuiRoleProvider_VerifySuiSignature(t *testing.T) {
 			whitelistedAddresses: []models.SuiAddress{
 				models.SuiAddress("0x" + strings.Repeat("1", 64)),
 			},
-			sig:         strings.Repeat("03", signatureSize),
-			hexMsg:      strings.Repeat("04", messageSize-1),
+			sig:         strings.Repeat("03", sui.EncodedSignatureLength),
+			hexMsg:      strings.Repeat("04", sui.MessageLength-1),
 			expectedErr: ErrInvalidMessagesArray,
 		},
 		{
@@ -184,8 +185,8 @@ func TestSuiRoleProvider_VerifySuiSignature(t *testing.T) {
 			whitelistedAddresses: []models.SuiAddress{
 				models.SuiAddress("0x" + strings.Repeat("1", 64)),
 			},
-			sig:         strings.Repeat("05", signatureSize*2),
-			hexMsg:      strings.Repeat("06", messageSize),
+			sig:         strings.Repeat("05", sui.EncodedSignatureLength*2),
+			hexMsg:      strings.Repeat("06", sui.MessageLength),
 			expectedErr: ErrInvalidSignaturesCount,
 		},
 	}

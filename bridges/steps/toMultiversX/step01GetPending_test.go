@@ -7,16 +7,15 @@ import (
 	"testing"
 
 	"github.com/multiversx/mx-bridge-eth-go/core"
-	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	bridgeTests "github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/stretchr/testify/assert"
 )
 
 var expectedError = errors.New("expected error")
-var testBatch = &bridgeCore.TransferBatch{
+var testBatch = &core.TransferBatch{
 	ID: 112233,
-	Deposits: []*bridgeCore.DepositTransfer{
+	Deposits: []*core.DepositTransfer{
 		{
 			Nonce:                 0,
 			ToBytes:               []byte("to"),
@@ -73,7 +72,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetAndStoreBatchFromPeerChainCalled = func(ctx context.Context, nonce uint64) error {
 			return nil
 		}
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return nil
 		}
 
@@ -94,7 +93,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetAndStoreBatchFromPeerChainCalled = func(ctx context.Context, nonce uint64) error {
 			return nil
 		}
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnPeerBatchCalled = func(ctx context.Context) error {
@@ -121,7 +120,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetAndStoreBatchFromPeerChainCalled = func(ctx context.Context, nonce uint64) error {
 			return nil
 		}
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnPeerBatchCalled = func(ctx context.Context) error {
@@ -145,7 +144,7 @@ func TestExecuteGetPending(t *testing.T) {
 		bridgeStub.GetAndStoreBatchFromPeerChainCalled = func(ctx context.Context, nonce uint64) error {
 			return nil
 		}
-		bridgeStub.GetStoredBatchCalled = func() *bridgeCore.TransferBatch {
+		bridgeStub.GetStoredBatchCalled = func() *core.TransferBatch {
 			return testBatch
 		}
 		bridgeStub.VerifyLastDepositNonceExecutedOnPeerBatchCalled = func(ctx context.Context) error {

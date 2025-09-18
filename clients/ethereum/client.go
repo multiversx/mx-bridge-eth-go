@@ -13,7 +13,6 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
-	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -144,7 +143,7 @@ func checkArgs(args ArgsEthereumClient) error {
 }
 
 // GetBatch returns the batch (if existing) from the Ethereum contract by providing the nonce
-func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error) {
+func (c *client) GetBatch(ctx context.Context, nonce uint64) (*core.TransferBatch, bool, error) {
 	c.log.Info("Getting batch", "nonce", nonce)
 	nonceAsBigInt := big.NewInt(0).SetUint64(nonce)
 	batch, isFinalBatch, err := c.clientWrapper.GetBatch(ctx, nonceAsBigInt)
@@ -160,10 +159,10 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 			clients.ErrDepositsAndBatchDepositsCountDiffer, batch.DepositsCount, len(deposits))
 	}
 
-	transferBatch := &bridgeCore.TransferBatch{
+	transferBatch := &core.TransferBatch{
 		ID:          batch.Nonce.Uint64(),
 		BlockNumber: batch.BlockNumber,
-		Deposits:    make([]*bridgeCore.DepositTransfer, 0, batch.DepositsCount),
+		Deposits:    make([]*core.DepositTransfer, 0, batch.DepositsCount),
 	}
 	cachedTokens := make(map[string][]byte)
 	for i := range deposits {
@@ -172,7 +171,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 		fromBytes := deposit.Depositor[:]
 		tokenBytes := deposit.TokenAddress[:]
 
-		depositTransfer := &bridgeCore.DepositTransfer{
+		depositTransfer := &core.DepositTransfer{
 			Nonce:            deposit.Nonce.Uint64(),
 			ToBytes:          toBytes,
 			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),
@@ -415,7 +414,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	currentBlock, err := c.clientWrapper.BlockNumber(ctx)
 	if err != nil {
-		c.setStatusForAvailabilityCheck(bridgeCore.Unavailable, err.Error(), currentBlock)
+		c.setStatusForAvailabilityCheck(core.Unavailable, err.Error(), currentBlock)
 
 		return err
 	}
@@ -430,12 +429,12 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	if c.retriesAvailabilityCheck > c.clientAvailabilityAllowDelta {
 		message := fmt.Sprintf("block %d fetched for %d times in a row", currentBlock, c.retriesAvailabilityCheck)
-		c.setStatusForAvailabilityCheck(bridgeCore.Unavailable, message, currentBlock)
+		c.setStatusForAvailabilityCheck(core.Unavailable, message, currentBlock)
 
 		return nil
 	}
 
-	c.setStatusForAvailabilityCheck(bridgeCore.Available, "", currentBlock)
+	c.setStatusForAvailabilityCheck(core.Available, "", currentBlock)
 
 	return nil
 }
@@ -444,7 +443,7 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 	c.retriesAvailabilityCheck++
 }
 
-func (c *client) setStatusForAvailabilityCheck(status bridgeCore.ClientStatus, message string, nonce uint64) {
+func (c *client) setStatusForAvailabilityCheck(status core.ClientStatus, message string, nonce uint64) {
 	c.clientWrapper.SetStringMetric(core.MetricMultiversXClientStatus, status.String())
 	c.clientWrapper.SetStringMetric(core.MetricLastMultiversXClientError, message)
 	c.clientWrapper.SetIntMetric(core.MetricLastBlockNonce, int(nonce))
