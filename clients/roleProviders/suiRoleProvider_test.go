@@ -1,7 +1,6 @@
 package roleproviders
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -82,18 +81,13 @@ func TestSuiRoleProvider_ExecuteShouldWork(t *testing.T) {
 		models.SuiAddress("0x" + strings.Repeat("2", 64)),
 		models.SuiAddress("0x" + strings.Repeat("3", 64)),
 	}
-	expectedSortedPublicKeys := [][]byte{
-		bytes.Repeat([]byte("1"), 32),
-		bytes.Repeat([]byte("2"), 32),
-		bytes.Repeat([]byte("3"), 32),
-	}
 
-	t.Run("nil whitelisted", testSuiExecuteShouldWork(nil, make([][]byte, 0)))
-	t.Run("empty whitelisted", testSuiExecuteShouldWork(make([]models.SuiAddress, 0), make([][]byte, 0)))
-	t.Run("with whitelisted", testSuiExecuteShouldWork(whitelistedAddresses, expectedSortedPublicKeys))
+	t.Run("nil whitelisted", testSuiExecuteShouldWork(nil))
+	t.Run("empty whitelisted", testSuiExecuteShouldWork(make([]models.SuiAddress, 0)))
+	t.Run("with whitelisted", testSuiExecuteShouldWork(whitelistedAddresses))
 }
 
-func testSuiExecuteShouldWork(whitelistedAddresses []models.SuiAddress, expectedSortedPublicKeys [][]byte) func(t *testing.T) {
+func testSuiExecuteShouldWork(whitelistedAddresses []models.SuiAddress) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
 
