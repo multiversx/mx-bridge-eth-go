@@ -279,7 +279,7 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 		if !exists {
 			coinTypeWithPrefix, err := c.tokensMapper.ConvertToken(ctx, deposit.SourceTokenBytes)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("%w while converting token bytes, transfer index %d", err, transferIndex)
 			}
 			deposit.DestinationTokenBytes = coinTypeWithPrefix[prefixBytesLength:] // trim the len prefix
 			cachedTokens[deposit.DisplayableToken] = deposit.DestinationTokenBytes

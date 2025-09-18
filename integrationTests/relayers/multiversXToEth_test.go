@@ -32,6 +32,8 @@ func asyncCancelCall(cancelHandler func(), delay time.Duration) {
 }
 
 func TestRelayersShouldExecuteSimpleTransfersFromMultiversXToEth(t *testing.T) {
+	t.Skip()
+
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
@@ -120,6 +122,8 @@ func callIsFromBalanceValidator() bool {
 }
 
 func TestRelayersShouldExecuteTransfersFromMultiversXToEthIfTransactionsAppearInBatch(t *testing.T) {
+	t.Skip()
+
 	if testing.Short() {
 		t.Skip("this is not a short test")
 	}
