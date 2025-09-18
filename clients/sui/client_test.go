@@ -793,14 +793,12 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 		suiAddress2 := suiAddressFromBytes(batch.Recipients[1])
 		suiAddressBytes2, _ := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress2))
 
-		var expectedHash []byte
 		expectedHashForToken1 := generateHashForTokenGroup(t, batchID, &TokenTransferGroup{
 			Tokens:     [][]byte{batch.PeerTokens[0]},
 			Recipients: []models.SuiAddressBytes{*suiAddressBytes1},
 			Amounts:    []uint64{batch.Amounts[0].Uint64()},
 			Nonces:     []uint64{batch.Nonces[0].Uint64()},
 		})
-		expectedHash = append(expectedHash, expectedHashForToken1...)
 
 		expectedHashForToken2 := generateHashForTokenGroup(t, batchID, &TokenTransferGroup{
 			Tokens:     [][]byte{batch.PeerTokens[1]},
@@ -808,7 +806,6 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 			Amounts:    []uint64{batch.Amounts[1].Uint64()},
 			Nonces:     []uint64{batch.Nonces[1].Uint64()},
 		})
-		expectedHash = append(expectedHash, expectedHashForToken2...)
 
 		hash, err := c.GenerateMessageHash(batch, batchID)
 		assert.NoError(t, err)

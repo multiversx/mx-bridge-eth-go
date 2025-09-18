@@ -484,7 +484,7 @@ func testCallPayableWithParamsWasCalled(testSetup *framework.TestSetup, value ui
 
 	universalTokens := make([]string, 0, len(tokens))
 	for _, identifier := range tokens {
-		tkData := testSetup.TokensRegistry.GetTokenData(identifier)
+		tkData := testSetup.GetTokenData(identifier)
 		universalTokens = append(universalTokens, tkData.MvxUniversalToken)
 	}
 
