@@ -473,6 +473,10 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 
 		coinIdBytesVal := *coinIdBytes
 
+		// TODO: get the initial shared version of the clock object from the configs
+		suiAddress1 := suiAddressFromBytes([]byte("0x20087699b5f8d98dc0b6124b99cb0a421f6eae7eb42294bbb4b389a6ce8a48f1"))
+		suiAddressBytes1, _ := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress1))
+
 		calls = append(calls, bridgeCore.SuiPTBOperation{
 			Package:  models.SuiAddress(c.packageId),
 			Module:   "bridge",
@@ -509,6 +513,13 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 					tx.Pure(batchID),
 					tx.Pure(localGroup.Signatures),
 					tx.Pure(localIsBatchComplete),
+					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             *suiAddressBytes1,
+							InitialSharedVersion: 582756149,
+							Mutable:              true,
+						},
+					}}),
 					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             c.clockIdBytes,
