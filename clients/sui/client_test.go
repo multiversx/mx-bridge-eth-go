@@ -30,15 +30,17 @@ func createMockSuiClientArgs() ArgsSuiClient {
 	relayer := signer.NewSigner(bytes.Repeat([]byte{0x1}, 32))
 
 	return ArgsSuiClient{
-		Proxy:                      &interactors.SuiProxyStub{},
-		TxHandler:                  &bridgeTests.SuiTxHandlerStub{},
-		Log:                        logger.GetOrCreate("test"),
-		Signer:                     relayer,
-		PackageId:                  "0x674a8fc0a6b48c8efea86ad7ed962107c5c132a78e7cc79c9c5b9391ba8b6d83",
-		SafeObjectId:               "0x32c8ebf5853163472964ce226b194af05aa5f2e4cc47678924ebe538a1c88416",
-		SafeInitialSharedVersion:   425322,
-		BridgeObjectId:             "0xe15513cc93d6efbfbdc7844df141b312bb677ee564a5838b7b22a891f9f05c65",
-		BridgeInitialSharedVersion: 982471,
+		Proxy:                        &interactors.SuiProxyStub{},
+		TxHandler:                    &bridgeTests.SuiTxHandlerStub{},
+		Log:                          logger.GetOrCreate("test"),
+		Signer:                       relayer,
+		PackageId:                    "0x674a8fc0a6b48c8efea86ad7ed962107c5c132a78e7cc79c9c5b9391ba8b6d83",
+		SafeObjectId:                 "0x32c8ebf5853163472964ce226b194af05aa5f2e4cc47678924ebe538a1c88416",
+		SafeInitialSharedVersion:     425322,
+		BridgeObjectId:               "0xe15513cc93d6efbfbdc7844df141b312bb677ee564a5838b7b22a891f9f05c65",
+		BridgeInitialSharedVersion:   982471,
+		TreasuryObjectId:             "0x32c8ebf5853163472964ce226b194af05aa5f2e4cc47678924ebe538a1c88416",
+		TreasuryInitialSharedVersion: 425322,
 		TokensMapper: &bridgeTests.TokensMapperStub{
 			ConvertTokenCalled: func(ctx context.Context, sourceBytes []byte) ([]byte, error) {
 				return append([]byte("SUI"), sourceBytes...), nil

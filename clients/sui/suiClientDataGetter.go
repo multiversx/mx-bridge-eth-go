@@ -24,26 +24,30 @@ const (
 
 // ArgsSuiClientDataGetter is the arguments DTO used in the NewSuiClientDataGetter constructor
 type ArgsSuiClientDataGetter struct {
-	PackageId                  string
-	SafeObjectId               string
-	SafeInitialSharedVersion   uint64
-	BridgeObjectId             string
-	BridgeInitialSharedVersion uint64
-	RelayerAddress             string
-	Proxy                      Proxy
-	Log                        chainCore.Logger
+	PackageId                    string
+	SafeObjectId                 string
+	SafeInitialSharedVersion     uint64
+	BridgeObjectId               string
+	BridgeInitialSharedVersion   uint64
+	TreasuryObjectId             string
+	TreasuryInitialSharedVersion uint64
+	RelayerAddress               string
+	Proxy                        Proxy
+	Log                          chainCore.Logger
 }
 
 type suiClientDataGetter struct {
-	packageId                  string
-	safeObjectIdBytes          models.SuiAddressBytes
-	safeInitialSharedVersion   uint64
-	bridgeObjectIdBytes        models.SuiAddressBytes
-	bridgeInitialSharedVersion uint64
-	clockIdBytes               models.SuiAddressBytes
-	relayerAddress             string
-	proxy                      Proxy
-	log                        chainCore.Logger
+	packageId                    string
+	safeObjectIdBytes            models.SuiAddressBytes
+	safeInitialSharedVersion     uint64
+	bridgeObjectIdBytes          models.SuiAddressBytes
+	bridgeInitialSharedVersion   uint64
+	treasuryObjectIdBytes        models.SuiAddressBytes
+	treasuryInitialSharedVersion uint64
+	clockIdBytes                 models.SuiAddressBytes
+	relayerAddress               string
+	proxy                        Proxy
+	log                          chainCore.Logger
 }
 
 // NewSuiClientDataGetter creates a new instance of type suiClientDataGetter
@@ -72,6 +76,12 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 	if args.SafeInitialSharedVersion == 0 {
 		return nil, errInvalidInitialSharedVersion
 	}
+	if len(args.TreasuryObjectId) == 0 {
+		return nil, fmt.Errorf("%w for the TreasuryObjectId argument", errNilObjectId)
+	}
+	if args.TreasuryInitialSharedVersion == 0 {
+		return nil, errInvalidInitialSharedVersion
+	}
 
 	bridgeObjectIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(args.BridgeObjectId))
 	if err != nil {
@@ -83,21 +93,28 @@ func NewSuiClientDataGetter(args ArgsSuiClientDataGetter) (*suiClientDataGetter,
 		return nil, fmt.Errorf("failed to convert address: %w", err)
 	}
 
+	treasuryObjectIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(args.TreasuryObjectId))
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert address: %w", err)
+	}
+
 	clockIdBytes, err := transaction.ConvertSuiAddressStringToBytes(clockId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert clock address: %w", err)
 	}
 
 	return &suiClientDataGetter{
-		packageId:                  args.PackageId,
-		safeObjectIdBytes:          *safeObjectIdBytes,
-		safeInitialSharedVersion:   args.SafeInitialSharedVersion,
-		bridgeObjectIdBytes:        *bridgeObjectIdBytes,
-		bridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
-		clockIdBytes:               *clockIdBytes,
-		relayerAddress:             args.RelayerAddress,
-		proxy:                      args.Proxy,
-		log:                        args.Log,
+		packageId:                    args.PackageId,
+		safeObjectIdBytes:            *safeObjectIdBytes,
+		safeInitialSharedVersion:     args.SafeInitialSharedVersion,
+		bridgeObjectIdBytes:          *bridgeObjectIdBytes,
+		bridgeInitialSharedVersion:   args.BridgeInitialSharedVersion,
+		treasuryObjectIdBytes:        *treasuryObjectIdBytes,
+		treasuryInitialSharedVersion: args.TreasuryInitialSharedVersion,
+		clockIdBytes:                 *clockIdBytes,
+		relayerAddress:               args.RelayerAddress,
+		proxy:                        args.Proxy,
+		log:                          args.Log,
 	}, nil
 }
 

@@ -55,6 +55,8 @@ type SuiConfig struct {
 	BridgeObjectInitialSharedVersion   uint64
 	SafeObjectId                       string
 	SafeObjectInitialSharedVersion     uint64
+	TreasuryObjectId                   string
+	TreasuryObjectInitialSharedVersion uint64
 	PrivateKeyFile                     string
 	MaxRetriesOnQuorumReached          uint64
 	IntervalToWaitForTransferInSeconds uint64
