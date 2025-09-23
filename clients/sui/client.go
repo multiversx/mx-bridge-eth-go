@@ -513,7 +513,7 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 					}}),
 					tx.Pure(localGroup.Recipients),
 					tx.Pure(localGroup.Amounts),
-					tx.Pure(localGroup.Tokens),
+					tx.Pure(localGroup.Tokens[0]),
 					tx.Pure(localGroup.Nonces),
 					tx.Pure(batchID),
 					tx.Pure(localGroup.Signatures),
