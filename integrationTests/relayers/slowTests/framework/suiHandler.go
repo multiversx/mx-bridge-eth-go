@@ -20,7 +20,7 @@ const (
 	suiBridgeBytecode           = "testdata/contracts/sui/bridge.mv"
 	suiEventsBytecode           = "testdata/contracts/sui/events.mv"
 	suiPausableBytecode         = "testdata/contracts/sui/pausable.mv"
-	suiRolesBytecode            = "testdata/contracts/sui/roles.mv"
+	suiRolesBytecode            = "testdata/contracts/sui/bridge_roles.mv"
 	suiSharedStructsBytecode    = "testdata/contracts/sui/shared_structs.mv"
 	suiUtilsBytecode            = "testdata/contracts/sui/utils.mv"
 	suiTestCoinBytecode         = "testdata/contracts/sui/test_coin.mv"
