@@ -274,7 +274,6 @@ func (handler *SuiHandler) initSafe(ctx context.Context) {
 		Function:        "initialize",
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
-			handler.TokenManagerId,
 			handler.FromCoinCap,
 		},
 		GasBudget: "10000000",
