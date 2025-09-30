@@ -25,7 +25,7 @@ const (
 	suiUtilsBytecode            = "testdata/contracts/sui/utils.mv"
 	suiTestCoinBytecode         = "testdata/contracts/sui/test_coin.mv"
 	suiBridgeTokenBytecode      = "testdata/contracts/sui/bridge_token.mv"
-	suiTokenRolesBytecode       = "testdata/contracts/sui/token_roles.mv"
+	suiTokenRolesBytecode       = "testdata/contracts/sui/lk_roles.mv"
 	suiTokenTreasuryBytecode    = "testdata/contracts/sui/treasury.mv"
 	suiExtensionServiceBytecode = "testdata/contracts/sui/two_step_role.mv"
 	suiUpgradeBytecode          = "testdata/contracts/sui/upgrade_service.mv"
@@ -202,13 +202,13 @@ func (handler *SuiHandler) getBridgeEncodedModules() []string {
 func (handler *SuiHandler) getBridgeTokenEncodedModules() []string {
 	var modules []string
 
-	mv := handler.readModuleBytes(suiTokenRolesBytecode)
+	mv := handler.readModuleBytes(suiBridgeTokenBytecode)
+	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+
+	mv = handler.readModuleBytes(suiTokenRolesBytecode)
 	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
 
 	mv = handler.readModuleBytes(suiTokenTreasuryBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiBridgeTokenBytecode)
 	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
 
 	return modules
