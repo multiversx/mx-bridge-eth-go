@@ -83,32 +83,12 @@ func NewSuiHandler(
 }
 
 func (handler *SuiHandler) DeployContracts(ctx context.Context) {
-	// extenstions package
 	resp := handler.SuiChainSimulator.PublishPackage(ctx, models.PublishRequest{
-		Sender:          string(handler.OwnerKeys.SuiAddress),
-		CompiledModules: handler.foo(),
-		Dependencies: []string{
-			suiFrameworkId,
-			moveStdLibId,
-		},
-		GasBudget: "500000000",
-	}, handler.OwnerKeys)
-
-	var bar string
-	for _, obj := range resp.ObjectChanges {
-		if obj.Type == "published" {
-			bar = obj.PackageId
-		}
-	}
-
-	// publish bridge token package
-	resp = handler.SuiChainSimulator.PublishPackage(ctx, models.PublishRequest{
 		Sender:          string(handler.OwnerKeys.SuiAddress),
 		CompiledModules: handler.getBridgeTokenEncodedModules(),
 		Dependencies: []string{
 			suiFrameworkId,
 			moveStdLibId,
-			bar,
 		},
 		GasBudget: "500000000",
 	}, handler.OwnerKeys)
@@ -211,13 +191,7 @@ func (handler *SuiHandler) getBridgeTokenEncodedModules() []string {
 	mv = handler.readModuleBytes(suiTokenTreasuryBytecode)
 	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
 
-	return modules
-}
-
-func (handler *SuiHandler) foo() []string {
-	var modules []string
-
-	mv := handler.readModuleBytes(suiExtensionServiceBytecode)
+	mv = handler.readModuleBytes(suiExtensionServiceBytecode)
 	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
 
 	mv = handler.readModuleBytes(suiUpgradeBytecode)
@@ -225,6 +199,18 @@ func (handler *SuiHandler) foo() []string {
 
 	return modules
 }
+
+//func (handler *SuiHandler) foo() []string {
+//	var modules []string
+//
+//	mv := handler.readModuleBytes(suiExtensionServiceBytecode)
+//	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+//
+//	mv = handler.readModuleBytes(suiUpgradeBytecode)
+//	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+//
+//	return modules
+//}
 
 func (handler *SuiHandler) readModuleBytes(path string) []byte {
 	b, err := os.ReadFile(path)
