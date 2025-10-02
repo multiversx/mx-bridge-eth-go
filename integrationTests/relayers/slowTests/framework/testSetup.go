@@ -135,8 +135,10 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 			setup.MultiversxHandler.MultisigAddress,
 			handler.BridgeObjectID,
 			handler.SafeObjectID,
+			handler.TreasuryId,
 			handler.BridgeInitialSharedVersion,
 			handler.SafeInitialSharedVersion,
+			handler.TreasuryInitialSharedVersion,
 		)
 	default:
 		panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))

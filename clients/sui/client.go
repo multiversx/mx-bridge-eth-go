@@ -301,7 +301,7 @@ func (c *client) constructBatchMessage(
 	for i := 0; i < len(batch.Tokens); i++ {
 		tokenBuf := bytes.Buffer{}
 		tokenEncoder := mystenbcs.NewEncoder(&tokenBuf)
-		err = tokenEncoder.Encode(batch.Tokens[i])
+		err = tokenEncoder.Encode(batch.Tokens[i][2:])
 		if err != nil {
 			return nil, fmt.Errorf("error encoding token: %v", err)
 		}
@@ -513,7 +513,6 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 					}}),
 					tx.Pure(localGroup.Recipients),
 					tx.Pure(localGroup.Amounts),
-					tx.Pure(localGroup.Tokens[0]),
 					tx.Pure(localGroup.Nonces),
 					tx.Pure(batchID),
 					tx.Pure(localGroup.Signatures),
