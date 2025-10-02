@@ -16,19 +16,21 @@ import (
 )
 
 const (
-	suiSafeBytecode             = "testdata/contracts/sui/safe.mv"
-	suiBridgeBytecode           = "testdata/contracts/sui/bridge.mv"
-	suiEventsBytecode           = "testdata/contracts/sui/events.mv"
-	suiPausableBytecode         = "testdata/contracts/sui/pausable.mv"
-	suiRolesBytecode            = "testdata/contracts/sui/bridge_roles.mv"
-	suiSharedStructsBytecode    = "testdata/contracts/sui/shared_structs.mv"
-	suiUtilsBytecode            = "testdata/contracts/sui/utils.mv"
-	suiTestCoinBytecode         = "testdata/contracts/sui/test_coin.mv"
-	suiBridgeTokenBytecode      = "testdata/contracts/sui/bridge_token.mv"
-	suiTokenRolesBytecode       = "testdata/contracts/sui/lk_roles.mv"
-	suiTokenTreasuryBytecode    = "testdata/contracts/sui/treasury.mv"
-	suiExtensionServiceBytecode = "testdata/contracts/sui/two_step_role.mv"
-	suiUpgradeBytecode          = "testdata/contracts/sui/upgrade_service.mv"
+	suiSafeBytecode                   = "testdata/contracts/sui/bridge/safe.mv"
+	suiBridgeBytecode                 = "testdata/contracts/sui/bridge/bridge.mv"
+	suiEventsBytecode                 = "testdata/contracts/sui/bridge/events.mv"
+	suiPausableBytecode               = "testdata/contracts/sui/bridge/pausable.mv"
+	suiRolesBytecode                  = "testdata/contracts/sui/bridge/bridge_roles.mv"
+	suiSharedStructsBytecode          = "testdata/contracts/sui/bridge/shared_structs.mv"
+	suiUtilsBytecode                  = "testdata/contracts/sui/bridge/utils.mv"
+	suiTestCoinBytecode               = "testdata/contracts/sui/coin/test_coin.mv"
+	suiBridgeTokenBytecode            = "testdata/contracts/sui/token/bridge_token.mv"
+	suiTokenRolesBytecode             = "testdata/contracts/sui/token/lk_roles.mv"
+	suiTokenTreasuryBytecode          = "testdata/contracts/sui/token/treasury.mv"
+	suiExtensionServiceBytecode       = "testdata/contracts/sui/two_step_role.mv"
+	suiUpgradeBytecode                = "testdata/contracts/sui/upgrade_service.mv"
+	suiExtensionServiceBridgeBytecode = "testdata/contracts/sui/two_step_role_bridge.mv"
+	suiUpgradeBridgeBytecode          = "testdata/contracts/sui/upgrade_service_bridge.mv"
 
 	suiFrameworkId = "0x1"
 	moveStdLibId   = "0x2"
@@ -176,6 +178,12 @@ func (handler *SuiHandler) getBridgeEncodedModules() []string {
 	mv = handler.readModuleBytes(suiUtilsBytecode)
 	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
 
+	mv = handler.readModuleBytes(suiExtensionServiceBridgeBytecode)
+	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+
+	mv = handler.readModuleBytes(suiUpgradeBridgeBytecode)
+	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+
 	return modules
 }
 
@@ -199,18 +207,6 @@ func (handler *SuiHandler) getBridgeTokenEncodedModules() []string {
 
 	return modules
 }
-
-//func (handler *SuiHandler) foo() []string {
-//	var modules []string
-//
-//	mv := handler.readModuleBytes(suiExtensionServiceBytecode)
-//	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-//
-//	mv = handler.readModuleBytes(suiUpgradeBytecode)
-//	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-//
-//	return modules
-//}
 
 func (handler *SuiHandler) readModuleBytes(path string) []byte {
 	b, err := os.ReadFile(path)
@@ -238,7 +234,7 @@ func (handler *SuiHandler) transferFromCoinCapToOwner(ctx context.Context) {
 		},
 		Arguments: []interface{}{
 			handler.TokenManagerId,
-			handler.OwnerKeys.SuiAddress,
+			string(handler.OwnerKeys.SuiAddress),
 		},
 		GasBudget: "10000000",
 	}, handler.OwnerKeys)
