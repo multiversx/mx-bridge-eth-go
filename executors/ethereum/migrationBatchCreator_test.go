@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon/bridge"
 	"github.com/multiversx/mx-chain-go/testscommon"
 	"github.com/stretchr/testify/assert"
@@ -104,7 +103,7 @@ func TestNewMigrationBatchCreator(t *testing.T) {
 }
 
 func TestFindAnUsableBatchID(t *testing.T) {
-	unreachableBatchID := uint64(math.MaxUint64)
+	unreachableBatchID := ^uint64(0)
 
 	t.Run("was batch used errors, should error", func(t *testing.T) {
 		t.Parallel()

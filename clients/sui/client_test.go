@@ -61,7 +61,7 @@ func generateHashForTokenGroup(t *testing.T, batchID uint64, group *TokenTransfe
 	assert.NoError(t, err)
 
 	for i := 0; i < len(group.Tokens); i++ {
-		err = enc.Encode(group.Tokens[i])
+		err = enc.Encode(group.Tokens[i][2:])
 		assert.NoError(t, err)
 
 		err = enc.Encode(group.Recipients[i])

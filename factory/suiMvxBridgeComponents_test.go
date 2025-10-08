@@ -40,6 +40,8 @@ func createMockSuiMultiversXBridgeArgs() ArgsSuiToMultiversXBridge {
 			BridgeObjectInitialSharedVersion:   123456,
 			SafeObjectId:                       "0x80d7de9c4a56194087e0ba0bf59492aa8e6a5ee881606226930827085ddf2332",
 			SafeObjectInitialSharedVersion:     654321,
+			TreasuryObjectId:                   "0x2f5f4e8e2d3f3f0e1c6a4b5d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f",
+			TreasuryObjectInitialSharedVersion: 111111,
 			MaxRetriesOnQuorumReached:          1,
 			IntervalToWaitForTransferInSeconds: 1,
 			ClientAvailabilityAllowDelta:       10,
