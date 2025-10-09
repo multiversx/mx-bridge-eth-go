@@ -189,14 +189,16 @@ func (components *suiMvxBridgeComponents) createSuiDataGetter(args ArgsSuiToMult
 	suiConfig := args.Configs.GeneralConfig.Sui
 	suiDataGetterLogId := components.chain.PeerChainDataGetterLogId()
 	argsSuiDataGetter := suiClient.ArgsSuiClientDataGetter{
-		PackageId:                  components.suiPackageId,
-		SafeObjectId:               suiConfig.SafeObjectId,
-		SafeInitialSharedVersion:   suiConfig.SafeObjectInitialSharedVersion,
-		BridgeObjectId:             suiConfig.BridgeObjectId,
-		BridgeInitialSharedVersion: suiConfig.BridgeObjectInitialSharedVersion,
-		RelayerAddress:             components.suiSigner.Address,
-		Proxy:                      components.suiApi,
-		Log:                        core.NewLoggerWithIdentifier(logger.GetOrCreate(suiDataGetterLogId), suiDataGetterLogId),
+		PackageId:                    components.suiPackageId,
+		SafeObjectId:                 suiConfig.SafeObjectId,
+		SafeInitialSharedVersion:     suiConfig.SafeObjectInitialSharedVersion,
+		BridgeObjectId:               suiConfig.BridgeObjectId,
+		BridgeInitialSharedVersion:   suiConfig.BridgeObjectInitialSharedVersion,
+		TreasuryObjectId:             suiConfig.TreasuryObjectId,
+		TreasuryInitialSharedVersion: suiConfig.TreasuryObjectInitialSharedVersion,
+		RelayerAddress:               components.suiSigner.Address,
+		Proxy:                        components.suiApi,
+		Log:                          core.NewLoggerWithIdentifier(logger.GetOrCreate(suiDataGetterLogId), suiDataGetterLogId),
 	}
 
 	var err error
@@ -312,6 +314,8 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 		SafeInitialSharedVersion:     suiConfig.SafeObjectInitialSharedVersion,
 		BridgeObjectId:               suiConfig.BridgeObjectId,
 		BridgeInitialSharedVersion:   suiConfig.BridgeObjectInitialSharedVersion,
+		TreasuryObjectId:             suiConfig.TreasuryObjectId,
+		TreasuryInitialSharedVersion: suiConfig.TreasuryObjectInitialSharedVersion,
 		Broadcaster:                  components.broadcaster,
 		TokensMapper:                 tokensMapper,
 		SignatureHolder:              signaturesHolder,

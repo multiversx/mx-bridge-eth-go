@@ -16,16 +16,19 @@ import (
 )
 
 const (
-	suiSafeBytecode          = "testdata/contracts/sui/safe.mv"
-	suiBridgeBytecode        = "testdata/contracts/sui/bridge.mv"
-	suiEventsBytecode        = "testdata/contracts/sui/events.mv"
-	suiPausableBytecode      = "testdata/contracts/sui/pausable.mv"
-	suiRolesBytecode         = "testdata/contracts/sui/roles.mv"
-	suiSharedStructsBytecode = "testdata/contracts/sui/shared_structs.mv"
-	suiUtilsBytecode         = "testdata/contracts/sui/utils.mv"
-	suiTestCoinBytecode      = "testdata/contracts/sui/test_coin.mv"
-	suiBridgeTokenBytecode   = "testdata/contracts/sui/bridge_token.mv"
-	suiTransferRuleBytecode  = "testdata/contracts/sui/transfer_rule.mv"
+	suiSafeBytecode             = "testdata/contracts/sui/bridge/safe.mv"
+	suiBridgeBytecode           = "testdata/contracts/sui/bridge/bridge.mv"
+	suiEventsBytecode           = "testdata/contracts/sui/bridge/events.mv"
+	suiPausableBytecode         = "testdata/contracts/sui/bridge/pausable.mv"
+	suiRolesBytecode            = "testdata/contracts/sui/bridge/bridge_roles.mv"
+	suiSharedStructsBytecode    = "testdata/contracts/sui/bridge/shared_structs.mv"
+	suiUtilsBytecode            = "testdata/contracts/sui/bridge/utils.mv"
+	suiTestCoinBytecode         = "testdata/contracts/sui/coin/test_coin.mv"
+	suiBridgeTokenBytecode      = "testdata/contracts/sui/token/bridge_token.mv"
+	suiTokenRolesBytecode       = "testdata/contracts/sui/token/lk_roles.mv"
+	suiTokenTreasuryBytecode    = "testdata/contracts/sui/token/treasury.mv"
+	suiExtensionServiceBytecode = "testdata/contracts/sui/two_step_role.mv"
+	suiUpgradeBytecode          = "testdata/contracts/sui/upgrade_service.mv"
 
 	suiFrameworkId = "0x1"
 	moveStdLibId   = "0x2"
@@ -38,20 +41,20 @@ const (
 type SuiHandler struct {
 	testing.TB
 	*KeysStore
-	TokensRegistry             TokensRegistry
-	Quorum                     string
-	MvxTestCallerAddress       core.AddressHandler
-	SuiChainSimulator          *suiChainSimulatorWrapper
-	PackageID                  string
-	BridgeObjectID             string
-	BridgeCap                  string
-	AdminCap                   string
-	SafeObjectID               string
-	BridgeInitialSharedVersion uint64
-	SafeInitialSharedVersion   uint64
-	TokenType                  string
-	TokenTreasuryCapId         string
-	TokenPolicyCapId           string
+	TokensRegistry               TokensRegistry
+	Quorum                       string
+	MvxTestCallerAddress         core.AddressHandler
+	SuiChainSimulator            *suiChainSimulatorWrapper
+	PackageID                    string
+	BridgeObjectID               string
+	BridgeInitialSharedVersion   uint64
+	SafeObjectID                 string
+	SafeInitialSharedVersion     uint64
+	TreasuryId                   string
+	TreasuryInitialSharedVersion uint64
+	BridgeCap                    string
+	TokenType                    string
+	FromCoinCap                  string
 }
 
 // NewSuiHandler will create the handler that will adapt all test operations on Sui
@@ -79,7 +82,7 @@ func NewSuiHandler(
 func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 	resp := handler.SuiChainSimulator.PublishPackage(ctx, models.PublishRequest{
 		Sender:          string(handler.OwnerKeys.SuiAddress),
-		CompiledModules: handler.getEncodedModules(),
+		CompiledModules: handler.getBridgeEncodedModules(),
 		Dependencies: []string{
 			suiFrameworkId,
 			moveStdLibId,
@@ -89,38 +92,30 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 
 	for _, obj := range resp.ObjectChanges {
 		if obj.Type == "created" {
-			if strings.Contains(obj.ObjectType, "::roles::BridgeCap") {
-				handler.BridgeCap = obj.ObjectId
+			if strings.Contains(obj.ObjectType, "0x2::coin::TreasuryCap") {
+				handler.TokenType = extractInnerType(obj.ObjectType)
 			}
-			if strings.Contains(obj.ObjectType, "::roles::AdminCap") {
-				handler.AdminCap = obj.ObjectId
-			}
-			if strings.Contains(obj.ObjectType, "::safe::BridgeSafe") {
-				handler.SafeObjectID = obj.ObjectId
+			if strings.Contains(obj.ObjectType, "::treasury::Treasury<") {
+				handler.TreasuryId = obj.ObjectId
 				if ownerMap, ok := obj.Owner.(map[string]interface{}); ok {
 					if shared, exists := ownerMap["Shared"]; exists {
 						if sharedMap, ok := shared.(map[string]interface{}); ok {
 							if version, exists := sharedMap["initial_shared_version"]; exists {
 								if versionFloat, ok := version.(float64); ok {
-									handler.SafeInitialSharedVersion = uint64(versionFloat)
+									handler.TreasuryInitialSharedVersion = uint64(versionFloat)
 								}
 							}
 						}
 					}
 				}
 			}
-			if strings.Contains(obj.ObjectType, "0x2::coin::TreasuryCap") {
-				handler.TokenType = extractInnerType(obj.ObjectType)
-				handler.TokenTreasuryCapId = obj.ObjectId
-			}
-			if strings.Contains(obj.ObjectType, "0x2::token::TokenPolicyCap") {
-				handler.TokenPolicyCapId = obj.ObjectId
-			}
-
 		} else if obj.Type == "published" {
 			handler.PackageID = obj.PackageId
 		}
 	}
+
+	handler.transferFromCoinCapToOwner(ctx)
+	handler.initSafe(ctx)
 
 	suiRelayersAddresses := make([]string, 0, len(handler.RelayersKeys))
 	suiRelayersPubKeys := make([][suiPubKeyLength]byte, 0, len(handler.RelayersKeys))
@@ -137,7 +132,6 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 		ctx,
 		"bridge",
 		"initialize",
-		suiRelayersAddresses,
 		suiRelayersPubKeys,
 		handler.Quorum,
 		handler.SafeObjectID,
@@ -146,10 +140,25 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 	handler.BridgeObjectID = string(bridgeIdBytes)
 }
 
-func (handler *SuiHandler) getEncodedModules() []string {
+func (handler *SuiHandler) getBridgeEncodedModules() []string {
 	var modules []string
 
-	mv := handler.readModuleBytes(suiSafeBytecode)
+	mv := handler.readModuleBytes(suiExtensionServiceBytecode)
+	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+
+	mv = handler.readModuleBytes(suiUpgradeBytecode)
+	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+
+	mv = handler.readModuleBytes(suiBridgeTokenBytecode)
+	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+
+	mv = handler.readModuleBytes(suiTokenRolesBytecode)
+	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+
+	mv = handler.readModuleBytes(suiTokenTreasuryBytecode)
+	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+
+	mv = handler.readModuleBytes(suiSafeBytecode)
 	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
 
 	mv = handler.readModuleBytes(suiBridgeBytecode)
@@ -170,12 +179,6 @@ func (handler *SuiHandler) getEncodedModules() []string {
 	mv = handler.readModuleBytes(suiUtilsBytecode)
 	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
 
-	mv = handler.readModuleBytes(suiBridgeTokenBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiTransferRuleBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
 	return modules
 }
 
@@ -194,17 +197,77 @@ func extractInnerType(s string) string {
 	return s[start+1 : end]
 }
 
+func (handler *SuiHandler) transferFromCoinCapToOwner(ctx context.Context) {
+	resp := handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "treasury",
+		Function:        "transfer_from_coin_cap",
+		TypeArguments: []interface{}{
+			handler.TokenType,
+		},
+		Arguments: []interface{}{
+			handler.TreasuryId,
+			string(handler.OwnerKeys.SuiAddress),
+		},
+		GasBudget: "10000000",
+	}, handler.OwnerKeys)
+
+	for _, obj := range resp.ObjectChanges {
+		if obj.Type == "created" {
+			if strings.Contains(obj.ObjectType, "::treasury::FromCoinCap") {
+				handler.FromCoinCap = obj.ObjectId
+			}
+		}
+	}
+}
+
+func (handler *SuiHandler) initSafe(ctx context.Context) {
+	resp := handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "safe",
+		Function:        "initialize",
+		TypeArguments:   []interface{}{},
+		Arguments: []interface{}{
+			handler.FromCoinCap,
+		},
+		GasBudget: "10000000",
+	}, handler.OwnerKeys)
+
+	for _, obj := range resp.ObjectChanges {
+		if obj.Type == "created" {
+			if strings.Contains(obj.ObjectType, "::bridge_roles::BridgeCap") {
+				handler.BridgeCap = obj.ObjectId
+			}
+			if strings.Contains(obj.ObjectType, "::safe::BridgeSafe") {
+				handler.SafeObjectID = obj.ObjectId
+				if ownerMap, ok := obj.Owner.(map[string]interface{}); ok {
+					if shared, exists := ownerMap["Shared"]; exists {
+						if sharedMap, ok := shared.(map[string]interface{}); ok {
+							if version, exists := sharedMap["initial_shared_version"]; exists {
+								if versionFloat, ok := version.(float64); ok {
+									handler.SafeInitialSharedVersion = uint64(versionFloat)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 func (handler *SuiHandler) DeployContract(
 	ctx context.Context,
 	params ...interface{},
 ) []byte {
 	module := params[0].(string)
 	function := params[1].(string)
-	suiRelayerAddresses := params[2].([]string)
-	suiRelayersPubKeys := params[3].([][suiPubKeyLength]byte)
-	quorumStr := params[4].(string)
-	safeObjectID := params[5].(string)
-	adminCap := params[6].(string)
+	suiRelayersPubKeys := params[2].([][suiPubKeyLength]byte)
+	quorumStr := params[3].(string)
+	safeObjectID := params[4].(string)
+	adminCap := params[5].(string)
 
 	resp := handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
@@ -213,7 +276,6 @@ func (handler *SuiHandler) DeployContract(
 		Function:        function,
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
-			suiRelayerAddresses,
 			suiRelayersPubKeys,
 			quorumStr,
 			safeObjectID,
@@ -275,7 +337,7 @@ func (handler *SuiHandler) UnPauseContractsAfterTokenChanges(ctx context.Context
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
 			handler.BridgeObjectID,
-			handler.AdminCap,
+			handler.SafeObjectID,
 		},
 		GasBudget: "10000000",
 	}, handler.OwnerKeys)
@@ -289,7 +351,6 @@ func (handler *SuiHandler) UnPauseContractsAfterTokenChanges(ctx context.Context
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
 			handler.SafeObjectID,
-			handler.AdminCap,
 		},
 		GasBudget: "10000000",
 	}, handler.OwnerKeys)
@@ -306,7 +367,7 @@ func (handler *SuiHandler) PauseContractsForTokenChanges(ctx context.Context) {
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
 			handler.BridgeObjectID,
-			handler.AdminCap,
+			handler.SafeObjectID,
 		},
 		GasBudget: "10000000",
 	}, handler.OwnerKeys)
@@ -320,7 +381,6 @@ func (handler *SuiHandler) PauseContractsForTokenChanges(ctx context.Context) {
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
 			handler.SafeObjectID,
-			handler.AdminCap,
 		},
 		GasBudget: "10000000",
 	}, handler.OwnerKeys)
@@ -328,27 +388,41 @@ func (handler *SuiHandler) PauseContractsForTokenChanges(ctx context.Context) {
 
 // IssueAndWhitelistToken will issue and whitelist the token on Sui
 func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams) {
-	coinPackageId, treasuryId, metadataId := handler.deployCoinContract(ctx)
-	suiTokenInfo := SuiTokenInfo{
-		CoinPackageId:  coinPackageId,
-		TreasuryId:     treasuryId,
-		CoinMetadataId: metadataId,
-		IsLocked:       params.IsLocked,
+	var coinType string
+	var suiTokenInfo SuiTokenInfo
+	if !params.IsLocked {
+		coinPackageId, treasuryId, metadataId := handler.deployCoinContract(ctx)
+		suiTokenInfo = SuiTokenInfo{
+			CoinPackageId:  coinPackageId,
+			TreasuryId:     treasuryId,
+			CoinMetadataId: metadataId,
+			IsLocked:       params.IsLocked,
+		}
+		coinType = fmt.Sprintf("%s::test_coin::TEST_COIN", coinPackageId)
+	} else {
+		suiTokenInfo = SuiTokenInfo{
+			CoinPackageId:  handler.PackageID,
+			TreasuryId:     "",
+			CoinMetadataId: "",
+			IsLocked:       params.IsLocked,
+		}
+		coinType = handler.TokenType
 	}
 
-	coinType := fmt.Sprintf("%s::test_coin::TEST_COIN", coinPackageId)
 	handler.TokensRegistry.RegisterPeerChainAddressAndInfo(params.AbstractTokenIdentifier, []byte(coinType), suiTokenInfo)
 
-	handler.updateMetadata(ctx, params)
-	if params.IsLocked {
-		handler.setTreasuryCapOnSafe(ctx)
-		handler.setPolicyCapOnSafe(ctx)
+	if !params.IsLocked {
+		handler.updateMetadata(ctx, params)
 	}
 
 	// mint token
 	mintAmount, ok := big.NewInt(0).SetString(params.ValueToMintOnPeerChain, 10)
 	require.True(handler, ok)
-	handler.mint(ctx, params, string(handler.TestKeys.SuiAddress), mintAmount)
+	if params.IsLocked {
+		handler.mintLocked(ctx, params, string(handler.TestKeys.SuiAddress), mintAmount)
+	} else {
+		handler.mint(ctx, params, string(handler.TestKeys.SuiAddress), mintAmount)
+	}
 
 	// whitelist token
 	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
@@ -361,7 +435,6 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 		},
 		Arguments: []interface{}{
 			handler.SafeObjectID,
-			handler.AdminCap,
 			"25",
 			"500000",
 			params.IsNativeOnPeerChain,
@@ -373,8 +446,12 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 	if len(params.InitialSupplyValue) > 0 {
 		initialSupplyValue, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
 		require.True(handler, ok)
-		handler.mint(ctx, params, string(handler.OwnerKeys.SuiAddress), initialSupplyValue)
 
+		if !params.IsLocked {
+			handler.mint(ctx, params, string(handler.OwnerKeys.SuiAddress), initialSupplyValue)
+		} else {
+			handler.mintLocked(ctx, params, string(handler.OwnerKeys.SuiAddress), initialSupplyValue)
+		}
 		handler.initSupplyForToken(ctx, params)
 	}
 }
@@ -448,6 +525,28 @@ func (handler *SuiHandler) updateMetadata(ctx context.Context, params IssueToken
 	}, handler.OwnerKeys)
 }
 
+func (handler *SuiHandler) mintLocked(ctx context.Context, params IssueTokenParams, receiver string, amount *big.Int) {
+	tokenData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
+	suiTokenInfo := tokenData.PeerChainTokenInfo.(SuiTokenInfo)
+	require.NotNil(handler, suiTokenInfo)
+
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "treasury",
+		Function:        "mint_coin_to_receiver",
+		TypeArguments: []interface{}{
+			handler.TokenType,
+		},
+		Arguments: []interface{}{
+			handler.TreasuryId,
+			amount.String(),
+			receiver,
+		},
+		GasBudget: "100000000",
+	}, handler.OwnerKeys)
+}
+
 func (handler *SuiHandler) initSupplyForToken(ctx context.Context, params IssueTokenParams) {
 	tokenData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 	initSupplyValue, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
@@ -464,41 +563,8 @@ func (handler *SuiHandler) initSupplyForToken(ctx context.Context, params IssueT
 			string(tokenData.PeerChainTokenAddress),
 		},
 		Arguments: []interface{}{
-			handler.AdminCap,
 			handler.SafeObjectID,
 			coinObjId,
-		},
-		GasBudget: "100000000",
-	}, handler.OwnerKeys)
-}
-
-func (handler *SuiHandler) setTreasuryCapOnSafe(ctx context.Context) {
-	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
-		Signer:          string(handler.OwnerKeys.SuiAddress),
-		PackageObjectId: handler.PackageID,
-		Module:          "safe",
-		Function:        "set_treasury_cap",
-		TypeArguments:   []interface{}{},
-		Arguments: []interface{}{
-			handler.AdminCap,
-			handler.SafeObjectID,
-			handler.TokenTreasuryCapId,
-		},
-		GasBudget: "100000000",
-	}, handler.OwnerKeys)
-}
-
-func (handler *SuiHandler) setPolicyCapOnSafe(ctx context.Context) {
-	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
-		Signer:          string(handler.OwnerKeys.SuiAddress),
-		PackageObjectId: handler.PackageID,
-		Module:          "safe",
-		Function:        "set_policy_cap",
-		TypeArguments:   []interface{}{},
-		Arguments: []interface{}{
-			handler.AdminCap,
-			handler.SafeObjectID,
-			handler.TokenPolicyCapId,
 		},
 		GasBudget: "100000000",
 	}, handler.OwnerKeys)

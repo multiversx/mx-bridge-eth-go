@@ -23,14 +23,16 @@ var batchNonce = uint64(7)
 
 func createMockArgsSuiClientDataGetter() ArgsSuiClientDataGetter {
 	return ArgsSuiClientDataGetter{
-		PackageId:                  "0x674a8fc0a6b48c8efea86ad7ed962107c5c132a78e7cc79c9c5b9391ba8b6d83",
-		SafeObjectId:               "0x32c8ebf5853163472964ce226b194af05aa5f2e4cc47678924ebe538a1c88416",
-		SafeInitialSharedVersion:   1,
-		BridgeObjectId:             "0xe15513cc93d6efbfbdc7844df141b312bb677ee564a5838b7b22a891f9f05c65",
-		BridgeInitialSharedVersion: 2,
-		RelayerAddress:             "mock-relayer-address",
-		Proxy:                      &interactors.SuiProxyStub{},
-		Log:                        logger.GetOrCreate("test"),
+		PackageId:                    "0x674a8fc0a6b48c8efea86ad7ed962107c5c132a78e7cc79c9c5b9391ba8b6d83",
+		SafeObjectId:                 "0x32c8ebf5853163472964ce226b194af05aa5f2e4cc47678924ebe538a1c88416",
+		SafeInitialSharedVersion:     1,
+		BridgeObjectId:               "0xe15513cc93d6efbfbdc7844df141b312bb677ee564a5838b7b22a891f9f05c65",
+		BridgeInitialSharedVersion:   2,
+		TreasuryObjectId:             "0x32c8ebf5853163472964ce226b194af05aa5f2e4cc47678924ebe538a1c88416",
+		TreasuryInitialSharedVersion: 3,
+		RelayerAddress:               "mock-relayer-address",
+		Proxy:                        &interactors.SuiProxyStub{},
+		Log:                          logger.GetOrCreate("test"),
 	}
 }
 

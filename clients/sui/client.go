@@ -32,19 +32,21 @@ const (
 )
 
 type ArgsSuiClient struct {
-	Proxy                      Proxy
-	TxHandler                  txHandler
-	Log                        chainCore.Logger
-	Signer                     *signer.Signer
-	PackageId                  string
-	SafeObjectId               string
-	SafeInitialSharedVersion   uint64
-	BridgeObjectId             string
-	BridgeInitialSharedVersion uint64
-	TokensMapper               TokensMapper
-	StatusHandler              bridgeCore.StatusHandler
-	Broadcaster                Broadcaster
-	SignatureHolder            SignaturesHolder
+	Proxy                        Proxy
+	TxHandler                    txHandler
+	Log                          chainCore.Logger
+	Signer                       *signer.Signer
+	PackageId                    string
+	SafeObjectId                 string
+	SafeInitialSharedVersion     uint64
+	BridgeObjectId               string
+	BridgeInitialSharedVersion   uint64
+	TreasuryObjectId             string
+	TreasuryInitialSharedVersion uint64
+	TokensMapper                 TokensMapper
+	StatusHandler                bridgeCore.StatusHandler
+	Broadcaster                  Broadcaster
+	SignatureHolder              SignaturesHolder
 
 	ClientAvailabilityAllowDelta uint64
 }
@@ -57,6 +59,7 @@ type client struct {
 	packageId        string
 	safeObjectId     string
 	bridgeObjectId   string
+	treasuryObjectId string
 	log              chainCore.Logger
 	tokensMapper     TokensMapper
 	addressConverter bridgeCore.AddressConverter
@@ -77,14 +80,16 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 	}
 
 	argsSuiClientDataGetter := ArgsSuiClientDataGetter{
-		PackageId:                  args.PackageId,
-		SafeObjectId:               args.SafeObjectId,
-		SafeInitialSharedVersion:   args.SafeInitialSharedVersion,
-		BridgeObjectId:             args.BridgeObjectId,
-		BridgeInitialSharedVersion: args.BridgeInitialSharedVersion,
-		RelayerAddress:             args.Signer.Address,
-		Proxy:                      args.Proxy,
-		Log:                        args.Log,
+		PackageId:                    args.PackageId,
+		SafeObjectId:                 args.SafeObjectId,
+		SafeInitialSharedVersion:     args.SafeInitialSharedVersion,
+		BridgeObjectId:               args.BridgeObjectId,
+		BridgeInitialSharedVersion:   args.BridgeInitialSharedVersion,
+		TreasuryObjectId:             args.TreasuryObjectId,
+		TreasuryInitialSharedVersion: args.TreasuryInitialSharedVersion,
+		RelayerAddress:               args.Signer.Address,
+		Proxy:                        args.Proxy,
+		Log:                          args.Log,
 	}
 	getter, err := NewSuiClientDataGetter(argsSuiClientDataGetter)
 	if err != nil {
@@ -104,6 +109,7 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		packageId:                    args.PackageId,
 		safeObjectId:                 args.SafeObjectId,
 		bridgeObjectId:               args.BridgeObjectId,
+		treasuryObjectId:             args.TreasuryObjectId,
 		log:                          args.Log,
 		addressConverter:             addressConverter,
 		broadcaster:                  args.Broadcaster,
@@ -140,6 +146,9 @@ func checkArgs(args ArgsSuiClient) error {
 	}
 	if len(args.SafeObjectId) == 0 {
 		return fmt.Errorf("%w for the SafeObjectId argument", errNilObjectId)
+	}
+	if len(args.TreasuryObjectId) == 0 {
+		return fmt.Errorf("%w for the TreasuryObjectId argument", errNilObjectId)
 	}
 	if check.IfNil(args.Log) {
 		return clients.ErrNilLogger
@@ -292,7 +301,7 @@ func (c *client) constructBatchMessage(
 	for i := 0; i < len(batch.Tokens); i++ {
 		tokenBuf := bytes.Buffer{}
 		tokenEncoder := mystenbcs.NewEncoder(&tokenBuf)
-		err = tokenEncoder.Encode(batch.Tokens[i])
+		err = tokenEncoder.Encode(batch.Tokens[i][2:])
 		if err != nil {
 			return nil, fmt.Errorf("error encoding token: %v", err)
 		}
@@ -504,11 +513,17 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 					}}),
 					tx.Pure(localGroup.Recipients),
 					tx.Pure(localGroup.Amounts),
-					tx.Pure(localGroup.Tokens),
 					tx.Pure(localGroup.Nonces),
 					tx.Pure(batchID),
 					tx.Pure(localGroup.Signatures),
 					tx.Pure(localIsBatchComplete),
+					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
+						SharedObject: &transaction.SharedObjectRef{
+							ObjectId:             c.treasuryObjectIdBytes,
+							InitialSharedVersion: c.treasuryInitialSharedVersion,
+							Mutable:              true,
+						},
+					}}),
 					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             c.clockIdBytes,

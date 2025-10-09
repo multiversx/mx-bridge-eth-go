@@ -3,11 +3,11 @@ package relayers
 import (
 	"context"
 	"fmt"
+	stdMath "math"
 	"math/big"
 	"path"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
@@ -80,7 +80,7 @@ func CreateEthMvxBridgeComponentsConfig(index int, workingDir string, gasStation
 				GasPriceMultiplier:         1,
 				GasPriceSelector:           "SafeGasPrice",
 				MaxFetchRetries:            3,
-				MaximumAllowedGasPrice:     math.MaxUint64 / 2,
+				MaximumAllowedGasPrice:     stdMath.MaxUint64 / 2,
 				RequestRetryDelayInSeconds: 1,
 				RequestTimeInSeconds:       1,
 			},
