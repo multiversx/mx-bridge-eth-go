@@ -665,11 +665,6 @@ func (getter *suiClientDataGetter) sendTxGetBlockResponse(ctx context.Context, t
 		return models.SuiTransactionBlockResponse{}, fmt.Errorf("dev inspect transaction block: %w", err)
 	}
 
-	getter.log.Debug("executed SuiDevInspectTransactionBlock",
-		"Sender", getter.relayerAddress,
-		"PackageId", getter.packageId,
-		"TxBytes", fmt.Sprintf("%x", txBytes),
-		"Status", txBlockResp.Effects.Status.Status)
 	if txBlockResp.Effects.Status.Status != successCodeAfterExecution {
 		return txBlockResp, fmt.Errorf("transaction execution failed with status '%s': %s",
 			txBlockResp.Effects.Status.Status,
