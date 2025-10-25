@@ -295,8 +295,8 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 	argsTxHandler := suiClient.ArgsTxHandler{
 		Proxy:     components.suiApi,
 		Signer:    components.suiSigner,
-		GasPrice:  1000, // TODO
-		GasBudget: 50000000,
+		GasPrice:  1000,
+		GasBudget: 75000000,
 		Logger:    suiClientLogger,
 	}
 	suiTxHandler, err := suiClient.NewTransactionHandler(argsTxHandler)
