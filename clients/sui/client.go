@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math/big"
+	"sort"
 	"sync"
 
 	"github.com/block-vision/sui-go-sdk/models"
@@ -264,8 +265,13 @@ func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchI
 	}
 
 	var hash []byte
-	groups := c.groupTransfersByTokenType(batch)
-	for _, group := range groups {
+	groups, sortedTokenTypes, err := c.groupTransfersByTokenType(batch)
+	if err != nil {
+		return nil, fmt.Errorf("error grouping transfers by token type: %v", err)
+	}
+
+	for _, tokenType := range sortedTokenTypes {
+		group := groups[tokenType]
 		groupHash, err := c.getHashForTokenGroupData(group, batchId)
 		if err != nil {
 			return nil, fmt.Errorf("error getting hash for token group data: %v", err)
@@ -365,9 +371,12 @@ func (c *client) ExecuteTransfer(
 		serializedSignatures = serializedSignatures[:quorum]
 	}
 
-	tokenGroups := c.groupTransfersByTokenType(argLists)
+	groups, sortedTokenTypes, err := c.groupTransfersByTokenType(argLists)
+	if err != nil {
+		return "", fmt.Errorf("error grouping transfers by token type: %v", err)
+	}
 
-	err = c.processSignaturesOfRelayers(tokenGroups, serializedSignatures)
+	err = c.processSignaturesOfRelayers(groups, sortedTokenTypes, serializedSignatures)
 	if err != nil {
 		return "", err
 	}
@@ -377,7 +386,7 @@ func (c *client) ExecuteTransfer(
 		return "", err
 	}
 
-	calls, err := c.prepareExecuteTransferCallArgs(batchID, tokenGroups)
+	calls, err := c.prepareExecuteTransferCallArgs(batchID, groups, sortedTokenTypes)
 	if err != nil {
 		return "", err
 	}
@@ -385,7 +394,7 @@ func (c *client) ExecuteTransfer(
 	return c.txHandler.SendTransactionReturnHash(ctx, gasCoin, calls)
 }
 
-func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatch) map[string]*TokenTransferGroup {
+func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatch) (map[string]*TokenTransferGroup, []string, error) {
 	groups := make(map[string]*TokenTransferGroup)
 
 	for i := 0; i < len(argLists.PeerTokens); i++ {
@@ -403,7 +412,7 @@ func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatc
 		suiAddress := suiAddressFromBytes(argLists.Recipients[i])
 		suiAddressBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress))
 		if err != nil {
-			return nil
+			return nil, nil, err
 		}
 
 		groups[tokenTypeStr].Recipients = append(groups[tokenTypeStr].Recipients, *suiAddressBytes)
@@ -412,15 +421,17 @@ func (c *client) groupTransfersByTokenType(argLists *batchProcessor.ArgListsBatc
 		groups[tokenTypeStr].Nonces = append(groups[tokenTypeStr].Nonces, argLists.Nonces[i].Uint64())
 	}
 
-	return groups
-}
-
-func (c *client) processSignaturesOfRelayers(tokenGroups map[string]*TokenTransferGroup, serializedSignatures [][]byte) error {
-	var tokenTypes []string
-	for key := range tokenGroups {
+	// Sort token types for deterministic ordering
+	tokenTypes := make([]string, 0, len(groups))
+	for key := range groups {
 		tokenTypes = append(tokenTypes, key)
 	}
+	sort.Strings(tokenTypes)
 
+	return groups, tokenTypes, nil
+}
+
+func (c *client) processSignaturesOfRelayers(tokenGroups map[string]*TokenTransferGroup, sortedTokenTypes []string, serializedSignatures [][]byte) error {
 	for _, serializedSigsOfRelayer := range serializedSignatures {
 		n := len(serializedSigsOfRelayer) / EncodedSignatureLength
 		for i := 0; i < n; i++ {
@@ -434,7 +445,7 @@ func (c *client) processSignaturesOfRelayers(tokenGroups map[string]*TokenTransf
 			}
 
 			sig := [signatureLength]byte(_bytes[signatureSchemePrefixSize:]) // remove the signature scheme byte
-			tokenGroups[tokenTypes[i]].Signatures = append(tokenGroups[tokenTypes[i]].Signatures, sig)
+			tokenGroups[sortedTokenTypes[i]].Signatures = append(tokenGroups[sortedTokenTypes[i]].Signatures, sig)
 		}
 	}
 
@@ -459,25 +470,24 @@ func (c *client) getGasCoinOfRelayer(ctx context.Context) (*transaction.SuiObjec
 	)
 }
 
-func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[string]*TokenTransferGroup) ([]bridgeCore.SuiPTBOperation, error) {
-	i := 0
+func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[string]*TokenTransferGroup, sortedTokenTypes []string) ([]bridgeCore.SuiPTBOperation, error) {
 	n := len(tokenGroups)
 	calls := make([]bridgeCore.SuiPTBOperation, 0, n)
-	for coinType, group := range tokenGroups {
-		i++
-		isBatchComplete := i == n
+	for i, tokenType := range sortedTokenTypes {
+		group := tokenGroups[tokenType]
+		isBatchComplete := i == n-1
 
 		localGroup := group
 		localIsBatchComplete := isBatchComplete
 
-		coinParts, err := parseCoinType(coinType)
+		coinParts, err := parseCoinType(tokenType)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse coin type %s: %w", coinType, err)
+			return nil, fmt.Errorf("failed to parse coin type %s: %w", tokenType, err)
 		}
 
 		coinIdBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(coinParts[0]))
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert coin type %s: %w", coinType, err)
+			return nil, fmt.Errorf("failed to convert coin type %s: %w", tokenType, err)
 		}
 
 		coinIdBytesVal := *coinIdBytes
