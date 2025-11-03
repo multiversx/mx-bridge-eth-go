@@ -22,7 +22,7 @@ type httpClientWrapper interface {
 // Relayer defines the behavior a bridge relayer must implement
 type Relayer interface {
 	MultiversXRelayerAddress() sdkCore.AddressHandler
-	EthereumRelayerAddress() common.Address
+	PeerChainRelayerAddress() string
 	Start() error
 	Close() error
 }
@@ -61,13 +61,19 @@ type ERC20Contract interface {
 	Approve(opts *bind.TransactOpts, spender common.Address, value *big.Int) (*types.Transaction, error)
 }
 
+// MoveContract defines the operations of a Move contract
+type MoveContract interface {
+	BalanceOf(ctx context.Context, account []byte) (*big.Int, error)
+	Mint(ctx context.Context, recipientAddress []byte, amount *big.Int) (string, error)
+}
+
 // TokensRegistry defines the registry used for the tokens in tests
 type TokensRegistry interface {
 	AddToken(params IssueTokenParams)
-	RegisterEthAddressAndContract(
+	RegisterPeerChainAddressAndInfo(
 		abstractTokenIdentifier string,
-		ethErc20Address common.Address,
-		ethErc20Contract ERC20Contract,
+		peerChainAddress []byte,
+		chainTokenInfo interface{},
 	)
 	GetTokenData(abstractTokenIdentifier string) *TokenData
 	RegisterUniversalToken(abstractTokenIdentifier string, mvxUniversalToken string)
@@ -77,5 +83,19 @@ type TokensRegistry interface {
 // SCCallerModule defines the operation for the module able to execute smart contract calls
 type SCCallerModule interface {
 	GetNumSentTransaction() uint32
+	Close() error
+}
+
+type PeerChainHandler interface {
+	DeployContracts(ctx context.Context)
+	DeployContract(ctx context.Context, params ...interface{}) []byte
+	DeployUpgradeableContract(ctx context.Context, params ...interface{}) []byte
+	IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams)
+	GetBalance(ctx context.Context, receiver []byte, abstractTokenIdentifier string) *big.Int
+	Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int)
+	SendFromPeerChainToMultiversX(ctx context.Context, mvxTestCallerAddress sdkCore.AddressHandler, tokensParams ...TestTokenParams)
+	CreateBatchOnPeerChain(ctx context.Context, mvxTestCallerAddress sdkCore.AddressHandler, tokensParams ...TestTokenParams)
+	PauseContractsForTokenChanges(ctx context.Context)
+	UnPauseContractsAfterTokenChanges(ctx context.Context)
 	Close() error
 }

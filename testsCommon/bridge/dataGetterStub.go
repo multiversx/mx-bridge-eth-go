@@ -8,6 +8,8 @@ import (
 type DataGetterStub struct {
 	GetTokenIdForErc20AddressCalled func(ctx context.Context, erc20Address []byte) ([][]byte, error)
 	GetERC20AddressForTokenIdCalled func(ctx context.Context, tokenId []byte) ([][]byte, error)
+	GetTokenIdForSuiCoinCalled      func(ctx context.Context, tokenId []byte) ([][]byte, error)
+	GetSuiCoinForTokenIdCalled      func(ctx context.Context, tokenId []byte) ([][]byte, error)
 	GetAllStakedRelayersCalled      func(ctx context.Context) ([][]byte, error)
 	GetAllKnownTokensCalled         func(ctx context.Context) ([][]byte, error)
 }
@@ -24,6 +26,22 @@ func (stub *DataGetterStub) GetTokenIdForErc20Address(ctx context.Context, erc20
 func (stub *DataGetterStub) GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
 	if stub.GetERC20AddressForTokenIdCalled != nil {
 		return stub.GetERC20AddressForTokenIdCalled(ctx, tokenId)
+	}
+	return [][]byte{}, nil
+}
+
+// GetTokenIdForSuiCoin -
+func (stub *DataGetterStub) GetTokenIdForSuiCoin(ctx context.Context, tokenId []byte) ([][]byte, error) {
+	if stub.GetTokenIdForSuiCoinCalled != nil {
+		return stub.GetTokenIdForSuiCoinCalled(ctx, tokenId)
+	}
+	return [][]byte{}, nil
+}
+
+// GetSuiCoinForTokenId -
+func (stub *DataGetterStub) GetSuiCoinForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
+	if stub.GetSuiCoinForTokenIdCalled != nil {
+		return stub.GetSuiCoinForTokenIdCalled(ctx, tokenId)
 	}
 	return [][]byte{}, nil
 }

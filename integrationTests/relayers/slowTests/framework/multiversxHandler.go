@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/multiversx/mx-bridge-eth-go/clients/sui"
 	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/require"
 )
@@ -34,19 +35,18 @@ const (
 	generalSCCallGasLimit    = 50000000  // 50 million
 	gasLimitPerDataByte      = 1500
 
-	aggregatorContractPath    = "testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
-	wrapperContractPath       = "testdata/contracts/mvx/bridged-tokens-wrapper.wasm"
-	multiTransferContractPath = "testdata/contracts/mvx/multi-transfer-esdt.wasm"
-	safeContractPath          = "testdata/contracts/mvx/esdt-safe.wasm"
-	multisigContractPath      = "testdata/contracts/mvx/multisig.wasm"
-	bridgeProxyContractPath   = "testdata/contracts/mvx/bridge-proxy.wasm"
-	testCallerContractPath    = "testdata/contracts/mvx/test-caller.wasm"
+	wrapperContractPathTemplate       = "testdata/contracts/mvx/%s-version/bridged-tokens-wrapper.wasm"
+	multiTransferContractPathTemplate = "testdata/contracts/mvx/%s-version/multi-transfer-esdt.wasm"
+	safeContractPathTemplate          = "testdata/contracts/mvx/%s-version/esdt-safe.wasm"
+	multisigContractPathTemplate      = "testdata/contracts/mvx/%s-version/multisig.wasm"
+	bridgeProxyContractPathTemplate   = "testdata/contracts/mvx/%s-version/bridge-proxy.wasm"
+	aggregatorContractPath            = "testdata/contracts/mvx/multiversx-price-aggregator-sc.wasm"
+	testCallerContractPath            = "testdata/contracts/mvx/test-caller.wasm"
 
 	setBridgeProxyContractAddressFunction                = "setBridgeProxyContractAddress"
 	setWrappingContractAddressFunction                   = "setWrappingContractAddress"
 	changeOwnerAddressFunction                           = "ChangeOwnerAddress"
 	setEsdtSafeOnMultiTransferFunction                   = "setEsdtSafeOnMultiTransfer"
-	setEsdtSafeOnWrapperFunction                         = "setEsdtSafeContractAddress"
 	setEsdtSafeAddressFunction                           = "setEsdtSafeAddress"
 	stakeFunction                                        = "stake"
 	unpauseFunction                                      = "unpause"
@@ -128,8 +128,8 @@ func NewMultiversxHandler(
 }
 
 // DeployAndSetContracts will deploy all required contracts on MultiversX side and do the proper wiring
-func (handler *MultiversxHandler) DeployAndSetContracts(ctx context.Context) {
-	handler.deployContracts(ctx)
+func (handler *MultiversxHandler) DeployAndSetContracts(ctx context.Context, chainType ChainType) {
+	handler.deployContracts(ctx, chainType)
 
 	handler.wireMultiTransfer(ctx)
 	handler.wireSCProxy(ctx)
@@ -139,7 +139,7 @@ func (handler *MultiversxHandler) DeployAndSetContracts(ctx context.Context) {
 	handler.finishSettings(ctx)
 }
 
-func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
+func (handler *MultiversxHandler) deployContracts(ctx context.Context, chainType ChainType) {
 	// deploy aggregator
 	stakeValue, _ := big.NewInt(0).SetString(minRelayerStake, 10)
 	aggregatorDeployParams := []string{
@@ -168,7 +168,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy wrapper
 	handler.WrapperAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		wrapperContractPath,
+		fmt.Sprintf(wrapperContractPathTemplate, chainType),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
@@ -179,7 +179,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy multi-transfer
 	handler.MultiTransferAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		multiTransferContractPath,
+		fmt.Sprintf(multiTransferContractPathTemplate, chainType),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{},
@@ -190,7 +190,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy safe
 	handler.SafeAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		safeContractPath,
+		fmt.Sprintf(safeContractPathTemplate, chainType),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{
@@ -205,7 +205,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	// deploy bridge proxy
 	handler.ScProxyAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		bridgeProxyContractPath,
+		fmt.Sprintf(bridgeProxyContractPathTemplate, chainType),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		[]string{
@@ -230,7 +230,7 @@ func (handler *MultiversxHandler) deployContracts(ctx context.Context) {
 	}
 	handler.MultisigAddress, hash, _ = handler.ChainSimulator.DeploySC(
 		ctx,
-		multisigContractPath,
+		fmt.Sprintf(multisigContractPathTemplate, chainType),
 		handler.OwnerKeys.MvxSk,
 		deployGasLimit,
 		params,
@@ -747,7 +747,7 @@ func (handler *MultiversxHandler) addMappingInMultisig(ctx context.Context, para
 		setCallsGasLimit,
 		addMappingFunction,
 		[]string{
-			hex.EncodeToString(tkData.EthErc20Address.Bytes()),
+			hex.EncodeToString(sui.AppendLengthToData(tkData.PeerChainTokenAddress)),
 			hex.EncodeToString([]byte(tkData.MvxChainSpecificToken))})
 	log.Info("add mapping tx executed", "hash", hash, "status", txResult.Status)
 }
@@ -926,22 +926,28 @@ func (handler *MultiversxHandler) submitAggregatorBatchForKey(ctx context.Contex
 }
 
 // SendDepositTransactionFromMultiversx will send the deposit transaction from MultiversX
-func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(ctx context.Context, token *TokenData, params TestTokenParams, value *big.Int) {
+func (handler *MultiversxHandler) SendDepositTransactionFromMultiversx(
+	ctx context.Context,
+	token *TokenData,
+	params TestTokenParams,
+	value *big.Int,
+	receiver []byte,
+) {
 	if params.HasChainSpecificToken {
-		handler.unwrapCreateTransaction(ctx, token, value)
+		handler.unwrapCreateTransaction(ctx, token, value, receiver)
 		return
 	}
 
-	handler.createTransactionWithoutUnwrap(ctx, token, value)
+	handler.createTransactionWithoutUnwrap(ctx, token, value, receiver)
 }
 
-func (handler *MultiversxHandler) createTransactionWithoutUnwrap(ctx context.Context, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) createTransactionWithoutUnwrap(ctx context.Context, token *TokenData, value *big.Int, receiver []byte) {
 	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
 		hex.EncodeToString(value.Bytes()),
 		hex.EncodeToString([]byte(createTransactionFunction)),
-		hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
+		hex.EncodeToString(receiver),
 	}
 	dataField := strings.Join(params, "@")
 
@@ -954,10 +960,10 @@ func (handler *MultiversxHandler) createTransactionWithoutUnwrap(ctx context.Con
 		esdtTransferFunction,
 		params,
 	)
-	log.Info("MultiversX->Ethereum createTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+	log.Info("MultiversX -> peer chain createTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
 }
 
-func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, token *TokenData, value *big.Int) {
+func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, token *TokenData, value *big.Int, receiver []byte) {
 	// create transaction params
 	params := []string{
 		hex.EncodeToString([]byte(token.MvxUniversalToken)),
@@ -965,7 +971,7 @@ func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, t
 		hex.EncodeToString([]byte(unwrapTokenCreateTransactionFunction)),
 		hex.EncodeToString([]byte(token.MvxChainSpecificToken)),
 		hex.EncodeToString(handler.SafeAddress.Bytes()),
-		hex.EncodeToString(handler.TestKeys.EthAddress.Bytes()),
+		hex.EncodeToString(receiver),
 	}
 	dataField := strings.Join(params, "@")
 
@@ -978,7 +984,7 @@ func (handler *MultiversxHandler) unwrapCreateTransaction(ctx context.Context, t
 		esdtTransferFunction,
 		params,
 	)
-	log.Info("MultiversX->Ethereum unwrapCreateTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
+	log.Info("MultiversX -> peer chain unwrapCreateTransaction sent", "hash", hash, "token", token.MvxUniversalToken, "status", txResult.Status)
 }
 
 // TestWithdrawFees will try to withdraw the fees for the provided token from the safe contract to the owner

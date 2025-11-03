@@ -3,11 +3,11 @@ package relayers
 import (
 	"context"
 	"fmt"
+	stdMath "math"
 	"math/big"
 	"path"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/multiversx/mx-bridge-eth-go/clients/chain"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/testsCommon"
@@ -56,8 +56,8 @@ func closeRelayers(relayers []bridgeComponents) {
 	}
 }
 
-// CreateBridgeComponentsConfig -
-func CreateBridgeComponentsConfig(index int, workingDir string, gasStationURL string) config.Config {
+// CreateEthMvxBridgeComponentsConfig - TODO: refactor ethToMultiversX_test.go
+func CreateEthMvxBridgeComponentsConfig(index int, workingDir string, gasStationURL string) config.Config {
 	stateMachineConfig := config.ConfigStateMachine{
 		StepDurationInMillis:       1000,
 		IntervalForLeaderInSeconds: 60,
@@ -65,6 +65,7 @@ func CreateBridgeComponentsConfig(index int, workingDir string, gasStationURL st
 
 	return config.Config{
 		Eth: config.EthereumConfig{
+			Enabled:                      true,
 			Chain:                        chain.Ethereum,
 			NetworkAddress:               "mock",
 			MultisigContractAddress:      "3009d97FfeD62E57d444e552A9eDF9Ee6Bc8644c",
@@ -79,7 +80,7 @@ func CreateBridgeComponentsConfig(index int, workingDir string, gasStationURL st
 				GasPriceMultiplier:         1,
 				GasPriceSelector:           "SafeGasPrice",
 				MaxFetchRetries:            3,
-				MaximumAllowedGasPrice:     math.MaxUint64 / 2,
+				MaximumAllowedGasPrice:     stdMath.MaxUint64 / 2,
 				RequestRetryDelayInSeconds: 1,
 				RequestTimeInSeconds:       1,
 			},
@@ -89,24 +90,8 @@ func CreateBridgeComponentsConfig(index int, workingDir string, gasStationURL st
 			EventsBlockRangeFrom:               -5,
 			EventsBlockRangeTo:                 50,
 		},
-		MultiversX: config.MultiversXConfig{
-			NetworkAddress:                  "mock",
-			MultisigContractAddress:         "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
-			SafeContractAddress:             "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus",
-			PrivateKeyFile:                  path.Join(workingDir, fmt.Sprintf("multiversx%d.pem", index)),
-			IntervalToResendTxsInSeconds:    10,
-			GasMap:                          testsCommon.CreateTestMultiversXGasMap(),
-			MaxRetriesOnQuorumReached:       1,
-			MaxRetriesOnWasTransferProposed: 3,
-			ClientAvailabilityAllowDelta:    5,
-			Proxy: config.ProxyConfig{
-				CacherExpirationSeconds: 600,
-				RestAPIEntityType:       "observer",
-				MaxNoncesDelta:          10,
-				FinalityCheck:           true,
-			},
-		},
-		P2P: config.ConfigP2P{},
+		MultiversX: getMultiversXConfig(index, workingDir),
+		P2P:        config.ConfigP2P{},
 		StateMachine: map[string]config.ConfigStateMachine{
 			"EthereumToMultiversX": stateMachineConfig,
 			"MultiversXToEthereum": stateMachineConfig,
@@ -119,6 +104,66 @@ func CreateBridgeComponentsConfig(index int, workingDir string, gasStationURL st
 			RoleProvider: config.RoleProviderConfig{
 				PollingIntervalInMillis: 1000,
 			},
+		},
+	}
+}
+
+// CreateSuiMvxBridgeComponentsConfig -
+func CreateSuiMvxBridgeComponentsConfig(index int, workingDir string) config.Config {
+	stateMachineConfig := config.ConfigStateMachine{
+		StepDurationInMillis:       1000,
+		IntervalForLeaderInSeconds: 60,
+	}
+
+	return config.Config{
+		Sui: config.SuiConfig{
+			Enabled:                            true,
+			Chain:                              chain.Sui,
+			NetworkAddress:                     "mock",
+			PackageId:                          "packageId",
+			SafeObjectId:                       "safeObjectId",
+			SafeObjectInitialSharedVersion:     1,
+			BridgeObjectId:                     "bridgeObjectId",
+			BridgeObjectInitialSharedVersion:   1,
+			PrivateKeyFile:                     fmt.Sprintf("testdata/sui%d.seed", index),
+			MaxRetriesOnQuorumReached:          1,
+			IntervalToWaitForTransferInSeconds: 1,
+			ClientAvailabilityAllowDelta:       5,
+		},
+		MultiversX: getMultiversXConfig(index, workingDir),
+		P2P:        config.ConfigP2P{},
+		StateMachine: map[string]config.ConfigStateMachine{
+			"SuiToMultiversX": stateMachineConfig,
+			"MultiversXToSui": stateMachineConfig,
+		},
+		Relayer: config.ConfigRelayer{
+			Marshalizer: chainConfig.MarshalizerConfig{
+				Type:           "json",
+				SizeCheckDelta: 10,
+			},
+			RoleProvider: config.RoleProviderConfig{
+				PollingIntervalInMillis: 1000,
+			},
+		},
+	}
+}
+
+func getMultiversXConfig(index int, workingDir string) config.MultiversXConfig {
+	return config.MultiversXConfig{
+		NetworkAddress:                  "mock",
+		MultisigContractAddress:         "erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf",
+		SafeContractAddress:             "erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus",
+		PrivateKeyFile:                  path.Join(workingDir, fmt.Sprintf("multiversx%d.pem", index)),
+		IntervalToResendTxsInSeconds:    10,
+		GasMap:                          testsCommon.CreateTestMultiversXGasMap(),
+		MaxRetriesOnQuorumReached:       1,
+		MaxRetriesOnWasTransferProposed: 3,
+		ClientAvailabilityAllowDelta:    5,
+		Proxy: config.ProxyConfig{
+			CacherExpirationSeconds: 600,
+			RestAPIEntityType:       "observer",
+			MaxNoncesDelta:          10,
+			FinalityCheck:           true,
 		},
 	}
 }

@@ -152,7 +152,7 @@ func testEthereumVerifySigShouldWork(whitelistedAddresses []common.Address, hexS
 		err = erp.Execute(context.TODO())
 		assert.Nil(t, err)
 
-		err = erp.VerifyEthSignature(sig, msg)
+		err = erp.VerifySignature(sig, msg)
 		if expectedErr == nil {
 			require.Nil(t, err)
 		} else {

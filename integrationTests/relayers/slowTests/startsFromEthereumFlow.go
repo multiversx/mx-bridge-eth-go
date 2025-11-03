@@ -25,12 +25,12 @@ func (flow *startsFromEthereumFlow) process() (finished bool) {
 		return true
 	}
 
-	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromEthereum(flow.tokens...)
+	isTransferDoneFromEthereum := flow.setup.IsTransferDoneFromPeerChain(flow.tokens...)
 	if !flow.ethToMvxDone && isTransferDoneFromEthereum {
 		flow.ethToMvxDone = true
 		log.Info(fmt.Sprintf(framework.LogStepMarker, "Ethereum->MultiversX transfer finished, now sending back to Ethereum..."))
 
-		flow.setup.SendFromMultiversxToEthereum(flow.tokens...)
+		flow.setup.SendFromMultiversxToPeerChain(flow.tokens...)
 	}
 	if !flow.ethToMvxDone {
 		// return here, no reason to check downwards

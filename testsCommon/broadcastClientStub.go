@@ -4,12 +4,12 @@ import "github.com/multiversx/mx-bridge-eth-go/core"
 
 // BroadcastClientStub -
 type BroadcastClientStub struct {
-	ProcessNewMessageCalled   func(msg *core.SignedMessage, ethMsg *core.EthereumSignature)
+	ProcessNewMessageCalled   func(msg *core.SignedMessage, ethMsg *core.PeerChainSignature)
 	AllStoredSignaturesCalled func() []*core.SignedMessage
 }
 
 // ProcessNewMessage -
-func (stub *BroadcastClientStub) ProcessNewMessage(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+func (stub *BroadcastClientStub) ProcessNewMessage(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 	if stub.ProcessNewMessageCalled != nil {
 		stub.ProcessNewMessageCalled(msg, ethMsg)
 	}

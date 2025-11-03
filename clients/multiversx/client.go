@@ -30,6 +30,7 @@ const (
 	signFuncName                    = "sign"
 	performActionFuncName           = "performAction"
 	minClientAvailabilityAllowDelta = 1
+	prefixBytesLength               = 4
 
 	multiversXDataGetterLogId = "MultiversXEth-MultiversXDataGetter"
 )
@@ -276,10 +277,11 @@ func (c *client) createPendingBatchFromResponse(ctx context.Context, responseDat
 
 		storedConvertedTokenBytes, exists := cachedTokens[deposit.DisplayableToken]
 		if !exists {
-			deposit.DestinationTokenBytes, err = c.tokensMapper.ConvertToken(ctx, deposit.SourceTokenBytes)
+			coinTypeWithPrefix, err := c.tokensMapper.ConvertToken(ctx, deposit.SourceTokenBytes)
 			if err != nil {
 				return nil, fmt.Errorf("%w while converting token bytes, transfer index %d", err, transferIndex)
 			}
+			deposit.DestinationTokenBytes = coinTypeWithPrefix[prefixBytesLength:] // trim the len prefix
 			cachedTokens[deposit.DisplayableToken] = deposit.DestinationTokenBytes
 		} else {
 			deposit.DestinationTokenBytes = storedConvertedTokenBytes

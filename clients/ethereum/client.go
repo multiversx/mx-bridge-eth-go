@@ -13,7 +13,6 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/core"
-	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -100,7 +99,7 @@ func NewEthereumClient(args ArgsEthereumClient) (*client, error) {
 
 func checkArgs(args ArgsEthereumClient) error {
 	if check.IfNil(args.ClientWrapper) {
-		return errNilClientWrapper
+		return clients.ErrNilClientWrapper
 	}
 	if check.IfNil(args.Erc20ContractsHandler) {
 		return errNilERC20ContractsHandler
@@ -112,7 +111,7 @@ func checkArgs(args ArgsEthereumClient) error {
 		return clients.ErrNilAddressConverter
 	}
 	if check.IfNil(args.Broadcaster) {
-		return errNilBroadcaster
+		return clients.ErrNilBroadcaster
 	}
 	if check.IfNil(args.CryptoHandler) {
 		return clients.ErrNilCryptoHandler
@@ -121,16 +120,16 @@ func checkArgs(args ArgsEthereumClient) error {
 		return clients.ErrNilTokensMapper
 	}
 	if check.IfNil(args.SignatureHolder) {
-		return errNilSignaturesHolder
+		return clients.ErrNilSignaturesHolder
 	}
 	if check.IfNil(args.GasHandler) {
 		return errNilGasHandler
 	}
 	if args.TransferGasLimitBase == 0 {
-		return errInvalidGasLimit
+		return clients.ErrInvalidGasLimit
 	}
 	if args.TransferGasLimitForEach == 0 {
-		return errInvalidGasLimit
+		return clients.ErrInvalidGasLimit
 	}
 	if args.ClientAvailabilityAllowDelta < minClientAvailabilityAllowDelta {
 		return fmt.Errorf("%w for args.AllowedDelta, got: %d, minimum: %d",
@@ -144,7 +143,7 @@ func checkArgs(args ArgsEthereumClient) error {
 }
 
 // GetBatch returns the batch (if existing) from the Ethereum contract by providing the nonce
-func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error) {
+func (c *client) GetBatch(ctx context.Context, nonce uint64) (*core.TransferBatch, bool, error) {
 	c.log.Info("Getting batch", "nonce", nonce)
 	nonceAsBigInt := big.NewInt(0).SetUint64(nonce)
 	batch, isFinalBatch, err := c.clientWrapper.GetBatch(ctx, nonceAsBigInt)
@@ -157,13 +156,13 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 	}
 	if int(batch.DepositsCount) != len(deposits) {
 		return nil, false, fmt.Errorf("%w, batch.DepositsCount: %d, fetched deposits len: %d",
-			errDepositsAndBatchDepositsCountDiffer, batch.DepositsCount, len(deposits))
+			clients.ErrDepositsAndBatchDepositsCountDiffer, batch.DepositsCount, len(deposits))
 	}
 
-	transferBatch := &bridgeCore.TransferBatch{
+	transferBatch := &core.TransferBatch{
 		ID:          batch.Nonce.Uint64(),
 		BlockNumber: batch.BlockNumber,
-		Deposits:    make([]*bridgeCore.DepositTransfer, 0, batch.DepositsCount),
+		Deposits:    make([]*core.DepositTransfer, 0, batch.DepositsCount),
 	}
 	cachedTokens := make(map[string][]byte)
 	for i := range deposits {
@@ -172,7 +171,7 @@ func (c *client) GetBatch(ctx context.Context, nonce uint64) (*bridgeCore.Transf
 		fromBytes := deposit.Depositor[:]
 		tokenBytes := deposit.TokenAddress[:]
 
-		depositTransfer := &bridgeCore.DepositTransfer{
+		depositTransfer := &core.DepositTransfer{
 			Nonce:            deposit.Nonce.Uint64(),
 			ToBytes:          toBytes,
 			DisplayableTo:    c.addressConverter.ToBech32StringSilent(toBytes),
@@ -245,39 +244,50 @@ func (c *client) WasExecuted(ctx context.Context, mvxBatchID uint64) (bool, erro
 }
 
 // BroadcastSignatureForMessageHash will send the signature for the provided message hash
-func (c *client) BroadcastSignatureForMessageHash(msgHash common.Hash) {
-	signature, err := c.cryptoHandler.Sign(msgHash)
+func (c *client) BroadcastSignatureForMessageHash(msgHash []byte) {
+	hash := common.BytesToHash(msgHash)
+	signature, err := c.cryptoHandler.Sign(hash)
 	if err != nil {
 		c.log.Error("error generating signature", "msh hash", msgHash, "error", err)
 		return
 	}
 
-	c.broadcaster.BroadcastSignature(signature, msgHash.Bytes())
+	c.broadcaster.BroadcastSignature(signature, msgHash)
 }
 
 // GenerateMessageHash will generate the message hash based on the provided batch
-func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error) {
+func (c *client) GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) ([]byte, error) {
 	return GenerateMessageHash(batch, batchId)
 }
 
 // GenerateMessageHash will generate the message hash based on the provided batch
-func GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) (common.Hash, error) {
+func GenerateMessageHash(batch *batchProcessor.ArgListsBatch, batchId uint64) ([]byte, error) {
 	if batch == nil {
-		return common.Hash{}, clients.ErrNilBatch
+		return nil, clients.ErrNilBatch
 	}
 
 	args, err := generateTransferArgs()
 	if err != nil {
-		return common.Hash{}, err
+		return nil, err
 	}
 
-	pack, err := args.Pack(batch.Recipients, batch.EthTokens, batch.Amounts, batch.Nonces, big.NewInt(0).SetUint64(batchId), "ExecuteBatchedTransfer")
+	recipients := make([]common.Address, 0, len(batch.Recipients))
+	for _, recipient := range batch.Recipients {
+		recipients = append(recipients, common.BytesToAddress(recipient))
+	}
+
+	tokens := make([]common.Address, 0, len(batch.PeerTokens))
+	for _, token := range batch.PeerTokens {
+		tokens = append(tokens, common.BytesToAddress(token))
+	}
+
+	pack, err := args.Pack(recipients, tokens, batch.Amounts, batch.Nonces, big.NewInt(0).SetUint64(batchId), "ExecuteBatchedTransfer")
 	if err != nil {
-		return common.Hash{}, err
+		return nil, err
 	}
 
 	hash := crypto.Keccak256Hash(pack)
-	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)), nil
+	return crypto.Keccak256Hash(append([]byte(messagePrefix), hash.Bytes()...)).Bytes(), nil
 }
 
 func generateTransferArgs() (abi.Arguments, error) {
@@ -314,7 +324,7 @@ func generateTransferArgs() (abi.Arguments, error) {
 // ExecuteTransfer will initiate and send the transaction from the transfer batch struct
 func (c *client) ExecuteTransfer(
 	ctx context.Context,
-	msgHash common.Hash,
+	msgHash []byte,
 	argLists *batchProcessor.ArgListsBatch,
 	batchId uint64,
 	quorum int,
@@ -353,13 +363,13 @@ func (c *client) ExecuteTransfer(
 
 	auth.Nonce = big.NewInt(nonce)
 	auth.Value = big.NewInt(0)
-	auth.GasLimit = c.transferGasLimitBase + uint64(len(argLists.EthTokens))*c.transferGasLimitForEach
+	auth.GasLimit = c.transferGasLimitBase + uint64(len(argLists.PeerTokens))*c.transferGasLimitForEach
 	auth.Context = ctx
 	auth.GasPrice = gasPrice
 
-	signatures := c.signatureHolder.Signatures(msgHash.Bytes())
+	signatures := c.signatureHolder.Signatures(msgHash)
 	if len(signatures) < quorum {
-		return "", fmt.Errorf("%w num signatures: %d, quorum: %d", errQuorumNotReached, len(signatures), quorum)
+		return "", fmt.Errorf("%w num signatures: %d, quorum: %d", clients.ErrQuorumNotReached, len(signatures), quorum)
 	}
 	if len(signatures) > quorum {
 		c.log.Debug("reducing the size of the signatures set",
@@ -375,7 +385,18 @@ func (c *client) ExecuteTransfer(
 	}
 
 	batchID := big.NewInt(0).SetUint64(batchId)
-	tx, err := c.clientWrapper.ExecuteTransfer(auth, argLists.EthTokens, argLists.Recipients, argLists.Amounts, argLists.Nonces, batchID, signatures)
+
+	recipients := make([]common.Address, 0, len(argLists.Recipients))
+	for _, recipient := range argLists.Recipients {
+		recipients = append(recipients, common.BytesToAddress(recipient))
+	}
+
+	tokens := make([]common.Address, 0, len(argLists.PeerTokens))
+	for _, token := range argLists.PeerTokens {
+		tokens = append(tokens, common.BytesToAddress(token))
+	}
+
+	tx, err := c.clientWrapper.ExecuteTransfer(auth, tokens, recipients, argLists.Amounts, argLists.Nonces, batchID, signatures)
 	if err != nil {
 		return "", err
 	}
@@ -393,7 +414,7 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	currentBlock, err := c.clientWrapper.BlockNumber(ctx)
 	if err != nil {
-		c.setStatusForAvailabilityCheck(bridgeCore.Unavailable, err.Error(), currentBlock)
+		c.setStatusForAvailabilityCheck(core.Unavailable, err.Error(), currentBlock)
 
 		return err
 	}
@@ -408,12 +429,12 @@ func (c *client) CheckClientAvailability(ctx context.Context) error {
 
 	if c.retriesAvailabilityCheck > c.clientAvailabilityAllowDelta {
 		message := fmt.Sprintf("block %d fetched for %d times in a row", currentBlock, c.retriesAvailabilityCheck)
-		c.setStatusForAvailabilityCheck(bridgeCore.Unavailable, message, currentBlock)
+		c.setStatusForAvailabilityCheck(core.Unavailable, message, currentBlock)
 
 		return nil
 	}
 
-	c.setStatusForAvailabilityCheck(bridgeCore.Available, "", currentBlock)
+	c.setStatusForAvailabilityCheck(core.Available, "", currentBlock)
 
 	return nil
 }
@@ -422,15 +443,16 @@ func (c *client) incrementRetriesAvailabilityCheck() {
 	c.retriesAvailabilityCheck++
 }
 
-func (c *client) setStatusForAvailabilityCheck(status bridgeCore.ClientStatus, message string, nonce uint64) {
+func (c *client) setStatusForAvailabilityCheck(status core.ClientStatus, message string, nonce uint64) {
 	c.clientWrapper.SetStringMetric(core.MetricMultiversXClientStatus, status.String())
 	c.clientWrapper.SetStringMetric(core.MetricLastMultiversXClientError, message)
 	c.clientWrapper.SetIntMetric(core.MetricLastBlockNonce, int(nonce))
 }
 
 // CheckRequiredBalance will check if the safe has enough balance for the transfer
-func (c *client) CheckRequiredBalance(ctx context.Context, erc20Address common.Address, value *big.Int) error {
-	isMintBurn, err := c.MintBurnTokens(ctx, erc20Address)
+func (c *client) CheckRequiredBalance(ctx context.Context, token []byte, value *big.Int) error {
+	erc20Address := common.BytesToAddress(token)
+	isMintBurn, err := c.MintBurnTokens(ctx, token)
 	if err != nil {
 		return err
 	}
@@ -459,33 +481,39 @@ func (c *client) CheckRequiredBalance(ctx context.Context, erc20Address common.A
 }
 
 // TotalBalances returns the total balance of the given token
-func (c *client) TotalBalances(ctx context.Context, token common.Address) (*big.Int, error) {
-	return c.clientWrapper.TotalBalances(ctx, token)
+func (c *client) TotalBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	erc20Address := common.BytesToAddress(token)
+	return c.clientWrapper.TotalBalances(ctx, erc20Address)
 }
 
 // MintBalances returns the mint balance of the given token
-func (c *client) MintBalances(ctx context.Context, token common.Address) (*big.Int, error) {
-	return c.clientWrapper.MintBalances(ctx, token)
+func (c *client) MintBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	erc20Address := common.BytesToAddress(token)
+	return c.clientWrapper.MintBalances(ctx, erc20Address)
 }
 
 // BurnBalances returns the burn balance of the given token
-func (c *client) BurnBalances(ctx context.Context, token common.Address) (*big.Int, error) {
-	return c.clientWrapper.BurnBalances(ctx, token)
+func (c *client) BurnBalances(ctx context.Context, token []byte) (*big.Int, error) {
+	erc20Address := common.BytesToAddress(token)
+	return c.clientWrapper.BurnBalances(ctx, erc20Address)
 }
 
 // MintBurnTokens returns true if the token is mintBurn token
-func (c *client) MintBurnTokens(ctx context.Context, token common.Address) (bool, error) {
-	return c.clientWrapper.MintBurnTokens(ctx, token)
+func (c *client) MintBurnTokens(ctx context.Context, token []byte) (bool, error) {
+	erc20Address := common.BytesToAddress(token)
+	return c.clientWrapper.MintBurnTokens(ctx, erc20Address)
 }
 
 // NativeTokens returns true if the token is native
-func (c *client) NativeTokens(ctx context.Context, token common.Address) (bool, error) {
-	return c.clientWrapper.NativeTokens(ctx, token)
+func (c *client) NativeTokens(ctx context.Context, token []byte) (bool, error) {
+	erc20Address := common.BytesToAddress(token)
+	return c.clientWrapper.NativeTokens(ctx, erc20Address)
 }
 
 // WhitelistedTokens returns true if the token is whitelisted
-func (c *client) WhitelistedTokens(ctx context.Context, token common.Address) (bool, error) {
-	return c.clientWrapper.WhitelistedTokens(ctx, token)
+func (c *client) WhitelistedTokens(ctx context.Context, token []byte) (bool, error) {
+	erc20Address := common.BytesToAddress(token)
+	return c.clientWrapper.WhitelistedTokens(ctx, erc20Address)
 }
 
 func (c *client) checkRelayerFundsForFee(ctx context.Context, transferFee *big.Int) error {
@@ -524,7 +552,7 @@ func (c *client) GetTransactionsStatuses(ctx context.Context, batchId uint64) ([
 		return nil, err
 	}
 	if !isFinal {
-		return nil, errStatusIsNotFinal
+		return nil, clients.ErrStatusIsNotFinal
 	}
 
 	return buff, nil
@@ -536,8 +564,8 @@ func (c *client) GetQuorumSize(ctx context.Context) (*big.Int, error) {
 }
 
 // IsQuorumReached returns true if the number of signatures is at least the size of quorum
-func (c *client) IsQuorumReached(ctx context.Context, msgHash common.Hash) (bool, error) {
-	signatures := c.signatureHolder.Signatures(msgHash.Bytes())
+func (c *client) IsQuorumReached(ctx context.Context, msgHash []byte) (bool, error) {
+	signatures := c.signatureHolder.Signatures(msgHash)
 	quorum, err := c.clientWrapper.Quorum(ctx)
 	if err != nil {
 		return false, fmt.Errorf("%w in IsQuorumReached, Quorum call", err)

@@ -1,10 +1,16 @@
-version: "3.9"
-
 services:
  chain-simulator:
-  image: multiversx/chainsimulator:v1.7.13-patch2
+  image: multiversx/chainsimulator:v1.10.4-patch1
   ports:
     - 8085:8085
   volumes:
     - "../scripts:/docker/scripts"
   entrypoint: "./chainsimulator -log-level *:INFO"
+
+ sui:
+  image: mysten/sui-tools:testnet
+  ports:
+    - "9000:9000"  # Sui RPC port
+    - "9123:9123"  # Sui faucet port
+  command: >
+   sui start --with-faucet --force-regenesis

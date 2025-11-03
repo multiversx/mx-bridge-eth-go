@@ -4,7 +4,7 @@ import (
 	"errors"
 )
 
-var notImplemented = errors.New("method not implemented")
+var errNotImplemented = errors.New("not implemented")
 
 // CallDataMock -
 var CallDataMock = func() []byte {

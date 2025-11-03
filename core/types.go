@@ -3,6 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
+
+	"github.com/block-vision/sui-go-sdk/models"
+	"github.com/block-vision/sui-go-sdk/transaction"
 )
 
 // StepIdentifier defines a step name
@@ -42,7 +45,7 @@ type AddressConverter interface {
 // when new messages arrive. It also should be able to respond with any stored messages it might
 // have.
 type BroadcastClient interface {
-	ProcessNewMessage(msg *SignedMessage, ethMsg *EthereumSignature)
+	ProcessNewMessage(msg *SignedMessage, ethMsg *PeerChainSignature)
 	AllStoredSignatures() []*SignedMessage
 	IsInterfaceNil() bool
 }
@@ -100,4 +103,13 @@ func (cs ClientStatus) String() string {
 	default:
 		return fmt.Sprintf("Invalid status %d", cs)
 	}
+}
+
+// SuiPTBOperation represents a single operation within a PTB transaction
+type SuiPTBOperation struct {
+	Package  models.SuiAddress
+	Module   string
+	Function string
+	TypeTags []transaction.TypeTag
+	ArgsFn   func(tx *transaction.Transaction) []transaction.Argument
 }

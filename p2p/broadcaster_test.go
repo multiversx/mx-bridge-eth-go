@@ -340,7 +340,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 
 		b, _ := NewBroadcaster(args)
 		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
-			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 				require.Fail(t, "should have not called process")
 			},
 		})
@@ -367,14 +367,14 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		_, buff1 := createSignedMessageForEthSig(0)
 		args.Messenger = &p2pMocks.MessengerStub{}
 		args.SignatureProcessor = &testsCommon.SignatureProcessorStub{
-			VerifyEthSignatureCalled: func(signature []byte, messageHash []byte) error {
+			VerifySignatureCalled: func(signature []byte, messageHash []byte) error {
 				return errors.New("invalid signature as payload")
 			},
 		}
 
 		b, _ := NewBroadcaster(args)
 		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
-			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 				require.Fail(t, "should have not called process")
 			},
 		})
@@ -413,7 +413,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		require.Nil(t, err)
 
 		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
-			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 				processedMessages = append(processedMessages, msg)
 			},
 		})
@@ -442,7 +442,7 @@ func TestBroadcaster_ProcessReceivedMessage(t *testing.T) {
 		processedMessages := make([]*core.SignedMessage, 0)
 		b, _ := NewBroadcaster(args)
 		_ = b.AddBroadcastClient(&testsCommon.BroadcastClientStub{
-			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.EthereumSignature) {
+			ProcessNewMessageCalled: func(msg *core.SignedMessage, ethMsg *core.PeerChainSignature) {
 				processedMessages = append(processedMessages, msg)
 			},
 		})
@@ -519,7 +519,7 @@ func TestBroadcaster_BroadcastSignature(t *testing.T) {
 			require.Nil(t, err)
 			assert.Equal(t, sig, msg.Signature)
 
-			ethMsgInstance := &core.EthereumSignature{}
+			ethMsgInstance := &core.PeerChainSignature{}
 			err = marshalizer.Unmarshal(ethMsgInstance, msg.Payload)
 			require.Nil(t, err)
 

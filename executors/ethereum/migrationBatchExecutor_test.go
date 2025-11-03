@@ -190,7 +190,7 @@ func TestMigrationBatchExecutor_checkRelayersSigsAndQuorum(t *testing.T) {
 			{
 				Address:     ethCrypto.PubkeyToAddress(privateKeys[5].PublicKey).String(),
 				MessageHash: testMsgHash.String(),
-				Signature:   strings.Replace(correctSigForFifthElement, "1", "2", -1),
+				Signature:   strings.ReplaceAll(correctSigForFifthElement, "1", "2"),
 			},
 			// repeated good sig[1]
 			{

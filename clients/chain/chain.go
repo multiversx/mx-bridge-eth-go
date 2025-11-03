@@ -6,15 +6,16 @@ import (
 )
 
 const (
-	evmCompatibleChainToMultiversXNameTemplate  = "%sToMultiversX"
-	multiversXToEvmCompatibleChainNameTemplate  = "MultiversXTo%s"
-	baseLogIdTemplate                           = "%sMultiversX-Base"
-	multiversXClientLogIdTemplate               = "%sMultiversX-MultiversXClient"
-	multiversXDataGetterLogIdTemplate           = "%sMultiversX-MultiversXDataGetter"
-	evmCompatibleChainClientLogIdTemplate       = "%sMultiversX-%sClient"
-	multiversXRoleProviderLogIdTemplate         = "%sMultiversX-MultiversXRoleProvider"
-	evmCompatibleChainRoleProviderLogIdTemplate = "%sMultiversX-%sRoleProvider"
-	broadcasterLogIdTemplate                    = "%sMultiversX-Broadcaster"
+	peerChainToMultiversXNameTemplate   = "%sToMultiversX"
+	multiversXToPeerChainNameTemplate   = "MultiversXTo%s"
+	baseLogIdTemplate                   = "%sMultiversX-Base"
+	multiversXClientLogIdTemplate       = "%sMultiversX-MultiversXClient"
+	multiversXDataGetterLogIdTemplate   = "%sMultiversX-MultiversXDataGetter"
+	peerChainDataGetterLogIdTemplate    = "%sMultiversX-%sDataGetter"
+	peerChainClientLogIdTemplate        = "%sMultiversX-%sClient"
+	multiversXRoleProviderLogIdTemplate = "%sMultiversX-MultiversXRoleProvider"
+	peerChainRoleProviderLogIdTemplate  = "%sMultiversX-%sRoleProvider"
+	broadcasterLogIdTemplate            = "%sMultiversX-Broadcaster"
 )
 
 // Chain defines all the chain supported
@@ -32,6 +33,9 @@ const (
 
 	// Polygon is the string representation of the Polygon chain
 	Polygon Chain = "Polygon"
+
+	// Sui is the string representation of the Sui chain
+	Sui Chain = "Sui"
 )
 
 // ToLower returns the lowercase string of chain
@@ -39,14 +43,14 @@ func (c Chain) ToLower() string {
 	return strings.ToLower(string(c))
 }
 
-// EvmCompatibleChainToMultiversXName returns the string using chain value and evmCompatibleChainToMultiversXNameTemplate
-func (c Chain) EvmCompatibleChainToMultiversXName() string {
-	return fmt.Sprintf(evmCompatibleChainToMultiversXNameTemplate, c)
+// PeerChainToMultiversXName returns the string using chain value and peerChainToMultiversXNameTemplate
+func (c Chain) PeerChainToMultiversXName() string {
+	return fmt.Sprintf(peerChainToMultiversXNameTemplate, c)
 }
 
-// MultiversXToEvmCompatibleChainName returns the string using chain value and multiversXToEvmCompatibleChainNameTemplate
-func (c Chain) MultiversXToEvmCompatibleChainName() string {
-	return fmt.Sprintf(multiversXToEvmCompatibleChainNameTemplate, c)
+// MultiversXToPeerChainName returns the string using chain value and multiversXToPeerChainNameTemplate
+func (c Chain) MultiversXToPeerChainName() string {
+	return fmt.Sprintf(multiversXToPeerChainNameTemplate, c)
 }
 
 // BaseLogId returns the string using chain value and baseLogIdTemplate
@@ -64,9 +68,14 @@ func (c Chain) MultiversXDataGetterLogId() string {
 	return fmt.Sprintf(multiversXDataGetterLogIdTemplate, c)
 }
 
-// EvmCompatibleChainClientLogId returns the string using chain value and evmCompatibleChainClientLogIdTemplate
-func (c Chain) EvmCompatibleChainClientLogId() string {
-	return fmt.Sprintf(evmCompatibleChainClientLogIdTemplate, c, c)
+// PeerChainDataGetterLogId returns the string using chain value and peerChainDataGetterLogIdTemplate
+func (c Chain) PeerChainDataGetterLogId() string {
+	return fmt.Sprintf(peerChainDataGetterLogIdTemplate, c, c)
+}
+
+// PeerChainClientLogId returns the string using chain value and peerChainClientLogIdTemplate
+func (c Chain) PeerChainClientLogId() string {
+	return fmt.Sprintf(peerChainClientLogIdTemplate, c, c)
 }
 
 // MultiversXRoleProviderLogId returns the string using chain value and multiversXRoleProviderLogIdTemplate
@@ -74,9 +83,9 @@ func (c Chain) MultiversXRoleProviderLogId() string {
 	return fmt.Sprintf(multiversXRoleProviderLogIdTemplate, c)
 }
 
-// EvmCompatibleChainRoleProviderLogId returns the string using chain value and evmCompatibleChainRoleProviderLogIdTemplate
-func (c Chain) EvmCompatibleChainRoleProviderLogId() string {
-	return fmt.Sprintf(evmCompatibleChainRoleProviderLogIdTemplate, c, c)
+// PeerChainRoleProviderLogId returns the string using chain value and peerChainRoleProviderLogIdTemplate
+func (c Chain) PeerChainRoleProviderLogId() string {
+	return fmt.Sprintf(peerChainRoleProviderLogIdTemplate, c, c)
 }
 
 // BroadcasterLogId returns the string using chain value and broadcasterLogIdTemplate

@@ -327,6 +327,23 @@ func (dataGetter *mxClientDataGetter) GetERC20AddressForTokenId(ctx context.Cont
 	return dataGetter.executeQueryFromBuilder(ctx, builder)
 }
 
+// GetTokenIdForSuiCoin will assemble a builder and query the proxy for a token id given a specific sui coin
+func (dataGetter *mxClientDataGetter) GetTokenIdForSuiCoin(ctx context.Context, suiCoin []byte) ([][]byte, error) {
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
+	builder.Function(getTokenIdForErc20AddressFuncName)
+	builder.ArgBytes(suiCoin)
+
+	return dataGetter.executeQueryFromBuilder(ctx, builder)
+}
+
+// GetSuiCoinForTokenId will assemble a builder and query the proxy for a sui coin given a specific token id
+func (dataGetter *mxClientDataGetter) GetSuiCoinForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error) {
+	builder := dataGetter.createMultisigDefaultVmQueryBuilder()
+	builder.Function(getErc20AddressForTokenIdFuncName)
+	builder.ArgBytes(tokenId)
+	return dataGetter.executeQueryFromBuilder(ctx, builder)
+}
+
 // WasProposedTransfer returns true if the transfer action proposed was triggered
 func (dataGetter *mxClientDataGetter) WasProposedTransfer(ctx context.Context, batch *bridgeCore.TransferBatch) (bool, error) {
 	if batch == nil {
