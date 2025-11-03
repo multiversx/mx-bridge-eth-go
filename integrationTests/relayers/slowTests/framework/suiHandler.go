@@ -91,7 +91,8 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 	}, handler.OwnerKeys)
 
 	for _, obj := range resp.ObjectChanges {
-		if obj.Type == "created" {
+		switch obj.Type {
+		case "created":
 			if strings.Contains(obj.ObjectType, "0x2::coin::TreasuryCap") {
 				handler.TokenType = extractInnerType(obj.ObjectType)
 			}
@@ -109,7 +110,7 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 					}
 				}
 			}
-		} else if obj.Type == "published" {
+		case "published":
 			handler.PackageID = obj.PackageId
 		}
 	}
@@ -117,11 +118,8 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 	handler.transferFromCoinCapToOwner(ctx)
 	handler.initSafe(ctx)
 
-	suiRelayersAddresses := make([]string, 0, len(handler.RelayersKeys))
 	suiRelayersPubKeys := make([][suiPubKeyLength]byte, 0, len(handler.RelayersKeys))
 	for _, relayerKeys := range handler.RelayersKeys {
-		suiRelayersAddresses = append(suiRelayersAddresses, string(relayerKeys.SuiAddress))
-
 		pubKeyBytes := relayerKeys.SuiSK.Public().(ed25519.PublicKey)
 		var pk [suiPubKeyLength]byte
 		copy(pk[:], pubKeyBytes)
@@ -471,14 +469,15 @@ func (handler *SuiHandler) deployCoinContract(ctx context.Context) (string, stri
 
 	var coinPackageId, treasuryId, metadataId string
 	for _, obj := range resp.ObjectChanges {
-		if obj.Type == "created" {
+		switch obj.Type {
+		case "created":
 			if strings.Contains(obj.ObjectType, "0x2::coin::TreasuryCap") {
 				treasuryId = obj.ObjectId
 			}
 			if strings.Contains(obj.ObjectType, "0x2::coin::CoinMetadata") {
 				metadataId = obj.ObjectId
 			}
-		} else if obj.Type == "published" {
+		case "published":
 			coinPackageId = obj.PackageId
 		}
 	}

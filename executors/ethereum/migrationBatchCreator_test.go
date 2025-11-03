@@ -24,7 +24,7 @@ var balanceOfTkn1 = big.NewInt(19)
 var balanceOfTkn2 = big.NewInt(38)
 var balanceOfTkn3 = big.NewInt(138)
 var balanceOfTkn4 = big.NewInt(1137)
-var expectedErr = errors.New("expected error")
+var errExpected = errors.New("expected error")
 
 func createMockArgsForMigrationBatchCreator() ArgsMigrationBatchCreator {
 	return ArgsMigrationBatchCreator{
@@ -110,17 +110,17 @@ func TestFindAnUsableBatchID(t *testing.T) {
 
 		result, err := testFindAnUsableBatchID(t, 1367, 1)
 		assert.Nil(t, result)
-		assert.ErrorIs(t, err, expectedErr)
+		assert.ErrorIs(t, err, errExpected)
 		assert.Contains(t, err.Error(), "on batch 1")
 
 		result, err = testFindAnUsableBatchID(t, 1367, 100000)
 		assert.Nil(t, result)
-		assert.ErrorIs(t, err, expectedErr)
+		assert.ErrorIs(t, err, errExpected)
 		assert.Contains(t, err.Error(), "on batch 100000")
 
 		result, err = testFindAnUsableBatchID(t, 1367, 50000)
 		assert.Nil(t, result)
-		assert.ErrorIs(t, err, expectedErr)
+		assert.ErrorIs(t, err, errExpected)
 		assert.Contains(t, err.Error(), "on batch 50000")
 	})
 	t.Run("should resolve in an optimum number of steps", func(t *testing.T) {
@@ -261,7 +261,7 @@ func testFindAnUsableBatchID(t *testing.T, firstFreeBatchId uint64, errorBatchID
 			batchNonceUint64 := batchNonce.Uint64()
 
 			if batchNonceUint64 == errorBatchID {
-				return false, fmt.Errorf("%w on batch %d", expectedErr, batchNonceUint64)
+				return false, fmt.Errorf("%w on batch %d", errExpected, batchNonceUint64)
 			}
 
 			checkedMap[batchNonceUint64]++
@@ -291,13 +291,13 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		args := createMockArgsForMigrationBatchCreator()
 		args.EthereumChainWrapper = &bridge.EthereumClientWrapperStub{
 			WasBatchExecutedCalled: func(ctx context.Context, batchNonce *big.Int) (bool, error) {
-				return false, expectedErr
+				return false, errExpected
 			},
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
 		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 		assert.Nil(t, batch)
 	})
 	t.Run("get all known tokens errors should error", func(t *testing.T) {
@@ -311,13 +311,13 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 		args.MvxDataGetter = &bridge.DataGetterStub{
 			GetAllKnownTokensCalled: func(ctx context.Context) ([][]byte, error) {
-				return nil, expectedErr
+				return nil, errExpected
 			},
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
 		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 		assert.Nil(t, batch)
 	})
 	t.Run("get all known tokens returns 0 tokens should error", func(t *testing.T) {
@@ -350,12 +350,12 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 			},
 		}
 		args.MvxDataGetter.(*bridge.DataGetterStub).GetERC20AddressForTokenIdCalled = func(ctx context.Context, sourceBytes []byte) ([][]byte, error) {
-			return nil, expectedErr
+			return nil, errExpected
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
 		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 		assert.Nil(t, batch)
 	})
 	t.Run("GetERC20AddressForTokenId returns empty list should error", func(t *testing.T) {
@@ -387,13 +387,13 @@ func TestMigrationBatchCreator_CreateBatchInfo(t *testing.T) {
 		}
 		args.Erc20ContractsHolder = &bridge.ERC20ContractsHolderStub{
 			BalanceOfCalled: func(ctx context.Context, erc20Address common.Address, address common.Address) (*big.Int, error) {
-				return nil, expectedErr
+				return nil, errExpected
 			},
 		}
 
 		creator, _ := NewMigrationBatchCreator(args)
 		batch, err := creator.CreateBatchInfo(context.Background(), newSafeContractAddress, nil)
-		assert.ErrorIs(t, err, expectedErr)
+		assert.ErrorIs(t, err, errExpected)
 		assert.Nil(t, batch)
 	})
 	t.Run("should work", func(t *testing.T) {

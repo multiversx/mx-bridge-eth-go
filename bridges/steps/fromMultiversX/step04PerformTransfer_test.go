@@ -16,7 +16,7 @@ func TestExecute_PerformTransfer(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorPerformTransfer()
 		bridgeStub.WasTransferPerformedOnPeerChainCalled = func(ctx context.Context) (bool, error) {
-			return false, expectedError
+			return false, errExpected
 		}
 
 		step := performTransferStep{
@@ -34,7 +34,7 @@ func TestExecute_PerformTransfer(t *testing.T) {
 			return true
 		}
 		bridgeStub.PerformTransferOnPeerChainCalled = func(ctx context.Context) error {
-			return expectedError
+			return errExpected
 		}
 
 		step := performTransferStep{

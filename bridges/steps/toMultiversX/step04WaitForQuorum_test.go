@@ -15,7 +15,7 @@ func TestExecuteWaitForQuorumStep(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutor()
 		bridgeStub.ProcessQuorumReachedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
-			return false, expectedError
+			return false, errExpected
 		}
 
 		step := waitForQuorumStep{

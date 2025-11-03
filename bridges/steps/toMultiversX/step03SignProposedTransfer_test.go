@@ -36,7 +36,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 			return testBatch
 		}
 		bridgeStub.WasActionSignedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
-			return false, expectedError
+			return false, errExpected
 		}
 
 		step := signProposedTransferStep{
@@ -58,7 +58,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 			return false, nil
 		}
 		bridgeStub.SignActionOnMultiversXCalled = func(ctx context.Context) error {
-			return expectedError
+			return errExpected
 		}
 
 		step := signProposedTransferStep{
@@ -122,7 +122,7 @@ func TestExecuteSignProposedTransferStep(t *testing.T) {
 			return testBatch
 		}
 		bridgeStub.WasActionSignedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
-			return false, expectedError
+			return false, errExpected
 		}
 		bridgeStub.GetAndStoreActionIDForProposeTransferOnMultiversXCalled = func(ctx context.Context) (uint64, error) {
 			return bridges.InvalidActionID, nil

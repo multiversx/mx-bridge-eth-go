@@ -90,7 +90,7 @@ func (stub *BridgeExecutorStub) GetBatchFromMultiversX(ctx context.Context) (*br
 	if stub.GetBatchFromMultiversXCalled != nil {
 		return stub.GetBatchFromMultiversXCalled(ctx)
 	}
-	return nil, notImplemented
+	return nil, errNotImplemented
 }
 
 // StoreBatchFromMultiversX -
@@ -99,7 +99,7 @@ func (stub *BridgeExecutorStub) StoreBatchFromMultiversX(batch *bridgeCore.Trans
 	if stub.StoreBatchFromMultiversXCalled != nil {
 		return stub.StoreBatchFromMultiversXCalled(batch)
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // GetStoredBatch -
@@ -117,7 +117,7 @@ func (stub *BridgeExecutorStub) GetLastExecutedPeerBatchIDFromMultiversX(ctx con
 	if stub.GetLastExecutedPeerBatchIDFromMultiversXCalled != nil {
 		return stub.GetLastExecutedPeerBatchIDFromMultiversXCalled(ctx)
 	}
-	return 0, notImplemented
+	return 0, errNotImplemented
 }
 
 // VerifyLastDepositNonceExecutedOnPeerBatch -
@@ -126,7 +126,7 @@ func (stub *BridgeExecutorStub) VerifyLastDepositNonceExecutedOnPeerBatch(ctx co
 	if stub.VerifyLastDepositNonceExecutedOnPeerBatchCalled != nil {
 		return stub.VerifyLastDepositNonceExecutedOnPeerBatchCalled(ctx)
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // GetAndStoreActionIDForProposeTransferOnMultiversX -
@@ -135,7 +135,7 @@ func (stub *BridgeExecutorStub) GetAndStoreActionIDForProposeTransferOnMultivers
 	if stub.GetAndStoreActionIDForProposeTransferOnMultiversXCalled != nil {
 		return stub.GetAndStoreActionIDForProposeTransferOnMultiversXCalled(ctx)
 	}
-	return 0, notImplemented
+	return 0, errNotImplemented
 }
 
 // GetAndStoreActionIDForProposeSetStatusFromMultiversX -
@@ -144,7 +144,7 @@ func (stub *BridgeExecutorStub) GetAndStoreActionIDForProposeSetStatusFromMultiv
 	if stub.GetAndStoreActionIDForProposeSetStatusFromMultiversXCalled != nil {
 		return stub.GetAndStoreActionIDForProposeSetStatusFromMultiversXCalled(ctx)
 	}
-	return 0, notImplemented
+	return 0, errNotImplemented
 }
 
 // GetStoredActionID -
@@ -162,7 +162,7 @@ func (stub *BridgeExecutorStub) WasTransferProposedOnMultiversX(ctx context.Cont
 	if stub.WasTransferProposedOnMultiversXCalled != nil {
 		return stub.WasTransferProposedOnMultiversXCalled(ctx)
 	}
-	return false, notImplemented
+	return false, errNotImplemented
 }
 
 // ProposeTransferOnMultiversX -
@@ -171,7 +171,7 @@ func (stub *BridgeExecutorStub) ProposeTransferOnMultiversX(ctx context.Context)
 	if stub.ProposeTransferOnMultiversXCalled != nil {
 		return stub.ProposeTransferOnMultiversXCalled(ctx)
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // ProcessMaxRetriesOnWasTransferProposedOnMultiversX -
@@ -197,7 +197,7 @@ func (stub *BridgeExecutorStub) WasSetStatusProposedOnMultiversX(ctx context.Con
 	if stub.WasSetStatusProposedOnMultiversXCalled != nil {
 		return stub.WasSetStatusProposedOnMultiversXCalled(ctx)
 	}
-	return false, notImplemented
+	return false, errNotImplemented
 }
 
 // ProposeSetStatusOnMultiversX -
@@ -206,7 +206,7 @@ func (stub *BridgeExecutorStub) ProposeSetStatusOnMultiversX(ctx context.Context
 	if stub.ProposeSetStatusOnMultiversXCalled != nil {
 		return stub.ProposeSetStatusOnMultiversXCalled(ctx)
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // WasActionSignedOnMultiversX -
@@ -215,7 +215,7 @@ func (stub *BridgeExecutorStub) WasActionSignedOnMultiversX(ctx context.Context)
 	if stub.WasActionSignedOnMultiversXCalled != nil {
 		return stub.WasActionSignedOnMultiversXCalled(ctx)
 	}
-	return false, notImplemented
+	return false, errNotImplemented
 }
 
 // SignActionOnMultiversX -
@@ -224,7 +224,7 @@ func (stub *BridgeExecutorStub) SignActionOnMultiversX(ctx context.Context) erro
 	if stub.SignActionOnMultiversXCalled != nil {
 		return stub.SignActionOnMultiversXCalled(ctx)
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // ProcessQuorumReachedOnMultiversX -
@@ -233,7 +233,7 @@ func (stub *BridgeExecutorStub) ProcessQuorumReachedOnMultiversX(ctx context.Con
 	if stub.ProcessQuorumReachedOnMultiversXCalled != nil {
 		return stub.ProcessQuorumReachedOnMultiversXCalled(ctx)
 	}
-	return false, notImplemented
+	return false, errNotImplemented
 }
 
 // WasActionPerformedOnMultiversX -
@@ -242,7 +242,7 @@ func (stub *BridgeExecutorStub) WasActionPerformedOnMultiversX(ctx context.Conte
 	if stub.WasActionPerformedOnMultiversXCalled != nil {
 		return stub.WasActionPerformedOnMultiversXCalled(ctx)
 	}
-	return false, notImplemented
+	return false, errNotImplemented
 }
 
 // PerformActionOnMultiversX -
@@ -251,7 +251,7 @@ func (stub *BridgeExecutorStub) PerformActionOnMultiversX(ctx context.Context) e
 	if stub.PerformActionOnMultiversXCalled != nil {
 		return stub.PerformActionOnMultiversXCalled(ctx)
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // ResolveNewDepositsStatuses -
@@ -285,7 +285,7 @@ func (stub *BridgeExecutorStub) GetAndStoreBatchFromPeerChain(ctx context.Contex
 	if stub.GetAndStoreBatchFromPeerChainCalled != nil {
 		return stub.GetAndStoreBatchFromPeerChainCalled(ctx, nonce)
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // WasTransferPerformedOnPeerChain -
@@ -294,7 +294,7 @@ func (stub *BridgeExecutorStub) WasTransferPerformedOnPeerChain(ctx context.Cont
 	if stub.WasTransferPerformedOnPeerChainCalled != nil {
 		return stub.WasTransferPerformedOnPeerChainCalled(ctx)
 	}
-	return false, notImplemented
+	return false, errNotImplemented
 }
 
 // SignTransferOnPeerChain -
@@ -303,7 +303,7 @@ func (stub *BridgeExecutorStub) SignTransferOnPeerChain() error {
 	if stub.SignTransferOnPeerChainCalled != nil {
 		return stub.SignTransferOnPeerChainCalled()
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // PerformTransferOnPeerChain -
@@ -312,7 +312,7 @@ func (stub *BridgeExecutorStub) PerformTransferOnPeerChain(ctx context.Context) 
 	if stub.PerformTransferOnPeerChainCalled != nil {
 		return stub.PerformTransferOnPeerChainCalled(ctx)
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // ProcessQuorumReachedOnPeerChain -
@@ -321,7 +321,7 @@ func (stub *BridgeExecutorStub) ProcessQuorumReachedOnPeerChain(ctx context.Cont
 	if stub.ProcessQuorumReachedOnPeerChainCalled != nil {
 		return stub.ProcessQuorumReachedOnPeerChainCalled(ctx)
 	}
-	return false, notImplemented
+	return false, errNotImplemented
 }
 
 // WaitForTransferConfirmation -
@@ -347,7 +347,7 @@ func (stub *BridgeExecutorStub) GetBatchStatusesFromPeerChain(ctx context.Contex
 	if stub.GetBatchStatusesFromPeerChainCalled != nil {
 		return stub.GetBatchStatusesFromPeerChainCalled(ctx)
 	}
-	return nil, notImplemented
+	return nil, errNotImplemented
 }
 
 // ProcessMaxQuorumRetriesOnPeerChain -
@@ -380,7 +380,7 @@ func (stub *BridgeExecutorStub) CheckMultiversXClientAvailability(ctx context.Co
 	if stub.CheckMultiversXClientAvailabilityCalled != nil {
 		return stub.CheckMultiversXClientAvailabilityCalled(ctx)
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // CheckPeerClientAvailability -
@@ -388,7 +388,7 @@ func (stub *BridgeExecutorStub) CheckPeerClientAvailability(ctx context.Context)
 	if stub.CheckPeerClientAvailabilityCalled != nil {
 		return stub.CheckPeerClientAvailabilityCalled(ctx)
 	}
-	return notImplemented
+	return errNotImplemented
 }
 
 // IsInterfaceNil -

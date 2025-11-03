@@ -45,7 +45,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorProposeSetStatus()
 		bridgeStub.WasSetStatusProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
-			return false, expectedError
+			return false, errExpected
 		}
 
 		step := proposeSetStatusStep{
@@ -60,7 +60,7 @@ func TestExecute_ProposeSetStatus(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorProposeSetStatus()
 		bridgeStub.ProposeSetStatusOnMultiversXCalled = func(ctx context.Context) error {
-			return expectedError
+			return errExpected
 		}
 
 		step := proposeSetStatusStep{

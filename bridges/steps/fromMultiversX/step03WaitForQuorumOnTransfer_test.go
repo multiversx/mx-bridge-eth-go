@@ -16,7 +16,7 @@ func TestExecute_WaitForQuorumOnTransfer(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorWaitForQuorumOnTransfer()
 		bridgeStub.ProcessQuorumReachedOnPeerChainCalled = func(ctx context.Context) (bool, error) {
-			return false, expectedError
+			return false, errExpected
 		}
 
 		step := waitForQuorumOnTransferStep{

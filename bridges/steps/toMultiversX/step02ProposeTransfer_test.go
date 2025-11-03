@@ -34,7 +34,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 			return testBatch
 		}
 		bridgeStub.WasTransferProposedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
-			return false, expectedError
+			return false, errExpected
 		}
 
 		step := proposeTransferStep{
@@ -81,7 +81,7 @@ func TestExecuteProposeTransfer(t *testing.T) {
 			return true
 		}
 		bridgeStub.ProposeTransferOnMultiversXCalled = func(ctx context.Context) error {
-			return expectedError
+			return errExpected
 		}
 
 		step := proposeTransferStep{

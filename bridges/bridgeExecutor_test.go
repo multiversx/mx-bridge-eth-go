@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var expectedErr = errors.New("expected error")
+var errExpected = errors.New("expected error")
 var providedBatch = &bridgeCore.TransferBatch{}
 var expectedMaxRetries = uint64(3)
 
@@ -242,7 +242,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreActionIDForProposeTransferOnMu
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
 			GetActionIDForProposeTransferCalled: func(ctx context.Context, batch *bridgeCore.TransferBatch) (uint64, error) {
 				assert.True(t, providedBatch == batch)
-				return 0, expectedErr
+				return 0, errExpected
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
@@ -250,7 +250,7 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreActionIDForProposeTransferOnMu
 
 		actionID, err := executor.GetAndStoreActionIDForProposeTransferOnMultiversX(context.Background())
 		assert.Zero(t, actionID)
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -288,13 +288,13 @@ func TestEthToMultiversXBridgeExecutor_GetAndStoreBatchFromPeerChain(t *testing.
 		args.PeerChainClient = &bridgeTests.PeerChainClientStub{
 			GetBatchCalled: func(ctx context.Context, nonce uint64) (*bridgeCore.TransferBatch, bool, error) {
 				assert.Equal(t, providedNonce, nonce)
-				return nil, false, expectedErr
+				return nil, false, errExpected
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
 		err := executor.GetAndStoreBatchFromPeerChain(context.Background(), providedNonce)
 
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("batch nonce mismatch should error", func(t *testing.T) {
 		t.Parallel()
@@ -577,14 +577,14 @@ func TestEthToMultiversXBridgeExecutor_VerifyLastDepositNonceExecutedOnPeerBatch
 		args := createMockExecutorArgs()
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
 			GetLastExecutedEthTxIDCalled: func(ctx context.Context) (uint64, error) {
-				return 0, expectedErr
+				return 0, errExpected
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = &bridgeCore.TransferBatch{}
 
 		err := executor.VerifyLastDepositNonceExecutedOnPeerBatch(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 
 	args := createMockExecutorArgs()
@@ -733,14 +733,14 @@ func TestEthToMultiversXBridgeExecutor_ProposeTransferOnMultiversX(t *testing.T)
 			ProposeTransferCalled: func(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error) {
 				assert.True(t, providedBatch == batch)
 
-				return "", expectedErr
+				return "", errExpected
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
 
 		err := executor.ProposeTransferOnMultiversX(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -797,7 +797,7 @@ func TestEthToMultiversXBridgeExecutor_SignActionOnMultiversX(t *testing.T) {
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
 			SignCalled: func(ctx context.Context, actionID uint64) (string, error) {
 				assert.Equal(t, providedActionID, actionID)
-				return "", expectedErr
+				return "", errExpected
 			},
 		}
 
@@ -805,7 +805,7 @@ func TestEthToMultiversXBridgeExecutor_SignActionOnMultiversX(t *testing.T) {
 		executor.actionID = providedActionID
 
 		err := executor.SignActionOnMultiversX(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -895,7 +895,7 @@ func TestEthToMultiversXBridgeExecutor_PerformActionOnMultiversX(t *testing.T) {
 			PerformActionCalled: func(ctx context.Context, actionID uint64, batch *bridgeCore.TransferBatch) (string, error) {
 				assert.Equal(t, providedActionID, actionID)
 				assert.True(t, providedBatch == batch)
-				return "", expectedErr
+				return "", errExpected
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
@@ -903,7 +903,7 @@ func TestEthToMultiversXBridgeExecutor_PerformActionOnMultiversX(t *testing.T) {
 		executor.actionID = providedActionID
 
 		err := executor.PerformActionOnMultiversX(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -970,13 +970,13 @@ func TestMultiversXToEthBridgeExecutor_GetAndStoreBatchFromMultiversX(t *testing
 		args := createMockExecutorArgs()
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
 			GetPendingBatchCalled: func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
-				return nil, expectedErr
+				return nil, errExpected
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 		_, err := executor.GetBatchFromMultiversX(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 
 		batch := executor.GetStoredBatch()
 		assert.Nil(t, batch)
@@ -1034,14 +1034,14 @@ func TestMultiversXToEthBridgeExecutor_GetAndStoreActionIDForProposeSetStatusFro
 		args := createMockExecutorArgs()
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
 			GetActionIDForSetStatusOnPendingTransferCalled: func(ctx context.Context, batch *bridgeCore.TransferBatch) (uint64, error) {
-				return uint64(0), expectedErr
+				return uint64(0), errExpected
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
 		_, err := executor.GetAndStoreActionIDForProposeSetStatusFromMultiversX(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -1087,14 +1087,14 @@ func TestMultiversXToEthBridgeExecutor_WasSetStatusProposedOnMultiversX(t *testi
 		args := createMockExecutorArgs()
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
 			WasProposedSetStatusCalled: func(ctx context.Context, batch *bridgeCore.TransferBatch) (bool, error) {
-				return false, expectedErr
+				return false, errExpected
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
 		_, err := executor.WasSetStatusProposedOnMultiversX(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -1136,14 +1136,14 @@ func TestEthToMultiversXBridgeExecutor_ProposeSetStatusOnMultiversX(t *testing.T
 		args := createMockExecutorArgs()
 		args.MultiversXClient = &bridgeTests.MultiversXClientStub{
 			ProposeSetStatusCalled: func(ctx context.Context, batch *bridgeCore.TransferBatch) (string, error) {
-				return "", expectedErr
+				return "", errExpected
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
 		err := executor.ProposeSetStatusOnMultiversX(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -1203,14 +1203,14 @@ func TestMultiversXToEthBridgeExecutor_WasTransferPerformedOnPeerChain(t *testin
 		args := createMockExecutorArgs()
 		args.PeerChainClient = &bridgeTests.PeerChainClientStub{
 			WasExecutedCalled: func(ctx context.Context, batchID uint64) (bool, error) {
-				return false, expectedErr
+				return false, errExpected
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
 		_, err := executor.WasTransferPerformedOnPeerChain(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -1254,14 +1254,14 @@ func TestMultiversXToEthBridgeExecutor_SignTransferOnPeerChain(t *testing.T) {
 		args := createMockExecutorArgs()
 		args.PeerChainClient = &bridgeTests.PeerChainClientStub{
 			GenerateMessageHashCalled: func(batch *batchProcessor.ArgListsBatch, batchID uint64) ([]byte, error) {
-				return []byte{}, expectedErr
+				return []byte{}, errExpected
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
 		err := executor.SignTransferOnPeerChain()
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -1306,14 +1306,14 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnPeerChain(t *testing.T) 
 		args := createMockExecutorArgs()
 		args.PeerChainClient = &bridgeTests.PeerChainClientStub{
 			GetQuorumSizeCalled: func(ctx context.Context) (*big.Int, error) {
-				return big.NewInt(0), expectedErr
+				return big.NewInt(0), errExpected
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
 		err := executor.PerformTransferOnPeerChain(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("ExecuteTransfer fails", func(t *testing.T) {
 		t.Parallel()
@@ -1324,14 +1324,14 @@ func TestMultiversXToEthBridgeExecutor_PerformTransferOnPeerChain(t *testing.T) 
 				return big.NewInt(0), nil
 			},
 			ExecuteTransferCalled: func(ctx context.Context, msgHash []byte, batch *batchProcessor.ArgListsBatch, batchId uint64, quorum int) (string, error) {
-				return "", expectedErr
+				return "", errExpected
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
 		err := executor.PerformTransferOnPeerChain(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -1382,14 +1382,14 @@ func TestMultiversXToEthBridgeExecutor_IsQuorumReachedOnEthereum(t *testing.T) {
 		args := createMockExecutorArgs()
 		args.PeerChainClient = &bridgeTests.PeerChainClientStub{
 			IsQuorumReachedCalled: func(ctx context.Context, msgHash []byte) (bool, error) {
-				return false, expectedErr
+				return false, errExpected
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 
 		_, err := executor.ProcessQuorumReachedOnPeerChain(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -1532,14 +1532,14 @@ func TestGetBatchStatusesFromPeerChain(t *testing.T) {
 		args := createMockExecutorArgs()
 		args.PeerChainClient = &bridgeTests.PeerChainClientStub{
 			GetTransactionsStatusesCalled: func(ctx context.Context, batchId uint64) ([]byte, error) {
-				return nil, expectedErr
+				return nil, errExpected
 			},
 		}
 
 		executor, _ := NewBridgeExecutor(args)
 		executor.batch = providedBatch
 		_, err := executor.GetBatchStatusesFromPeerChain(context.Background())
-		assert.Equal(t, expectedErr, err)
+		assert.Equal(t, errExpected, err)
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -1606,7 +1606,7 @@ func TestWaitAndReturnFinalBatchStatuses(t *testing.T) {
 		args.PeerChainClient = &bridgeTests.PeerChainClientStub{
 			GetTransactionsStatusesCalled: func(ctx context.Context, batchId uint64) ([]byte, error) {
 				counter++
-				return nil, expectedErr
+				return nil, errExpected
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)
@@ -1633,7 +1633,7 @@ func TestWaitAndReturnFinalBatchStatuses(t *testing.T) {
 				if counter >= 5 {
 					return providedStatuses, nil
 				}
-				return nil, expectedErr
+				return nil, errExpected
 			},
 		}
 		executor, _ := NewBridgeExecutor(args)

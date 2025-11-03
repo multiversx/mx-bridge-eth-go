@@ -32,7 +32,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedSetStatus()
 		bridgeStub.GetAndStoreActionIDForProposeSetStatusFromMultiversXCalled = func(ctx context.Context) (uint64, error) {
-			return bridges.InvalidActionID, expectedError
+			return bridges.InvalidActionID, errExpected
 		}
 
 		step := signProposedSetStatusStep{
@@ -60,7 +60,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedSetStatus()
 		bridgeStub.WasActionSignedOnMultiversXCalled = func(ctx context.Context) (bool, error) {
-			return false, expectedError
+			return false, errExpected
 		}
 
 		step := signProposedSetStatusStep{
@@ -74,7 +74,7 @@ func TestExecute_SignProposedSetStatus(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedSetStatus()
 		bridgeStub.SignActionOnMultiversXCalled = func(ctx context.Context) error {
-			return expectedError
+			return errExpected
 		}
 
 		step := signProposedSetStatusStep{

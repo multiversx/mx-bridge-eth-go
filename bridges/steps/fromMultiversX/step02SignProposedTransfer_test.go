@@ -33,7 +33,7 @@ func TestExecute_SignProposedTransfer(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorSignProposedTransfer()
 		bridgeStub.SignTransferOnPeerChainCalled = func() error {
-			return expectedError
+			return errExpected
 		}
 
 		step := signProposedTransferStep{

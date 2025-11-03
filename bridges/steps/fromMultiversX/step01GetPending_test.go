@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var expectedError = errors.New("expected error")
+var errExpected = errors.New("expected error")
 var testBatch = &bridgeCore.TransferBatch{
 	ID:       112233,
 	Deposits: nil,
@@ -26,7 +26,7 @@ func TestExecute_GetPending(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
 		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
-			return nil, expectedError
+			return nil, errExpected
 		}
 
 		step := getPendingStep{
@@ -56,7 +56,7 @@ func TestExecute_GetPending(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
 		bridgeStub.StoreBatchFromMultiversXCalled = func(batch *bridgeCore.TransferBatch) error {
-			return expectedError
+			return errExpected
 		}
 
 		step := getPendingStep{
@@ -71,7 +71,7 @@ func TestExecute_GetPending(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorGetPending()
 		bridgeStub.WasTransferPerformedOnPeerChainCalled = func(ctx context.Context) (bool, error) {
-			return false, expectedError
+			return false, errExpected
 		}
 
 		step := getPendingStep{
@@ -89,7 +89,7 @@ func TestExecute_GetPending(t *testing.T) {
 			return false, nil
 		}
 		bridgeStub.CheckAvailableTokensCalled = func(ctx context.Context, peerTokens [][]byte, mvxTokens [][]byte, amounts []*big.Int, direction batchProcessor.Direction) error {
-			return expectedError
+			return errExpected
 		}
 
 		step := getPendingStep{

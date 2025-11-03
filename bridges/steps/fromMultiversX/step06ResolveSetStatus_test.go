@@ -35,7 +35,7 @@ func TestExecute_ResolveSetStatus(t *testing.T) {
 		t.Parallel()
 		bridgeStub := createStubExecutorResolveSetStatus()
 		bridgeStub.GetBatchFromMultiversXCalled = func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
-			return nil, expectedError
+			return nil, errExpected
 		}
 		clearWasCalled := false
 		bridgeStub.ClearStoredP2PSignaturesForPeerChainCalled = func() {
