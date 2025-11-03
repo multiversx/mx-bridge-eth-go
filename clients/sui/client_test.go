@@ -775,7 +775,63 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, expectedHash, hash)
 	})
-	t.Run("should return correct hash for batch with deposits with different tokens", func(t *testing.T) {
+	t.Run("should return same hash for batches with same deposits in different order", func(t *testing.T) {
+		args := createMockSuiClientArgs()
+		c, _ := NewSuiClient(args)
+
+		batchID := uint64(456)
+		batch1 := &batchProcessor.ArgListsBatch{
+			PeerTokens:    [][]byte{[]byte("token1"), []byte("token2")},
+			Recipients:    [][]byte{[]byte("recipient1"), []byte("recipient2")},
+			MvxTokenBytes: [][]byte{[]byte("mvxToken1"), []byte("mvxToken2")},
+			Amounts:       []*big.Int{big.NewInt(900), big.NewInt(560)},
+			Nonces:        []*big.Int{big.NewInt(640), big.NewInt(310)},
+			Direction:     batchProcessor.FromMultiversX,
+		}
+		batch2 := &batchProcessor.ArgListsBatch{
+			PeerTokens:    [][]byte{[]byte("token2"), []byte("token1")},
+			Recipients:    [][]byte{[]byte("recipient2"), []byte("recipient1")},
+			MvxTokenBytes: [][]byte{[]byte("mvxToken2"), []byte("mvxToken1")},
+			Amounts:       []*big.Int{big.NewInt(560), big.NewInt(900)},
+			Nonces:        []*big.Int{big.NewInt(310), big.NewInt(640)},
+			Direction:     batchProcessor.FromMultiversX,
+		}
+
+		hash1, err := c.GenerateMessageHash(batch1, batchID)
+		assert.NoError(t, err)
+		assert.NotNil(t, hash1)
+
+		hash2, err := c.GenerateMessageHash(batch2, batchID)
+		assert.NoError(t, err)
+		assert.NotNil(t, hash2)
+
+		assert.True(t, bytes.Equal(hash1, hash2))
+
+		suiAddress1 := suiAddressFromBytes(batch1.Recipients[0])
+		suiAddressBytes1, _ := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress1))
+
+		suiAddress2 := suiAddressFromBytes(batch1.Recipients[1])
+		suiAddressBytes2, _ := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress2))
+
+		// we use batch1 data to generate expected hashes because is ordered correctly
+		expectedHashForToken1 := generateHashForTokenGroup(t, batchID, &TokenTransferGroup{
+			Tokens:     [][]byte{batch1.PeerTokens[0]},
+			Recipients: []models.SuiAddressBytes{*suiAddressBytes1},
+			Amounts:    []uint64{batch1.Amounts[0].Uint64()},
+			Nonces:     []uint64{batch1.Nonces[0].Uint64()},
+		})
+
+		expectedHashForToken2 := generateHashForTokenGroup(t, batchID, &TokenTransferGroup{
+			Tokens:     [][]byte{batch1.PeerTokens[1]},
+			Recipients: []models.SuiAddressBytes{*suiAddressBytes2},
+			Amounts:    []uint64{batch1.Amounts[1].Uint64()},
+			Nonces:     []uint64{batch1.Nonces[1].Uint64()},
+		})
+
+		assert.True(t, bytes.Equal(expectedHashForToken1, hash1[:32]))
+		assert.True(t, bytes.Equal(expectedHashForToken2, hash1[32:]))
+	})
+	t.Run("should be deterministic over multiple invocations", func(t *testing.T) {
 		args := createMockSuiClientArgs()
 		c, _ := NewSuiClient(args)
 
@@ -789,31 +845,24 @@ func TestClient_GenerateMessageHash(t *testing.T) {
 		}
 		batchID := uint64(456)
 
-		suiAddress1 := suiAddressFromBytes(batch.Recipients[0])
-		suiAddressBytes1, _ := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress1))
+		const iterations = 100
+		var hashes [][]byte
 
-		suiAddress2 := suiAddressFromBytes(batch.Recipients[1])
-		suiAddressBytes2, _ := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(suiAddress2))
+		for i := 0; i < iterations; i++ {
+			hash, err := c.GenerateMessageHash(batch, batchID)
+			assert.NoError(t, err, "iteration %d failed", i)
+			assert.NotNil(t, hash)
+			assert.NotEmpty(t, hash)
 
-		expectedHashForToken1 := generateHashForTokenGroup(t, batchID, &TokenTransferGroup{
-			Tokens:     [][]byte{batch.PeerTokens[0]},
-			Recipients: []models.SuiAddressBytes{*suiAddressBytes1},
-			Amounts:    []uint64{batch.Amounts[0].Uint64()},
-			Nonces:     []uint64{batch.Nonces[0].Uint64()},
-		})
+			hashes = append(hashes, hash)
+		}
 
-		expectedHashForToken2 := generateHashForTokenGroup(t, batchID, &TokenTransferGroup{
-			Tokens:     [][]byte{batch.PeerTokens[1]},
-			Recipients: []models.SuiAddressBytes{*suiAddressBytes2},
-			Amounts:    []uint64{batch.Amounts[1].Uint64()},
-			Nonces:     []uint64{batch.Nonces[1].Uint64()},
-		})
-
-		hash, err := c.GenerateMessageHash(batch, batchID)
-		assert.NoError(t, err)
-		assert.True(t, bytes.Contains(hash, expectedHashForToken1))
-		assert.True(t, bytes.Contains(hash, expectedHashForToken2))
-		assert.Equal(t, len(expectedHashForToken1)+len(expectedHashForToken2), len(hash))
+		referenceHash := hashes[0]
+		for i := 1; i < len(hashes); i++ {
+			assert.True(t, bytes.Equal(referenceHash, hashes[i]),
+				"Hash mismatch at iteration %d.\nExpected: %x\nGot: %x",
+				i, referenceHash, hashes[i])
+		}
 	})
 }
 
