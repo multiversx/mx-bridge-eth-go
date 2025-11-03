@@ -19,10 +19,7 @@ test-coverage:
 
 slow-tests: clean-test
 	@docker compose -f docker/docker-compose.yml build
-	@docker compose -f docker/docker-compose.yml up -d
-	@echo "Waiting for simulators to start..."
-	@sleep 10
-	@go test ./integrationTests/... -v -timeout 40m -tags slow
+	@docker compose -f docker/docker-compose.yml up & go test ./integrationTests/... -v -timeout 40m -tags slow
 	@docker compose -f docker/docker-compose.yml down -v
 
 lint-install:
