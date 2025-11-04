@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 
+	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	sdkCore "github.com/multiversx/mx-sdk-go/core"
 )
@@ -10,8 +11,23 @@ import (
 type dataGetter interface {
 	GetTokenIdForErc20Address(ctx context.Context, erc20Address []byte) ([][]byte, error)
 	GetERC20AddressForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error)
+	GetTokenIdForSuiCoin(ctx context.Context, tokenId []byte) ([][]byte, error)
+	GetSuiCoinForTokenId(ctx context.Context, tokenId []byte) ([][]byte, error)
 	GetAllStakedRelayers(ctx context.Context) ([][]byte, error)
 	IsInterfaceNil() bool
+}
+
+type suiDataGetter interface {
+	GetRelayers(ctx context.Context) ([]models.SuiAddress, error)
+	IsInterfaceNil() bool
+}
+
+// BridgeComponents defines the operations for the bridge components
+type BridgeComponents interface {
+	Start() error
+	Close() error
+	MultiversXRelayerAddress() sdkCore.AddressHandler
+	PeerChainRelayerAddress() string
 }
 
 // MultiversXRoleProvider defines the operations for the MultiversX role provider
@@ -22,10 +38,10 @@ type MultiversXRoleProvider interface {
 	IsInterfaceNil() bool
 }
 
-// EthereumRoleProvider defines the operations for the Ethereum role provider
-type EthereumRoleProvider interface {
+// PeerChainRoleProvider defines the operations for the peer chain role provider
+type PeerChainRoleProvider interface {
 	Execute(ctx context.Context) error
-	VerifyEthSignature(signature []byte, messageHash []byte) error
+	VerifySignature(signature []byte, messageHash []byte) error
 	IsInterfaceNil() bool
 }
 

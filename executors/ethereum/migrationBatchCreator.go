@@ -294,23 +294,27 @@ func (creator *migrationBatchCreator) assembleBatchInfo(usableBatchID uint64, de
 }
 
 func (creator *migrationBatchCreator) computeMessageHash(batch *BatchInfo) (common.Hash, error) {
-	tokens := make([]common.Address, 0, len(batch.DepositsInfo))
-	recipients := make([]common.Address, 0, len(batch.DepositsInfo))
+	tokens := make([][]byte, 0, len(batch.DepositsInfo))
+	recipients := make([][]byte, 0, len(batch.DepositsInfo))
 	amounts := make([]*big.Int, 0, len(batch.DepositsInfo))
 	nonces := make([]*big.Int, 0, len(batch.DepositsInfo))
 	for _, deposit := range batch.DepositsInfo {
-		tokens = append(tokens, deposit.ContractAddress)
-		recipients = append(recipients, common.HexToAddress(batch.NewSafeContractAddress))
+		tokens = append(tokens, deposit.ContractAddress.Bytes())
+		recipients = append(recipients, common.HexToAddress(batch.NewSafeContractAddress).Bytes())
 		amounts = append(amounts, deposit.Amount)
 		nonces = append(nonces, big.NewInt(0).SetUint64(deposit.DepositNonce))
 	}
 
 	args := &batchProcessor.ArgListsBatch{
-		EthTokens:  tokens,
+		PeerTokens: tokens,
 		Recipients: recipients,
 		Amounts:    amounts,
 		Nonces:     nonces,
 	}
 
-	return ethereum.GenerateMessageHash(args, batch.BatchID)
+	hash, err := ethereum.GenerateMessageHash(args, batch.BatchID)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return common.BytesToHash(hash), nil
 }

@@ -85,6 +85,9 @@ var PersistedMetrics = []string{MetricNumBatches, MetricNumEthClientRequests, Me
 	MetricMultiversXClientStatus, MetricLastEthereumClientError, MetricLastMultiversXClientError, MetricLastBlockNonce}
 
 const (
+	// SuiClientStatusHandlerName is the Sui client status handler name
+	SuiClientStatusHandlerName = "sui-client"
+
 	// EthClientStatusHandlerName is the Ethereum client status handler name
 	EthClientStatusHandlerName = "eth-client"
 

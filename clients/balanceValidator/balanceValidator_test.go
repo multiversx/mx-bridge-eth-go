@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/clients"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
@@ -16,7 +15,7 @@ import (
 )
 
 var (
-	ethToken = common.BytesToAddress([]byte("eth token"))
+	ethToken = []byte("peer token")
 	mvxToken = []byte("mvx token")
 	amount   = big.NewInt(100)
 	amount2  = big.NewInt(200)
@@ -26,7 +25,7 @@ func createMockArgsBalanceValidator() ArgsBalanceValidator {
 	return ArgsBalanceValidator{
 		Log:              &testscommon.LoggerStub{},
 		MultiversXClient: &bridge.MultiversXClientStub{},
-		EthereumClient:   &bridge.EthereumClientStub{},
+		PeerChainClient:  &bridge.PeerChainClientStub{},
 	}
 }
 
@@ -45,7 +44,7 @@ type testConfiguration struct {
 
 	errorsOnCalls map[string]error
 
-	ethToken  common.Address
+	peerToken []byte
 	mvxToken  []byte
 	amount    *big.Int
 	direction batchProcessor.Direction
@@ -63,7 +62,7 @@ func (cfg *testConfiguration) deepClone() testConfiguration {
 		isNativeOnMvx:              cfg.isNativeOnMvx,
 		isMintBurnOnMvx:            cfg.isMintBurnOnMvx,
 		errorsOnCalls:              make(map[string]error),
-		ethToken:                   common.HexToAddress(cfg.ethToken.Hex()),
+		peerToken:                  cfg.peerToken,
 		mvxToken:                   make([]byte, len(cfg.mvxToken)),
 		direction:                  cfg.direction,
 		lastExecutedEthBatch:       cfg.lastExecutedEthBatch,
@@ -144,7 +143,7 @@ func TestNewBalanceValidator(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsBalanceValidator()
-		args.EthereumClient = nil
+		args.PeerChainClient = nil
 		instance, err := NewBalanceValidator(args)
 		assert.Nil(t, instance)
 		assert.Equal(t, ErrNilEthereumClient, err)
@@ -516,8 +515,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 					amountsOnEthPendingBatches: map[uint64][]*big.Int{
 						1: {amount},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -547,8 +546,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(30), big.NewInt(40)},
 						3: {big.NewInt(50)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -578,8 +577,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 					amountsOnEthPendingBatches: map[uint64][]*big.Int{
 						1: {amount},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -611,8 +610,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(30), big.NewInt(40)},
 						3: {big.NewInt(50)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -640,8 +639,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 					amountsOnEthPendingBatches: map[uint64][]*big.Int{
 						1: {amount},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -671,8 +670,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(30), big.NewInt(40)},
 						3: {big.NewInt(50)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -702,8 +701,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 					amountsOnEthPendingBatches: map[uint64][]*big.Int{
 						1: {amount},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -735,8 +734,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(30), big.NewInt(40)},
 						3: {big.NewInt(50)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -769,8 +768,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
 						1: {amount},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -800,8 +799,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(30), big.NewInt(40)},
 						3: {big.NewInt(50)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -831,8 +830,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
 						1: {amount},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -864,8 +863,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(30), big.NewInt(40)},
 						3: {big.NewInt(50)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -893,8 +892,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
 						1: {amount},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -924,8 +923,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(30), big.NewInt(40)},
 						3: {big.NewInt(50)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -955,8 +954,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 					amountsOnMvxPendingBatches: map[uint64][]*big.Int{
 						1: {amount},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -988,8 +987,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(30), big.NewInt(40)},
 						3: {big.NewInt(50)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -1034,8 +1033,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(60), big.NewInt(80)},
 						3: {big.NewInt(100)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -1079,8 +1078,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(60), big.NewInt(80)},
 						3: {big.NewInt(100)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -1121,8 +1120,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(60), big.NewInt(80)},
 						3: {big.NewInt(100)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -1166,8 +1165,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(60), big.NewInt(80)},
 						3: {big.NewInt(100)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -1208,8 +1207,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(60), big.NewInt(80)},
 						3: {big.NewInt(100)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -1253,8 +1252,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(60), big.NewInt(80)},
 						3: {big.NewInt(100)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -1295,8 +1294,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(60), big.NewInt(80)},
 						3: {big.NewInt(100)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -1340,8 +1339,8 @@ func TestBridgeExecutor_CheckToken(t *testing.T) {
 						2: {big.NewInt(60), big.NewInt(80)},
 						3: {big.NewInt(100)},
 					},
-					mvxToken: mvxToken,
-					ethToken: ethToken,
+					mvxToken:  mvxToken,
+					peerToken: ethToken,
 				}
 
 				result := validatorTester(cfg)
@@ -1463,12 +1462,12 @@ func validatorTester(cfg testConfiguration) testResult {
 			return lastMvxBatchID, nil
 		},
 	}
-	args.EthereumClient = &bridge.EthereumClientStub{
-		CheckRequiredBalanceCalled: func(ctx context.Context, erc20Address common.Address, value *big.Int) error {
+	args.PeerChainClient = &bridge.PeerChainClientStub{
+		CheckRequiredBalanceCalled: func(ctx context.Context, tokenAddress []byte, value *big.Int) error {
 			result.checkRequiredBalanceOnEthCalled = true
 			return nil
 		},
-		MintBurnTokensCalled: func(ctx context.Context, account common.Address) (bool, error) {
+		MintBurnTokensCalled: func(ctx context.Context, account []byte) (bool, error) {
 			err := cfg.errorsOnCalls["MintBurnTokensEth"]
 			if err != nil {
 				return false, err
@@ -1476,7 +1475,7 @@ func validatorTester(cfg testConfiguration) testResult {
 
 			return cfg.isMintBurnOnEth, nil
 		},
-		NativeTokensCalled: func(ctx context.Context, account common.Address) (bool, error) {
+		NativeTokensCalled: func(ctx context.Context, account []byte) (bool, error) {
 			err := cfg.errorsOnCalls["NativeTokensEth"]
 			if err != nil {
 				return false, err
@@ -1484,7 +1483,7 @@ func validatorTester(cfg testConfiguration) testResult {
 
 			return cfg.isNativeOnEth, nil
 		},
-		TotalBalancesCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
+		TotalBalancesCalled: func(ctx context.Context, account []byte) (*big.Int, error) {
 			err := cfg.errorsOnCalls["TotalBalancesEth"]
 			if err != nil {
 				return nil, err
@@ -1492,7 +1491,7 @@ func validatorTester(cfg testConfiguration) testResult {
 
 			return returnBigIntOrZeroIfNil(cfg.totalBalancesOnEth), nil
 		},
-		MintBalancesCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
+		MintBalancesCalled: func(ctx context.Context, account []byte) (*big.Int, error) {
 			err := cfg.errorsOnCalls["MintBalancesEth"]
 			if err != nil {
 				return nil, err
@@ -1500,7 +1499,7 @@ func validatorTester(cfg testConfiguration) testResult {
 
 			return returnBigIntOrZeroIfNil(cfg.mintBalancesOnEth), nil
 		},
-		BurnBalancesCalled: func(ctx context.Context, account common.Address) (*big.Int, error) {
+		BurnBalancesCalled: func(ctx context.Context, account []byte) (*big.Int, error) {
 			err := cfg.errorsOnCalls["BurnBalancesEth"]
 			if err != nil {
 				return nil, err
@@ -1538,7 +1537,7 @@ func validatorTester(cfg testConfiguration) testResult {
 		return result
 	}
 
-	result.error = validator.CheckToken(context.Background(), cfg.ethToken, cfg.mvxToken, cfg.amount, cfg.direction)
+	result.error = validator.CheckToken(context.Background(), cfg.peerToken, cfg.mvxToken, cfg.amount, cfg.direction)
 
 	return result
 }
@@ -1570,7 +1569,7 @@ func applyDummyFromEthDepositsToBatch(cfg testConfiguration, batch *bridgeCore.T
 				batch.Deposits = append(batch.Deposits, &bridgeCore.DepositTransfer{
 					Nonce:            depositCounter,
 					Amount:           big.NewInt(0).Set(deposit),
-					SourceTokenBytes: ethToken.Bytes(),
+					SourceTokenBytes: ethToken,
 				})
 			}
 		}

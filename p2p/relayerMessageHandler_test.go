@@ -372,7 +372,7 @@ func createSignedMessageAndMarshaledBytes(index int) (*core.SignedMessage, []byt
 }
 
 func createSignedMessageForEthSig(index int) (*core.SignedMessage, []byte) {
-	e := &core.EthereumSignature{
+	e := &core.PeerChainSignature{
 		Signature:   []byte(fmt.Sprintf("eth sig %d", index)),
 		MessageHash: []byte("eth msg hash"),
 	}

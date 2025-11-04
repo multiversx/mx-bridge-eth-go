@@ -3,7 +3,6 @@ package batchProcessor
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 )
 
@@ -19,27 +18,27 @@ const (
 
 // ArgListsBatch is a struct that contains the batch data in a format that is easy to use
 type ArgListsBatch struct {
-	EthTokens     []common.Address
-	Recipients    []common.Address
+	PeerTokens    [][]byte
+	Recipients    [][]byte
 	MvxTokenBytes [][]byte
 	Amounts       []*big.Int
 	Nonces        []*big.Int
 	Direction     Direction
 }
 
-// ExtractListMvxToEth will extract the batch data into a format that is easy to use
-// The transfer is from MultiversX to Ethereum
-func ExtractListMvxToEth(batch *bridgeCore.TransferBatch) *ArgListsBatch {
+// ExtractListFromMvx will extract the batch data into a format that is easy to use
+// The transfer is from MultiversX
+func ExtractListFromMvx(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 	arg := &ArgListsBatch{
 		Direction: FromMultiversX,
 	}
 
 	for _, dt := range batch.Deposits {
-		recipient := common.BytesToAddress(dt.ToBytes)
+		recipient := dt.ToBytes
 		arg.Recipients = append(arg.Recipients, recipient)
 
-		token := common.BytesToAddress(dt.DestinationTokenBytes)
-		arg.EthTokens = append(arg.EthTokens, token)
+		token := dt.DestinationTokenBytes
+		arg.PeerTokens = append(arg.PeerTokens, token)
 
 		amount := big.NewInt(0).Set(dt.Amount)
 		arg.Amounts = append(arg.Amounts, amount)
@@ -53,19 +52,19 @@ func ExtractListMvxToEth(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 	return arg
 }
 
-// ExtractListEthToMvx will extract the batch data into a format that is easy to use
-// The transfer is from Ehtereum to MultiversX
-func ExtractListEthToMvx(batch *bridgeCore.TransferBatch) *ArgListsBatch {
+// ExtractListToMvx will extract the batch data into a format that is easy to use
+// The transfer is to MultiversX
+func ExtractListToMvx(batch *bridgeCore.TransferBatch) *ArgListsBatch {
 	arg := &ArgListsBatch{
 		Direction: ToMultiversX,
 	}
 
 	for _, dt := range batch.Deposits {
-		recipient := common.BytesToAddress(dt.ToBytes)
+		recipient := dt.ToBytes
 		arg.Recipients = append(arg.Recipients, recipient)
 
-		token := common.BytesToAddress(dt.SourceTokenBytes)
-		arg.EthTokens = append(arg.EthTokens, token)
+		token := dt.SourceTokenBytes
+		arg.PeerTokens = append(arg.PeerTokens, token)
 
 		amount := big.NewInt(0).Set(dt.Amount)
 		arg.Amounts = append(arg.Amounts, amount)
