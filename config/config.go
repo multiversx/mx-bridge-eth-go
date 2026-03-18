@@ -61,6 +61,21 @@ type SuiConfig struct {
 	MaxRetriesOnQuorumReached          uint64
 	IntervalToWaitForTransferInSeconds uint64
 	ClientAvailabilityAllowDelta       uint64
+	TokenAdapters                      []SuiTokenAdapterConfig
+}
+
+type SuiSharedObjectConfig struct {
+	ObjectId             string
+	InitialSharedVersion uint64
+	Mutable              bool
+}
+
+type SuiTokenAdapterConfig struct {
+	TokenType          string
+	Module             string
+	Function           string
+	TreasuryObject     SuiSharedObjectConfig
+	ExtraSharedObjects []SuiSharedObjectConfig
 }
 
 // GasStationConfig represents the configuration for the gas station handler

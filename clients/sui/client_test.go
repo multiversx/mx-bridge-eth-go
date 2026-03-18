@@ -23,6 +23,7 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -1169,6 +1170,122 @@ func TestClient_ExecuteTransfer(t *testing.T) {
 		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, argLists, batch.ID, 5)
 		assert.Equal(t, "0xc5b2c658f5fa236c598a6e7fbf7f21413dc42e2a41dd982eb772b30707cba2eb", hash)
 		assert.Nil(t, err)
+		assert.True(t, wasCalled)
+	})
+	t.Run("should use token specific adapters and extra shared objects", func(t *testing.T) {
+		args := createMockSuiClientArgs()
+		args.Proxy = &sui.Client{}
+
+		tokenWithAdapter := "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa::module::CoinB"
+		tokenDefault := "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb::module::CoinA"
+
+		extraRef, err := NewSharedObjectRef("0x9999999999999999999999999999999999999999999999999999999999999999", 9, false)
+		assert.NoError(t, err)
+
+		args.TokenAdapters = map[string]TokenAdapter{
+			tokenWithAdapter: NewTokenAdapterWithExtras("xmn_mint_cap_adapter", "execute_transfer", nil, []SharedObjectRef{extraRef}),
+		}
+
+		c, err := NewSuiClient(args)
+		assert.NoError(t, err)
+
+		values, err := createResultsRawFromValues(false)
+		assert.NoError(t, err)
+
+		signatures := make([][]byte, 6)
+		for i := range signatures {
+			signatures[i] = []byte(fmt.Sprintf("sig %d", i))
+		}
+
+		c.signatureHolder = &testsCommon.SignaturesHolderStub{
+			SignaturesCalled: func(messageHash []byte) [][]byte {
+				return signatures
+			},
+		}
+
+		c.suiClientDataGetter.proxy = &interactors.SuiProxyStub{
+			SuiDevInspectTransactionBlockCalled: func(ctx context.Context, req models.SuiDevInspectTransactionBlockRequest) (models.SuiTransactionBlockResponse, error) {
+				return models.SuiTransactionBlockResponse{
+					Effects: models.SuiEffects{
+						Status: models.ExecutionStatus{Status: "success"},
+					},
+					Results: values,
+				}, nil
+			},
+			SuiXGetCoinsCalled: func(ctx context.Context, req models.SuiXGetCoinsRequest) (models.PaginatedCoinsResponse, error) {
+				return models.PaginatedCoinsResponse{
+					Data: []models.CoinData{{
+						CoinObjectId:        "0x0e82989b575d6ebb4e7f6062f5463bdd1cce9db77b9f34ac923b90031765fddf",
+						Version:             "1",
+						Digest:              "4Nd1mHZtwVaFgqsSVBz3tH6KvXZcG1oMqezLh8u6BbhE",
+						Balance:             "100000",
+						CoinType:            "0x2::sui::SUI",
+						PreviousTransaction: "9rS8PZyT1QK5qLgN",
+					}},
+				}, nil
+			},
+		}
+
+		wasCalled := false
+		c.txHandler = &bridgeTests.SuiTxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, gasCoin *transaction.SuiObjectRef, calls []core.SuiPTBOperation) (string, error) {
+				wasCalled = true
+				require.Len(t, calls, 2)
+
+				requiredModules := []string{"bridge", "xmn_mint_cap_adapter"}
+				modules := []string{calls[0].Module, calls[1].Module}
+				require.ElementsMatch(t, requiredModules, modules)
+
+				tx := transaction.NewTransaction()
+				var defaultLen, customLen int
+				for _, call := range calls {
+					argsCall := call.ArgsFn(tx)
+					if call.Module == "bridge" {
+						defaultLen = len(argsCall)
+					} else {
+						customLen = len(argsCall)
+					}
+				}
+
+				assert.Equal(t, defaultLen+1, customLen) // one extra shared object before clock
+
+				return "0xc5b2c658f5fa236c598a6e7fbf7f21413dc42e2a41dd982eb772b30707cba2eb", nil
+			},
+		}
+
+		batch := &core.TransferBatch{
+			ID: 332,
+			Deposits: []*core.DepositTransfer{
+				{
+					Nonce:                 10,
+					ToBytes:               testsCommon.CreateRandomMultiversXAddress().AddressBytes(),
+					DisplayableTo:         "to1",
+					FromBytes:             func() []byte { addr := testsCommon.CreateRandomSuiAddressBytes(); return addr[:] }(),
+					DisplayableFrom:       "from1",
+					SourceTokenBytes:      []byte("source token1"),
+					DisplayableToken:      "token1",
+					Amount:                big.NewInt(20),
+					DestinationTokenBytes: []byte(tokenDefault),
+				},
+				{
+					Nonce:                 30,
+					ToBytes:               testsCommon.CreateRandomMultiversXAddress().AddressBytes(),
+					DisplayableTo:         "to2",
+					FromBytes:             func() []byte { addr := testsCommon.CreateRandomSuiAddressBytes(); return addr[:] }(),
+					DisplayableFrom:       "from2",
+					SourceTokenBytes:      []byte("source token2"),
+					DisplayableToken:      "token2",
+					Amount:                big.NewInt(40),
+					DestinationTokenBytes: []byte(tokenWithAdapter),
+				},
+			},
+			Statuses: make([]byte, 2),
+		}
+
+		argLists := batchProcessor.ExtractListFromMvx(batch)
+		hash, err := c.ExecuteTransfer(context.Background(), []byte{}, argLists, batch.ID, 5)
+		assert.NoError(t, err)
+		assert.Equal(t, "0xc5b2c658f5fa236c598a6e7fbf7f21413dc42e2a41dd982eb772b30707cba2eb", hash)
 		assert.True(t, wasCalled)
 	})
 }

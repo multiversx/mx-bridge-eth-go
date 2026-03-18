@@ -32,6 +32,53 @@ const (
 	signatureLength                 = 96
 )
 
+type SharedObjectRef struct {
+	ID                   models.SuiAddressBytes
+	InitialSharedVersion uint64
+	Mutable              bool
+}
+
+func NewSharedObjectRef(objectId string, initialSharedVersion uint64, mutable bool) (SharedObjectRef, error) {
+	addrBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(objectId))
+	if err != nil {
+		return SharedObjectRef{}, fmt.Errorf("failed to convert address: %w", err)
+	}
+
+	return SharedObjectRef{
+		ID:                   *addrBytes,
+		InitialSharedVersion: initialSharedVersion,
+		Mutable:              mutable,
+	}, nil
+}
+
+func NewTokenAdapterWithExtras(module, function string, treasuryOverride *SharedObjectRef, extras []SharedObjectRef) TokenAdapter {
+	return newTokenAdapter(module, function, treasuryOverride, extras)
+}
+
+func NewXmnMintCapAdapter(denyListRef SharedObjectRef, treasuryOverride *SharedObjectRef) TokenAdapter {
+	return newTokenAdapter("xmn_mint_cap_adapter", "execute_transfer", treasuryOverride, []SharedObjectRef{denyListRef})
+}
+
+type TokenAdapter interface {
+	BuildOperation(c *client, batchID uint64, group *TokenTransferGroup, coinParts [3]string, coinIdBytes models.SuiAddressBytes, isBatchComplete bool) (bridgeCore.SuiPTBOperation, error)
+}
+
+type tokenAdapter struct {
+	module                 string
+	function               string
+	treasuryOverride       *SharedObjectRef
+	extraSharedBeforeClock []SharedObjectRef
+}
+
+func newTokenAdapter(module, function string, treasuryOverride *SharedObjectRef, extras []SharedObjectRef) TokenAdapter {
+	return &tokenAdapter{
+		module:                 module,
+		function:               function,
+		treasuryOverride:       treasuryOverride,
+		extraSharedBeforeClock: extras,
+	}
+}
+
 type ArgsSuiClient struct {
 	Proxy                        Proxy
 	TxHandler                    txHandler
@@ -48,6 +95,7 @@ type ArgsSuiClient struct {
 	StatusHandler                bridgeCore.StatusHandler
 	Broadcaster                  Broadcaster
 	SignatureHolder              SignaturesHolder
+	TokenAdapters                map[string]TokenAdapter
 
 	ClientAvailabilityAllowDelta uint64
 }
@@ -67,6 +115,8 @@ type client struct {
 	statusHandler    bridgeCore.StatusHandler
 	broadcaster      Broadcaster
 	signatureHolder  SignaturesHolder
+	adapters         map[string]TokenAdapter
+	defaultAdapter   TokenAdapter
 
 	lastCheckpoint               uint64
 	retriesAvailabilityCheck     uint64
@@ -120,6 +170,15 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		clientAvailabilityAllowDelta: args.ClientAvailabilityAllowDelta,
 	}
 
+	defaultAdapter := newTokenAdapter("bridge", "execute_transfer", nil, nil)
+	c.defaultAdapter = defaultAdapter
+
+	if args.TokenAdapters != nil {
+		c.adapters = args.TokenAdapters
+	} else {
+		c.adapters = make(map[string]TokenAdapter)
+	}
+
 	c.log.Info("NewSuiClient",
 		"relayer address", c.signer.Address,
 		"package ID", c.packageId,
@@ -127,6 +186,14 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		"safe object ID", c.safeObjectId)
 
 	return c, err
+}
+
+func (c *client) adapterForToken(tokenType string) TokenAdapter {
+	if adapter, ok := c.adapters[tokenType]; ok && adapter != nil {
+		return adapter
+	}
+
+	return c.defaultAdapter
 }
 
 func checkArgs(args ArgsSuiClient) error {
@@ -477,9 +544,6 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 		group := tokenGroups[tokenType]
 		isBatchComplete := i == n-1
 
-		localGroup := group
-		localIsBatchComplete := isBatchComplete
-
 		coinParts, err := parseCoinType(tokenType)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse coin type %s: %w", tokenType, err)
@@ -492,61 +556,106 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 
 		coinIdBytesVal := *coinIdBytes
 
-		calls = append(calls, bridgeCore.SuiPTBOperation{
-			Package:  models.SuiAddress(c.packageId),
-			Module:   "bridge",
-			Function: "execute_transfer",
-			TypeTags: []transaction.TypeTag{
-				{
-					Struct: &transaction.StructTag{
-						Address: coinIdBytesVal,
-						Module:  coinParts[1],
-						Name:    coinParts[2],
-					},
-				},
-			},
-			ArgsFn: func(tx *transaction.Transaction) []transaction.Argument {
-				return []transaction.Argument{
-					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
-						SharedObject: &transaction.SharedObjectRef{
-							ObjectId:             c.bridgeObjectIdBytes,
-							InitialSharedVersion: c.bridgeInitialSharedVersion,
-							Mutable:              true,
-						},
-					}}),
-					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
-						SharedObject: &transaction.SharedObjectRef{
-							ObjectId:             c.safeObjectIdBytes,
-							InitialSharedVersion: c.safeInitialSharedVersion,
-							Mutable:              true,
-						},
-					}}),
-					tx.Pure(localGroup.Recipients),
-					tx.Pure(localGroup.Amounts),
-					tx.Pure(localGroup.Nonces),
-					tx.Pure(batchID),
-					tx.Pure(localGroup.Signatures),
-					tx.Pure(localIsBatchComplete),
-					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
-						SharedObject: &transaction.SharedObjectRef{
-							ObjectId:             c.treasuryObjectIdBytes,
-							InitialSharedVersion: c.treasuryInitialSharedVersion,
-							Mutable:              true,
-						},
-					}}),
-					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
-						SharedObject: &transaction.SharedObjectRef{
-							ObjectId:             c.clockIdBytes,
-							InitialSharedVersion: clockInitialSharedVersion,
-							Mutable:              false,
-						},
-					}}),
-				}
-			},
-		})
+		adapter := c.adapterForToken(tokenType)
+		op, err := adapter.BuildOperation(c, batchID, group, coinParts, coinIdBytesVal, isBatchComplete)
+		if err != nil {
+			return nil, err
+		}
+
+		calls = append(calls, op)
 	}
 
 	return calls, nil
+}
+
+func (ta *tokenAdapter) BuildOperation(c *client, batchID uint64, group *TokenTransferGroup, coinParts [3]string, coinIdBytes models.SuiAddressBytes, isBatchComplete bool) (bridgeCore.SuiPTBOperation, error) {
+	module := ta.module
+	if module == "" {
+		module = "bridge"
+	}
+	function := ta.function
+	if function == "" {
+		function = "execute_transfer"
+	}
+
+	treasuryRef := &SharedObjectRef{
+		ID:                   c.treasuryObjectIdBytes,
+		InitialSharedVersion: c.treasuryInitialSharedVersion,
+		Mutable:              true,
+	}
+	if ta.treasuryOverride != nil {
+		treasuryRef = ta.treasuryOverride
+	}
+
+	localGroup := group
+	localIsBatchComplete := isBatchComplete
+	coinIdBytesVal := coinIdBytes
+
+	return bridgeCore.SuiPTBOperation{
+		Package:  models.SuiAddress(c.packageId),
+		Module:   module,
+		Function: function,
+		TypeTags: []transaction.TypeTag{
+			{
+				Struct: &transaction.StructTag{
+					Address: coinIdBytesVal,
+					Module:  coinParts[1],
+					Name:    coinParts[2],
+				},
+			},
+		},
+		ArgsFn: func(tx *transaction.Transaction) []transaction.Argument {
+			args := []transaction.Argument{
+				tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
+					SharedObject: &transaction.SharedObjectRef{
+						ObjectId:             c.bridgeObjectIdBytes,
+						InitialSharedVersion: c.bridgeInitialSharedVersion,
+						Mutable:              true,
+					},
+				}}),
+				tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
+					SharedObject: &transaction.SharedObjectRef{
+						ObjectId:             c.safeObjectIdBytes,
+						InitialSharedVersion: c.safeInitialSharedVersion,
+						Mutable:              true,
+					},
+				}}),
+				tx.Pure(localGroup.Recipients),
+				tx.Pure(localGroup.Amounts),
+				tx.Pure(localGroup.Nonces),
+				tx.Pure(batchID),
+				tx.Pure(localGroup.Signatures),
+				tx.Pure(localIsBatchComplete),
+				tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
+					SharedObject: &transaction.SharedObjectRef{
+						ObjectId:             treasuryRef.ID,
+						InitialSharedVersion: treasuryRef.InitialSharedVersion,
+						Mutable:              treasuryRef.Mutable,
+					},
+				}}),
+			}
+
+			for _, extra := range ta.extraSharedBeforeClock {
+				args = append(args, tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
+					SharedObject: &transaction.SharedObjectRef{
+						ObjectId:             extra.ID,
+						InitialSharedVersion: extra.InitialSharedVersion,
+						Mutable:              extra.Mutable,
+					},
+				}}))
+			}
+
+			args = append(args, tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
+				SharedObject: &transaction.SharedObjectRef{
+					ObjectId:             c.clockIdBytes,
+					InitialSharedVersion: clockInitialSharedVersion,
+					Mutable:              false,
+				},
+			}}))
+
+			return args
+		},
+	}, nil
 }
 
 func (c *client) CheckClientAvailability(ctx context.Context) error {

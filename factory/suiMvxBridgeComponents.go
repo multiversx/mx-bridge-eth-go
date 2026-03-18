@@ -282,6 +282,11 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 		return err
 	}
 
+	adapters, err := buildSuiTokenAdapters(suiConfig)
+	if err != nil {
+		return err
+	}
+
 	signaturesHolder := bridges.NewSignatureHolder()
 	components.toMultiversXSignaturesHolder = signaturesHolder
 	err = components.broadcaster.AddBroadcastClient(signaturesHolder)
@@ -321,6 +326,7 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 		SignatureHolder:              signaturesHolder,
 		StatusHandler:                args.SuiClientStatusHandler,
 		ClientAvailabilityAllowDelta: suiConfig.ClientAvailabilityAllowDelta,
+		TokenAdapters:                adapters,
 	}
 
 	components.suiClient, err = suiClient.NewSuiClient(argsSuiClient)
@@ -562,4 +568,49 @@ func loadPrivateKeyFromFile(path string) ([]byte, error) {
 
 	privKey := converters.TrimWhiteSpaceCharacters(string(data))
 	return hex.DecodeString(privKey)
+}
+
+func buildSuiTokenAdapters(cfg config.SuiConfig) (map[string]suiClient.TokenAdapter, error) {
+	if len(cfg.TokenAdapters) == 0 {
+		return nil, nil
+	}
+
+	adapters := make(map[string]suiClient.TokenAdapter, len(cfg.TokenAdapters))
+
+	for _, taCfg := range cfg.TokenAdapters {
+		if len(taCfg.TokenType) == 0 {
+			return nil, fmt.Errorf("empty TokenType in Sui token adapter config")
+		}
+
+		var treasuryOverride *suiClient.SharedObjectRef
+		if taCfg.TreasuryObject.ObjectId != "" {
+			ref, err := suiClient.NewSharedObjectRef(taCfg.TreasuryObject.ObjectId, taCfg.TreasuryObject.InitialSharedVersion, taCfg.TreasuryObject.Mutable)
+			if err != nil {
+				return nil, err
+			}
+			treasuryOverride = &ref
+		}
+
+		extras := make([]suiClient.SharedObjectRef, 0, len(taCfg.ExtraSharedObjects))
+		for _, extraCfg := range taCfg.ExtraSharedObjects {
+			ref, err := suiClient.NewSharedObjectRef(extraCfg.ObjectId, extraCfg.InitialSharedVersion, extraCfg.Mutable)
+			if err != nil {
+				return nil, err
+			}
+			extras = append(extras, ref)
+		}
+
+		module := taCfg.Module
+		if module == "" {
+			module = "bridge"
+		}
+		function := taCfg.Function
+		if function == "" {
+			function = "execute_transfer"
+		}
+
+		adapters[taCfg.TokenType] = suiClient.NewTokenAdapterWithExtras(module, function, treasuryOverride, extras)
+	}
+
+	return adapters, nil
 }
