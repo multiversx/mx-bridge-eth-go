@@ -11,28 +11,52 @@ import (
 	"testing"
 
 	"github.com/block-vision/sui-go-sdk/models"
+	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	suiSafeBytecode             = "testdata/contracts/sui/bridge/safe.mv"
-	suiBridgeBytecode           = "testdata/contracts/sui/bridge/bridge.mv"
-	suiEventsBytecode           = "testdata/contracts/sui/bridge/events.mv"
-	suiPausableBytecode         = "testdata/contracts/sui/bridge/pausable.mv"
-	suiRolesBytecode            = "testdata/contracts/sui/bridge/bridge_roles.mv"
-	suiSharedStructsBytecode    = "testdata/contracts/sui/bridge/shared_structs.mv"
-	suiUtilsBytecode            = "testdata/contracts/sui/bridge/utils.mv"
-	suiTestCoinBytecode         = "testdata/contracts/sui/coin/test_coin.mv"
-	suiBridgeTokenBytecode      = "testdata/contracts/sui/token/bridge_token.mv"
-	suiTokenRolesBytecode       = "testdata/contracts/sui/token/lk_roles.mv"
-	suiTokenTreasuryBytecode    = "testdata/contracts/sui/token/treasury.mv"
+	// sui_extensions modules
 	suiExtensionServiceBytecode = "testdata/contracts/sui/two_step_role.mv"
 	suiUpgradeBytecode          = "testdata/contracts/sui/upgrade_service.mv"
 
-	suiFrameworkId = "0x1"
-	moveStdLibId   = "0x2"
-	clockId        = "0x6"
+	// locked_token modules
+	suiBridgeTokenBytecode         = "testdata/contracts/sui/token/bridge_token.mv"
+	suiTokenRolesBytecode          = "testdata/contracts/sui/token/lk_roles.mv"
+	suiTokenTreasuryBytecode       = "testdata/contracts/sui/token/treasury.mv"
+	suiTokenVersionControlBytecode = "testdata/contracts/sui/token/token_version_control.mv"
+	suiUpgradeServiceTokenBytecode = "testdata/contracts/sui/token/upgrade_service_token.mv"
+
+	// stablecoin (treasury) modules
+	suiStablecoinVersionControlBytecode = "testdata/contracts/sui/stablecoin/version_control.mv"
+	suiStablecoinMintAllowanceBytecode  = "testdata/contracts/sui/stablecoin/mint_allowance.mv"
+	suiStablecoinRolesBytecode          = "testdata/contracts/sui/stablecoin/roles.mv"
+	suiStablecoinTreasuryBytecode       = "testdata/contracts/sui/stablecoin/treasury.mv"
+	suiStablecoinEntryBytecode          = "testdata/contracts/sui/stablecoin/entry.mv"
+	suiXmnBytecode                      = "testdata/contracts/sui/stablecoin/xmn.mv"
+
+	// bridge modules
+	suiSafeBytecode                 = "testdata/contracts/sui/bridge/safe.mv"
+	suiBridgeBytecode               = "testdata/contracts/sui/bridge/bridge.mv"
+	suiEventsBytecode               = "testdata/contracts/sui/bridge/events.mv"
+	suiPausableBytecode             = "testdata/contracts/sui/bridge/pausable.mv"
+	suiRolesBytecode                = "testdata/contracts/sui/bridge/bridge_roles.mv"
+	suiSharedStructsBytecode        = "testdata/contracts/sui/bridge/shared_structs.mv"
+	suiUtilsBytecode                = "testdata/contracts/sui/bridge/utils.mv"
+	suiBridgeVersionControlBytecode = "testdata/contracts/sui/bridge/bridge_version_control.mv"
+	suiUpgradeManagerBytecode       = "testdata/contracts/sui/bridge/upgrade_manager.mv"
+	suiUpgradeServiceBridgeBytecode = "testdata/contracts/sui/bridge/upgrade_service_bridge.mv"
+	suiXmnMintCapAdapterBytecode    = "testdata/contracts/sui/bridge/xmn_mint_cap_adapter.mv"
+
+	// test coin
+	suiTestCoinBytecode = "testdata/contracts/sui/coin/test_coin.mv"
+
+	suiFrameworkId               = "0x1"
+	moveStdLibId                 = "0x2"
+	clockId                      = "0x6"
+	denyListObjectId             = "0x0000000000000000000000000000000000000000000000000000000000000403"
+	denyListInitialSharedVersion = uint64(1)
 
 	suiPubKeyLength = 32
 )
@@ -41,20 +65,23 @@ const (
 type SuiHandler struct {
 	testing.TB
 	*KeysStore
-	TokensRegistry               TokensRegistry
-	Quorum                       string
-	MvxTestCallerAddress         core.AddressHandler
-	SuiChainSimulator            *suiChainSimulatorWrapper
-	PackageID                    string
-	BridgeObjectID               string
-	BridgeInitialSharedVersion   uint64
-	SafeObjectID                 string
-	SafeInitialSharedVersion     uint64
-	TreasuryId                   string
-	TreasuryInitialSharedVersion uint64
-	BridgeCap                    string
-	TokenType                    string
-	FromCoinCap                  string
+	TokensRegistry                  TokensRegistry
+	Quorum                          string
+	MvxTestCallerAddress            core.AddressHandler
+	SuiChainSimulator               *suiChainSimulatorWrapper
+	PackageID                       string
+	BridgeObjectID                  string
+	BridgeInitialSharedVersion      uint64
+	SafeObjectID                    string
+	SafeInitialSharedVersion        uint64
+	TreasuryId                      string
+	TreasuryInitialSharedVersion    uint64
+	XmnTreasuryId                   string
+	XmnTreasuryInitialSharedVersion uint64
+	MintBurnAdapterInfos            map[string]SuiMintBurnAdapterInfo
+	BridgeCap                       string
+	TokenType                       string
+	FromCoinCap                     string
 }
 
 // NewSuiHandler will create the handler that will adapt all test operations on Sui
@@ -66,11 +93,12 @@ func NewSuiHandler(
 	quorum string,
 ) *SuiHandler {
 	handler := &SuiHandler{
-		TB:                tb,
-		KeysStore:         keysStore,
-		TokensRegistry:    tokensRegistry,
-		Quorum:            quorum,
-		SuiChainSimulator: chainSimulator,
+		TB:                   tb,
+		KeysStore:            keysStore,
+		TokensRegistry:       tokensRegistry,
+		Quorum:               quorum,
+		SuiChainSimulator:    chainSimulator,
+		MintBurnAdapterInfos: make(map[string]SuiMintBurnAdapterInfo),
 	}
 
 	walletsToFundOnSui := handler.WalletsToFundOnSui()
@@ -97,17 +125,13 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 				handler.TokenType = extractInnerType(obj.ObjectType)
 			}
 			if strings.Contains(obj.ObjectType, "::treasury::Treasury<") {
-				handler.TreasuryId = obj.ObjectId
-				if ownerMap, ok := obj.Owner.(map[string]interface{}); ok {
-					if shared, exists := ownerMap["Shared"]; exists {
-						if sharedMap, ok := shared.(map[string]interface{}); ok {
-							if version, exists := sharedMap["initial_shared_version"]; exists {
-								if versionFloat, ok := version.(float64); ok {
-									handler.TreasuryInitialSharedVersion = uint64(versionFloat)
-								}
-							}
-						}
-					}
+				isv := extractInitialSharedVersion(obj.Owner)
+				if strings.Contains(obj.ObjectType, "::xmn::XMN") {
+					handler.XmnTreasuryId = obj.ObjectId
+					handler.XmnTreasuryInitialSharedVersion = isv
+				} else {
+					handler.TreasuryId = obj.ObjectId
+					handler.TreasuryInitialSharedVersion = isv
 				}
 			}
 		case "published":
@@ -139,43 +163,46 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 }
 
 func (handler *SuiHandler) getBridgeEncodedModules() []string {
-	var modules []string
+	// Module order follows topological dependency order:
+	// sui_extensions → locked_token → stablecoin (treasury + xmn) → bridge modules
 
-	mv := handler.readModuleBytes(suiExtensionServiceBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+	paths := []string{
+		// sui_extensions
+		suiExtensionServiceBytecode,
+		suiUpgradeBytecode,
+		// locked_token
+		suiBridgeTokenBytecode,
+		suiTokenRolesBytecode,
+		suiTokenTreasuryBytecode,
+		suiTokenVersionControlBytecode,
+		suiUpgradeServiceTokenBytecode,
+		// stablecoin treasury
+		suiStablecoinVersionControlBytecode,
+		suiStablecoinMintAllowanceBytecode,
+		suiStablecoinRolesBytecode,
+		suiStablecoinTreasuryBytecode,
+		suiStablecoinEntryBytecode,
+		// xmn coin
+		suiXmnBytecode,
+		// bridge modules
+		suiSafeBytecode,
+		suiBridgeBytecode,
+		suiEventsBytecode,
+		suiPausableBytecode,
+		suiRolesBytecode,
+		suiSharedStructsBytecode,
+		suiUtilsBytecode,
+		suiBridgeVersionControlBytecode,
+		suiUpgradeManagerBytecode,
+		suiUpgradeServiceBridgeBytecode,
+		suiXmnMintCapAdapterBytecode,
+	}
 
-	mv = handler.readModuleBytes(suiUpgradeBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiBridgeTokenBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiTokenRolesBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiTokenTreasuryBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiSafeBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiBridgeBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiEventsBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiPausableBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiRolesBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiSharedStructsBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
-
-	mv = handler.readModuleBytes(suiUtilsBytecode)
-	modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+	modules := make([]string, 0, len(paths))
+	for _, p := range paths {
+		mv := handler.readModuleBytes(p)
+		modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+	}
 
 	return modules
 }
@@ -184,6 +211,21 @@ func (handler *SuiHandler) readModuleBytes(path string) []byte {
 	b, err := os.ReadFile(path)
 	require.NoError(handler, err)
 	return b
+}
+
+func extractInitialSharedVersion(owner interface{}) uint64 {
+	if ownerMap, ok := owner.(map[string]interface{}); ok {
+		if shared, exists := ownerMap["Shared"]; exists {
+			if sharedMap, ok := shared.(map[string]interface{}); ok {
+				if version, exists := sharedMap["initial_shared_version"]; exists {
+					if versionFloat, ok := version.(float64); ok {
+						return uint64(versionFloat)
+					}
+				}
+			}
+		}
+	}
+	return 0
 }
 
 func extractInnerType(s string) string {
@@ -240,17 +282,7 @@ func (handler *SuiHandler) initSafe(ctx context.Context) {
 			}
 			if strings.Contains(obj.ObjectType, "::safe::BridgeSafe") {
 				handler.SafeObjectID = obj.ObjectId
-				if ownerMap, ok := obj.Owner.(map[string]interface{}); ok {
-					if shared, exists := ownerMap["Shared"]; exists {
-						if sharedMap, ok := shared.(map[string]interface{}); ok {
-							if version, exists := sharedMap["initial_shared_version"]; exists {
-								if versionFloat, ok := version.(float64); ok {
-									handler.SafeInitialSharedVersion = uint64(versionFloat)
-								}
-							}
-						}
-					}
-				}
+				handler.SafeInitialSharedVersion = extractInitialSharedVersion(obj.Owner)
 			}
 		}
 	}
@@ -386,62 +418,65 @@ func (handler *SuiHandler) PauseContractsForTokenChanges(ctx context.Context) {
 
 // IssueAndWhitelistToken will issue and whitelist the token on Sui
 func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params IssueTokenParams) {
+	isMintBurnAdapter := params.IsMintBurnOnPeerChain && !params.IsLocked
+
 	var coinType string
 	var suiTokenInfo SuiTokenInfo
-	if !params.IsLocked {
+
+	switch {
+	case isMintBurnAdapter:
+		coinType = fmt.Sprintf("%s::xmn::XMN", handler.PackageID)
+		suiTokenInfo = SuiTokenInfo{
+			CoinPackageId: handler.PackageID,
+			TreasuryId:    handler.XmnTreasuryId,
+			IsMintBurn:    true,
+		}
+	case params.IsLocked:
+		suiTokenInfo = SuiTokenInfo{
+			CoinPackageId: handler.PackageID,
+			IsLocked:      true,
+		}
+		coinType = handler.TokenType
+	default:
 		coinPackageId, treasuryId, metadataId := handler.deployCoinContract(ctx)
 		suiTokenInfo = SuiTokenInfo{
 			CoinPackageId:  coinPackageId,
 			TreasuryId:     treasuryId,
 			CoinMetadataId: metadataId,
-			IsLocked:       params.IsLocked,
 		}
 		coinType = fmt.Sprintf("%s::test_coin::TEST_COIN", coinPackageId)
-	} else {
-		suiTokenInfo = SuiTokenInfo{
-			CoinPackageId:  handler.PackageID,
-			TreasuryId:     "",
-			CoinMetadataId: "",
-			IsLocked:       params.IsLocked,
-		}
-		coinType = handler.TokenType
 	}
 
 	handler.TokensRegistry.RegisterPeerChainAddressAndInfo(params.AbstractTokenIdentifier, []byte(coinType), suiTokenInfo)
 
-	if !params.IsLocked {
+	if !params.IsLocked && !isMintBurnAdapter {
 		handler.updateMetadata(ctx, params)
 	}
 
-	// mint token
 	mintAmount, ok := big.NewInt(0).SetString(params.ValueToMintOnPeerChain, 10)
 	require.True(handler, ok)
-	if params.IsLocked {
+
+	switch {
+	case isMintBurnAdapter:
+		mintCapId := handler.setupMintCapForAdapter(ctx, coinType)
+		// Mint to test user before moving MintCap into the safe
+		if mintAmount.Sign() > 0 {
+			handler.mintXmn(ctx, mintCapId, coinType, string(handler.TestKeys.SuiAddress), mintAmount)
+		}
+		handler.whitelistMintBurnToken(ctx, coinType, mintCapId)
+		handler.MintBurnAdapterInfos[params.AbstractTokenIdentifier] = SuiMintBurnAdapterInfo{
+			XmnTreasuryId:                   handler.XmnTreasuryId,
+			XmnTreasuryInitialSharedVersion: handler.XmnTreasuryInitialSharedVersion,
+		}
+	case params.IsLocked:
 		handler.mintLocked(ctx, params, string(handler.TestKeys.SuiAddress), mintAmount)
-	} else {
+		handler.whitelistSafeToken(ctx, coinType, params)
+	default:
 		handler.mint(ctx, params, string(handler.TestKeys.SuiAddress), mintAmount)
+		handler.whitelistSafeToken(ctx, coinType, params)
 	}
 
-	// whitelist token
-	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
-		Signer:          string(handler.OwnerKeys.SuiAddress),
-		PackageObjectId: handler.PackageID,
-		Module:          "safe",
-		Function:        "whitelist_token",
-		TypeArguments: []interface{}{
-			coinType,
-		},
-		Arguments: []interface{}{
-			handler.SafeObjectID,
-			"25",
-			"500000",
-			params.IsNativeOnPeerChain,
-			params.IsLocked,
-		},
-		GasBudget: "100000000",
-	}, handler.OwnerKeys)
-
-	if len(params.InitialSupplyValue) > 0 {
+	if len(params.InitialSupplyValue) > 0 && !isMintBurnAdapter {
 		initialSupplyValue, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
 		require.True(handler, ok)
 
@@ -452,6 +487,104 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 		}
 		handler.initSupplyForToken(ctx, params)
 	}
+}
+
+func (handler *SuiHandler) whitelistSafeToken(ctx context.Context, coinType string, params IssueTokenParams) {
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "safe",
+		Function:        "whitelist_token",
+		TypeArguments:   []interface{}{coinType},
+		Arguments: []interface{}{
+			handler.SafeObjectID,
+			"25",
+			"500000",
+			params.IsNativeOnPeerChain,
+			params.IsLocked,
+		},
+		GasBudget: "100000000",
+	}, handler.OwnerKeys)
+}
+
+func (handler *SuiHandler) whitelistMintBurnToken(ctx context.Context, coinType string, mintCapId string) {
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "xmn_mint_cap_adapter",
+		Function:        "whitelist_token",
+		TypeArguments:   []interface{}{coinType},
+		Arguments: []interface{}{
+			handler.SafeObjectID,
+			"25",
+			"500000000000000",
+			mintCapId,
+			handler.XmnTreasuryId,
+		},
+		GasBudget: "100000000",
+	}, handler.OwnerKeys)
+}
+
+// setupMintCapForAdapter creates a MintCap for the XMN treasury and sets its allowance.
+// Returns the MintCap object ID (still owned by owner at this point).
+func (handler *SuiHandler) setupMintCapForAdapter(ctx context.Context, coinType string) string {
+	resp := handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "treasury",
+		Function:        "configure_new_controller",
+		TypeArguments:   []interface{}{coinType},
+		Arguments: []interface{}{
+			handler.XmnTreasuryId,
+			string(handler.OwnerKeys.SuiAddress),
+			string(handler.OwnerKeys.SuiAddress),
+		},
+		GasBudget: "100000000",
+	}, handler.OwnerKeys)
+
+	var mintCapId string
+	for _, obj := range resp.ObjectChanges {
+		if obj.Type == "created" && strings.Contains(obj.ObjectType, "::treasury::MintCap<") {
+			mintCapId = obj.ObjectId
+			break
+		}
+	}
+	require.NotEmpty(handler, mintCapId, "MintCap not found in ObjectChanges after configure_new_controller")
+
+	// Set a large allowance so the adapter can mint freely in tests
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "treasury",
+		Function:        "configure_minter",
+		TypeArguments:   []interface{}{coinType},
+		Arguments: []interface{}{
+			handler.XmnTreasuryId,
+			denyListObjectId,
+			"18446744073709551615",
+		},
+		GasBudget: "100000000",
+	}, handler.OwnerKeys)
+
+	return mintCapId
+}
+
+func (handler *SuiHandler) mintXmn(ctx context.Context, mintCapId string, coinType string, receiver string, amount *big.Int) {
+	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+		Signer:          string(handler.OwnerKeys.SuiAddress),
+		PackageObjectId: handler.PackageID,
+		Module:          "treasury",
+		Function:        "mint",
+		TypeArguments:   []interface{}{coinType},
+		Arguments: []interface{}{
+			handler.XmnTreasuryId,
+			mintCapId,
+			denyListObjectId,
+			amount.String(),
+			receiver,
+		},
+		GasBudget: "100000000",
+	}, handler.OwnerKeys)
 }
 
 func (handler *SuiHandler) deployCoinContract(ctx context.Context) (string, string, string) {
@@ -592,32 +725,50 @@ func (handler *SuiHandler) createDepositsOnSuiForToken(
 	require.NotNil(handler, token)
 	require.NotNil(handler, token.PeerChainTokenAddress)
 
+	suiTokenInfo := token.PeerChainTokenInfo.(SuiTokenInfo)
+	coinType := string(token.PeerChainTokenAddress)
+
 	for _, operation := range params.TestOperations {
 		if operation.ValueToTransferToMvx == nil {
 			continue
 		}
 
 		coinObjId := handler.getCoinObjectIdForToken(ctx, token.PeerChainTokenAddress, operation.ValueToTransferToMvx, handler.TestKeys)
-		coinType := string(token.PeerChainTokenAddress)
 
-		// No sc call data only
-		handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
-			Signer:          string(from.SuiAddress),
-			PackageObjectId: handler.PackageID,
-			Module:          "safe",
-
-			Function: "deposit",
-			TypeArguments: []interface{}{
-				coinType,
-			},
-			Arguments: []interface{}{
-				handler.SafeObjectID,
-				coinObjId,
-				handler.TestKeys.MvxAddress.AddressSlice(),
-				clockId,
-			},
-			GasBudget: "10000000",
-		}, from)
+		if suiTokenInfo.IsMintBurn {
+			adapterInfo := handler.MintBurnAdapterInfos[params.AbstractTokenIdentifier]
+			handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+				Signer:          string(from.SuiAddress),
+				PackageObjectId: handler.PackageID,
+				Module:          "xmn_mint_cap_adapter",
+				Function:        "deposit",
+				TypeArguments:   []interface{}{coinType},
+				Arguments: []interface{}{
+					handler.SafeObjectID,
+					coinObjId,
+					handler.TestKeys.MvxAddress.AddressSlice(),
+					clockId,
+					adapterInfo.XmnTreasuryId,
+					denyListObjectId,
+				},
+				GasBudget: "10000000",
+			}, from)
+		} else {
+			handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
+				Signer:          string(from.SuiAddress),
+				PackageObjectId: handler.PackageID,
+				Module:          "safe",
+				Function:        "deposit",
+				TypeArguments:   []interface{}{coinType},
+				Arguments: []interface{}{
+					handler.SafeObjectID,
+					coinObjId,
+					handler.TestKeys.MvxAddress.AddressSlice(),
+					clockId,
+				},
+				GasBudget: "10000000",
+			}, from)
+		}
 	}
 }
 
@@ -638,8 +789,9 @@ func (handler *SuiHandler) getCoinObjectIdForToken(ctx context.Context, coinAddr
 				GasBudget:    "10000000",
 			}, signer)
 
+			coinTypeStr := string(coinAddress)
 			for _, obj := range resp.ObjectChanges {
-				if obj.Type == "created" && strings.Contains(obj.ObjectType, "test_coin::TEST_COIN") {
+				if obj.Type == "created" && strings.Contains(obj.ObjectType, coinTypeStr) {
 					coinToSendId = obj.ObjectId
 					break
 				}
@@ -685,6 +837,40 @@ func (handler *SuiHandler) mint(ctx context.Context, params IssueTokenParams, re
 		},
 		GasBudget: "100000000",
 	}, handler.OwnerKeys)
+}
+
+// buildTokenAdapterConfigs builds the SuiTokenAdapterConfig slice for all registered mint-burn tokens.
+func (handler *SuiHandler) buildTokenAdapterConfigs() []config.SuiTokenAdapterConfig {
+	var result []config.SuiTokenAdapterConfig
+	for abstractTokenId, adapterInfo := range handler.MintBurnAdapterInfos {
+		token := handler.TokensRegistry.GetTokenData(abstractTokenId)
+		if token == nil {
+			continue
+		}
+		coinType := string(token.PeerChainTokenAddress)
+		result = append(result, config.SuiTokenAdapterConfig{
+			CoinType:      coinType,
+			AdapterModule: "xmn_mint_cap_adapter",
+			AdapterObjects: []config.SuiAdapterObjectConfig{
+				{
+					ObjectId:             adapterInfo.XmnTreasuryId,
+					InitialSharedVersion: adapterInfo.XmnTreasuryInitialSharedVersion,
+					Mutable:              true,
+				},
+				{
+					ObjectId:             denyListObjectId,
+					InitialSharedVersion: denyListInitialSharedVersion,
+					Mutable:              false,
+				},
+				{
+					ObjectId:             clockId,
+					InitialSharedVersion: 1,
+					Mutable:              false,
+				},
+			},
+		})
+	}
+	return result
 }
 
 func (handler *SuiHandler) Close() error {

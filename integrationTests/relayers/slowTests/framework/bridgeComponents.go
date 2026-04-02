@@ -130,6 +130,7 @@ func NewSuiBridgeComponents(
 	bridgeInitialSharedVersion uint64,
 	safeInitialSharedVersion uint64,
 	treasuryInitialSharedVersion uint64,
+	tokenAdapterConfigs []config.SuiTokenAdapterConfig,
 ) *BridgeComponents {
 	bridge := &BridgeComponents{
 		TB:                 tb,
@@ -171,6 +172,7 @@ func NewSuiBridgeComponents(
 		argsBridgeComponents.Configs.GeneralConfig.Sui.SafeObjectInitialSharedVersion = safeInitialSharedVersion
 		argsBridgeComponents.Configs.GeneralConfig.Sui.TreasuryObjectId = treasuryId
 		argsBridgeComponents.Configs.GeneralConfig.Sui.TreasuryObjectInitialSharedVersion = treasuryInitialSharedVersion
+		argsBridgeComponents.Configs.GeneralConfig.Sui.TokenAdapterConfigs = tokenAdapterConfigs
 		argsBridgeComponents.Configs.GeneralConfig.MultiversX.NetworkAddress = chainSimulator.GetNetworkAddress()
 		argsBridgeComponents.Configs.GeneralConfig.MultiversX.SafeContractAddress = mvxSafeAddress.Bech32()
 		argsBridgeComponents.Configs.GeneralConfig.MultiversX.MultisigContractAddress = mvxMultisigAddress.Bech32()

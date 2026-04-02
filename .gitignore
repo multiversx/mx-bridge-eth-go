@@ -32,3 +32,5 @@ cache
 artifacts
 
 /cmd/cmd
+
+.docs/
