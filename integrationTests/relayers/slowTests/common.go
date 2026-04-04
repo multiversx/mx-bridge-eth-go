@@ -321,7 +321,7 @@ func GenerateTestXMNToken() framework.TestTokenParams {
 			PeerChainTokenSymbol:             "XMN",
 			ValueToMintOnPeerChain:           "10000000000",
 			IsMintBurnOnPeerChain:            true,
-			IsNativeOnPeerChain:              false,
+			IsNativeOnPeerChain:              true,
 			PeerChainType:                    framework.ChainTypeSui,
 		},
 		TestOperations: []framework.TokenOperations{

@@ -692,8 +692,11 @@ func (c *client) MintBurnTokens(_ context.Context, coinType []byte) (bool, error
 
 // NativeTokens returns true if the coin type is NOT handled by a mint-burn adapter.
 func (c *client) NativeTokens(_ context.Context, coinType []byte) (bool, error) {
-	_, isAdapter := c.tokenAdapterConfigs[string(coinType)]
-	return !isAdapter, nil
+	// TODO: Right now all tokens are native to sui - THIS SHOULD BE CHANGED ASAP
+	//_, isAdapter := c.tokenAdapterConfigs[string(coinType)]
+	//return isAdapter, nil
+
+	return true, nil
 }
 
 // GetTransactionsStatuses will return the transactions statuses from the batch
