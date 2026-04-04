@@ -280,7 +280,7 @@ func GenerateTestLKXMNToken() framework.TestTokenParams {
 			PeerChainTokenName:               "xMoney",
 			PeerChainTokenSymbol:             "LKXMN",
 			ValueToMintOnPeerChain:           "0",
-			IsMintBurnOnPeerChain:            true,
+			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
 			PeerChainType:                    framework.ChainTypeSui,
 			IsLocked:                         true,

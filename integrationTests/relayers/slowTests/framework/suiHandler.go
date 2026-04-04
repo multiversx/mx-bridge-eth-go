@@ -5,8 +5,11 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"math/big"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -17,38 +20,6 @@ import (
 )
 
 const (
-	// sui_extensions modules
-	suiExtensionServiceBytecode = "testdata/contracts/sui/two_step_role.mv"
-	suiUpgradeBytecode          = "testdata/contracts/sui/upgrade_service.mv"
-
-	// locked_token modules
-	suiBridgeTokenBytecode         = "testdata/contracts/sui/token/bridge_token.mv"
-	suiTokenRolesBytecode          = "testdata/contracts/sui/token/lk_roles.mv"
-	suiTokenTreasuryBytecode       = "testdata/contracts/sui/token/treasury.mv"
-	suiTokenVersionControlBytecode = "testdata/contracts/sui/token/token_version_control.mv"
-	suiUpgradeServiceTokenBytecode = "testdata/contracts/sui/token/upgrade_service_token.mv"
-
-	// stablecoin (treasury) modules
-	suiStablecoinVersionControlBytecode = "testdata/contracts/sui/stablecoin/version_control.mv"
-	suiStablecoinMintAllowanceBytecode  = "testdata/contracts/sui/stablecoin/mint_allowance.mv"
-	suiStablecoinRolesBytecode          = "testdata/contracts/sui/stablecoin/roles.mv"
-	suiStablecoinTreasuryBytecode       = "testdata/contracts/sui/stablecoin/treasury.mv"
-	suiStablecoinEntryBytecode          = "testdata/contracts/sui/stablecoin/entry.mv"
-	suiXmnBytecode                      = "testdata/contracts/sui/stablecoin/xmn.mv"
-
-	// bridge modules
-	suiSafeBytecode                 = "testdata/contracts/sui/bridge/safe.mv"
-	suiBridgeBytecode               = "testdata/contracts/sui/bridge/bridge.mv"
-	suiEventsBytecode               = "testdata/contracts/sui/bridge/events.mv"
-	suiPausableBytecode             = "testdata/contracts/sui/bridge/pausable.mv"
-	suiRolesBytecode                = "testdata/contracts/sui/bridge/bridge_roles.mv"
-	suiSharedStructsBytecode        = "testdata/contracts/sui/bridge/shared_structs.mv"
-	suiUtilsBytecode                = "testdata/contracts/sui/bridge/utils.mv"
-	suiBridgeVersionControlBytecode = "testdata/contracts/sui/bridge/bridge_version_control.mv"
-	suiUpgradeManagerBytecode       = "testdata/contracts/sui/bridge/upgrade_manager.mv"
-	suiUpgradeServiceBridgeBytecode = "testdata/contracts/sui/bridge/upgrade_service_bridge.mv"
-	suiXmnMintCapAdapterBytecode    = "testdata/contracts/sui/bridge/xmn_mint_cap_adapter.mv"
-
 	// test coin
 	suiTestCoinBytecode = "testdata/contracts/sui/coin/test_coin.mv"
 
@@ -65,15 +36,20 @@ const (
 type SuiHandler struct {
 	testing.TB
 	*KeysStore
-	TokensRegistry                  TokensRegistry
-	Quorum                          string
-	MvxTestCallerAddress            core.AddressHandler
-	SuiChainSimulator               *suiChainSimulatorWrapper
+	TokensRegistry       TokensRegistry
+	Quorum               string
+	MvxTestCallerAddress core.AddressHandler
+	SuiChainSimulator    *suiChainSimulatorWrapper
+	// PackageID is the bridge_safe package ID
 	PackageID                       string
+	LockedTokenPkgId                string
+	StablecoinTreasuryPkgId         string
+	XmnPkgId                        string
 	BridgeObjectID                  string
 	BridgeInitialSharedVersion      uint64
 	SafeObjectID                    string
 	SafeInitialSharedVersion        uint64
+	SafeInitCapId                   string
 	TreasuryId                      string
 	TreasuryInitialSharedVersion    uint64
 	XmnTreasuryId                   string
@@ -108,36 +84,64 @@ func NewSuiHandler(
 }
 
 func (handler *SuiHandler) DeployContracts(ctx context.Context) {
-	resp := handler.SuiChainSimulator.PublishPackage(ctx, models.PublishRequest{
-		Sender:          string(handler.OwnerKeys.SuiAddress),
-		CompiledModules: handler.getBridgeEncodedModules(),
-		Dependencies: []string{
-			suiFrameworkId,
-			moveStdLibId,
-		},
-		GasBudget: "500000000",
-	}, handler.OwnerKeys)
+	docsAbsPath, err := filepath.Abs("../../../.docs")
+	require.NoError(handler, err)
 
-	for _, obj := range resp.ObjectChanges {
-		switch obj.Type {
-		case "created":
-			if strings.Contains(obj.ObjectType, "0x2::coin::TreasuryCap") {
-				handler.TokenType = extractInnerType(obj.ObjectType)
-			}
-			if strings.Contains(obj.ObjectType, "::treasury::Treasury<") {
-				isv := extractInitialSharedVersion(obj.Owner)
-				if strings.Contains(obj.ObjectType, "::xmn::XMN") {
-					handler.XmnTreasuryId = obj.ObjectId
-					handler.XmnTreasuryInitialSharedVersion = isv
-				} else {
-					handler.TreasuryId = obj.ObjectId
-					handler.TreasuryInitialSharedVersion = isv
-				}
-			}
-		case "published":
-			handler.PackageID = obj.PackageId
-		}
-	}
+	suiExtDir := filepath.Join(docsAbsPath, "stablecoin-sui", "packages", "sui_extensions")
+	lockedTokenSrc := filepath.Join(docsAbsPath, "mx-locked-token-sc-sui")
+	treasurySrc := filepath.Join(docsAbsPath, "stablecoin-sui", "packages", "treasury")
+	xmnSrc := filepath.Join(docsAbsPath, "stablecoin-sui", "packages", "xmn")
+	bridgeSrc := filepath.Join(docsAbsPath, "mx-bridge-sc-sui")
+
+	// Step 1: Deploy sui_extensions — no external package deps.
+	// After publishing, set published-at in sui_extensions' own Move.toml so
+	// downstream packages can reference it as a local dep without triggering
+	// git downloads for its transitive framework dependencies.
+	suiExtTmp := makeTempPackageCopy(handler.TB, suiExtDir, nil)
+	defer func() { _ = os.RemoveAll(suiExtTmp) }()
+	resp1 := handler.SuiChainSimulator.BuildAndPublish(ctx, suiExtTmp, handler.OwnerKeys)
+	suiExtPkgId := extractPublishedPkgId(resp1, "two_step_role")
+	require.NotEmpty(handler, suiExtPkgId, "suiExtPkgId not found")
+	setPackagePublishedAt(handler.TB, suiExtTmp, "sui_extensions", suiExtPkgId)
+
+	// Step 2: Deploy locked_token (depends on sui_extensions).
+	lockedTokenToml := makeMoveToml("locked_token", "2024.beta", map[string]depEntry{
+		"sui_extensions": {local: suiExtTmp},
+	})
+	lockedTokenTmp := makeTempPackageCopy(handler.TB, lockedTokenSrc, lockedTokenToml)
+	defer func() { _ = os.RemoveAll(lockedTokenTmp) }()
+	resp2 := handler.SuiChainSimulator.BuildAndPublish(ctx, lockedTokenTmp, handler.OwnerKeys)
+	handler.extractLockedTokenDeployResult(resp2)
+	setPackagePublishedAt(handler.TB, lockedTokenTmp, "locked_token", handler.LockedTokenPkgId)
+
+	// Step 3: Deploy stablecoin treasury (depends on sui_extensions).
+	treasuryToml := makeMoveToml("treasury", "2024.beta", map[string]depEntry{
+		"sui_extensions": {local: suiExtTmp},
+	})
+	treasuryTmp := makeTempPackageCopy(handler.TB, treasurySrc, treasuryToml)
+	defer func() { _ = os.RemoveAll(treasuryTmp) }()
+	resp3 := handler.SuiChainSimulator.BuildAndPublish(ctx, treasuryTmp, handler.OwnerKeys)
+	handler.StablecoinTreasuryPkgId = extractPublishedPkgId(resp3, "treasury")
+	require.NotEmpty(handler, handler.StablecoinTreasuryPkgId, "StablecoinTreasuryPkgId not found")
+	setPackagePublishedAt(handler.TB, treasuryTmp, "treasury", handler.StablecoinTreasuryPkgId)
+
+	// Step 4: Deploy xmn (depends on treasury + sui_extensions).
+	// Both treasury and sui_extensions tmp dirs now have published-at in their own
+	// [package] sections, so the CLI won't try to re-resolve their transitive deps.
+	xmnToml := makeMoveToml("xmn", "2024.beta", map[string]depEntry{
+		"treasury":       {local: treasuryTmp},
+		"sui_extensions": {local: suiExtTmp},
+	})
+	xmnTmp := makeTempPackageCopy(handler.TB, xmnSrc, xmnToml)
+	defer func() { _ = os.RemoveAll(xmnTmp) }()
+	resp4 := handler.SuiChainSimulator.BuildAndPublish(ctx, xmnTmp, handler.OwnerKeys)
+	handler.extractXmnDeployResult(resp4)
+
+	// Step 5: Deploy bridge_safe (depends on locked_token, treasury, sui_extensions).
+	bridgeDir := handler.prepareBridgeDir(bridgeSrc, suiExtTmp, lockedTokenTmp, treasuryTmp)
+	defer func() { _ = os.RemoveAll(bridgeDir) }()
+	resp5 := handler.SuiChainSimulator.BuildAndPublish(ctx, bridgeDir, handler.OwnerKeys)
+	handler.extractBridgePublishResult(resp5)
 
 	handler.transferFromCoinCapToOwner(ctx)
 	handler.initSafe(ctx)
@@ -162,49 +166,234 @@ func (handler *SuiHandler) DeployContracts(ctx context.Context) {
 	handler.BridgeObjectID = string(bridgeIdBytes)
 }
 
-func (handler *SuiHandler) getBridgeEncodedModules() []string {
-	// Module order follows topological dependency order:
-	// sui_extensions → locked_token → stablecoin (treasury + xmn) → bridge modules
+func (handler *SuiHandler) extractLockedTokenDeployResult(resp models.SuiTransactionBlockResponse) {
+	for _, obj := range resp.ObjectChanges {
+		switch obj.Type {
+		case "published":
+			handler.LockedTokenPkgId = obj.PackageId
+		case "created":
+			if strings.Contains(obj.ObjectType, "0x2::coin::TreasuryCap") {
+				handler.TokenType = extractInnerType(obj.ObjectType)
+			}
+			if strings.Contains(obj.ObjectType, "::treasury::Treasury<") {
+				handler.TreasuryId = obj.ObjectId
+				handler.TreasuryInitialSharedVersion = extractInitialSharedVersion(obj.Owner)
+			}
+		}
+	}
+	require.NotEmpty(handler, handler.LockedTokenPkgId, "LockedTokenPkgId not found in publish response")
+	require.NotEmpty(handler, handler.TreasuryId, "locked token TreasuryId not found in publish response")
+	require.NotEmpty(handler, handler.TokenType, "TokenType not found in publish response")
+}
 
-	paths := []string{
-		// sui_extensions
-		suiExtensionServiceBytecode,
-		suiUpgradeBytecode,
-		// locked_token
-		suiBridgeTokenBytecode,
-		suiTokenRolesBytecode,
-		suiTokenTreasuryBytecode,
-		suiTokenVersionControlBytecode,
-		suiUpgradeServiceTokenBytecode,
-		// stablecoin treasury
-		suiStablecoinVersionControlBytecode,
-		suiStablecoinMintAllowanceBytecode,
-		suiStablecoinRolesBytecode,
-		suiStablecoinTreasuryBytecode,
-		suiStablecoinEntryBytecode,
-		// xmn coin
-		suiXmnBytecode,
-		// bridge modules
-		suiSafeBytecode,
-		suiBridgeBytecode,
-		suiEventsBytecode,
-		suiPausableBytecode,
-		suiRolesBytecode,
-		suiSharedStructsBytecode,
-		suiUtilsBytecode,
-		suiBridgeVersionControlBytecode,
-		suiUpgradeManagerBytecode,
-		suiUpgradeServiceBridgeBytecode,
-		suiXmnMintCapAdapterBytecode,
+func (handler *SuiHandler) extractXmnDeployResult(resp models.SuiTransactionBlockResponse) {
+	for _, obj := range resp.ObjectChanges {
+		switch obj.Type {
+		case "published":
+			handler.XmnPkgId = obj.PackageId
+		case "created":
+			if strings.Contains(obj.ObjectType, "::treasury::Treasury<") && strings.Contains(obj.ObjectType, "::xmn::XMN") {
+				handler.XmnTreasuryId = obj.ObjectId
+				handler.XmnTreasuryInitialSharedVersion = extractInitialSharedVersion(obj.Owner)
+			}
+		}
+	}
+	require.NotEmpty(handler, handler.XmnPkgId, "XmnPkgId not found in publish response")
+	require.NotEmpty(handler, handler.XmnTreasuryId, "XmnTreasuryId not found in publish response")
+}
+
+func (handler *SuiHandler) extractBridgePublishResult(resp models.SuiTransactionBlockResponse) {
+	for _, obj := range resp.ObjectChanges {
+		switch obj.Type {
+		case "published":
+			for _, m := range obj.Modules {
+				if m == "safe" {
+					handler.PackageID = obj.PackageId
+				}
+			}
+		case "created":
+			if strings.Contains(obj.ObjectType, "::safe::SafeInitCap") {
+				handler.SafeInitCapId = obj.ObjectId
+			}
+		}
+	}
+	require.NotEmpty(handler, handler.PackageID, "bridge PackageID not found in publish response")
+	require.NotEmpty(handler, handler.SafeInitCapId, "SafeInitCapId not found in publish response")
+}
+
+// prepareBridgeDir creates a temp copy of the bridge source dir with a Move.toml
+// pointing to already-published dependency tmp dirs (each with published-at set in
+// their own [package] section).
+func (handler *SuiHandler) prepareBridgeDir(bridgeSrc, suiExtTmp, lockedTokenTmp, treasuryTmp string) string {
+	toml := makeMoveToml("bridge_safe", "2024.beta", map[string]depEntry{
+		"locked_token":   {local: lockedTokenTmp},
+		"treasury":       {local: treasuryTmp},
+		"sui_extensions": {local: suiExtTmp, override: true},
+	})
+
+	return makeTempPackageCopy(handler.TB, bridgeSrc, toml)
+}
+
+// depEntry describes a Move dependency entry in Move.toml.
+type depEntry struct {
+	local    string
+	override bool
+}
+
+// makeMoveToml generates a Move.toml []byte for a package with the given name, edition, and deps.
+// Each dep entry only specifies the local path; published-at must be set in the dep's own
+// [package] section (via setPackagePublishedAt) so the Sui CLI recognises it as deployed.
+func makeMoveToml(pkgName, edition string, deps map[string]depEntry) []byte {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "[package]\nname = %q\nedition = %q\nversion = \"0.0.1\"\n\n[dependencies]\n", pkgName, edition)
+	for name, dep := range deps {
+		line := fmt.Sprintf("%s = { local = %q", name, dep.local)
+		if dep.override {
+			line += ", override = true"
+		}
+		line += " }\n"
+		sb.WriteString(line)
+	}
+	fmt.Fprintf(&sb, "\n[addresses]\n%s = \"0x0\"\n", pkgName)
+	return []byte(sb.String())
+}
+
+// setPackagePublishedAt updates a Move.toml in tmpDir to mark the package as already
+// deployed: inserts published-at = pkgId into the [package] section and updates the
+// named address from "0x0" to pkgId. This tells the Sui CLI the package is published
+// so it won't try to re-resolve or republish the package's transitive dependencies.
+func setPackagePublishedAt(tb testing.TB, tmpDir, pkgName, pkgId string) {
+	tomlPath := filepath.Join(tmpDir, "Move.toml")
+	content, err := os.ReadFile(tomlPath)
+	require.NoError(tb, err)
+
+	s := string(content)
+
+	// Insert or update published-at in the [package] section.
+	// The [package] section runs from "[package]" up to the next "[" section header.
+	pubAtLineRe := regexp.MustCompile(`(?m)^published-at\s*=\s*"[^"]*"`)
+	if pubAtLineRe.MatchString(s) {
+		s = pubAtLineRe.ReplaceAllString(s, fmt.Sprintf(`published-at = %q`, pkgId))
+	} else {
+		pkgSectionRe := regexp.MustCompile(`(\[package\][^\[]*)`)
+		s = pkgSectionRe.ReplaceAllStringFunc(s, func(section string) string {
+			trimmed := strings.TrimRight(section, "\n")
+			return trimmed + fmt.Sprintf("\npublished-at = %q\n", pkgId)
+		})
 	}
 
-	modules := make([]string, 0, len(paths))
-	for _, p := range paths {
-		mv := handler.readModuleBytes(p)
-		modules = append(modules, base64.StdEncoding.EncodeToString(mv))
+	// Update the named address (e.g. pkgName = "0x0") to the real package ID.
+	addrRe := regexp.MustCompile(fmt.Sprintf(`(?m)^%s\s*=\s*"[^"]*"`, regexp.QuoteMeta(pkgName)))
+	if addrRe.MatchString(s) {
+		s = addrRe.ReplaceAllString(s, fmt.Sprintf(`%s = %q`, pkgName, pkgId))
 	}
 
-	return modules
+	err = os.WriteFile(tomlPath, []byte(s), 0644)
+	require.NoError(tb, err)
+}
+
+// extractPublishedPkgId finds the PackageId from a "published" objectChange that contains the given module name.
+func extractPublishedPkgId(resp models.SuiTransactionBlockResponse, moduleName string) string {
+	for _, obj := range resp.ObjectChanges {
+		if obj.Type != "published" {
+			continue
+		}
+		for _, m := range obj.Modules {
+			if m == moduleName {
+				return obj.PackageId
+			}
+		}
+	}
+	// Fallback: return the first published package ID
+	for _, obj := range resp.ObjectChanges {
+		if obj.Type == "published" {
+			return obj.PackageId
+		}
+	}
+	return ""
+}
+
+// makeTempPackageCopy copies a Move package to a temp dir, removes Move.lock, absolutizes local
+// dep paths in Move.toml, and optionally replaces Move.toml entirely (when overrideToml != nil).
+func makeTempPackageCopy(tb testing.TB, srcDir string, overrideToml []byte) string {
+	tmpDir, err := os.MkdirTemp("", "sui-pkg-*")
+	require.NoError(tb, err)
+
+	err = copyDirRecursive(srcDir, tmpDir)
+	require.NoError(tb, err)
+
+	if overrideToml != nil {
+		// We're replacing Move.toml entirely, so the existing Move.lock (if any) would
+		// have a stale manifest_digest and stale local dep paths.  Delete it so the CLI
+		// regenerates a clean one using the deps' own published-at markers.
+		_ = os.Remove(filepath.Join(tmpDir, "Move.lock"))
+		err = os.WriteFile(filepath.Join(tmpDir, "Move.toml"), overrideToml, 0644)
+		require.NoError(tb, err)
+	} else {
+		// Keep Move.lock — it pins the framework git revisions so the CLI uses the
+		// cached ~/.move packages instead of downloading from git during build.
+		// Make all local = "..." paths in Move.toml absolute so the package works from any dir
+		tomlPath := filepath.Join(tmpDir, "Move.toml")
+		content, readErr := os.ReadFile(tomlPath)
+		require.NoError(tb, readErr)
+		updated := absolutizeLocalDeps(srcDir, content)
+		err = os.WriteFile(tomlPath, updated, 0644)
+		require.NoError(tb, err)
+	}
+
+	return tmpDir
+}
+
+// absolutizeLocalDeps replaces all `local = "..."` relative paths in Move.toml content
+// with absolute paths resolved relative to srcDir.
+func absolutizeLocalDeps(srcDir string, content []byte) []byte {
+	re := regexp.MustCompile(`local\s*=\s*"([^"]*)"`)
+	return re.ReplaceAllFunc(content, func(match []byte) []byte {
+		sub := re.FindSubmatch(match)
+		if len(sub) < 2 {
+			return match
+		}
+		relPath := string(sub[1])
+		absPath, absErr := filepath.Abs(filepath.Join(srcDir, relPath))
+		if absErr != nil {
+			return match
+		}
+		return []byte(fmt.Sprintf("local = %q", absPath))
+	})
+}
+
+func copyDirRecursive(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, relErr := filepath.Rel(src, path)
+		if relErr != nil {
+			return relErr
+		}
+		dstPath := filepath.Join(dst, rel)
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+		return copyFile(path, dstPath)
+	})
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = in.Close() }()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = out.Close() }()
+
+	_, err = io.Copy(out, in)
+	return err
 }
 
 func (handler *SuiHandler) readModuleBytes(path string) []byte {
@@ -240,7 +429,7 @@ func extractInnerType(s string) string {
 func (handler *SuiHandler) transferFromCoinCapToOwner(ctx context.Context) {
 	resp := handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
-		PackageObjectId: handler.PackageID,
+		PackageObjectId: handler.LockedTokenPkgId,
 		Module:          "treasury",
 		Function:        "transfer_from_coin_cap",
 		TypeArguments: []interface{}{
@@ -270,6 +459,7 @@ func (handler *SuiHandler) initSafe(ctx context.Context) {
 		Function:        "initialize",
 		TypeArguments:   []interface{}{},
 		Arguments: []interface{}{
+			handler.SafeInitCapId,
 			handler.FromCoinCap,
 		},
 		GasBudget: "10000000",
@@ -350,7 +540,10 @@ func (handler *SuiHandler) GetBalance(ctx context.Context, receiver []byte, abst
 	require.NotNil(handler, suiTokenInfo)
 
 	if suiTokenInfo.IsLocked {
-		return handler.SuiChainSimulator.GetTokenBalance(ctx, string(receiver), handler.TokenType)
+		tokenBal := handler.SuiChainSimulator.GetTokenBalance(ctx, string(receiver), handler.TokenType)
+		coinBal := handler.SuiChainSimulator.GetCoinBalance(ctx, string(receiver), string(token.PeerChainTokenAddress))
+		log.Info("GetBalance for locked token", "receiver", string(receiver), "tokenBalance(Token<T>)", tokenBal, "coinBalance(Coin<T>)", coinBal)
+		return tokenBal
 	} else {
 		return handler.SuiChainSimulator.GetCoinBalance(ctx, string(receiver), string(token.PeerChainTokenAddress))
 	}
@@ -425,15 +618,15 @@ func (handler *SuiHandler) IssueAndWhitelistToken(ctx context.Context, params Is
 
 	switch {
 	case isMintBurnAdapter:
-		coinType = fmt.Sprintf("%s::xmn::XMN", handler.PackageID)
+		coinType = fmt.Sprintf("%s::xmn::XMN", handler.XmnPkgId)
 		suiTokenInfo = SuiTokenInfo{
-			CoinPackageId: handler.PackageID,
+			CoinPackageId: handler.XmnPkgId,
 			TreasuryId:    handler.XmnTreasuryId,
 			IsMintBurn:    true,
 		}
 	case params.IsLocked:
 		suiTokenInfo = SuiTokenInfo{
-			CoinPackageId: handler.PackageID,
+			CoinPackageId: handler.LockedTokenPkgId,
 			IsLocked:      true,
 		}
 		coinType = handler.TokenType
@@ -500,7 +693,6 @@ func (handler *SuiHandler) whitelistSafeToken(ctx context.Context, coinType stri
 			handler.SafeObjectID,
 			"25",
 			"500000",
-			params.IsNativeOnPeerChain,
 			params.IsLocked,
 		},
 		GasBudget: "100000000",
@@ -530,7 +722,7 @@ func (handler *SuiHandler) whitelistMintBurnToken(ctx context.Context, coinType 
 func (handler *SuiHandler) setupMintCapForAdapter(ctx context.Context, coinType string) string {
 	resp := handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
-		PackageObjectId: handler.PackageID,
+		PackageObjectId: handler.StablecoinTreasuryPkgId,
 		Module:          "treasury",
 		Function:        "configure_new_controller",
 		TypeArguments:   []interface{}{coinType},
@@ -554,7 +746,7 @@ func (handler *SuiHandler) setupMintCapForAdapter(ctx context.Context, coinType 
 	// Set a large allowance so the adapter can mint freely in tests
 	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
-		PackageObjectId: handler.PackageID,
+		PackageObjectId: handler.StablecoinTreasuryPkgId,
 		Module:          "treasury",
 		Function:        "configure_minter",
 		TypeArguments:   []interface{}{coinType},
@@ -572,7 +764,7 @@ func (handler *SuiHandler) setupMintCapForAdapter(ctx context.Context, coinType 
 func (handler *SuiHandler) mintXmn(ctx context.Context, mintCapId string, coinType string, receiver string, amount *big.Int) {
 	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
-		PackageObjectId: handler.PackageID,
+		PackageObjectId: handler.StablecoinTreasuryPkgId,
 		Module:          "treasury",
 		Function:        "mint",
 		TypeArguments:   []interface{}{coinType},
@@ -664,7 +856,7 @@ func (handler *SuiHandler) mintLocked(ctx context.Context, params IssueTokenPara
 
 	handler.SuiChainSimulator.MoveCall(ctx, models.MoveCallRequest{
 		Signer:          string(handler.OwnerKeys.SuiAddress),
-		PackageObjectId: handler.PackageID,
+		PackageObjectId: handler.LockedTokenPkgId,
 		Module:          "treasury",
 		Function:        "mint_coin_to_receiver",
 		TypeArguments: []interface{}{
