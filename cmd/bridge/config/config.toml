@@ -2,17 +2,46 @@
     Chain = "Sui"
     Enabled = true
     NetworkAddress = "https://fullnode.testnet.sui.io:443" # a network address
-    PackageId = "0x13d6408c07b9924cf8e57efc5ffc340314dbfa361c870821c65ae5549745e98e"
-    BridgeObjectId = "0x9df542a1873d2c154cd2c19bcfaed78ea39f5054e9f0e09b424c151321021436"
-    BridgeObjectInitialSharedVersion = 586569728
-    SafeObjectId = "0x176831b799d0edbf37515c189bab34fe2822bc1188a88aae791fa303c6e4fb41"
-    SafeObjectInitialSharedVersion = 586569727
-    TreasuryObjectId = "0xd9104c0dba662a57ba25ea88dc4dc9c15068547a06791a023ca9f793b058d9f4"
-    TreasuryObjectInitialSharedVersion = 586569722
+    PackageId = "0x0f16411218d3f5e6ee73be6d688189f5dda4072487219a71514d95ad3510fadd"
+    BridgeObjectId = "0x48a61c8bc8d9ebc5410c22073e45d728604f0c4287cd7076ddf21b1635de6029"
+    BridgeObjectInitialSharedVersion = 813763978
+    SafeObjectId = "0x95d375bce1150681b7b12a2142b9f5564963da6a3e2dbb304c3c5e15f3ba24a1"
+    SafeObjectInitialSharedVersion = 813763977
+    # TreasuryObjectId: the shared locked-token treasury object (used by bridge::execute_transfer
+    # for normal coins and locked tokens that go through the default bridge module).
+    TreasuryObjectId = "0x1bc69f6996c278f0ea00c015352335079c689dbb4a3cbc3348af5077a1eea375"
+    TreasuryObjectInitialSharedVersion = 764107789
     PrivateKeyFile = "keys/sui.sk" # the path to the file containing the relayer eth private key
     IntervalToWaitForTransferInSeconds = 50 #50 seconds
     MaxRetriesOnQuorumReached = 3
     ClientAvailabilityAllowDelta = 10
+
+    # TokenAdapterConfigs routes specific coin types to a custom Move adapter module
+    # instead of the default bridge::execute_transfer.
+    # Use this for mint-burn adapter tokens that have their own on-chain module.
+    # Normal coins and locked tokens do NOT need an entry here — they use bridge::execute_transfer
+    # with the TreasuryObjectId above.
+    #
+    # Example: one mint-burn adapter token
+    [[Sui.TokenAdapterConfigs]]
+        # CoinType: fully-qualified Move coin type, e.g. "<package>::<module>::<COIN>"
+        CoinType = "0xcd9dffc1d0cfe1176123fdf62b7769ecc4bfb2b312d868ac1613649801acddf5::xmn::XMN"
+        # AdapterModule: the Move module inside PackageId that implements execute_transfer for this coin
+        AdapterModule = "xmn_mint_cap_adapter"
+        # AdapterObjects: shared objects appended after is_batch_complete in the adapter's execute_transfer call.
+        # List them in the exact order the Move function expects.
+        [[Sui.TokenAdapterConfigs.AdapterObjects]]
+          ObjectId = "0x8d02172b84df200599e0ed4fb89eeb325af197f5d50be28ab3ee9c79b9706ec1"   # XmnTreasury<T> shared object
+          InitialSharedVersion = 764107793
+          Mutable = true
+          [[Sui.TokenAdapterConfigs.AdapterObjects]]
+              ObjectId = "0x0000000000000000000000000000000000000000000000000000000000000403"  # DenyList
+              InitialSharedVersion = 22257037
+              Mutable = false
+          [[Sui.TokenAdapterConfigs.AdapterObjects]]
+              ObjectId = "0x0000000000000000000000000000000000000000000000000000000000000006"  # Clock
+              InitialSharedVersion = 1
+              Mutable = false
 
 [MultiversX]
     NetworkAddress = "https://devnet-gateway.multiversx.com" # the network address
@@ -44,7 +73,7 @@
 
 [P2P]
     Port = "10011"
-    InitialPeerList = ["/ip4/127.0.0.1/tcp/10000/p2p/16Uiu2HAmPejBkUKHWN9cGfxZAYNzkkXv5pphZhi1N4HXS5m61Uwk"]
+    InitialPeerList = ["/ip4/127.0.0.1/tcp/10000/p2p/16Uiu2HAmN2uSDYsrLUQzYY65qLjB5YwsnLYNdLSkPA4X64QeiAoa"]
     ProtocolID = "/devnet/sui/sui-testnet"
     [P2P.Transports]
         QUICAddress = "" # optional QUIC address. If this transport should be activated, should be in this format: /ip4/0.0.0.0/udp/%d/quic-v1
