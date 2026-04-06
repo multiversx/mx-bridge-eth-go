@@ -280,7 +280,7 @@ func GenerateTestLKXMNToken() framework.TestTokenParams {
 			PeerChainTokenName:               "xMoney",
 			PeerChainTokenSymbol:             "LKXMN",
 			ValueToMintOnPeerChain:           "0",
-			IsMintBurnOnPeerChain:            true,
+			IsMintBurnOnPeerChain:            false,
 			IsNativeOnPeerChain:              true,
 			PeerChainType:                    framework.ChainTypeSui,
 			IsLocked:                         true,
@@ -297,6 +297,45 @@ func GenerateTestLKXMNToken() framework.TestTokenParams {
 		},
 		ESDTSafeExtraBalance:          big.NewInt(100),                   // extra is just for the fees for the 2 transfers mvx->peerChain
 		PeerChainTestAddrExtraBalance: big.NewInt(1550 - 50 + 4650 - 50), // -(peerChain->mvx) + (mvx->peerChain) - fees
+	}
+}
+
+// GenerateTestXMNToken generates a test XMN token that uses the mint-burn adapter on Sui.
+// The test deposits XMN from Sui (burns it, establishing stored balance) then sends it back from MVX (minting on Sui).
+func GenerateTestXMNToken() framework.TestTokenParams {
+	// XMN: peerChainNative = false, peerChainMintBurn = true, mvxNative = false, mvxMintBurn = true
+	return framework.TestTokenParams{
+		IssueTokenParams: framework.IssueTokenParams{
+			AbstractTokenIdentifier:          "XMN",
+			NumOfDecimalsUniversal:           6,
+			NumOfDecimalsChainSpecific:       6,
+			MvxUniversalTokenTicker:          "XMN",
+			MvxChainSpecificTokenTicker:      "SUIXMN",
+			MvxUniversalTokenDisplayName:     "WrappedXMN",
+			MvxChainSpecificTokenDisplayName: "SuiWrappedXMN",
+			ValueToMintOnMvx:                 "10000000000",
+			IsMintBurnOnMvX:                  true,
+			IsNativeOnMvX:                    false,
+			HasChainSpecificToken:            false,
+			PeerChainTokenName:               "xMoney",
+			PeerChainTokenSymbol:             "XMN",
+			ValueToMintOnPeerChain:           "10000000000",
+			IsMintBurnOnPeerChain:            true,
+			IsNativeOnPeerChain:              true,
+			PeerChainType:                    framework.ChainTypeSui,
+		},
+		TestOperations: []framework.TokenOperations{
+			{
+				ValueToTransferToMvx: big.NewInt(6000), // Sui→MVX: burn 6000 XMN, safe stored balance +6000
+				ValueToSendFromMvX:   nil,
+			},
+			{
+				ValueToTransferToMvx: nil,
+				ValueToSendFromMvX:   big.NewInt(2000), // MVX→Sui: mint 2000 XMN, safe stored balance -2000
+			},
+		},
+		ESDTSafeExtraBalance:          big.NewInt(50),                // fee for 1 MVX→Sui transfer
+		PeerChainTestAddrExtraBalance: big.NewInt(-6000 + 2000 - 50), // burn 6000 + receive 2000 - fee 50
 	}
 }
 

@@ -45,6 +45,22 @@ type EthereumConfig struct {
 	EventsBlockRangeTo                 int64
 }
 
+// SuiAdapterObjectConfig describes one shared object argument passed to an adapter's execute_transfer call.
+// All objects after is_batch_complete (including clock) must be listed here in call order.
+type SuiAdapterObjectConfig struct {
+	ObjectId             string
+	InitialSharedVersion uint64
+	Mutable              bool
+}
+
+// SuiTokenAdapterConfig routes a specific coin type to its adapter Move module instead of
+// the default bridge::execute_transfer. AdapterObjects are appended after is_batch_complete.
+type SuiTokenAdapterConfig struct {
+	CoinType       string
+	AdapterModule  string
+	AdapterObjects []SuiAdapterObjectConfig
+}
+
 // SuiConfig represents the Sui Config parameters
 type SuiConfig struct {
 	Enabled                            bool
@@ -61,6 +77,7 @@ type SuiConfig struct {
 	MaxRetriesOnQuorumReached          uint64
 	IntervalToWaitForTransferInSeconds uint64
 	ClientAvailabilityAllowDelta       uint64
+	TokenAdapterConfigs                []SuiTokenAdapterConfig
 }
 
 // GasStationConfig represents the configuration for the gas station handler

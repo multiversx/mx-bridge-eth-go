@@ -6,7 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/signer"
+	"github.com/block-vision/sui-go-sdk/transaction"
 	"github.com/multiversx/mx-bridge-eth-go/bridges"
 	"github.com/multiversx/mx-bridge-eth-go/bridges/disabled"
 	multiversxtoeth "github.com/multiversx/mx-bridge-eth-go/bridges/steps/fromMultiversX"
@@ -304,6 +306,11 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 		return err
 	}
 
+	tokenAdapterConfigs, err := parseTokenAdapterConfigs(suiConfig.TokenAdapterConfigs)
+	if err != nil {
+		return err
+	}
+
 	argsSuiClient := suiClient.ArgsSuiClient{
 		Proxy:                        components.suiApi,
 		TxHandler:                    suiTxHandler,
@@ -321,11 +328,29 @@ func (components *suiMvxBridgeComponents) createSuiClient(args ArgsSuiToMultiver
 		SignatureHolder:              signaturesHolder,
 		StatusHandler:                args.SuiClientStatusHandler,
 		ClientAvailabilityAllowDelta: suiConfig.ClientAvailabilityAllowDelta,
+		TokenAdapterConfigs:          tokenAdapterConfigs,
 	}
 
 	components.suiClient, err = suiClient.NewSuiClient(argsSuiClient)
 
 	return err
+}
+
+func parseTokenAdapterConfigs(cfgs []config.SuiTokenAdapterConfig) (map[string]suiClient.ParsedAdapterConfig, error) {
+	result := make(map[string]suiClient.ParsedAdapterConfig, len(cfgs))
+	for _, cfg := range cfgs {
+		objects := make([]suiClient.ParsedAdapterObject, 0, len(cfg.AdapterObjects))
+		for _, obj := range cfg.AdapterObjects {
+			idBytes, err := transaction.ConvertSuiAddressStringToBytes(models.SuiAddress(obj.ObjectId))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse adapter object id %s for coin type %s: %w",
+					obj.ObjectId, cfg.CoinType, err)
+			}
+			objects = append(objects, suiClient.NewParsedAdapterObject(*idBytes, obj.InitialSharedVersion, obj.Mutable))
+		}
+		result[cfg.CoinType] = suiClient.NewParsedAdapterConfig(cfg.AdapterModule, objects)
+	}
+	return result, nil
 }
 
 func (components *suiMvxBridgeComponents) createSuiToMultiversXBridge(args ArgsSuiToMultiversXBridge) error {

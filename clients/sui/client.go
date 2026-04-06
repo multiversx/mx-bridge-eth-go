@@ -50,6 +50,7 @@ type ArgsSuiClient struct {
 	SignatureHolder              SignaturesHolder
 
 	ClientAvailabilityAllowDelta uint64
+	TokenAdapterConfigs          map[string]ParsedAdapterConfig
 }
 
 type client struct {
@@ -68,6 +69,7 @@ type client struct {
 	broadcaster      Broadcaster
 	signatureHolder  SignaturesHolder
 
+	tokenAdapterConfigs          map[string]ParsedAdapterConfig
 	lastCheckpoint               uint64
 	retriesAvailabilityCheck     uint64
 	clientAvailabilityAllowDelta uint64
@@ -117,6 +119,7 @@ func NewSuiClient(args ArgsSuiClient) (*client, error) {
 		tokensMapper:                 args.TokensMapper,
 		statusHandler:                args.StatusHandler,
 		signatureHolder:              args.SignatureHolder,
+		tokenAdapterConfigs:          args.TokenAdapterConfigs,
 		clientAvailabilityAllowDelta: args.ClientAvailabilityAllowDelta,
 	}
 
@@ -169,6 +172,14 @@ func checkArgs(args ArgsSuiClient) error {
 	if args.ClientAvailabilityAllowDelta < minClientAvailabilityAllowDelta {
 		return fmt.Errorf("%w for args.AllowedDelta, got: %d, minimum: %d",
 			clients.ErrInvalidValue, args.ClientAvailabilityAllowDelta, minClientAvailabilityAllowDelta)
+	}
+	for coinType, adapterCfg := range args.TokenAdapterConfigs {
+		if len(adapterCfg.adapterModule) == 0 {
+			return fmt.Errorf("%w: empty adapter module for coin type %s", errNilObjectId, coinType)
+		}
+		if len(adapterCfg.adapterObjects) == 0 {
+			return fmt.Errorf("%w: no adapter objects for coin type %s", errNilObjectId, coinType)
+		}
 	}
 
 	return nil
@@ -492,9 +503,12 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 
 		coinIdBytesVal := *coinIdBytes
 
+		module, tailArgsFn := c.resolveExecuteTransferModule(tokenType)
+		localTailArgsFn := tailArgsFn
+
 		calls = append(calls, bridgeCore.SuiPTBOperation{
 			Package:  models.SuiAddress(c.packageId),
-			Module:   "bridge",
+			Module:   module,
 			Function: "execute_transfer",
 			TypeTags: []transaction.TypeTag{
 				{
@@ -506,7 +520,7 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 				},
 			},
 			ArgsFn: func(tx *transaction.Transaction) []transaction.Argument {
-				return []transaction.Argument{
+				args := []transaction.Argument{
 					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
 						SharedObject: &transaction.SharedObjectRef{
 							ObjectId:             c.bridgeObjectIdBytes,
@@ -527,26 +541,57 @@ func (c *client) prepareExecuteTransferCallArgs(batchID uint64, tokenGroups map[
 					tx.Pure(batchID),
 					tx.Pure(localGroup.Signatures),
 					tx.Pure(localIsBatchComplete),
-					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
-						SharedObject: &transaction.SharedObjectRef{
-							ObjectId:             c.treasuryObjectIdBytes,
-							InitialSharedVersion: c.treasuryInitialSharedVersion,
-							Mutable:              true,
-						},
-					}}),
-					tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
-						SharedObject: &transaction.SharedObjectRef{
-							ObjectId:             c.clockIdBytes,
-							InitialSharedVersion: clockInitialSharedVersion,
-							Mutable:              false,
-						},
-					}}),
 				}
+				return append(args, localTailArgsFn(tx)...)
 			},
 		})
 	}
 
 	return calls, nil
+}
+
+// resolveExecuteTransferModule returns the Move module name and a function that builds the
+// tail arguments (everything after is_batch_complete) for the execute_transfer call.
+// For adapter tokens the module and tail objects come from the adapter config.
+// For native/locked tokens the default bridge module is used with treasury + clock.
+func (c *client) resolveExecuteTransferModule(tokenType string) (string, func(*transaction.Transaction) []transaction.Argument) {
+	adapterCfg, isAdapter := c.tokenAdapterConfigs[tokenType]
+	if !isAdapter {
+		return "bridge", func(tx *transaction.Transaction) []transaction.Argument {
+			return []transaction.Argument{
+				tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
+					SharedObject: &transaction.SharedObjectRef{
+						ObjectId:             c.treasuryObjectIdBytes,
+						InitialSharedVersion: c.treasuryInitialSharedVersion,
+						Mutable:              true,
+					},
+				}}),
+				tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
+					SharedObject: &transaction.SharedObjectRef{
+						ObjectId:             c.clockIdBytes,
+						InitialSharedVersion: clockInitialSharedVersion,
+						Mutable:              false,
+					},
+				}}),
+			}
+		}
+	}
+
+	localCfg := adapterCfg
+	return adapterCfg.adapterModule, func(tx *transaction.Transaction) []transaction.Argument {
+		args := make([]transaction.Argument, 0, len(localCfg.adapterObjects))
+		for _, obj := range localCfg.adapterObjects {
+			localObj := obj
+			args = append(args, tx.Object(transaction.CallArg{Object: &transaction.ObjectArg{
+				SharedObject: &transaction.SharedObjectRef{
+					ObjectId:             localObj.objectIdBytes,
+					InitialSharedVersion: localObj.initialSharedVersion,
+					Mutable:              localObj.mutable,
+				},
+			}}))
+		}
+		return args
+	}
 }
 
 func (c *client) CheckClientAvailability(ctx context.Context) error {
@@ -639,13 +684,18 @@ func (c *client) BurnBalances(_ context.Context, _ []byte) (*big.Int, error) {
 	return nil, nil
 }
 
-// MintBurnTokens returns false every time
-func (c *client) MintBurnTokens(_ context.Context, _ []byte) (bool, error) {
-	return false, nil
+// MintBurnTokens returns true if the coin type is handled by a mint-burn adapter.
+func (c *client) MintBurnTokens(_ context.Context, coinType []byte) (bool, error) {
+	_, isAdapter := c.tokenAdapterConfigs[string(coinType)]
+	return isAdapter, nil
 }
 
-// NativeTokens returns true every time
-func (c *client) NativeTokens(_ context.Context, _ []byte) (bool, error) {
+// NativeTokens returns true if the coin type is NOT handled by a mint-burn adapter.
+func (c *client) NativeTokens(_ context.Context, coinType []byte) (bool, error) {
+	// TODO: Right now all tokens are native to sui - THIS SHOULD BE CHANGED ASAP
+	//_, isAdapter := c.tokenAdapterConfigs[string(coinType)]
+	//return isAdapter, nil
+
 	return true, nil
 }
 

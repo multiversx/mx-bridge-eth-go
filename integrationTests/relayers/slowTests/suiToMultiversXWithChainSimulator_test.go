@@ -40,6 +40,34 @@ func TestRelayersShouldExecuteTransfersWithTokens(t *testing.T) {
 	)
 }
 
+func TestRelayersShouldExecuteTransfersWithMintBurnAdapterTokenSui(t *testing.T) {
+	xmnToken := GenerateTestXMNToken()
+
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		xmnToken,
+	)
+}
+
+func TestRelayersShouldExecuteTransfersWithMixedTokenTypesSui(t *testing.T) {
+	walToken := GenerateTestWALToken()
+	walToken.InitialSupplyValue = "1000000000"
+
+	xmnToken := GenerateTestXMNToken()
+
+	lkxmnToken := GenerateTestLKXMNToken()
+	lkxmnToken.InitialSupplyValue = "1000000000"
+
+	_ = testRelayersWithChainSimulatorAndTokens(
+		t,
+		make(chan error),
+		walToken,
+		xmnToken,
+		lkxmnToken,
+	)
+}
+
 func TestRelayerShouldExecuteTransfersAndNotCatchErrorsSui(t *testing.T) {
 	errorString := "ERROR"
 	mockLogObserver := mock.NewMockLogObserver(errorString)
