@@ -935,6 +935,39 @@ func TestClient_PerformAction(t *testing.T) {
 		assert.Equal(t, expectedHash, hash)
 		assert.True(t, sendWasCalled)
 	})
+
+	t.Run("should not add SC call gas for deposits with unset data", func(t *testing.T) {
+		t.Parallel()
+
+		// batches fetched from the MultiversX safe leave Data unset for simple transfers,
+		// unlike createMockBatch which uses the explicit marker
+		args := createMockClientArgs()
+		args.Proxy = createMockProxy(make([][]byte, 0))
+		expectedHash := "expected hash"
+		c, _ := NewClient(args)
+		sendWasCalled := false
+		batch := createMockBatch()
+		for _, deposit := range batch.Deposits {
+			deposit.Data = nil
+			deposit.DisplayableData = ""
+		}
+
+		c.txHandler = &bridgeTests.TxHandlerStub{
+			SendTransactionReturnHashCalled: func(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+				sendWasCalled = true
+
+				expectedGasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
+				assert.Equal(t, expectedGasLimit, gasLimit)
+
+				return expectedHash, nil
+			},
+		}
+
+		hash, err := c.PerformAction(context.Background(), actionID, batch)
+		assert.Nil(t, err)
+		assert.Equal(t, expectedHash, hash)
+		assert.True(t, sendWasCalled)
+	})
 	t.Run("should perform action with SC call", func(t *testing.T) {
 		t.Parallel()
 
