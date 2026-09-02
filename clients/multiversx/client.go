@@ -402,7 +402,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *brid
 func (c *client) computeExtraGasForSCCallsBasic(batch *bridgeCore.TransferBatch, performAction bool) uint64 {
 	gasLimit := uint64(0)
 	for _, deposit := range batch.Deposits {
-		if bytes.Equal(deposit.Data, []byte{bridgeCore.MissingDataProtocolMarker}) {
+		if !depositHasSCCall(deposit) {
 			continue
 		}
 
@@ -416,6 +416,11 @@ func (c *client) computeExtraGasForSCCallsBasic(batch *bridgeCore.TransferBatch,
 	}
 
 	return gasLimit
+}
+
+func depositHasSCCall(deposit *bridgeCore.DepositTransfer) bool {
+	return len(deposit.Data) > 0 &&
+		!bytes.Equal(deposit.Data, []byte{bridgeCore.MissingDataProtocolMarker})
 }
 
 func (c *client) checkIsPaused(ctx context.Context) error {
