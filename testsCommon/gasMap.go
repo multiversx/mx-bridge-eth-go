@@ -16,5 +16,6 @@ func CreateTestMultiversXGasMap() config.MultiversXGasMapConfig {
 		PerformActionForEach:   107,
 		ScCallPerByte:          108,
 		ScCallPerformForEach:   109,
+		AbsoluteMaxGasLimit:    500000,
 	}
 }

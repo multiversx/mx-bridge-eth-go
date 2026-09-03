@@ -3,7 +3,7 @@ package multiversx
 import (
 	"context"
 
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
+	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-chain-core-go/data/api"
 	"github.com/multiversx/mx-chain-core-go/data/transaction"
 	"github.com/multiversx/mx-sdk-go/core"
@@ -35,13 +35,29 @@ type NonceTransactionsHandler interface {
 
 // ScCallsExecuteFilter defines the operations supported by a filter that allows selective executions of batches
 type ScCallsExecuteFilter interface {
-	ShouldExecute(callData parsers.ProxySCCompleteCallData) bool
+	ShouldExecute(callData bridgeCore.ProxySCCompleteCallData) bool
 	IsInterfaceNil() bool
 }
 
 // Codec defines the operations implemented by a MultiversX codec
 type Codec interface {
-	DecodeProxySCCompleteCallData(buff []byte) (parsers.ProxySCCompleteCallData, error)
+	DecodeProxySCCompleteCallData(buff []byte) (bridgeCore.ProxySCCompleteCallData, error)
 	ExtractGasLimitFromRawCallData(buff []byte) (uint64, error)
+	EncodeCallDataStrict(callData bridgeCore.CallData) []byte
+	DecodeCallData(buff []byte) (bridgeCore.CallData, error)
+	IsInterfaceNil() bool
+}
+
+// TransactionExecutor defines the operations of an entity able to send executable transactions
+type TransactionExecutor interface {
+	ExecuteTransaction(
+		ctx context.Context,
+		networkConfig *data.NetworkConfig,
+		receiver string,
+		transactionType string,
+		gasLimit uint64,
+		dataBytes []byte,
+	) error
+	GetNumSentTransaction() uint32
 	IsInterfaceNil() bool
 }

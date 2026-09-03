@@ -3,7 +3,6 @@ package framework
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"math/big"
 	"os"
 	"testing"
@@ -28,18 +27,18 @@ const (
 	ethStatusSuccess              = uint64(1)
 	minterRoleString              = "MINTER_ROLE"
 	ethMinAmountAllowedToTransfer = 25
-	ethMaxAmountAllowedToTransfer = 500000
+	ethMaxAmountAllowedToTransfer = 1000000
 
-	erc20SafeABI          = "testdata/contracts/eth/ERC20Safe.abi.json"
-	erc20SafeBytecode     = "testdata/contracts/eth/ERC20Safe.hex"
-	bridgeABI             = "testdata/contracts/eth/Bridge.abi.json"
-	bridgeBytecode        = "testdata/contracts/eth/Bridge.hex"
-	genericERC20ABI       = "testdata/contracts/eth/GenericERC20.abi.json"
-	genericERC20Bytecode  = "testdata/contracts/eth/GenericERC20.hex"
-	mintBurnERC20ABI      = "testdata/contracts/eth/MintBurnERC20.abi.json"
-	mintBurnERC20Bytecode = "testdata/contracts/eth/MintBurnERC20.hex"
-	proxyABI              = "testdata/contracts/eth/Proxy.abi.json"
-	proxyBytecode         = "testdata/contracts/eth/Proxy.hex"
+	erc20SafeABI          = "slowTests/testdata/contracts/eth/ERC20Safe.abi.json"
+	erc20SafeBytecode     = "slowTests/testdata/contracts/eth/ERC20Safe.hex"
+	bridgeABI             = "slowTests/testdata/contracts/eth/Bridge.abi.json"
+	bridgeBytecode        = "slowTests/testdata/contracts/eth/Bridge.hex"
+	genericERC20ABI       = "slowTests/testdata/contracts/eth/GenericERC20.abi.json"
+	genericERC20Bytecode  = "slowTests/testdata/contracts/eth/GenericERC20.hex"
+	mintBurnERC20ABI      = "slowTests/testdata/contracts/eth/MintBurnERC20.abi.json"
+	mintBurnERC20Bytecode = "slowTests/testdata/contracts/eth/MintBurnERC20.hex"
+	proxyABI              = "slowTests/testdata/contracts/eth/Proxy.abi.json"
+	proxyBytecode         = "slowTests/testdata/contracts/eth/Proxy.hex"
 
 	proxyInitializeFunction = "initialize"
 )
@@ -50,7 +49,7 @@ type EthereumHandler struct {
 	*KeysStore
 	TokensRegistry        TokensRegistry
 	Quorum                string
-	MvxTestCallerAddress  core.AddressHandler
+	MvxCalleeScAddress    core.AddressHandler
 	SimulatedChain        *simulated.Backend
 	SimulatedChainWrapper EthereumBlockchainClient
 	ChainID               *big.Int
@@ -103,7 +102,11 @@ func NewEthereumHandler(
 // DeployContracts will deploy all required contracts on Ethereum side
 func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 	// deploy safe
-	handler.SafeAddress = handler.DeployUpgradeableContract(ctx, erc20SafeABI, erc20SafeBytecode)
+	handler.SafeAddress = handler.DeployUpgradeableContract(
+		ctx,
+		normalizePathToRelayersTests(erc20SafeABI),
+		normalizePathToRelayersTests(erc20SafeBytecode),
+	)
 	ethSafeContract, err := contract.NewERC20Safe(handler.SafeAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 	handler.SafeContract = ethSafeContract
@@ -114,7 +117,14 @@ func (handler *EthereumHandler) DeployContracts(ctx context.Context) {
 		ethRelayersAddresses = append(ethRelayersAddresses, relayerKeys.EthAddress)
 	}
 	quorumInt, _ := big.NewInt(0).SetString(handler.Quorum, 10)
-	handler.BridgeAddress = handler.DeployUpgradeableContract(ctx, bridgeABI, bridgeBytecode, ethRelayersAddresses, quorumInt, handler.SafeAddress)
+	handler.BridgeAddress = handler.DeployUpgradeableContract(
+		ctx,
+		normalizePathToRelayersTests(bridgeABI),
+		normalizePathToRelayersTests(bridgeBytecode),
+		ethRelayersAddresses,
+		quorumInt,
+		handler.SafeAddress,
+	)
 	handler.BridgeContract, err = contract.NewBridge(handler.BridgeAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 
@@ -195,7 +205,12 @@ func (handler *EthereumHandler) DeployUpgradeableContract(
 		handler.OwnerKeys.EthAddress, // make the owner of the logic contract the admin for the proxy
 		packedParams,
 	}
-	proxyAddress := handler.DeployContract(ctx, proxyABI, proxyBytecode, proxyParams...)
+	proxyAddress := handler.DeployContract(
+		ctx,
+		normalizePathToRelayersTests(proxyABI),
+		normalizePathToRelayersTests(proxyBytecode),
+		proxyParams...,
+	)
 
 	log.Info("deployed proxy contract", "address", proxyAddress.Hex())
 
@@ -260,6 +275,10 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 
 	handler.TokensRegistry.RegisterEthAddressAndContract(params.AbstractTokenIdentifier, erc20Address, erc20ContractInstance)
 
+	if params.PreventWhitelist {
+		return
+	}
+
 	// whitelist eth token
 	auth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
 	tx, err := handler.SafeContract.WhitelistToken(
@@ -278,11 +297,20 @@ func (handler *EthereumHandler) IssueAndWhitelistToken(ctx context.Context, para
 	handler.checkEthTxResult(ctx, tx.Hash())
 
 	if len(params.InitialSupplyValue) > 0 {
-		if params.IsMintBurnOnEth {
-			mintAmount, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
-			require.True(handler, ok)
+		initialSupply, ok := big.NewInt(0).SetString(params.InitialSupplyValue, 10)
+		require.True(handler, ok)
 
-			tx, err = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, mintAmount, zeroValueBigInt)
+		if params.IsMintBurnOnEth {
+			mintAmount := big.NewInt(0)
+			burnAmount := big.NewInt(0)
+
+			if params.IsNativeOnEth {
+				burnAmount = initialSupply
+			} else {
+				mintAmount = initialSupply
+			}
+
+			tx, err = handler.SafeContract.InitSupplyMintBurn(auth, erc20Address, mintAmount, burnAmount)
 			require.NoError(handler, err)
 			handler.SimulatedChain.Commit()
 			handler.checkEthTxResult(ctx, tx.Hash())
@@ -300,8 +328,8 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 	if params.IsMintBurnOnEth {
 		ethMintBurnAddress := handler.DeployUpgradeableContract(
 			ctx,
-			mintBurnERC20ABI,
-			mintBurnERC20Bytecode,
+			normalizePathToRelayersTests(mintBurnERC20ABI),
+			normalizePathToRelayersTests(mintBurnERC20Bytecode),
 			params.EthTokenName,
 			params.EthTokenSymbol,
 			params.NumOfDecimalsChainSpecific,
@@ -339,21 +367,14 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 		require.NoError(handler, err)
 		require.Equal(handler, mintAmount.String(), balance.String())
 
-		if params.IsNativeOnEth {
-			tx, err = ethMintBurnContract.Mint(auth, handler.TestKeys.EthAddress, mintAmount)
-			require.NoError(handler, err)
-			handler.SimulatedChain.Commit()
-			handler.checkEthTxResult(ctx, tx.Hash())
-		}
-
 		return ethMintBurnAddress, ethMintBurnContract
 	}
 
 	// deploy generic eth token
 	ethGenericTokenAddress := handler.DeployContract(
 		ctx,
-		genericERC20ABI,
-		genericERC20Bytecode,
+		normalizePathToRelayersTests(genericERC20ABI),
+		normalizePathToRelayersTests(genericERC20Bytecode),
 		params.EthTokenName,
 		params.EthTokenSymbol,
 		params.NumOfDecimalsChainSpecific,
@@ -362,8 +383,8 @@ func (handler *EthereumHandler) deployTestERC20Contract(ctx context.Context, par
 	ethGenericTokenContract, err := contract.NewGenericERC20(ethGenericTokenAddress, handler.SimulatedChain.Client())
 	require.NoError(handler, err)
 
-	// mint the address that will create the transfers
-	handler.mintTokens(ctx, ethGenericTokenContract, params.ValueToMintOnEth, handler.TestKeys.EthAddress)
+	// mint to the depositor
+	handler.mintTokens(ctx, ethGenericTokenContract, params.ValueToMintOnEth, handler.DepositorKeys.EthAddress)
 	if len(params.InitialSupplyValue) > 0 {
 		handler.mintTokens(ctx, ethGenericTokenContract, params.InitialSupplyValue, handler.SafeAddress)
 	}
@@ -392,97 +413,113 @@ func (handler *EthereumHandler) mintTokens(
 	require.Equal(handler, mintAmount.String(), balance.String())
 }
 
-// CreateBatchOnEthereum will create a batch on Ethereum using the provided tokens parameters list
-func (handler *EthereumHandler) CreateBatchOnEthereum(
+// ApproveForToken will approve the spender to spend the amount of tokens on the behalf of the approver
+func (handler *EthereumHandler) ApproveForToken(
 	ctx context.Context,
-	mvxTestCallerAddress core.AddressHandler,
-	tokensParams ...TestTokenParams,
+	token *TokenData,
+	approver KeysHolder,
+	spender common.Address,
+	amount *big.Int,
 ) {
-	for _, params := range tokensParams {
-		handler.createDepositsOnEthereumForToken(ctx, params, handler.TestKeys.EthSK, mvxTestCallerAddress)
+	auth, _ := bind.NewKeyedTransactorWithChainID(approver.EthSK, handler.ChainID)
+	tx, err := token.EthErc20Contract.Approve(auth, spender, amount)
+	require.NoError(handler, err)
+	handler.SimulatedChain.Commit()
+	handler.checkEthTxResult(ctx, tx.Hash())
+}
+
+// SendDepositTransactionFromEthereum will send a deposit transaction from Ethereum to MultiversX
+func (handler *EthereumHandler) SendDepositTransactionFromEthereum(
+	ctx context.Context,
+	from KeysHolder,
+	to KeysHolder,
+	targetSCAddress core.AddressHandler,
+	token *TokenData,
+	operation TokenOperations,
+) {
+	if operation.ValueToTransferToMvx == nil {
+		return
 	}
 
-	// wait until batch is settled
+	auth, _ := bind.NewKeyedTransactorWithChainID(from.EthSK, handler.ChainID)
+
+	var tx *types.Transaction
+	var err error
+	if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
+		tx, err = handler.SafeContract.DepositWithSCExecution(
+			auth,
+			token.EthErc20Address,
+			operation.ValueToTransferToMvx,
+			targetSCAddress.AddressSlice(),
+			operation.MvxSCCallData,
+		)
+	} else {
+		tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, to.MvxAddress.AddressSlice())
+	}
+
+	if operation.IsFaultyDeposit {
+		require.NotNil(handler, err)
+		return
+	}
+	require.NoError(handler, err)
+	handler.SimulatedChain.Commit()
+	handler.checkEthTxResult(ctx, tx.Hash())
+}
+
+// SettleBatchOnEthereum commits as many blocks as needed to settle the batch on Ethereum
+func (handler *EthereumHandler) SettleBatchOnEthereum() {
 	batchSettleLimit, _ := handler.SafeContract.BatchSettleLimit(nil)
 	for i := uint8(0); i < batchSettleLimit+1; i++ {
 		handler.SimulatedChain.Commit()
 	}
 }
 
-func (handler *EthereumHandler) createDepositsOnEthereumForToken(
+// TransferToken will transfer the amount of tokens from one address to another
+func (handler *EthereumHandler) TransferToken(
 	ctx context.Context,
 	params TestTokenParams,
-	from *ecdsa.PrivateKey,
-	mvxTestCallerAddress core.AddressHandler,
+	from KeysHolder,
+	to KeysHolder,
+	amount *big.Int,
 ) {
-	// add allowance for the sender
-	auth, _ := bind.NewKeyedTransactorWithChainID(from, handler.ChainID)
+	tkData := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
 
-	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
-	require.NotNil(handler, token)
-	require.NotNil(handler, token.EthErc20Contract)
-
-	allowanceValue := big.NewInt(0)
-	for _, operation := range params.TestOperations {
-		if operation.ValueToTransferToMvx == nil {
-			continue
-		}
-
-		allowanceValue.Add(allowanceValue, operation.ValueToTransferToMvx)
-	}
-
-	if allowanceValue.Cmp(zeroValueBigInt) > 0 {
-		tx, err := token.EthErc20Contract.Approve(auth, handler.SafeAddress, allowanceValue)
-		require.NoError(handler, err)
-		handler.SimulatedChain.Commit()
-		handler.checkEthTxResult(ctx, tx.Hash())
-	}
-
-	var err error
-	for _, operation := range params.TestOperations {
-		if operation.ValueToTransferToMvx == nil {
-			continue
-		}
-
-		var tx *types.Transaction
-		if len(operation.MvxSCCallData) > 0 || operation.MvxForceSCCall {
-			tx, err = handler.SafeContract.DepositWithSCExecution(
-				auth,
-				token.EthErc20Address,
-				operation.ValueToTransferToMvx,
-				mvxTestCallerAddress.AddressSlice(),
-				operation.MvxSCCallData,
-			)
-		} else {
-			tx, err = handler.SafeContract.Deposit(auth, token.EthErc20Address, operation.ValueToTransferToMvx, handler.TestKeys.MvxAddress.AddressSlice())
-		}
-
-		require.NoError(handler, err)
-		handler.SimulatedChain.Commit()
-		handler.checkEthTxResult(ctx, tx.Hash())
-	}
+	auth, _ := bind.NewKeyedTransactorWithChainID(from.EthSK, handler.ChainID)
+	tx, err := tkData.EthErc20Contract.Transfer(auth, to.EthAddress, amount)
+	require.NoError(handler, err)
+	handler.SimulatedChain.Commit()
+	handler.checkEthTxResult(ctx, tx.Hash())
 }
 
-// SendFromEthereumToMultiversX will create the deposit transactions on the Ethereum side
-func (handler *EthereumHandler) SendFromEthereumToMultiversX(
-	ctx context.Context,
-	mvxTestCallerAddress core.AddressHandler,
-	tokensParams ...TestTokenParams,
-) {
-	for _, params := range tokensParams {
-		handler.createDepositsOnEthereumForToken(ctx, params, handler.TestKeys.EthSK, mvxTestCallerAddress)
-	}
+// GetTotalBalancesForToken will return the total locked balance for the provided token
+func (handler *EthereumHandler) GetTotalBalancesForToken(ctx context.Context, address common.Address) *big.Int {
+	opts := &bind.CallOpts{Context: ctx}
+	balance, err := handler.SafeContract.TotalBalances(opts, address)
+	require.NoError(handler, err)
+	return balance
 }
 
-// Mint will mint the provided token on Ethereum with the provided value on the behalf of the Depositor address
-func (handler *EthereumHandler) Mint(ctx context.Context, params TestTokenParams, valueToMint *big.Int) {
-	token := handler.TokensRegistry.GetTokenData(params.AbstractTokenIdentifier)
-	require.NotNil(handler, token)
-	require.NotNil(handler, token.EthErc20Contract)
+// GetBurnBalanceForToken will return burn balance for the provided token
+func (handler *EthereumHandler) GetBurnBalanceForToken(ctx context.Context, address common.Address) *big.Int {
+	opts := &bind.CallOpts{Context: ctx}
+	balance, err := handler.SafeContract.BurnBalances(opts, address)
+	require.NoError(handler, err)
+	return balance
+}
 
-	// mint erc20 token into eth safe
-	auth, _ := bind.NewKeyedTransactorWithChainID(handler.DepositorKeys.EthSK, handler.ChainID)
-	tx, err := token.EthErc20Contract.Mint(auth, handler.SafeAddress, valueToMint)
+// GetMintBalanceForToken will return mint balance for the provided token
+func (handler *EthereumHandler) GetMintBalanceForToken(ctx context.Context, address common.Address) *big.Int {
+	opts := &bind.CallOpts{Context: ctx}
+	balance, err := handler.SafeContract.MintBalances(opts, address)
+	require.NoError(handler, err)
+	return balance
+}
+
+// SetBatchSize will set a custom batch size
+func (handler *EthereumHandler) SetBatchSize(ctx context.Context, newBatchSize uint16) {
+	ownerAuth, _ := bind.NewKeyedTransactorWithChainID(handler.OwnerKeys.EthSK, handler.ChainID)
+
+	tx, err := handler.SafeContract.SetBatchSize(ownerAuth, newBatchSize)
 	require.NoError(handler, err)
 	handler.SimulatedChain.Commit()
 	handler.checkEthTxResult(ctx, tx.Hash())

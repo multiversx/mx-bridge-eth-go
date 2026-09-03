@@ -112,6 +112,9 @@ func CreateBridgeComponentsConfig(index int, workingDir string, gasStationURL st
 			"MultiversXToEthereum": stateMachineConfig,
 		},
 		Relayer: config.ConfigRelayer{
+			ExecutionParameters: config.ExecutionParametersConfig{
+				MaxNumCharactersForSCCalls: 1024,
+			},
 			Marshalizer: chainConfig.MarshalizerConfig{
 				Type:           "json",
 				SizeCheckDelta: 10,

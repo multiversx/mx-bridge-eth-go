@@ -10,7 +10,7 @@ import (
 var (
 	logLevel = cli.StringFlag{
 		Name: "log-level",
-		Usage: "This flag specifies the logger `level(s)`. It can contain multiple comma-separated value. For example" +
+		Usage: "This flag specifies the logger `level(s)`. It can contain multiple comma-separated values. For example" +
 			", if set to *:INFO the logs for all packages will have the INFO level. However, if set to *:INFO,api:DEBUG" +
 			" the logs for all packages will have the INFO level, excepting the api package which will receive a DEBUG" +
 			" log level.",
@@ -19,7 +19,7 @@ var (
 	// configurationFile defines a flag for the path to the main toml configuration file
 	configurationFile = cli.StringFlag{
 		Name: "config",
-		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contain the main " +
+		Usage: "The `" + filePathPlaceholder + "` for the main configuration file. This TOML file contains the main " +
 			"configurations such as monitored SC, gateway URL, timings and so on",
 		Value: "config/config.toml",
 	}
@@ -73,15 +73,15 @@ var (
 		Name:  "network-address",
 		Usage: "The network address (gateway) to be used. Example: 'https://testnet-explorer.multiversx.com'",
 	}
-	// scProxyBech32Address is the smart contract address used to interact with this tool
-	scProxyBech32Address = cli.StringFlag{
-		Name:  "sc-proxy-address",
-		Usage: "The smart contract address in bech32 format to interact with",
-	}
 	// privateKeyFile is the MultiversX private key file used to issue transaction for the SC calls
 	privateKeyFile = cli.StringFlag{
 		Name:  "private-key-file",
 		Usage: "The MultiversX private key file used to issue transaction for the SC calls",
+	}
+	// scProxyAddresses is the MultiversX SC addresses to be monitored
+	scProxyAddresses = cli.StringFlag{
+		Name:  "sc-proxy-addresses",
+		Usage: "The MultiversX SC addresses to be monitored separated by comma. Example: '--sc-proxy-addresses erd1qqqqqqqqqqqqqpgqzyuaqg3dl7rqlkudrsnm5ek0j3a97qevd8sszj0glf,erd1qqqqqqqqqqqqqpgqtvnswnzxxz8susupesys0hvg7q2z5nawrcjq06qdus'",
 	}
 )
 
@@ -96,8 +96,8 @@ func getFlags() []cli.Flag {
 		profileMode,
 		restApiInterface,
 		networkAddress,
-		scProxyBech32Address,
 		privateKeyFile,
+		scProxyAddresses,
 	}
 }
 func getFlagsConfig(ctx *cli.Context) config.ContextFlagsConfig {

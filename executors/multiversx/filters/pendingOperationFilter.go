@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/multiversx/mx-bridge-eth-go/config"
-	"github.com/multiversx/mx-bridge-eth-go/parsers"
+	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-sdk-go/data"
@@ -173,7 +173,7 @@ func checkEthItemValid(item string) error {
 }
 
 // ShouldExecute returns true if the To, From or token are not denied and allowed
-func (filter *pendingOperationFilter) ShouldExecute(callData parsers.ProxySCCompleteCallData) bool {
+func (filter *pendingOperationFilter) ShouldExecute(callData core.ProxySCCompleteCallData) bool {
 	if check.IfNil(callData.To) {
 		return false
 	}

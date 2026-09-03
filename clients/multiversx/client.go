@@ -317,12 +317,25 @@ func (c *client) ProposeSetStatus(ctx context.Context, batch *bridgeCore.Transfe
 	}
 
 	gasLimit := c.gasMapConfig.ProposeStatusBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeStatusForEach
-	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
+	hash, err := c.sendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
 		c.log.Info("proposed set statuses "+batch.String(), "transaction hash", hash)
 	}
 
 	return hash, err
+}
+
+func (c *client) sendTransactionReturnHash(ctx context.Context, builder builders.TxDataBuilder, gasLimit uint64) (string, error) {
+	if gasLimit > c.gasMapConfig.AbsoluteMaxGasLimit {
+		dataString, _ := builder.ToDataString()
+		c.log.Warn("found a transaction that would have exceeded the maximum gas limit value",
+			"provided gas limit", gasLimit, "trimmed to", c.gasMapConfig.AbsoluteMaxGasLimit,
+			"transaction data", dataString)
+
+		gasLimit = c.gasMapConfig.AbsoluteMaxGasLimit
+	}
+
+	return c.txHandler.SendTransactionReturnHash(ctx, builder, gasLimit)
 }
 
 // ProposeTransfer will trigger the propose transfer operation
@@ -350,7 +363,7 @@ func (c *client) ProposeTransfer(ctx context.Context, batch *bridgeCore.Transfer
 	gasLimit := c.gasMapConfig.ProposeTransferBase + uint64(len(batch.Deposits))*c.gasMapConfig.ProposeTransferForEach
 	extraGasForScCalls := c.computeExtraGasForSCCallsBasic(batch, false)
 	gasLimit += extraGasForScCalls
-	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
+	hash, err := c.sendTransactionReturnHash(ctx, txBuilder, gasLimit)
 	if err == nil {
 		c.log.Info("proposed transfer "+batch.String(), "transaction hash", hash)
 	}
@@ -367,7 +380,7 @@ func (c *client) Sign(ctx context.Context, actionID uint64) (string, error) {
 
 	txBuilder := c.createCommonTxDataBuilder(signFuncName, int64(actionID))
 
-	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.Sign)
+	hash, err := c.sendTransactionReturnHash(ctx, txBuilder, c.gasMapConfig.Sign)
 	if err == nil {
 		c.log.Info("signed", "action ID", actionID, "transaction hash", hash)
 	}
@@ -390,7 +403,7 @@ func (c *client) PerformAction(ctx context.Context, actionID uint64, batch *brid
 
 	gasLimit := c.gasMapConfig.PerformActionBase + uint64(len(batch.Statuses))*c.gasMapConfig.PerformActionForEach
 	gasLimit += c.computeExtraGasForSCCallsBasic(batch, true)
-	hash, err := c.txHandler.SendTransactionReturnHash(ctx, txBuilder, gasLimit)
+	hash, err := c.sendTransactionReturnHash(ctx, txBuilder, gasLimit)
 
 	if err == nil {
 		c.log.Info("performed action", "actionID", actionID, "transaction hash", hash)

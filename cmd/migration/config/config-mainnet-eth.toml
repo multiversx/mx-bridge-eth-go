@@ -4,7 +4,7 @@
     PrivateKeyFile = "keys/ethereum.sk" # the path to the file containing the relayer eth private key
     MultisigContractAddress = "0x1Ff78EB04d44a803E73c44FEf8790c5cAbD14596"
     SafeContractAddress = "0x92A26975433A61CF1134802586aa669bAB8B69f3"
-    GasLimitBase = 350000
+    GasLimitBase = 400000
     GasLimitForEach = 30000
     [Eth.GasStation]
         Enabled = true

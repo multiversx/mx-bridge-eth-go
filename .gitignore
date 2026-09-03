@@ -32,3 +32,6 @@ cache
 artifacts
 
 /cmd/cmd
+
+# default config directory & files that will be used by the app
+cmd/scCallsExecutor/config/*.toml
