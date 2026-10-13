@@ -2,6 +2,7 @@ package ethereum
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sync"
@@ -252,6 +253,8 @@ func (c *client) BroadcastSignatureForMessageHash(msgHash common.Hash) {
 		return
 	}
 
+	c.log.Info("broadcasting own signature", "msg hash", msgHash, "signer", c.cryptoHandler.GetAddress(),
+		"signature", hex.EncodeToString(signature))
 	c.broadcaster.BroadcastSignature(signature, msgHash.Bytes())
 }
 

@@ -24,6 +24,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/clients/roleProviders"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/core"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchRedirect"
 	"github.com/multiversx/mx-bridge-eth-go/core/converters"
 	"github.com/multiversx/mx-bridge-eth-go/core/timer"
 	"github.com/multiversx/mx-bridge-eth-go/p2p"
@@ -519,6 +520,11 @@ func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXBridg
 		return err
 	}
 
+	batchRedirector, err := batchRedirect.NewRedirector(args.Configs.GeneralConfig.Eth.RedirectRecoveryAddress)
+	if err != nil {
+		return err
+	}
+
 	argsBridgeExecutor := ethmultiversx.ArgsBridgeExecutor{
 		Log:                          log,
 		TopologyProvider:             topologyHandler,
@@ -531,6 +537,7 @@ func (components *ethMultiversXBridgeComponents) createEthereumToMultiversXBridg
 		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:     args.Configs.GeneralConfig.MultiversX.MaxRetriesOnWasTransferProposed,
+		BatchRedirector:              batchRedirector,
 	}
 
 	bridge, err := ethmultiversx.NewBridgeExecutor(argsBridgeExecutor)
@@ -587,6 +594,11 @@ func (components *ethMultiversXBridgeComponents) createMultiversXToEthereumBridg
 		return err
 	}
 
+	batchRedirector, err := batchRedirect.NewRedirector(args.Configs.GeneralConfig.Eth.RedirectRecoveryAddress)
+	if err != nil {
+		return err
+	}
+
 	argsBridgeExecutor := ethmultiversx.ArgsBridgeExecutor{
 		Log:                          log,
 		TopologyProvider:             topologyHandler,
@@ -599,6 +611,7 @@ func (components *ethMultiversXBridgeComponents) createMultiversXToEthereumBridg
 		MaxQuorumRetriesOnEthereum:   args.Configs.GeneralConfig.Eth.MaxRetriesOnQuorumReached,
 		MaxQuorumRetriesOnMultiversX: args.Configs.GeneralConfig.MultiversX.MaxRetriesOnQuorumReached,
 		MaxRestriesOnWasProposed:     args.Configs.GeneralConfig.MultiversX.MaxRetriesOnWasTransferProposed,
+		BatchRedirector:              batchRedirector,
 	}
 
 	bridge, err := ethmultiversx.NewBridgeExecutor(argsBridgeExecutor)

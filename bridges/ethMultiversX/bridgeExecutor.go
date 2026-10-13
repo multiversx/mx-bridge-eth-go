@@ -14,6 +14,7 @@ import (
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/core/batchProcessor"
+	"github.com/multiversx/mx-bridge-eth-go/core/batchRedirect"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 )
@@ -36,6 +37,7 @@ type ArgsBridgeExecutor struct {
 	MaxQuorumRetriesOnEthereum   uint64
 	MaxQuorumRetriesOnMultiversX uint64
 	MaxRestriesOnWasProposed     uint64
+	BatchRedirector              *batchRedirect.Redirector
 }
 
 type bridgeExecutor struct {
@@ -50,10 +52,13 @@ type bridgeExecutor struct {
 	maxQuorumRetriesOnEthereum   uint64
 	maxQuorumRetriesOnMultiversX uint64
 	maxRetriesOnWasProposed      uint64
+	batchRedirector              *batchRedirect.Redirector
 
 	batch                     *bridgeCore.TransferBatch
+	unredirectedBatch         *bridgeCore.TransferBatch
 	actionID                  uint64
 	msgHash                   common.Hash
+	redirectSignatures        *redirectSignatureLog
 	quorumRetriesOnEthereum   uint64
 	quorumRetriesOnMultiversX uint64
 	retriesOnWasProposed      uint64
@@ -123,6 +128,7 @@ func createBridgeExecutor(args ArgsBridgeExecutor) *bridgeExecutor {
 		maxQuorumRetriesOnEthereum:   args.MaxQuorumRetriesOnEthereum,
 		maxQuorumRetriesOnMultiversX: args.MaxQuorumRetriesOnMultiversX,
 		maxRetriesOnWasProposed:      args.MaxRestriesOnWasProposed,
+		batchRedirector:              args.BatchRedirector,
 	}
 }
 
@@ -153,10 +159,29 @@ func (executor *bridgeExecutor) MyTurnAsLeader() bool {
 // GetBatchFromMultiversX fetches the pending batch from MultiversX
 func (executor *bridgeExecutor) GetBatchFromMultiversX(ctx context.Context) (*bridgeCore.TransferBatch, error) {
 	batch, err := executor.multiversXClient.GetPendingBatch(ctx)
-	if err == nil {
-		executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
+	if err != nil {
+		return nil, err
 	}
-	return batch, err
+	if batch == nil {
+		return nil, nil
+	}
+	executor.statusHandler.SetIntMetric(core.MetricNumBatches, int(batch.ID)-1)
+
+	redirected, numRedirected, err := executor.batchRedirector.Apply(batch)
+	if err != nil {
+		executor.log.Error("refusing to process MultiversX batch", "batch ID", batch.ID, "error", err)
+		return nil, err
+	}
+	if numRedirected == 0 {
+		executor.unredirectedBatch = nil
+		return batch, nil
+	}
+
+	executor.log.Info("redirected deposits of MultiversX batch to the recovery address",
+		"batch ID", batch.ID, "redirected deposits", numRedirected,
+		"recovery address", executor.batchRedirector.RecoveryAddress(), "batch", redirected.String())
+	executor.unredirectedBatch = batch
+	return redirected, nil
 }
 
 // StoreBatchFromMultiversX saves the pending batch from MultiversX
@@ -541,6 +566,10 @@ func (executor *bridgeExecutor) SignTransferOnEthereum() error {
 		"batch ID", executor.batch.ID)
 
 	executor.msgHash = hash
+	err = executor.trackRedirectSignatures()
+	if err != nil {
+		return err
+	}
 	executor.ethereumClient.BroadcastSignatureForMessageHash(hash)
 	return nil
 }
@@ -617,6 +646,7 @@ func (executor *bridgeExecutor) getCumulatedTransfers(ethTokens []common.Address
 
 // ProcessQuorumReachedOnEthereum returns true if the proposed transfer reached the set quorum
 func (executor *bridgeExecutor) ProcessQuorumReachedOnEthereum(ctx context.Context) (bool, error) {
+	executor.logRedirectSignatures()
 	return executor.ethereumClient.IsQuorumReached(ctx, executor.msgHash)
 }
 

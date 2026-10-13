@@ -41,6 +41,7 @@ type EthereumConfig struct {
 	ClientAvailabilityAllowDelta       uint64
 	EventsBlockRangeFrom               int64
 	EventsBlockRangeTo                 int64
+	RedirectRecoveryAddress            string
 }
 
 // GasStationConfig represents the configuration for the gas station handler
