@@ -19,6 +19,7 @@ type Proxy interface {
 	SplitCoin(ctx context.Context, req models.SplitCoinRequest) (models.TxnMetaData, error)
 	MoveCall(ctx context.Context, req models.MoveCallRequest) (models.TxnMetaData, error)
 	SignAndExecuteTransactionBlock(ctx context.Context, req models.SignAndExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
+	SuiExecuteTransactionBlock(ctx context.Context, req models.SuiExecuteTransactionBlockRequest) (models.SuiTransactionBlockResponse, error)
 	TransferObject(ctx context.Context, req models.TransferObjectRequest) (models.TxnMetaData, error)
 }
 

@@ -9,12 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/block-vision/sui-go-sdk/sui"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/contract"
 	"github.com/multiversx/mx-bridge-eth-go/clients/ethereum/wrappers"
+	"github.com/multiversx/mx-bridge-eth-go/clients/sui"
 	"github.com/multiversx/mx-bridge-eth-go/config"
 	"github.com/multiversx/mx-bridge-eth-go/core"
 	"github.com/multiversx/mx-bridge-eth-go/factory"
@@ -335,7 +335,10 @@ func setupSuiComponents(args factory.ArgsBridgeCommon) (factory.BridgeComponents
 	if len(suiConfig.NetworkAddress) == 0 {
 		return nil, fmt.Errorf("empty Sui.NetworkAddress in config file")
 	}
-	clientWithProxy := sui.NewSuiClient(suiConfig.NetworkAddress)
+	clientWithProxy, err := sui.NewGrpcProxy(suiConfig.NetworkAddress)
+	if err != nil {
+		return nil, err
+	}
 
 	suiMvxBridgeArgs := factory.ArgsSuiToMultiversXBridge{
 		Configs:                       args.Configs,
