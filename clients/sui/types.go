@@ -29,7 +29,7 @@ type TokenTransferGroup struct {
 	Recipients []models.SuiAddressBytes
 	Amounts    []uint64
 	Nonces     []uint64
-	Signatures [][96]byte
+	Signatures [][]byte
 }
 
 // InspectResult represents the result of inspecting a transaction block

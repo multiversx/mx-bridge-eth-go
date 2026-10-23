@@ -456,7 +456,7 @@ func (c *client) processSignaturesOfRelayers(tokenGroups map[string]*TokenTransf
 			}
 
 			sig := [signatureLength]byte(_bytes[signatureSchemePrefixSize:]) // remove the signature scheme byte
-			tokenGroups[sortedTokenTypes[i]].Signatures = append(tokenGroups[sortedTokenTypes[i]].Signatures, sig)
+			tokenGroups[sortedTokenTypes[i]].Signatures = append(tokenGroups[sortedTokenTypes[i]].Signatures, sig[:])
 		}
 	}
 
