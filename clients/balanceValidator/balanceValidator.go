@@ -173,40 +173,14 @@ func (validator *balanceValidator) computeEthAmount(
 		return nil, err
 	}
 
-	if !isMintBurn {
-		// we need to subtract all locked balances on the Ethereum side (all pending, un-executed batches) so the balances
-		// with the minted MultiversX tokens will match
-		total, errTotal := validator.peerChainClient.TotalBalances(ctx, token)
-		if errTotal != nil {
-			return nil, errTotal
-		}
-
-		return total.Sub(total, ethAmountInPendingBatches), nil
+	// we need to subtract all locked balances on the Ethereum side (all pending, un-executed batches) so the balances
+	// with the minted MultiversX tokens will match
+	total, errTotal := validator.peerChainClient.TotalBalances(ctx, token)
+	if errTotal != nil {
+		return nil, errTotal
 	}
 
-	burnBalances, err := validator.peerChainClient.BurnBalances(ctx, token)
-	if err != nil {
-		return nil, err
-	}
-	mintBalances, err := validator.peerChainClient.MintBalances(ctx, token)
-	if err != nil {
-		return nil, err
-	}
-
-	// we need to cancel out what was burned in advance when the deposit was registered in the contract
-	burnBalances.Sub(burnBalances, ethAmountInPendingBatches)
-
-	var ethAmount *big.Int
-	if isNative {
-		ethAmount = big.NewInt(0).Sub(burnBalances, mintBalances)
-	} else {
-		ethAmount = big.NewInt(0).Sub(mintBalances, burnBalances)
-	}
-
-	if ethAmount.Cmp(big.NewInt(0)) < 0 {
-		return big.NewInt(0), fmt.Errorf("%w, ethAmount: %s", ErrNegativeAmount, ethAmount.String())
-	}
-	return ethAmount, nil
+	return total.Sub(total, ethAmountInPendingBatches), nil
 }
 
 func (validator *balanceValidator) computeMvxAmount(

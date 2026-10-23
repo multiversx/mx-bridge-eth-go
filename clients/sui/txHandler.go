@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/block-vision/sui-go-sdk/signer"
-	"github.com/block-vision/sui-go-sdk/sui"
 	"github.com/block-vision/sui-go-sdk/transaction"
 	bridgeCore "github.com/multiversx/mx-bridge-eth-go/core"
 	chainCore "github.com/multiversx/mx-chain-core-go/core"
@@ -23,7 +22,7 @@ type ArgsTxHandler struct {
 }
 
 type transactionHandler struct {
-	suiCli    *sui.Client
+	proxy     Proxy
 	signer    *signer.Signer
 	gasPrice  uint64
 	gasBudget uint64
@@ -31,13 +30,12 @@ type transactionHandler struct {
 }
 
 func NewTransactionHandler(args ArgsTxHandler) (*transactionHandler, error) {
-	cli, ok := args.Proxy.(*sui.Client)
-	if !ok {
-		return nil, errInvalidProxyType
+	if args.Proxy == nil {
+		return nil, errNilProxy
 	}
 
 	return &transactionHandler{
-		suiCli:    cli,
+		proxy:     args.Proxy,
 		signer:    args.Signer,
 		gasPrice:  args.GasPrice,
 		gasBudget: args.GasBudget,
@@ -51,8 +49,7 @@ func (txHandler *transactionHandler) SendTransactionReturnHash(
 	calls []bridgeCore.SuiPTBOperation,
 ) (string, error) {
 	tx := transaction.NewTransaction()
-	tx.SetSuiClient(txHandler.suiCli).
-		SetSigner(txHandler.signer).
+	tx.SetSigner(txHandler.signer).
 		SetSender(models.SuiAddress(txHandler.signer.Address)).
 		SetGasPrice(txHandler.gasPrice).
 		SetGasBudget(txHandler.gasBudget).
@@ -64,11 +61,16 @@ func (txHandler *transactionHandler) SendTransactionReturnHash(
 		tx.MoveCall(call.Package, call.Module, call.Function, call.TypeTags, args)
 	}
 
-	resp, err := tx.Execute(
+	req, err := tx.ToSuiExecuteTransactionBlockRequest(
 		ctx,
 		models.SuiTransactionBlockOptions{ShowEffects: true},
 		waitForLocalExecution,
 	)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := txHandler.proxy.SuiExecuteTransactionBlock(ctx, *req)
 	if err != nil {
 		return "", err
 	}

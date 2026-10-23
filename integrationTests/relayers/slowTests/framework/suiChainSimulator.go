@@ -1,10 +1,14 @@
 package framework
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/block-vision/sui-go-sdk/models"
@@ -85,13 +89,24 @@ func (s *suiChainSimulatorWrapper) GetTokenBalance(ctx context.Context, owner st
 	})
 	require.NoError(s, err)
 
+	log.Info("GetTokenBalance", "owner", owner, "tokenType", tokenType, "numObjects", len(resp.Data))
 	totalBalance := big.NewInt(0)
 
 	for _, obj := range resp.Data {
-		if obj.Data == nil || obj.Data.Content == nil {
+		if obj.Data == nil {
+			continue
+		}
+		log.Info("GetTokenBalance object", "type", obj.Data.Type, "objectId", obj.Data.ObjectId)
+		if obj.Data.Content == nil {
 			continue
 		}
 		balanceStr, ok := obj.Data.Content.Fields["balance"].(string)
+		if !ok {
+			// Token<T> stores balance as Balance<T> struct {"value": "..."}, not a plain string
+			if balanceMap, ok2 := obj.Data.Content.Fields["balance"].(map[string]interface{}); ok2 {
+				balanceStr, ok = balanceMap["value"].(string)
+			}
+		}
 		if !ok {
 			continue
 		}
@@ -170,6 +185,59 @@ func (s *suiChainSimulatorWrapper) GenerateBlocks(ctx context.Context, numBlocks
 		require.NoError(s, err)
 		require.Equal(s, "success", resp.Effects.Status.Status)
 	}
+}
+
+// BuildAndPublish compiles a Move package locally (no network) and publishes via JSON-RPC.
+// This avoids the gRPC transport issue where sui client publish uses gRPC but the local
+// test node only exposes JSON-RPC on port 9000.
+func (s *suiChainSimulatorWrapper) BuildAndPublish(ctx context.Context, packageDir string, signer KeysHolder) models.SuiTransactionBlockResponse {
+	// Build step: purely local compilation, no network needed.
+	// SUI_CONFIG_DIR points to a temp dir with a minimal client.yaml so the CLI doesn't
+	// create one interactively. We keep the real HOME so ~/.move package cache is reused.
+	tmpCfg, err := os.MkdirTemp("", "sui-cfg-*")
+	require.NoError(s, err)
+	defer func() { _ = os.RemoveAll(tmpCfg) }()
+
+	keystorePath := tmpCfg + "/sui.keystore"
+	err = os.WriteFile(keystorePath, []byte("[]"), 0600)
+	require.NoError(s, err)
+	clientYaml := fmt.Sprintf("---\nkeystore:\n  File: %s\nenvs:\n  - alias: testnet\n    rpc: \"%s\"\n    ws: ~\n    basic_auth: ~\nactive_env: testnet\nactive_address: \"0x0000000000000000000000000000000000000000000000000000000000000000\"\n", keystorePath, networkUrl)
+	err = os.WriteFile(tmpCfg+"/client.yaml", []byte(clientYaml), 0600)
+	require.NoError(s, err)
+
+	var stdout, stderr bytes.Buffer
+	cmd := exec.CommandContext(ctx, "sui", "move", "build",
+		"--dump-bytecode-as-base64", "--no-tree-shaking")
+	cmd.Dir = packageDir
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	// SUI_CONFIG_DIR overrides config location; keep HOME so ~/.move cache is available
+	cmd.Env = append(os.Environ(), "SUI_CONFIG_DIR="+tmpCfg)
+
+	err = cmd.Run()
+	require.NoError(s, err, "sui move build failed.\nstdout: %s\nstderr: %s", stdout.String(), stderr.String())
+
+	// Parse the JSON build output. The build progress/warnings go to stderr;
+	// only the JSON is on stdout.
+	var buildResult struct {
+		Modules      []string `json:"modules"`
+		Dependencies []string `json:"dependencies"`
+	}
+	rawJSON := stdout.Bytes()
+	if idx := bytes.IndexByte(rawJSON, '{'); idx > 0 {
+		rawJSON = rawJSON[idx:]
+	}
+	err = json.Unmarshal(rawJSON, &buildResult)
+	require.NoError(s, err, "failed to parse sui move build JSON output: %s", stdout.String())
+	require.NotEmpty(s, buildResult.Modules, "sui move build returned no modules")
+
+	// Publish step: submit via JSON-RPC (the Go SDK path), bypassing gRPC.
+	return s.PublishPackage(ctx, models.PublishRequest{
+		Sender:          string(signer.SuiAddress),
+		CompiledModules: buildResult.Modules,
+		Dependencies:    buildResult.Dependencies,
+		GasBudget:       "500000000",
+	}, signer)
 }
 
 func (s *suiChainSimulatorWrapper) signAndExecuteTxReturnResult(

@@ -77,6 +77,13 @@ type SuiTokenInfo struct {
 	TreasuryId     string
 	CoinMetadataId string
 	IsLocked       bool
+	IsMintBurn     bool
+}
+
+// SuiMintBurnAdapterInfo holds runtime info for a deployed mint-burn adapter token.
+type SuiMintBurnAdapterInfo struct {
+	XmnTreasuryId                   string
+	XmnTreasuryInitialSharedVersion uint64
 }
 
 type ChainType string

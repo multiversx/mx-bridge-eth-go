@@ -139,6 +139,7 @@ func (setup *TestSetup) StartRelayersAndScModule() {
 			handler.BridgeInitialSharedVersion,
 			handler.SafeInitialSharedVersion,
 			handler.TreasuryInitialSharedVersion,
+			handler.buildTokenAdapterConfigs(),
 		)
 	default:
 		panic(fmt.Sprintf("unsupported peer chain handler type: %T", handler))
