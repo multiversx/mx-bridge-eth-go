@@ -3,6 +3,7 @@
 package relayers
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"math/big"
@@ -30,8 +31,9 @@ const (
 )
 
 var (
-	redirectedRecipientAddress = common.HexToAddress("0x717fb1435f5fa0cc1c7e541e5d92ef71342fcd41")
-	bscUsdcAddress             = common.HexToAddress("0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d")
+	redirectedRecipientAddress          = common.HexToAddress("0x717fb1435f5fa0cc1c7e541e5d92ef71342fcd41")
+	batch6185RedirectedRecipientAddress = common.HexToAddress("0x3099ba48d4daf3fad0b874b40f1bb55f8a6b4107")
+	bscUsdcAddress                      = common.HexToAddress("0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d")
 )
 
 func mainnetBatch5956Deposits(t *testing.T) []mock.MultiversXDeposit {
@@ -45,6 +47,28 @@ func mainnetBatch5956Deposits(t *testing.T) []mock.MultiversXDeposit {
 	}
 }
 
+var batch6185OtherRecipients = []common.Address{
+	common.HexToAddress("0x7f341040a9708bdbbecffa1ac997653447bdbe1b"),
+	common.HexToAddress("0x86a3dc5b726b513af1e1e630e39987c19b68379a"),
+}
+
+func mainnetBatch6185UsdcDeposits(t *testing.T) []mock.MultiversXDeposit {
+	redirectedSender, err := sdkData.NewAddressFromBech32String("erd168swpgnf4ecqg58gmk395n33mfs4fuap7h36md8lawzkat68kggqngyvpm")
+	require.Nil(t, err)
+	otherSender := sdkData.NewAddressFromBytes(bytes.Repeat([]byte{0x11}, 32))
+	amount := func(value string) *big.Int {
+		result, ok := big.NewInt(0).SetString(value, 10)
+		require.True(t, ok)
+		return result
+	}
+
+	return []mock.MultiversXDeposit{
+		{From: redirectedSender, To: batch6185RedirectedRecipientAddress, Ticker: "BSCUSDC-887875", Amount: amount("8853225198000000000000"), DepositNonce: 7961},
+		{From: otherSender, To: batch6185OtherRecipients[0], Ticker: "BSCUSDC-887875", Amount: amount("120692637000000000000"), DepositNonce: 7962},
+		{From: otherSender, To: batch6185OtherRecipients[1], Ticker: "BSCUSDC-887875", Amount: amount("39000000000000000000"), DepositNonce: 7963},
+	}
+}
+
 type redirectScenarioResult struct {
 	ethereumChainMock   *mock.EthereumChainMock
 	multiversXChainMock *mock.MultiversXChainMock
@@ -53,8 +77,14 @@ type redirectScenarioResult struct {
 }
 
 func runBatch5956Scenario(t *testing.T, recoveryAddresses []string, timeout time.Duration) redirectScenarioResult {
-	deposits := mainnetBatch5956Deposits(t)
-	total := big.NewInt(0).Add(deposits[0].Amount, deposits[1].Amount)
+	return runRedirectScenario(t, 5956, mainnetBatch5956Deposits(t), recoveryAddresses, timeout)
+}
+
+func runRedirectScenario(t *testing.T, batchID int64, deposits []mock.MultiversXDeposit, recoveryAddresses []string, timeout time.Duration) redirectScenarioResult {
+	total := big.NewInt(0)
+	for _, deposit := range deposits {
+		total.Add(total, deposit.Amount)
+	}
 
 	safeContractEthAddress := testsCommon.CreateRandomEthereumAddress()
 	erc20ContractsHolder := createMockErc20ContractsHolder([]common.Address{bscUsdcAddress}, safeContractEthAddress, []*big.Int{total})
@@ -62,7 +92,7 @@ func runBatch5956Scenario(t *testing.T, recoveryAddresses []string, timeout time
 	numRelayers := len(recoveryAddresses)
 	ethereumChainMock := mock.NewEthereumChainMock()
 	ethereumChainMock.SetQuorum(numRelayers)
-	expectedStatuses := []byte{bridgeCore.Executed, bridgeCore.Executed}
+	expectedStatuses := bytes.Repeat([]byte{bridgeCore.Executed}, len(deposits))
 	ethereumChainMock.GetStatusesAfterExecutionHandler = func() ([]byte, bool) {
 		if callIsFromBalanceValidator() {
 			return expectedStatuses, false
@@ -80,7 +110,7 @@ func runBatch5956Scenario(t *testing.T, recoveryAddresses []string, timeout time
 
 	multiversXChainMock := mock.NewMultiversXChainMock()
 	multiversXChainMock.AddTokensPair(bscUsdcAddress, "BSCUSDC-887875", true, true, zero, zero, total)
-	multiversXChainMock.SetPendingBatch(&mock.MultiversXPendingBatch{Nonce: big.NewInt(5956), MultiversXDeposits: deposits})
+	multiversXChainMock.SetPendingBatch(&mock.MultiversXPendingBatch{Nonce: big.NewInt(batchID), MultiversXDeposits: deposits})
 	multiversXChainMock.SetQuorum(numRelayers)
 
 	result := redirectScenarioResult{ethereumChainMock: ethereumChainMock, multiversXChainMock: multiversXChainMock, processFinished: &atomic.Bool{}}
@@ -182,6 +212,54 @@ func TestRelayersDoNotExecuteBatch5956WhenRecoveryAddressesDiffer(t *testing.T) 
 	}
 
 	result := runBatch5956Scenario(t, []string{redirectRecoveryAddress, redirectRecoveryAddress, otherRecoveryAddress}, time.Second*120)
+	assert.False(t, result.processFinished.Load())
+	assert.Nil(t, result.ethereumChainMock.GetLastProposedTransfer())
+}
+
+func TestRelayersRedirectOnlyTheListedDepositOfMainnetBatch6185(t *testing.T) {
+	if testing.Short() {
+		t.Skip("this is not a short test")
+	}
+
+	deposits := mainnetBatch6185UsdcDeposits(t)
+	result := runRedirectScenario(t, 6185, deposits, []string{redirectRecoveryAddress, redirectRecoveryAddress, redirectRecoveryAddress}, time.Second*600)
+	require.True(t, result.processFinished.Load(), "set status on MultiversX was not performed")
+
+	transfer := result.ethereumChainMock.GetLastProposedTransfer()
+	require.NotNil(t, transfer)
+	assert.Equal(t, big.NewInt(6185), transfer.BatchNonce)
+	expectedRecipients := append([]common.Address{common.HexToAddress(redirectRecoveryAddress)}, batch6185OtherRecipients...)
+	assert.Equal(t, expectedRecipients, transfer.Recipients)
+	for i, deposit := range deposits {
+		assert.NotEqual(t, batch6185RedirectedRecipientAddress, transfer.Recipients[i])
+		assert.Equal(t, bscUsdcAddress, transfer.Tokens[i])
+		assert.Equal(t, deposit.Amount, transfer.Amounts[i])
+		assert.Equal(t, big.NewInt(0).SetUint64(deposit.DepositNonce), transfer.Nonces[i])
+	}
+
+	digest, err := ethereum.GenerateMessageHash(&batchProcessor.ArgListsBatch{
+		EthTokens:  transfer.Tokens,
+		Recipients: expectedRecipients,
+		Amounts:    []*big.Int{deposits[0].Amount, deposits[1].Amount, deposits[2].Amount},
+		Nonces:     []*big.Int{big.NewInt(7961), big.NewInt(7962), big.NewInt(7963)},
+	}, 6185)
+	require.Nil(t, err)
+	assert.Equal(t, "0x9a6996a5b282ef6de5d6935b85b684ee5ea2b6c291b000322bff430c2233dc8e", digest.Hex())
+	signers := make([]common.Address, 0, len(transfer.Signatures))
+	for _, signature := range transfer.Signatures {
+		publicKey, errRecover := crypto.SigToPub(digest.Bytes(), signature)
+		require.Nil(t, errRecover)
+		signers = append(signers, crypto.PubkeyToAddress(*publicKey))
+	}
+	assert.ElementsMatch(t, result.relayerEthAddresses, signers)
+}
+
+func TestRelayersDoNotExecuteBatch6185WhenARelayerHasNoRecoveryAddress(t *testing.T) {
+	if testing.Short() {
+		t.Skip("this is not a short test")
+	}
+
+	result := runRedirectScenario(t, 6185, mainnetBatch6185UsdcDeposits(t), []string{redirectRecoveryAddress, redirectRecoveryAddress, ""}, time.Second*120)
 	assert.False(t, result.processFinished.Load())
 	assert.Nil(t, result.ethereumChainMock.GetLastProposedTransfer())
 }

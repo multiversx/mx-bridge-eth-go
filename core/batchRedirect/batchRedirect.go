@@ -35,13 +35,17 @@ type Redirect struct {
 var (
 	redirectedSender    = mustDecodeHex("30adcf1257a0c227befca62f5d073b90a6c9875ee7e80e48ec0c3bbd5f622d13")
 	redirectedRecipient = mustDecodeHex("717fb1435f5fa0cc1c7e541e5d92ef71342fcd41")
+	batch6185Sender     = mustDecodeHex("d1e0e0a269ae700450e8dda25a4e31da6154f3a1f5e3adb4ffeb856eaf47b210")
+	batch6185Recipient  = mustDecodeHex("3099ba48d4daf3fad0b874b40f1bb55f8a6b4107")
 	usdcUnit            = big.NewInt(0).Exp(big.NewInt(10), big.NewInt(18), nil)
+	usdcMicroUnit       = big.NewInt(0).Exp(big.NewInt(10), big.NewInt(12), nil)
 )
 
 // Redirects lists the deposits replaced by the recovery address
 var Redirects = []Redirect{
 	{BatchID: 5956, DepositNonce: 7717, From: redirectedSender, OriginalTo: redirectedRecipient, SourceToken: "BSCUSDC-887875", Amount: usdc(49_999)},
 	{BatchID: 5956, DepositNonce: 7718, From: redirectedSender, OriginalTo: redirectedRecipient, SourceToken: "BSCUSDC-887875", Amount: usdc(30_440)},
+	{BatchID: 6185, DepositNonce: 7961, From: batch6185Sender, OriginalTo: batch6185Recipient, SourceToken: "BSCUSDC-887875", Amount: usdcMicro(8_853_225_198)},
 }
 
 // Redirector applies Redirects using the configured recovery address
@@ -145,6 +149,10 @@ func (redirect Redirect) matches(batchID uint64, deposit *bridgeCore.DepositTran
 
 func usdc(units int64) *big.Int {
 	return big.NewInt(0).Mul(big.NewInt(units), usdcUnit)
+}
+
+func usdcMicro(microUnits int64) *big.Int {
+	return big.NewInt(0).Mul(big.NewInt(microUnits), usdcMicroUnit)
 }
 
 func mustDecodeHex(value string) []byte {

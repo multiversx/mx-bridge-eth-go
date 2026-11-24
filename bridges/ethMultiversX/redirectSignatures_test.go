@@ -51,6 +51,49 @@ func batch5956FromMultiversX() *bridgeCore.TransferBatch {
 	}
 }
 
+// first four deposits of mainnet batch 6185; digests computed independently with viem, as above
+const (
+	viemBatch6185RedirectedDigest = "0x8fcae496f41f14e9a10c150dc52ae129f3c0a763c60e5106f623bbc6181f777e"
+	viemBatch6185OriginalDigest   = "0x2a9121a7d7205802f650c5fc69c1202b5fbd8eebd7410430f418a8a255aa7079"
+)
+
+var batch6185OtherRecipients = []common.Address{
+	common.HexToAddress("0x7f341040a9708bdbbecffa1ac997653447bdbe1b"),
+	common.HexToAddress("0x86a3dc5b726b513af1e1e630e39987c19b68379a"),
+	common.HexToAddress("0x97ce2c128ce3cb2705ead8d1df95528a3cf1476e"),
+}
+
+func batch6185FromMultiversX() *bridgeCore.TransferBatch {
+	redirectedSender, _ := hex.DecodeString("d1e0e0a269ae700450e8dda25a4e31da6154f3a1f5e3adb4ffeb856eaf47b210")
+	redirectedRecipient := common.HexToAddress("0x3099ba48d4daf3fad0b874b40f1bb55f8a6b4107")
+	otherSender := bytes.Repeat([]byte{0x11}, 32)
+	usdc := common.HexToAddress("0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d").Bytes()
+	tada := common.HexToAddress("0x9b26e318bc6a2c8b45f5daea2cc14697e0e0f8b5").Bytes()
+	deposit := func(nonce uint64, from []byte, to common.Address, ticker string, token []byte, amount string) *bridgeCore.DepositTransfer {
+		value, _ := big.NewInt(0).SetString(amount, 10)
+		return &bridgeCore.DepositTransfer{
+			Nonce:                 nonce,
+			FromBytes:             from,
+			ToBytes:               to.Bytes(),
+			SourceTokenBytes:      []byte(ticker),
+			DestinationTokenBytes: token,
+			DisplayableToken:      ticker,
+			Amount:                value,
+		}
+	}
+
+	return &bridgeCore.TransferBatch{
+		ID: 6185,
+		Deposits: []*bridgeCore.DepositTransfer{
+			deposit(7961, redirectedSender, redirectedRecipient, "BSCUSDC-887875", usdc, "8853225198000000000000"),
+			deposit(7962, otherSender, batch6185OtherRecipients[0], "BSCUSDC-887875", usdc, "120692637000000000000"),
+			deposit(7963, otherSender, batch6185OtherRecipients[1], "BSCUSDC-887875", usdc, "39000000000000000000"),
+			deposit(7964, otherSender, batch6185OtherRecipients[2], "BSCTADA-f64757", tada, "964222143204175498875647"),
+		},
+		Statuses: make([]byte, 4),
+	}
+}
+
 func createRedirectExecutor(t *testing.T, recoveryAddress string, signatures map[string][][]byte) *bridgeExecutor {
 	redirector, err := batchRedirect.NewRedirector(recoveryAddress)
 	require.Nil(t, err)
@@ -98,6 +141,43 @@ func TestBridgeExecutor_RedirectedBatchMatchesManualRecoveryMessage(t *testing.T
 	for _, recipient := range argLists.Recipients {
 		assert.Equal(t, common.HexToAddress(testRecoveryAddress), recipient)
 	}
+}
+
+func TestBridgeExecutor_RedirectsOnlyTheListedDepositOfBatch6185(t *testing.T) {
+	t.Parallel()
+
+	executor := createRedirectExecutor(t, testRecoveryAddress, nil)
+	executor.multiversXClient = &bridgeTests.MultiversXClientStub{
+		GetPendingBatchCalled: func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
+			return batch6185FromMultiversX(), nil
+		},
+	}
+
+	batch, err := executor.GetBatchFromMultiversX(context.Background())
+	require.Nil(t, err)
+	require.Nil(t, executor.StoreBatchFromMultiversX(batch))
+	require.Nil(t, executor.SignTransferOnEthereum())
+	assert.Equal(t, viemBatch6185RedirectedDigest, executor.msgHash.Hex())
+	require.NotNil(t, executor.redirectSignatures)
+	assert.Equal(t, viemBatch6185OriginalDigest, executor.redirectSignatures.originalHash.Hex())
+
+	expectedRecipients := append([]common.Address{common.HexToAddress(testRecoveryAddress)}, batch6185OtherRecipients...)
+	assert.Equal(t, expectedRecipients, batchProcessor.ExtractListMvxToEth(executor.batch).Recipients)
+}
+
+func TestBridgeExecutor_RefusesBatch6185WithoutRecoveryAddress(t *testing.T) {
+	t.Parallel()
+
+	executor := createRedirectExecutor(t, "", nil)
+	executor.multiversXClient = &bridgeTests.MultiversXClientStub{
+		GetPendingBatchCalled: func(ctx context.Context) (*bridgeCore.TransferBatch, error) {
+			return batch6185FromMultiversX(), nil
+		},
+	}
+
+	batch, err := executor.GetBatchFromMultiversX(context.Background())
+	assert.ErrorIs(t, err, batchRedirect.ErrRecoveryAddressNotSet)
+	assert.Nil(t, batch)
 }
 
 func TestBridgeExecutor_RefusesRedirectedBatchWithoutRecoveryAddress(t *testing.T) {
