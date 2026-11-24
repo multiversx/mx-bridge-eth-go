@@ -51,7 +51,6 @@ func batch5956FromMultiversX() *bridgeCore.TransferBatch {
 	}
 }
 
-// first four deposits of mainnet batch 6185; digests computed independently with viem, as above
 const (
 	viemBatch6185RedirectedDigest = "0x8fcae496f41f14e9a10c150dc52ae129f3c0a763c60e5106f623bbc6181f777e"
 	viemBatch6185OriginalDigest   = "0x2a9121a7d7205802f650c5fc69c1202b5fbd8eebd7410430f418a8a255aa7079"
